@@ -33,7 +33,7 @@ jobs:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USERNAME }}
           key: ${{ secrets.AWS_SSH_KEY }}
-          source: "target/recred-backend-0.0.1-SNAPSHOT.jar" # Revisa que este nombre coincida con tu .jar
+          source: "target/backend-0.0.1-SNAPSHOT.jar" # Revisa que este nombre coincida con tu .jar
           target: "/home/ubuntu/recred-app"
           strip_components: 1
 
