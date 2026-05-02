@@ -21,6 +21,9 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Revisar calidad de código con Checkstyle
+        run: mvn checkstyle:check
+
       - name: Compilar y correr tests
         run: mvn clean package
 
@@ -28,6 +31,7 @@ jobs:
         run: ls -la target/
 
       - name: Copiar el archivo .jar a AWS EC2
+        if: github.ref == 'refs/heads/main'
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.AWS_HOST }}
@@ -38,6 +42,7 @@ jobs:
           strip_components: 1
 
       - name: Ejecutar y reiniciar el servicio en AWS
+        if: github.ref == 'refs/heads/main'
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.AWS_HOST }}
