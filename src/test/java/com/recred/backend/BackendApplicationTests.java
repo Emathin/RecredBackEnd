@@ -1,4 +1,4 @@
-package com.recreopago.backend;
+package com.recred.backend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

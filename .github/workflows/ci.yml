@@ -23,3 +23,22 @@ jobs:
 
       - name: Compilar y correr tests
         run: mvn clean package
+
+      - name: Copiar el archivo .jar a AWS EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USERNAME }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          source: "target/recred-backend-0.0.1-SNAPSHOT.jar" # Revisa que este nombre coincida con tu .jar
+          target: "/home/ubuntu/recred-app"
+          strip_components: 1
+
+      - name: Ejecutar y reiniciar el servicio en AWS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USERNAME }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            sudo systemctl restart recred.service
