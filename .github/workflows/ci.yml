@@ -24,6 +24,9 @@ jobs:
       - name: Compilar y correr tests
         run: mvn clean package
 
+      - name: Verificar contenido de la carpeta target (Para ver el nombre real del .jar)
+        run: ls -la target/
+
       - name: Copiar el archivo .jar a AWS EC2
         uses: appleboy/scp-action@master
         with:
