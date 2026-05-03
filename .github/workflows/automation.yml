@@ -30,6 +30,8 @@ jobs:
 
       - name: Compilar, testear y verificar
         run: ./mvnw clean verify
+        env:
+          COGNITO_ISSUER_URI: ${{ secrets.COGNITO_ISSUER_URI }}
 
       - name: Ver contenido de target
         run: ls -la target/
