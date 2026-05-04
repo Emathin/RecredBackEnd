@@ -1,7 +1,9 @@
+name: recred
+
 services:
-  postgres:
+  db:
     image: postgres:16
-    container_name: recred-postgres
+    container_name: recred-db
     restart: unless-stopped
     env_file:
       - .env
@@ -10,9 +12,14 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
+    networks:
+      default:
+        aliases:
+          - recred-db
+          - postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -31,8 +38,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
 
 volumes:
-  postgres_data:
+  db_data:
