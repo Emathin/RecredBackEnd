@@ -62,7 +62,7 @@ Un contenedor es una instancia en ejecución de una imagen.
 
 Ejemplo:
 
-- `recred-postgres` es el contenedor de PostgreSQL.
+- `recred-db` es el contenedor de PostgreSQL.
 - `recred-backend` es el contenedor del backend.
 
 ---
@@ -83,7 +83,7 @@ Para el backend sí necesitamos Dockerfile porque es código propio.
 
 En este proyecto define:
 
-- Servicio `postgres`
+- Servicio `db`
 - Servicio `backend`
 - Volumen persistente para la DB
 - Variables de entorno
@@ -100,7 +100,7 @@ En este proyecto usamos:
 
 ```yaml
 volumes:
-  postgres_data:
+  db_data:
 ```
 
 Eso evita que la base se borre cada vez que apagamos Docker.
@@ -328,10 +328,12 @@ Esto mejora la velocidad del build y evita copiar archivos sensibles o innecesar
 Ejemplo completo:
 
 ```yaml
+name: recred
+
 services:
-  postgres:
+  db:
     image: postgres:16
-    container_name: recred-postgres
+    container_name: recred-db
     restart: unless-stopped
     env_file:
       - .env
@@ -342,7 +344,12 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
+    networks:
+      default:
+        aliases:
+          - recred-db
+          - postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -350,6 +357,7 @@ services:
       retries: 5
 
   backend:
+    image: ${BACKEND_IMAGE:-recred-backend:local}
     build:
       context: .
       dockerfile: Dockerfile
@@ -360,11 +368,11 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
 
 volumes:
-  postgres_data:
+  db_data:
 ```
 
 ---
@@ -376,16 +384,16 @@ Dentro de Docker Compose, los servicios se comunican por nombre.
 El servicio de DB se llama:
 
 ```yaml
-postgres:
+db:
 ```
 
-Entonces el backend se conecta usando:
+El contenedor se llama `recred-db` y tambien tiene alias de red `postgres` para mantener compatibilidad con configuraciones anteriores. Entonces el backend puede conectarse usando:
 
 ```txt
 jdbc:postgresql://postgres:5432/recred_local
 ```
 
-Docker resuelve automáticamente el hostname `postgres` hacia el contenedor correcto.
+Docker resuelve automaticamente el hostname `postgres`, `db` o `recred-db` hacia el contenedor correcto. Desde la maquina local, PostgreSQL queda publicado en `localhost:5432`.
 
 ---
 
@@ -471,7 +479,7 @@ docker logs recred-backend
 ### Ver logs de PostgreSQL
 
 ```bash
-docker logs recred-postgres
+docker logs recred-db
 ```
 
 ### Apagar contenedores
@@ -532,7 +540,7 @@ Esto confirma:
 ## 16. Cómo entrar manualmente a PostgreSQL
 
 ```bash
-docker exec -it recred-postgres psql -U postgres -d recred_local
+docker exec -it recred-db psql -U postgres -d recred_local
 ```
 
 Listar tablas:
@@ -594,9 +602,9 @@ docker compose up --build
 
 ## 18. CI/CD
 
-El proyecto también tiene pipeline de GitHub Actions.
+El proyecto tambien tiene pipeline de GitHub Actions.
 
-El pipeline está dividido en:
+El pipeline esta dividido en:
 
 ### CI
 
@@ -604,12 +612,11 @@ Corre en push y pull request a `main` y `develop`.
 
 Responsabilidades:
 
-- Descargar código.
+- Descargar codigo.
 - Configurar Java 17.
 - Ejecutar Checkstyle.
-- Compilar.
-- Correr tests.
-- Verificar build.
+- Compilar, correr tests y verificar el build con Maven.
+- Usar `COGNITO_ISSUER_URI` desde GitHub Secrets durante la verificacion, si el entorno lo necesita.
 
 ### Deploy
 
@@ -617,17 +624,60 @@ Corre solo en push a `main`.
 
 Responsabilidades:
 
-- Generar JAR.
-- Copiar JAR a EC2.
-- Reiniciar servicio en EC2.
+- Descargar el codigo.
+- Construir la imagen Docker del backend.
+- Etiquetar la imagen como `recred-backend:${{ github.sha }}` y `recred-backend:latest`.
+- Guardar la imagen como `recred-backend.tar.gz`.
+- Copiar `recred-backend.tar.gz` y `docker-compose.yml` a `/home/ubuntu/recred-app` en EC2.
+- Cargar la imagen en EC2 con `docker load`.
+- Levantar los contenedores con `docker compose up -d --no-build`.
+- Limpiar imagenes Docker sin uso con `docker image prune -f`.
 
-La condición importante es:
+La condicion importante es:
 
 ```yaml
 if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 ```
 
 Esto evita deploys accidentales desde pull requests o desde `develop`.
+
+### Imagen usada en produccion
+
+En local, `docker-compose.yml` puede construir el backend desde el `Dockerfile`:
+
+```yaml
+image: ${BACKEND_IMAGE:-recred-backend:local}
+build:
+  context: .
+  dockerfile: Dockerfile
+```
+
+En AWS, el workflow ya manda una imagen construida. Por eso ejecuta:
+
+```bash
+sudo env BACKEND_IMAGE=recred-backend:${{ github.sha }} docker compose up -d --no-build
+```
+
+`BACKEND_IMAGE` fuerza a Compose a usar la imagen exacta generada por ese commit. `--no-build` evita que EC2 intente compilar el proyecto otra vez.
+
+### Requisitos en EC2
+
+Antes de ejecutar el deploy, la instancia EC2 debe tener:
+
+- Docker instalado y funcionando.
+- Docker Compose disponible como `docker compose`.
+- Directorio `/home/ubuntu/recred-app`.
+- Archivo `/home/ubuntu/recred-app/.env` con las variables reales.
+- Puerto `8080` disponible para el backend.
+
+El deploy tambien ejecuta:
+
+```bash
+sudo systemctl stop recred.service || true
+sudo docker rm -f recred-backend || true
+```
+
+Esto frena el servicio viejo, si existe, y elimina un contenedor anterior del backend para evitar conflictos de nombre o de puerto. No borra el volumen de PostgreSQL.
 
 ---
 
