@@ -30,8 +30,8 @@ public abstract class Compra {
     private TipoCompra tipo;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "kiosco_id", nullable = false)
-    private Kiosco kiosco;
+    @JoinColumn(name = "buffet_id", nullable = false)
+    private Buffet buffet;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "alumno_id")

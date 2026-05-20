@@ -22,7 +22,7 @@ public class MovimientoStock {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inventario_id", nullable = false)
-    private InventarioKiosco inventario;
+    private InventarioBuffet inventario;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

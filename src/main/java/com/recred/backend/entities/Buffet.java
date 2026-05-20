@@ -16,7 +16,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Kiosco {
+public class Buffet {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

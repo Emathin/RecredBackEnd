@@ -10,19 +10,19 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "inventarios_kiosco")
+@Table(name = "inventarios_buffet")
 @Getter
 @Setter
 @NoArgsConstructor
-public class InventarioKiosco {
+public class InventarioBuffet {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "kiosco_id", nullable = false)
-    private Kiosco kiosco;
+    @JoinColumn(name = "buffet_id", nullable = false)
+    private Buffet buffet;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "producto_id", nullable = false)
