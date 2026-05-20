@@ -1,11 +1,15 @@
 package com.recred.backend.entities;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -19,25 +23,43 @@ public class SugerenciaIA {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TipoSugerenciaIA tipo;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "alumno_id", nullable = false)
+    @JoinColumn(name = "alumno_id")
     private Alumno alumno;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
-    private String justificacion;
-
-    // Puede apuntar a un producto específico para recomendar o estar nulo si es una sugerencia general
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "producto_sugerido_id")
-    private Producto productoSugerido;
+    @JoinColumn(name = "kiosco_id")
+    private Kiosco kiosco;
 
-    @Column(name = "es_saludable", nullable = false)
-    private Boolean esSaludable = false;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "producto_id")
+    private Producto producto;
 
-    // Ej: PENDIENTE, ACEPTADA, IGNORADA
-    @Column(nullable = false, length = 30)
-    private String estado = "PENDIENTE";
+    @Column(nullable = false)
+    private String titulo;
 
-    @Column(name = "creado_en", nullable = false)
-    private LocalDateTime creadoEn = LocalDateTime.now();
+    @Column(columnDefinition = "TEXT", nullable = false)
+    private String mensaje;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, Object> metadata;
+
+    @Column
+    private Boolean aceptada;
+
+    @CreationTimestamp
+    @Column(name = "creado_en", updatable = false)
+    private LocalDateTime creadoEn;
+
+    @Column(name = "respondida_en")
+    private LocalDateTime respondidaEn;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "evento_ia_id")
+    private EventoIA eventoIa;
 }

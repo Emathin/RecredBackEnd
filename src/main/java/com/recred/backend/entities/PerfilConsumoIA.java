@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -26,11 +27,24 @@ public class PerfilConsumoIA {
     @JoinColumn(name = "alumno_id", nullable = false, unique = true)
     private Alumno alumno;
 
-    // Almacenamiento flexible JSONB
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "metricas_consumo", columnDefinition = "jsonb")
-    private Map<String, Object> metricasConsumo;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "categoria_favorita_id")
+    private ClasificacionTipo categoriaFavorita;
 
-    @Column(name = "ultima_actualizacion")
-    private LocalDateTime ultimaActualizacion;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "producto_favorito_id")
+    private Producto productoFavorito;
+
+    @Column(name = "promedio_gasto_diario", precision = 12, scale = 2)
+    private BigDecimal promedioGastoDiario;
+
+    @Column(name = "score_saludable")
+    private Integer scoreSaludable;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "datos_resumen", columnDefinition = "jsonb")
+    private Map<String, Object> datosResumen;
+
+    @Column(name = "fecha_ultima_evaluacion")
+    private LocalDateTime fechaUltimaEvaluacion;
 }

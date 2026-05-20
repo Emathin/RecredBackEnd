@@ -30,6 +30,10 @@ public class HistorialPrecio {
     @Column(name = "precio_nuevo", nullable = false, precision = 10, scale = 2)
     private BigDecimal precioNuevo;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cambiado_por_usuario_id")
+    private Usuario cambiadoPorUsuario;
+
     @Column(name = "fecha_cambio", nullable = false)
     private LocalDateTime fechaCambio = LocalDateTime.now();
 }

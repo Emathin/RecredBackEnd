@@ -20,4 +20,7 @@ public class ClasificacionTipo {
 
     @Column(nullable = false, unique = true, length = 100)
     private String descripcion;
+
+    @Column(nullable = false)
+    private Boolean activo = true;
 }

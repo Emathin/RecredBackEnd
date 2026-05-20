@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,7 +15,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "compras")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-@DiscriminatorColumn(name = "tipo_compra", discriminatorType = DiscriminatorType.STRING)
+@DiscriminatorColumn(name = "tipo", discriminatorType = DiscriminatorType.STRING)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -24,22 +25,21 @@ public abstract class Compra {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "fecha_hora", nullable = false)
-    private LocalDateTime fechaHora;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo", insertable = false, updatable = false)
+    private TipoCompra tipo;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "kiosco_id", nullable = false)
     private Kiosco kiosco;
 
-    // Puede ser null si es una compra en efectivo que no usa la app
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "billetera_id")
-    private Billetera billetera;
+    @JoinColumn(name = "alumno_id")
+    private Alumno alumno;
 
-    // Quien procesa o entrega el pedido (nullable al inicio si se hace por la app)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "vendedor_id")
-    private Kiosquero vendedor;
+    @JoinColumn(name = "padre_id")
+    private Tutor tutor;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "medio_pago", nullable = false)
@@ -52,11 +52,16 @@ public abstract class Compra {
     @Column(name = "monto_total", nullable = false, precision = 12, scale = 2)
     private BigDecimal montoTotal = BigDecimal.ZERO;
 
-    // Relación bidireccional con los detalles del ticket
+    @Column(name = "fecha_hora", nullable = false)
+    private LocalDateTime fechaHora;
+
+    @CreationTimestamp
+    @Column(name = "creado_en", updatable = false)
+    private LocalDateTime creadoEn;
+
     @OneToMany(mappedBy = "compra", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CompraDetalle> detalles = new ArrayList<>();
 
-    // Método de conveniencia para asegurar la consistencia bidireccional
     public void addDetalle(CompraDetalle detalle) {
         detalles.add(detalle);
         detalle.setCompra(this);

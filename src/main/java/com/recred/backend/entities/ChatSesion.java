@@ -23,9 +23,13 @@ public class ChatSesion {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EstadoChatSesion estado;
+
     @Column(name = "fecha_inicio", nullable = false)
     private LocalDateTime fechaInicio = LocalDateTime.now();
 
-    @Column(nullable = false)
-    private Boolean activa = true;
+    @Column(name = "fecha_ultima_actividad", nullable = false)
+    private LocalDateTime fechaUltimaActividad = LocalDateTime.now();
 }

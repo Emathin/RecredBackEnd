@@ -4,9 +4,13 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -20,24 +24,38 @@ public class PagoMercadoPago {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // La restricción unique=true es la clave para la idempotencia del webhook
-    @Column(name = "payment_id", unique = true, nullable = false)
-    private Long paymentId;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "billetera_id", nullable = false)
     private Billetera billetera;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usuario_id", nullable = false)
+    private Usuario usuario;
+
+    @Column(name = "mercado_pago_payment_id", unique = true)
+    private String mercadoPagoPaymentId;
+
+    @Column(name = "mercado_pago_preference_id", unique = true)
+    private String mercadoPagoPreferenceId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EstadoPagoExterno estado;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal monto;
 
-    // Guardará estados nativos de MP como "approved", "pending", "rejected"
-    @Column(nullable = false, length = 50)
-    private String estado;
+    @Column(nullable = false, length = 10)
+    private String moneda;
 
-    @Column(name = "fecha_creacion", nullable = false)
-    private LocalDateTime fechaCreacion;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "datos_respuesta", columnDefinition = "jsonb")
+    private Map<String, Object> datosRespuesta;
 
-    @Column(name = "fecha_actualizacion")
-    private LocalDateTime fechaActualizacion;
+    @CreationTimestamp
+    @Column(name = "creado_en", nullable = false, updatable = false)
+    private LocalDateTime creadoEn;
+
+    @Column(name = "aprobado_en")
+    private LocalDateTime aprobadoEn;
 }

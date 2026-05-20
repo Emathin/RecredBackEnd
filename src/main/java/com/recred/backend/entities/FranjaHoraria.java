@@ -24,11 +24,14 @@ public class FranjaHoraria {
     private Colegio colegio;
 
     @Column(nullable = false)
-    private String descripcion; // Ej: "Recreo Corto", "Almuerzo"
+    private String descripcion;
 
     @Column(name = "hora_inicio", nullable = false)
     private LocalTime horaInicio;
 
     @Column(name = "hora_fin", nullable = false)
     private LocalTime horaFin;
+
+    @Column(nullable = false)
+    private Boolean activo = true;
 }

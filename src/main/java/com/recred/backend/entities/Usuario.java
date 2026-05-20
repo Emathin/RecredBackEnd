@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -18,7 +21,11 @@ public class Usuario {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "id_cognito", unique = true, nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "colegio_id")
+    private Colegio colegio;
+
+    @Column(name = "cognito_sub", unique = true, nullable = false)
     private String idCognito;
 
     @Column(nullable = false)
@@ -31,23 +38,33 @@ public class Usuario {
     private String email;
 
     private String telefono;
+
     private String dni;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "colegio_id")
-    private Colegio colegio;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RolUsuario rol;
+
+    @Column(nullable = false)
+    private Boolean autenticadoConCognito = false;
 
     @Column(nullable = false)
     private Boolean activo = true;
 
-    // Relaciones bidireccionales 1 a 1
+    @CreationTimestamp
+    @Column(name = "creado_en", updatable = false)
+    private LocalDateTime creadoEn;
+
+    @UpdateTimestamp
+    @Column(name = "actualizado_en", updatable = false)
+    private LocalDateTime actualizadoEn;
+
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Alumno alumno;
 
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Tutor tutor;
 
-    // Agregar dentro de Usuario.java
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Kiosquero kiosquero;
 
@@ -58,7 +75,6 @@ public class Usuario {
         }
     }
 
-    // Métodos de conveniencia para sincronizar la relación bidireccional
     public void setAlumno(Alumno alumno) {
         this.alumno = alumno;
         if (alumno != null) {

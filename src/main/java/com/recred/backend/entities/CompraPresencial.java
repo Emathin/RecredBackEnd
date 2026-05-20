@@ -12,5 +12,4 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class CompraPresencial extends Compra {
-    // Hereda todo lo necesario para una compra en mostrador
 }

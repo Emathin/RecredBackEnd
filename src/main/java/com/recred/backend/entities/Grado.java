@@ -27,4 +27,7 @@ public class Grado {
 
     @Column(nullable = false)
     private String division;
+
+    @Column(nullable = false)
+    private Boolean activo = true;
 }

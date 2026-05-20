@@ -4,8 +4,11 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -23,22 +26,23 @@ public class Billetera {
     @JoinColumn(name = "alumno_id", nullable = false, unique = true)
     private Alumno alumno;
 
-    @Column(name = "saldo_actual", nullable = false, precision = 12, scale = 2)
-    private BigDecimal saldoActual = BigDecimal.ZERO;
+    @Column(name = "saldo_creditos", nullable = false, precision = 12, scale = 2)
+    private BigDecimal saldoCreditos = BigDecimal.ZERO;
 
-    @Column(name = "limite_diario_global", nullable = false, precision = 12, scale = 2)
-    private BigDecimal limiteDiarioGlobal;
+    @Column(name = "limite_credito", precision = 12, scale = 2)
+    private BigDecimal limiteCredito = BigDecimal.ZERO;
 
-    @Column(name = "monto_base_periodo", nullable = false, precision = 12, scale = 2)
-    private BigDecimal montoBasePeriodo;
+    @Column(name = "saldo_deuda_interno", precision = 12, scale = 2)
+    private BigDecimal saldoDeudaInterno = BigDecimal.ZERO;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "tipo_periodo", nullable = false)
-    private TipoPeriodo tipoPeriodo;
+    @Column(name = "credito_habilitado", nullable = false)
+    private Boolean creditoHabilitado = false;
 
-    @Column(name = "limite_descubierto_permitido", nullable = false, precision = 12, scale = 2)
-    private BigDecimal limiteDescubiertoPermitido = BigDecimal.ZERO;
+    @CreationTimestamp
+    @Column(name = "creado_en", updatable = false)
+    private LocalDateTime creadoEn;
 
-    @Column(name = "saldo_deuda", nullable = false, precision = 12, scale = 2)
-    private BigDecimal saldoDeuda = BigDecimal.ZERO;
+    @UpdateTimestamp
+    @Column(name = "actualizado_en")
+    private LocalDateTime actualizadoEn;
 }

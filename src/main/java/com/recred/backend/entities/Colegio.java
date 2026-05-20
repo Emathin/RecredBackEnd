@@ -4,8 +4,11 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -29,13 +32,24 @@ public class Colegio {
     private BigDecimal longitud;
 
     private String telefono;
+
     private String email;
 
     @Column(unique = true, nullable = false, length = 50)
     private String cue;
 
-    // TODO: Cuando crees la entidad Nivel, descomenta esto
-    // @ManyToOne(fetch = FetchType.LAZY)
-    // @JoinColumn(name = "nivel_id")
-    // private Nivel nivel;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nivel_id")
+    private Nivel nivel;
+
+    @Column(nullable = false)
+    private Boolean activo = true;
+
+    @CreationTimestamp
+    @Column(name = "creado_en", updatable = false)
+    private LocalDateTime creadoEn;
+
+    @UpdateTimestamp
+    @Column(name = "actualizado_en")
+    private LocalDateTime actualizadoEn;
 }

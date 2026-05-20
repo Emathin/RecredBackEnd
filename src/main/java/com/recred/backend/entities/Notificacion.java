@@ -35,10 +35,9 @@ public class Notificacion {
     @JoinColumn(name = "compra_id")
     private Compra compra;
 
-    // TODO: Descomentar en el próximo paso al mapear la IA
-    // @ManyToOne(fetch = FetchType.LAZY)
-    // @JoinColumn(name = "sugerencia_ia_id")
-    // private SugerenciaIA sugerenciaIa;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sugerencia_ia_id")
+    private SugerenciaIA sugerenciaIa;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

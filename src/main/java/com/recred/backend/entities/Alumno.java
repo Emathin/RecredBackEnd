@@ -37,7 +37,6 @@ public class Alumno {
     @OneToOne(mappedBy = "alumno", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Billetera billetera;
 
-    // Tabla intermedia alumno_restriccion (Perfil médico)
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "alumno_restricciones_salud",
@@ -45,4 +44,12 @@ public class Alumno {
             inverseJoinColumns = @JoinColumn(name = "clasificacion_salud_id")
     )
     private Set<ClasificacionSalud> restriccionesSalud = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "productos_favoritos",
+            joinColumns = @JoinColumn(name = "alumno_id"),
+            inverseJoinColumns = @JoinColumn(name = "producto_id")
+    )
+    private Set<Producto> productosFavoritos = new HashSet<>();
 }

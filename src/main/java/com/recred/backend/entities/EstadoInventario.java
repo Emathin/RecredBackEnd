@@ -2,6 +2,7 @@ package com.recred.backend.entities;
 
 public enum EstadoInventario {
     DISPONIBLE,
-    AGOTADO_RECRED,
-    PAUSADO
+    BAJO_STOCK,
+    SIN_STOCK,
+    DESACTIVADO
 }

@@ -4,7 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -19,7 +21,7 @@ public class Logro {
     private UUID id;
 
     @Column(nullable = false, unique = true)
-    private String titulo;
+    private String nombre;
 
     @Column(nullable = false)
     private String descripcion;
@@ -29,4 +31,12 @@ public class Logro {
 
     @Column(name = "url_icono")
     private String urlIcono;
+
+    @Column(nullable = false)
+    private Boolean activo = true;
+
+    @CreationTimestamp
+    @Column(name = "creado_en", updatable = false)
+    private LocalDateTime creadoEn;
+
 }

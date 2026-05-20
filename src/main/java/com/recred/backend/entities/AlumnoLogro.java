@@ -27,6 +27,10 @@ public class AlumnoLogro {
     @JoinColumn(name = "logro_id", nullable = false)
     private Logro logro;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "origen_sugerencia_ia_id")
+    private SugerenciaIA origenSugerenciaIa;
+
     @Column(name = "fecha_obtencion", nullable = false)
     private LocalDateTime fechaObtencion = LocalDateTime.now();
 }
