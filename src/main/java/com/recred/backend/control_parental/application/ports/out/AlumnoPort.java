@@ -1,11 +1,10 @@
 package com.recred.backend.control_parental.application.ports.out;
 
-import com.recred.backend.usuarios.infrastructure.entities.AlumnoEntity;
-
+import com.recred.backend.control_parental.domain.model.Alumno;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface AlumnoPort {
-    Optional<AlumnoEntity> buscarPorId(UUID id);
-    AlumnoEntity guardar(AlumnoEntity alumno);
+    Optional<Alumno> buscarPorId(UUID id);
+    void guardar(Alumno alumno);
 }

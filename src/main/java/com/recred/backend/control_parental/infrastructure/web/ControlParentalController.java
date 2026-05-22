@@ -13,7 +13,6 @@ public class ControlParentalController {
 
     private final ActualizarRestriccionesSaludUseCase useCase;
 
-    // Inyección de dependencia por constructor
     public ControlParentalController(ActualizarRestriccionesSaludUseCase useCase) {
         this.useCase = useCase;
     }

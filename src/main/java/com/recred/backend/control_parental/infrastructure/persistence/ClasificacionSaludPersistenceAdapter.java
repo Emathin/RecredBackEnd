@@ -1,8 +1,8 @@
 package com.recred.backend.control_parental.infrastructure.persistence;
 
-import com.recred.backend.catalogo.infrastructure.entities.ClasificacionSaludEntity;
 import com.recred.backend.catalogo.infrastructure.repositories.ClasificacionSaludRepository;
 import com.recred.backend.control_parental.application.ports.out.ClasificacionSaludPort;
+import com.recred.backend.control_parental.domain.model.ClasificacionSalud;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -20,7 +20,9 @@ public class ClasificacionSaludPersistenceAdapter implements ClasificacionSaludP
     }
 
     @Override
-    public Set<ClasificacionSaludEntity> buscarPorIds(List<UUID> ids) {
-        return repository.findAllById(ids).stream().collect(Collectors.toSet());
+    public Set<ClasificacionSalud> buscarPorIds(List<UUID> ids) {
+        return repository.findAllById(ids).stream()
+                .map(entity -> new ClasificacionSalud(entity.getId(), entity.getDescripcion()))
+                .collect(Collectors.toSet());
     }
 }

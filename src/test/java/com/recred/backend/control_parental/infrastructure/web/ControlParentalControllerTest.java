@@ -37,7 +37,7 @@ class ControlParentalControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockitoBean // O @MockBean
+    @MockitoBean
     private ActualizarRestriccionesSaludUseCase useCase;
 
     @Test
@@ -46,7 +46,6 @@ class ControlParentalControllerTest {
         ActualizarRestriccionesDTO dto = new ActualizarRestriccionesDTO();
         dto.setClasificacionesIds(List.of(UUID.randomUUID()));
 
-        // Le decimos al mock: "Cuando llamen a ejecutar, no hagas nada (todo OK)"
         doNothing().when(useCase).ejecutar(eq(alumnoId), anyList());
 
         mockMvc.perform(put("/api/control-parental/alumnos/{alumnoId}/restricciones-salud", alumnoId)
@@ -54,7 +53,6 @@ class ControlParentalControllerTest {
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk());
 
-        // Verificamos que el controlador realmente llamó al Caso de Uso
         verify(useCase).ejecutar(eq(alumnoId), anyList());
     }
 }
