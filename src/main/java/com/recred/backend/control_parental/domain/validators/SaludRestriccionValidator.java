@@ -1,9 +1,10 @@
 package com.recred.backend.control_parental.domain.validators;
 
-import com.recred.backend.usuarios.infrastructure.entities.AlumnoEntity;
-import com.recred.backend.catalogo.infrastructure.entities.ProductoEntity;
+import com.recred.backend.control_parental.domain.model.Alumno;
+import com.recred.backend.control_parental.domain.model.Producto;
 import com.recred.backend.control_parental.domain.exceptions.RestriccionSaludException;
 import org.springframework.stereotype.Component;
+
 import java.util.Collections;
 import java.util.List;
 
@@ -11,26 +12,26 @@ import java.util.List;
 public class SaludRestriccionValidator implements CompraValidator {
 
     @Override
-    public void validar(AlumnoEntity alumnoEntity, List<ProductoEntity> productosCarrito) {
-        boolean sinRestricciones = alumnoEntity.getRestriccionesSalud() == null
-                || alumnoEntity.getRestriccionesSalud().isEmpty();
+    public void validar(Alumno alumno, List<Producto> productosCarrito) {
+        boolean sinRestricciones = alumno.getRestriccionesSalud() == null
+                || alumno.getRestriccionesSalud().isEmpty();
 
         if (sinRestricciones) {
             return;
         }
 
-        for (ProductoEntity productoEntity : productosCarrito) {
-            if (productoEntity.getClasificacionesSalud() != null) {
+        for (Producto producto : productosCarrito) {
+            if (producto.getClasificacionesSalud() != null) {
 
                 boolean esApto = Collections.disjoint(
-                        alumnoEntity.getRestriccionesSalud(),
-                        productoEntity.getClasificacionesSalud()
+                        alumno.getRestriccionesSalud(),
+                        producto.getClasificacionesSalud()
                 );
 
                 if (!esApto) {
                     String mensaje = String.format(
                             "El producto '%s' contiene ingredientes restringidos.",
-                            productoEntity.getNombre()
+                            producto.getNombre()
                     );
                     throw new RestriccionSaludException(mensaje);
                 }

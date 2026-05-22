@@ -2,12 +2,15 @@ package com.recred.backend.compras.application.services;
 
 import com.recred.backend.catalogo.infrastructure.entities.ProductoEntity;
 import com.recred.backend.control_parental.domain.exceptions.RestriccionSaludException;
+import com.recred.backend.control_parental.domain.model.Alumno;
+import com.recred.backend.control_parental.domain.model.Producto;
 import com.recred.backend.control_parental.domain.validators.CompraValidator;
 import com.recred.backend.usuarios.infrastructure.entities.AlumnoEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -26,9 +29,9 @@ class CompraServiceTest {
 
     @Test
     void procesarCompra_DebeLanzarExcepcion_CuandoUnValidadorFalla() {
-        AlumnoEntity alumno = new AlumnoEntity();
-        ProductoEntity producto = new ProductoEntity();
-        List<ProductoEntity> carrito = List.of(producto);
+        Alumno alumno = new Alumno(UUID.randomUUID(), null);
+        Producto producto = new Producto(UUID.randomUUID(), "Producto con Restricción", null);
+        List<Producto> carrito = List.of(producto);
 
         doThrow(new RestriccionSaludException("El producto contiene ingredientes restringidos."))
                 .when(validadorMock).validar(alumno, carrito);
@@ -42,9 +45,9 @@ class CompraServiceTest {
 
     @Test
     void procesarCompra_NoDebeLanzarExcepcion_CuandoElCarritoEsSaludable() {
-        AlumnoEntity alumno = new AlumnoEntity();
-        ProductoEntity producto = new ProductoEntity();
-        List<ProductoEntity> carrito = List.of(producto);
+        Alumno alumno = new Alumno(UUID.randomUUID(), null);
+        Producto producto = new Producto(UUID.randomUUID(), "Producto sin Restricción", null);
+        List<Producto> carrito = List.of(producto);
 
         doNothing().when(validadorMock).validar(alumno, carrito);
 
