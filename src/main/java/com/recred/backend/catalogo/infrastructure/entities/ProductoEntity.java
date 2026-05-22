@@ -87,11 +87,11 @@ public class ProductoEntity {
 
     public void addMedida(ProductoMedidaEntity medida) {
         medidas.add(medida);
-        medida.setProductoEntity(this);
+        medida.setProducto(this);
     }
 
     public void removeMedida(ProductoMedidaEntity medida) {
         medidas.remove(medida);
-        medida.setProductoEntity(null);
+        medida.setProducto(null);
     }
 }

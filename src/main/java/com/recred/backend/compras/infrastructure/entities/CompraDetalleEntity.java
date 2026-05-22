@@ -30,7 +30,7 @@ public class CompraDetalleEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "compra_id", nullable = false)
-    private CompraEntity compraEntity;
+    private CompraEntity compra;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "producto_id", nullable = false)

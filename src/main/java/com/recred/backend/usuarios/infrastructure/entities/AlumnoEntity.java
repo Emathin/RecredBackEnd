@@ -38,7 +38,7 @@ public class AlumnoEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false, unique = true)
-    private UsuarioEntity usuarioEntity;
+    private UsuarioEntity usuario;
 
     @Column(nullable = false)
     private Boolean activo = true;

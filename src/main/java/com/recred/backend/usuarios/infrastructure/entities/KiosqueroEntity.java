@@ -33,7 +33,7 @@ public class KiosqueroEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false, unique = true)
-    private UsuarioEntity usuarioEntity;
+    private UsuarioEntity usuario;
 
     @Column(nullable = false, length = 20)
     private String cuit;

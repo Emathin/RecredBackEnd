@@ -32,7 +32,7 @@ public class ProductoMedidaEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "producto_id", nullable = false)
-    private ProductoEntity productoEntity;
+    private ProductoEntity producto;
 
     @Column(name = "cantidad_unidad", nullable = false, precision = 10, scale = 2)
     private BigDecimal cantidadUnidad;

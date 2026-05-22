@@ -74,32 +74,32 @@ public class UsuarioEntity {
     private LocalDateTime actualizadoEn;
 
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private AlumnoEntity alumnoEntity;
+    private AlumnoEntity alumno;
 
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private TutorEntity tutorEntity;
+    private TutorEntity tutor;
 
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private KiosqueroEntity kiosqueroEntity;
+    private KiosqueroEntity kiosquero;
 
     public void setKiosqueroEntity(KiosqueroEntity kiosqueroEntity) {
-        this.kiosqueroEntity = kiosqueroEntity;
+        this.kiosquero = kiosqueroEntity;
         if (kiosqueroEntity != null) {
-            kiosqueroEntity.setUsuarioEntity(this);
+            kiosqueroEntity.setUsuario(this);
         }
     }
 
     public void setAlumnoEntity(AlumnoEntity alumnoEntity) {
-        this.alumnoEntity = alumnoEntity;
+        this.alumno = alumnoEntity;
         if (alumnoEntity != null) {
-            alumnoEntity.setUsuarioEntity(this);
+            alumnoEntity.setUsuario(this);
         }
     }
 
     public void setTutorEntity(TutorEntity tutorEntity) {
-        this.tutorEntity = tutorEntity;
+        this.tutor = tutorEntity;
         if (tutorEntity != null) {
-            tutorEntity.setUsuarioEntity(this);
+            tutorEntity.setUsuario(this);
         }
     }
 }

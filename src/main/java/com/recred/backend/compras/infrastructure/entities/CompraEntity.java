@@ -86,11 +86,11 @@ public abstract class CompraEntity {
 
     public void addDetalle(CompraDetalleEntity detalle) {
         detalles.add(detalle);
-        detalle.setCompraEntity(this);
+        detalle.setCompra(this);
     }
 
     public void removeDetalle(CompraDetalleEntity detalle) {
         detalles.remove(detalle);
-        detalle.setCompraEntity(null);
+        detalle.setCompra(null);
     }
 }
