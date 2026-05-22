@@ -12,7 +12,10 @@ public class SaludRestriccionValidator implements CompraValidator {
 
     @Override
     public void validar(AlumnoEntity alumnoEntity, List<ProductoEntity> productosCarrito) {
-        if (alumnoEntity.getRestriccionesSalud() == null || alumnoEntity.getRestriccionesSalud().isEmpty()) {
+        boolean sinRestricciones = alumnoEntity.getRestriccionesSalud() == null
+                || alumnoEntity.getRestriccionesSalud().isEmpty();
+
+        if (sinRestricciones) {
             return;
         }
 
