@@ -1,0 +1,15 @@
+package com.recred.backend.compras.infrastructure.entities;
+
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@DiscriminatorValue("PRESENCIAL")
+@Getter
+@Setter
+@NoArgsConstructor
+public class CompraEntityPresencialEntity extends CompraEntity {
+}
