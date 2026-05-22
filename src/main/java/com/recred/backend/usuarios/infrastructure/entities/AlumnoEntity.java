@@ -36,7 +36,7 @@ public class AlumnoEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "usuario_id", nullable = false, unique = true)
     private UsuarioEntity usuario;
 
