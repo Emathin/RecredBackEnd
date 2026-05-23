@@ -34,7 +34,7 @@ public class PerfilConsumoIAEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "alumno_id", nullable = false, unique = true)
-    private AlumnoEntity alumnoEntity;
+    private Alumno alumno;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "categoria_favorita_id")

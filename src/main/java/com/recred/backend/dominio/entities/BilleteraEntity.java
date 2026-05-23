@@ -32,7 +32,7 @@ public class BilleteraEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "alumno_id", nullable = false, unique = true)
-    private AlumnoEntity alumno;
+    private Alumno alumno;
 
     @Column(name = "saldo_creditos", nullable = false, precision = 12, scale = 2)
     private BigDecimal saldoCreditos = BigDecimal.ZERO;

@@ -51,7 +51,7 @@ public abstract class CompraEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "alumno_id")
-    private AlumnoEntity alumnoEntity;
+    private Alumno alumno;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "padre_id")
