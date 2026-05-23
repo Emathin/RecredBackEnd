@@ -39,7 +39,7 @@ public class SugerenciaIAEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "alumno_id")
-    private AlumnoEntity alumnoEntity;
+    private Alumno alumno;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "buffet_id")

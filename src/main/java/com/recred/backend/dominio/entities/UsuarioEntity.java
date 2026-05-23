@@ -72,7 +72,7 @@ public class UsuarioEntity {
     private LocalDateTime actualizadoEn;
 
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private AlumnoEntity alumno;
+    private Alumno alumno;
 
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private TutorEntity tutor;
@@ -87,10 +87,10 @@ public class UsuarioEntity {
         }
     }
 
-    public void setAlumnoEntity(AlumnoEntity alumnoEntity) {
-        this.alumno = alumnoEntity;
-        if (alumnoEntity != null) {
-            alumnoEntity.setUsuario(this);
+    public void setAlumnoEntity(Alumno alumno) {
+        this.alumno = alumno;
+        if (alumno != null) {
+            alumno.setUsuario(this);
         }
     }
 

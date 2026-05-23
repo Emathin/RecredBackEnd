@@ -54,15 +54,15 @@ public class TutorEntity {
             joinColumns = @JoinColumn(name = "tutor_id"),
             inverseJoinColumns = @JoinColumn(name = "alumno_id")
     )
-    private Set<AlumnoEntity> hijos = new HashSet<>();
+    private Set<Alumno> hijos = new HashSet<>();
 
-    public void addHijo(AlumnoEntity alumnoEntity) {
-        this.hijos.add(alumnoEntity);
-        alumnoEntity.getTutores().add(this);
+    public void addHijo(Alumno alumno) {
+        this.hijos.add(alumno);
+        alumno.getTutores().add(this);
     }
 
-    public void removeHijo(AlumnoEntity alumnoEntity) {
-        this.hijos.remove(alumnoEntity);
-        alumnoEntity.getTutores().remove(this);
+    public void removeHijo(Alumno alumno) {
+        this.hijos.remove(alumno);
+        alumno.getTutores().remove(this);
     }
 }

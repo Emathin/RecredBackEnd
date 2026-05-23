@@ -1,7 +1,7 @@
 package com.recred.backend.dominio.implementation;
 
 import com.recred.backend.dominio.AdministrarRestricciones;
-import com.recred.backend.dominio.entities.AlumnoEntity;
+import com.recred.backend.dominio.entities.Alumno;
 import com.recred.backend.dominio.entities.ClasificacionSaludEntity;
 import com.recred.backend.dominio.AlumnoRepository;
 import com.recred.backend.dominio.ClasificacionSaludRepository;
@@ -20,20 +20,20 @@ import java.util.HashSet;
 public class AdministrarRestriccionesImpl implements AdministrarRestricciones {
 
     private final AlumnoRepository alumnoRepository;
-    private final ClasificacionSaludRepository clasificacionPort;
+    private final ClasificacionSaludRepository clasificacionRepository;
 
     public AdministrarRestriccionesImpl(AlumnoRepository alumnoRepository,
-                                        ClasificacionSaludRepository clasificacionPort) {
+                                        ClasificacionSaludRepository clasificacionRepository) {
         this.alumnoRepository = alumnoRepository;
-        this.clasificacionPort = clasificacionPort;
+        this.clasificacionRepository = clasificacionRepository;
     }
 
     public void ejecutar(UUID alumnoId, List<UUID> nuevasClasificacionesIds) {
-        AlumnoEntity alumno = alumnoRepository.findById(alumnoId)
+        Alumno alumno = alumnoRepository.findById(alumnoId)
                 .orElseThrow(() -> new IllegalArgumentException("El alumno con ID " + alumnoId +
                         " no existe."));
 
-        Set<ClasificacionSaludEntity> nuevasRestricciones = new HashSet<>(clasificacionPort.
+        Set<ClasificacionSaludEntity> nuevasRestricciones = new HashSet<>(clasificacionRepository.
                 findAllById(nuevasClasificacionesIds));
 
         alumno.setRestriccionesSalud(nuevasRestricciones);
@@ -43,7 +43,7 @@ public class AdministrarRestriccionesImpl implements AdministrarRestricciones {
 
     @Override
     public Set<ClasificacionSaludEntity> obtener(UUID alumnoId) {
-        AlumnoEntity alumno = alumnoRepository.findById(alumnoId)
+        Alumno alumno = alumnoRepository.findById(alumnoId)
                 .orElseThrow(() -> new IllegalArgumentException("El alumno con ID " + alumnoId +
                         " no existe."));
 
