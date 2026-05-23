@@ -1,4 +1,4 @@
-package com.recred.backend.control_parental.application.ports.out;
+package com.recred.backend.control_parental.domain.ports.out;
 
 import com.recred.backend.control_parental.domain.model.Alumno;
 import java.util.Optional;

@@ -1,7 +1,7 @@
 package com.recred.backend.control_parental.application.usecases;
 
-import com.recred.backend.control_parental.application.ports.out.AlumnoPort;
-import com.recred.backend.control_parental.application.ports.out.ClasificacionSaludPort;
+import com.recred.backend.control_parental.domain.ports.out.AlumnoPort;
+import com.recred.backend.control_parental.domain.ports.out.ClasificacionSaludPort;
 import com.recred.backend.control_parental.domain.model.Alumno;
 import com.recred.backend.control_parental.domain.model.ClasificacionSalud;
 import org.junit.jupiter.api.BeforeEach;

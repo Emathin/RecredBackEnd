@@ -1,11 +1,10 @@
 package com.recred.backend.control_parental.infrastructure.entities;
 
-import com.recred.backend.control_parental.domain.enums.PeriodoPresupuesto;
+import com.recred.backend.control_parental.domain.model.PeriodoPresupuesto;
 import com.recred.backend.usuarios.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.usuarios.infrastructure.entities.UsuarioEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -24,6 +23,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static jakarta.persistence.EnumType.*;
+
 @Entity
 @Table(name = "presupuestos_alumnos")
 @Getter
@@ -39,7 +40,7 @@ public class PresupuestoAlumnoEntity {
     @JoinColumn(name = "alumno_id", nullable = false)
     private AlumnoEntity alumnoEntity;
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(STRING)
     @Column(nullable = false)
     private PeriodoPresupuesto periodo;
 

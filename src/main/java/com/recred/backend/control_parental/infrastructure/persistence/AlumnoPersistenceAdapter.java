@@ -1,6 +1,6 @@
 package com.recred.backend.control_parental.infrastructure.persistence;
 
-import com.recred.backend.control_parental.application.ports.out.AlumnoPort;
+import com.recred.backend.control_parental.domain.ports.out.AlumnoPort;
 import com.recred.backend.control_parental.domain.model.Alumno;
 import com.recred.backend.control_parental.infrastructure.persistence.mappers.AlumnoMapper;
 import com.recred.backend.usuarios.infrastructure.entities.AlumnoEntity;

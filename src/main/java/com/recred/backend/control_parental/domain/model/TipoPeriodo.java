@@ -1,4 +1,4 @@
-package com.recred.backend.control_parental.domain.enums;
+package com.recred.backend.control_parental.domain.model;
 
 public enum TipoPeriodo {
     SEMANAL,

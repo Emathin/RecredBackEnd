@@ -1,7 +1,7 @@
 package com.recred.backend.control_parental.infrastructure.persistence;
 
 import com.recred.backend.catalogo.infrastructure.repositories.ClasificacionSaludRepository;
-import com.recred.backend.control_parental.application.ports.out.ClasificacionSaludPort;
+import com.recred.backend.control_parental.domain.ports.out.ClasificacionSaludPort;
 import com.recred.backend.control_parental.domain.model.ClasificacionSalud;
 import org.springframework.stereotype.Component;
 

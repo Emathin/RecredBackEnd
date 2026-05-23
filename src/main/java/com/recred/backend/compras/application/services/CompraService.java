@@ -22,7 +22,5 @@ public class CompraService {
             validador.validar(alumno, productosCarrito);
         }
 
-        // Si el código llega a esta línea, significa que el carrito pasó todas las pruebas.
-        // TODO: Sumar total, descontar de la billetera y guardar la Compra en la base de datos.
     }
 }
