@@ -1,6 +1,6 @@
 package com.recred.backend.comunicacion.infrastructure.entities;
 
-import com.recred.backend.ia.infrastructure.entities.SugerenciaIAEntity;
+import com.recred.backend.infrastructure.ia.entities.SugerenciaIAEntity;
 import com.recred.backend.usuarios.infrastructure.entities.AlumnoEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

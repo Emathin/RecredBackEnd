@@ -1,4 +1,4 @@
-package com.recred.backend.ia.domain.enums;
+package com.recred.backend.domain.models;
 
 public enum TipoEventoIA {
     DETECCION_PRODUCTO_POR_IMAGEN,

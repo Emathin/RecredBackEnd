@@ -3,7 +3,7 @@ package com.recred.backend.comunicacion.infrastructure.entities;
 import com.recred.backend.catalogo.infrastructure.entities.ProductoEntity;
 import com.recred.backend.compras.infrastructure.entities.CompraEntity;
 import com.recred.backend.comunicacion.domain.enums.TipoNotificacion;
-import com.recred.backend.ia.infrastructure.entities.SugerenciaIAEntity;
+import com.recred.backend.infrastructure.ia.entities.SugerenciaIAEntity;
 import com.recred.backend.usuarios.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.usuarios.infrastructure.entities.UsuarioEntity;
 import jakarta.persistence.Column;
