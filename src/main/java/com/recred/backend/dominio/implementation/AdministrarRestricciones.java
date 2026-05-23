@@ -1,11 +1,13 @@
 package com.recred.backend.dominio.implementation;
 
-import com.recred.backend.infraestructura.entities.AlumnoEntity;
-import com.recred.backend.infraestructura.entities.ClasificacionSaludEntity;
-import com.recred.backend.repositories.AlumnoRepository;
-import com.recred.backend.repositories.ClasificacionSaludRepository;
+import com.recred.backend.dominio.entities.AlumnoEntity;
+import com.recred.backend.dominio.entities.ClasificacionSaludEntity;
+import com.recred.backend.dominio.AlumnoRepository;
+import com.recred.backend.dominio.ClasificacionSaludRepository;
+import com.recred.backend.dominio.exceptions.RestriccionSaludException;
+import com.recred.backend.presentacion.AlumnoDTO;
+import com.recred.backend.presentacion.ProductoDTO;
 import org.springframework.stereotype.Service;
-
 
 import java.util.Collections;
 import java.util.List;
@@ -46,5 +48,33 @@ public class AdministrarRestricciones implements com.recred.backend.dominio.Admi
         }
 
         return restricciones;
+    }
+
+    @Override
+    public void validarRestriccionesDeSalud(AlumnoDTO alumnoDTO, List<ProductoDTO> productosCarrito) {
+        boolean sinRestricciones = alumnoDTO.getRestriccionesSalud() == null
+                || alumnoDTO.getRestriccionesSalud().isEmpty();
+
+        if (sinRestricciones) {
+            return;
+        }
+
+        for (ProductoDTO productoDTO : productosCarrito) {
+            if (productoDTO.getClasificacionesSalud() != null) {
+
+                boolean esApto = Collections.disjoint(
+                        alumnoDTO.getRestriccionesSalud(),
+                        productoDTO.getClasificacionesSalud()
+                );
+
+                if (!esApto) {
+                    String mensaje = String.format(
+                            "El producto '%s' contiene ingredientes restringidos.",
+                            productoDTO.getNombre()
+                    );
+                    throw new RestriccionSaludException(mensaje);
+                }
+            }
+        }
     }
 }
