@@ -1,9 +1,9 @@
 package com.recred.backend.control_parental.domain.validators;
 
-import com.recred.backend.control_parental.domain.exceptions.RestriccionSaludException;
-import com.recred.backend.control_parental.domain.model.Alumno;
-import com.recred.backend.control_parental.domain.model.ClasificacionSalud;
-import com.recred.backend.control_parental.domain.model.Producto;
+import com.recred.backend.dominio.exceptions.RestriccionSaludException;
+import com.recred.backend.dominio.models.Alumno;
+import com.recred.backend.dominio.models.ClasificacionSalud;
+import com.recred.backend.dominio.models.Producto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

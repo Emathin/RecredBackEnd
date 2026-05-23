@@ -1,8 +1,9 @@
 package com.recred.backend.control_parental.infrastructure.web;
 
-import com.recred.backend.control_parental.application.usecases.ActualizarRestriccionesSaludUseCase;
+import com.recred.backend.dominio.implementation.AdministrarRestricciones;
+import com.recred.backend.presentacion.ControlParentalController;
 import tools.jackson.databind.ObjectMapper;
-import com.recred.backend.control_parental.infrastructure.web.dtos.ActualizarRestriccionesDTO;
+import com.recred.backend.presentacion.ActualizarRestriccionesDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
@@ -38,7 +39,7 @@ class ControlParentalControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private ActualizarRestriccionesSaludUseCase useCase;
+    private AdministrarRestricciones useCase;
 
     @Test
     void actualizarRestriccionesSalud_DebeRetornar200Ok_CuandoElRequestEsValido() throws Exception {

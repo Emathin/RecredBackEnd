@@ -1,11 +1,10 @@
 package com.recred.backend.compras.application.services;
 
-import com.recred.backend.catalogo.infrastructure.entities.ProductoEntity;
-import com.recred.backend.control_parental.domain.exceptions.RestriccionSaludException;
-import com.recred.backend.control_parental.domain.model.Alumno;
-import com.recred.backend.control_parental.domain.model.Producto;
+import com.recred.backend.dominio.exceptions.RestriccionSaludException;
+import com.recred.backend.dominio.models.Alumno;
+import com.recred.backend.dominio.models.Producto;
 import com.recred.backend.control_parental.domain.validators.CompraValidator;
-import com.recred.backend.usuarios.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.dominio.implementation.CompraService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

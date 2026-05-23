@@ -1,6 +1,6 @@
 package com.recred.backend.config;
 
-import com.recred.backend.control_parental.domain.exceptions.RestriccionSaludException;
+import com.recred.backend.dominio.exceptions.RestriccionSaludException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;

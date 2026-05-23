@@ -1,14 +1,15 @@
 package com.recred.backend.control_parental.infrastructure.persistence;
 
-import com.recred.backend.catalogo.infrastructure.entities.ClasificacionSaludEntity;
-import com.recred.backend.catalogo.infrastructure.repositories.ClasificacionSaludRepository;
-import com.recred.backend.control_parental.domain.model.Alumno;
-import com.recred.backend.control_parental.domain.model.ClasificacionSalud;
-import com.recred.backend.control_parental.infrastructure.persistence.mappers.AlumnoMapper;
-import com.recred.backend.usuarios.infrastructure.entities.AlumnoEntity;
-import com.recred.backend.usuarios.infrastructure.entities.UsuarioEntity;
-import com.recred.backend.usuarios.domain.enums.RolUsuario;
-import com.recred.backend.usuarios.infrastructure.repositories.AlumnoRepository;
+import com.recred.backend.infraestructura.entities.ClasificacionSaludEntity;
+import com.recred.backend.infraestructura.AlumnoPersistenceAdapter;
+import com.recred.backend.dominio.models.Alumno;
+import com.recred.backend.dominio.models.ClasificacionSalud;
+import com.recred.backend.infraestructura.AlumnoMapper;
+import com.recred.backend.infraestructura.entities.AlumnoEntity;
+import com.recred.backend.infraestructura.entities.UsuarioEntity;
+import com.recred.backend.infraestructura.entities.RolUsuario;
+import com.recred.backend.dominio.AlumnoRepository;
+import com.recred.backend.repositories.ClasificacionSaludRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;

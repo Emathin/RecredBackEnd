@@ -1,8 +1,8 @@
 package com.recred.backend.control_parental.domain.validators;
 
-import com.recred.backend.control_parental.domain.model.Alumno;
-import com.recred.backend.control_parental.domain.model.Producto;
-import com.recred.backend.control_parental.domain.exceptions.RestriccionSaludException;
+import com.recred.backend.dominio.models.Alumno;
+import com.recred.backend.dominio.models.Producto;
+import com.recred.backend.dominio.exceptions.RestriccionSaludException;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
