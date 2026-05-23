@@ -1,5 +1,6 @@
 package com.recred.backend.dominio.implementation;
 
+import com.recred.backend.dominio.AdministrarRestricciones;
 import com.recred.backend.dominio.entities.AlumnoEntity;
 import com.recred.backend.dominio.entities.ClasificacionSaludEntity;
 import com.recred.backend.dominio.AlumnoRepository;
@@ -16,13 +17,13 @@ import java.util.UUID;
 import java.util.HashSet;
 
 @Service
-public class AdministrarRestricciones implements com.recred.backend.dominio.AdministrarRestricciones {
+public class AdministrarRestriccionesImpl implements AdministrarRestricciones {
 
     private final AlumnoRepository alumnoRepository;
     private final ClasificacionSaludRepository clasificacionPort;
 
-    public AdministrarRestricciones(AlumnoRepository alumnoRepository,
-                                    ClasificacionSaludRepository clasificacionPort) {
+    public AdministrarRestriccionesImpl(AlumnoRepository alumnoRepository,
+                                        ClasificacionSaludRepository clasificacionPort) {
         this.alumnoRepository = alumnoRepository;
         this.clasificacionPort = clasificacionPort;
     }

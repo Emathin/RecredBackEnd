@@ -18,7 +18,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RestriccionSaludException.class)
     public ResponseEntity<ErrorResponse> handleRestriccionSalud(RestriccionSaludException ex) {
-        return buildResponse(HttpStatus.CONFLICT, "Conflicto de Restricción Médica", ex.getMessage());
+        return buildResponse(HttpStatus.CONFLICT, "Conflicto de Restricción Médica",
+                ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -37,8 +38,10 @@ public class GlobalExceptionHandler {
                 "Ocurrió un error inesperado. Por favor, intente más tarde.");
     }
 
-    private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status, String error, String message) {
-        ErrorResponse response = new ErrorResponse(error, message, LocalDateTime.now(), status.value());
+    private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status,
+                                                        String error, String message) {
+        ErrorResponse response = new ErrorResponse(error, message,
+                LocalDateTime.now(), status.value());
         return ResponseEntity.status(status).body(response);
     }
 }

@@ -9,14 +9,14 @@ import java.util.List;
 @Service
 public class CompraService {
 
-    private final AdministrarRestricciones administrarRestricciones;
+    private final AdministrarRestriccionesImpl administrarRestriccionesImpl;
 
-    public CompraService(AdministrarRestricciones administrarRestricciones) {
-        this.administrarRestricciones = administrarRestricciones;
+    public CompraService(AdministrarRestriccionesImpl administrarRestriccionesImpl) {
+        this.administrarRestriccionesImpl = administrarRestriccionesImpl;
     }
 
     public void procesarCompra(AlumnoDTO alumnoDTO, List<ProductoDTO> productosCarrito) {
-        administrarRestricciones.validarRestriccionesDeSalud(alumnoDTO, productosCarrito);
+        administrarRestriccionesImpl.validarRestriccionesDeSalud(alumnoDTO, productosCarrito);
     }
 
 }

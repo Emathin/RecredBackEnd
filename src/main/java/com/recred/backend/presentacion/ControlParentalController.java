@@ -1,6 +1,6 @@
 package com.recred.backend.presentacion;
 
-import com.recred.backend.dominio.implementation.AdministrarRestricciones;
+import com.recred.backend.dominio.implementation.AdministrarRestriccionesImpl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -14,9 +14,9 @@ import java.util.UUID;
 @RequestMapping("/api/control-parental")
 public class ControlParentalController {
 
-    private final AdministrarRestricciones useCase;
+    private final AdministrarRestriccionesImpl useCase;
 
-    public ControlParentalController(AdministrarRestricciones useCase) {
+    public ControlParentalController(AdministrarRestriccionesImpl useCase) {
         this.useCase = useCase;
     }
 
