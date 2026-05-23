@@ -14,7 +14,14 @@ public class ProductoDTO {
         this.clasificacionesSalud = clasificacionesSalud;
     }
 
-    public UUID getId() { return id; }
-    public String getNombre() { return nombre; }
-    public Set<ClasificacionSaludDTO> getClasificacionesSalud() { return clasificacionesSalud; }
+    public UUID getId() {
+        return id; 
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+    public Set<ClasificacionSaludDTO> getClasificacionesSalud() {
+        return clasificacionesSalud;
+    }
 }

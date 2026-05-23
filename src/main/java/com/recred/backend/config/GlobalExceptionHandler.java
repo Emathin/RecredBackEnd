@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(RestriccionSaludException.class)
     public ResponseEntity<ErrorResponse> handleRestriccionSalud(RestriccionSaludException ex) {
@@ -31,9 +31,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex) {
-        logger.error("Error no controlado: ", ex);
+        LOGGER.error("Error no controlado: ", ex);
 
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno", "Ocurrió un error inesperado. Por favor, intente más tarde.");
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno",
+                "Ocurrió un error inesperado. Por favor, intente más tarde.");
     }
 
     private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status, String error, String message) {

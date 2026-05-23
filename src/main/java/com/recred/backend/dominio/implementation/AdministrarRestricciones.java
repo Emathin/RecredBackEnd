@@ -21,16 +21,19 @@ public class AdministrarRestricciones implements com.recred.backend.dominio.Admi
     private final AlumnoRepository alumnoRepository;
     private final ClasificacionSaludRepository clasificacionPort;
 
-    public AdministrarRestricciones(AlumnoRepository alumnoRepository, ClasificacionSaludRepository clasificacionPort) {
+    public AdministrarRestricciones(AlumnoRepository alumnoRepository,
+                                    ClasificacionSaludRepository clasificacionPort) {
         this.alumnoRepository = alumnoRepository;
         this.clasificacionPort = clasificacionPort;
     }
 
     public void ejecutar(UUID alumnoId, List<UUID> nuevasClasificacionesIds) {
         AlumnoEntity alumno = alumnoRepository.findById(alumnoId)
-                .orElseThrow(() -> new IllegalArgumentException("El alumno con ID " + alumnoId + " no existe."));
+                .orElseThrow(() -> new IllegalArgumentException("El alumno con ID " + alumnoId +
+                        " no existe."));
 
-        Set<ClasificacionSaludEntity> nuevasRestricciones = new HashSet<>(clasificacionPort.findAllById(nuevasClasificacionesIds));
+        Set<ClasificacionSaludEntity> nuevasRestricciones = new HashSet<>(clasificacionPort.
+                findAllById(nuevasClasificacionesIds));
 
         alumno.setRestriccionesSalud(nuevasRestricciones);
 
@@ -40,7 +43,8 @@ public class AdministrarRestricciones implements com.recred.backend.dominio.Admi
     @Override
     public Set<ClasificacionSaludEntity> obtener(UUID alumnoId) {
         AlumnoEntity alumno = alumnoRepository.findById(alumnoId)
-                .orElseThrow(() -> new IllegalArgumentException("El alumno con ID " + alumnoId + " no existe."));
+                .orElseThrow(() -> new IllegalArgumentException("El alumno con ID " + alumnoId +
+                        " no existe."));
 
         Set<ClasificacionSaludEntity> restricciones = alumno.getRestriccionesSalud();
         if (restricciones == null || restricciones.isEmpty()) {
@@ -51,7 +55,8 @@ public class AdministrarRestricciones implements com.recred.backend.dominio.Admi
     }
 
     @Override
-    public void validarRestriccionesDeSalud(AlumnoDTO alumnoDTO, List<ProductoDTO> productosCarrito) {
+    public void validarRestriccionesDeSalud(AlumnoDTO alumnoDTO,
+                                            List<ProductoDTO> productosCarrito) {
         boolean sinRestricciones = alumnoDTO.getRestriccionesSalud() == null
                 || alumnoDTO.getRestriccionesSalud().isEmpty();
 

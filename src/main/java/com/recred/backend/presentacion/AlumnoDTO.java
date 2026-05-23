@@ -12,8 +12,13 @@ public class AlumnoDTO {
         this.restriccionesSalud = restriccionesSalud;
     }
 
-    public UUID getId() { return id; }
-    public Set<ClasificacionSaludDTO> getRestriccionesSalud() { return restriccionesSalud; }
+    public UUID getId() {
+        return id;
+    }
+
+    public Set<ClasificacionSaludDTO> getRestriccionesSalud() {
+        return restriccionesSalud;
+    }
 
     public void actualizarRestricciones(Set<ClasificacionSaludDTO> nuevasRestricciones) {
         this.restriccionesSalud = nuevasRestricciones;

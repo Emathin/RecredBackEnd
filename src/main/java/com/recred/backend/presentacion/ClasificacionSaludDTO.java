@@ -11,6 +11,11 @@ public class ClasificacionSaludDTO {
         this.descripcion = descripcion;
     }
 
-    public UUID getId() { return id; }
-    public String getDescripcion() { return descripcion; }
+    public UUID getId() {
+        return id;
+    }
+
+    public String getDescripcion() {
+        return descripcion;
+    }
 }

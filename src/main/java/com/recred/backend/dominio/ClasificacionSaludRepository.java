@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.UUID;
 
 @Repository
-public interface ClasificacionSaludRepository extends JpaRepository<ClasificacionSaludEntity, UUID> {
+public interface ClasificacionSaludRepository extends
+        JpaRepository<ClasificacionSaludEntity, UUID> {
 
 }
