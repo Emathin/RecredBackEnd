@@ -1,4 +1,4 @@
-package com.recred.backend.presentacion;
+package com.recred.backend.infrastructure.web;
 
 import java.util.List;
 import java.util.UUID;

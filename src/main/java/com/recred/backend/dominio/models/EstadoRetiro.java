@@ -1,4 +1,4 @@
-package com.recred.backend.infrastructure.entities;
+package com.recred.backend.dominio.models;
 
 public enum EstadoRetiro {
     PROGRAMADO,

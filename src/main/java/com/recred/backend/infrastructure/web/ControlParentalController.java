@@ -2,11 +2,7 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AdministrarRestricciones;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
@@ -23,7 +19,7 @@ public class ControlParentalController {
     @PutMapping("/alumnos/{alumnoId}/restricciones-salud")
     public ResponseEntity<Void> actualizarRestriccionesSalud(
             @PathVariable UUID alumnoId,
-            @RequestBody com.recred.backend.presentacion.ActualizarRestriccionesDTO dto) {
+            @RequestBody ActualizarRestriccionesDTO dto) {
 
         useCase.ejecutar(alumnoId, dto.getClasificacionesIds());
         return ResponseEntity.ok().build();
