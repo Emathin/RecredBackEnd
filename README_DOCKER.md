@@ -532,7 +532,7 @@ Esto confirma:
 ## 16. Cómo entrar manualmente a PostgreSQL
 
 ```bash
-docker exec -it recred-postgres psql -U postgres -d recred_local
+docker exec -it recred-db psql -U postgres -d recred_local
 ```
 
 Listar tablas:
