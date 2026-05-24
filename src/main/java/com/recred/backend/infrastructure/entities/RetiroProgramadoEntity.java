@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.entities;
 
-import com.recred.backend.dominio.models.EstadoRetiro;
+import com.recred.backend.domain.models.EstadoRetiro;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

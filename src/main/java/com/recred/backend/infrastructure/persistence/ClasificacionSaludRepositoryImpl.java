@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.dominio.models.ClasificacionSalud;
-import com.recred.backend.dominio.repositories.ClasificacionSaludRepository;
+import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import org.springframework.stereotype.Component;
 

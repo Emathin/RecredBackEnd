@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.entities;
 
-import com.recred.backend.dominio.models.TipoSugerenciaIA;
+import com.recred.backend.domain.models.TipoSugerenciaIA;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
