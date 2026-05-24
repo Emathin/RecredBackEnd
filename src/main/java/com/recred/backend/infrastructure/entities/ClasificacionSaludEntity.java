@@ -10,7 +10,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import com.recred.backend.dominio.models.ClasificacionSalud;
+import com.recred.backend.domain.models.ClasificacionSalud;
 
 import java.util.UUID;
 

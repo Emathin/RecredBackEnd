@@ -1,8 +1,8 @@
 package com.recred.backend.infrastructure.entities;
 
-import com.recred.backend.dominio.models.EstadoCompra;
-import com.recred.backend.dominio.models.MedioPago;
-import com.recred.backend.dominio.models.TipoCompra;
+import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.MedioPago;
+import com.recred.backend.domain.models.TipoCompra;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
