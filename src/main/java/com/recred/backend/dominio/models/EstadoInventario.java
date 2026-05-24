@@ -1,4 +1,4 @@
-package com.recred.backend.dominio.entities;
+package com.recred.backend.infraestructure.entities;
 
 public enum EstadoInventario {
     DISPONIBLE,
