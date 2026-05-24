@@ -1,4 +1,4 @@
-package com.recred.backend.infraestructure.entities;
+package com.recred.backend.infrastructure.entities;
 
 public enum TipoEventoIA {
     DETECCION_PRODUCTO_POR_IMAGEN,
