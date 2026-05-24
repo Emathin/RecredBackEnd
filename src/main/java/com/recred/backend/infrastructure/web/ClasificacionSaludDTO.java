@@ -22,7 +22,8 @@ public class ClasificacionSaludDTO {
     }
 
     public static ClasificacionSaludDTO fromDomain(ClasificacionSalud modelo){
-        ClasificacionSaludDTO dto = new ClasificacionSaludDTO(modelo.getId(), modelo.getDescripcion());
+        ClasificacionSaludDTO dto = new ClasificacionSaludDTO(
+                modelo.getId(), modelo.getDescripcion());
         return dto;
     }
 }

@@ -48,7 +48,8 @@ public class ControlParentalController {
     }
 
     @GetMapping("/alumnos/{alumnoId}/obtener-restricciones-salud")
-    public ResponseEntity<List<ClasificacionSaludDTO>> obtenerRestriccionesSalud (@PathVariable UUID alumnoId) {
+    public ResponseEntity<List<ClasificacionSaludDTO>> obtenerRestriccionesSalud (
+            @PathVariable UUID alumnoId) {
 
         var restriccionesDominio = obtenerRestriccionesUseCase.ejecutar(alumnoId);
         List<ClasificacionSaludDTO> respuesta = restriccionesDominio.stream()

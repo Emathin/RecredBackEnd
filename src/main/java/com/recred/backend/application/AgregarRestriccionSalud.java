@@ -23,7 +23,8 @@ public class AgregarRestriccionSalud {
                 .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
 
         ClasificacionSalud clasificacion = clasificacionRepository.findById(clasificacionId)
-                .orElseThrow(() -> new IllegalArgumentException("La clasificación médica no existe."));
+                .orElseThrow(() -> new IllegalArgumentException
+                        ("La clasificación médica no existe."));
 
         alumno.agregarRestriccionSalud(clasificacion);
 
