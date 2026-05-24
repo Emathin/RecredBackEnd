@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.entities;
 
-import com.recred.backend.dominio.models.EstadoInventario;
+import com.recred.backend.domain.models.EstadoInventario;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

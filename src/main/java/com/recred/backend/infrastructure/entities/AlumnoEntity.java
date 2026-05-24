@@ -1,8 +1,8 @@
 package com.recred.backend.infrastructure.entities;
 
 
-import com.recred.backend.dominio.models.Alumno;
-import com.recred.backend.dominio.models.ClasificacionSalud;
+import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.ClasificacionSalud;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

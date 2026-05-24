@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.dominio.models.Alumno;
-import com.recred.backend.dominio.repositories.AlumnoRepository;
+import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import org.springframework.stereotype.Component;
 

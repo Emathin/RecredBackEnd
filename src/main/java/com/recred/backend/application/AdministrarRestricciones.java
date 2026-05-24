@@ -1,9 +1,9 @@
 package com.recred.backend.application;
 
-import com.recred.backend.dominio.models.Alumno;
-import com.recred.backend.dominio.models.ClasificacionSalud;
-import com.recred.backend.dominio.repositories.AlumnoRepository;
-import com.recred.backend.dominio.repositories.ClasificacionSaludRepository;
+import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 
 import java.util.HashSet;
 import java.util.List;
