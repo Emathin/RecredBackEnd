@@ -50,7 +50,7 @@ public class AlumnoEntity {
     @ManyToMany(mappedBy = "hijos", fetch = FetchType.LAZY)
     private Set<TutorEntity> tutores = new HashSet<>();
 
-    @OneToOne(mappedBy = "alumno", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "alumnoEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private BilleteraEntity billeteraEntity;
 
     @ManyToMany(fetch = FetchType.LAZY)
