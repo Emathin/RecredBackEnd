@@ -1,6 +1,6 @@
 package com.recred.backend.domain.models;
 
-import com.recred.backend.control_parental.domain.enums.PeriodoPresupuesto;
+import com.recred.backend.domain.models.PeriodoPresupuesto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;

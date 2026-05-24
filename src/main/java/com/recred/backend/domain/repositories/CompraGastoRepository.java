@@ -1,6 +1,6 @@
 package com.recred.backend.domain.repositories;
 
-import com.recred.backend.compras.domain.enums.EstadoCompra;
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.CategoriaConsumo;
 import com.recred.backend.domain.models.GastoCompra;
 import java.time.LocalDateTime;

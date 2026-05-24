@@ -1,6 +1,6 @@
 package com.recred.backend.domain.services;
 
-import com.recred.backend.control_parental.domain.enums.PeriodoPresupuesto;
+import com.recred.backend.domain.models.PeriodoPresupuesto;
 import com.recred.backend.domain.models.RangoFecha;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
