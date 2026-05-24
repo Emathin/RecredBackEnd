@@ -36,7 +36,7 @@ public class PresupuestoAlumnoEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "alumno_id", nullable = false)
-    private Alumno alumno;
+    private AlumnoEntity alumnoEntity;
 
     @Enumerated(STRING)
     @Column(nullable = false)

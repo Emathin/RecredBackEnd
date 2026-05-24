@@ -1,6 +1,8 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.dominio.models.Alumno;
+import com.recred.backend.dominio.models.ClasificacionSalud;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,13 +23,14 @@ import lombok.Setter;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "alumnos")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Alumno {
+public class AlumnoEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -66,15 +69,26 @@ public class Alumno {
     )
     private Set<ProductoEntity> productosFavoritos = new HashSet<>();
 
-    /*public Alumno toDomain(AlumnoEntity entity) {
-        if (entity == null) return null;
+    public Alumno toDomain() {
+        Alumno alumnoDominio = new Alumno();
 
-        Set<ClasificacionSalud> restriccionesDominio = entity.getRestriccionesSalud().stream()
-                .map(restriccionEntity -> new ClasificacionSalud(
-                        restriccionEntity.getId(),
-                        restriccionEntity.getDescripcion()))
-                .collect(Collectors.toSet());
+        alumnoDominio.setId(this.id);
+        alumnoDominio.setActivo(this.activo);
 
-        return new Alumno(entity.getId(), restriccionesDominio);
-    }*/
+        if (this.restriccionesSalud != null) {
+            Set<ClasificacionSalud> restriccionesDominio = this.restriccionesSalud.stream()
+                    .map(entidadSalud -> {
+                        ClasificacionSalud clasificacion = new ClasificacionSalud();
+                        clasificacion.setId(entidadSalud.getId());
+                        clasificacion.setDescripcion(entidadSalud.getDescripcion());
+                        clasificacion.setActivo(entidadSalud.getActivo());
+                        return clasificacion;
+                    })
+                    .collect(Collectors.toSet());
+
+            alumnoDominio.setRestriccionesSalud(restriccionesDominio);
+        }
+
+        return alumnoDominio;
+    }
 }

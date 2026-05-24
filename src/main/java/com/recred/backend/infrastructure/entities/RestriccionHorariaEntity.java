@@ -31,7 +31,7 @@ public class RestriccionHorariaEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "alumno_id", nullable = false)
-    private Alumno alumno;
+    private AlumnoEntity alumnoEntity;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "franja_id", nullable = false)

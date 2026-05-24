@@ -10,6 +10,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import com.recred.backend.dominio.models.ClasificacionSalud;
 
 import java.util.UUID;
 
@@ -29,4 +30,12 @@ public class ClasificacionSaludEntity {
 
     @Column(nullable = false)
     private Boolean activo = true;
+
+    public ClasificacionSalud toDomain() {
+        ClasificacionSalud modelo = new ClasificacionSalud();
+        modelo.setId(this.id);
+        modelo.setDescripcion(this.descripcion);
+        modelo.setActivo(this.activo);
+        return modelo;
+    }
 }

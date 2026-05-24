@@ -1,0 +1,17 @@
+package com.recred.backend.dominio.models;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.UUID;
+
+@Getter
+@Setter
+@NoArgsConstructor
+public class Nivel {
+
+    private UUID id;
+    private String descripcion;
+    private Boolean activo = true;
+}

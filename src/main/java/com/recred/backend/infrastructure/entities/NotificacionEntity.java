@@ -36,7 +36,7 @@ public class NotificacionEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "alumno_id")
-    private Alumno alumno;
+    private AlumnoEntity alumnoEntity;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "producto_id")

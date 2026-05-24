@@ -30,7 +30,7 @@ public class AlumnoLogroEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "alumno_id", nullable = false)
-    private Alumno alumno;
+    private AlumnoEntity alumnoEntity;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "logro_id", nullable = false)
