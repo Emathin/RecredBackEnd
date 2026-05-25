@@ -13,6 +13,9 @@ import org.springframework.stereotype.Component;
 public class GoogleGeminiTextClient implements GeminiTextClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GoogleGeminiTextClient.class);
+    private static final String RESPONSE_MIME_TYPE = "application/json";
+    private static final float TEMPERATURE = 0.2F;
+    private static final int MAX_OUTPUT_TOKENS = 3000;
 
     private final GeminiProperties geminiProperties;
 
@@ -38,16 +41,16 @@ public class GoogleGeminiTextClient implements GeminiTextClient {
                     .filter(text -> !text.isBlank())
                     .map(text -> new GeminiTextResponse(text, geminiProperties.model()));
         } catch (RuntimeException exception) {
-            LOGGER.warn("No se pudo generar el analisis IA de prediccion de gasto", exception);
+            LOGGER.warn("Gemini content generation failed: {}", exception.getMessage());
             return Optional.empty();
         }
     }
 
     private GenerateContentConfig config() {
         return GenerateContentConfig.builder()
-                .responseMimeType("application/json")
-                .temperature(0.2F)
-                .maxOutputTokens(500)
+                .responseMimeType(RESPONSE_MIME_TYPE)
+                .temperature(TEMPERATURE)
+                .maxOutputTokens(MAX_OUTPUT_TOKENS)
                 .build();
     }
 }

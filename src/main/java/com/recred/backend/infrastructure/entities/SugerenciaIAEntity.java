@@ -72,5 +72,5 @@ public class SugerenciaIAEntity {
 
     @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "evento_ia_id")
-    private EventoIAEntity eventoIaEntity;
+    private AIEventEntity eventoIaEntity;
 }
