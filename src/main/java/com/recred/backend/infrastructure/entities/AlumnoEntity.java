@@ -75,7 +75,7 @@ public class AlumnoEntity {
         alumnoDominio.setId(this.id);
         alumnoDominio.setActivo(this.activo);
 
-        if (this.restriccionesSalud != null) {
+        if (this.restriccionesSalud != null && !this.restriccionesSalud.isEmpty()) {
             Set<ClasificacionSalud> restriccionesDominio = this.restriccionesSalud.stream()
                     .map(entidadSalud -> {
                         ClasificacionSalud clasificacion = new ClasificacionSalud();
@@ -87,6 +87,8 @@ public class AlumnoEntity {
                     .collect(Collectors.toSet());
 
             alumnoDominio.setRestriccionesSalud(restriccionesDominio);
+        } else {
+            alumnoDominio.setRestriccionesSalud(new HashSet<>());
         }
 
         return alumnoDominio;

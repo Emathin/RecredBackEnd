@@ -33,8 +33,17 @@ public class Alumno {
 
     public void agregarRestriccionSalud(ClasificacionSalud restriccion) {
         if (restriccion != null) {
-            this.restriccionesSalud.add(restriccion);
+            boolean yaExiste = this.restriccionesSalud.stream()
+                    .anyMatch(r -> r.getId().equals(restriccion.getId()));
+
+            if (!yaExiste) {
+                this.restriccionesSalud.add(restriccion);
+            }
         }
+    }
+
+    public void removerRestriccionSalud(UUID restriccionId) {
+        this.restriccionesSalud.removeIf(r -> r.getId().equals(restriccionId));
     }
 
     public void darDeBaja() {

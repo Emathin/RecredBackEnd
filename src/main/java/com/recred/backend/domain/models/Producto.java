@@ -43,4 +43,8 @@ public class Producto {
             medida.setProducto(null);
         }
     }
+
+    public Set<ClasificacionSalud> getClasificaciones() {
+        return clasificacionesSalud;
+    }
 }
