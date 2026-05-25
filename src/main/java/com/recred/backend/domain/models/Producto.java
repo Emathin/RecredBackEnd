@@ -47,4 +47,5 @@ public class Producto {
     public Set<ClasificacionSalud> getClasificaciones() {
         return clasificacionesSalud;
     }
+
 }
