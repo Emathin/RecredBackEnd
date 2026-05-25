@@ -32,7 +32,8 @@ public class SchedulePickup {
 
         // 2. Proyectar el momento exacto del retiro
         // Usamos la hora de inicio de la franja elegida como punto de control
-        LocalDateTime projectedPickupTime = LocalDateTime.of(pickupDate, pickupSlot.getHoraInicio());
+        LocalDateTime projectedPickupTime = LocalDateTime.of(pickupDate,
+                pickupSlot.getHoraInicio());
 
         // 3. EL CABLEADO: Validamos contra las reglas del alumno para ese momento futuro
         timeValidator.validarCompra(student, cart, projectedPickupTime);
