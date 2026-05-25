@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.domain.models.RestriccionHoraria;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -55,4 +56,26 @@ public class RestriccionHorariaEntity {
     @CreationTimestamp
     @Column(name = "creado_en", updatable = false)
     private LocalDateTime creadoEn;
+
+    public RestriccionHoraria toDomain() {
+        RestriccionHoraria domain = new RestriccionHoraria();
+
+        domain.setId(this.getId());
+        domain.setAlumnoId(this.getAlumnoEntity().getId());
+        domain.setActiva(this.getActiva());
+
+        if (this.getFranjaHorariaEntity() != null) {
+            domain.setFranjaHoraria(this.getFranjaHorariaEntity().toDomain());
+        }
+
+        if (this.getCategoria() != null) {
+            domain.setCategoria(this.getCategoria().toDomain());
+        }
+
+        if (this.getClasificacionTipoEntity() != null) {
+            domain.setClasificacion(this.getClasificacionTipoEntity().toDomain());
+        }
+
+        return domain;
+    }
 }

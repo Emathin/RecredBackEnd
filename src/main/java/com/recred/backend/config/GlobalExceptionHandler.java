@@ -1,5 +1,6 @@
 package com.recred.backend.config;
 
+import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,17 @@ import java.time.LocalDateTime;
 public class GlobalExceptionHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(RestriccionHorariaException.class)
+    public ResponseEntity<ErrorResponse> handleRestriccionHoraria(RestriccionHorariaException ex) {
+        ErrorResponse error = new ErrorResponse(
+                "Restricción Horaria",
+                ex.getMessage(),
+                LocalDateTime.now(),
+                HttpStatus.FORBIDDEN.value()
+        );
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
 
     @ExceptionHandler(RestriccionSaludException.class)
     public ResponseEntity<ErrorResponse> handleRestriccionSalud(RestriccionSaludException ex) {
