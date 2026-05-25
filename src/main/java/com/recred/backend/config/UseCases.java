@@ -1,7 +1,9 @@
 package com.recred.backend.config;
 
+import com.recred.backend.application.CancelPurchase;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.GetPurchase;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.ManageRestrictions;
@@ -37,6 +39,16 @@ public class UseCases {
                 new ValidadorHorarioService(),
                 new ValidacionRestriccionesService()
         );
+    }
+
+    @Bean
+    public GetPurchase getPurchase(PurchaseRepository purchaseRepository) {
+        return new GetPurchase(purchaseRepository);
+    }
+
+    @Bean
+    public CancelPurchase cancelPurchase(PurchaseRepository purchaseRepository, WalletRepository walletRepository) {
+        return new CancelPurchase(purchaseRepository, walletRepository);
     }
 
     @Bean

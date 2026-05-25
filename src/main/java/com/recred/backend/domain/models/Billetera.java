@@ -36,4 +36,8 @@ public class Billetera {
         }
         this.saldoCreditos = this.saldoCreditos.subtract(amount);
     }
+    
+    public void credit(BigDecimal amount) {
+        this.saldoCreditos = this.saldoCreditos.add(amount);
+    }
 }

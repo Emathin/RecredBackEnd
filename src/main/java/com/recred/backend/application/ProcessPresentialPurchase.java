@@ -12,14 +12,12 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
 import com.recred.backend.domain.services.ValidadorHorarioService;
-import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
-@RequiredArgsConstructor
 public class ProcessPresentialPurchase {
 
     private final AlumnoRepository studentRepository;
@@ -40,7 +38,6 @@ public class ProcessPresentialPurchase {
         this.timeValidator = timeValidator;
         this.healthValidator = healthValidator;
     }
-
 
     public void execute(UUID studentId, Map<Producto, Integer> cart) {
         // 1. Fetch Student
@@ -72,6 +69,8 @@ public class ProcessPresentialPurchase {
         walletRepository.save(wallet);
         purchaseRepository.save(purchase);
     }
+
+
 
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
         return cart.entrySet().stream()

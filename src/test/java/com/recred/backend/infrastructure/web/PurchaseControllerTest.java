@@ -1,16 +1,18 @@
 package com.recred.backend.infrastructure.web;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import tools.jackson.databind.ObjectMapper;
+import com.recred.backend.application.CancelPurchase;
+import com.recred.backend.application.GetPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.http.MediaType;
@@ -20,9 +22,9 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(
@@ -34,13 +36,15 @@ class PurchaseControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @MockBean
+    @MockitoBean
     private ProcessPresentialPurchase processPresentialPurchase;
-
-    @MockBean
+    @MockitoBean
+    private GetPurchase getPurchase;
+    @MockitoBean
+    private CancelPurchase cancelPurchase;
+    @MockitoBean
     private ProductRepository productRepository;
 
     private UUID studentId;
@@ -89,5 +93,36 @@ class PurchaseControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getPurchaseById_WhenPurchaseExists_ShouldReturnPurchase() throws Exception {
+        UUID purchaseId = UUID.randomUUID();
+        Purchase purchase = new Purchase();
+        purchase.setId(purchaseId);
+        when(getPurchase.execute(purchaseId)).thenReturn(Optional.of(purchase));
+
+        mockMvc.perform(get("/api/v1/purchases/{id}", purchaseId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(purchaseId.toString()));
+    }
+
+    @Test
+    void getPurchaseById_WhenPurchaseDoesNotExist_ShouldReturnNotFound() throws Exception {
+        UUID purchaseId = UUID.randomUUID();
+        when(getPurchase.execute(purchaseId)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/purchases/{id}", purchaseId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void cancelPurchase_WithValidId_ShouldReturnOk() throws Exception {
+        UUID purchaseId = UUID.randomUUID();
+
+        mockMvc.perform(put("/api/v1/purchases/{id}/cancel", purchaseId))
+                .andExpect(status().isOk());
+
+        verify(cancelPurchase).execute(purchaseId);
     }
 }

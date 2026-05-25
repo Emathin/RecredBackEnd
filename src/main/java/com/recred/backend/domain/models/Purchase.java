@@ -29,9 +29,16 @@ public class Purchase {
         this.student = student;
         this.items = cart;
         this.paymentMethod = paymentMethod;
-        this.status = EstadoCompra.COMPLETADA; // As it's immediate
+        this.status = EstadoCompra.ENTREGADO; // As it's immediate
         this.date = LocalDateTime.now();
         this.totalAmount = calculateTotal(cart);
+    }
+
+    public void cancel() {
+        if (this.status == EstadoCompra.CANCELADO) {
+            throw new IllegalStateException("Purchase is already cancelled.");
+        }
+        this.status = EstadoCompra.CANCELADO;
     }
 
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
