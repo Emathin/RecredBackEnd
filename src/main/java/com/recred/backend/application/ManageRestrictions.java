@@ -25,7 +25,7 @@ public class ManageRestrictions {
     public void execute(UUID studentId, List<UUID> newClassificationIds) {
         Alumno student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "The student with ID " + studentId + " does not exist."
+                        "El alumno con ID " + studentId + " no existe."
                 ));
 
         Set<ClasificacionSalud> newRestrictions = new HashSet<>(

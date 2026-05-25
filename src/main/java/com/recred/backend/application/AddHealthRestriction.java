@@ -24,7 +24,7 @@ public class AddHealthRestriction {
 
         ClasificacionSalud classification = clasificacionRepository.findById(classificationId)
                 .orElseThrow(() -> new IllegalArgumentException
-                        ("La clasificación no existe."));
+                        ("La clasificación médica no existe."));
 
         student.agregarRestriccionSalud(classification);
 
