@@ -20,8 +20,8 @@ public class GlobalExceptionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(RestriccionHorariaException.class)
-    public ResponseEntity<ErrorResponse> handleRestriccionHoraria(RestriccionHorariaException ex)
-    {
+    public ResponseEntity<ErrorResponse>
+    handleRestriccionHoraria(RestriccionHorariaException ex){
         ErrorResponse error = new ErrorResponse(
                 "Restricción Horaria",
                 ex.getMessage(),
@@ -44,15 +44,15 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(InsufficientBalanceException.class)
-    public ResponseEntity<ErrorResponse> handleInsufficientBalance(InsufficientBalanceException ex)
-    {
+    public ResponseEntity<ErrorResponse>
+    handleInsufficientBalance(InsufficientBalanceException ex){
         return buildResponse(HttpStatus.BAD_REQUEST, "Saldo Insuficiente",
                 ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex)
-    {
+    public ResponseEntity<ErrorResponse>
+    handleValidation(MethodArgumentNotValidException ex){
         String details = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .findFirst().orElse("Datos inválidos");

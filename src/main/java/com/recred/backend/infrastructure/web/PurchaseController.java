@@ -42,7 +42,8 @@ public class PurchaseController {
         Map<Producto, Integer> cart = request.getItems().stream()
                 .collect(Collectors.toMap(
                         item -> productRepository.findById(item.getProductId())
-                                .orElseThrow(() -> new RuntimeException("Product not found: " + item.getProductId())),
+                                .orElseThrow(() ->
+                                new RuntimeException("Product not found: " + item.getProductId())),
                         PurchaseItemDTO::getQuantity
                 ));
 
