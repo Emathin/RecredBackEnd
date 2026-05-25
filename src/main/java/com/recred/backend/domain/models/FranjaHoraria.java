@@ -31,7 +31,9 @@ public class FranjaHoraria {
     }
 
     public boolean estaDentroDeLaFranja(LocalDateTime momento) {
-        if (momento == null) return false;
+        if (momento == null) {
+            return false;
+        }
 
         LocalTime tiempo = momento.toLocalTime();
 
