@@ -1,9 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.AdministrarRestricciones;
-import com.recred.backend.application.AgregarRestriccionSalud;
-import com.recred.backend.application.ObtenerRestriccionesSalud;
-import com.recred.backend.application.RemoverRestriccionSalud;
+import com.recred.backend.application.ManageRestrictions;
+import com.recred.backend.application.AddHealthRestriction;
+import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.domain.models.ClasificacionSalud;
 
 
@@ -48,16 +48,16 @@ class ControlParentalControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private AdministrarRestricciones administrarRestricciones;
+    private ManageRestrictions manageRestrictions;
 
     @MockitoBean
-    private ObtenerRestriccionesSalud obtenerRestriccionesSalud;
+    private GetHealthRestrictions getHealthRestrictions;
 
     @MockitoBean
-    private AgregarRestriccionSalud agregarRestriccionSalud;
+    private AddHealthRestriction addHealthRestriction;
 
     @MockitoBean
-    private RemoverRestriccionSalud removerRestriccionSalud;
+    private RemoveHealthRestrictions removeHealthRestrictions;
 
     private UUID alumnoId;
     private UUID clasificacionId;
@@ -78,7 +78,7 @@ class ControlParentalControllerTest {
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk());
 
-        verify(administrarRestricciones).ejecutar(alumnoId, dto.getClasificacionesIds());
+        verify(manageRestrictions).execute(alumnoId, dto.getClasificacionesIds());
     }
 
     @Test
@@ -87,7 +87,7 @@ class ControlParentalControllerTest {
         clasificacion.setId(clasificacionId);
         clasificacion.setDescripcion("Celíaco");
 
-        when(obtenerRestriccionesSalud.ejecutar(alumnoId)).thenReturn(Set.of(clasificacion));
+        when(getHealthRestrictions.ejecutar(alumnoId)).thenReturn(Set.of(clasificacion));
 
         mockMvc.perform(get("/api/control-parental/alumnos/{alumnoId}/obtener-restricciones-salud", alumnoId)
                         .contentType(MediaType.APPLICATION_JSON))
@@ -95,7 +95,7 @@ class ControlParentalControllerTest {
                 .andExpect(jsonPath("$[0].id").value(clasificacionId.toString()))
                 .andExpect(jsonPath("$[0].descripcion").value("Celíaco"));
 
-        verify(obtenerRestriccionesSalud).ejecutar(alumnoId);
+        verify(getHealthRestrictions).ejecutar(alumnoId);
     }
 
     @Test
@@ -104,7 +104,7 @@ class ControlParentalControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
-        verify(agregarRestriccionSalud).ejecutar(alumnoId, clasificacionId);
+        verify(addHealthRestriction).execute(alumnoId, clasificacionId);
     }
 
     @Test
@@ -113,6 +113,6 @@ class ControlParentalControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
 
-        verify(removerRestriccionSalud).ejecutar(alumnoId, clasificacionId);
+        verify(removeHealthRestrictions).ejecutar(alumnoId, clasificacionId);
     }
 }

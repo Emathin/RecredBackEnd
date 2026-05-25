@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.ObtenerCatalogoRestriccionesSalud;
+import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
@@ -30,7 +30,7 @@ class ClasificacionSaludControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ObtenerCatalogoRestriccionesSalud obtenerCatalogo;
+    private GetHealthRestrictionsCatalog obtenerCatalogo;
 
     @Test
     void obtenerCatalogo_DeberiaRetornarListaY200Ok() throws Exception {

@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.ObtenerCatalogoRestriccionesSalud;
+import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,9 +13,9 @@ import java.util.List;
 @RequestMapping("/api/clasificaciones-salud")
 public class ClasificacionSaludController {
 
-    private final ObtenerCatalogoRestriccionesSalud obtenerCatalogo;
+    private final GetHealthRestrictionsCatalog obtenerCatalogo;
 
-    public ClasificacionSaludController(ObtenerCatalogoRestriccionesSalud obtenerCatalogo) {
+    public ClasificacionSaludController(GetHealthRestrictionsCatalog obtenerCatalogo) {
         this.obtenerCatalogo = obtenerCatalogo;
     }
 
