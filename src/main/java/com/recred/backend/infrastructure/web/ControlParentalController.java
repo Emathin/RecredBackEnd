@@ -1,8 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.AddHealthRestriction;
+import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -12,8 +13,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
 
 import java.util.List;
 import java.util.UUID;
@@ -27,15 +28,18 @@ public class ControlParentalController {
     private final GetHealthRestrictions obtenerRestriccionesUseCase;
     private final AddHealthRestriction addHealthRestriction;
     private final RemoveHealthRestrictions removeHealthRestrictions;
+    private final DetectStudentPreferences detectarPreferenciasUseCase;
 
     public ControlParentalController(ManageRestrictions useCase,
                                      GetHealthRestrictions obtenerRestriccionesUseCase,
                                      AddHealthRestriction addHealthRestriction,
-                                     RemoveHealthRestrictions removeHealthRestrictions) {
+                                     RemoveHealthRestrictions removeHealthRestrictions,
+                                     DetectStudentPreferences detectarPreferenciasUseCase) {
         this.useCase = useCase;
         this.obtenerRestriccionesUseCase = obtenerRestriccionesUseCase;
         this.addHealthRestriction = addHealthRestriction;
         this.removeHealthRestrictions = removeHealthRestrictions;
+        this.detectarPreferenciasUseCase = detectarPreferenciasUseCase;
     }
 
     @PutMapping("/alumnos/{alumnoId}/actualizar-restricciones-salud")
@@ -76,4 +80,11 @@ public class ControlParentalController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/alumnos/{alumnoId}/analizar-preferencias")
+    public ResponseEntity<Void> analizarPreferencias(
+            @PathVariable UUID alumnoId,
+            @RequestParam UUID buffetId) {
+        detectarPreferenciasUseCase.execute(alumnoId, buffetId);
+        return ResponseEntity.accepted().build();
+    }
 }

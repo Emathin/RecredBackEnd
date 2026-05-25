@@ -1,19 +1,24 @@
 package com.recred.backend.config;
 
+import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.CreateTimeRestriction;
+import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.ManageRestrictions;
-import com.recred.backend.application.AddHealthRestriction;
-import com.recred.backend.application.GetHealthRestrictionsCatalog;
-import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
+import com.recred.backend.domain.repositories.CompraRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
+import com.recred.backend.domain.repositories.InventarioRepository;
+import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -25,6 +30,17 @@ public class UseCases {
             AlumnoRepository alumnoRepository,
             ClasificacionSaludRepository clasificacionRepository) {
         return new ManageRestrictions(alumnoRepository, clasificacionRepository);
+    }
+
+    @Bean
+    public DetectStudentPreferences detectarPreferenciasConsumo(
+            AlumnoRepository alumnoRepository,
+            PreferenceAIRepository preferenceAIRepository,
+            SugerenciaIARepository sugerenciaIARepository,
+            CompraRepository compraRepository,
+            InventarioRepository inventarioRepository) {
+        return new DetectStudentPreferences(alumnoRepository, preferenceAIRepository, 
+                sugerenciaIARepository, compraRepository, inventarioRepository);
     }
 
     @Bean
