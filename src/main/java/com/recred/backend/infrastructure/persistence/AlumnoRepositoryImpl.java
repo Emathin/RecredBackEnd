@@ -24,6 +24,11 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
     }
 
     @Override
+    public boolean existsById(UUID alumnoId) {
+        return springDataRepository.existsById(alumnoId);
+    }
+
+    @Override
     public void save(Alumno alumno) {
         AlumnoEntity entityExistente = springDataRepository.findById(alumno.getId())
                 .orElseGet(AlumnoEntity::new);

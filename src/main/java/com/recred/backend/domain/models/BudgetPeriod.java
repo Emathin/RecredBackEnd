@@ -1,6 +1,6 @@
 package com.recred.backend.domain.models;
 
-public enum PeriodoPresupuesto {
+public enum BudgetPeriod {
     DIARIO,
     SEMANAL,
     QUINCENAL,

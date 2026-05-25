@@ -1,6 +1,6 @@
 package com.recred.backend.domain.models;
 
-public enum TipoEventoIA {
+public enum AIEventType {
     DETECCION_PRODUCTO_POR_IMAGEN,
     CARGA_STOCK_POR_IMAGEN,
     ANALISIS_CONSUMO,

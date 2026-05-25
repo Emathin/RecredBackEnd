@@ -1,4 +1,3 @@
 package com.recred.backend.domain;
 
-public interface AlumnoService {
-}
+public interface AlumnoService {}
