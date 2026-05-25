@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.domain.models.ClasificacionTipo;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -29,4 +30,14 @@ public class ClasificacionTipoEntity {
 
     @Column(nullable = false)
     private Boolean activo = true;
+
+    public ClasificacionTipo toDomain() {
+        ClasificacionTipo dominio = new ClasificacionTipo();
+
+        dominio.setId(this.id);
+        dominio.setDescripcion(this.descripcion);
+        dominio.setActivo(this.activo);
+
+        return dominio;
+    }
 }

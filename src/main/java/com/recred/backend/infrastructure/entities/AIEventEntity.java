@@ -1,71 +1,71 @@
 package com.recred.backend.infrastructure.entities;
 
-import com.recred.backend.domain.models.TipoEventoIA;
+import com.recred.backend.domain.models.AIEventType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.UUID;
+import static jakarta.persistence.EnumType.STRING;
+import static jakarta.persistence.FetchType.LAZY;
+import static jakarta.persistence.GenerationType.UUID;
+import static org.hibernate.type.SqlTypes.JSON;
 
 @Entity
 @Table(name = "eventos_ia")
 @Getter
 @Setter
 @NoArgsConstructor
-public class EventoIAEntity {
+public class AIEventEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = UUID)
     private UUID id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TipoEventoIA tipo;
+    @Enumerated(STRING)
+    @Column(name = "tipo", nullable = false)
+    private AIEventType type;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "alumno_id")
     private AlumnoEntity alumnoEntity;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "buffet_id")
     private BuffetEntity buffetEntity;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "producto_id")
     private ProductoEntity productoEntity;
 
     @Column(name = "origen_entrada", columnDefinition = "TEXT")
-    private String origenEntrada;
+    private String inputOrigin;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @JdbcTypeCode(JSON)
     @Column(name = "datos_entrada", columnDefinition = "jsonb")
-    private Map<String, Object> datosEntrada;
+    private Map<String, Object> inputData;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @JdbcTypeCode(JSON)
     @Column(name = "datos_resultado", columnDefinition = "jsonb")
-    private Map<String, Object> datosResultado;
+    private Map<String, Object> resultData;
 
-    @Column(precision = 5, scale = 4)
-    private BigDecimal confianza;
+    @Column(name = "confianza", precision = 5, scale = 4)
+    private BigDecimal confidence;
 
     @CreationTimestamp
     @Column(name = "creado_en", updatable = false)
-    private LocalDateTime creadoEn;
+    private LocalDateTime createdAt;
 }
