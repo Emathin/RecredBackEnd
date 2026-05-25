@@ -36,7 +36,6 @@ class ProcessPresentialPurchaseTest {
 
         processPresentialPurchase.execute(studentId, cart);
 
-        // Verificamos que el orquestador delegue el trabajo a los motores de reglas
         verify(timeValidator).validarCompra(any(), eq(cart), any(LocalDateTime.class));
         verify(healthValidator).validarCompra(any(), eq(cart));
     }

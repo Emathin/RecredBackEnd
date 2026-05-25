@@ -107,7 +107,6 @@ class ClasificacionSaludRepositoryImplTest {
     void findAll_CuandoNoHayDatos_DeberiaRetornarListaVacia() {
         when(springDataRepository.findAll()).thenReturn(List.of());
 
-        // Act
         List<ClasificacionSalud> resultado = repositoryImpl.findAll();
 
         assertNotNull(resultado, "El repositorio nunca debería retornar null");

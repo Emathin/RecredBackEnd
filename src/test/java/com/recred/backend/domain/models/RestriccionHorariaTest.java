@@ -44,7 +44,7 @@ class RestriccionHorariaTest {
     @Test
     void noBloquea_SiEstaFueraDeLaFranjaHoraria() {
         RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo, null, null);
-        LocalDateTime momentoFueraDeHora = LocalDateTime.of(2026, 5, 25, 11, 0); // 11:00 AM
+        LocalDateTime momentoFueraDeHora = LocalDateTime.of(2026, 5, 25, 11, 0);
 
         assertFalse(restriccion.bloquea(producto, momentoFueraDeHora));
     }
