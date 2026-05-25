@@ -102,7 +102,6 @@ public class AlumnoEntity {
                     .map(entity -> {
                         RestriccionHoraria rh = new RestriccionHoraria();
                         rh.setId(entity.getId());
-                        // Aquí mapeás el resto de los campos...
                         return rh;
                     })
                     .collect(Collectors.toSet());
