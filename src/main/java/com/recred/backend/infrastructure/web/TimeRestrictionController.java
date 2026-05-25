@@ -1,6 +1,10 @@
 package com.recred.backend.infrastructure.web;
-
-import com.recred.backend.application.*;
+;
+import com.recred.backend.application.CreateTimeRestriction;
+import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.GetTimeRestrictionsByStudent;
+import com.recred.backend.application.TimeRestrictionCommand;
+import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.domain.models.RestriccionHoraria;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
