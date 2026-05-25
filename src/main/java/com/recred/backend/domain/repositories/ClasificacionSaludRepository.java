@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface ClasificacionSaludRepository {
     List<ClasificacionSalud> findAllById(List<UUID> ids);
     Optional<ClasificacionSalud> findById(UUID id);
+    List<ClasificacionSalud> findAll();
 }

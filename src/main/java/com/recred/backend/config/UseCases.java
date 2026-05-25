@@ -2,6 +2,7 @@ package com.recred.backend.config;
 
 import com.recred.backend.application.AdministrarRestricciones;
 import com.recred.backend.application.AgregarRestriccionSalud;
+import com.recred.backend.application.ObtenerCatalogoRestriccionesSalud;
 import com.recred.backend.application.ObtenerRestriccionesSalud;
 import com.recred.backend.application.RemoverRestriccionSalud;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -36,5 +37,11 @@ public class UseCases {
     public RemoverRestriccionSalud eliminarRestriccionSalud(
             AlumnoRepository alumnoRepository) {
         return new RemoverRestriccionSalud(alumnoRepository);
+    }
+
+    @Bean
+    public ObtenerCatalogoRestriccionesSalud obtenerCatalogoRestriccionesSalud(
+            ClasificacionSaludRepository clasificacionSaludRepository) {
+        return new ObtenerCatalogoRestriccionesSalud(clasificacionSaludRepository);
     }
 }

@@ -87,4 +87,32 @@ class ClasificacionSaludRepositoryImplTest {
         assertTrue(resultado.isEmpty());
         verify(springDataRepository).findById(id1);
     }
+
+    @Test
+    void findAll_DeberiaMapearTodasLasEntidadesADominio() {
+        ClasificacionSaludEntity entity1 = new ClasificacionSaludEntity();
+        entity1.setId(UUID.randomUUID());
+        entity1.setDescripcion("Sin TACC");
+
+        when(springDataRepository.findAll()).thenReturn(List.of(entity1));
+
+        List<ClasificacionSalud> resultado = repositoryImpl.findAll();
+
+        assertEquals(1, resultado.size());
+        assertEquals("Sin TACC", resultado.get(0).getDescripcion());
+        verify(springDataRepository).findAll();
+    }
+
+    @Test
+    void findAll_CuandoNoHayDatos_DeberiaRetornarListaVacia() {
+        when(springDataRepository.findAll()).thenReturn(List.of());
+
+        // Act
+        List<ClasificacionSalud> resultado = repositoryImpl.findAll();
+
+        assertNotNull(resultado, "El repositorio nunca debería retornar null");
+        assertTrue(resultado.isEmpty(), "La lista debería estar vacía");
+
+        verify(springDataRepository).findAll();
+    }
 }
