@@ -47,7 +47,8 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
             Set<ClasificacionSaludEntity> restriccionesEntities = modelo
                     .getRestriccionesSalud().stream()
                     .map(restriccionDominio -> {
-                        ClasificacionSaludEntity clasificacionEntity = new ClasificacionSaludEntity();
+                        ClasificacionSaludEntity clasificacionEntity = new
+                                ClasificacionSaludEntity();
                         clasificacionEntity.setId(restriccionDominio.getId());
                         clasificacionEntity.setDescripcion(restriccionDominio.getDescripcion());
                         clasificacionEntity.setActivo(restriccionDominio.getActivo());
