@@ -36,18 +36,47 @@ public class PresupuestoAlumno {
         return activo && !fechaActual.isBefore(fechaInicio);
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-    public UUID getAlumnoId() { return alumnoId; }
-    public void setAlumnoId(UUID alumnoId) { this.alumnoId = alumnoId; }
-    public BigDecimal getMontoLimiteGeneral() { return montoLimiteGeneral; }
-    public void setMontoLimiteGeneral(BigDecimal montoLimiteGeneral) { this.montoLimiteGeneral = montoLimiteGeneral; }
-    public PeriodoPresupuesto getPeriodo() { return periodo; }
-    public void setPeriodo(PeriodoPresupuesto periodo) { this.periodo = periodo; }
-    public LocalDate getFechaInicio() { return fechaInicio; }
-    public void setFechaInicio(LocalDate fechaInicio) { this.fechaInicio = fechaInicio; }
-    public boolean isActivo() { return activo; }
-    public void setActivo(boolean activo) { this.activo = activo; }
-    public List<ReglaPresupuestoCategoria> getReglasCategoria() { return reglasCategoria; }
-    public void setReglasCategoria(List<ReglaPresupuestoCategoria> reglasCategoria) { this.reglasCategoria = reglasCategoria; }
+    public UUID getId() {
+        return id;
+    }
+    public void setId(UUID id) {
+        this.id = id;
+    }
+    public UUID getAlumnoId() {
+        return alumnoId;
+    }
+    public void setAlumnoId(UUID alumnoId) {
+        this.alumnoId = alumnoId;
+    }
+    public BigDecimal getMontoLimiteGeneral() {
+        return montoLimiteGeneral;
+    }
+    public void setMontoLimiteGeneral(BigDecimal
+                                              montoLimiteGeneral) {
+        this.montoLimiteGeneral = montoLimiteGeneral;
+    }
+    public PeriodoPresupuesto getPeriodo() {
+        return periodo;
+    }
+    public void setPeriodo(PeriodoPresupuesto periodo) {
+        this.periodo = periodo;
+    }
+    public LocalDate getFechaInicio() {
+        return fechaInicio;
+    }
+    public void setFechaInicio(LocalDate fechaInicio) {
+        this.fechaInicio = fechaInicio;
+    }
+    public boolean isActivo() {
+        return activo;
+    }
+    public void setActivo(boolean activo) {
+        this.activo = activo;
+    }
+    public List<ReglaPresupuestoCategoria> getReglasCategoria() {
+        return reglasCategoria;
+    }
+    public void setReglasCategoria(List<ReglaPresupuestoCategoria> reglasCategoria) {
+        this.reglasCategoria = reglasCategoria;
+    }
 }

@@ -10,7 +10,8 @@ import java.time.temporal.TemporalAdjusters;
 
 public class CalculadorPeriodoPresupuesto {
 
-    public RangoFechas calcularRango(PeriodoPresupuesto periodo, LocalDateTime fechaReferencia) {
+    public RangoFechas calcularRango(PeriodoPresupuesto periodo,
+                                     LocalDateTime fechaReferencia) {
         LocalDateTime inicio;
         LocalDateTime fin;
 
@@ -21,23 +22,31 @@ public class CalculadorPeriodoPresupuesto {
                 break;
 
             case SEMANAL:
-                inicio = fechaReferencia.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).with(LocalTime.MIN);
-                fin = fechaReferencia.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).with(LocalTime.MAX);
+                inicio = fechaReferencia.with(TemporalAdjusters.previousOrSame
+                        (DayOfWeek.MONDAY)).with(LocalTime.MIN);
+                fin = fechaReferencia.with(TemporalAdjusters.nextOrSame
+                        (DayOfWeek.SUNDAY)).with(LocalTime.MAX);
                 break;
 
             case QUINCENAL:
                 if (fechaReferencia.getDayOfMonth() <= 15) {
-                    inicio = fechaReferencia.withDayOfMonth(1).with(LocalTime.MIN);
-                    fin = fechaReferencia.withDayOfMonth(15).with(LocalTime.MAX);
+                    inicio = fechaReferencia.withDayOfMonth(1).
+                            with(LocalTime.MIN);
+                    fin = fechaReferencia.withDayOfMonth(15).
+                            with(LocalTime.MAX);
                 } else {
-                    inicio = fechaReferencia.withDayOfMonth(16).with(LocalTime.MIN);
-                    fin = fechaReferencia.with(TemporalAdjusters.lastDayOfMonth()).with(LocalTime.MAX);
+                    inicio = fechaReferencia.withDayOfMonth(16).
+                            with(LocalTime.MIN);
+                    fin = fechaReferencia.with(TemporalAdjusters.
+                            lastDayOfMonth()).with(LocalTime.MAX);
                 }
                 break;
 
             case MENSUAL:
-                inicio = fechaReferencia.with(TemporalAdjusters.firstDayOfMonth()).with(LocalTime.MIN);
-                fin = fechaReferencia.with(TemporalAdjusters.lastDayOfMonth()).with(LocalTime.MAX);
+                inicio = fechaReferencia.with(TemporalAdjusters.
+                        firstDayOfMonth()).with(LocalTime.MIN);
+                fin = fechaReferencia.with(TemporalAdjusters.
+                        lastDayOfMonth()).with(LocalTime.MAX);
                 break;
 
             default:
