@@ -2,7 +2,6 @@ package com.recred.backend.domain.implementation;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.RestriccionHoraria;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 
 import java.time.LocalDateTime;

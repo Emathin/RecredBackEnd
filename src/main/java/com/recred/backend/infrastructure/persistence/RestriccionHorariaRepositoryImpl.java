@@ -2,7 +2,12 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.RestriccionHoraria;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
-import com.recred.backend.infrastructure.entities.*;
+import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
+import com.recred.backend.infrastructure.entities.ClasificacionTipoEntity;
+import com.recred.backend.infrastructure.entities.FranjaHorariaEntity;
+import com.recred.backend.infrastructure.entities.RestriccionHorariaEntity;
+import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
