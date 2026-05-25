@@ -17,8 +17,8 @@ public class CalculadorPeriodoPresupuesto {
 
         switch (periodo) {
             case DIARIO:
-                inicio = fechaReferencia.with(LocalTime.MIN); // 00:00
-                fin = fechaReferencia.with(LocalTime.MAX);    // 23:59:59.999999999
+                inicio = fechaReferencia.with(LocalTime.MIN);
+                fin = fechaReferencia.with(LocalTime.MAX);
                 break;
 
             case SEMANAL:
@@ -50,7 +50,8 @@ public class CalculadorPeriodoPresupuesto {
                 break;
 
             default:
-                throw new IllegalArgumentException("Período de presupuesto no soportado: " + periodo);
+                throw new IllegalArgumentException
+                        ("Período de presupuesto no soportado: " + periodo);
         }
 
         return new RangoFechas(inicio, fin);
