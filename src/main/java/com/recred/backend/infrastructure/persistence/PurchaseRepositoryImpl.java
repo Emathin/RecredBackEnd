@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.repositories.CompraRepository;
+import com.recred.backend.domain.repositories.PurchaseRepository;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -9,12 +9,12 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Component
-public class CompraRepositoryImpl implements CompraRepository {
+public class PurchaseRepositoryImpl implements PurchaseRepository {
 
-    private final SpringDataCompraRepository
+    private final SpringDataPurchaseRepository
             springDataRepository;
 
-    public CompraRepositoryImpl(SpringDataCompraRepository
+    public PurchaseRepositoryImpl(SpringDataPurchaseRepository
                                         springDataRepository) {
         this.springDataRepository = springDataRepository;
     }

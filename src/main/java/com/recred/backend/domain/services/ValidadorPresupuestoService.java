@@ -4,7 +4,7 @@ import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.models.RangoFechas;
 import com.recred.backend.domain.models.ReglaPresupuestoCategoria;
-import com.recred.backend.domain.repositories.CompraRepository;
+import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 
 import java.math.BigDecimal;
@@ -16,14 +16,14 @@ import java.util.UUID;
 public class ValidadorPresupuestoService {
 
     private final PresupuestoRepository presupuestoRepository;
-    private final CompraRepository compraRepository;
+    private final PurchaseRepository purchaseRepository;
     private final CalculadorPeriodoPresupuesto calculadorPeriodo;
 
     public ValidadorPresupuestoService(PresupuestoRepository presupuestoRepository,
-                                       CompraRepository compraRepository,
+                                       PurchaseRepository purchaseRepository,
                                        CalculadorPeriodoPresupuesto calculadorPeriodo) {
         this.presupuestoRepository = presupuestoRepository;
-        this.compraRepository = compraRepository;
+        this.purchaseRepository = purchaseRepository;
         this.calculadorPeriodo = calculadorPeriodo;
     }
 
@@ -32,7 +32,8 @@ public class ValidadorPresupuestoService {
                                    Map<UUID, BigDecimal> montosPorCategoria,
                                    LocalDateTime momentoCompra) {
 
-        Optional<PresupuestoAlumno> presupuestoOpt = presupuestoRepository.findActivoByAlumnoId(alumnoId);
+        Optional<PresupuestoAlumno> presupuestoOpt =
+                presupuestoRepository.findActivoByAlumnoId(alumnoId);
         if (presupuestoOpt.isEmpty()) {
             return;
         }
@@ -43,9 +44,10 @@ public class ValidadorPresupuestoService {
             return;
         }
 
-        RangoFechas rango = calculadorPeriodo.calcularRango(presupuesto.getPeriodo(), momentoCompra);
+        RangoFechas rango = calculadorPeriodo.calcularRango(
+                presupuesto.getPeriodo(), momentoCompra);
 
-        BigDecimal gastadoHistorico = compraRepository.sumarGastosPorAlumnoEnRango(
+        BigDecimal gastadoHistorico = purchaseRepository.sumarGastosPorAlumnoEnRango(
                 alumnoId, rango.inicio(), rango.fin()
         );
 
@@ -60,24 +62,29 @@ public class ValidadorPresupuestoService {
             );
         }
 
-        if (presupuesto.getReglasCategoria() != null && !presupuesto.getReglasCategoria().isEmpty()) {
+        if (presupuesto.getReglasCategoria() != null && !presupuesto.
+                getReglasCategoria().isEmpty()) {
             for (ReglaPresupuestoCategoria regla : presupuesto.getReglasCategoria()) {
                 UUID catId = regla.getCategoria().getId();
 
-                BigDecimal gastoCategoriaEnCarrito = montosPorCategoria.getOrDefault(catId, BigDecimal.ZERO);
+                BigDecimal gastoCategoriaEnCarrito = montosPorCategoria.
+                        getOrDefault(catId, BigDecimal.ZERO);
 
                 if (gastoCategoriaEnCarrito.compareTo(BigDecimal.ZERO) > 0) {
 
-                    BigDecimal gastadoHistoricoCat = compraRepository.sumarGastosPorCategoriaEnRango(
+                    BigDecimal gastadoHistoricoCat = purchaseRepository.
+                            sumarGastosPorCategoriaEnRango(
                             alumnoId, catId, rango.inicio(), rango.fin()
                     );
 
                     BigDecimal proyectadoCat = gastadoHistoricoCat.add(gastoCategoriaEnCarrito);
 
                     if (proyectadoCat.compareTo(regla.getMontoLimiteCalculado()) > 0) {
-                        BigDecimal disponibleCat = regla.getMontoLimiteCalculado().subtract(gastadoHistoricoCat);
+                        BigDecimal disponibleCat = regla.getMontoLimiteCalculado().
+                                subtract(gastadoHistoricoCat);
                         throw new PresupuestoExcedidoException(
-                                String.format("Límite superado para una categoría restringida. Disponible en categoría: $%s",
+                                String.format("Límite superado para una categoría restringida. " +
+                                                "Disponible en categoría: $%s",
                                         disponibleCat.max(BigDecimal.ZERO))
                         );
                     }

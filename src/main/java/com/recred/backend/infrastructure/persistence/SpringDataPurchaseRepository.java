@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public interface SpringDataCompraRepository extends JpaRepository<CompraEntity, UUID> {
+public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity, UUID> {
 
     @Query("SELECT COALESCE(SUM(c.montoTotal), 0) FROM CompraEntity c " +
             "WHERE c.alumnoEntity.id = :alumnoId " +
