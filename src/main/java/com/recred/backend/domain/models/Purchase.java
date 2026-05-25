@@ -21,8 +21,7 @@ public class Purchase {
     private EstadoCompra status;
     private MedioPago paymentMethod;
     private LocalDateTime date;
-    
-    // Simplification for the cart: Map of Product to Quantity
+
     private Map<Producto, Integer> items = new HashMap<>();
 
     public Purchase(Alumno student, Map<Producto, Integer> cart, MedioPago paymentMethod) {

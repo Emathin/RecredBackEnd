@@ -6,11 +6,11 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import java.util.Optional;
 import java.util.UUID;
 
-public class GetPurchase {
+public class GetPresentialPurchase {
 
     private final PurchaseRepository purchaseRepository;
 
-    public GetPurchase(PurchaseRepository purchaseRepository) {
+    public GetPresentialPurchase(PurchaseRepository purchaseRepository) {
         this.purchaseRepository = purchaseRepository;
     }
 

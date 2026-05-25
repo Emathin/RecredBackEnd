@@ -40,18 +40,18 @@ public class ProcessPresentialPurchase {
     }
 
     public void execute(UUID studentId, Map<Producto, Integer> cart) {
-        // 1. Fetch Student
+
         Alumno student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
 
-        // 2. Validate Restrictions
+
         timeValidator.validarCompra(student, cart.keySet(), LocalDateTime.now());
         healthValidator.validarCompra(student, cart.keySet());
 
-        // 3. Calculate Total
+
         BigDecimal totalAmount = calculateTotal(cart);
 
-        // 4. Fetch Wallet and Check Balance
+
         Billetera wallet = walletRepository.findByStudentId(studentId)
                 .orElseThrow(() -> new IllegalStateException("Student wallet not found: " + studentId));
 
@@ -59,13 +59,13 @@ public class ProcessPresentialPurchase {
             throw new InsufficientBalanceException("Insufficient balance for student: " + studentId);
         }
 
-        // 5. Debit Wallet
+
         wallet.debit(totalAmount);
 
-        // 6. Create and Save Purchase
+
         Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS);
 
-        // 7. Persist changes
+
         walletRepository.save(wallet);
         purchaseRepository.save(purchase);
     }

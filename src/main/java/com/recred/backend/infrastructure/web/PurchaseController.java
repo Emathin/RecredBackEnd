@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.CancelPurchase;
-import com.recred.backend.application.GetPurchase;
+import com.recred.backend.application.CancelPresentialPurchase;
+import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -23,17 +23,17 @@ import java.util.stream.Collectors;
 public class PurchaseController {
 
     private final ProcessPresentialPurchase processPresentialPurchase;
-    private final GetPurchase getPurchase;
-    private final CancelPurchase cancelPurchase;
+    private final GetPresentialPurchase getPresentialPurchase;
+    private final CancelPresentialPurchase cancelPresentialPurchase;
     private final ProductRepository productRepository;
 
     public PurchaseController(ProcessPresentialPurchase processPresentialPurchase,
-                              GetPurchase getPurchase,
-                              CancelPurchase cancelPurchase,
+                              GetPresentialPurchase getPresentialPurchase,
+                              CancelPresentialPurchase cancelPresentialPurchase,
                               ProductRepository productRepository) {
         this.processPresentialPurchase = processPresentialPurchase;
-        this.getPurchase = getPurchase;
-        this.cancelPurchase = cancelPurchase;
+        this.getPresentialPurchase = getPresentialPurchase;
+        this.cancelPresentialPurchase = cancelPresentialPurchase;
         this.productRepository = productRepository;
     }
 
@@ -52,7 +52,7 @@ public class PurchaseController {
 
     @GetMapping("/{id}")
     public ResponseEntity<PurchaseResponseDTO> getPurchaseById(@PathVariable UUID id) {
-        return getPurchase.execute(id)
+        return getPresentialPurchase.execute(id)
                 .map(purchase -> new PurchaseResponseDTO(purchase))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -60,7 +60,7 @@ public class PurchaseController {
 
     @PutMapping("/{id}/cancel")
     public ResponseEntity<Void> cancelPurchase(@PathVariable UUID id) {
-        cancelPurchase.execute(id);
+        cancelPresentialPurchase.execute(id);
         return ResponseEntity.ok().build();
     }
 }

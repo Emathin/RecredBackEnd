@@ -74,14 +74,12 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WithValidData_ShouldProcessPurchase() {
-        // Given
+
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        // When
         useCase.execute(studentId, cart);
 
-        // Then
         verify(timeValidator).validarCompra(eq(student), eq(cart.keySet()), any(LocalDateTime.class));
         verify(healthValidator).validarCompra(student, cart.keySet());
         verify(walletRepository).save(any(Billetera.class));
@@ -90,10 +88,9 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WhenStudentNotFound_ShouldThrowException() {
-        // Given
+
         when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
 
-        // When & Then
         assertThrows(AlumnoNoEncontradoException.class, () -> {
             useCase.execute(studentId, cart);
         });
@@ -103,12 +100,11 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WhenInsufficientBalance_ShouldThrowException() {
-        // Given
+
         wallet.setSaldoCreditos(new BigDecimal("10.00")); // Not enough for a 20.00 purchase
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        // When & Then
         assertThrows(InsufficientBalanceException.class, () -> {
             useCase.execute(studentId, cart);
         });
@@ -121,11 +117,10 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WhenHealthRestrictionFails_ShouldThrowException() {
-        // Given
+
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         doThrow(new RestriccionSaludException("")).when(healthValidator).validarCompra(student, cart.keySet());
 
-        // When & Then
         assertThrows(RestriccionSaludException.class, () -> {
             useCase.execute(studentId, cart);
         });
@@ -136,11 +131,10 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WhenTimeRestrictionFails_ShouldThrowException() {
-        // Given
+
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         doThrow(new RestriccionHorariaException("")).when(timeValidator).validarCompra(eq(student), eq(cart.keySet()), any(LocalDateTime.class));
 
-        // When & Then
         assertThrows(RestriccionHorariaException.class, () -> {
             useCase.execute(studentId, cart);
         });

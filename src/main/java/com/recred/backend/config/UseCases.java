@@ -1,9 +1,9 @@
 package com.recred.backend.config;
 
-import com.recred.backend.application.CancelPurchase;
+import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DisableTimeRestriction;
-import com.recred.backend.application.GetPurchase;
+import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.ManageRestrictions;
@@ -42,13 +42,13 @@ public class UseCases {
     }
 
     @Bean
-    public GetPurchase getPurchase(PurchaseRepository purchaseRepository) {
-        return new GetPurchase(purchaseRepository);
+    public GetPresentialPurchase getPurchase(PurchaseRepository purchaseRepository) {
+        return new GetPresentialPurchase(purchaseRepository);
     }
 
     @Bean
-    public CancelPurchase cancelPurchase(PurchaseRepository purchaseRepository, WalletRepository walletRepository) {
-        return new CancelPurchase(purchaseRepository, walletRepository);
+    public CancelPresentialPurchase cancelPurchase(PurchaseRepository purchaseRepository, WalletRepository walletRepository) {
+        return new CancelPresentialPurchase(purchaseRepository, walletRepository);
     }
 
     @Bean

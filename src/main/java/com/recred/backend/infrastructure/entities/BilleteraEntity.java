@@ -58,8 +58,6 @@ public class BilleteraEntity {
     public Billetera toDomain() {
         Billetera domain = new Billetera();
         domain.setId(this.id);
-        // We don't map the student here to avoid circular dependencies in mapping.
-        // The service/use case layer is responsible for associating the student.
         domain.setSaldoCreditos(this.saldoCreditos);
         domain.setLimiteCredito(this.limiteCredito);
         domain.setSaldoDeudaInterno(this.saldoDeudaInterno);

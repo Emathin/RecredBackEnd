@@ -2,7 +2,6 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BilleteraEntity;
 import org.springframework.stereotype.Component;
 

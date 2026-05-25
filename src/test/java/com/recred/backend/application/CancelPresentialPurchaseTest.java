@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class CancelPurchaseTest {
+class CancelPresentialPurchaseTest {
 
     @Mock
     private PurchaseRepository purchaseRepository;
@@ -31,7 +31,7 @@ class CancelPurchaseTest {
     private WalletRepository walletRepository;
 
     @InjectMocks
-    private CancelPurchase useCase;
+    private CancelPresentialPurchase useCase;
 
     private UUID purchaseId;
     private Purchase purchase;

@@ -17,13 +17,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class GetPurchaseTest {
+class GetPresentialPurchaseTest {
 
     @Mock
     private PurchaseRepository purchaseRepository;
 
     @InjectMocks
-    private GetPurchase useCase;
+    private GetPresentialPurchase useCase;
 
     @Test
     void execute_WhenPurchaseExists_ShouldReturnPurchase() {

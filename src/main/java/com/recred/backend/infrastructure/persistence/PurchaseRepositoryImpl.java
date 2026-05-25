@@ -12,8 +12,6 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
-
 @Component
 public class PurchaseRepositoryImpl implements PurchaseRepository {
 
@@ -41,7 +39,6 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         entity.setMontoTotal(purchase.getTotalAmount());
         entity.setFechaHora(purchase.getDate());
 
-        // Clear existing details to avoid duplication if it's an update
         entity.getDetalles().clear();
         purchase.getItems().forEach((producto, cantidad) -> {
             CompraDetalleEntity detalle = new CompraDetalleEntity();

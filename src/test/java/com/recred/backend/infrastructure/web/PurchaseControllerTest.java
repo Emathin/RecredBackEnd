@@ -2,8 +2,8 @@ package com.recred.backend.infrastructure.web;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.ObjectMapper;
-import com.recred.backend.application.CancelPurchase;
-import com.recred.backend.application.GetPurchase;
+import com.recred.backend.application.CancelPresentialPurchase;
+import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
@@ -41,9 +41,9 @@ class PurchaseControllerTest {
     @MockitoBean
     private ProcessPresentialPurchase processPresentialPurchase;
     @MockitoBean
-    private GetPurchase getPurchase;
+    private GetPresentialPurchase getPresentialPurchase;
     @MockitoBean
-    private CancelPurchase cancelPurchase;
+    private CancelPresentialPurchase cancelPresentialPurchase;
     @MockitoBean
     private ProductRepository productRepository;
 
@@ -100,7 +100,7 @@ class PurchaseControllerTest {
         UUID purchaseId = UUID.randomUUID();
         Purchase purchase = new Purchase();
         purchase.setId(purchaseId);
-        when(getPurchase.execute(purchaseId)).thenReturn(Optional.of(purchase));
+        when(getPresentialPurchase.execute(purchaseId)).thenReturn(Optional.of(purchase));
 
         mockMvc.perform(get("/api/v1/purchases/{id}", purchaseId))
                 .andExpect(status().isOk())
@@ -110,7 +110,7 @@ class PurchaseControllerTest {
     @Test
     void getPurchaseById_WhenPurchaseDoesNotExist_ShouldReturnNotFound() throws Exception {
         UUID purchaseId = UUID.randomUUID();
-        when(getPurchase.execute(purchaseId)).thenReturn(Optional.empty());
+        when(getPresentialPurchase.execute(purchaseId)).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/v1/purchases/{id}", purchaseId))
                 .andExpect(status().isNotFound());
@@ -123,6 +123,6 @@ class PurchaseControllerTest {
         mockMvc.perform(put("/api/v1/purchases/{id}/cancel", purchaseId))
                 .andExpect(status().isOk());
 
-        verify(cancelPurchase).execute(purchaseId);
+        verify(cancelPresentialPurchase).execute(purchaseId);
     }
 }
