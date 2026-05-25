@@ -34,4 +34,14 @@ public class ClasificacionSaludRepositoryImpl implements ClasificacionSaludRepos
         return springDataRepository.findById(id)
                 .map(ClasificacionSaludEntity::toDomain);
     }
+
+    private ClasificacionSaludEntity toEntity(ClasificacionSalud modelo) {
+        ClasificacionSaludEntity entity = new ClasificacionSaludEntity();
+
+        entity.setId(modelo.getId());
+        entity.setDescripcion(modelo.getDescripcion());
+        entity.setActivo(modelo.getActivo());
+
+        return entity;
+    }
 }
