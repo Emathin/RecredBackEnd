@@ -7,11 +7,11 @@ import com.recred.backend.domain.repositories.AlumnoRepository;
 import java.util.Set;
 import java.util.UUID;
 
-public class ObtenerRestriccionesSalud {
+public class GetHealthRestrictions {
 
     private final AlumnoRepository alumnoRepository;
 
-    public ObtenerRestriccionesSalud(AlumnoRepository alumnoRepository) {
+    public GetHealthRestrictions(AlumnoRepository alumnoRepository) {
         this.alumnoRepository = alumnoRepository;
     }
 

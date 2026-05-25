@@ -5,10 +5,10 @@ import com.recred.backend.domain.repositories.AlumnoRepository;
 
 import java.util.UUID;
 
-public class RemoverRestriccionSalud {
+public class RemoveHealthRestrictions {
     private final AlumnoRepository alumnoRepository;
 
-    public RemoverRestriccionSalud(AlumnoRepository alumnoRepository) {
+    public RemoveHealthRestrictions(AlumnoRepository alumnoRepository) {
         this.alumnoRepository = alumnoRepository;
     }
 

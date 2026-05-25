@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.entities;
 
-import com.recred.backend.domain.models.PeriodoPresupuesto;
+import com.recred.backend.domain.models.BudgetPeriod;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Enumerated;
@@ -40,7 +40,7 @@ public class PresupuestoAlumnoEntity {
 
     @Enumerated(STRING)
     @Column(nullable = false)
-    private PeriodoPresupuesto periodo;
+    private BudgetPeriod periodo;
 
     @Column(name = "monto_limite", nullable = false, precision = 12, scale = 2)
     private BigDecimal montoLimite;

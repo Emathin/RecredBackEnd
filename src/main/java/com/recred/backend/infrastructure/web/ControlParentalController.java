@@ -1,9 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.AdministrarRestricciones;
-import com.recred.backend.application.AgregarRestriccionSalud;
-import com.recred.backend.application.ObtenerRestriccionesSalud;
-import com.recred.backend.application.RemoverRestriccionSalud;
+import com.recred.backend.application.ManageRestrictions;
+import com.recred.backend.application.AddHealthRestriction;
+import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.RemoveHealthRestrictions;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,19 +23,19 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/control-parental")
 public class ControlParentalController {
 
-    private final AdministrarRestricciones useCase;
-    private final ObtenerRestriccionesSalud obtenerRestriccionesUseCase;
-    private final AgregarRestriccionSalud agregarRestriccionSalud;
-    private final RemoverRestriccionSalud removerRestriccionSalud;
+    private final ManageRestrictions useCase;
+    private final GetHealthRestrictions obtenerRestriccionesUseCase;
+    private final AddHealthRestriction addHealthRestriction;
+    private final RemoveHealthRestrictions removeHealthRestrictions;
 
-    public ControlParentalController(AdministrarRestricciones useCase,
-                                     ObtenerRestriccionesSalud obtenerRestriccionesUseCase,
-                                     AgregarRestriccionSalud agregarRestriccionSalud,
-            RemoverRestriccionSalud removerRestriccionSalud) {
+    public ControlParentalController(ManageRestrictions useCase,
+                                     GetHealthRestrictions obtenerRestriccionesUseCase,
+                                     AddHealthRestriction addHealthRestriction,
+                                     RemoveHealthRestrictions removeHealthRestrictions) {
         this.useCase = useCase;
         this.obtenerRestriccionesUseCase = obtenerRestriccionesUseCase;
-        this.agregarRestriccionSalud = agregarRestriccionSalud;
-        this.removerRestriccionSalud = removerRestriccionSalud;
+        this.addHealthRestriction = addHealthRestriction;
+        this.removeHealthRestrictions = removeHealthRestrictions;
     }
 
     @PutMapping("/alumnos/{alumnoId}/actualizar-restricciones-salud")
@@ -43,7 +43,7 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @RequestBody ActualizarRestriccionesDTO dto) {
 
-        useCase.ejecutar(alumnoId, dto.getClasificacionesIds());
+        useCase.execute(alumnoId, dto.getClasificacionesIds());
         return ResponseEntity.ok().build();
     }
 
@@ -64,7 +64,7 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID clasificacionId) {
 
-        agregarRestriccionSalud.ejecutar(alumnoId, clasificacionId);
+        addHealthRestriction.execute(alumnoId, clasificacionId);
         return ResponseEntity.ok().build();
     }
 
@@ -72,7 +72,7 @@ public class ControlParentalController {
     public ResponseEntity<Void> removerRestriccionSalud(
             @PathVariable UUID alumnoId,
             @PathVariable UUID clasificacionId) {
-        removerRestriccionSalud.ejecutar(alumnoId, clasificacionId);
+        removeHealthRestrictions.ejecutar(alumnoId, clasificacionId);
         return ResponseEntity.noContent().build();
     }
 

@@ -5,11 +5,11 @@ import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 
 import java.util.List;
 
-public class ObtenerCatalogoRestriccionesSalud {
+public class GetHealthRestrictionsCatalog {
 
     private final ClasificacionSaludRepository repository;
 
-    public ObtenerCatalogoRestriccionesSalud(ClasificacionSaludRepository repository) {
+    public GetHealthRestrictionsCatalog(ClasificacionSaludRepository repository) {
         this.repository = repository;
     }
 

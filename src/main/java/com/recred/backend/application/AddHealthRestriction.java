@@ -7,27 +7,27 @@ import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 
 import java.util.UUID;
 
-public class AgregarRestriccionSalud {
+public class AddHealthRestriction {
 
     private final AlumnoRepository alumnoRepository;
     private final ClasificacionSaludRepository clasificacionRepository;
 
-    public AgregarRestriccionSalud(AlumnoRepository alumnoRepository,
-                                   ClasificacionSaludRepository clasificacionRepository) {
+    public AddHealthRestriction(AlumnoRepository alumnoRepository,
+                                ClasificacionSaludRepository clasificacionRepository) {
         this.alumnoRepository = alumnoRepository;
         this.clasificacionRepository = clasificacionRepository;
     }
 
-    public void ejecutar(UUID alumnoId, UUID clasificacionId) {
-        Alumno alumno = alumnoRepository.findById(alumnoId)
+    public void execute(UUID studentId, UUID classificationId) {
+        Alumno student = alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
 
-        ClasificacionSalud clasificacion = clasificacionRepository.findById(clasificacionId)
+        ClasificacionSalud classification = clasificacionRepository.findById(classificationId)
                 .orElseThrow(() -> new IllegalArgumentException
                         ("La clasificación médica no existe."));
 
-        alumno.agregarRestriccionSalud(clasificacion);
+        student.agregarRestriccionSalud(classification);
 
-        alumnoRepository.save(alumno);
+        alumnoRepository.save(student);
     }
 }

@@ -11,7 +11,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class AdministrarRestriccionesTest {
+class AddHealthRestrictionTest {
 
     @Mock
     private AlumnoRepository alumnoRepository;
@@ -28,48 +27,59 @@ class AdministrarRestriccionesTest {
     private ClasificacionSaludRepository clasificacionRepository;
 
     @InjectMocks
-    private AdministrarRestricciones useCase;
+    private AddHealthRestriction useCase;
 
     private UUID alumnoId;
     private UUID clasificacionId;
     private Alumno alumno;
+    private ClasificacionSalud clasificacion;
 
     @BeforeEach
     void setUp() {
         alumnoId = UUID.randomUUID();
         clasificacionId = UUID.randomUUID();
+
         alumno = new Alumno();
         alumno.setId(alumnoId);
+
+        clasificacion = new ClasificacionSalud();
+        clasificacion.setId(clasificacionId);
     }
 
     @Test
-    void ejecutar_ConDatosValidos_DeberiaReemplazarYGuardar() {
-        ClasificacionSalud clasificacion = new ClasificacionSalud();
-        clasificacion.setId(clasificacionId);
-        List<UUID> nuevasClasificacionesIds = List.of(clasificacionId);
-        List<ClasificacionSalud> clasificacionesMock = List.of(clasificacion);
-
+    void ejecutar_ConDatosValidos_DeberiaAgregarYGuardar() {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(clasificacionRepository.findAllById(nuevasClasificacionesIds)).thenReturn(clasificacionesMock);
+        when(clasificacionRepository.findById(clasificacionId)).thenReturn(Optional.of(clasificacion));
 
-        useCase.ejecutar(alumnoId, nuevasClasificacionesIds);
+        useCase.execute(alumnoId, clasificacionId);
 
         assertTrue(alumno.getRestriccionesSalud().contains(clasificacion));
-        assertEquals(1, alumno.getRestriccionesSalud().size());
         verify(alumnoRepository).save(alumno);
     }
 
     @Test
     void ejecutar_CuandoAlumnoNoExiste_DeberiaLanzarExcepcion() {
-        List<UUID> nuevasClasificacionesIds = List.of(clasificacionId);
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.ejecutar(alumnoId, nuevasClasificacionesIds);
+            useCase.execute(alumnoId, clasificacionId);
         });
 
-        assertEquals("El alumno con ID " + alumnoId + " no existe.", exception.getMessage());
-        verify(clasificacionRepository, never()).findAllById(any());
+        assertEquals("El alumno no existe.", exception.getMessage());
+        verify(clasificacionRepository, never()).findById(any());
+        verify(alumnoRepository, never()).save(any());
+    }
+
+    @Test
+    void ejecutar_CuandoClasificacionNoExiste_DeberiaLanzarExcepcion() {
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(clasificacionRepository.findById(clasificacionId)).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            useCase.execute(alumnoId, clasificacionId);
+        });
+
+        assertEquals("La clasificación médica no existe.", exception.getMessage());
         verify(alumnoRepository, never()).save(any());
     }
 }

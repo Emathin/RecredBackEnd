@@ -16,13 +16,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class RemoverRestriccionSaludTest {
+class RemoveHealthRestrictionsTest {
 
     @Mock
     private AlumnoRepository alumnoRepository;
 
     @InjectMocks
-    private RemoverRestriccionSalud useCase;
+    private RemoveHealthRestrictions useCase;
 
     private UUID alumnoId;
     private UUID clasificacionId;

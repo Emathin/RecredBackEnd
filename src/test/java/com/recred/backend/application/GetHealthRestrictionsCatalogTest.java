@@ -14,13 +14,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ObtenerCatalogoRestriccionesSaludTest {
+class GetHealthRestrictionsCatalogTest {
 
     @Mock
     private ClasificacionSaludRepository repository;
 
     @InjectMocks
-    private ObtenerCatalogoRestriccionesSalud useCase;
+    private GetHealthRestrictionsCatalog useCase;
 
     @Test
     void ejecutar_DeberiaRetornarListaDelRepositorio() {
