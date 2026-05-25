@@ -12,14 +12,16 @@ public class CancelPresentialPurchase {
     private final PurchaseRepository purchaseRepository;
     private final WalletRepository walletRepository;
 
-    public CancelPresentialPurchase(PurchaseRepository purchaseRepository, WalletRepository walletRepository) {
+    public CancelPresentialPurchase(PurchaseRepository purchaseRepository,
+                                    WalletRepository walletRepository) {
         this.purchaseRepository = purchaseRepository;
         this.walletRepository = walletRepository;
     }
 
     public void execute(UUID purchaseId) {
         Purchase purchase = purchaseRepository.findById(purchaseId)
-                .orElseThrow(() -> new IllegalArgumentException("Purchase not found: " + purchaseId));
+                .orElseThrow(() -> new IllegalArgumentException
+                        ("Purchase not found: " + purchaseId));
 
 
         purchase.cancel();
@@ -29,7 +31,8 @@ public class CancelPresentialPurchase {
         }
         
         Billetera wallet = walletRepository.findByStudentId(purchase.getStudent().getId())
-                .orElseThrow(() -> new IllegalStateException("Student wallet not found for refund."));
+                .orElseThrow(() ->
+                        new IllegalStateException("Student wallet not found for refund."));
 
         wallet.credit(purchase.getTotalAmount());
 

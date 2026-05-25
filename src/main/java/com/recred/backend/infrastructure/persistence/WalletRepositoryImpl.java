@@ -19,7 +19,7 @@ public class WalletRepositoryImpl implements WalletRepository {
 
     @Override
     public Optional<Billetera> findByStudentId(UUID studentId) {
-        return springDataRepository.findByAlumnoEntity_Id(studentId)
+        return springDataRepository.findByAlumnoEntityId(studentId)
                 .map(BilleteraEntity::toDomain);
     }
 

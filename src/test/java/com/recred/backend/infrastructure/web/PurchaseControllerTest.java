@@ -14,7 +14,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
-import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.
+        OAuth2ResourceServerAutoConfiguration;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,7 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(
         controllers = PurchaseController.class,
-        excludeAutoConfiguration = {SecurityAutoConfiguration.class, OAuth2ResourceServerAutoConfiguration.class}
+        excludeAutoConfiguration = {SecurityAutoConfiguration.class,
+                OAuth2ResourceServerAutoConfiguration.class}
 )
 class PurchaseControllerTest {
 
@@ -87,7 +89,8 @@ class PurchaseControllerTest {
 
     @Test
     void processPurchase_WhenInsufficientBalance_ShouldReturnBadRequest() throws Exception {
-        doThrow(new InsufficientBalanceException("")).when(processPresentialPurchase).execute(eq(studentId), anyMap());
+        doThrow(new InsufficientBalanceException("")).when(processPresentialPurchase).
+                execute(eq(studentId), anyMap());
 
         mockMvc.perform(post("/api/v1/purchases/presential")
                         .contentType(MediaType.APPLICATION_JSON)

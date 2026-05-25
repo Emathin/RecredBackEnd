@@ -9,5 +9,5 @@ import java.util.UUID;
 
 @Repository
 public interface SpringDataWalletRepository extends JpaRepository<BilleteraEntity, UUID> {
-    Optional<BilleteraEntity> findByAlumnoEntity_Id(UUID studentId);
+    Optional<BilleteraEntity> findByAlumnoEntityId(UUID studentId);
 }

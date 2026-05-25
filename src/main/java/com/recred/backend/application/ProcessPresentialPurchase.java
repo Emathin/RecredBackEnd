@@ -53,10 +53,12 @@ public class ProcessPresentialPurchase {
 
 
         Billetera wallet = walletRepository.findByStudentId(studentId)
-                .orElseThrow(() -> new IllegalStateException("Student wallet not found: " + studentId));
+                .orElseThrow(() -> new IllegalStateException
+                        ("Student wallet not found: " + studentId));
 
         if (!wallet.hasSufficientBalance(totalAmount)) {
-            throw new InsufficientBalanceException("Insufficient balance for student: " + studentId);
+            throw new InsufficientBalanceException
+                    ("Insufficient balance for student: " + studentId);
         }
 
 
@@ -74,7 +76,8 @@ public class ProcessPresentialPurchase {
 
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
         return cart.entrySet().stream()
-                .map(entry -> entry.getKey().getPrecio().multiply(new BigDecimal(entry.getValue())))
+                .map(entry ->
+                        entry.getKey().getPrecio().multiply(new BigDecimal(entry.getValue())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }
