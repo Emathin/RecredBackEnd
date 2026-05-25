@@ -22,7 +22,7 @@ public class FranjaHorariaRepositoryImpl implements FranjaHorariaRepository {
     public List<FranjaHoraria> findAllByColegioId(UUID colegioId) {
         return springDataRepository.findByColegioEntityIdAndActivoTrue(colegioId)
                 .stream()
-                .map(FranjaHorariaEntity::toDomain) // Usamos el toDomain seguro que armamos antes
+                .map(FranjaHorariaEntity::toDomain)
                 .collect(Collectors.toList());
     }
 }

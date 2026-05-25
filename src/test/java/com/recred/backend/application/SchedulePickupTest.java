@@ -39,16 +39,14 @@ class SchedulePickupTest {
 
         LocalDate pickupDate = LocalDate.of(2026, 6, 1);
         FranjaHoraria pickupSlot = new FranjaHoraria();
-        pickupSlot.setHoraInicio(LocalTime.of(10, 0)); // Recreo de las 10:00
+        pickupSlot.setHoraInicio(LocalTime.of(10, 0));
 
         schedulePickup.execute(studentId, cart, pickupSlot, pickupDate);
 
         LocalDateTime expectedTime = LocalDateTime.of(2026, 6, 1, 10, 0);
 
-        // Verificamos que se haya llamado al validador horario con el momento futuro proyectado
         verify(timeValidator).validarCompra(any(), eq(cart), eq(expectedTime));
 
-        // Verificamos que se valide la salud del producto
         verify(healthValidator).validarCompra(any(), eq(cart));
     }
 }
