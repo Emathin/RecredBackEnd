@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.domain.models.FranjaHoraria;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -43,4 +44,21 @@ public class FranjaHorariaEntity {
 
     @Column(nullable = false)
     private Boolean activo = true;
+
+    public FranjaHoraria toDomain() {
+        FranjaHoraria dominio = new FranjaHoraria();
+
+        dominio.setId(this.id);
+        dominio.setDescripcion(this.descripcion);
+        dominio.setHoraInicio(this.horaInicio);
+        dominio.setHoraFin(this.horaFin);
+
+        dominio.setActivo(this.activo != null ? this.activo : false);
+
+        if (this.colegioEntity != null) {
+            dominio.setColegioId(this.colegioEntity.getId());
+        }
+
+        return dominio;
+    }
 }

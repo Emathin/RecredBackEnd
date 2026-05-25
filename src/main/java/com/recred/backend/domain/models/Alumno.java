@@ -21,6 +21,7 @@ public class Alumno {
     private Billetera billetera;
     private Set<ClasificacionSalud> restriccionesSalud = new HashSet<>();
     private Set<Producto> productosFavoritos = new HashSet<>();
+    private Set<RestriccionHoraria> restriccionesHorarias = new HashSet<>();
 
     public Alumno(UUID id, Usuario usuario, Boolean activo, Grado grado,
                   Set<ClasificacionSalud> restriccionesSalud) {
@@ -44,6 +45,14 @@ public class Alumno {
 
     public void removerRestriccionSalud(UUID restriccionId) {
         this.restriccionesSalud.removeIf(r -> r.getId().equals(restriccionId));
+    }
+
+    public void agregarRestriccionHoraria(RestriccionHoraria restriccion) {
+        this.restriccionesHorarias.add(restriccion);
+    }
+
+    public void removerRestriccionHoraria(RestriccionHoraria restriccion) {
+        this.restriccionesHorarias.remove(restriccion);
     }
 
     public void darDeBaja() {
