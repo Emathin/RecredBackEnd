@@ -22,4 +22,18 @@ public class Billetera {
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
 
+    public boolean hasSufficientBalance(BigDecimal amount) {
+        // For now, we only consider the main balance. Overdraft logic will be added later.
+        return this.saldoCreditos.compareTo(amount) >= 0;
+    }
+
+    public void debit(BigDecimal amount) {
+        if (!hasSufficientBalance(amount)) {
+            // This should be prevented by a check before calling debit,
+            // but as a safeguard, we can throw an exception here.
+            // We will create this exception later.
+            // throw new InsufficientBalanceException("Not enough balance.");
+        }
+        this.saldoCreditos = this.saldoCreditos.subtract(amount);
+    }
 }

@@ -8,17 +8,36 @@ import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
+import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.services.ValidacionRestriccionesService;
+import com.recred.backend.domain.services.ValidadorHorarioService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class UseCases {
+
+    @Bean
+    public ProcessPresentialPurchase processPresentialPurchase(
+            AlumnoRepository studentRepository,
+            WalletRepository walletRepository,
+            PurchaseRepository purchaseRepository) {
+        return new ProcessPresentialPurchase(
+                studentRepository,
+                walletRepository,
+                purchaseRepository,
+                new ValidadorHorarioService(),
+                new ValidacionRestriccionesService()
+        );
+    }
 
     @Bean
     public ManageRestrictions administrarRestricciones(

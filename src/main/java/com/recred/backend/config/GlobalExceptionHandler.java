@@ -1,5 +1,7 @@
 package com.recred.backend.config;
 
+import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import org.slf4j.Logger;
@@ -31,6 +33,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RestriccionSaludException.class)
     public ResponseEntity<ErrorResponse> handleRestriccionSalud(RestriccionSaludException ex) {
         return buildResponse(HttpStatus.CONFLICT, "Conflicto de Restricción Médica",
+                ex.getMessage());
+    }
+    
+    @ExceptionHandler(AlumnoNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handleAlumnoNoEncontrado(AlumnoNoEncontradoException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Alumno no encontrado",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(InsufficientBalanceException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientBalance(InsufficientBalanceException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Saldo Insuficiente",
                 ex.getMessage());
     }
 
