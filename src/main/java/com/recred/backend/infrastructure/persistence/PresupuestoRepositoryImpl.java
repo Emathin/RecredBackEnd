@@ -46,6 +46,12 @@ public class PresupuestoRepositoryImpl implements PresupuestoRepository {
                 .map(PresupuestoAlumnoEntity::toDomain);
     }
 
+    @Override
+    public Optional<PresupuestoAlumno> findById(UUID budgetId) {
+        return springDataRepository.findById(budgetId)
+                .map(PresupuestoAlumnoEntity::toDomain);
+    }
+
     private PresupuestoAlumnoEntity toEntity(PresupuestoAlumno modelo,
                                              PresupuestoAlumnoEntity entity) {
         if (entity.getId() == null) {
@@ -67,7 +73,8 @@ public class PresupuestoRepositoryImpl implements PresupuestoRepository {
         }
 
         if (modelo.getReglasCategoria() != null && !modelo.getReglasCategoria().isEmpty()) {
-            List<ReglaPresupuestoCategoriaEntity> subEntities = modelo.getReglasCategoria().stream()
+            List<ReglaPresupuestoCategoriaEntity> subEntities =
+                    modelo.getReglasCategoria().stream()
                     .map(reglaDominio -> {
                         ReglaPresupuestoCategoriaEntity subEntity = new
                                 ReglaPresupuestoCategoriaEntity();

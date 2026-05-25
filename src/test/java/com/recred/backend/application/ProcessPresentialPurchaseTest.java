@@ -3,6 +3,7 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
+import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,17 +27,28 @@ class ProcessPresentialPurchaseTest {
     @Mock
     private ValidacionRestriccionesService healthValidator;
 
+    @Mock
+    private ValidadorPresupuestoService budgetValidator;
+
     @InjectMocks
     private ProcessPresentialPurchase processPresentialPurchase;
 
     @Test
     void execute_LlamaAAmbosValidadoresDeDominio() {
         UUID studentId = UUID.randomUUID();
+
         Set<Producto> cart = Set.of(new Producto());
 
         processPresentialPurchase.execute(studentId, cart);
 
         verify(timeValidator).validarCompra(any(), eq(cart), any(LocalDateTime.class));
         verify(healthValidator).validarCompra(any(), eq(cart));
+
+        verify(budgetValidator).validarPresupuesto(
+                eq(studentId),
+                eq(java.math.BigDecimal.ZERO),
+                eq(java.util.Collections.emptyMap()),
+                any(LocalDateTime.class)
+        );
     }
 }

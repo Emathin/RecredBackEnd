@@ -8,4 +8,5 @@ import java.util.UUID;
 public interface PresupuestoRepository {
     PresupuestoAlumno save(PresupuestoAlumno presupuesto);
     Optional<PresupuestoAlumno> findActivoByAlumnoId(UUID alumnoId);
+    Optional<PresupuestoAlumno> findById(UUID budgetId);
 }

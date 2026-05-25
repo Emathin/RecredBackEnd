@@ -4,6 +4,7 @@ import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
+import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,6 +30,9 @@ class SchedulePickupTest {
     @Mock
     private ValidacionRestriccionesService healthValidator;
 
+    @Mock
+    private ValidadorPresupuestoService budgetValidator;
+
     @InjectMocks
     private SchedulePickup schedulePickup;
 
@@ -48,5 +52,12 @@ class SchedulePickupTest {
         verify(timeValidator).validarCompra(any(), eq(cart), eq(expectedTime));
 
         verify(healthValidator).validarCompra(any(), eq(cart));
+
+        verify(budgetValidator).validarPresupuesto(
+                eq(studentId),
+                eq(java.math.BigDecimal.ZERO),
+                eq(java.util.Collections.emptyMap()),
+                eq(expectedTime)
+        );
     }
 }

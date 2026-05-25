@@ -1,7 +1,10 @@
 package com.recred.backend.config;
 
+import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateTimeRestriction;
+import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.ManageRestrictions;
@@ -9,10 +12,12 @@ import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictions;
+import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
+import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -80,5 +85,29 @@ public class UseCases {
     public UpdateTimeRestriction updateTimeRestriction(
             RestriccionHorariaRepository restriccionHorariaRepository){
         return new UpdateTimeRestriction(restriccionHorariaRepository);
+    }
+
+    @Bean
+    public GetActiveBudgetByStudent getActiveBudgetByStudent(
+            PresupuestoRepository presupuestoRepository) {
+        return new GetActiveBudgetByStudent(presupuestoRepository);
+    }
+
+    @Bean
+    public CreateBudget createBudget(
+            PresupuestoRepository presupuestoRepository) {
+        return new CreateBudget(presupuestoRepository);
+    }
+
+    @Bean
+    public UpdateBudget updateBudget(
+            PresupuestoRepository presupuestoRepository) {
+        return new UpdateBudget(presupuestoRepository);
+    }
+
+    @Bean
+    public DisableBudget disableBudget(
+            PresupuestoRepository presupuestoRepository) {
+        return new DisableBudget(presupuestoRepository);
     }
 }
