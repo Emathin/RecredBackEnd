@@ -20,10 +20,11 @@ public class AddHealthRestriction {
 
     public void execute(UUID studentId, UUID classificationId) {
         Alumno student = alumnoRepository.findById(studentId)
-                .orElseThrow(() -> new IllegalArgumentException("The student does not exist."));
+                .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
 
         ClasificacionSalud classification = clasificacionRepository.findById(classificationId)
-                .orElseThrow(() -> new IllegalArgumentException("The medical classification does not exist."));
+                .orElseThrow(() -> new IllegalArgumentException
+                        ("La clasificación no existe."));
 
         student.agregarRestriccionSalud(classification);
 
