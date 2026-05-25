@@ -15,7 +15,7 @@ public class ProductoDTO {
     }
 
     public UUID getId() {
-        return id; 
+        return id;
     }
 
     public String getNombre() {

@@ -3,25 +3,25 @@ package com.recred.backend.infrastructure.entities;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.UUID;
+import static jakarta.persistence.EnumType.STRING;
+import static jakarta.persistence.FetchType.LAZY;
+import static jakarta.persistence.GenerationType.UUID;
+import static org.hibernate.type.SqlTypes.JSON;
 
 @Entity
 @Table(name = "sugerencias_ia")
@@ -31,22 +31,22 @@ import java.util.UUID;
 public class SugerenciaIAEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = UUID)
     private UUID id;
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(STRING)
     @Column(nullable = false)
     private TipoSugerenciaIA tipo;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "alumno_id")
     private AlumnoEntity alumnoEntity;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "buffet_id")
     private BuffetEntity buffetEntity;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "producto_id")
     private ProductoEntity productoEntity;
 
@@ -56,7 +56,7 @@ public class SugerenciaIAEntity {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String mensaje;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @JdbcTypeCode(JSON)
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> metadata;
 
@@ -70,7 +70,7 @@ public class SugerenciaIAEntity {
     @Column(name = "respondida_en")
     private LocalDateTime respondidaEn;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "evento_ia_id")
-    private EventoIAEntity eventoIaEntity;
+    private AIEventEntity eventoIaEntity;
 }

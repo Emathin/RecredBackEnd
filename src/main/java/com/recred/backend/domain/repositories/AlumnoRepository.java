@@ -10,4 +10,6 @@ public interface AlumnoRepository {
     Optional<Alumno> findById(UUID id);
 
     void save(Alumno alumno);
+
+    boolean existsById(UUID alumnoId);
 }

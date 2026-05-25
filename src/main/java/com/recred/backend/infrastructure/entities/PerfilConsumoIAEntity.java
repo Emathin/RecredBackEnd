@@ -1,26 +1,25 @@
 package com.recred.backend.infrastructure.entities;
 
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+
+import static jakarta.persistence.FetchType.LAZY;
+import static jakarta.persistence.GenerationType.UUID;
+import static org.hibernate.type.SqlTypes.JSON;
 
 @Entity
 @Table(name = "perfiles_consumo_ia")
@@ -30,18 +29,18 @@ import java.util.UUID;
 public class PerfilConsumoIAEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = UUID)
     private UUID id;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = LAZY)
     @JoinColumn(name = "alumno_id", nullable = false, unique = true)
     private AlumnoEntity alumnoEntity;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "categoria_favorita_id")
     private ClasificacionTipoEntity categoriaFavorita;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "producto_favorito_id")
     private ProductoEntity productoEntityFavorito;
 
@@ -51,7 +50,7 @@ public class PerfilConsumoIAEntity {
     @Column(name = "score_saludable")
     private Integer scoreSaludable;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @JdbcTypeCode(JSON)
     @Column(name = "datos_resumen", columnDefinition = "jsonb")
     private Map<String, Object> datosResumen;
 
