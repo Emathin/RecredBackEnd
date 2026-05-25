@@ -1,4 +1,4 @@
-package com.recred.backend.domain.implementation;
+package com.recred.backend.domain.services;
 
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import com.recred.backend.domain.models.Alumno;
