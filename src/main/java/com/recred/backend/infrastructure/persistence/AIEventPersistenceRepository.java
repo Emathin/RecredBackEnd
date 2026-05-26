@@ -121,7 +121,8 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         aiEventEntity.setInputData(inputData);
 
         Map<String, Object> outputData = new LinkedHashMap<>();
-        result.getAiAnalysis().ifPresent(analysis -> outputData.put("analisisIa", mapProductAnalysis(
+        result.getAiAnalysis().ifPresent(analysis
+                -> outputData.put("analisisIa", mapProductAnalysis(
                 analysis)));
         aiEventEntity.setResultData(outputData);
 
