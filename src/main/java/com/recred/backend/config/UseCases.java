@@ -31,10 +31,17 @@ import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
-import com.recred.backend.domain.services.*;
+import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 
 import java.time.Clock;
 import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
+import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
+import com.recred.backend.domain.services.SpendingPredictionCalculator;
+import com.recred.backend.domain.services.SpendingPredictionRangeService;
+import com.recred.backend.domain.services.ValidacionRestriccionesService;
+import com.recred.backend.domain.services.ValidadorHorarioService;
+import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -224,4 +231,6 @@ public class UseCases {
             PresupuestoRepository presupuestoRepository) {
         return new DisableBudget(presupuestoRepository);
     }
+
+
 }
