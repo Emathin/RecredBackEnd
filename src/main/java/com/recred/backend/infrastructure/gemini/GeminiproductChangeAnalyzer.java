@@ -5,8 +5,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
-import com.recred.backend.domain.models.SpendingPrediction;
-import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,14 +18,14 @@ public class GeminiproductChangeAnalyzer implements ProductChangeAnalyzer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(
             GeminiSpendingPredictionAnalyzer.class);
-    private static final String CATEGORY_SEPARATOR = "=";
     private static final String PROMPT_TEMPLATE = """
             Sos un asistente para quioskeros de una app escolar.
             Se te brindara un producto y su precio.
-            Devolveras una sugerencia para cambiar el producto por uno del mismo rubro existente en argentina
+            Devolveras una sugerencia para cambiar el producto por uno del mismo rubro
+             existente en argentina.
             Usa lenguaje simple, claro y accionable para usuario final.
-            No menciones modelo, confianza, calidad predictiva ni cantidad de datos historicos.
-            
+            No menciones modelo, confianza, calidad predictiva ni cantidad
+             de datos historicos.
             Genera alertas solo si hay riesgo real o un punto concreto para revisar.
             El resumen debe tener una sola oracion.
             Devolve como maximo 2 alertas y 2 recomendaciones.
@@ -55,12 +53,14 @@ public class GeminiproductChangeAnalyzer implements ProductChangeAnalyzer {
         this.objectMapper = objectMapper;
     }
     @Override
-    public Optional<ProductChangeAnalysis> analyze(ProductChangeRecommendation productChangeRecommendation) {
+    public Optional<ProductChangeAnalysis> analyze(
+            ProductChangeRecommendation productChangeRecommendation) {
         return geminiTextClient.generate(prompt(productChangeRecommendation))
                 .flatMap(this::parseResponse);
     }
 
-    private String prompt(ProductChangeRecommendation productChangeRecommendation) {
+    private String prompt(
+            ProductChangeRecommendation productChangeRecommendation) {
         return PROMPT_TEMPLATE.formatted(
 
                 productChangeRecommendation.getNombre(),

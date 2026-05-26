@@ -1,13 +1,10 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.ProductChangeRecommendation;
-import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface ProductJpaRepository
@@ -24,5 +21,4 @@ public interface ProductJpaRepository
     ProductoEntity findBuffetLeastSoldProducts(
             @Param("buffetId") UUID buffetId
     );
-
 }

@@ -1,12 +1,13 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.*;
+import com.recred.backend.domain.models.ProductChangeAnalysis;
+import com.recred.backend.domain.models.ProductChangeRecommendation;
+import com.recred.backend.domain.models.ProductRecommendationResult;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,7 +28,8 @@ public class GenerateProductChangeRecommendation {
     }
     @Transactional
     public ProductChangeAnalysis execute(UUID buffetId) {
-        ProductChangeRecommendation leastSoldProduct = productRepository.findBuffetLeastSoldProducts(buffetId);
+        ProductChangeRecommendation leastSoldProduct =
+                productRepository.findBuffetLeastSoldProducts(buffetId);
         Optional<ProductChangeAnalysis> aiAnalysis = productChangeAnalyzer
                 .analyze(leastSoldProduct);
         ProductRecommendationResult result = new ProductRecommendationResult(
