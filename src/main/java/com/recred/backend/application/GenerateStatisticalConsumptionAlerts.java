@@ -23,10 +23,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service
 public class GenerateStatisticalConsumptionAlerts {
 
     private static final int MINIMUM_LOOKBACK_DAYS = 1;
