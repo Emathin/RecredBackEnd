@@ -31,20 +31,42 @@ import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
-import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
-import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
-import com.recred.backend.domain.services.SpendingPredictionCalculator;
-import com.recred.backend.domain.services.SpendingPredictionRangeService;
+import com.recred.backend.domain.services.*;
+
 import java.time.Clock;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class UseCases {
+
+    @Bean
+    public CalculadorPeriodoPresupuesto calculadorPeriodoPresupuesto() {
+        return new CalculadorPeriodoPresupuesto();
+    }
+
+    @Bean
+    public ValidacionRestriccionesService validacionRestriccionesService() {
+        return new ValidacionRestriccionesService();
+    }
+
+    @Bean
+    public ValidadorHorarioService validadorHorarioService() {
+        return new ValidadorHorarioService();
+    }
+
+    @Bean
+    public ValidadorPresupuestoService validadorPresupuestoService(
+            PresupuestoRepository presupuestoRepository,
+            PurchaseRepository purchaseRepository,
+            CalculadorPeriodoPresupuesto calculadorPeriodo) {
+        return new ValidadorPresupuestoService(
+                presupuestoRepository,
+                purchaseRepository,
+                calculadorPeriodo
+        );
+    }
 
     @Bean
     public ProcessPresentialPurchase processPresentialPurchase(

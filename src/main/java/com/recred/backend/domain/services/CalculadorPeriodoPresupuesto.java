@@ -2,14 +2,12 @@ package com.recred.backend.domain.services;
 
 import com.recred.backend.domain.models.PeriodoPresupuesto;
 import com.recred.backend.domain.models.RangoFechas;
-import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 
-@Service
 public class CalculadorPeriodoPresupuesto {
 
     public RangoFechas calcularRango(PeriodoPresupuesto periodo,

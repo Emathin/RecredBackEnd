@@ -4,11 +4,10 @@ import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.ClasificacionSalud;
-import org.springframework.stereotype.Service;
 
 import java.util.stream.Collectors;
 import java.util.Set;
-@Service
+
 public class ValidacionRestriccionesService {
 
     public void validarCompra(Alumno alumno, Set<Producto> productos) {

@@ -6,7 +6,6 @@ import com.recred.backend.domain.models.RangoFechas;
 import com.recred.backend.domain.models.ReglaPresupuestoCategoria;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
-import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,7 +13,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-@Service
 public class ValidadorPresupuestoService {
 
     private final PresupuestoRepository presupuestoRepository;
