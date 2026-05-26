@@ -6,7 +6,6 @@ import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.domain.models.ClasificacionSalud;
 
-
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;

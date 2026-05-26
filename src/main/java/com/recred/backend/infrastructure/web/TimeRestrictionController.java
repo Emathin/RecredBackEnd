@@ -1,13 +1,15 @@
 package com.recred.backend.infrastructure.web;
-;
+
+import com.recred.backend.domain.models.RestriccionHoraria;
+
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.TimeRestrictionCommand;
 import com.recred.backend.application.UpdateTimeRestriction;
-import com.recred.backend.domain.models.RestriccionHoraria;
-import org.springframework.http.HttpStatus;
+
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,14 +43,17 @@ public class TimeRestrictionController {
     }
 
     @PostMapping
-    public ResponseEntity<RestriccionHoraria> create(@RequestBody TimeRestrictionCommand command) {
+    public ResponseEntity<RestriccionHoraria> create(@RequestBody
+                                                         TimeRestrictionCommand command) {
         RestriccionHoraria created = createTimeRestriction.execute(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<RestriccionHoraria>> getByStudent(@PathVariable UUID studentId) {
-        List<RestriccionHoraria> restrictions = getTimeRestrictionsByStudent.execute(studentId);
+    public ResponseEntity<List<RestriccionHoraria>>
+    getByStudent(@PathVariable UUID studentId) {
+        List<RestriccionHoraria> restrictions =
+                getTimeRestrictionsByStudent.execute(studentId);
         return ResponseEntity.ok(restrictions);
     }
 

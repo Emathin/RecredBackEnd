@@ -1,5 +1,8 @@
 package com.recred.backend.config;
 
+import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.InsufficientBalanceException;
+import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import org.slf4j.Logger;
@@ -11,14 +14,18 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(
+            GlobalExceptionHandler.class);
 
     @ExceptionHandler(RestriccionHorariaException.class)
-    public ResponseEntity<ErrorResponse> handleRestriccionHoraria(RestriccionHorariaException ex) {
+    public ResponseEntity<ErrorResponse>
+    handleRestriccionHoraria(RestriccionHorariaException ex){
         ErrorResponse error = new ErrorResponse(
                 "Restricción Horaria",
                 ex.getMessage(),
@@ -28,14 +35,42 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
+    @ExceptionHandler(PresupuestoExcedidoException.class)
+    public ResponseEntity<Map<String, Object>> handlePresupuestoExcedido(
+            PresupuestoExcedidoException ex) {
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Límite de Presupuesto Superado");
+        body.put("message", ex.getMessage());
+
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(RestriccionSaludException.class)
-    public ResponseEntity<ErrorResponse> handleRestriccionSalud(RestriccionSaludException ex) {
+    public ResponseEntity<ErrorResponse> handleRestriccionSalud(
+            RestriccionSaludException ex) {
         return buildResponse(HttpStatus.CONFLICT, "Conflicto de Restricción Médica",
+                ex.getMessage());
+    }
+    
+    @ExceptionHandler(AlumnoNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handleAlumnoNoEncontrado(AlumnoNoEncontradoException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Alumno no encontrado",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(InsufficientBalanceException.class)
+    public ResponseEntity<ErrorResponse>
+    handleInsufficientBalance(InsufficientBalanceException ex){
+        return buildResponse(HttpStatus.BAD_REQUEST, "Saldo Insuficiente",
                 ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ErrorResponse>
+    handleValidation(MethodArgumentNotValidException ex){
         String details = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .findFirst().orElse("Datos inválidos");

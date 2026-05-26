@@ -7,6 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface SpringDataFranjaHorariaRepository extends
-        JpaRepository<FranjaHorariaEntity, UUID> {
+        JpaRepository<FranjaHorariaEntity, UUID>{
     List<FranjaHorariaEntity> findByColegioEntityIdAndActivoTrue(UUID colegioId);
 }

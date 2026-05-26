@@ -7,4 +7,5 @@ import java.util.UUID;
 
 public interface FranjaHorariaRepository {
     List<FranjaHoraria> findAllByColegioId(UUID colegioID);
+    FranjaHoraria save(FranjaHoraria franjaHoraria);
 }

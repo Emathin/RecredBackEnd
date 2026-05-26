@@ -1,6 +1,8 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.domain.models.CategoriaProducto;
+import com.recred.backend.domain.models.ReglaPresupuestoCategoria;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -50,4 +52,22 @@ public class ReglaPresupuestoCategoriaEntity {
 
     @Column(nullable = false)
     private Boolean activo = true;
+
+    public ReglaPresupuestoCategoria toDomain() {
+        ReglaPresupuestoCategoria domain = new ReglaPresupuestoCategoria();
+
+        domain.setId(this.id);
+        domain.setPorcentajeLimite(this.porcentajeLimite);
+        domain.setMontoLimiteCalculado(this.montoLimiteCalculado);
+        domain.setActivo(this.activo != null ? this.activo : false);
+
+        if (this.categoria != null) {
+            CategoriaProducto catDomain = new CategoriaProducto();
+            catDomain.setId(this.categoria.getId());
+
+            domain.setCategoria(catDomain);
+        }
+
+        return domain;
+    }
 }
