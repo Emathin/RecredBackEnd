@@ -1,12 +1,14 @@
 package com.recred.backend.config;
 
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
 import com.recred.backend.domain.services.SpendingPredictionRangeService;
-import java.time.Clock;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.time.Clock;
 
 @Configuration
 @EnableConfigurationProperties(GeminiProperties.class)

@@ -1,11 +1,11 @@
 package com.recred.backend.infrastructure.persistence;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.infrastructure.gemini.GeminiTextClient;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Map;
