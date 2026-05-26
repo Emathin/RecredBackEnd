@@ -65,14 +65,18 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
-    public BigDecimal sumarGastosPorAlumnoEnRango(UUID alumnoId, LocalDateTime inicio, LocalDateTime fin) {
-        return springDataRepository.sumarGastosGeneralesEnRango(alumnoId, EstadoCompra.ENTREGADO, inicio, fin);
+    public BigDecimal sumarGastosPorAlumnoEnRango
+            (UUID alumnoId, LocalDateTime inicio, LocalDateTime fin) {
+        return springDataRepository.sumarGastosGeneralesEnRango
+                (alumnoId, EstadoCompra.ENTREGADO, inicio, fin);
 
     }
 
     @Override
-    public BigDecimal sumarGastosPorCategoriaEnRango(UUID alumnoId, UUID categoriaId, LocalDateTime inicio, LocalDateTime fin) {
-        return springDataRepository.sumarGastosPorCategoriaEnRango(alumnoId, EstadoCompra.ENTREGADO, categoriaId, inicio, fin);
+    public BigDecimal sumarGastosPorCategoriaEnRango
+            (UUID alumnoId, UUID categoriaId, LocalDateTime inicio, LocalDateTime fin) {
+        return springDataRepository.sumarGastosPorCategoriaEnRango
+                (alumnoId, EstadoCompra.ENTREGADO, categoriaId, inicio, fin);
     }
 
 }
