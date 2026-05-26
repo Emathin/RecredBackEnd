@@ -21,10 +21,12 @@ import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
+import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
 import com.recred.backend.domain.services.ValidadorHorarioService;
+import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -35,13 +37,17 @@ public class UseCases {
     public ProcessPresentialPurchase processPresentialPurchase(
             AlumnoRepository studentRepository,
             WalletRepository walletRepository,
-            PurchaseRepository purchaseRepository) {
+            PurchaseRepository purchaseRepository,
+            ValidadorHorarioService timeValidator,
+            ValidacionRestriccionesService healthValidator,
+            ValidadorPresupuestoService budgetValidator) {
         return new ProcessPresentialPurchase(
                 studentRepository,
                 walletRepository,
                 purchaseRepository,
-                new ValidadorHorarioService(),
-                new ValidacionRestriccionesService()
+                timeValidator,
+                healthValidator,
+                budgetValidator
         );
     }
 

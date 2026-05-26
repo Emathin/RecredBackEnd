@@ -3,12 +3,14 @@ package com.recred.backend.domain.services;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Set;
 
+@Service
 public class ValidadorHorarioService {
 
     private static final ZoneId ZONA_LOCAL = ZoneId.of("America/Argentina/Buenos_Aires");

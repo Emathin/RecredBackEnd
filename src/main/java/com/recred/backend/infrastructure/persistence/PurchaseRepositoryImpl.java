@@ -6,7 +6,7 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
 import com.recred.backend.infrastructure.entities.CompraEntity;
-import com.recred.backend.infrastructure.entities.CompraEntityPresencialEntity;
+import com.recred.backend.infrastructure.entities.CompraPresencialEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +27,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     @Override
     public void save(Purchase purchase) {
         CompraEntity entity = springDataRepository.findById(purchase.getId())
-                .orElseGet(CompraEntityPresencialEntity::new);
+                .orElseGet(CompraPresencialEntity::new);
 
         if (purchase.getId() != null) {
             entity.setId(purchase.getId());
@@ -67,10 +67,12 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     @Override
     public BigDecimal sumarGastosPorAlumnoEnRango(UUID alumnoId, LocalDateTime inicio, LocalDateTime fin) {
         return springDataRepository.sumarGastosGeneralesEnRango(alumnoId, EstadoCompra.ENTREGADO, inicio, fin);
+
     }
 
     @Override
     public BigDecimal sumarGastosPorCategoriaEnRango(UUID alumnoId, UUID categoriaId, LocalDateTime inicio, LocalDateTime fin) {
         return springDataRepository.sumarGastosPorCategoriaEnRango(alumnoId, EstadoCompra.ENTREGADO, categoriaId, inicio, fin);
     }
+
 }

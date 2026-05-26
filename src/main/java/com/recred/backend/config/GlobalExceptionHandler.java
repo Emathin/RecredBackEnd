@@ -1,11 +1,8 @@
 package com.recred.backend.config;
 
-<<<<<<< feature/compra-espontanea
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
-=======
 import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
->>>>>>> control-presupuesto
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import org.slf4j.Logger;
@@ -27,13 +24,8 @@ public class GlobalExceptionHandler {
             GlobalExceptionHandler.class);
 
     @ExceptionHandler(RestriccionHorariaException.class)
-<<<<<<< feature/compra-espontanea
     public ResponseEntity<ErrorResponse>
     handleRestriccionHoraria(RestriccionHorariaException ex){
-=======
-    public ResponseEntity<ErrorResponse> handleRestriccionHoraria(
-            RestriccionHorariaException ex) {
->>>>>>> control-presupuesto
         ErrorResponse error = new ErrorResponse(
                 "Restricción Horaria",
                 ex.getMessage(),
@@ -77,13 +69,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-<<<<<<< feature/compra-espontanea
     public ResponseEntity<ErrorResponse>
     handleValidation(MethodArgumentNotValidException ex){
-=======
-    public ResponseEntity<ErrorResponse> handleValidation(
-            MethodArgumentNotValidException ex) {
->>>>>>> control-presupuesto
         String details = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .findFirst().orElse("Datos inválidos");

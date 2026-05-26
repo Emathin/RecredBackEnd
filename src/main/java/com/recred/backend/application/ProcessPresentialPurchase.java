@@ -12,18 +12,11 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
 import com.recred.backend.domain.services.ValidadorHorarioService;
-<<<<<<< feature/compra-espontanea
-=======
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
->>>>>>> control-presupuesto
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
-<<<<<<< feature/compra-espontanea
-=======
-import java.util.Set;
->>>>>>> control-presupuesto
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -34,98 +27,56 @@ public class ProcessPresentialPurchase {
     private final PurchaseRepository purchaseRepository;
     private final ValidadorHorarioService timeValidator;
     private final ValidacionRestriccionesService healthValidator;
-<<<<<<< feature/compra-espontanea
+    private final ValidadorPresupuestoService budgetValidator;
 
     public ProcessPresentialPurchase(AlumnoRepository studentRepository,
                                      WalletRepository walletRepository,
                                      PurchaseRepository purchaseRepository,
                                      ValidadorHorarioService timeValidator,
-                                     ValidacionRestriccionesService healthValidator) {
+                                     ValidacionRestriccionesService healthValidator,
+                                     ValidadorPresupuestoService budgetValidator) {
 
         this.studentRepository = studentRepository;
         this.walletRepository = walletRepository;
         this.purchaseRepository = purchaseRepository;
-=======
-    private final ValidadorPresupuestoService budgetValidator;
-
-    public ProcessPresentialPurchase(ValidadorHorarioService timeValidator,
-                                     ValidacionRestriccionesService healthValidator,
-                                     ValidadorPresupuestoService budgetValidator) {
->>>>>>> control-presupuesto
         this.timeValidator = timeValidator;
         this.healthValidator = healthValidator;
         this.budgetValidator = budgetValidator;
     }
 
-<<<<<<< feature/compra-espontanea
     public void execute(UUID studentId, Map<Producto, Integer> cart) {
 
+        // 1. Obtener el alumno real de la base de datos
         Alumno student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
 
-
-        timeValidator.validarCompra(student, cart.keySet(), LocalDateTime.now());
-        healthValidator.validarCompra(student, cart.keySet());
-
-
-        BigDecimal totalAmount = calculateTotal(cart);
-
-
-        Billetera wallet = walletRepository.findByStudentId(studentId)
-                .orElseThrow(() -> new IllegalStateException
-                        ("Student wallet not found: " + studentId));
-
-        if (!wallet.hasSufficientBalance(totalAmount)) {
-            throw new InsufficientBalanceException
-                    ("Insufficient balance for student: " + studentId);
-        }
-
-
-        wallet.debit(totalAmount);
-
-
-        Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS);
-
-
-        walletRepository.save(wallet);
-        purchaseRepository.save(purchase);
-    }
-
-
-
-    private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
-        return cart.entrySet().stream()
-                .map(entry ->
-                        entry.getKey().getPrecio().multiply(new BigDecimal(entry.getValue())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-=======
-    public void execute(UUID studentId, Set<Producto> cart) {
-        Alumno student = new Alumno();
-        student.setId(studentId);
-
         LocalDateTime momentoCompra = LocalDateTime.now();
 
-        timeValidator.validarCompra(student, cart, momentoCompra);
-        healthValidator.validarCompra(student, cart);
+        // 2. Validaciones de horario y salud
+        timeValidator.validarCompra(student, cart.keySet(), momentoCompra);
+        healthValidator.validarCompra(student, cart.keySet());
 
-        BigDecimal montoTotalCarrito = cart.stream()
-                .map(p -> p.getPrecio() != null ?
-                        p.getPrecio() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 3. Calcular montos considerando las cantidades del carrito
+        BigDecimal montoTotalCarrito = calculateTotal(cart);
 
-        Map<UUID, BigDecimal> montosPorCategoria = cart.stream()
-                .filter(p -> p.getCategoria() != null &&
-                        p.getCategoria().getId() != null)
+        // Agrupar por categoría multiplicando el precio por la cantidad
+        Map<UUID, BigDecimal> montosPorCategoria = cart.entrySet().stream()
+                .filter(entry -> entry.getKey().getCategoria() != null &&
+                        entry.getKey().getCategoria().getId() != null)
                 .collect(Collectors.groupingBy(
-                        p -> p.getCategoria().getId(),
+                        entry -> entry.getKey().getCategoria().getId(),
                         Collectors.reducing(
                                 BigDecimal.ZERO,
-                                p -> p.getPrecio() != null ?
-                                        p.getPrecio() : BigDecimal.ZERO,
+                                entry -> {
+                                    BigDecimal precio = entry.getKey().getPrecio() != null ?
+                                            entry.getKey().getPrecio() : BigDecimal.ZERO;
+                                    return precio.multiply(new BigDecimal(entry.getValue()));
+                                },
                                 BigDecimal::add
                         )
                 ));
 
+        // 4. Validar presupuesto
         budgetValidator.validarPresupuesto(
                 studentId,
                 montoTotalCarrito,
@@ -133,6 +84,32 @@ public class ProcessPresentialPurchase {
                 momentoCompra
         );
 
->>>>>>> control-presupuesto
+        // 5. Validar saldo y debitar de la billetera
+        Billetera wallet = walletRepository.findByStudentId(studentId)
+                .orElseThrow(() ->
+                        new IllegalStateException("Student wallet not found: " + studentId));
+
+        if (!wallet.hasSufficientBalance(montoTotalCarrito)) {
+            throw new InsufficientBalanceException
+                    ("Insufficient balance for student: " + studentId);
+        }
+
+        wallet.debit(montoTotalCarrito);
+
+        // 6. Guardar la compra
+        Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS);
+
+        walletRepository.save(wallet);
+        purchaseRepository.save(purchase);
+    }
+
+    private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
+        return cart.entrySet().stream()
+                .map(entry -> {
+                    BigDecimal precio = entry.getKey().getPrecio() != null ?
+                            entry.getKey().getPrecio() : BigDecimal.ZERO;
+                    return precio.multiply(new BigDecimal(entry.getValue()));
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }
