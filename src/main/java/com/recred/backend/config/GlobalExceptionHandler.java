@@ -1,6 +1,11 @@
 package com.recred.backend.config;
 
+<<<<<<< feature/compra-espontanea
+import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.InsufficientBalanceException;
+=======
 import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
+>>>>>>> control-presupuesto
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import org.slf4j.Logger;
@@ -22,8 +27,13 @@ public class GlobalExceptionHandler {
             GlobalExceptionHandler.class);
 
     @ExceptionHandler(RestriccionHorariaException.class)
+<<<<<<< feature/compra-espontanea
+    public ResponseEntity<ErrorResponse>
+    handleRestriccionHoraria(RestriccionHorariaException ex){
+=======
     public ResponseEntity<ErrorResponse> handleRestriccionHoraria(
             RestriccionHorariaException ex) {
+>>>>>>> control-presupuesto
         ErrorResponse error = new ErrorResponse(
                 "Restricción Horaria",
                 ex.getMessage(),
@@ -52,10 +62,28 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, "Conflicto de Restricción Médica",
                 ex.getMessage());
     }
+    
+    @ExceptionHandler(AlumnoNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handleAlumnoNoEncontrado(AlumnoNoEncontradoException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Alumno no encontrado",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(InsufficientBalanceException.class)
+    public ResponseEntity<ErrorResponse>
+    handleInsufficientBalance(InsufficientBalanceException ex){
+        return buildResponse(HttpStatus.BAD_REQUEST, "Saldo Insuficiente",
+                ex.getMessage());
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
+<<<<<<< feature/compra-espontanea
+    public ResponseEntity<ErrorResponse>
+    handleValidation(MethodArgumentNotValidException ex){
+=======
     public ResponseEntity<ErrorResponse> handleValidation(
             MethodArgumentNotValidException ex) {
+>>>>>>> control-presupuesto
         String details = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .findFirst().orElse("Datos inválidos");

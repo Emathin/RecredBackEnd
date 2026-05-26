@@ -1,5 +1,16 @@
 package com.recred.backend.infrastructure.persistence;
 
+<<<<<<< feature/compra-espontanea
+import com.recred.backend.infrastructure.entities.CompraEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.UUID;
+
+@Repository
+public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity, UUID> {
+}
+=======
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.infrastructure.entities.CompraEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -38,3 +49,4 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             @Param("fin") LocalDateTime fin
     );
 }
+>>>>>>> control-presupuesto

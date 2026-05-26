@@ -33,11 +33,18 @@ public class SchedulePickup {
                         FranjaHoraria pickupSlot,
                         LocalDate pickupDate) {
 
+<<<<<<< feature/compra-espontanea
+        // 2. Proyectar el momento exacto del retiro
+        // Usamos la hora de inicio de la franja elegida como punto de control
+        LocalDateTime projectedPickupTime = LocalDateTime.of(pickupDate, pickupSlot.
+                getHoraInicio());
+=======
         Alumno student = new Alumno();
         student.setId(studentId);
 
         LocalDateTime projectedPickupTime = LocalDateTime.of(pickupDate,
                 pickupSlot.getHoraInicio());
+>>>>>>> control-presupuesto
 
         timeValidator.validarCompra(student, cart, projectedPickupTime);
         validacionRestriccionesService.validarCompra(student, cart);
