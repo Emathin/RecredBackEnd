@@ -15,8 +15,8 @@ public class RestriccionHoraria {
     private UUID id;
     private UUID alumnoId;
     private FranjaHoraria franjaHoraria;
-    private CategoriaProducto categoria;      // Nullable
-    private ClasificacionTipo clasificacion;  // Nullable
+    private CategoriaProducto categoria;
+    private ClasificacionTipo clasificacion;
     private boolean activa = true;
 
     public RestriccionHoraria(UUID id, UUID alumnoId, FranjaHoraria franjaHoraria,

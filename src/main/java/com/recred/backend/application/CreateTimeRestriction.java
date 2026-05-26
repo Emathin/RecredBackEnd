@@ -31,7 +31,7 @@ public class CreateTimeRestriction {
         }
 
         RestriccionHoraria restriction = new RestriccionHoraria(
-                null, // ID generado por la BD
+                null,
                 command.studentId(),
                 timeSlot,
                 category,

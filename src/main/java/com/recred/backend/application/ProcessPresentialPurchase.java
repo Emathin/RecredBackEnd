@@ -12,11 +12,20 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
 import com.recred.backend.domain.services.ValidadorHorarioService;
+<<<<<<< feature/compra-espontanea
+=======
+import com.recred.backend.domain.services.ValidadorPresupuestoService;
+>>>>>>> control-presupuesto
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
+<<<<<<< feature/compra-espontanea
+=======
+import java.util.Set;
+>>>>>>> control-presupuesto
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class ProcessPresentialPurchase {
 
@@ -25,6 +34,7 @@ public class ProcessPresentialPurchase {
     private final PurchaseRepository purchaseRepository;
     private final ValidadorHorarioService timeValidator;
     private final ValidacionRestriccionesService healthValidator;
+<<<<<<< feature/compra-espontanea
 
     public ProcessPresentialPurchase(AlumnoRepository studentRepository,
                                      WalletRepository walletRepository,
@@ -35,10 +45,19 @@ public class ProcessPresentialPurchase {
         this.studentRepository = studentRepository;
         this.walletRepository = walletRepository;
         this.purchaseRepository = purchaseRepository;
+=======
+    private final ValidadorPresupuestoService budgetValidator;
+
+    public ProcessPresentialPurchase(ValidadorHorarioService timeValidator,
+                                     ValidacionRestriccionesService healthValidator,
+                                     ValidadorPresupuestoService budgetValidator) {
+>>>>>>> control-presupuesto
         this.timeValidator = timeValidator;
         this.healthValidator = healthValidator;
+        this.budgetValidator = budgetValidator;
     }
 
+<<<<<<< feature/compra-espontanea
     public void execute(UUID studentId, Map<Producto, Integer> cart) {
 
         Alumno student = studentRepository.findById(studentId)
@@ -79,5 +98,41 @@ public class ProcessPresentialPurchase {
                 .map(entry ->
                         entry.getKey().getPrecio().multiply(new BigDecimal(entry.getValue())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+=======
+    public void execute(UUID studentId, Set<Producto> cart) {
+        Alumno student = new Alumno();
+        student.setId(studentId);
+
+        LocalDateTime momentoCompra = LocalDateTime.now();
+
+        timeValidator.validarCompra(student, cart, momentoCompra);
+        healthValidator.validarCompra(student, cart);
+
+        BigDecimal montoTotalCarrito = cart.stream()
+                .map(p -> p.getPrecio() != null ?
+                        p.getPrecio() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Map<UUID, BigDecimal> montosPorCategoria = cart.stream()
+                .filter(p -> p.getCategoria() != null &&
+                        p.getCategoria().getId() != null)
+                .collect(Collectors.groupingBy(
+                        p -> p.getCategoria().getId(),
+                        Collectors.reducing(
+                                BigDecimal.ZERO,
+                                p -> p.getPrecio() != null ?
+                                        p.getPrecio() : BigDecimal.ZERO,
+                                BigDecimal::add
+                        )
+                ));
+
+        budgetValidator.validarPresupuesto(
+                studentId,
+                montoTotalCarrito,
+                montosPorCategoria,
+                momentoCompra
+        );
+
+>>>>>>> control-presupuesto
     }
 }
