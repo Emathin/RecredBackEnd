@@ -46,20 +46,16 @@ public class ProcessPresentialPurchase {
 
     public void execute(UUID studentId, Map<Producto, Integer> cart) {
 
-        // 1. Obtener el alumno real de la base de datos
         Alumno student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
 
         LocalDateTime momentoCompra = LocalDateTime.now();
 
-        // 2. Validaciones de horario y salud
         timeValidator.validarCompra(student, cart.keySet(), momentoCompra);
         healthValidator.validarCompra(student, cart.keySet());
 
-        // 3. Calcular montos considerando las cantidades del carrito
         BigDecimal montoTotalCarrito = calculateTotal(cart);
 
-        // Agrupar por categoría multiplicando el precio por la cantidad
         Map<UUID, BigDecimal> montosPorCategoria = cart.entrySet().stream()
                 .filter(entry -> entry.getKey().getCategoria() != null &&
                         entry.getKey().getCategoria().getId() != null)
@@ -76,7 +72,6 @@ public class ProcessPresentialPurchase {
                         )
                 ));
 
-        // 4. Validar presupuesto
         budgetValidator.validarPresupuesto(
                 studentId,
                 montoTotalCarrito,
@@ -84,7 +79,6 @@ public class ProcessPresentialPurchase {
                 momentoCompra
         );
 
-        // 5. Validar saldo y debitar de la billetera
         Billetera wallet = walletRepository.findByStudentId(studentId)
                 .orElseThrow(() ->
                         new IllegalStateException("Student wallet not found: " + studentId));
@@ -96,7 +90,6 @@ public class ProcessPresentialPurchase {
 
         wallet.debit(montoTotalCarrito);
 
-        // 6. Guardar la compra
         Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS);
 
         walletRepository.save(wallet);
