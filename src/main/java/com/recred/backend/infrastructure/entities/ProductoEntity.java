@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.domain.models.ProductChangeRecommendation;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -94,5 +95,15 @@ public class ProductoEntity {
     public void removeMedida(ProductoMedidaEntity medida) {
         medidas.remove(medida);
         medida.setProducto(null);
+    }
+
+    public ProductChangeRecommendation toProductRecommendation(UUID buffetId) {
+        ProductChangeRecommendation producto= new ProductChangeRecommendation();
+        producto.setIdBuffet(buffetId);
+        producto.setId(this.id);
+        producto.setNombre(this.nombre);
+        producto.setPrecio(this.precio);
+        return producto;
+
     }
 }
