@@ -30,6 +30,7 @@ import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
+import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
@@ -261,9 +262,9 @@ public class UseCases {
     @Bean
     public GenerateProductChangeRecommendation generateProductChangeRecommendation(
             ProductRepository productRepository, ProductChangeAnalyzer productChangeAnalyzer,
-            AIEventRepository aiEventRepository) {
+            AIEventRepository aiEventRepository, KiosqueroRepository kiosqueroRepository) {
         return new GenerateProductChangeRecommendation(
-                productRepository,productChangeAnalyzer,aiEventRepository);
+                productRepository,productChangeAnalyzer,aiEventRepository,kiosqueroRepository);
     }
 
 }
