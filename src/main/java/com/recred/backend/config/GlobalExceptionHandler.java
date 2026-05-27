@@ -85,10 +85,12 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation
+            (DataIntegrityViolationException ex) {
         LOGGER.error("Violación de integridad de datos: ", ex);
 
-        String mensaje = "Error al guardar la configuración. Es posible que esté intentando asignar la misma categoría más de una vez.";
+        String mensaje = "Error al guardar la configuración. Es posible que " +
+                "esté intentando asignar la misma categoría más de una vez.";
         return buildResponse(HttpStatus.CONFLICT, "Conflicto de Datos", mensaje);
     }
 

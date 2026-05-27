@@ -44,16 +44,19 @@ public class PresupuestoAlumno {
 
         BigDecimal sumaPorcentajes = this.reglasCategoria.stream()
                 .filter(ReglaPresupuestoCategoria::isActivo)
-                .map(r -> r.getPorcentajeLimite() != null ? r.getPorcentajeLimite() : BigDecimal.ZERO)
+                .map(r -> r.getPorcentajeLimite() != null ?
+                        r.getPorcentajeLimite() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (sumaPorcentajes.compareTo(new BigDecimal("100")) > 0) {
-            throw new IllegalArgumentException("La suma de los porcentajes no puede superar el 100%. Total enviado: " + sumaPorcentajes + "%");
+            throw new IllegalArgumentException("La suma de los porcentajes " +
+                    "no puede superar el 100%. Total enviado: " + sumaPorcentajes + "%");
         }
     }
 
     public void recalcularMontosReglas() {
-        if (this.reglasCategoria == null || this.reglasCategoria.isEmpty() || this.montoLimiteGeneral == null) {
+        if (this.reglasCategoria == null || this.reglasCategoria.
+                isEmpty() || this.montoLimiteGeneral == null) {
             return;
         }
 

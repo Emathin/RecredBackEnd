@@ -21,14 +21,16 @@ public class UpdateBudget {
     @Transactional
     public PresupuestoAlumno execute(UUID budgetId, BudgetCommand command) {
         PresupuestoAlumno presupuesto = repository.findById(budgetId)
-                .orElseThrow(() -> new RuntimeException("Presupuesto no encontrado con ID: " + budgetId));
+                .orElseThrow(() -> new RuntimeException
+                        ("Presupuesto no encontrado con ID: " + budgetId));
 
         presupuesto.setMontoLimiteGeneral(command.limitAmount());
         presupuesto.setPeriodo(command.period());
         presupuesto.setFechaInicio(command.startDate());
 
         if (command.categoryRules() != null && !command.categoryRules().isEmpty()) {
-            List<ReglaPresupuestoCategoria> nuevasReglas = command.categoryRules().stream().map(rule -> {
+            List<ReglaPresupuestoCategoria> nuevasReglas =
+                    command.categoryRules().stream().map(rule -> {
                 CategoriaProducto categoria = new CategoriaProducto();
                 categoria.setId(rule.categoryId());
 

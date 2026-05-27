@@ -22,7 +22,8 @@ public class UpdateBudgetRules {
     @Transactional
     public PresupuestoAlumno execute(UUID budgetId, UpdateBudgetRulesCommand command) {
         PresupuestoAlumno presupuesto = repository.findById(budgetId)
-                .orElseThrow(() -> new RuntimeException("Presupuesto no encontrado con ID: " + budgetId));
+                .orElseThrow(() -> new RuntimeException
+                        ("Presupuesto no encontrado con ID: " + budgetId));
 
         List<ReglaPresupuestoCategoria> nuevasReglas = new ArrayList<>();
 
