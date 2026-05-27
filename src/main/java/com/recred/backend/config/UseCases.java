@@ -18,6 +18,7 @@ import com.recred.backend.application.PredictStudentSpending;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.UpdateBudget;
+import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -56,6 +57,11 @@ public class UseCases {
     @Bean
     public ValidacionRestriccionesService validacionRestriccionesService() {
         return new ValidacionRestriccionesService();
+    }
+
+    @Bean
+    public UpdateBudgetRules updateBudgetRules(PresupuestoRepository repository) {
+        return new UpdateBudgetRules(repository);
     }
 
     @Bean

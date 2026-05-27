@@ -79,7 +79,7 @@ class ProcessPresentialPurchaseTest {
         product.setCategoria(category);
 
         cart = new HashMap<>();
-        cart.put(product, 2); // Total: 20.00
+        cart.put(product, 2);
     }
 
     @Test
@@ -119,7 +119,7 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WhenInsufficientBalance_ShouldThrowException() {
-        wallet.setSaldoCreditos(new BigDecimal("10.00")); // Not enough for a 20.00 purchase
+        wallet.setSaldoCreditos(new BigDecimal("10.00"));
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 

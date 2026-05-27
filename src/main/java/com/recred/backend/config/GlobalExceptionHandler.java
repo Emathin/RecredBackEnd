@@ -7,6 +7,7 @@ import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -54,7 +55,7 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, "Conflicto de Restricción Médica",
                 ex.getMessage());
     }
-    
+
     @ExceptionHandler(AlumnoNoEncontradoException.class)
     public ResponseEntity<ErrorResponse> handleAlumnoNoEncontrado(AlumnoNoEncontradoException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Alumno no encontrado",
@@ -75,6 +76,20 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .findFirst().orElse("Datos inválidos");
         return buildResponse(HttpStatus.BAD_REQUEST, "Error de validación", details);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Regla de Negocio Inválida",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        LOGGER.error("Violación de integridad de datos: ", ex);
+
+        String mensaje = "Error al guardar la configuración. Es posible que esté intentando asignar la misma categoría más de una vez.";
+        return buildResponse(HttpStatus.CONFLICT, "Conflicto de Datos", mensaje);
     }
 
     @ExceptionHandler(Exception.class)
