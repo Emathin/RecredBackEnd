@@ -1,24 +1,32 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.ProductChangeRecommendation;
+import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
 public class ProductRepositoryImpl implements ProductRepository {
 
-    private final ProductJpaRepository productJpaRepository;
+    private final SpringDataProductRepository springDataRepository;
 
-    public ProductRepositoryImpl(ProductJpaRepository productJpaRepository) {
-        this.productJpaRepository = productJpaRepository;
+    public ProductRepositoryImpl(
+                                 SpringDataProductRepository springDataRepository) {
+        this.springDataRepository = springDataRepository;
     }
 
     @Override
+    public Optional<Producto> findById(UUID id) {
+        return springDataRepository.findById(id).map(ProductoEntity::toDomain);
+    }
+    @Override
     public ProductChangeRecommendation findBuffetLeastSoldProducts(UUID buffetId) {
-         ProductoEntity producto = productJpaRepository.findBuffetLeastSoldProducts(buffetId);
+        ProductoEntity producto = springDataRepository.findBuffetLeastSoldProducts(buffetId);
 
         return producto.toProductRecommendation(buffetId);
     }
