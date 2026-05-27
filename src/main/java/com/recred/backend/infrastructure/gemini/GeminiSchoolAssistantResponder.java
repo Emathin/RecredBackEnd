@@ -4,10 +4,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.models.ChatMessage;
-import com.recred.backend.domain.models.DateRange;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
 import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
+import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import java.util.List;
@@ -23,10 +23,12 @@ public class GeminiSchoolAssistantResponder implements SchoolAssistantResponder 
             GeminiSchoolAssistantResponder.class);
     private static final String PROMPT_TEMPLATE = """
             Sos un asistente virtual escolar de Recred.
-            Responde consultas de saldo, pagos y eventos escolares.
+            Solo podes responder sobre estos temas: saldos, pagos, compras y eventos escolares.
             Usa solamente los datos provistos en la seccion Datos.
             Si un dato no esta presente, deci que no hay informacion registrada.
-            No inventes saldos, pagos, fechas ni eventos.
+            No inventes saldos, pagos, compras, fechas ni eventos.
+            Si el usuario pregunta otra cosa, responde exactamente:
+            "No puedo ayudarte con ese tema ahora mismo."
             No ofrezcas hacer pagos, cancelar compras ni modificar datos.
             Responde en espanol rioplatense, claro y breve.
             La respuesta debe tener como maximo 2 oraciones.
@@ -38,15 +40,11 @@ public class GeminiSchoolAssistantResponder implements SchoolAssistantResponder 
             Consulta:
             %s
 
-            Capacidades:
-            %s
-
             Datos:
             alumnoId=%s
-            rangoPagos=%s
-            rangoEventos=%s
             saldo=%s
             pagosRecientes=%s
+            comprasRecientes=%s
             eventosProximos=%s
             historial=%s
             """;
@@ -89,19 +87,13 @@ public class GeminiSchoolAssistantResponder implements SchoolAssistantResponder 
     private String prompt(SchoolAssistantPrompt prompt) {
         return PROMPT_TEMPLATE.formatted(
                 prompt.question(),
-                prompt.query().capabilities(),
                 prompt.context().studentId(),
-                prompt.query().paymentDateRange().map(this::range).orElse("sin_filtro"),
-                prompt.query().eventDateRange().map(this::range).orElse("sin_filtro"),
                 prompt.context().balance().map(Object::toString).orElse("sin_datos"),
                 payments(prompt.context().recentPayments()),
+                purchases(prompt.context().recentPurchases()),
                 events(prompt.context().upcomingEvents()),
                 history(prompt.recentMessages())
         );
-    }
-
-    private String range(DateRange range) {
-        return range.startDate() + "|" + range.endDate();
     }
 
     private List<String> payments(List<SchoolAssistantPayment> payments) {
@@ -113,6 +105,18 @@ public class GeminiSchoolAssistantResponder implements SchoolAssistantResponder 
                         + payment.createdAt()
                         + "|"
                         + payment.approvedAt())
+                .toList();
+    }
+
+    private List<String> purchases(List<SchoolAssistantPurchase> purchases) {
+        return purchases.stream()
+                .map(purchase -> purchase.totalAmount()
+                        + "|"
+                        + purchase.status()
+                        + "|"
+                        + purchase.paymentMethod()
+                        + "|"
+                        + purchase.dateTime())
                 .toList();
     }
 

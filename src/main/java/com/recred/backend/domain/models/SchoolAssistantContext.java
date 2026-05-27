@@ -9,6 +9,7 @@ public record SchoolAssistantContext(
         UUID studentId,
         Optional<BigDecimal> balance,
         List<SchoolAssistantPayment> recentPayments,
+        List<SchoolAssistantPurchase> recentPurchases,
         List<SchoolCalendarEvent> upcomingEvents
 ) {
 }

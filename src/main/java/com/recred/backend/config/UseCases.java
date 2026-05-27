@@ -38,6 +38,7 @@ import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
+import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCalendarRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
@@ -46,10 +47,6 @@ import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 import java.time.Clock;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
-import com.recred.backend.domain.services.FlexibleSchoolAssistantQueryInterpreter;
-import com.recred.backend.domain.services.SchoolAssistantAiQueryInterpreter;
-import com.recred.backend.domain.services.SchoolAssistantLocalQueryInterpreter;
-import com.recred.backend.domain.services.SchoolAssistantQueryInterpreter;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
@@ -96,27 +93,14 @@ public class UseCases {
     }
 
     @Bean
-    public SchoolAssistantLocalQueryInterpreter schoolAssistantLocalQueryInterpreter() {
-        return new SchoolAssistantLocalQueryInterpreter();
-    }
-
-    @Bean
-    public SchoolAssistantQueryInterpreter schoolAssistantQueryInterpreter(
-            SchoolAssistantLocalQueryInterpreter localInterpreter,
-            SchoolAssistantAiQueryInterpreter aiInterpreter
-    ) {
-        return new FlexibleSchoolAssistantQueryInterpreter(localInterpreter, aiInterpreter);
-    }
-
-    @Bean
     public AskSchoolAssistant askSchoolAssistant(
             AlumnoRepository alumnoRepository,
             WalletRepository walletRepository,
             SchoolAssistantPaymentRepository paymentRepository,
+            SchoolAssistantPurchaseRepository purchaseRepository,
             SchoolCalendarRepository schoolCalendarRepository,
             ChatSessionRepository chatSessionRepository,
             ChatMessageRepository chatMessageRepository,
-            SchoolAssistantQueryInterpreter schoolAssistantQueryInterpreter,
             SchoolAssistantResponder schoolAssistantResponder,
             Clock clock
     ) {
@@ -124,10 +108,10 @@ public class UseCases {
                 alumnoRepository,
                 walletRepository,
                 paymentRepository,
+                purchaseRepository,
                 schoolCalendarRepository,
                 chatSessionRepository,
                 chatMessageRepository,
-                schoolAssistantQueryInterpreter,
                 schoolAssistantResponder,
                 clock
         );

@@ -5,25 +5,26 @@ import com.recred.backend.domain.exceptions.InvalidChatMessageException;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.ChatSession;
-import com.recred.backend.domain.models.DateRange;
 import com.recred.backend.domain.models.EstadoChatSesion;
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoPagoExterno;
+import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.RolChatMensaje;
 import com.recred.backend.domain.models.SchoolAssistantAnswer;
 import com.recred.backend.domain.models.SchoolAssistantCapability;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
 import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
-import com.recred.backend.domain.models.SchoolAssistantQuery;
+import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.models.TipoDiaEscolar;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ChatMessageRepository;
 import com.recred.backend.domain.repositories.ChatSessionRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
+import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCalendarRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.domain.services.SchoolAssistantQueryInterpreter;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -43,14 +44,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,6 +61,12 @@ class AskSchoolAssistantTest {
             ZoneOffset.UTC
     );
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 5, 27, 12, 0);
+    private static final List<SchoolAssistantCapability> ALLOWED_CAPABILITIES = List.of(
+            SchoolAssistantCapability.SALDO,
+            SchoolAssistantCapability.PAGOS,
+            SchoolAssistantCapability.COMPRAS,
+            SchoolAssistantCapability.EVENTOS
+    );
 
     @Mock
     private AlumnoRepository alumnoRepository;
@@ -72,6 +78,9 @@ class AskSchoolAssistantTest {
     private SchoolAssistantPaymentRepository paymentRepository;
 
     @Mock
+    private SchoolAssistantPurchaseRepository purchaseRepository;
+
+    @Mock
     private SchoolCalendarRepository schoolCalendarRepository;
 
     @Mock
@@ -79,9 +88,6 @@ class AskSchoolAssistantTest {
 
     @Mock
     private ChatMessageRepository chatMessageRepository;
-
-    @Mock
-    private SchoolAssistantQueryInterpreter schoolAssistantQueryInterpreter;
 
     @Mock
     private SchoolAssistantResponder schoolAssistantResponder;
@@ -97,10 +103,10 @@ class AskSchoolAssistantTest {
                 alumnoRepository,
                 walletRepository,
                 paymentRepository,
+                purchaseRepository,
                 schoolCalendarRepository,
                 chatSessionRepository,
                 chatMessageRepository,
-                schoolAssistantQueryInterpreter,
                 schoolAssistantResponder,
                 CLOCK
         );
@@ -110,13 +116,19 @@ class AskSchoolAssistantTest {
     }
 
     @Test
-    void executeBuildsContextAndReturnsAiAnswer() {
+    void executeBuildsFullContextAndReturnsAiAnswer() {
         Billetera wallet = wallet(new BigDecimal("1500.00"));
         SchoolAssistantPayment payment = new SchoolAssistantPayment(
                 new BigDecimal("500.00"),
                 EstadoPagoExterno.APROBADO,
                 NOW.minusDays(1),
                 NOW.minusDays(1)
+        );
+        SchoolAssistantPurchase purchase = new SchoolAssistantPurchase(
+                new BigDecimal("320.00"),
+                EstadoCompra.ENTREGADO,
+                MedioPago.CREDITOS,
+                NOW.minusHours(2)
         );
         SchoolCalendarEvent event = new SchoolCalendarEvent(
                 LocalDate.of(2026, 5, 29),
@@ -127,38 +139,13 @@ class AskSchoolAssistantTest {
         when(alumnoRepository.existsById(studentId)).thenReturn(true);
         when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
         when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
-        when(schoolAssistantQueryInterpreter.interpret(
-                eq("Quiero ver saldo, pagos y eventos"),
-                eq(LocalDate.of(2026, 5, 27)),
-                eq(List.of())
-        )).thenReturn(Optional.of(new SchoolAssistantQuery(
-                List.of(
-                        SchoolAssistantCapability.SALDO,
-                        SchoolAssistantCapability.PAGOS,
-                        SchoolAssistantCapability.EVENTOS
-                ),
-                Optional.of(new DateRange(
-                        LocalDate.of(2026, 5, 1),
-                        LocalDate.of(2026, 5, 31)
-                )),
-                Optional.of(new DateRange(
-                        LocalDate.of(2026, 5, 29),
-                        LocalDate.of(2026, 5, 29)
-                )),
-                3,
-                true
-        )));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
-        when(paymentRepository.findByStudentIdAndDateRange(
-                studentId,
-                LocalDateTime.of(2026, 5, 1, 0, 0),
-                LocalDateTime.of(2026, 5, 31, 23, 59, 59, 999999999),
-                3
-        )).thenReturn(List.of(payment));
+        when(paymentRepository.findRecentByStudentId(studentId, 5)).thenReturn(List.of(payment));
+        when(purchaseRepository.findRecentByStudentId(studentId, 10)).thenReturn(List.of(purchase));
         when(schoolCalendarRepository.findByStudentIdAndDateRange(
                 studentId,
-                LocalDate.of(2026, 5, 29),
-                LocalDate.of(2026, 5, 29)
+                LocalDate.of(2026, 5, 27),
+                LocalDate.of(2026, 6, 26)
         )).thenReturn(List.of(event));
         when(schoolAssistantResponder.respond(any())).thenReturn(Optional.of(
                 new SchoolAssistantDraft("Respuesta IA.", "gemini-test")
@@ -168,7 +155,7 @@ class AskSchoolAssistantTest {
                 studentId,
                 new SchoolAssistantCommand(
                         Optional.empty(),
-                        "Quiero ver saldo, pagos y eventos"
+                        "Quiero ver saldo, pagos, compras y eventos"
                 )
         );
 
@@ -176,20 +163,18 @@ class AskSchoolAssistantTest {
         assertEquals("Respuesta IA.", answer.answer());
         assertTrue(answer.generatedByAi());
         assertEquals("gemini-test", answer.model());
-        assertEquals(List.of(
-                SchoolAssistantCapability.SALDO,
-                SchoolAssistantCapability.PAGOS,
-                SchoolAssistantCapability.EVENTOS
-        ), answer.capabilities());
+        assertEquals(ALLOWED_CAPABILITIES, answer.capabilities());
 
         ArgumentCaptor<SchoolAssistantPrompt> promptCaptor = ArgumentCaptor
                 .forClass(SchoolAssistantPrompt.class);
         verify(schoolAssistantResponder).respond(promptCaptor.capture());
         SchoolAssistantPrompt prompt = promptCaptor.getValue();
+        assertEquals("Quiero ver saldo, pagos, compras y eventos", prompt.question());
+        assertEquals(studentId, prompt.context().studentId());
         assertEquals(new BigDecimal("1500.00"), prompt.context().balance().orElseThrow());
         assertEquals(payment, prompt.context().recentPayments().get(0));
+        assertEquals(purchase, prompt.context().recentPurchases().get(0));
         assertEquals(event, prompt.context().upcomingEvents().get(0));
-        assertEquals(3, prompt.query().paymentLimit());
         assertTrue(prompt.recentMessages().isEmpty());
 
         ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
@@ -199,74 +184,43 @@ class AskSchoolAssistantTest {
         assertEquals(RolChatMensaje.ASISTENTE_IA, messages.get(1).role());
         assertEquals("Respuesta IA.", messages.get(1).content());
         assertEquals(true, messages.get(1).metadata().get("generadoPorIa"));
+        assertEquals("gemini-test", messages.get(1).metadata().get("modelo"));
+        assertEquals(
+                List.of("SALDO", "PAGOS", "COMPRAS", "EVENTOS"),
+                messages.get(0).metadata().get("capacidadesPermitidas")
+        );
         verify(chatSessionRepository).updateLastActivity(sessionId, NOW);
     }
 
     @Test
-    void executeUsesTemplateWhenAiResponseIsNotRequired() {
+    void executeUsesFallbackWhenGeminiDoesNotReturnAnswer() {
         when(alumnoRepository.existsById(studentId)).thenReturn(true);
         when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
         when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
-        when(schoolAssistantQueryInterpreter.interpret(
-                eq("saldo"),
-                eq(LocalDate.of(2026, 5, 27)),
-                eq(List.of())
-        )).thenReturn(Optional.of(new SchoolAssistantQuery(
-                List.of(SchoolAssistantCapability.SALDO),
-                Optional.empty(),
-                Optional.empty(),
-                5,
-                false
-        )));
-        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(
-                wallet(new BigDecimal("123.45"))
-        ));
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
+        when(paymentRepository.findRecentByStudentId(studentId, 5)).thenReturn(List.of());
+        when(purchaseRepository.findRecentByStudentId(studentId, 10)).thenReturn(List.of());
+        when(schoolCalendarRepository.findByStudentIdAndDateRange(
+                studentId,
+                LocalDate.of(2026, 5, 27),
+                LocalDate.of(2026, 6, 26)
+        )).thenReturn(List.of());
+        when(schoolAssistantResponder.respond(any())).thenReturn(Optional.empty());
 
         SchoolAssistantAnswer answer = askSchoolAssistant.execute(
                 studentId,
-                new SchoolAssistantCommand(Optional.empty(), "saldo")
-        );
-
-        assertEquals("Saldo disponible: $123.45.", answer.answer());
-        assertFalse(answer.generatedByAi());
-        assertEquals(List.of(SchoolAssistantCapability.SALDO), answer.capabilities());
-        verifyNoInteractions(schoolAssistantResponder);
-    }
-
-    @Test
-    void executeDoesNotCallGeminiForOutOfScopeQuestions() {
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
-        when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
-        when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
-        when(schoolAssistantQueryInterpreter.interpret(
-                eq("hola"),
-                eq(LocalDate.of(2026, 5, 27)),
-                eq(List.of())
-        )).thenReturn(Optional.of(new SchoolAssistantQuery(
-                List.of(SchoolAssistantCapability.FUERA_DE_ALCANCE),
-                Optional.empty(),
-                Optional.empty(),
-                5,
-                false
-        )));
-
-        SchoolAssistantAnswer answer = askSchoolAssistant.execute(
-                studentId,
-                new SchoolAssistantCommand(Optional.empty(), "hola")
+                new SchoolAssistantCommand(Optional.empty(), "cuanto saldo tengo")
         );
 
         assertEquals(
-                "Puedo ayudarte con consultas de saldo, pagos y eventos escolares.",
+                "No pude responder ahora. Puedo ayudarte con saldos, pagos, compras "
+                        + "y eventos escolares.",
                 answer.answer()
         );
-        assertEquals(
-                List.of(SchoolAssistantCapability.FUERA_DE_ALCANCE),
-                answer.capabilities()
-        );
-        verifyNoInteractions(walletRepository);
-        verifyNoInteractions(paymentRepository);
-        verifyNoInteractions(schoolCalendarRepository);
-        verifyNoInteractions(schoolAssistantResponder);
+        assertFalse(answer.generatedByAi());
+        assertNull(answer.model());
+        assertEquals(ALLOWED_CAPABILITIES, answer.capabilities());
+        verify(schoolAssistantResponder).respond(any());
     }
 
     @Test

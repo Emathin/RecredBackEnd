@@ -1,12 +1,14 @@
 package com.recred.backend.infrastructure.gemini;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.EstadoPagoExterno;
+import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.SchoolAssistantContext;
-import com.recred.backend.domain.models.SchoolAssistantCapability;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
 import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
-import com.recred.backend.domain.models.SchoolAssistantQuery;
+import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.models.TipoDiaEscolar;
 import java.math.BigDecimal;
@@ -21,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class GeminiSchoolAssistantResponderTest {
@@ -44,6 +47,14 @@ class GeminiSchoolAssistantResponderTest {
         assertTrue(draft.isPresent());
         assertEquals("Tenes $500.00 disponibles.", draft.orElseThrow().answer());
         assertEquals("gemini-test", draft.orElseThrow().model());
+        verify(geminiTextClient).generate(contains(
+                "Solo podes responder sobre estos temas: saldos, pagos, compras y eventos "
+                        + "escolares."
+        ));
+        verify(geminiTextClient).generate(contains(
+                "Si el usuario pregunta otra cosa, responde exactamente:"
+        ));
+        verify(geminiTextClient).generate(contains("comprasRecientes=[320.00|ENTREGADO|CREDITOS|"));
     }
 
     @Test
@@ -71,21 +82,20 @@ class GeminiSchoolAssistantResponderTest {
     private SchoolAssistantPrompt prompt() {
         return new SchoolAssistantPrompt(
                 "saldo",
-                new SchoolAssistantQuery(
-                        List.of(SchoolAssistantCapability.SALDO),
-                        Optional.empty(),
-                        Optional.empty(),
-                        5,
-                        true
-                ),
                 new SchoolAssistantContext(
                         UUID.randomUUID(),
                         Optional.of(new BigDecimal("500.00")),
                         List.of(new SchoolAssistantPayment(
                                 new BigDecimal("1000.00"),
-                                null,
+                                EstadoPagoExterno.APROBADO,
                                 LocalDateTime.of(2026, 5, 26, 10, 0),
-                                null
+                                LocalDateTime.of(2026, 5, 26, 10, 5)
+                        )),
+                        List.of(new SchoolAssistantPurchase(
+                                new BigDecimal("320.00"),
+                                EstadoCompra.ENTREGADO,
+                                MedioPago.CREDITOS,
+                                LocalDateTime.of(2026, 5, 27, 9, 0)
                         )),
                         List.of(new SchoolCalendarEvent(
                                 LocalDate.of(2026, 5, 30),
