@@ -5,6 +5,7 @@ import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.GenerateHealthyProductRecommendations;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetActiveBudgetByStudent;
@@ -26,12 +27,22 @@ import com.recred.backend.domain.repositories.ConsumptionAlertNotificationReposi
 import com.recred.backend.domain.repositories.ConsumptionAlertPurchaseRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
+import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
+import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
-import com.recred.backend.domain.services.*;
+import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
+import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
+import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
+import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
+import com.recred.backend.domain.services.SpendingPredictionCalculator;
+import com.recred.backend.domain.services.SpendingPredictionRangeService;
+import com.recred.backend.domain.services.ValidacionRestriccionesService;
+import com.recred.backend.domain.services.ValidadorHorarioService;
+import com.recred.backend.domain.services.ValidadorPresupuestoService;
 
 import java.time.Clock;
 import com.recred.backend.domain.repositories.WalletRepository;
@@ -192,6 +203,25 @@ public class UseCases {
             Clock clock
     ) {
         return new GenerateStatisticalConsumptionAlerts(
+                studentRepository,
+                purchaseRepository,
+                notificationRepository,
+                analyzer,
+                properties,
+                clock
+        );
+    }
+
+    @Bean
+    public GenerateHealthyProductRecommendations generateHealthyProductRecommendations(
+            ConsumptionAlertStudentRepository studentRepository,
+            HealthyRecommendationPurchaseRepository purchaseRepository,
+            HealthyRecommendationNotificationRepository notificationRepository,
+            HealthyRecommendationAnalyzer analyzer,
+            HealthyRecommendationProperties properties,
+            Clock clock
+    ) {
+        return new GenerateHealthyProductRecommendations(
                 studentRepository,
                 purchaseRepository,
                 notificationRepository,

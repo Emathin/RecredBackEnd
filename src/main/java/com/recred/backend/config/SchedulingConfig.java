@@ -6,6 +6,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties(StatisticalConsumptionAlertProperties.class)
+@EnableConfigurationProperties({
+        StatisticalConsumptionAlertProperties.class,
+        HealthyRecommendationProperties.class
+})
 public class SchedulingConfig {
 }
