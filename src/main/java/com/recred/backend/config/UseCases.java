@@ -6,6 +6,7 @@ import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
+import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.ManageRestrictions;
@@ -96,5 +97,11 @@ public class UseCases {
     public UpdateTimeRestriction updateTimeRestriction(
             RestriccionHorariaRepository restriccionHorariaRepository){
         return new UpdateTimeRestriction(restriccionHorariaRepository);
+    }
+
+    @Bean
+    public GetStudentPreferences obtenerPreferenciasAlumno(
+            SugerenciaIARepository sugerenciaIARepository) {
+        return new GetStudentPreferences(sugerenciaIARepository);
     }
 }

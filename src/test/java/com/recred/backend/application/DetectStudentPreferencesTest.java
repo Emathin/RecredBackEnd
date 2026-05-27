@@ -25,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -66,15 +65,17 @@ class DetectStudentPreferencesTest {
 
         Producto producto = new Producto();
         producto.setId(UUID.randomUUID());
+        List<Producto> stock = List.of(producto);
 
         PreferenceAIRepository.PreferenciaDetectada preference = new PreferenceAIRepository.PreferenciaDetectada(
                 "Title", "Message", producto.getId().toString(), "Reason"
         );
 
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(compraRepository.findLastPurchasesByAlumno(any(), anyInt())).thenReturn(Collections.emptyList());
-        when(inventarioRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(List.of(producto));
-        when(preferenceAIRepository.analizarPreferencias(any(), any(), any())).thenReturn(Optional.of(preference));
+        when(compraRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(Collections.emptyList());
+        when(inventarioRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(stock);
+        when(preferenceAIRepository.analizarPreferencias(alumno, Collections.emptyList(), stock))
+                .thenReturn(Optional.of(preference));
 
         detectStudentPreferences.execute(studentId, buffetId);
 
@@ -95,14 +96,15 @@ class DetectStudentPreferencesTest {
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         Alumno alumno = new Alumno();
+        alumno.setId(studentId);
 
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(compraRepository.findLastPurchasesByAlumno(any(), anyInt())).thenReturn(Collections.emptyList());
+        when(compraRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(Collections.emptyList());
         when(inventarioRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(Collections.emptyList());
 
         detectStudentPreferences.execute(studentId, buffetId);
 
-        verify(preferenceAIRepository, never()).analizarPreferencias(any(), any(), any());
+        verify(preferenceAIRepository, never()).analizarPreferencias(alumno, Collections.emptyList(), Collections.emptyList());
         verify(sugerenciaIARepository, never()).guardar(any());
     }
 
@@ -111,12 +113,14 @@ class DetectStudentPreferencesTest {
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         Alumno alumno = new Alumno();
+        alumno.setId(studentId);
         Producto producto = new Producto();
+        List<Producto> stock = List.of(producto);
 
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(compraRepository.findLastPurchasesByAlumno(any(), anyInt())).thenReturn(Collections.emptyList());
-        when(inventarioRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(List.of(producto));
-        when(preferenceAIRepository.analizarPreferencias(any(), any(), any())).thenReturn(Optional.empty());
+        when(compraRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(Collections.emptyList());
+        when(inventarioRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(stock);
+        when(preferenceAIRepository.analizarPreferencias(alumno, Collections.emptyList(), stock)).thenReturn(Optional.empty());
 
         detectStudentPreferences.execute(studentId, buffetId);
 

@@ -7,6 +7,7 @@ import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.CompraRepository;
 import com.recred.backend.domain.repositories.InventarioRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
+import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Transactional
@@ -39,7 +41,7 @@ public class DetectStudentPreferences {
     }
 
     @Transactional
-    public void execute(UUID alumnoId, UUID buffetId) {
+    public Optional<PreferenciaDetectada> execute(UUID alumnoId, UUID buffetId) {
         try {
             Alumno alumno = alumnoRepository.findById(alumnoId)
                     .orElseThrow(() -> new RuntimeException("Student not found: " + alumnoId));
@@ -51,28 +53,32 @@ public class DetectStudentPreferences {
                     inventarioRepository.findAvailableProductsByBuffet(buffetId);
 
             if (stockDisponible.isEmpty()) {
-                return;
+                return Optional.empty();
             }
 
-            preferenceAIRepository.analizarPreferencias(alumno, historial, stockDisponible)
-                    .ifPresent(preferencia -> {
-                        SugerenciaIAEntity sugerencia = new SugerenciaIAEntity();
-                        sugerencia.setTipo(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
-                        sugerencia.setTitulo(preferencia.titulo());
-                        sugerencia.setMensaje(preferencia.mensaje());
-                        sugerencia.setAceptada(null);
+            Optional<PreferenciaDetectada> resultado = 
+                    preferenceAIRepository.analizarPreferencias(alumno, historial, stockDisponible);
 
-                        sugerencia.setMetadata(Map.of(
-                                "productoId", preferencia.productoId(),
-                                "razonIA", preferencia.razonIA()
-                        ));
+            resultado.ifPresent(preferencia -> {
+                SugerenciaIAEntity sugerencia = new SugerenciaIAEntity();
+                sugerencia.setTipo(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+                sugerencia.setTitulo(preferencia.titulo());
+                sugerencia.setMensaje(preferencia.mensaje());
+                sugerencia.setAceptada(null);
 
-                        AlumnoEntity alumnoEntity = new AlumnoEntity();
-                        alumnoEntity.setId(alumnoId);
-                        sugerencia.setAlumnoEntity(alumnoEntity);
+                sugerencia.setMetadata(Map.of(
+                        "productoId", preferencia.productoId(),
+                        "razonIA", preferencia.razonIA()
+                ));
 
-                        sugerenciaIARepository.guardar(sugerencia);
-                    });
+                AlumnoEntity alumnoEntity = new AlumnoEntity();
+                alumnoEntity.setId(alumnoId);
+                sugerencia.setAlumnoEntity(alumnoEntity);
+
+                sugerenciaIARepository.guardar(sugerencia);
+            });
+
+            return resultado;
 
         } catch (Exception e) {
             throw e;
