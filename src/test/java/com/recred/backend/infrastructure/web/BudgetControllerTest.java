@@ -5,6 +5,7 @@ import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.UpdateBudget;
+import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,9 @@ class BudgetControllerTest {
 
     @Mock
     private GetActiveBudgetByStudent getActiveBudgetByStudent;
+
+    @Mock
+    private UpdateBudgetRules updateBudgetRules;
 
     @InjectMocks
     private BudgetController budgetController;
@@ -132,5 +136,29 @@ class BudgetControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(disableBudget).execute(budgetId);
+    }
+
+    @Test
+    void updateCategoryRules_Retorna200Ok() throws Exception {
+        when(updateBudgetRules.execute(eq(budgetId), any())).thenReturn(presupuestoMock);
+
+        String jsonBody = """
+                {
+                  "rules": [
+                    {
+                      "categoryId": "123e4567-e89b-12d3-a456-426614174000",
+                      "porcentajeLimite": 50.00
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/budgets/{budgetId}/rules", budgetId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(budgetId.toString()));
+
+        verify(updateBudgetRules).execute(eq(budgetId), any());
     }
 }

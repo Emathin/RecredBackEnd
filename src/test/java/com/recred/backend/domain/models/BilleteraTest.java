@@ -50,7 +50,6 @@ class BilleteraTest {
         });
         
         assertEquals("Not enough balance to perform this debit operation.", exception.getMessage());
-        // Verify balance remains unchanged
         assertEquals(new BigDecimal("100.00"), billetera.getSaldoCreditos());
     }
 

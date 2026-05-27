@@ -28,7 +28,7 @@ public class Purchase {
         this.student = student;
         this.items = cart;
         this.paymentMethod = paymentMethod;
-        this.status = EstadoCompra.ENTREGADO; // As it's immediate
+        this.status = EstadoCompra.ENTREGADO;
         this.date = LocalDateTime.now();
         this.totalAmount = calculateTotal(cart);
     }
