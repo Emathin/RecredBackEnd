@@ -10,21 +10,22 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(csrf -> csrf.disable())
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                http
+                                .csrf(csrf -> csrf.disable())
 
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/ping").permitAll()
-                        .requestMatchers("/actuator/health").permitAll()
-                        .anyRequest().authenticated()
-                )
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers("/ping").permitAll()
+                                                .requestMatchers("/actuator/health").permitAll()
+                                                .requestMatchers("/api/v1/recomendaciones/kiosco")
+                                                .permitAll()
+                                                .anyRequest().authenticated())
 
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> {})
-                );
+                                .oauth2ResourceServer(oauth2 -> oauth2
+                                                .jwt(jwt -> {
+                                                }));
 
-        return http.build();
-    }
+                return http.build();
+        }
 }
