@@ -25,9 +25,8 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
-    public void save(Purchase purchase) {
-        CompraEntity entity = springDataRepository.findById(purchase.getId())
-                .orElseGet(CompraPresencialEntity::new);
+    public Purchase save(Purchase purchase) {
+        CompraEntity entity = findEntityToSave(purchase);
 
         if (purchase.getId() != null) {
             entity.setId(purchase.getId());
@@ -56,7 +55,16 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
             entity.addDetalle(detalle);
         });
 
-        springDataRepository.save(entity);
+        CompraEntity savedEntity = springDataRepository.save(entity);
+        purchase.setId(savedEntity.getId());
+
+        return savedEntity.toDomain();
+    }
+
+    private CompraEntity findEntityToSave(Purchase purchase) {
+        return Optional.ofNullable(purchase.getId())
+                .flatMap(springDataRepository::findById)
+                .orElseGet(CompraPresencialEntity::new);
     }
 
     @Override
