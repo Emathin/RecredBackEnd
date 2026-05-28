@@ -7,6 +7,7 @@ import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
 import com.recred.backend.application.GenerateProductChangeRecommendation;
+import com.recred.backend.application.GenerateSeasonalRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.GetPresentialPurchase;
@@ -63,6 +64,9 @@ import com.recred.backend.domain.services.SpendingPredictionRangeService;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
 import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
+import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -97,8 +101,7 @@ public class UseCases {
         return new ValidadorPresupuestoService(
                 presupuestoRepository,
                 purchaseRepository,
-                calculadorPeriodo
-        );
+                calculadorPeriodo);
     }
 
     @Bean
@@ -111,8 +114,7 @@ public class UseCases {
             ChatSessionRepository chatSessionRepository,
             ChatMessageRepository chatMessageRepository,
             SchoolAssistantResponder schoolAssistantResponder,
-            Clock clock
-    ) {
+            Clock clock) {
         return new AskSchoolAssistant(
                 alumnoRepository,
                 walletRepository,
@@ -122,21 +124,18 @@ public class UseCases {
                 chatSessionRepository,
                 chatMessageRepository,
                 schoolAssistantResponder,
-                clock
-        );
+                clock);
     }
 
     @Bean
     public GetLoggedUserConsumptionDetail getLoggedUserConsumptionDetail(
             ConsumptionAccessRepository consumptionAccessRepository,
             StudentConsumptionRepository studentConsumptionRepository,
-            Clock clock
-    ) {
+            Clock clock) {
         return new GetLoggedUserConsumptionDetail(
                 consumptionAccessRepository,
                 studentConsumptionRepository,
-                clock
-        );
+                clock);
     }
 
     @Bean
@@ -153,8 +152,7 @@ public class UseCases {
                 purchaseRepository,
                 timeValidator,
                 healthValidator,
-                budgetValidator
-        );
+                budgetValidator);
     }
 
     @Bean
@@ -165,8 +163,7 @@ public class UseCases {
     @Bean
     public GetPurchaseStatus getPurchaseStatus(
             PurchaseRepository purchaseRepository,
-            ConsumptionAccessRepository consumptionAccessRepository
-    ) {
+            ConsumptionAccessRepository consumptionAccessRepository) {
         return new GetPurchaseStatus(purchaseRepository, consumptionAccessRepository);
     }
 
@@ -177,7 +174,7 @@ public class UseCases {
 
     @Bean
     public CancelPresentialPurchase cancelPurchase(PurchaseRepository purchaseRepository,
-                                                   WalletRepository walletRepository) {
+            WalletRepository walletRepository) {
         return new CancelPresentialPurchase(purchaseRepository, walletRepository);
     }
 
@@ -252,8 +249,7 @@ public class UseCases {
             AIEventRepository aiEventRepository,
             SpendingPredictionRangeService spendingPredictionRangeService,
             SpendingPredictionCalculator spendingPredictionCalculator,
-            Clock clock
-    ) {
+            Clock clock) {
         return new PredictStudentSpending(
                 alumnoRepository,
                 spendingPreferenceRepository,
@@ -262,8 +258,7 @@ public class UseCases {
                 aiEventRepository,
                 spendingPredictionRangeService,
                 spendingPredictionCalculator,
-                clock
-        );
+                clock);
     }
 
     @Bean
@@ -273,16 +268,14 @@ public class UseCases {
             ConsumptionAlertNotificationRepository notificationRepository,
             ConsumptionAlertAnalyzer analyzer,
             StatisticalConsumptionAlertProperties properties,
-            Clock clock
-    ) {
+            Clock clock) {
         return new GenerateStatisticalConsumptionAlerts(
                 studentRepository,
                 purchaseRepository,
                 notificationRepository,
                 analyzer,
                 properties,
-                clock
-        );
+                clock);
     }
 
     @Bean
@@ -292,16 +285,14 @@ public class UseCases {
             HealthyRecommendationNotificationRepository notificationRepository,
             HealthyRecommendationAnalyzer analyzer,
             HealthyRecommendationProperties properties,
-            Clock clock
-    ) {
+            Clock clock) {
         return new GenerateHealthyProductRecommendations(
                 studentRepository,
                 purchaseRepository,
                 notificationRepository,
                 analyzer,
                 properties,
-                clock
-        );
+                clock);
     }
 
     @Bean
@@ -333,7 +324,14 @@ public class UseCases {
             ProductRepository productRepository, ProductChangeAnalyzer productChangeAnalyzer,
             AIEventRepository aiEventRepository, KiosqueroRepository kiosqueroRepository) {
         return new GenerateProductChangeRecommendation(
-                productRepository,productChangeAnalyzer,aiEventRepository,kiosqueroRepository);
+                productRepository, productChangeAnalyzer, aiEventRepository, kiosqueroRepository);
+    }
+
+    @Bean
+    public GenerateSeasonalRecommendation generateSeasonalRecommendation(
+            GeminiSeasonalSuggester seasonalSuggester, OpenMeteoWeatherClient weatherClient) {
+        return new GenerateSeasonalRecommendation(
+                weatherClient, seasonalSuggester);
     }
 
 }

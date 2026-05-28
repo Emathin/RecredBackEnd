@@ -9,9 +9,6 @@ import java.time.LocalDate;
 import java.time.format.TextStyle;
 import java.util.Locale;
 
-import org.springframework.stereotype.Service;
-
-@Service
 public class GenerateSeasonalRecommendation {
     private final OpenMeteoWeatherClient climaService;
     private final GeminiSeasonalSuggester geminiSeasonalSuggesterService;
