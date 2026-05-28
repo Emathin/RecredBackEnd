@@ -2,7 +2,9 @@ package com.recred.backend.domain.exceptions;
 
 import com.recred.backend.config.ErrorResponse;
 import com.recred.backend.config.GlobalExceptionHandler;
+import com.recred.backend.config.RequestIdContext;
 import com.recred.backend.domain.models.EstadoCompra;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -25,11 +27,19 @@ import static org.mockito.Mockito.when;
 
 class GlobalExceptionHandlerTest {
 
+    private static final String REQUEST_ID = "test-request-id";
+
     private GlobalExceptionHandler exceptionHandler;
 
     @BeforeEach
     void setUp() {
         exceptionHandler = new GlobalExceptionHandler();
+        RequestIdContext.put(REQUEST_ID);
+    }
+
+    @AfterEach
+    void tearDown() {
+        RequestIdContext.clear();
     }
 
     @Test
@@ -44,6 +54,7 @@ class GlobalExceptionHandlerTest {
         assertEquals("Restricción Horaria", body.error());
         assertEquals("Fuera de horario", body.mensaje());
         assertEquals(403, body.status());
+        assertEquals(REQUEST_ID, body.requestId());
     }
 
     @Test
@@ -59,6 +70,7 @@ class GlobalExceptionHandlerTest {
         assertEquals(400, body.get("status"));
         assertEquals("Límite de Presupuesto Superado", body.get("error"));
         assertEquals("Límite superado", body.get("message"));
+        assertEquals(REQUEST_ID, body.get("requestId"));
         assertTrue(body.get("timestamp") instanceof LocalDateTime);
     }
 
