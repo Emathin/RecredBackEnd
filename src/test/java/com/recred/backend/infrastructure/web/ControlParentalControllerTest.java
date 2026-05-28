@@ -6,19 +6,22 @@ import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.domain.models.ClasificacionSalud;
-
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import tools.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.ObjectMapper;
 
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -27,11 +30,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 
 @WebMvcTest(
         controllers = ControlParentalController.class,
@@ -120,7 +118,7 @@ class ControlParentalControllerTest {
         verify(removeHealthRestrictions).ejecutar(alumnoId, clasificacionId);
     }
     @Test
-    void analizarPreferencias_DeberiaRetornar202Accepted() throws Exception {
+    void returnAcceptedWhenPreferenceAnalysisIsTriggered() throws Exception {
         UUID buffetId = UUID.randomUUID();
 
         mockMvc.perform(post("/api/control-parental/alumnos/{alumnoId}/analizar-preferencias", alumnoId)
@@ -132,9 +130,9 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void analizarPreferencias_DeberiaRetornar500_CuandoFalla() throws Exception {
+    void returnInternalServerErrorWhenPreferenceAnalysisFails() throws Exception {
         UUID buffetId = UUID.randomUUID();
-        doThrow(new RuntimeException("Error IA")).when(detectStudentPreferences).execute(any(), any());
+        doThrow(new RuntimeException("Error IA")).when(detectStudentPreferences).execute(alumnoId, buffetId);
 
         mockMvc.perform(post("/api/control-parental/alumnos/{alumnoId}/analizar-preferencias", alumnoId)
                         .param("buffetId", buffetId.toString())

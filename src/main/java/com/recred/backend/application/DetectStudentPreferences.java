@@ -11,6 +11,7 @@ import com.recred.backend.domain.repositories.PreferenceAIRepository.Preferencia
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
+import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import java.util.UUID;
 @Transactional
 public class DetectStudentPreferences {
 
+    private static final int MIN_PURCHASES_FOR_ANALYSIS = 3;
     private final AlumnoRepository alumnoRepository;
     private final PreferenceAIRepository preferenceAIRepository;
     private final SugerenciaIARepository sugerenciaIARepository;
@@ -50,6 +52,10 @@ public class DetectStudentPreferences {
             List<PreferenceAIRepository.CompraResumen> historial =
                     compraRepository.findLastPurchasesByAlumno(alumnoId, 20);
 
+            if (historial.size() < MIN_PURCHASES_FOR_ANALYSIS) {
+                return Optional.empty();
+            }
+
             List<Producto> stockDisponible =
                     inventarioRepository.findAvailableProductsByBuffet(buffetId);
 
@@ -59,6 +65,11 @@ public class DetectStudentPreferences {
 
             Optional<PreferenciaDetectada> resultado = 
                     preferenceAIRepository.analizarPreferencias(alumno, historial, stockDisponible);
+
+            resultado = resultado.filter(preferencia -> 
+                stockDisponible.stream()
+                        .anyMatch(p -> p.getId().toString().equals(preferencia.productoId()))
+            );
 
             resultado.ifPresent(preferencia -> {
                 SugerenciaIAEntity sugerencia = new SugerenciaIAEntity();
@@ -79,6 +90,10 @@ public class DetectStudentPreferences {
                 BuffetEntity buffetEntity = new BuffetEntity();
                 buffetEntity.setId(buffetId);
                 sugerencia.setBuffetEntity(buffetEntity);
+
+                ProductoEntity productoEntity = new ProductoEntity();
+                productoEntity.setId(UUID.fromString(preferencia.productoId()));
+                sugerencia.setProductoEntity(productoEntity);
 
                 sugerenciaIARepository.guardar(sugerencia);
             });

@@ -41,6 +41,11 @@ public class GeminiPreferenceAIAdapter implements PreferenceAIRepository {
             List<CompraResumen> historial,
             List<Producto> stockDisponible) {
 
+        String gradoStr = (alumno.getGrado() != null)
+                ? String.format("%s %s",
+                alumno.getGrado().getAnio(), alumno.getGrado().getDivision())
+                : "No especificado";
+
         String historialStr = historial.stream()
                 .map(c -> String.format("- %s (%s)", c.productoNombre(), c.categoria()))
                 .collect(Collectors.joining("\n"));
@@ -60,6 +65,9 @@ public class GeminiPreferenceAIAdapter implements PreferenceAIRepository {
                 Tu tarea es analizar el historial de compras de un alumno y detectar una preferencia
                 que coincida con el stock actual del kiosco.
                 
+                DATOS DEL ALUMNO:
+                - Grado: %s
+                
                 HISTORIAL DE COMPRAS:
                 %s
                 
@@ -77,12 +85,13 @@ public class GeminiPreferenceAIAdapter implements PreferenceAIRepository {
                      "productoId": "UUID del producto del stock",
                      "razonIA": "Explicación técnica"
                    }
-                """, historialStr, stockStr);
+                """, gradoStr, historialStr, stockStr);
     }
 
     private Optional<PreferenciaDetectada> procesarRespuesta(String text) {
         try {
-            Map data = objectMapper.readValue(text, Map.class);
+            String cleanJson = text.replaceAll("```json|```", "").trim();
+            Map data = objectMapper.readValue(cleanJson, Map.class);
 
             return Optional.of(new PreferenciaDetectada(
                     (String) data.get("titulo"),

@@ -79,6 +79,33 @@ class GeminiPreferenceAIAdapterTest {
     }
 
     @Test
+    void analyzePreferencesSuccessfullyEvenWhenGeminiWrapsJsonInMarkdownTags() {
+        Alumno alumno = new Alumno();
+        alumno.setId(UUID.randomUUID());
+        
+        String markdownResponse = """
+                ```json
+                {
+                  "titulo": "Sugerencia Markdown",
+                  "mensaje": "Mensaje limpio",
+                  "productoId": "prod-456",
+                  "razonIA": "Lógica de limpieza"
+                }
+                ```
+                """;
+        
+        when(geminiTextClient.generate(anyString()))
+                .thenReturn(Optional.of(new GeminiTextResponse(markdownResponse, "model")));
+
+        Optional<PreferenceAIRepository.PreferenciaDetectada> result = 
+                adapter.analizarPreferencias(alumno, Collections.emptyList(), Collections.emptyList());
+
+        assertTrue(result.isPresent());
+        assertEquals("Sugerencia Markdown", result.get().titulo());
+        assertEquals("prod-456", result.get().productoId());
+    }
+
+    @Test
     void returnEmptyOptionalWhenGeminiRespondsWithInvalidJson() {
         Alumno alumno = new Alumno();
         when(geminiTextClient.generate(anyString()))

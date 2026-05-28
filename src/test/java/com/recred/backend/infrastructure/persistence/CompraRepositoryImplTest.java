@@ -4,7 +4,7 @@ import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
 import com.recred.backend.infrastructure.entities.CompraEntity;
-import com.recred.backend.infrastructure.entities.CompraEntityPresencialEntity;
+import com.recred.backend.infrastructure.entities.CompraPresencialEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,7 +45,7 @@ class CompraRepositoryImplTest {
         categoria.setDescripcion("Snacks");
         productoEntity.setCategoria(categoria);
 
-        CompraEntity compra = new CompraEntityPresencialEntity();
+        CompraEntity compra = new CompraPresencialEntity();
         compra.setFechaHora(LocalDateTime.now());
         
         CompraDetalleEntity detalle = new CompraDetalleEntity();
@@ -72,7 +72,7 @@ class CompraRepositoryImplTest {
         productoEntity.setNombre("Agua");
         productoEntity.setCategoria(null);
 
-        CompraEntity compra = new CompraEntityPresencialEntity();
+        CompraEntity compra = new CompraPresencialEntity();
         compra.setFechaHora(LocalDateTime.now());
         
         CompraDetalleEntity detalle = new CompraDetalleEntity();
