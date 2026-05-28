@@ -77,10 +77,26 @@ jobs:
             set -e
             cd /home/ubuntu/recred-app
 
-            if [ ! -f .env ]; then
-              echo "Falta /home/ubuntu/recred-app/.env con las variables del backend y PostgreSQL"
-              exit 1
-            fi
+            cat > .env <<'EOF'
+            POSTGRES_DB=${{ secrets.PROD_POSTGRES_DB }}
+            POSTGRES_USER=${{ secrets.PROD_POSTGRES_USER }}
+            POSTGRES_PASSWORD=${{ secrets.PROD_POSTGRES_PASSWORD }}
+
+            DB_URL=jdbc:postgresql://db:5432/${{ secrets.PROD_POSTGRES_DB }}
+            DB_USERNAME=${{ secrets.PROD_POSTGRES_USER }}
+            DB_PASSWORD=${{ secrets.PROD_POSTGRES_PASSWORD }}
+
+            COGNITO_ISSUER_URI=${{ secrets.PROD_COGNITO_ISSUER_URI }}
+
+            GEMINI_MODEL=${{ secrets.PROD_GEMINI_MODEL }}
+            GEMINI_ENABLED=${{ secrets.PROD_GEMINI_ENABLED }}
+            GEMINI_API_KEY=${{ secrets.PROD_GEMINI_API_KEY }}
+
+            FIREBASE_ENABLED=${{ secrets.PROD_FIREBASE_ENABLED }}
+            FIREBASE_SERVICE_ACCOUNT_PATH=${{ secrets.PROD_FIREBASE_SERVICE_ACCOUNT_PATH }}
+            EOF
+
+            chmod 600 .env
 
             sudo systemctl stop recred.service || true
             sudo docker rm -f recred-backend || true
