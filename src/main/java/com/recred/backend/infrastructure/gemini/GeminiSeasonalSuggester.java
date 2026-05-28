@@ -20,12 +20,10 @@ public class GeminiSeasonalSuggester {
 
   public RecommendationResponseDTO getSeasonalRecommendations(
       String month,
-      String schoolStage,
-      String schoolLevel,
       Double temperature,
       String weatherCondition) {
 
-    String prompt = buildPrompt(month, schoolStage, schoolLevel, temperature, weatherCondition);
+    String prompt = buildPrompt(month, temperature, weatherCondition);
 
     return geminiTextClient.generate(prompt)
         .filter(this::isValidResponse)
@@ -51,8 +49,9 @@ public class GeminiSeasonalSuggester {
   }
 
   private String buildPrompt(
-      String month, String schoolStage, String schoolLevel,
-      Double temperature, String weatherCondition) {
+      String month,
+      Double temperature,
+      String weatherCondition) {
     return """
         ROL:
         Eres un sistema experto en retail y análisis comercial para kioscos escolares.
@@ -60,9 +59,9 @@ public class GeminiSeasonalSuggester {
         ajustes en las compras de mercadería.
 
         CONTEXTO ACTUAL:
-        - Fecha actual: %s (Etapa del ciclo lectivo: %s)
+        - Fecha actual: %s
         - Clima actual: %s°C, %s
-        - Tipo de establecimiento: Kiosco en escuela %s (solo venta de alimentos y bebidas).
+        - Tipo de establecimiento: Kiosco en escuela Primaria (solo venta de alimentos y bebidas).
         REGLAS DE NEGOCIO:
         1. Evalúa el contexto y selecciona productos de las siguientes categorías predefinidas:
            - Alta Sensibilidad: Chocolates y Alfajores, Helados y Congelados, Panificados y
@@ -88,7 +87,7 @@ public class GeminiSeasonalSuggester {
           "tip_promocional": "Idea breve de promo cruzada."
         }
         """
-        .formatted(month, schoolStage, temperature, weatherCondition, schoolLevel);
+        .formatted(month, temperature, weatherCondition);
   }
 
 }
