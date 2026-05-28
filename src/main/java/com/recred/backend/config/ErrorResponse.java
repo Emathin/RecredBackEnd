@@ -6,5 +6,6 @@ public record ErrorResponse(
         String error,
         String mensaje,
         LocalDateTime timestamp,
-        int status
+        int status,
+        String requestId
 ) {}
