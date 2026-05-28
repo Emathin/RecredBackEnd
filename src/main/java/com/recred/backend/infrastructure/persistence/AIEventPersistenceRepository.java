@@ -102,7 +102,7 @@ public class AIEventPersistenceRepository implements AIEventRepository {
     @Override
     public void registerProductChangeRecommendation(ProductRecommendationResult result) {
         AIEventEntity aiEventEntity = new AIEventEntity();
-        aiEventEntity.setType(AIEventType.PREDICCION_GASTO);
+        aiEventEntity.setType(AIEventType.PRODUCTO_CAMBIO);
         aiEventEntity.setBuffetEntity(entityManager.getReference(
                 BuffetEntity.class,
                 result.getProductChangeRecommendation().getIdBuffet()
