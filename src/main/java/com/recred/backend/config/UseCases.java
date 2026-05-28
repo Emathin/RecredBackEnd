@@ -6,6 +6,7 @@ import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
+import com.recred.backend.application.GenerateProductChangeRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.GetPresentialPurchase;
@@ -37,6 +38,8 @@ import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
+import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -52,6 +55,7 @@ import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 import java.time.Clock;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
+import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
@@ -324,5 +328,12 @@ public class UseCases {
         return new DisableBudget(presupuestoRepository);
     }
 
+    @Bean
+    public GenerateProductChangeRecommendation generateProductChangeRecommendation(
+            ProductRepository productRepository, ProductChangeAnalyzer productChangeAnalyzer,
+            AIEventRepository aiEventRepository, KiosqueroRepository kiosqueroRepository) {
+        return new GenerateProductChangeRecommendation(
+                productRepository,productChangeAnalyzer,aiEventRepository,kiosqueroRepository);
+    }
 
 }
