@@ -1,8 +1,6 @@
-package com.recred.backend.infrastructure.web.controllers;
+package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GenerarSugerenciaPorEstacion;
-import com.recred.backend.infrastructure.web.RecomendacionResponseDTO;
-import com.recred.backend.infrastructure.web.SugerenciaDTO;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -22,7 +20,7 @@ public class RecomendacionEstacionController {
     }
 
     @GetMapping("/kiosco")
-    public ResponseEntity<RecomendacionResponseDTO> obtenerSugerencias(
+    public ResponseEntity<RecommendationResponseDTO> obtenerSugerencias(
     /*
      * @RequestParam String nivelEscolar,
      * 
@@ -32,19 +30,19 @@ public class RecomendacionEstacionController {
      */
 
     ) {
-        RecomendacionResponseDTO respuesta = generarSugerenciaPorEstacion
+        RecommendationResponseDTO respuesta = generarSugerenciaPorEstacion
                 .ejecutarLogicaSugerencias();
 
         System.out.println("****************************************");
 
-        for (SugerenciaDTO sugerencia : respuesta.getSugerencias()) {
+        for (SugerenciaDTO sugerencia : respuesta.getSugerences()) {
             System.out.println("SUGERENCIA: " +
                     sugerencia.getCategoria() + " - " +
                     sugerencia.getAccion() + " - "
                     + sugerencia.getMotivo());
         }
 
-        System.out.println("PROMOCION: " + respuesta.getTipPromocional());
+        System.out.println("PROMOCION: " + respuesta.getPromocionalTip());
         System.out.println("****************************************");
 
         return ResponseEntity.ok(respuesta);

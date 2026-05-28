@@ -3,7 +3,7 @@ package com.recred.backend.application;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.openMeteo.ClimaService;
 import com.recred.backend.infrastructure.web.ClimaDTO;
-import com.recred.backend.infrastructure.web.RecomendacionResponseDTO;
+import com.recred.backend.infrastructure.web.RecommendationResponseDTO;
 
 import org.springframework.stereotype.Service;
 
@@ -12,12 +12,14 @@ public class GenerarSugerenciaPorEstacion {
     private final ClimaService climaService;
     private final GeminiSeasonalSuggester geminiService;
 
-    public GenerarSugerenciaPorEstacion(ClimaService climaService, GeminiSeasonalSuggester geminiService) {
+    public GenerarSugerenciaPorEstacion(
+            ClimaService climaService,
+            GeminiSeasonalSuggester geminiService) {
         this.climaService = climaService;
         this.geminiService = geminiService;
     }
 
-    public RecomendacionResponseDTO ejecutarLogicaSugerencias() {
+    public RecommendationResponseDTO ejecutarLogicaSugerencias() {
         // Coordenadas de ejemplo por ahora...
         double latitud = -34.70;
         double longitud = -58.47;
@@ -35,7 +37,7 @@ public class GenerarSugerenciaPorEstacion {
         String nivelEscolar = "Primaria";
 
         // 3. Delegar a Gemini la generación de sugerencias estructuradas
-        RecomendacionResponseDTO sugerenciasFinales = geminiService.obtenerSugerenciasIas(
+        RecommendationResponseDTO sugerenciasFinales = geminiService.getSeasonalRecommendations(
                 mesActual,
                 etapaEscolar,
                 nivelEscolar,

@@ -1,4 +1,4 @@
-package com.recred.backend.dominio;
+package com.recred.backend.infrastructure.openMeteo;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
