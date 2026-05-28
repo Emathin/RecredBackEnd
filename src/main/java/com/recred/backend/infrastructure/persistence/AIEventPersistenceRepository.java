@@ -2,8 +2,10 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.AIEventType;
 import com.recred.backend.domain.models.ConsumptionCategory;
+import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductRecommendationResult;
+import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.SpendingPredictionResult;
@@ -17,6 +19,8 @@ import jakarta.persistence.EntityManager;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+
 import org.springframework.stereotype.Component;
 
 @Component
@@ -136,5 +140,29 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         data.put("recomendaciones", analysis.recommendations());
         data.put("modelo", analysis.model());
         return data;
+    }
+
+    @Override
+    public void registerProductAdditionRecommendation(
+            Producto product, Kiosquero kiosquero, UUID buffetId) {
+        AIEventEntity aiEventEntity = new AIEventEntity();
+        aiEventEntity.setType(AIEventType.AGREGAR_PRODUCTO);
+        aiEventEntity.setBuffetEntity(entityManager.getReference(
+                BuffetEntity.class,
+                buffetId
+        ));
+        aiEventEntity.setProductoEntity(entityManager.getReference(
+                ProductoEntity.class,
+                product.getId()
+        ));
+        aiEventEntity.setInputOrigin("BACKEND PRODUCT ADDITION RECO");
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("resumen", "El producto " + product.getNombre() +
+                " experimenta una gran cantidad de ventas. Te sugerimos " +
+                "que lo agregues a tu stock") ;
+        aiEventEntity.setResultData(data);
+        aiEventJpaRepository.save(aiEventEntity);
+        System.out.println(aiEventEntity.getResultData());
+
     }
 }

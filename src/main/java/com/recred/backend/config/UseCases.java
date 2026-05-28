@@ -1,5 +1,6 @@
 package com.recred.backend.config;
 
+import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateTimeRestriction;
@@ -38,6 +39,7 @@ import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
+import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
@@ -334,6 +336,16 @@ public class UseCases {
             AIEventRepository aiEventRepository, KiosqueroRepository kiosqueroRepository) {
         return new GenerateProductChangeRecommendation(
                 productRepository,productChangeAnalyzer,aiEventRepository,kiosqueroRepository);
+    }
+
+    @Bean
+    public AddProductRecommendation addProductRecommendation(
+            ProductRepository productRepository,
+            KiosqueroRepository kiosqueroRepository,
+            InventoryRepository inventoryRepository,
+            AIEventRepository aiEventRepository){
+        return new AddProductRecommendation(productRepository
+                ,kiosqueroRepository,inventoryRepository,aiEventRepository);
     }
 
 }
