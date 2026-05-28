@@ -7,6 +7,7 @@ import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
+import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
@@ -30,6 +31,7 @@ import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertNotificationRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertPurchaseRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
+import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
@@ -41,6 +43,7 @@ import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCalendarRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
+import com.recred.backend.domain.repositories.StudentConsumptionRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 
@@ -113,6 +116,19 @@ public class UseCases {
                 chatSessionRepository,
                 chatMessageRepository,
                 schoolAssistantResponder,
+                clock
+        );
+    }
+
+    @Bean
+    public GetLoggedUserConsumptionDetail getLoggedUserConsumptionDetail(
+            ConsumptionAccessRepository consumptionAccessRepository,
+            StudentConsumptionRepository studentConsumptionRepository,
+            Clock clock
+    ) {
+        return new GetLoggedUserConsumptionDetail(
+                consumptionAccessRepository,
+                studentConsumptionRepository,
                 clock
         );
     }
