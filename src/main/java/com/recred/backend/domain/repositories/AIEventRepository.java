@@ -11,5 +11,6 @@ public interface AIEventRepository {
     void registerPrediction(SpendingPredictionResult result);
     void registerProductChangeRecommendation(ProductRecommendationResult result);
     
-    void registerProductAdditionRecommendation(Producto product, Kiosquero kiosquero, UUID buffetId);
+    void registerProductAdditionRecommendation(Producto product, Kiosquero kiosquero,
+                                               UUID buffetId);
 }
