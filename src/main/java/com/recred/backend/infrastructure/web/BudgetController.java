@@ -5,6 +5,8 @@ import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.UpdateBudget;
+import com.recred.backend.application.UpdateBudgetRules;
+import com.recred.backend.application.UpdateBudgetRulesCommand;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,15 +29,18 @@ public class BudgetController {
     private final UpdateBudget updateBudget;
     private final DisableBudget disableBudget;
     private final GetActiveBudgetByStudent getActiveBudgetByStudent;
+    private final UpdateBudgetRules updateBudgetRules;
 
     public BudgetController(CreateBudget createBudget,
                             UpdateBudget updateBudget,
                             DisableBudget disableBudget,
-                            GetActiveBudgetByStudent getActiveBudgetByStudent) {
+                            GetActiveBudgetByStudent getActiveBudgetByStudent,
+                            UpdateBudgetRules updateBudgetRules) {
         this.createBudget = createBudget;
         this.updateBudget = updateBudget;
         this.disableBudget = disableBudget;
         this.getActiveBudgetByStudent = getActiveBudgetByStudent;
+        this.updateBudgetRules = updateBudgetRules;
     }
 
     @PostMapping
@@ -62,5 +67,14 @@ public class BudgetController {
     public ResponseEntity<Void> disable(@PathVariable UUID budgetId) {
         disableBudget.execute(budgetId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{budgetId}/rules")
+    public ResponseEntity<PresupuestoAlumno> updateCategoryRules(
+            @PathVariable UUID budgetId,
+            @RequestBody UpdateBudgetRulesCommand command) {
+
+        PresupuestoAlumno actualizado = updateBudgetRules.execute(budgetId, command);
+        return ResponseEntity.ok(actualizado);
     }
 }

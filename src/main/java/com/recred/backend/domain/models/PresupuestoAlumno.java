@@ -1,6 +1,7 @@
 package com.recred.backend.domain.models;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,39 @@ public class PresupuestoAlumno {
 
     public boolean esVigente(LocalDate fechaActual) {
         return activo && !fechaActual.isBefore(fechaInicio);
+    }
+
+    public void validarPorcentajes() {
+        if (this.reglasCategoria == null || this.reglasCategoria.isEmpty()) {
+            return;
+        }
+
+        BigDecimal sumaPorcentajes = this.reglasCategoria.stream()
+                .filter(ReglaPresupuestoCategoria::isActivo)
+                .map(r -> r.getPorcentajeLimite() != null ?
+                        r.getPorcentajeLimite() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (sumaPorcentajes.compareTo(new BigDecimal("100")) > 0) {
+            throw new IllegalArgumentException("La suma de los porcentajes " +
+                    "no puede superar el 100%. Total enviado: " + sumaPorcentajes + "%");
+        }
+    }
+
+    public void recalcularMontosReglas() {
+        if (this.reglasCategoria == null || this.reglasCategoria.
+                isEmpty() || this.montoLimiteGeneral == null) {
+            return;
+        }
+
+        for (ReglaPresupuestoCategoria regla : this.reglasCategoria) {
+            if (regla.getPorcentajeLimite() != null && regla.isActivo()) {
+                BigDecimal montoCalculado = this.montoLimiteGeneral
+                        .multiply(regla.getPorcentajeLimite())
+                        .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+                regla.setMontoLimiteCalculado(montoCalculado);
+            }
+        }
     }
 
     public UUID getId() {
