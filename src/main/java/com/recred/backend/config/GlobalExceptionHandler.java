@@ -2,9 +2,12 @@ package com.recred.backend.config;
 
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
+import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
 import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
+import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
+import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import org.slf4j.Logger;
@@ -68,6 +71,26 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse>
     handleInsufficientBalance(InsufficientBalanceException ex){
         return buildResponse(HttpStatus.BAD_REQUEST, "Saldo Insuficiente",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(PurchaseNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePurchaseNotFound(PurchaseNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Compra no encontrada", ex.getMessage());
+    }
+
+    @ExceptionHandler(PurchaseAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handlePurchaseAccessDenied(
+            PurchaseAccessDeniedException ex
+    ) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Compra no autorizada", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidPurchaseStatusTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPurchaseStatusTransition(
+            InvalidPurchaseStatusTransitionException ex
+    ) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Estado de compra invalido",
                 ex.getMessage());
     }
 

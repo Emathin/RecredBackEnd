@@ -9,6 +9,7 @@ import com.recred.backend.application.GenerateHealthyProductRecommendations;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.GetPresentialPurchase;
+import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
@@ -22,6 +23,7 @@ import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
+import com.recred.backend.application.UpdatePurchaseStatus;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -154,6 +156,19 @@ public class UseCases {
     @Bean
     public GetPresentialPurchase getPurchase(PurchaseRepository purchaseRepository) {
         return new GetPresentialPurchase(purchaseRepository);
+    }
+
+    @Bean
+    public GetPurchaseStatus getPurchaseStatus(
+            PurchaseRepository purchaseRepository,
+            ConsumptionAccessRepository consumptionAccessRepository
+    ) {
+        return new GetPurchaseStatus(purchaseRepository, consumptionAccessRepository);
+    }
+
+    @Bean
+    public UpdatePurchaseStatus updatePurchaseStatus(PurchaseRepository purchaseRepository) {
+        return new UpdatePurchaseStatus(purchaseRepository);
     }
 
     @Bean
