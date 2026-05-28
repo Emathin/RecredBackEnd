@@ -19,6 +19,7 @@ public class PurchaseResponseDTO {
     private UUID studentId;
     private BigDecimal totalAmount;
     private String status;
+    private String statusLabel;
     private String paymentMethod;
     private LocalDateTime date;
     private List<PurchaseItemDTO> items;
@@ -31,6 +32,7 @@ public class PurchaseResponseDTO {
         this.totalAmount = purchase.getTotalAmount();
         if (purchase.getStatus() != null) {
             this.status = purchase.getStatus().name();
+            this.statusLabel = purchase.getStatus().getLabel();
         }
         if (purchase.getPaymentMethod() != null) {
             this.paymentMethod = purchase.getPaymentMethod().name();

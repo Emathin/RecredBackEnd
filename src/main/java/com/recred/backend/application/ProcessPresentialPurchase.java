@@ -44,7 +44,7 @@ public class ProcessPresentialPurchase {
         this.budgetValidator = budgetValidator;
     }
 
-    public void execute(UUID studentId, Map<Producto, Integer> cart) {
+    public Purchase execute(UUID studentId, Map<Producto, Integer> cart) {
 
         Alumno student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
@@ -93,7 +93,7 @@ public class ProcessPresentialPurchase {
         Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS);
 
         walletRepository.save(wallet);
-        purchaseRepository.save(purchase);
+        return purchaseRepository.save(purchase);
     }
 
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {

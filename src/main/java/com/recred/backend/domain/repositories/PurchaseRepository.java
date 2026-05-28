@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 public interface PurchaseRepository {
 
-    void save(Purchase purchase);
+    Purchase save(Purchase purchase);
 
     Optional<Purchase> findById(UUID id);
 
