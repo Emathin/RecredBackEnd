@@ -49,7 +49,7 @@ public class OpenMeteoWeatherClient {
         }
     }
 
-    private String translateWeatherCode(Integer code) {
+    String translateWeatherCode(Integer code) {
         if (code == 0) {
             return "Despejado";
         }
