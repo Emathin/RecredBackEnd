@@ -1,7 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.dominio.ClimaService;
-import com.recred.backend.dominio.GeminiService;
+import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
+import com.recred.backend.infrastructure.openMeteo.ClimaService;
 import com.recred.backend.infrastructure.web.ClimaDTO;
 import com.recred.backend.infrastructure.web.RecomendacionResponseDTO;
 
@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class GenerarSugerenciaPorEstacion {
     private final ClimaService climaService;
-    private final GeminiService geminiService;
+    private final GeminiSeasonalSuggester geminiService;
 
-    public GenerarSugerenciaPorEstacion(ClimaService climaService, GeminiService geminiService) {
+    public GenerarSugerenciaPorEstacion(ClimaService climaService, GeminiSeasonalSuggester geminiService) {
         this.climaService = climaService;
         this.geminiService = geminiService;
     }

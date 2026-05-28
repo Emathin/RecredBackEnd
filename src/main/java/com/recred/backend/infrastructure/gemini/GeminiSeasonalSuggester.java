@@ -1,4 +1,4 @@
-package com.recred.backend.dominio;
+package com.recred.backend.infrastructure.gemini;
 
 import com.recred.backend.infrastructure.web.RecomendacionResponseDTO;
 import tools.jackson.databind.JsonNode;
@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class GeminiService {
+public class GeminiSeasonalSuggester {
         private final RestClient restClient;
         private final ObjectMapper objectMapper;
 
@@ -23,7 +23,7 @@ public class GeminiService {
         @Value("${gemini.model}")
         private String model;
 
-        public GeminiService(ObjectMapper objectMapper) {
+        public GeminiSeasonalSuggester(ObjectMapper objectMapper) {
                 this.restClient = RestClient.builder()
                                 .baseUrl("https://generativelanguage.googleapis.com/v1beta")
                                 .build();
@@ -31,11 +31,11 @@ public class GeminiService {
         }
 
         public RecomendacionResponseDTO obtenerSugerenciasIas(
-                        String mes,
-                        String etapaEscolar,
-                        String nivelEscolar,
-                        Double temperatura,
-                        String condicionClimatica) {
+            String mes,
+            String etapaEscolar,
+            String nivelEscolar,
+            Double temperatura,
+            String condicionClimatica) {
 
                 String prompt = armarPrompt(
                                 mes,
