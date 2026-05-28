@@ -32,7 +32,7 @@ public class GeminiSeasonalSuggester {
             "Failed to generate seasonal recommendations from AI."));
   }
 
-  private boolean isValidResponse(GeminiTextResponse response) {
+  public boolean isValidResponse(GeminiTextResponse response) {
     return response != null && response.text() != null && !response.text().isBlank();
   }
 

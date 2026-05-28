@@ -5,8 +5,11 @@ import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import java.util.stream.Stream;
 
 import java.util.Optional;
 
@@ -105,5 +108,22 @@ class GeminiSeasonalSuggesterTest {
         });
 
         assertEquals("Failed to generate seasonal recommendations from AI.", excepcion.getMessage());
+    }
+
+    @ParameterizedTest
+    @MethodSource("proveerRespuestasInvalidas")
+    void dadoQueLaRespuestaTieneDatosInvalidos_cuandoSeValida_entoncesRetornaFalse(
+            GeminiTextResponse respuestaInvalida) {
+        boolean resultado = service.isValidResponse(respuestaInvalida);
+
+        assertFalse(resultado);
+    }
+
+    private static Stream<GeminiTextResponse> proveerRespuestasInvalidas() {
+        return Stream.of(
+                null,
+                new GeminiTextResponse(null, "modelo"),
+                new GeminiTextResponse("", "modelo"),
+                new GeminiTextResponse("   \n \t  ", "modelo"));
     }
 }
