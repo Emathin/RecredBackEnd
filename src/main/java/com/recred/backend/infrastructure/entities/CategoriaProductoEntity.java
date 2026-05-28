@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.domain.models.CategoriaProducto;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -29,4 +30,14 @@ public class CategoriaProductoEntity {
 
     @Column(nullable = false)
     private Boolean activo = true;
+
+    public CategoriaProducto toDomain() {
+        CategoriaProducto dominio = new CategoriaProducto();
+
+        dominio.setId(this.id);
+        dominio.setDescripcion(this.descripcion);
+        dominio.setActivo(this.activo);
+
+        return dominio;
+    }
 }

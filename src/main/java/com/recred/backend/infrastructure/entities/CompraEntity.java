@@ -1,8 +1,9 @@
 package com.recred.backend.infrastructure.entities;
 
-import com.recred.backend.dominio.models.EstadoCompra;
-import com.recred.backend.dominio.models.MedioPago;
-import com.recred.backend.dominio.models.TipoCompra;
+import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.MedioPago;
+import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.TipoCompra;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
@@ -30,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "compras")
@@ -89,5 +91,28 @@ public abstract class CompraEntity {
     public void removeDetalle(CompraDetalleEntity detalle) {
         detalles.remove(detalle);
         detalle.setCompra(null);
+    }
+
+    public Purchase toDomain() {
+        Purchase domain = new Purchase();
+        domain.setId(this.id);
+        domain.setTotalAmount(this.montoTotal);
+        domain.setStatus(this.estado);
+        domain.setPaymentMethod(this.medioPago);
+        domain.setDate(this.fechaHora);
+
+        if (this.alumnoEntity != null) {
+            domain.setStudent(this.alumnoEntity.toDomain());
+        }
+
+        if (this.detalles != null) {
+            domain.setItems(this.detalles.stream()
+                    .collect(Collectors.toMap(
+                            d -> d.getProductoEntity().toDomain(),
+                            CompraDetalleEntity::getCantidad
+                    )));
+        }
+
+        return domain;
     }
 }

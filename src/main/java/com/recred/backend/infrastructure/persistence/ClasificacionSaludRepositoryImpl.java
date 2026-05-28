@@ -1,11 +1,12 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.dominio.models.ClasificacionSalud;
-import com.recred.backend.dominio.repositories.ClasificacionSaludRepository;
+import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -26,5 +27,28 @@ public class ClasificacionSaludRepositoryImpl implements ClasificacionSaludRepos
         return entidades.stream()
                 .map(ClasificacionSaludEntity::toDomain)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<ClasificacionSalud> findById(UUID id) {
+        return springDataRepository.findById(id)
+                .map(ClasificacionSaludEntity::toDomain);
+    }
+
+    @Override
+    public List<ClasificacionSalud> findAll() {
+        return springDataRepository.findAll().stream()
+                .map(ClasificacionSaludEntity::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    private ClasificacionSaludEntity toEntity(ClasificacionSalud modelo) {
+        ClasificacionSaludEntity entity = new ClasificacionSaludEntity();
+
+        entity.setId(modelo.getId());
+        entity.setDescripcion(modelo.getDescripcion());
+        entity.setActivo(modelo.getActivo());
+
+        return entity;
     }
 }
