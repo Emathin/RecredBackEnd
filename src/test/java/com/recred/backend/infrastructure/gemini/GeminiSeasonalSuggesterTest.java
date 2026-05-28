@@ -4,7 +4,9 @@ import com.recred.backend.infrastructure.web.RecommendationResponseDTO;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
@@ -12,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class GeminiSeasonalSuggesterTest {
 
     @Mock
@@ -71,6 +74,31 @@ class GeminiSeasonalSuggesterTest {
     @Test
     void dadoQueElClienteGeminiNoRetornaRespuesta_cuandoSeSolicitanSugerencias_entoncesLanzaExcepcionDeGeneracionFallida() {
         when(geminiTextClientMock.generate(anyString())).thenReturn(Optional.empty());
+
+        RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
+            service.getSeasonalRecommendations("Julio", 5.0, "Frío");
+        });
+
+        assertEquals("Failed to generate seasonal recommendations from AI.", excepcion.getMessage());
+    }
+
+    @Test
+    void dadoQueGeminiRespondeConJsonVacio_cuandoSeSolicitanSugerencias_entoncesLanzaExcepcionDeParseo() {
+        GeminiTextResponse respuestaVacia = new GeminiTextResponse("{}", "gemini-1.5-flash");
+        when(geminiTextClientMock.generate(anyString())).thenReturn(Optional.of(respuestaVacia));
+
+        RecommendationResponseDTO resultado = service.getSeasonalRecommendations(
+                "Julio", 5.0, "Frío");
+
+        assertNotNull(resultado);
+        assertNull(resultado.getSugerences());
+        assertNull(resultado.getPromocionalTip());
+    }
+
+    @Test
+    void dadoQueGeminiRespondeConTextoEnBlanco_cuandoSeSolicitanSugerencias_entoncesLanzaExcepcionDeGeneracionFallida() {
+        GeminiTextResponse respuestaBlanca = new GeminiTextResponse("   ", "gemini-1.5-flash");
+        when(geminiTextClientMock.generate(anyString())).thenReturn(Optional.of(respuestaBlanca));
 
         RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
             service.getSeasonalRecommendations("Julio", 5.0, "Frío");
