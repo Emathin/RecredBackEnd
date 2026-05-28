@@ -13,6 +13,7 @@ import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.AddHealthRestriction;
+import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.PredictStudentSpending;
@@ -23,6 +24,8 @@ import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.ChatMessageRepository;
+import com.recred.backend.domain.repositories.ChatSessionRepository;
 import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertNotificationRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertPurchaseRepository;
@@ -34,6 +37,9 @@ import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
+import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
+import com.recred.backend.domain.repositories.SchoolCalendarRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
@@ -41,6 +47,7 @@ import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 import java.time.Clock;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
+import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
 import com.recred.backend.domain.services.SpendingPredictionRangeService;
@@ -82,6 +89,31 @@ public class UseCases {
                 presupuestoRepository,
                 purchaseRepository,
                 calculadorPeriodo
+        );
+    }
+
+    @Bean
+    public AskSchoolAssistant askSchoolAssistant(
+            AlumnoRepository alumnoRepository,
+            WalletRepository walletRepository,
+            SchoolAssistantPaymentRepository paymentRepository,
+            SchoolAssistantPurchaseRepository purchaseRepository,
+            SchoolCalendarRepository schoolCalendarRepository,
+            ChatSessionRepository chatSessionRepository,
+            ChatMessageRepository chatMessageRepository,
+            SchoolAssistantResponder schoolAssistantResponder,
+            Clock clock
+    ) {
+        return new AskSchoolAssistant(
+                alumnoRepository,
+                walletRepository,
+                paymentRepository,
+                purchaseRepository,
+                schoolCalendarRepository,
+                chatSessionRepository,
+                chatMessageRepository,
+                schoolAssistantResponder,
+                clock
         );
     }
 

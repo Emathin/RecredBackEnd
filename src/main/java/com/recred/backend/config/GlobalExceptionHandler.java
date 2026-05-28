@@ -1,7 +1,9 @@
 package com.recred.backend.config;
 
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
+import com.recred.backend.domain.exceptions.InvalidChatMessageException;
 import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
@@ -66,6 +68,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse>
     handleInsufficientBalance(InsufficientBalanceException ex){
         return buildResponse(HttpStatus.BAD_REQUEST, "Saldo Insuficiente",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidChatMessageException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidChatMessage(
+            InvalidChatMessageException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Mensaje invalido", ex.getMessage());
+    }
+
+    @ExceptionHandler(ChatSessionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleChatSessionNotFound(
+            ChatSessionNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Sesion de chat no encontrada",
                 ex.getMessage());
     }
 
