@@ -15,8 +15,8 @@ public class OpenMeteoWeatherClient {
 
     private final RestClient restClient;
 
-    public OpenMeteoWeatherClient() {
-        this.restClient = RestClient.builder()
+    public OpenMeteoWeatherClient(RestClient.Builder builder) {
+        this.restClient = builder
                 .baseUrl(BASE_URL)
                 .build();
     }
