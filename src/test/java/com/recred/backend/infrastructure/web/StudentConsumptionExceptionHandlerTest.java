@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -64,5 +65,14 @@ class StudentConsumptionExceptionHandlerTest {
                 "No se encontro el usuario autenticado: cognito-sub",
                 response.get("error")
         );
+    }
+
+    @Test
+    void mapMissingAuthenticationError() {
+        Map<String, String> response = handler.handleMissingAuthentication(
+                new AuthenticationCredentialsNotFoundException("Usuario no autenticado")
+        );
+
+        assertEquals("Usuario no autenticado", response.get("error"));
     }
 }

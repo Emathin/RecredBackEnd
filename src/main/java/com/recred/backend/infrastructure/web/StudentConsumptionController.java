@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,7 +28,6 @@ public class StudentConsumptionController {
     @GetMapping
     public StudentConsumptionResponse getConsumption(
             Authentication authentication,
-            @RequestParam(name = "cognitoSub", required = false) String cognitoSubject,
             @RequestParam(name = "alumnoId", required = false) UUID studentId,
             @RequestParam(name = "desde", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
@@ -41,17 +41,17 @@ public class StudentConsumptionController {
         );
         return StudentConsumptionResponse.fromDomain(
                 getLoggedUserConsumptionDetail.execute(
-                        cognitoSubject(authentication, cognitoSubject),
+                        cognitoSubject(authentication),
                         command
                 )
         );
     }
 
-    private String cognitoSubject(Authentication authentication, String fallback) {
-        if (authentication != null) {
-            return authentication.getName();
+    private String cognitoSubject(Authentication authentication) {
+        if (authentication == null) {
+            throw new AuthenticationCredentialsNotFoundException("Usuario no autenticado");
         }
 
-        return fallback;
+        return authentication.getName();
     }
 }

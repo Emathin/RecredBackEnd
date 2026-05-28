@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -41,6 +42,7 @@ class StudentConsumptionControllerTest {
         getLoggedUserConsumptionDetail = mock(GetLoggedUserConsumptionDetail.class);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new StudentConsumptionController(getLoggedUserConsumptionDetail))
+                .setControllerAdvice(new StudentConsumptionExceptionHandler())
                 .build();
     }
 
@@ -104,31 +106,14 @@ class StudentConsumptionControllerTest {
     }
 
     @Test
-    void getConsumptionUsesQueryCognitoSubjectWhenAuthenticationIsMissing() throws Exception {
-        UUID studentId = UUID.randomUUID();
-        StudentConsumptionDetail detail = new StudentConsumptionDetail(
-                studentId,
-                LocalDate.of(2026, 5, 1),
-                LocalDate.of(2026, 5, 20),
-                BigDecimal.ZERO,
-                0,
-                List.of()
-        );
-        when(getLoggedUserConsumptionDetail.execute(eq("CONSUMO_ALUMNO_ZAFIRO_73951"), org
-                .mockito.ArgumentMatchers.any())).thenReturn(detail);
-
+    void getConsumptionRejectsMissingAuthentication() throws Exception {
         mockMvc.perform(get("/api/v1/consumos")
-                        .param("cognitoSub", "CONSUMO_ALUMNO_ZAFIRO_73951")
                         .param("desde", "2026-05-01")
                         .param("hasta", "2026-05-20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.alumnoId").value(studentId.toString()))
-                .andExpect(jsonPath("$.cantidadCompras").value(0));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Usuario no autenticado"));
 
-        verify(getLoggedUserConsumptionDetail).execute(
-                eq("CONSUMO_ALUMNO_ZAFIRO_73951"),
-                org.mockito.ArgumentMatchers.any()
-        );
+        verifyNoInteractions(getLoggedUserConsumptionDetail);
     }
 
     private JwtAuthenticationToken authentication() {
