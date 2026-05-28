@@ -36,7 +36,7 @@ class CompraRepositoryImplTest {
     }
 
     @Test
-    void recuperaUltimasCompras_Correctamente_MapeandoADominio() {
+    void findLastPurchasesAndMapToDomainSummaryCorrectly() {
         UUID studentId = UUID.randomUUID();
         
         ProductoEntity productoEntity = new ProductoEntity();
@@ -65,7 +65,7 @@ class CompraRepositoryImplTest {
     }
 
     @Test
-    void manejaCategoriaNula_Correctamente() {
+    void handleNullProductCategoryWhenMappingToPurchaseSummary() {
         UUID studentId = UUID.randomUUID();
         
         ProductoEntity productoEntity = new ProductoEntity();

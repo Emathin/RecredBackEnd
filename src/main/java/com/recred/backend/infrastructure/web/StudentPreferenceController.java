@@ -2,8 +2,10 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences;
+import com.recred.backend.application.RespondToAISuggestion;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,12 +21,15 @@ public class StudentPreferenceController {
 
     private final DetectStudentPreferences detectStudentPreferences;
     private final GetStudentPreferences getStudentPreferences;
+    private final RespondToAISuggestion respondToAISuggestion;
 
     public StudentPreferenceController(
             DetectStudentPreferences detectStudentPreferences,
-            GetStudentPreferences getStudentPreferences) {
+            GetStudentPreferences getStudentPreferences,
+            RespondToAISuggestion respondToAISuggestion) {
         this.detectStudentPreferences = detectStudentPreferences;
         this.getStudentPreferences = getStudentPreferences;
+        this.respondToAISuggestion = respondToAISuggestion;
     }
 
     @PostMapping("/detectar")
@@ -52,5 +57,14 @@ public class StudentPreferenceController {
         return preferences.isEmpty()
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.ok(preferences);
+    }
+
+    @PatchMapping("/{sugerenciaId}/responder")
+    public ResponseEntity<Void> respond(
+            @PathVariable UUID sugerenciaId,
+            @RequestParam("aceptada") boolean aceptada
+    ) {
+        respondToAISuggestion.execute(sugerenciaId, aceptada);
+        return ResponseEntity.ok().build();
     }
 }

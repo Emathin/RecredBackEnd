@@ -10,6 +10,7 @@ import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,6 +75,10 @@ public class DetectStudentPreferences {
                 AlumnoEntity alumnoEntity = new AlumnoEntity();
                 alumnoEntity.setId(alumnoId);
                 sugerencia.setAlumnoEntity(alumnoEntity);
+
+                BuffetEntity buffetEntity = new BuffetEntity();
+                buffetEntity.setId(buffetId);
+                sugerencia.setBuffetEntity(buffetEntity);
 
                 sugerenciaIARepository.guardar(sugerencia);
             });

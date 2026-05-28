@@ -11,6 +11,7 @@ import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictions;
+import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
@@ -103,5 +104,11 @@ public class UseCases {
     public GetStudentPreferences obtenerPreferenciasAlumno(
             SugerenciaIARepository sugerenciaIARepository) {
         return new GetStudentPreferences(sugerenciaIARepository);
+    }
+
+    @Bean
+    public RespondToAISuggestion responderSugerenciaIA(
+            SugerenciaIARepository sugerenciaIARepository) {
+        return new RespondToAISuggestion(sugerenciaIARepository);
     }
 }

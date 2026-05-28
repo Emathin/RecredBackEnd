@@ -26,4 +26,9 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
     public List<SugerenciaIAEntity> findByAlumnoId(UUID alumnoId) {
         return springDataRepository.findAllByAlumnoEntityIdOrderByCreadoEnDesc(alumnoId);
     }
+
+    @Override
+    public java.util.Optional<SugerenciaIAEntity> findById(UUID id) {
+        return springDataRepository.findById(id);
+    }
 }

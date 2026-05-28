@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences;
+import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -18,11 +19,12 @@ import static org.mockito.Mockito.when;
 class StudentPreferenceControllerTest {
 
     @Test
-    void shouldReturnPreferenceWhenDetected() {
+    void returnPreferenceResponseWhenPreferenceIsDetected() {
         DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
         GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
+        RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
         StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences);
+                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
         
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -41,11 +43,12 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void shouldReturnNoContentWhenNoPreferenceDetected() {
+    void returnNoContentWhenNoAIPreferenceIsDetected() {
         DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
         GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
+        RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
         StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences);
+                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
         
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -57,11 +60,12 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void shouldReturnPreferencesList() {
+    void returnNoContentWhenPreferenceListIsEmpty() {
         DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
         GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
+        RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
         StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences);
+                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
         
         UUID studentId = UUID.randomUUID();
         when(getStudentPreferences.execute(studentId, false)).thenReturn(List.of());
@@ -69,5 +73,44 @@ class StudentPreferenceControllerTest {
         ResponseEntity<List<StudentPreferenceResponse>> response = controller.getPreferences(studentId, false);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    }
+
+    @Test
+    void returnOkWithPreferencesListWhenTheyExist() {
+        DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
+        GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
+        RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
+        StudentPreferenceController controller = new StudentPreferenceController(
+                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
+        
+        UUID studentId = UUID.randomUUID();
+        com.recred.backend.infrastructure.entities.SugerenciaIAEntity entity = 
+                new com.recred.backend.infrastructure.entities.SugerenciaIAEntity();
+        entity.setTitulo("Test");
+        entity.setMensaje("Msg");
+        entity.setTipo(com.recred.backend.domain.models.TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+        
+        when(getStudentPreferences.execute(studentId, false)).thenReturn(List.of(entity));
+
+        ResponseEntity<List<StudentPreferenceResponse>> response = controller.getPreferences(studentId, false);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(1, response.getBody().size());
+    }
+
+    @Test
+    void respondToAISuggestionSuccessfully() {
+        DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
+        GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
+        RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
+        StudentPreferenceController controller = new StudentPreferenceController(
+                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
+        
+        UUID sugerenciaId = UUID.randomUUID();
+        
+        ResponseEntity<Void> response = controller.respond(sugerenciaId, true);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        org.mockito.Mockito.verify(respondToAISuggestion).execute(sugerenciaId, true);
     }
 }

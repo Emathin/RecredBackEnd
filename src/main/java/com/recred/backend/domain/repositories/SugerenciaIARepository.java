@@ -9,4 +9,6 @@ public interface SugerenciaIARepository {
     void guardar(SugerenciaIAEntity sugerencia);
 
     List<SugerenciaIAEntity> findByAlumnoId(UUID alumnoId);
+
+    java.util.Optional<SugerenciaIAEntity> findById(UUID id);
 }

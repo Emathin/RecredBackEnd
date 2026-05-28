@@ -57,7 +57,7 @@ class DetectStudentPreferencesTest {
     }
 
     @Test
-    void ejecuta_Correctamente_CuandoSeDetectanPreferencias() {
+    void executeAndSaveAISuggestionWhenValidPreferenceIsDetected() {
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         Alumno alumno = new Alumno();
@@ -89,10 +89,11 @@ class DetectStudentPreferencesTest {
         assertNull(saved.getAceptada());
         assertEquals(producto.getId().toString(), saved.getMetadata().get("productoId"));
         assertEquals(studentId, saved.getAlumnoEntity().getId());
+        assertEquals(buffetId, saved.getBuffetEntity().getId());
     }
 
     @Test
-    void aborta_Temprano_SiNoHayStockDisponible() {
+    void abortDetectionWhenNoStockIsAvailableInBuffet() {
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         Alumno alumno = new Alumno();
@@ -109,7 +110,7 @@ class DetectStudentPreferencesTest {
     }
 
     @Test
-    void noHaceNada_SiLaIA_NoDetectaPreferencias() {
+    void doNothingWhenAINoPreferenceDetected() {
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         Alumno alumno = new Alumno();
@@ -128,11 +129,21 @@ class DetectStudentPreferencesTest {
     }
 
     @Test
-    void lanzaExcepcion_SiElAlumnoNoExiste() {
+    void throwExceptionWhenTargetStudentDoesNotExist() {
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
 
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class, () -> detectStudentPreferences.execute(studentId, buffetId));
+    }
+
+    @Test
+    void rethrowExceptionWhenUnexpectedErrorOccursInProcess() {
+        UUID studentId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+
+        when(alumnoRepository.findById(studentId)).thenThrow(new RuntimeException("Database error"));
 
         assertThrows(RuntimeException.class, () -> detectStudentPreferences.execute(studentId, buffetId));
     }
