@@ -4,6 +4,7 @@ import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.ClasificacionSalud;
+
 import java.util.stream.Collectors;
 import java.util.Set;
 

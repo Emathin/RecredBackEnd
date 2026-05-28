@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.entities;
 
-
+import com.recred.backend.domain.models.Billetera;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -54,4 +54,16 @@ public class BilleteraEntity {
     @UpdateTimestamp
     @Column(name = "actualizado_en")
     private LocalDateTime actualizadoEn;
+
+    public Billetera toDomain() {
+        Billetera domain = new Billetera();
+        domain.setId(this.id);
+        domain.setSaldoCreditos(this.saldoCreditos);
+        domain.setLimiteCredito(this.limiteCredito);
+        domain.setSaldoDeudaInterno(this.saldoDeudaInterno);
+        domain.setCreditoHabilitado(this.creditoHabilitado);
+        domain.setCreadoEn(this.creadoEn);
+        domain.setActualizadoEn(this.actualizadoEn);
+        return domain;
+    }
 }

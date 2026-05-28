@@ -25,10 +25,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service
 public class PredictStudentSpending {
 
     private static final int HISTORICAL_DAYS = 90;
