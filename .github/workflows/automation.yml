@@ -82,11 +82,11 @@ jobs:
             POSTGRES_USER=${{ secrets.PROD_POSTGRES_USER }}
             POSTGRES_PASSWORD=${{ secrets.PROD_POSTGRES_PASSWORD }}
 
-            DB_URL=jdbc:postgresql://db:5432/${{ secrets.PROD_POSTGRES_DB }}
+            DB_URL=jdbc:postgresql://${{ secrets.PROD_DB_HOST }}:${{ secrets.PROD_DB_PORT }}/${{ secrets.PROD_POSTGRES_DB }}
             DB_USERNAME=${{ secrets.PROD_POSTGRES_USER }}
             DB_PASSWORD=${{ secrets.PROD_POSTGRES_PASSWORD }}
 
-            COGNITO_ISSUER_URI=${{ secrets.PROD_COGNITO_ISSUER_URI }}
+            COGNITO_ISSUER_URI=${{ secrets.COGNITO_ISSUER_URI }}
 
             GEMINI_MODEL=${{ secrets.PROD_GEMINI_MODEL }}
             GEMINI_ENABLED=${{ secrets.PROD_GEMINI_ENABLED }}
