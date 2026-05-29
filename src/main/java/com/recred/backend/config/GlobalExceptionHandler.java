@@ -69,6 +69,12 @@ public class GlobalExceptionHandler {
                 ex.getMessage());
     }
 
+    @ExceptionHandler(ImageValidationException.class)
+    public ResponseEntity<ErrorResponse> handleImageValidation(ImageValidationException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Error de validación de imagen",
+                ex.getMessage());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse>
     handleValidation(MethodArgumentNotValidException ex){

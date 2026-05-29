@@ -227,8 +227,8 @@ public class UseCases {
     }
 
     @Bean
-    public SaveProduct saveProduct(ProductRepository productRepository) {
-        return new SaveProduct(productRepository);
+    public SaveProduct saveProduct(ProductRepository productRepository, InventoryRepository inventoryRepository, CategoryRepository categoryRepository) {
+        return new SaveProduct(productRepository, inventoryRepository, categoryRepository);
     }
 
 
