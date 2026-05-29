@@ -23,7 +23,9 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs",
                                 "/v3/api-docs/**",
-                                "/v3/api-docs.yaml"
+                                "/v3/api-docs.yaml",
+                                "/api/load-stock/upload-image",
+                                "/api/load-stock/save-product"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
