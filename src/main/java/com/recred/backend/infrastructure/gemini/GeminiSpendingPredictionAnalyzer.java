@@ -7,11 +7,12 @@ import com.recred.backend.domain.models.ConsumptionCategory;
 import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
-import java.util.List;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Optional;
 
 @Component
 public class GeminiSpendingPredictionAnalyzer implements SpendingPredictionAnalyzer {
@@ -83,7 +84,7 @@ public class GeminiSpendingPredictionAnalyzer implements SpendingPredictionAnaly
         } catch (JsonProcessingException exception) {
             LOGGER.warn(
                     "Gemini returned invalid spending prediction analysis: {}",
-                    exception.getOriginalMessage()
+                    exception.getMessage()
             );
             return Optional.empty();
         }

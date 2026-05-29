@@ -36,7 +36,8 @@ public class GlobalExceptionHandler {
                 "Restricción Horaria",
                 ex.getMessage(),
                 LocalDateTime.now(),
-                HttpStatus.FORBIDDEN.value()
+                HttpStatus.FORBIDDEN.value(),
+                currentRequestId()
         );
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
@@ -50,6 +51,7 @@ public class GlobalExceptionHandler {
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("error", "Límite de Presupuesto Superado");
         body.put("message", ex.getMessage());
+        addRequestId(body);
 
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
@@ -143,7 +145,16 @@ public class GlobalExceptionHandler {
     private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status,
                                                         String error, String message) {
         ErrorResponse response = new ErrorResponse(error, message,
-                LocalDateTime.now(), status.value());
+                LocalDateTime.now(), status.value(), currentRequestId());
         return ResponseEntity.status(status).body(response);
+    }
+
+    private String currentRequestId() {
+        return RequestIdContext.currentRequestId().orElse(null);
+    }
+
+    private void addRequestId(Map<String, Object> body) {
+        RequestIdContext.currentRequestId()
+                .ifPresent(requestId -> body.put("requestId", requestId));
     }
 }

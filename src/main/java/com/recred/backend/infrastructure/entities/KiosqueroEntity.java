@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.domain.models.Kiosquero;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -49,4 +50,11 @@ public class KiosqueroEntity {
     @UpdateTimestamp
     @Column(name = "actualizado_en")
     private LocalDateTime actualizadoEn;
+
+    public static Kiosquero toDomain(KiosqueroEntity kiosqueroEntity) {
+        Kiosquero kiosquero = new Kiosquero();
+        kiosquero.setId(kiosqueroEntity.getId());
+        Kiosquero.setBuffet(kiosqueroEntity.getBuffetEntity());
+        return kiosquero;
+    }
 }

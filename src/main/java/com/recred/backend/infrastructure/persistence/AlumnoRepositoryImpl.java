@@ -6,6 +6,7 @@ import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -24,6 +25,13 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
     public Optional<Alumno> findById(UUID id) {
         return springDataRepository.findById(id)
                 .map(AlumnoEntity::toDomain);
+    }
+
+    @Override
+    public List<Alumno> findAll() {
+        return springDataRepository.findAll().stream()
+                .map(AlumnoEntity::toDomain)
+                .toList();
     }
 
     @Override

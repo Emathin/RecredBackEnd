@@ -1,10 +1,16 @@
 package com.recred.backend.config;
 
+import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CreateBudget;
+import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.CreateTimeRestriction;
+import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.GetHealthRestrictionsCatalog;
+import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
 import com.recred.backend.application.GenerateProductChangeRecommendation;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
@@ -26,6 +32,7 @@ import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.application.UpdatePurchaseStatus;
+import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -36,14 +43,18 @@ import com.recred.backend.domain.repositories.ConsumptionAlertNotificationReposi
 import com.recred.backend.domain.repositories.ConsumptionAlertPurchaseRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
+import com.recred.backend.domain.repositories.CompraRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
+import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.repositories.InventarioRepository;
+import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
@@ -64,6 +75,7 @@ import com.recred.backend.domain.services.SpendingPredictionRangeService;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
 import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
 
@@ -186,6 +198,17 @@ public class UseCases {
     }
 
     @Bean
+    public DetectStudentPreferences detectarPreferenciasConsumo(
+            AlumnoRepository alumnoRepository,
+            PreferenceAIRepository preferenceAIRepository,
+            SugerenciaIARepository sugerenciaIARepository,
+            CompraRepository compraRepository,
+            InventarioRepository inventarioRepository) {
+        return new DetectStudentPreferences(alumnoRepository, preferenceAIRepository,
+                sugerenciaIARepository, compraRepository, inventarioRepository);
+    }
+
+    @Bean
     public GetHealthRestrictions obtenerRestriccionesSalud(
             AlumnoRepository alumnoRepository) {
         return new GetHealthRestrictions(alumnoRepository);
@@ -238,6 +261,18 @@ public class UseCases {
     public UpdateTimeRestriction updateTimeRestriction(
             RestriccionHorariaRepository restriccionHorariaRepository) {
         return new UpdateTimeRestriction(restriccionHorariaRepository);
+    }
+
+    @Bean
+    public GetStudentPreferences obtenerPreferenciasAlumno(
+            SugerenciaIARepository sugerenciaIARepository) {
+        return new GetStudentPreferences(sugerenciaIARepository);
+    }
+
+    @Bean
+    public RespondToAISuggestion responderSugerenciaIA(
+            SugerenciaIARepository sugerenciaIARepository) {
+        return new RespondToAISuggestion(sugerenciaIARepository);
     }
 
     @Bean
@@ -332,6 +367,16 @@ public class UseCases {
             GeminiSeasonalSuggester seasonalSuggester, OpenMeteoWeatherClient weatherClient) {
         return new GenerateSeasonalRecommendation(
                 weatherClient, seasonalSuggester);
+    }
+
+    @Bean
+    public AddProductRecommendation addProductRecommendation(
+            ProductRepository productRepository,
+            KiosqueroRepository kiosqueroRepository,
+            InventoryRepository inventoryRepository,
+            AIEventRepository aiEventRepository) {
+        return new AddProductRecommendation(productRepository, kiosqueroRepository, inventoryRepository,
+                aiEventRepository);
     }
 
 }

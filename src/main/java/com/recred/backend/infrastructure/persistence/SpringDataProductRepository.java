@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -27,4 +28,18 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
     ProductoEntity findBuffetLeastSoldProducts(
             @Param("buffetId") UUID buffetId
     );
+
+    @Query(""" 
+            select p, SUM(COALESCE(cd.cantidad, 0)) as cantidad
+            FROM ProductoEntity p
+            LEFT JOIN CompraDetalleEntity cd ON cd.productoEntity.id = p.id 
+            AND  p.id NOT IN(
+                        SELECT AI.productoEntity.id
+                        FROM AIEventEntity AI
+                        WHERE AI.productoEntity.id IS NOT NULL
+                        ) 
+            GROUP BY p.id 
+            ORDER BY SUM(COALESCE(cd.cantidad, 0)) DESC LIMIT 3
+            """)
+    List<ProductoEntity> findBestSoldProducts();
 }
