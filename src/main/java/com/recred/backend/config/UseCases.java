@@ -375,7 +375,10 @@ public class UseCases {
             KiosqueroRepository kiosqueroRepository,
             InventoryRepository inventoryRepository,
             AIEventRepository aiEventRepository) {
-        return new AddProductRecommendation(productRepository, kiosqueroRepository, inventoryRepository,
+        return new AddProductRecommendation(
+                productRepository,
+                kiosqueroRepository,
+                inventoryRepository,
                 aiEventRepository);
     }
 
