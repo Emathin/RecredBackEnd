@@ -2,11 +2,9 @@ package com.recred.backend.infrastructure.gemini;
 
 import com.recred.backend.infrastructure.web.RecommendationResponseDTO;
 import tools.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Service
 public class GeminiSeasonalSuggester {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(GeminiSeasonalSuggester.class);
