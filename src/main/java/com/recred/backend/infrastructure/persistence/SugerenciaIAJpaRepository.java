@@ -2,13 +2,27 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
-import java.time.LocalDateTime;
-import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
 public interface SugerenciaIAJpaRepository extends JpaRepository<SugerenciaIAEntity, UUID> {
+
+    List<SugerenciaIAEntity> findAllByAlumnoEntityIdOrderByCreadoEnDesc(UUID alumnoId);
+
+    List<SugerenciaIAEntity> findAllByAlumnoEntityIdAndTipoOrderByCreadoEnDesc(
+            UUID alumnoId, TipoSugerenciaIA tipo);
+
+    boolean existsByAlumnoEntityIdAndProductoEntityIdAndTipoAndCreadoEnGreaterThanEqual(
+            UUID alumnoId,
+            UUID productoId,
+            TipoSugerenciaIA tipo,
+            LocalDateTime creadoEn
+    );
 
     @Query("""
             select count(s) > 0

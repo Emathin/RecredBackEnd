@@ -12,5 +12,6 @@ public enum TipoSugerenciaIA {
     TUESDAY,
     WEDNESDAY,
     THURSDAY,
-    FRIDAY
+    FRIDAY,
+    ALERTA_PRECIO
 }

@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.models.PurchaseResume;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
@@ -9,6 +10,7 @@ import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
 import com.recred.backend.infrastructure.entities.CompraEntity;
 import com.recred.backend.infrastructure.entities.CompraPresencialEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -16,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 public class PurchaseRepositoryImpl implements PurchaseRepository {
@@ -87,6 +90,29 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
             (UUID alumnoId, UUID categoriaId, LocalDateTime inicio, LocalDateTime fin) {
         return springDataRepository.sumarGastosPorCategoriaEnRango
                 (alumnoId, EstadoCompra.ENTREGADO, categoriaId, inicio, fin);
+    }
+
+    @Override
+    public List<PreferenceAIRepository.CompraResumen> findLastPurchasesByAlumno(
+            UUID alumnoId, int limit) {
+        List<CompraEntity> compras =
+                springDataRepository.findLastByAlumno(alumnoId, PageRequest.of(0, limit));
+
+        return compras.stream()
+                .flatMap(c -> c.getDetalles().stream())
+                .map(d -> {
+                    String categoryName = "Sin Categoria";
+                    if (d.getProductoEntity().getCategoria() != null) {
+                        categoryName = d.getProductoEntity().getCategoria().getDescripcion();
+                    }
+                    return new PreferenceAIRepository.CompraResumen(
+                            d.getProductoEntity().getNombre(),
+                            categoryName,
+                            d.getCompra().getFechaHora()
+                    );
+                })
+                .limit(limit)
+                .collect(Collectors.toList());
     }
 
     @Override

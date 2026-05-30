@@ -5,16 +5,17 @@ import com.recred.backend.domain.models.PurchaseResume;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.infrastructure.entities.CompraEntity;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity, UUID>,
@@ -40,6 +41,12 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             @Param("studentId") UUID studentId,
             Pageable pageable
     );
+
+    @Query("SELECT c " +
+            "FROM CompraEntity c " +
+            "WHERE c.alumnoEntity.id = :alumnoId " +
+            "ORDER BY c.fechaHora DESC")
+    List<CompraEntity> findLastByAlumno(@Param("alumnoId") UUID alumnoId, Pageable pageable);
 
     @Query("SELECT COALESCE(SUM(c.montoTotal), 0) FROM CompraEntity c " +
             "WHERE c.alumnoEntity.id = :alumnoId " +
