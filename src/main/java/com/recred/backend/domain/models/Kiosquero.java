@@ -1,6 +1,5 @@
 package com.recred.backend.domain.models;
 
-import com.recred.backend.infrastructure.entities.BuffetEntity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

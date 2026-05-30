@@ -160,8 +160,10 @@ public class AlumnoEntity {
             entity.setProductosFavoritos(productosProxies);
         }
 
-        if (alumno.getRestriccionesHorarias() != null && !alumno.getRestriccionesHorarias().isEmpty()) {
-            Set<RestriccionHorariaEntity> horariasEntities = alumno.getRestriccionesHorarias().stream()
+        if (alumno.getRestriccionesHorarias() != null && !alumno.
+                getRestriccionesHorarias().isEmpty()) {
+            Set<RestriccionHorariaEntity> horariasEntities = alumno.
+                    getRestriccionesHorarias().stream()
                     .map(rh -> {
 
                         RestriccionHorariaEntity rhEntity = new RestriccionHorariaEntity();
