@@ -13,10 +13,18 @@ import java.util.UUID;
 @Component
 public class InventoryRepositoryImpl implements InventoryRepository {
 
+    private final SpringDataInventoryRepository springDataInventoryRepository;
     private final SpringDataInventoryRepository springDataRepository;
 
-    public InventoryRepositoryImpl(SpringDataInventoryRepository springDataRepository) {
+    public InventoryRepositoryImpl(SpringDataInventoryRepository springDataInventoryRepository,SpringDataInventoryRepository springDataRepository) {
+        this.springDataInventoryRepository = springDataInventoryRepository;
         this.springDataRepository = springDataRepository;
+    }
+
+    @Override
+    public boolean checkIfProductIsInStock(UUID productId, UUID buffetId) {
+        return springDataInventoryRepository
+                .existsByProductIdAndKiosqueroId(productId, buffetId);
     }
 
     @Override

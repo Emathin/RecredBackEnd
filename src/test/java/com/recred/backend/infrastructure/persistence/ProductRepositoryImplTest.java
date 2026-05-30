@@ -3,9 +3,13 @@ package com.recred.backend.infrastructure.persistence;
 import com.recred.backend.domain.models.*;
 import com.recred.backend.infrastructure.entities.*;
 import org.junit.jupiter.api.BeforeEach;
+import com.recred.backend.domain.models.ProductChangeRecommendation;
+import com.recred.backend.domain.models.Producto;
+import com.recred.backend.infrastructure.entities.ProductoEntity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -14,16 +18,21 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ProductRepositoryImplTest {
-
+public class ProductRepositoryImplTest {
     @Mock
     private SpringDataProductRepository springDataRepository;
 
+    @InjectMocks
+    private ProductRepositoryImpl repositoryImpl;
     private ProductRepositoryImpl productRepository;
 
     @BeforeEach
@@ -32,14 +41,15 @@ class ProductRepositoryImplTest {
     }
 
     @Test
-    void findById_DeberiaRetornarProductoMapeado_CuandoExiste() {
+    void findByIdReturnsDomainObjectIfExists() {
         UUID id = UUID.randomUUID();
         ProductoEntity entity = new ProductoEntity();
         entity.setId(id);
-        entity.setNombre("Test");
+        entity.setNombre("Producto Test");
+
         when(springDataRepository.findById(id)).thenReturn(Optional.of(entity));
 
-        Optional<Producto> result = productRepository.findById(id);
+        Optional<Producto> result = repositoryImpl.findById(id);
 
         assertTrue(result.isPresent());
         assertEquals(id, result.get().getId());
@@ -63,7 +73,7 @@ class ProductRepositoryImplTest {
         CategoriaProducto cat = new CategoriaProducto();
         cat.setId(UUID.randomUUID());
         producto.setCategoria(cat);
-        
+
         ProductoEntity savedEntity = new ProductoEntity();
         savedEntity.setId(UUID.randomUUID());
         savedEntity.setNombre("Nuevo");
@@ -103,7 +113,7 @@ class ProductRepositoryImplTest {
     void save_DeberiaMapearTodo_IncluyendoMedidasTiposYClasificaciones() {
         Producto producto = new Producto();
         producto.setNombre("Completo");
-        
+
         CategoriaProducto cat = new CategoriaProducto();
         cat.setId(UUID.randomUUID());
         producto.setCategoria(cat);
@@ -142,7 +152,7 @@ class ProductRepositoryImplTest {
         CategoriaProducto cat = new CategoriaProducto();
         cat.setId(UUID.randomUUID());
         producto.setCategoria(cat);
-        
+
         ProductoEntity entity = new ProductoEntity();
         entity.setId(id);
         entity.getMedidas().add(new ProductoMedidaEntity());
@@ -159,6 +169,22 @@ class ProductRepositoryImplTest {
         assertTrue(entity.getClasificacionesSalud().isEmpty());
     }
 
+    @Test
+    void findBuffetLeastSoldProductsReturnsAProduct() {
+        UUID buffetId = java.util.UUID.randomUUID();
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(java.util.UUID.randomUUID());
+        entity.setNombre("Menos Vendido");
+        entity.setPrecio(new java.math.BigDecimal("100.00"));
+
+        when(springDataRepository.findBuffetLeastSoldProducts(buffetId)).thenReturn(entity);
+
+        ProductChangeRecommendation result = repositoryImpl.findBuffetLeastSoldProducts(buffetId);
+
+        assertNotNull(result);
+        assertEquals(entity.getId(), result.getId());
+        assertEquals(buffetId, result.getIdBuffet());
+    }
     @Test
     void save_DeberiaNoReasignarCategoria_CuandoIdEsIgual() {
         UUID id = UUID.randomUUID();

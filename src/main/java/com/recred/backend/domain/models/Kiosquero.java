@@ -1,5 +1,6 @@
 package com.recred.backend.domain.models;
 
+import com.recred.backend.infrastructure.entities.BuffetEntity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -18,4 +19,10 @@ public class Kiosquero {
     private Buffet buffet;
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
+
+
+    public static void setBuffet(BuffetEntity buffetEntity) {
+        Buffet buffet = new Buffet();
+        buffet.setId(buffetEntity.getId());
+    }
 }

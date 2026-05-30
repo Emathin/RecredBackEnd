@@ -2,8 +2,10 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.ClasificacionTipo;
+import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.ProductoMedida;
+import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
@@ -12,6 +14,7 @@ import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.ProductoMedidaEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -22,7 +25,8 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     private final SpringDataProductRepository springDataRepository;
 
-    public ProductRepositoryImpl(SpringDataProductRepository springDataRepository) {
+    public ProductRepositoryImpl(
+                                 SpringDataProductRepository springDataRepository) {
         this.springDataRepository = springDataRepository;
     }
 
@@ -30,6 +34,19 @@ public class ProductRepositoryImpl implements ProductRepository {
     public Optional<Producto> findById(UUID id) {
         return springDataRepository.findById(id).map(ProductoEntity::toDomain);
     }
+    @Override
+    public ProductChangeRecommendation findBuffetLeastSoldProducts(UUID buffetId) {
+        ProductoEntity producto = springDataRepository.findBuffetLeastSoldProducts(buffetId);
+
+        return producto.toProductRecommendation(buffetId);
+    }
+
+    @Override
+    public List<Producto> findBestSoldProducts() {
+        List<ProductoEntity> productos = springDataRepository.findBestSoldProducts();
+        return productos.stream().map(ProductoEntity::toDomain).toList();
+    }
+
 
     @Override
     public Producto save(Producto producto) {
