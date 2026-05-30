@@ -5,6 +5,10 @@ import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CreateBudget;
+import com.recred.backend.application.DeleteProduct;
+import com.recred.backend.application.GetAllProducts;
+import com.recred.backend.application.GetProductById;
+import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableBudget;
@@ -35,6 +39,7 @@ import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.UpdateBudget;
+import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdatePurchaseStatus;
@@ -400,7 +405,28 @@ public class UseCases {
         return new SaveProduct(productRepository, inventoryRepository, categoryRepository);
     }
 
+    @Bean
+    public GetAllProducts getAllProducts(ProductRepository productRepository) {
+        return new GetAllProducts(productRepository);
+    }
 
+    @Bean
+    public GetProductById getProductById(ProductRepository productRepository) {
+        return new GetProductById(productRepository);
+    }
+
+    @Bean
+    public UpdateProduct updateProduct(
+            ProductRepository productRepository,
+            InventoryRepository inventoryRepository,
+            CategoryRepository categoryRepository) {
+        return new UpdateProduct(productRepository, inventoryRepository, categoryRepository);
+    }
+
+    @Bean
+    public DeleteProduct deleteProduct(ProductRepository productRepository) {
+        return new DeleteProduct(productRepository);
+    }
 
     @Bean
     public GenerateProductChangeRecommendation generateProductChangeRecommendation(

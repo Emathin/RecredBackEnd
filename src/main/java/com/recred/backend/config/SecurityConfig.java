@@ -39,11 +39,12 @@ public class SecurityConfig {
                                                 .requestMatchers("/ping").permitAll()
                                                 .requestMatchers("/actuator/health").permitAll()
                                                 .requestMatchers(
-                                                        "/swagger-ui.html",
-                                                        "/swagger-ui/**",
-                                                        "/v3/api-docs",
-                                                        "/v3/api-docs/**",
-                                                        "/v3/api-docs.yaml")
+                                                                "/swagger-ui.html",
+                                                                "/swagger-ui/**",
+                                                                "/v3/api-docs",
+                                                                "/v3/api-docs/**",
+                                                                "/api/v1/**",
+                                                                "/v3/api-docs.yaml")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
 

@@ -1,6 +1,11 @@
 package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recred.backend.application.DeleteProduct;
+import com.recred.backend.application.GetAllProducts;
+import com.recred.backend.application.GetProductById;
+import com.recred.backend.application.SaveProduct;
+import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductPrice;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +28,16 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 class ProductControllerTest {
 
     @Mock
+    private GetAllProducts getAllProducts;
+    @Mock
+    private GetProductById getProductById;
+    @Mock
+    private SaveProduct saveProduct;
+    @Mock
+    private UpdateProduct updateProduct;
+    @Mock
+    private DeleteProduct deleteProduct;
+    @Mock
     private UpdateProductPrice updateProductPrice;
 
     private MockMvc mockMvc;
@@ -30,7 +45,14 @@ class ProductControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = standaloneSetup(new ProductController(updateProductPrice)).build();
+        mockMvc = standaloneSetup(new ProductController(
+                getAllProducts,
+                getProductById,
+                saveProduct,
+                updateProduct,
+                deleteProduct,
+                updateProductPrice
+        )).build();
         objectMapper = new ObjectMapper();
     }
 
@@ -39,7 +61,7 @@ class ProductControllerTest {
         UUID productId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
 
-        mockMvc.perform(patch("/api/v1/productos/{productId}/precio", productId)
+        mockMvc.perform(patch("/api/v1/products/{productId}/precio", productId)
                         .param("nuevoPrecio", "120.00")
                         .param("buffetId", buffetId.toString()))
                 .andExpect(status().isOk());
@@ -52,7 +74,7 @@ class ProductControllerTest {
         UUID productId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
 
-        mockMvc.perform(patch("/api/v1/productos/{productId}/precio", productId)
+        mockMvc.perform(patch("/api/v1/products/{productId}/precio", productId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "nuevoPrecio", "120.00",

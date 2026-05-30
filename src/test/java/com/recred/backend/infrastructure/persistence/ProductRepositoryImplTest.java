@@ -297,4 +297,34 @@ public class ProductRepositoryImplTest {
 
         assertEquals(catId2, entity.getCategoria().getId());
     }
+    @Test
+    void dadoQueSeLlamaFindAllActiveWithStock_cuandoExisteStock_entoncesMapeaCorrectamente() {
+        UUID buffetId = UUID.randomUUID();
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(UUID.randomUUID());
+        Object[] resultObj = new Object[]{entity, 50};
+
+        when(springDataRepository.findAllActiveWithStockParams(buffetId)).thenReturn(java.util.Collections.singletonList(resultObj));
+
+        java.util.List<Producto> result = productRepository.findAllActiveWithStock(buffetId);
+
+        assertFalse(result.isEmpty());
+        assertEquals(50, result.get(0).getStockActual());
+    }
+
+    @Test
+    void dadoQueSeLlamaFindActiveByIdWithStock_cuandoExiste_entoncesMapeaCorrectamente() {
+        UUID id = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(id);
+        Object[] resultObj = new Object[]{entity, 10};
+
+        when(springDataRepository.findActiveByIdWithStockParams(id, buffetId)).thenReturn(Optional.of(resultObj));
+
+        Optional<Producto> result = productRepository.findActiveByIdWithStock(id, buffetId);
+
+        assertTrue(result.isPresent());
+        assertEquals(10, result.get().getStockActual());
+    }
 }
