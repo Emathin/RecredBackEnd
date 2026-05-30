@@ -1,6 +1,5 @@
 package com.recred.backend.application;
 
-import com.recred.backend.application.usecases.CreateAdvancePurchaseUseCase;
 import com.recred.backend.domain.exceptions.DietaryRestrictionException;
 import com.recred.backend.domain.models.*;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -57,7 +56,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
     @Test
     void execute_shouldReturnPendingStatusAndWithdrawalCodes_whenPurchaseIsSuccessful() {
-        // Given
+
         UUID studentId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest
@@ -80,17 +79,15 @@ class CreateAdvancePurchaseUseCaseTest {
         items.put(product, 1);
 
         Purchase purchase = new Purchase(student, items, null);
-        purchase.setId(UUID.randomUUID()); // This line fixes the bug.
+        purchase.setId(UUID.randomUUID());
 
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
         when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("test-code");
 
-        // When
         AdvancePurchaseResponse response = createAdvancePurchaseUseCase.execute(request);
 
-        // Then
         assertNotNull(response);
         assertEquals(EstadoCompra.PENDIENTE, response.status().status());
         assertEquals(10.0, response.total());
@@ -100,7 +97,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
     @Test
     void execute_shouldThrowDietaryRestrictionException_whenValidationFails() {
-        // Given
+
         UUID studentId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest
@@ -123,7 +120,6 @@ class CreateAdvancePurchaseUseCaseTest {
         doThrow(new DietaryRestrictionException("Dietary restriction violated"))
                 .when(purchaseValidator).validate(any(Purchase.class));
 
-        // When & Then
         assertThrows(DietaryRestrictionException.class, () -> {
             createAdvancePurchaseUseCase.execute(request);
         });

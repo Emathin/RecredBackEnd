@@ -1,4 +1,4 @@
-package com.recred.backend.application.usecases;
+package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
@@ -39,8 +39,6 @@ public class CreateAdvancePurchaseUseCase {
     }
 
     public AdvancePurchaseResponse execute(AdvancePurchaseRequest request) {
-        // For simplicity, we process the first order in the list.
-        // A more robust implementation would handle multiple orders.
         AdvancePurchaseRequest.OrderRequest orderRequest = request.orders().get(0);
 
         Alumno student = alumnoRepository.findById(orderRequest.studentId())
