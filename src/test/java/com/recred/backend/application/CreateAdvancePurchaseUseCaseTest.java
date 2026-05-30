@@ -1,4 +1,3 @@
-// C:/Users/emman/OneDrive/Desktop/TPI/recred-backend/src/test/java/com/recred/backend/application/CreateAdvancePurchaseUseCaseTest.java
 package com.recred.backend.application;
 
 import com.recred.backend.application.usecases.CreateAdvancePurchaseUseCase;
@@ -61,9 +60,11 @@ class CreateAdvancePurchaseUseCaseTest {
         // Given
         UUID studentId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest(productId, 1);
+        AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest
+                (productId, 1);
         AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
-                studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23", RecessTime.FIRST_RECESS, List.of(itemRequest)
+                studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23",
+                RecessTime.FIRST_RECESS, List.of(itemRequest)
         );
         AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
@@ -102,9 +103,11 @@ class CreateAdvancePurchaseUseCaseTest {
         // Given
         UUID studentId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest(productId, 1);
+        AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest
+                (productId, 1);
         AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
-                studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23", RecessTime.FIRST_RECESS, List.of(itemRequest)
+                studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23",
+                RecessTime.FIRST_RECESS, List.of(itemRequest)
         );
         AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
