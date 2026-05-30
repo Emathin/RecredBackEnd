@@ -53,7 +53,7 @@ public class CreateAdvancePurchaseUseCase {
             items.put(product, itemRequest.quantity());
         }
 
-        Purchase purchase = new Purchase(student, items, null); // Payment method is not part of the request.
+        Purchase purchase = new Purchase(student, items, null);
 
         purchaseValidator.validate(purchase);
 
