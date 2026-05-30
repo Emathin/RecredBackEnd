@@ -6,6 +6,8 @@ import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductRecommendationResult;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.PurchasePatternAnalysis;
+import com.recred.backend.domain.models.PurchaseRecommendationResult;
 import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.SpendingPredictionResult;
@@ -142,6 +144,15 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         return data;
     }
 
+    private Map<String, Object> mapPurchaseAnalysis(PurchasePatternAnalysis analysis) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("resumen", analysis.summary());
+        data.put("Id_Producto", analysis.product_id());
+        data.put("Nombre Producto", analysis.productName());
+        data.put("Dias de compra", analysis.purchaseDays());
+        return data;
+    }
+
     @Override
     public void registerProductAdditionRecommendation(
             Producto product, Kiosquero kiosquero, UUID buffetId) {
@@ -162,7 +173,37 @@ public class AIEventPersistenceRepository implements AIEventRepository {
                 "que lo agregues a tu stock") ;
         aiEventEntity.setResultData(data);
         aiEventJpaRepository.save(aiEventEntity);
-        System.out.println(aiEventEntity.getResultData());
+    }
 
+    @Override
+    public UUID registerPurchaseRecommendation(PurchaseRecommendationResult result) {
+        AIEventEntity aiEventEntity = new AIEventEntity();
+        aiEventEntity.setType(AIEventType.ANALISIS_CONSUMO);
+        aiEventEntity.setAlumnoEntity(entityManager.getReference(
+                AlumnoEntity.class,
+                result.getAlumnoId()
+        ));
+
+        aiEventEntity.setProductoEntity(entityManager.getReference(
+                ProductoEntity.class,
+                result.getAiAnalysis().get().product_id()
+        ));
+
+        aiEventEntity.setInputOrigin("Backend Product Reco");
+
+        Map<String, Object> inputData = new LinkedHashMap<>();
+        inputData.put("Lista de compras", result.getPurchases());
+
+
+        aiEventEntity.setInputData(inputData);
+
+        Map<String, Object> outputData = new LinkedHashMap<>();
+        result.getAiAnalysis().ifPresent(analysis
+                -> outputData.put("analisisIa", mapPurchaseAnalysis(
+                analysis)));
+        aiEventEntity.setResultData(outputData);
+
+        AIEventEntity savedEvent = aiEventJpaRepository.save(aiEventEntity);
+        return savedEvent.getId();
     }
 }

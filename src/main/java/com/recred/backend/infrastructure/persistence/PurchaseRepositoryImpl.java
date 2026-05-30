@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.PurchaseResume;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -85,6 +87,11 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
             (UUID alumnoId, UUID categoriaId, LocalDateTime inicio, LocalDateTime fin) {
         return springDataRepository.sumarGastosPorCategoriaEnRango
                 (alumnoId, EstadoCompra.ENTREGADO, categoriaId, inicio, fin);
+    }
+
+    @Override
+    public List<PurchaseResume> findPurchasesByAlumno(UUID alumnoId) {
+        return springDataRepository.findByAlumno(alumnoId);
     }
 
 }
