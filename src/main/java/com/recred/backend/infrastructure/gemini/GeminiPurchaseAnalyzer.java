@@ -25,7 +25,8 @@ public class GeminiPurchaseAnalyzer implements PurchaseAnalyzer {
             Sos un asistente para alumnos de una app escolar.
             Se te brindaran una lista de compras
             Deberas detectar si hay un patron de compra entre un producto y un dia de la semana
-            en "patronDiasDetectado incluye un solo dia, en mayusculas,en ingles, singular y sin acentos
+            en "patronDiasDetectado incluye un solo dia,
+             en mayusculas,en ingles, singular y sin acentos
             Usa lenguaje simple, claro y accionable para usuario final.
             No menciones modelo, confianza, calidad predictiva ni cantidad
              de datos historicos.

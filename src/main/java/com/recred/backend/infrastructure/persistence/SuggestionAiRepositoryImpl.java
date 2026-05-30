@@ -20,13 +20,15 @@ public class SuggestionAiRepositoryImpl implements SuggestionAiRepository {
     private final EntityManager entityManager;
     private final SpringDataSuggestionAiRepository repository;
 
-    public SuggestionAiRepositoryImpl(EntityManager entityManager, SpringDataSuggestionAiRepository repository) {
+    public SuggestionAiRepositoryImpl(
+            EntityManager entityManager, SpringDataSuggestionAiRepository repository) {
         this.entityManager = entityManager;
         this.repository = repository;
     }
 
     @Override
-    public SugerenciaIAEntity save(UUID eventID, PurchaseRecommendationResult result) {
+    public SugerenciaIAEntity save(
+            UUID eventID, PurchaseRecommendationResult result) {
         SugerenciaIAEntity entity = new SugerenciaIAEntity();
         entity.setAceptada(false);
         entity.setTipo(TipoSugerenciaIA.valueOf(result.getAiAnalysis().get().purchaseDays()));

@@ -69,7 +69,8 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
 
     @Query(""" 
             SELECT NEW com.recred.backend.domain.models.PurchaseResume(
-                        c.alumnoEntity.id,cd.productoEntity.id,p.nombre, cd.precioUnitario, c.fechaHora) 
+                        c.alumnoEntity.id,cd.productoEntity.id,
+                                    p.nombre, cd.precioUnitario, c.fechaHora) 
             FROM CompraEntity c
                         JOIN CompraDetalleEntity cd on cd.compra.id = c.id
                          join ProductoEntity p on p.id = cd.productoEntity.id 

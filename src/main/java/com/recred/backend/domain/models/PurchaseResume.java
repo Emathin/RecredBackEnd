@@ -19,7 +19,9 @@ public class PurchaseResume {
     private BigDecimal precio;
     private LocalDateTime date;
 
-    public PurchaseResume(UUID idAlumno, UUID idProducto, String nombreProducto, BigDecimal precio, LocalDateTime date) {
+    public PurchaseResume(
+            UUID idAlumno, UUID idProducto,
+            String nombreProducto, BigDecimal precio, LocalDateTime date) {
         this.idAlumno = idAlumno;
         this.idProducto = idProducto;
         this.nombreProducto = nombreProducto;
