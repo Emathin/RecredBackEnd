@@ -18,56 +18,53 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableConfigurationProperties(CorsProperties.class)
 public class SecurityConfig {
 
-    private static final List<String> ALLOWED_METHODS = List.of(
-            HttpMethod.GET.name(),
-            HttpMethod.POST.name(),
-            HttpMethod.PUT.name(),
-            HttpMethod.PATCH.name(),
-            HttpMethod.DELETE.name(),
-            HttpMethod.OPTIONS.name()
-    );
-    private static final long CORS_MAX_AGE_SECONDS = 3600L;
+        private static final List<String> ALLOWED_METHODS = List.of(
+                        HttpMethod.GET.name(),
+                        HttpMethod.POST.name(),
+                        HttpMethod.PUT.name(),
+                        HttpMethod.PATCH.name(),
+                        HttpMethod.DELETE.name(),
+                        HttpMethod.OPTIONS.name());
+        private static final long CORS_MAX_AGE_SECONDS = 3600L;
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .cors(Customizer.withDefaults())
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                http
+                                .cors(Customizer.withDefaults())
 
-                .csrf(csrf -> csrf.disable())
+                                .csrf(csrf -> csrf.disable())
 
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/ping").permitAll()
-                        .requestMatchers("/actuator/health").permitAll()
-                        .requestMatchers(
-                                "/swagger-ui.html",
-                                "/swagger-ui/**",
-                                "/v3/api-docs",
-                                "/v3/api-docs/**",
-                                "/v3/api-docs.yaml"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers("/ping").permitAll()
+                                                .requestMatchers("/actuator/health").permitAll()
+                                                .requestMatchers(
+                                                                "/swagger-ui.html",
+                                                                "/swagger-ui/**",
+                                                                "/v3/api-docs",
+                                                                "/v3/api-docs/**",
+                                                                "/v3/api-docs.yaml")
+                                                .permitAll()
+                                                .anyRequest().authenticated())
 
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(Customizer.withDefaults())
-                );
+                                .oauth2ResourceServer(oauth2 -> oauth2
+                                                .jwt(Customizer.withDefaults()));
 
-        return http.build();
-    }
+                return http.build();
+        }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(corsProperties.allowedOriginPatterns());
-        configuration.setAllowedMethods(ALLOWED_METHODS);
-        configuration.setAllowedHeaders(List.of(CorsConfiguration.ALL));
-        configuration.setExposedHeaders(List.of(RequestIdContext.HEADER_NAME));
-        configuration.setAllowCredentials(false);
-        configuration.setMaxAge(CORS_MAX_AGE_SECONDS);
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
+                CorsConfiguration configuration = new CorsConfiguration();
+                configuration.setAllowedOriginPatterns(corsProperties.allowedOriginPatterns());
+                configuration.setAllowedMethods(ALLOWED_METHODS);
+                configuration.setAllowedHeaders(List.of(CorsConfiguration.ALL));
+                configuration.setExposedHeaders(List.of(RequestIdContext.HEADER_NAME));
+                configuration.setAllowCredentials(false);
+                configuration.setMaxAge(CORS_MAX_AGE_SECONDS);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", configuration);
 
-        return source;
-    }
+                return source;
+        }
 }
