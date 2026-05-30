@@ -7,9 +7,11 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.recred.backend.config.GeminiProperties;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -96,7 +98,6 @@ public class GoogleGeminiTextClient implements GeminiTextClient {
 
 
     private Content buildMultimodalContent(String prompt, byte[] imageBytes, String mimeType) {
-        // 1. ImagePart con los bytes y mime type
         Part imagePart = Part.builder()
                 .inlineData(Blob.builder()
                         .data(imageBytes)
@@ -104,12 +105,10 @@ public class GoogleGeminiTextClient implements GeminiTextClient {
                         .build())
                 .build();
 
-        // 2. TextPart con el prompt
         Part textPart = Part.builder()
                 .text(prompt)
                 .build();
 
-        // 3. Empaquetar todo en un Content con rol "user"
         return Content.builder()
                 .role("user")
                 .parts(List.of(imagePart, textPart))

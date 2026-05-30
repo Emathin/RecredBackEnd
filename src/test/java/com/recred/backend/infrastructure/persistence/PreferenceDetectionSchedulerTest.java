@@ -88,6 +88,6 @@ class PreferenceDetectionSchedulerTest {
         scheduler.runDetectionForAllStudents();
 
         verify(detectStudentPreferences).execute(alumno.getId(), buffet.getId());
-        // No debería lanzar excepción hacia afuera
+
     }
 }

@@ -102,7 +102,6 @@ class DetectStudentPreferencesTest {
         Alumno alumno = new Alumno();
         alumno.setId(studentId);
 
-        // Solo 2 compras, umbral es 3
         List<PreferenceAIRepository.CompraResumen> historial = List.of(
                 new PreferenceAIRepository.CompraResumen("A", "C", java.time.LocalDateTime.now()),
                 new PreferenceAIRepository.CompraResumen("B", "C", java.time.LocalDateTime.now())
@@ -111,7 +110,7 @@ class DetectStudentPreferencesTest {
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
         when(compraRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
 
-        Optional<PreferenceAIRepository.PreferenciaDetectada> result = 
+        Optional<PreferenceAIRepository.PreferenciaDetectada> result =
                 detectStudentPreferences.execute(studentId, buffetId);
 
         assertTrue(result.isEmpty());
@@ -135,7 +134,6 @@ class DetectStudentPreferencesTest {
                 new PreferenceAIRepository.CompraResumen("C", "C", java.time.LocalDateTime.now())
         );
 
-        // IA devuelve un ID alucinado que NO está en stock
         PreferenceAIRepository.PreferenciaDetectada preference = new PreferenceAIRepository.PreferenciaDetectada(
                 "Title", "Message", UUID.randomUUID().toString(), "Reason"
         );
@@ -146,7 +144,7 @@ class DetectStudentPreferencesTest {
         when(preferenceAIRepository.analizarPreferencias(alumno, historial, stock))
                 .thenReturn(Optional.of(preference));
 
-        Optional<PreferenceAIRepository.PreferenciaDetectada> result = 
+        Optional<PreferenceAIRepository.PreferenciaDetectada> result =
                 detectStudentPreferences.execute(studentId, buffetId);
 
         assertTrue(result.isEmpty());

@@ -22,21 +22,21 @@ public class LoadStockIAService implements LoadStockAnalyzer {
     private static final List<String> ALLOWED_FORMATS =
             List.of("image/jpeg", "image/png", "image/jpg");
     private static final String PROMPT_TEMPLATE = """
-        Sos un OCR de imagenes de una app escolar.
-        Analiza la siguiente imagen.
-        Usa lenguaje simple y claro.
-        No me retornes nada mas que el JSON que te pido con los siguientes datos,\s
-        si no tiene datos solo coloca este caracter "-"
-        {
-          "nombre": "texto breve",
-          "descripcion": "texto breve",
-          "peso": "texto breve",
-          "contiene_azucar": "true o false",
-          "contiene_mani": "true o false",
-          "contiene_lactosa": "true o false",
-          "contiene_tacc":"true o false"
-        }
-        """;
+            Sos un OCR de imagenes de una app escolar.
+            Analiza la siguiente imagen.
+            Usa lenguaje simple y claro.
+            No me retornes nada mas que el JSON que te pido con los siguientes datos,\s
+            si no tiene datos solo coloca este caracter "-"
+            {
+              "nombre": "texto breve",
+              "descripcion": "texto breve",
+              "peso": "texto breve",
+              "contiene_azucar": "true o false",
+              "contiene_mani": "true o false",
+              "contiene_lactosa": "true o false",
+              "contiene_tacc":"true o false"
+            }
+            """;
 
     private final GeminiTextClient geminiTextClient;
     private final ObjectMapper objectMapper;
@@ -70,7 +70,6 @@ public class LoadStockIAService implements LoadStockAnalyzer {
     }
 
     private MultipartFile sanitizarImagen(MultipartFile image) {
-        // Implementar lógica de sanitización si es necesaria
         return image;
     }
 
@@ -131,7 +130,6 @@ public class LoadStockIAService implements LoadStockAnalyzer {
     }
 
 
-    // Clase interna para mapear la respuesta JSON de Gemini
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static class LoadStockAnalysisResponse {
         @JsonProperty("nombre")

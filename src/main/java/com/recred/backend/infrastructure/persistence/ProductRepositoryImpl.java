@@ -26,7 +26,7 @@ public class ProductRepositoryImpl implements ProductRepository {
     private final SpringDataProductRepository springDataRepository;
 
     public ProductRepositoryImpl(
-                                 SpringDataProductRepository springDataRepository) {
+            SpringDataProductRepository springDataRepository) {
         this.springDataRepository = springDataRepository;
     }
 
@@ -34,6 +34,7 @@ public class ProductRepositoryImpl implements ProductRepository {
     public Optional<Producto> findById(UUID id) {
         return springDataRepository.findById(id).map(ProductoEntity::toDomain);
     }
+
     @Override
     public ProductChangeRecommendation findBuffetLeastSoldProducts(UUID buffetId) {
         ProductoEntity producto = springDataRepository.findBuffetLeastSoldProducts(buffetId);
@@ -122,7 +123,6 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     private void mapearCategoria(Producto modelo, ProductoEntity entity) {
         if (modelo.getCategoria() != null) {
-            // Solo reasignamos si el ID de la categoría cambió para evitar toques innecesarios
             if (entity.getCategoria() == null
                     || !entity.getCategoria().getId().equals(modelo.getCategoria().getId())) {
                 CategoriaProductoEntity categoriaEntity = new CategoriaProductoEntity();
@@ -130,7 +130,7 @@ public class ProductRepositoryImpl implements ProductRepository {
                 entity.setCategoria(categoriaEntity);
             }
         } else {
-            // Si la categoría es nula, lanzar una excepción clara
+
             throw new IllegalArgumentException(
                     "La categoría del producto no puede ser nula");
         }
@@ -138,9 +138,9 @@ public class ProductRepositoryImpl implements ProductRepository {
 
 
     private void mapearMedidas(Producto modelo, ProductoEntity entity) {
-        // 1. Limpiamos la colección actual (Hibernate registra las eliminaciones)
+
         entity.getMedidas().clear();
-        // 2. Agregamos las nuevas usando tu método helper para mantener la bidireccionalidad
+
         modelo.getMedidas().forEach(medidaDominio -> {
             ProductoMedidaEntity medidaEntity = convertirMedida(medidaDominio);
             entity.addMedida(medidaEntity);
@@ -162,9 +162,9 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     private void mapearTipos(Producto modelo, ProductoEntity entity) {
-        // 1. Limpiamos la colección actual
+
         entity.getTipos().clear();
-        // 2. Convertimos y agregamos todo a la colección existente
+
         Set<ClasificacionTipoEntity> tiposEntities = modelo.getTipos().stream()
                 .map(this::convertirTipo)
                 .collect(Collectors.toSet());
@@ -185,9 +185,9 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     private void mapearClasificacionesSalud(Producto modelo, ProductoEntity entity) {
-        // 1. Limpiamos la colección actual
+
         entity.getClasificacionesSalud().clear();
-        // 2. Convertimos y agregamos todo a la colección existente
+
         Set<ClasificacionSaludEntity> clasificacionesEntities = modelo
                 .getClasificacionesSalud().stream()
                 .map(this::convertirClasificacionSalud)
