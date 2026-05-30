@@ -4,9 +4,12 @@ import com.recred.backend.infrastructure.entities.InventarioBuffetEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface SpringDataInventoryRepository extends JpaRepository<InventarioBuffetEntity, UUID> {
+    Optional<InventarioBuffetEntity> findByBuffetEntityIdAndProductoEntityId(
+            UUID buffetId, UUID productoId);
     @Query("""
         SELECT CASE WHEN COUNT(i) > 0 THEN true ELSE false END
         FROM InventarioBuffetEntity i
