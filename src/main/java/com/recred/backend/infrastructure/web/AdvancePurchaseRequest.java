@@ -1,14 +1,14 @@
-// C:/Users/emman/OneDrive/Desktop/TPI/recred-backend/src/main/java/com/recred/backend/infrastructure/web/AdvancePurchaseRequest.java
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.RecessTime;
 import java.util.List;
+import java.util.UUID;
 
 public record AdvancePurchaseRequest(List<OrderRequest> orders) {
     public record OrderRequest(
-            String studentId,
-            String buyerId,
+            UUID studentId,
+            UUID buyerId,
             BuyerType buyerType,
             String date,
             RecessTime recessTime,
@@ -16,7 +16,7 @@ public record AdvancePurchaseRequest(List<OrderRequest> orders) {
     ) {}
 
     public record ItemRequest(
-            String productId,
+            UUID productId,
             int quantity
     ) {}
 }

@@ -1,20 +1,73 @@
-// C:/Users/emman/OneDrive/Desktop/TPI/recred-backend/src/main/java/com/recred/backend/application/usecases/CreateAdvancePurchaseUseCase.java
 package com.recred.backend.application.usecases;
 
+import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.PurchaseStatus;
+import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.PurchaseValidator;
+import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
 import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 public class CreateAdvancePurchaseUseCase {
 
     private final PurchaseValidator purchaseValidator;
+    private final AlumnoRepository alumnoRepository;
+    private final ProductRepository productRepository;
+    private final PurchaseRepository purchaseRepository;
+    private final WithdrawalCodeService withdrawalCodeService;
 
-    public CreateAdvancePurchaseUseCase(PurchaseValidator purchaseValidator) {
+    public CreateAdvancePurchaseUseCase(
+            PurchaseValidator purchaseValidator,
+            AlumnoRepository alumnoRepository,
+            ProductRepository productRepository,
+            PurchaseRepository purchaseRepository,
+            WithdrawalCodeService withdrawalCodeService
+    ) {
         this.purchaseValidator = purchaseValidator;
+        this.alumnoRepository = alumnoRepository;
+        this.productRepository = productRepository;
+        this.purchaseRepository = purchaseRepository;
+        this.withdrawalCodeService = withdrawalCodeService;
     }
 
     public AdvancePurchaseResponse execute(AdvancePurchaseRequest request) {
-        // This is a skeleton and will be implemented in the next phase.
-        return null;
+        // For simplicity, we process the first order in the list.
+        // A more robust implementation would handle multiple orders.
+        AdvancePurchaseRequest.OrderRequest orderRequest = request.orders().get(0);
+
+        Alumno student = alumnoRepository.findById(orderRequest.studentId())
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+
+        Map<Producto, Integer> items = new HashMap<>();
+        for (AdvancePurchaseRequest.ItemRequest itemRequest : orderRequest.items()) {
+            Producto product = productRepository.findById(itemRequest.productId())
+                    .orElseThrow(() -> new RuntimeException("Product not found"));
+            items.put(product, itemRequest.quantity());
+        }
+
+        Purchase purchase = new Purchase(student, items, null); // Payment method is not part of the request.
+
+        purchaseValidator.validate(purchase);
+
+        purchase = purchaseRepository.save(purchase);
+
+        String withdrawalCode = withdrawalCodeService.generateCode(purchase);
+        Map<UUID, String> codes = new HashMap<>();
+        codes.put(student.getId(), withdrawalCode);
+
+        return new AdvancePurchaseResponse(
+                purchase.getId().toString(),
+                PurchaseStatus.from(purchase),
+                purchase.getTotalAmount().doubleValue(),
+                codes
+        );
     }
 }
