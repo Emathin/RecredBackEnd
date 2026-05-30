@@ -10,6 +10,6 @@ import java.util.UUID;
 public interface ProductRepository {
     Optional<Producto> findById(UUID id);
     ProductChangeRecommendation findBuffetLeastSoldProducts(UUID buffetId);
-
     List<Producto> findBestSoldProducts();
+    Producto save(Producto producto);
 }

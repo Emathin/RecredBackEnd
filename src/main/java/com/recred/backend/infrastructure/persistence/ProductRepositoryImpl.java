@@ -2,7 +2,6 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import org.springframework.stereotype.Component;
@@ -38,4 +37,17 @@ public class ProductRepositoryImpl implements ProductRepository {
         return productos.stream().map(ProductoEntity::toDomain).toList();
     }
 
+    @Override
+    public Producto save(Producto producto) {
+        ProductoEntity entity = springDataRepository.findById(producto.getId())
+                .orElseThrow(() -> new RuntimeException(
+                        "Product entity not found: " + producto.getId()));
+
+        entity.setPrecio(producto.getPrecio());
+        entity.setNombre(producto.getNombre());
+        entity.setDescripcion(producto.getDescripcion());
+        entity.setActivo(producto.getActivo());
+
+        return springDataRepository.save(entity).toDomain();
+    }
 }
