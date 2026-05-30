@@ -1,8 +1,9 @@
 package com.recred.backend.infrastructure.entities;
 
-
-import com.recred.backend.domain.models.ProductChangeRecommendation;
+import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.models.ClasificacionTipo;
+import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.Producto;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -76,17 +77,17 @@ public class ProductoEntity {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "productos_clasificaciones",
-            joinColumns = @JoinColumn(name = "producto_id"),
-            inverseJoinColumns = @JoinColumn(name = "clasificacion_id")
+        name = "productos_clasificaciones",
+        joinColumns = @JoinColumn(name = "producto_id"),
+        inverseJoinColumns = @JoinColumn(name = "clasificacion_id")
     )
     private Set<ClasificacionTipoEntity> tipos = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "productos_clasificacion_salud",
-            joinColumns = @JoinColumn(name = "producto_id"),
-            inverseJoinColumns = @JoinColumn(name = "clasificacion_salud_id")
+        name = "productos_clasificacion_salud",
+        joinColumns = @JoinColumn(name = "producto_id"),
+        inverseJoinColumns = @JoinColumn(name = "clasificacion_salud_id")
     )
     private Set<ClasificacionSaludEntity> clasificacionesSalud = new HashSet<>();
 
@@ -112,6 +113,14 @@ public class ProductoEntity {
         domain.setCreadoEn(this.creadoEn);
         domain.setActualizadoEn(this.actualizadoEn);
 
+        if (this.categoria != null) {
+            CategoriaProducto categoriaDomain = new CategoriaProducto();
+            categoriaDomain.setId(this.categoria.getId());
+            categoriaDomain.setDescripcion(this.categoria.getDescripcion());
+            categoriaDomain.setActivo(this.categoria.getActivo());
+            domain.setCategoria(categoriaDomain);
+        }
+
         if (this.clasificacionesSalud != null) {
             domain.setClasificacionesSalud(this.clasificacionesSalud.stream().map(c -> {
                 ClasificacionSalud cs = new ClasificacionSalud();
@@ -122,11 +131,21 @@ public class ProductoEntity {
             }).collect(Collectors.toSet()));
         }
 
+        if (this.tipos != null) {
+            domain.setTipos(this.tipos.stream().map(t -> {
+                ClasificacionTipo ct = new ClasificacionTipo();
+                ct.setId(t.getId());
+                ct.setDescripcion(t.getDescripcion());
+                ct.setActivo(t.getActivo());
+                return ct;
+            }).collect(Collectors.toSet()));
+        }
+
         return domain;
     }
 
     public ProductChangeRecommendation toProductRecommendation(UUID buffetId) {
-        ProductChangeRecommendation producto= new ProductChangeRecommendation();
+        ProductChangeRecommendation producto = new ProductChangeRecommendation();
         producto.setIdBuffet(buffetId);
         producto.setId(this.id);
         producto.setNombre(this.nombre);

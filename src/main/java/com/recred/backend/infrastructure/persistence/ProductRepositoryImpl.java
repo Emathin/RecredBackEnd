@@ -36,6 +36,42 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
+    public List<Producto> findAllActive() {
+        return springDataRepository.findAllByActivoTrue()
+                .stream()
+                .map(ProductoEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public Optional<Producto> findActiveById(UUID id) {
+        return springDataRepository.findByIdAndActivoTrue(id)
+                .map(ProductoEntity::toDomain);
+    }
+
+    @Override
+    public List<Producto> findAllActiveWithStock(UUID buffetId) {
+        return springDataRepository.findAllActiveWithStockParams(buffetId)
+                .stream()
+                .map(this::mapObjectArrayToDomain)
+                .toList();
+    }
+
+    @Override
+    public Optional<Producto> findActiveByIdWithStock(UUID id, UUID buffetId) {
+        return springDataRepository.findActiveByIdWithStockParams(id, buffetId)
+                .map(this::mapObjectArrayToDomain);
+    }
+
+    private Producto mapObjectArrayToDomain(Object[] result) {
+        ProductoEntity entity = (ProductoEntity) result[0];
+        Integer stockActual = (Integer) result[1];
+        Producto domain = entity.toDomain();
+        domain.setStockActual(stockActual);
+        return domain;
+    }
+
+    @Override
     public ProductChangeRecommendation findBuffetLeastSoldProducts(UUID buffetId) {
         ProductoEntity producto = springDataRepository.findBuffetLeastSoldProducts(buffetId);
 

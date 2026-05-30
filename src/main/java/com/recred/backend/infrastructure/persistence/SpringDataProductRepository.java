@@ -7,10 +7,39 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface SpringDataProductRepository extends JpaRepository<ProductoEntity, UUID> {
+
+    List<ProductoEntity> findAllByActivoTrue();
+
+    Optional<ProductoEntity> findByIdAndActivoTrue(UUID id);
+
+    @Query("""
+            SELECT p, i.stockActual
+            FROM ProductoEntity p
+            LEFT JOIN InventarioBuffetEntity i 
+                ON i.productoEntity = p 
+                AND i.buffetEntity.id = :buffetId
+            WHERE p.activo = true
+            """)
+    List<Object[]> findAllActiveWithStockParams(@Param("buffetId") UUID buffetId);
+
+    @Query("""
+            SELECT p, i.stockActual
+            FROM ProductoEntity p
+            LEFT JOIN InventarioBuffetEntity i 
+                ON i.productoEntity = p 
+                AND i.buffetEntity.id = :buffetId
+            WHERE p.id = :id 
+                AND p.activo = true
+            """)
+    Optional<Object[]> findActiveByIdWithStockParams(
+            @Param("id") UUID id, 
+            @Param("buffetId") UUID buffetId);
+
     @Query(""" 
             select p
             FROM ProductoEntity p

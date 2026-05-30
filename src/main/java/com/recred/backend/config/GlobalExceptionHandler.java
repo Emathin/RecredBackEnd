@@ -4,6 +4,7 @@ import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
+import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
 import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
@@ -113,6 +114,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleChatSessionNotFound(
             ChatSessionNotFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Sesion de chat no encontrada",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleProductNotFound(ProductNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Producto no encontrado",
                 ex.getMessage());
     }
 
