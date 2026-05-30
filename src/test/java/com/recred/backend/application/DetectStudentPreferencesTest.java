@@ -4,9 +4,9 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
-import com.recred.backend.domain.repositories.CompraRepository;
-import com.recred.backend.domain.repositories.InventarioRepository;
+import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
+import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,9 +39,9 @@ class DetectStudentPreferencesTest {
     @Mock
     private SugerenciaIARepository sugerenciaIARepository;
     @Mock
-    private CompraRepository compraRepository;
+    private PurchaseRepository purchaseRepository;
     @Mock
-    private InventarioRepository inventarioRepository;
+    private InventoryRepository inventoryRepository;
 
     private DetectStudentPreferences detectStudentPreferences;
 
@@ -51,8 +51,8 @@ class DetectStudentPreferencesTest {
                 alumnoRepository,
                 preferenceAIRepository,
                 sugerenciaIARepository,
-                compraRepository,
-                inventarioRepository
+                purchaseRepository,
+                inventoryRepository
         );
     }
 
@@ -78,8 +78,8 @@ class DetectStudentPreferencesTest {
         );
 
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(compraRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
-        when(inventarioRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(stock);
+        when(purchaseRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
+        when(inventoryRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(stock);
         when(preferenceAIRepository.analizarPreferencias(alumno, historial, stock))
                 .thenReturn(Optional.of(preference));
 
@@ -108,7 +108,7 @@ class DetectStudentPreferencesTest {
         );
 
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(compraRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
+        when(purchaseRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
 
         Optional<PreferenceAIRepository.PreferenciaDetectada> result =
                 detectStudentPreferences.execute(studentId, buffetId);
@@ -139,8 +139,8 @@ class DetectStudentPreferencesTest {
         );
 
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(compraRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
-        when(inventarioRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(stock);
+        when(purchaseRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
+        when(inventoryRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(stock);
         when(preferenceAIRepository.analizarPreferencias(alumno, historial, stock))
                 .thenReturn(Optional.of(preference));
 
@@ -165,8 +165,8 @@ class DetectStudentPreferencesTest {
         );
 
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(compraRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
-        when(inventarioRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(Collections.emptyList());
+        when(purchaseRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
+        when(inventoryRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(Collections.emptyList());
 
         detectStudentPreferences.execute(studentId, buffetId);
 
@@ -191,8 +191,8 @@ class DetectStudentPreferencesTest {
         );
 
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(compraRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
-        when(inventarioRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(stock);
+        when(purchaseRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
+        when(inventoryRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(stock);
         when(preferenceAIRepository.analizarPreferencias(alumno, historial, stock)).thenReturn(Optional.empty());
 
         detectStudentPreferences.execute(studentId, buffetId);

@@ -4,10 +4,10 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
-import com.recred.backend.domain.repositories.CompraRepository;
-import com.recred.backend.domain.repositories.InventarioRepository;
+import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
+import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
@@ -27,20 +27,20 @@ public class DetectStudentPreferences {
     private final AlumnoRepository alumnoRepository;
     private final PreferenceAIRepository preferenceAIRepository;
     private final SugerenciaIARepository sugerenciaIARepository;
-    private final CompraRepository compraRepository;
-    private final InventarioRepository inventarioRepository;
+    private final PurchaseRepository purchaseRepository;
+    private final InventoryRepository inventoryRepository;
 
     public DetectStudentPreferences(
             AlumnoRepository alumnoRepository,
             PreferenceAIRepository preferenceAIRepository,
             SugerenciaIARepository sugerenciaIARepository,
-            CompraRepository compraRepository,
-            InventarioRepository inventarioRepository) {
+            PurchaseRepository purchaseRepository,
+            InventoryRepository inventoryRepository) {
         this.alumnoRepository = alumnoRepository;
         this.preferenceAIRepository = preferenceAIRepository;
         this.sugerenciaIARepository = sugerenciaIARepository;
-        this.compraRepository = compraRepository;
-        this.inventarioRepository = inventarioRepository;
+        this.purchaseRepository = purchaseRepository;
+        this.inventoryRepository = inventoryRepository;
     }
 
     @Transactional
@@ -50,14 +50,14 @@ public class DetectStudentPreferences {
                     .orElseThrow(() -> new RuntimeException("Student not found: " + alumnoId));
 
             List<PreferenceAIRepository.CompraResumen> historial =
-                    compraRepository.findLastPurchasesByAlumno(alumnoId, 20);
+                    purchaseRepository.findLastPurchasesByAlumno(alumnoId, 20);
 
             if (historial.size() < MIN_PURCHASES_FOR_ANALYSIS) {
                 return Optional.empty();
             }
 
             List<Producto> stockDisponible =
-                    inventarioRepository.findAvailableProductsByBuffet(buffetId);
+                    inventoryRepository.findAvailableProductsByBuffet(buffetId);
 
             if (stockDisponible.isEmpty()) {
                 return Optional.empty();

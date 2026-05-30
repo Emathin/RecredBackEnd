@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.RespondToAISuggestion;
+import com.recred.backend.domain.models.TipoSugerenciaIA;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -46,10 +47,11 @@ public class StudentPreferenceController {
     @GetMapping
     public ResponseEntity<List<StudentPreferenceResponse>> getPreferences(
             @PathVariable UUID alumnoId,
-            @RequestParam(name = "ultima", required = false, defaultValue = "false") boolean ultima
+            @RequestParam(name = "ultima", required = false, defaultValue = "false") boolean ultima,
+            @RequestParam(name = "tipo", required = false) TipoSugerenciaIA tipo
     ) {
         List<StudentPreferenceResponse> preferences = getStudentPreferences
-                .execute(alumnoId, ultima)
+                .execute(alumnoId, ultima, tipo)
                 .stream()
                 .map(StudentPreferenceResponse::fromEntity)
                 .toList();
