@@ -22,13 +22,13 @@ import static org.mockito.Mockito.*;
 class InventoryRepositoryImplTest {
 
     @Mock
-    private SpringDataInventoryRepository springDataRepository;
+    private SpringDataInventoryRepository springDataInventoryRepository;
 
     private InventoryRepositoryImpl inventoryRepository;
 
     @BeforeEach
     void setUp() {
-        inventoryRepository = new InventoryRepositoryImpl(springDataRepository);
+        inventoryRepository = new InventoryRepositoryImpl(springDataInventoryRepository);
     }
 
     @Test
@@ -41,13 +41,13 @@ class InventoryRepositoryImplTest {
         inventario.setStockActual(10);
         inventario.setEstado(EstadoInventario.DISPONIBLE);
 
-        when(springDataRepository.findByBuffetEntityIdAndProductoEntityId(buffetId, productId))
+        when(springDataInventoryRepository.findByBuffetEntityIdAndProductoEntityId(buffetId, productId))
                 .thenReturn(Optional.empty());
-        when(springDataRepository.save(any(InventarioBuffetEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataInventoryRepository.save(any(InventarioBuffetEntity.class))).thenAnswer(i -> i.getArgument(0));
 
         inventoryRepository.save(inventario);
 
-        verify(springDataRepository).save(any(InventarioBuffetEntity.class));
+        verify(springDataInventoryRepository).save(any(InventarioBuffetEntity.class));
     }
 
     @Test
@@ -64,9 +64,9 @@ class InventoryRepositoryImplTest {
         existingEntity.setBuffetEntity(new BuffetEntity());
         existingEntity.setProductoEntity(new ProductoEntity());
 
-        when(springDataRepository.findByBuffetEntityIdAndProductoEntityId(buffetId, productId))
+        when(springDataInventoryRepository.findByBuffetEntityIdAndProductoEntityId(buffetId, productId))
                 .thenReturn(Optional.of(existingEntity));
-        when(springDataRepository.save(any(InventarioBuffetEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataInventoryRepository.save(any(InventarioBuffetEntity.class))).thenAnswer(i -> i.getArgument(0));
 
         inventoryRepository.save(inventario);
 
@@ -80,6 +80,20 @@ class InventoryRepositoryImplTest {
 
         inventoryRepository.findByBuffetAndProduct(buffetId, productId);
 
-        verify(springDataRepository).findByBuffetEntityIdAndProductoEntityId(buffetId, productId);
+        verify(springDataInventoryRepository).findByBuffetEntityIdAndProductoEntityId(buffetId, productId);
+    }
+
+    @Test
+    void checkIfProductIsInStock_DeberiaLlamarAlSpringDataYRetornarElResultado() {
+        UUID buffetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+
+        when(springDataInventoryRepository.existsByProductIdAndKiosqueroId(productId, buffetId))
+                .thenReturn(true);
+
+        boolean result = inventoryRepository.checkIfProductIsInStock(productId, buffetId);
+
+        assertTrue(result);
+        verify(springDataInventoryRepository).existsByProductIdAndKiosqueroId(productId, buffetId);
     }
 }

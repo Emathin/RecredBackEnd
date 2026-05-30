@@ -77,14 +77,14 @@ class LoadStockIAServiceTest {
     @Test
     void analyze_DeberiaRetornarPrediccion_CuandoIAEsExitosa() {
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
-        GeminiTextResponse geminiResponse = new GeminiTextResponse("{\"nombre\":\"Galleta\",\"marca\":\"Pepitos\",\"peso\":\"100g\",\"contiene_azucar\":\"si\",\"contiene_mani\":\"no\",\"contiene_lactosa\":\"si\",\"contiene_tacc\":\"si\"}", "gemini-pro");
+        GeminiTextResponse geminiResponse = new GeminiTextResponse("{\"nombre\":\"Galleta\",\"descripcion\":\"Pepitos\",\"peso\":\"100g\",\"contiene_azucar\":\"si\",\"contiene_mani\":\"no\",\"contiene_lactosa\":\"si\",\"contiene_tacc\":\"si\"}", "gemini-pro");
         when(geminiTextClient.generateWithImage(anyString(), any())).thenReturn(Optional.of(geminiResponse));
 
         LoadStockPredictionDTO result = loadStockIAService.analyze(file);
 
         assertNotNull(result);
         assertEquals("Galleta", result.getNombre());
-        assertEquals("Pepitos", result.getMarca());
+        assertEquals("Pepitos", result.getDescripcion());
         assertEquals("100g", result.getPeso());
         assertEquals("si", result.getContieneAzucar());
         assertEquals("no", result.getContieneMani());

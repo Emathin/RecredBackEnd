@@ -14,11 +14,10 @@ import java.util.UUID;
 public class InventoryRepositoryImpl implements InventoryRepository {
 
     private final SpringDataInventoryRepository springDataInventoryRepository;
-    private final SpringDataInventoryRepository springDataRepository;
 
-    public InventoryRepositoryImpl(SpringDataInventoryRepository springDataInventoryRepository,SpringDataInventoryRepository springDataRepository) {
+    public InventoryRepositoryImpl(
+            SpringDataInventoryRepository springDataInventoryRepository) {
         this.springDataInventoryRepository = springDataInventoryRepository;
-        this.springDataRepository = springDataRepository;
     }
 
     @Override
@@ -29,7 +28,7 @@ public class InventoryRepositoryImpl implements InventoryRepository {
 
     @Override
     public Inventario save(Inventario inventario) {
-        InventarioBuffetEntity entity = springDataRepository
+        InventarioBuffetEntity entity = springDataInventoryRepository
                 .findByBuffetEntityIdAndProductoEntityId(
                         inventario.getBuffetId(), inventario.getProductoId())
                 .orElse(new InventarioBuffetEntity());
@@ -50,12 +49,13 @@ public class InventoryRepositoryImpl implements InventoryRepository {
             entity.setProductoEntity(producto);
         }
 
-        return springDataRepository.save(entity).toDomain();
+        return springDataInventoryRepository.save(entity).toDomain();
     }
 
     @Override
     public Optional<Inventario> findByBuffetAndProduct(UUID buffetId, UUID productoId) {
-        return springDataRepository.findByBuffetEntityIdAndProductoEntityId(buffetId, productoId)
+        return springDataInventoryRepository
+                .findByBuffetEntityIdAndProductoEntityId(buffetId, productoId)
                 .map(InventarioBuffetEntity::toDomain);
     }
 }

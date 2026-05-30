@@ -53,7 +53,7 @@ public class ProductRepositoryImplTest {
 
         assertTrue(result.isPresent());
         assertEquals(id, result.get().getId());
-        assertEquals("Test", result.get().getNombre());
+        assertEquals("Producto Test", result.get().getNombre());
     }
 
     @Test

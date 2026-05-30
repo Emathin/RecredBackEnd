@@ -1,5 +1,6 @@
 package com.recred.backend.infrastructure.gemini;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.services.LoadStockAnalyzer;
@@ -102,7 +103,7 @@ public class LoadStockIAService implements LoadStockAnalyzer {
 
             return LoadStockPredictionDTO.builder()
                     .nombre(analysisResponse.nombre)
-                    .marca(analysisResponse.marca)
+                    .descripcion(analysisResponse.descripcion)
                     .peso(analysisResponse.peso)
                     .contieneAzucar(analysisResponse.contieneAzucar)
                     .contieneMani(analysisResponse.contieneMani)
@@ -120,7 +121,7 @@ public class LoadStockIAService implements LoadStockAnalyzer {
     private LoadStockPredictionDTO crearRespuestaVacia() {
         return LoadStockPredictionDTO.builder()
                 .nombre("-")
-                .marca("-")
+                .descripcion("-")
                 .peso("-")
                 .contieneAzucar("-")
                 .contieneMani("-")
@@ -131,12 +132,13 @@ public class LoadStockIAService implements LoadStockAnalyzer {
 
 
     // Clase interna para mapear la respuesta JSON de Gemini
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private static class LoadStockAnalysisResponse {
         @JsonProperty("nombre")
         public String nombre;
 
-        @JsonProperty("marca")
-        public String marca;
+        @JsonProperty("descripcion")
+        public String descripcion;
 
         @JsonProperty("peso")
         public String peso;

@@ -10,7 +10,7 @@ class LoadStockPredictionDTOTest {
     void testBuilderAndGetters() {
         LoadStockPredictionDTO dto = LoadStockPredictionDTO.builder()
                 .nombre("Nombre")
-                .marca("Marca")
+                .descripcion("Descripcion")
                 .peso("100g")
                 .contieneAzucar("si")
                 .contieneMani("no")
@@ -19,7 +19,7 @@ class LoadStockPredictionDTOTest {
                 .build();
 
         assertEquals("Nombre", dto.getNombre());
-        assertEquals("Marca", dto.getMarca());
+        assertEquals("Descripcion", dto.getDescripcion());
         assertEquals("100g", dto.getPeso());
         assertEquals("si", dto.getContieneAzucar());
         assertEquals("no", dto.getContieneMani());
@@ -31,7 +31,7 @@ class LoadStockPredictionDTOTest {
     void testSetters() {
         LoadStockPredictionDTO dto = LoadStockPredictionDTO.builder().build();
         dto.setNombre("Nombre");
-        dto.setMarca("Marca");
+        dto.setDescripcion("Descripcion");
         dto.setPeso("100g");
         dto.setContieneAzucar("si");
         dto.setContieneMani("no");
@@ -39,7 +39,7 @@ class LoadStockPredictionDTOTest {
         dto.setContieneTacc("no");
 
         assertEquals("Nombre", dto.getNombre());
-        assertEquals("Marca", dto.getMarca());
+        assertEquals("Descripcion", dto.getDescripcion());
         assertEquals("100g", dto.getPeso());
         assertEquals("si", dto.getContieneAzucar());
         assertEquals("no", dto.getContieneMani());
