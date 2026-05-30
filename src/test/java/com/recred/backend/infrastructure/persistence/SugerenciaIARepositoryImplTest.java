@@ -38,7 +38,7 @@ import static org.mockito.Mockito.when;
 class SugerenciaIARepositoryImplTest {
 
     @Mock
-    private SpringDataSugerenciaIARepository springDataRepository;
+    private SugerenciaIAJpaRepository springDataRepository;
     @Mock
     private AIEventJpaRepository aiEventJpaRepository;
     @Mock

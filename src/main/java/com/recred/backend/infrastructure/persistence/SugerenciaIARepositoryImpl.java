@@ -29,14 +29,14 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
 
     private static final String INPUT_ORIGIN = "BACKEND_ALERTA_PRECIO";
 
-    private final SpringDataSugerenciaIARepository springDataRepository;
+    private final SugerenciaIAJpaRepository springDataRepository;
     private final AIEventJpaRepository aiEventJpaRepository;
     private final NotificacionJpaRepository notificationJpaRepository;
     private final EntityManager entityManager;
     private final ApplicationEventPublisher eventPublisher;
 
     public SugerenciaIARepositoryImpl(
-            SpringDataSugerenciaIARepository springDataRepository,
+            SugerenciaIAJpaRepository springDataRepository,
             AIEventJpaRepository aiEventJpaRepository,
             NotificacionJpaRepository notificationJpaRepository,
             EntityManager entityManager,

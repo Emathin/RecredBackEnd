@@ -2,15 +2,26 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface SpringDataProductRepository extends JpaRepository<ProductoEntity, UUID> {
+    @Modifying
+    @Query("""
+            update ProductoEntity p
+            set p.precio = :newPrice
+            where p.id = :productId
+            """)
+    void updatePrice(@Param("productId") UUID productId,
+                     @Param("newPrice") BigDecimal newPrice);
+
     @Query(""" 
             select p
             FROM ProductoEntity p

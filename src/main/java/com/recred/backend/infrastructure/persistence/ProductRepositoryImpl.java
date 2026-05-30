@@ -5,7 +5,6 @@ import com.recred.backend.domain.models.ClasificacionTipo;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.ProductoMedida;
-import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
@@ -14,6 +13,7 @@ import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.ProductoMedidaEntity;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -61,6 +61,11 @@ public class ProductRepositoryImpl implements ProductRepository {
         ProductoEntity entityLista = toEntity(producto, entityExistente);
         ProductoEntity entityGuardada = springDataRepository.save(entityLista);
         return entityGuardada.toDomain();
+    }
+
+    @Override
+    public void updatePrice(UUID productId, BigDecimal newPrice) {
+        springDataRepository.updatePrice(productId, newPrice);
     }
 
     private ProductoEntity toEntity(Producto modelo, ProductoEntity entity) {

@@ -47,7 +47,7 @@ class UpdateProductPriceTest {
 
         updateProductPrice.execute(productId, newPrice, buffetId);
 
-        verify(productRepository).save(product);
+        verify(productRepository).updatePrice(productId, newPrice);
         ArgumentCaptor<ProductPriceChangedEvent> captor =
                 ArgumentCaptor.forClass(ProductPriceChangedEvent.class);
         verify(eventPublisher).publish(captor.capture());
@@ -66,8 +66,21 @@ class UpdateProductPriceTest {
 
         updateProductPrice.execute(productId, new BigDecimal("100.00"), null);
 
-        verify(productRepository, never()).save(product);
+        verify(productRepository, never()).updatePrice(any(), any());
         verify(eventPublisher, never()).publish(any());
+    }
+
+    @Test
+    void updatePriceDoesNotRequireProductCategory() {
+        UUID productId = UUID.randomUUID();
+        Producto product = product(productId, "100.00");
+        product.setCategoria(null);
+        BigDecimal newPrice = new BigDecimal("120.00");
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        updateProductPrice.execute(productId, newPrice, null);
+
+        verify(productRepository).updatePrice(productId, newPrice);
     }
 
     @Test

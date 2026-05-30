@@ -1,14 +1,17 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.Inventario;
+import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.InventarioBuffetEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 public class InventoryRepositoryImpl implements InventoryRepository {
@@ -57,5 +60,28 @@ public class InventoryRepositoryImpl implements InventoryRepository {
         return springDataInventoryRepository
                 .findByBuffetEntityIdAndProductoEntityId(buffetId, productoId)
                 .map(InventarioBuffetEntity::toDomain);
+    }
+
+    @Override
+    public List<Producto> findAvailableProductsByBuffet(UUID buffetId) {
+        return springDataInventoryRepository.findAvailableByBuffetId(buffetId).stream()
+                .map(InventarioBuffetEntity::getProductoEntity)
+                .map(this::toProductDomain)
+                .collect(Collectors.toList());
+    }
+
+    private Producto toProductDomain(ProductoEntity entity) {
+        Producto producto = new Producto();
+        producto.setId(entity.getId());
+        producto.setNombre(entity.getNombre());
+
+        if (entity.getCategoria() != null) {
+            com.recred.backend.domain.models.CategoriaProducto category =
+                    new com.recred.backend.domain.models.CategoriaProducto();
+            category.setId(entity.getCategoria().getId());
+            category.setDescripcion(entity.getCategoria().getDescripcion());
+            producto.setCategoria(category);
+        }
+        return producto;
     }
 }

@@ -33,7 +33,7 @@ public class UpdateProductPrice {
 
         if (oldPrice.compareTo(newPrice) != 0) {
             producto.setPrecio(newPrice);
-            productRepository.save(producto);
+            productRepository.updatePrice(productId, newPrice);
 
             eventPublisher.publish(new ProductPriceChangedEvent(
                     producto,
