@@ -44,7 +44,8 @@ public class SecurityConfig {
                                                                 "/v3/api-docs",
                                                                 "/v3/api-docs/**",
                                                                 "/api/v1/**",
-                                                                "/v3/api-docs.yaml")
+                                                                "/v3/api-docs.yaml",
+                                                                "/api/load-stock/**")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
 
