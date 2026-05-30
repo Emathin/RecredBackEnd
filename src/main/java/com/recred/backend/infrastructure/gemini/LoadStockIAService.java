@@ -18,20 +18,22 @@ public class LoadStockIAService implements LoadStockAnalyzer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LoadStockIAService.class);
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-    private static final List<String> ALLOWED_FORMATS = List.of("image/jpeg", "image/png", "image/jpg");
+    private static final List<String> ALLOWED_FORMATS =
+            List.of("image/jpeg", "image/png", "image/jpg");
     private static final String PROMPT_TEMPLATE = """
         Sos un OCR de imagenes de una app escolar.
         Analiza la siguiente imagen.
         Usa lenguaje simple y claro.
-        No me retornes nada mas que el JSON que te pido con los siguientes datos, si no tiene datos solo coloca este caracter "-"
+        No me retornes nada mas que el JSON que te pido con los siguientes datos,\s
+        si no tiene datos solo coloca este caracter "-"
         {
           "nombre": "texto breve",
-          "marca": "texto breve",
+          "descripcion": "texto breve",
           "peso": "texto breve",
-          "contiene_azucar": "si o no",
-          "contiene_mani": "si o no",
-          "contiene_lactosa": "si o no",
-          "contiene_tacc":"si o no"
+          "contiene_azucar": "true o false",
+          "contiene_mani": "true o false",
+          "contiene_lactosa": "true o false",
+          "contiene_tacc":"true o false"
         }
         """;
 
@@ -57,7 +59,8 @@ public class LoadStockIAService implements LoadStockAnalyzer {
 
         String contentType = image.getContentType();
         if (contentType == null || !ALLOWED_FORMATS.contains(contentType)) {
-            throw new IllegalArgumentException("Formato de imagen no permitido. Solo se aceptan: " + ALLOWED_FORMATS);
+            throw new IllegalArgumentException(
+                    "Formato de imagen no permitido. Solo se aceptan: " + ALLOWED_FORMATS);
         }
 
         if (image.getSize() > MAX_FILE_SIZE) {
@@ -72,7 +75,8 @@ public class LoadStockIAService implements LoadStockAnalyzer {
 
     private LoadStockPredictionDTO consultarIA(MultipartFile image) {
         try {
-            Optional<GeminiTextResponse> response = geminiTextClient.generateWithImage(PROMPT_TEMPLATE, image);
+            Optional<GeminiTextResponse> response = geminiTextClient
+                    .generateWithImage(PROMPT_TEMPLATE, image);
 
             if (response.isEmpty()) {
                 LOGGER.warn("La IA no generó una respuesta");
@@ -100,10 +104,10 @@ public class LoadStockIAService implements LoadStockAnalyzer {
                     .nombre(analysisResponse.nombre)
                     .marca(analysisResponse.marca)
                     .peso(analysisResponse.peso)
-                    .contieneAzucar(analysisResponse.contiene_azucar)
-                    .contieneMani(analysisResponse.contiene_mani)
-                    .contieneLactosa(analysisResponse.contiene_lactosa)
-                    .contieneTacc(analysisResponse.contiene_tacc)
+                    .contieneAzucar(analysisResponse.contieneAzucar)
+                    .contieneMani(analysisResponse.contieneMani)
+                    .contieneLactosa(analysisResponse.contieneLactosa)
+                    .contieneTacc(analysisResponse.contieneTacc)
                     .build();
 
         } catch (IOException e) {
@@ -138,15 +142,15 @@ public class LoadStockIAService implements LoadStockAnalyzer {
         public String peso;
 
         @JsonProperty("contiene_azucar")
-        public String contiene_azucar;
+        public String contieneAzucar;
 
         @JsonProperty("contiene_mani")
-        public String contiene_mani;
+        public String contieneMani;
 
         @JsonProperty("contiene_lactosa")
-        public String contiene_lactosa;
+        public String contieneLactosa;
 
         @JsonProperty("contiene_tacc")
-        public String contiene_tacc;
+        public String contieneTacc;
     }
 }

@@ -1,4 +1,4 @@
-# Briefing de Proyecto: recreopago-backend
+c# Briefing de Proyecto: recreopago-backend
 
 ## 1. Visión Holística del Organismo (Arquitectura Hexagonal/Clean)
 El sistema se organiza en capas desacopladas donde el dominio es el centro:

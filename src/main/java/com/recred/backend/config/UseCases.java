@@ -1,8 +1,57 @@
 package com.recred.backend.config;
 
-import com.recred.backend.application.*;
-import com.recred.backend.domain.repositories.*;
-import com.recred.backend.domain.services.*;
+import com.recred.backend.application.AddHealthRestriction;
+import com.recred.backend.application.CancelPresentialPurchase;
+import com.recred.backend.application.CreateBudget;
+import com.recred.backend.application.CreateTimeRestriction;
+import com.recred.backend.application.DisableBudget;
+import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.GenerateHealthyProductRecommendations;
+import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
+import com.recred.backend.application.GetActiveBudgetByStudent;
+import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.GetHealthRestrictionsCatalog;
+import com.recred.backend.application.GetPresentialPurchase;
+import com.recred.backend.application.GetTimeRestrictionsByStudent;
+import com.recred.backend.application.GetTimeSlotsBySchool;
+import com.recred.backend.application.LoadStockIA;
+import com.recred.backend.application.ManageRestrictions;
+import com.recred.backend.application.PredictStudentSpending;
+import com.recred.backend.application.ProcessPresentialPurchase;
+import com.recred.backend.application.RemoveHealthRestrictions;
+import com.recred.backend.application.SaveProduct;
+import com.recred.backend.application.UpdateBudget;
+import com.recred.backend.application.UpdateBudgetRules;
+import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.config.HealthyRecommendationProperties;
+import com.recred.backend.config.StatisticalConsumptionAlertProperties;
+import com.recred.backend.domain.repositories.AIEventRepository;
+import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.CategoryRepository;
+import com.recred.backend.domain.repositories.ConsumptionAlertNotificationRepository;
+import com.recred.backend.domain.repositories.ConsumptionAlertPurchaseRepository;
+import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
+import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
+import com.recred.backend.domain.repositories.FranjaHorariaRepository;
+import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
+import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
+import com.recred.backend.domain.repositories.InventoryRepository;
+import com.recred.backend.domain.repositories.PresupuestoRepository;
+import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
+import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
+import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
+import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
+import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
+import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
+import com.recred.backend.domain.services.SpendingPredictionCalculator;
+import com.recred.backend.domain.services.SpendingPredictionRangeService;
+import com.recred.backend.domain.services.ValidacionRestriccionesService;
+import com.recred.backend.domain.services.ValidadorHorarioService;
+import com.recred.backend.domain.services.ValidadorPresupuestoService;
 
 import java.time.Clock;
 
@@ -227,7 +276,10 @@ public class UseCases {
     }
 
     @Bean
-    public SaveProduct saveProduct(ProductRepository productRepository, InventoryRepository inventoryRepository, CategoryRepository categoryRepository) {
+    public SaveProduct saveProduct(
+            ProductRepository productRepository,
+            InventoryRepository inventoryRepository,
+            CategoryRepository categoryRepository) {
         return new SaveProduct(productRepository, inventoryRepository, categoryRepository);
     }
 

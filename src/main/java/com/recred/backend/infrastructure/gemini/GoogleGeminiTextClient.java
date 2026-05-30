@@ -1,7 +1,11 @@
 package com.recred.backend.infrastructure.gemini;
 
 import com.google.genai.Client;
-import com.google.genai.types.*;
+import com.google.genai.types.Blob;
+import com.google.genai.types.Content;
+import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.Part;
 import com.recred.backend.config.GeminiProperties;
 import java.io.IOException;
 import java.util.List;
@@ -65,7 +69,8 @@ public class GoogleGeminiTextClient implements GeminiTextClient {
                     .apiKey(geminiProperties.apiKey())
                     .build()) {
 
-                GenerateContentResponse response = generateVisionContent(client, prompt, imageBytes, mimeType);
+                GenerateContentResponse response = generateVisionContent(
+                        client, prompt, imageBytes, mimeType);
 
                 return Optional.ofNullable(response.text())
                         .filter(text -> !text.isBlank())
@@ -80,7 +85,8 @@ public class GoogleGeminiTextClient implements GeminiTextClient {
         }
     }
 
-    private GenerateContentResponse generateVisionContent(Client client, String prompt, byte[] imageBytes, String mimeType) {
+    private GenerateContentResponse generateVisionContent(
+            Client client, String prompt, byte[] imageBytes, String mimeType) {
         return client.models.generateContent(
                 VISION_MODEL,
                 buildMultimodalContent(prompt, imageBytes, mimeType),

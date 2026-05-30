@@ -1,6 +1,7 @@
 package com.recred.backend.config;
 
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;

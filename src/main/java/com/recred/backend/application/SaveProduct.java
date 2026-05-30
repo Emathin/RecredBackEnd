@@ -21,7 +21,9 @@ public class SaveProduct {
     private final InventoryRepository inventoryRepository;
     private final CategoryRepository categoryRepository;
 
-    public SaveProduct(ProductRepository productRepository, InventoryRepository inventoryRepository, CategoryRepository categoryRepository) {
+    public SaveProduct(ProductRepository productRepository,
+                       InventoryRepository inventoryRepository,
+                       CategoryRepository categoryRepository) {
         this.productRepository = productRepository;
         this.inventoryRepository = inventoryRepository;
         this.categoryRepository = categoryRepository;
@@ -41,7 +43,8 @@ public class SaveProduct {
     }
 
     private void saveInventory(SaveProductCommand command, Producto savedProduct) {
-        Inventario inventario = inventoryRepository.findByBuffetAndProduct(command.buffetId(), savedProduct.getId())
+        Inventario inventario = inventoryRepository
+                .findByBuffetAndProduct(command.buffetId(), savedProduct.getId())
                 .orElseGet(() -> createNewInventory(command, savedProduct.getId()));
 
         inventario.setStockActual(command.stockActual());
@@ -69,11 +72,12 @@ public class SaveProduct {
         handleCategory(command, producto);
 
         if (command.clasificacionesSaludIds() != null) {
-            Set<ClasificacionSalud> clasificaciones = command.clasificacionesSaludIds().stream().map(id -> {
-                ClasificacionSalud cs = new ClasificacionSalud();
-                cs.setId(id);
-                return cs;
-            }).collect(Collectors.toSet());
+            Set<ClasificacionSalud> clasificaciones = command.clasificacionesSaludIds()
+                    .stream().map(id -> {
+                        ClasificacionSalud cs = new ClasificacionSalud();
+                        cs.setId(id);
+                        return cs;
+                    }).collect(Collectors.toSet());
             producto.setClasificacionesSalud(clasificaciones);
         }
 
@@ -90,8 +94,10 @@ public class SaveProduct {
     }
 
     private void handleCategory(SaveProductCommand command, Producto producto) {
-        if (command.nuevaCategoriaNombre() != null && !command.nuevaCategoriaNombre().isBlank()) {
-            CategoriaProducto category = categoryRepository.findByDescription(command.nuevaCategoriaNombre())
+        if (command.nuevaCategoriaNombre() != null
+                && !command.nuevaCategoriaNombre().isBlank()) {
+            CategoriaProducto category = categoryRepository
+                    .findByDescription(command.nuevaCategoriaNombre())
                     .orElseGet(() -> createAndSaveCategory(command.nuevaCategoriaNombre()));
             producto.setCategoria(category);
             return;

@@ -19,7 +19,8 @@ import java.util.List;
 @RequestMapping("/api/load-stock")
 public class LoadStockIAController {
 
-    private static final List<String> ALLOWED_CONTENT_TYPES = List.of("image/jpeg", "image/png", "image/jpg");
+    private static final List<String> ALLOWED_CONTENT_TYPES =
+            List.of("image/jpeg", "image/png", "image/jpg");
 
     private final LoadStockIA loadStockIA;
     private final SaveProduct saveProduct;
@@ -30,7 +31,8 @@ public class LoadStockIAController {
     }
 
     @PostMapping("/upload-image")
-    public ResponseEntity<LoadStockPredictionDTO> uploadImage(@RequestParam("image") MultipartFile image) {
+    public ResponseEntity<LoadStockPredictionDTO> uploadImage(
+            @RequestParam("image") MultipartFile image) {
         validateImage(image);
         return ResponseEntity.ok(loadStockIA.procesarImagen(image));
     }
@@ -42,11 +44,13 @@ public class LoadStockIAController {
     }
 
     private void validateImage(MultipartFile image) {
-        if (image.isEmpty())
+        if (image.isEmpty()) {
             throw new ImageValidationException("El archivo no puede estar vacío");
+        }
 
-        if (isInvalidContentType(image.getContentType()))
+        if (isInvalidContentType(image.getContentType())) {
             throw new ImageValidationException("Solo se aceptan imágenes JPG, JPEG o PNG");
+        }
     }
 
     private boolean isInvalidContentType(String contentType) {

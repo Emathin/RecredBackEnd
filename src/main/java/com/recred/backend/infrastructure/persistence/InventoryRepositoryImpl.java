@@ -22,7 +22,8 @@ public class InventoryRepositoryImpl implements InventoryRepository {
     @Override
     public Inventario save(Inventario inventario) {
         InventarioBuffetEntity entity = springDataRepository
-                .findByBuffetEntityIdAndProductoEntityId(inventario.getBuffetId(), inventario.getProductoId())
+                .findByBuffetEntityIdAndProductoEntityId(
+                        inventario.getBuffetId(), inventario.getProductoId())
                 .orElse(new InventarioBuffetEntity());
 
         entity.setStockActual(inventario.getStockActual());

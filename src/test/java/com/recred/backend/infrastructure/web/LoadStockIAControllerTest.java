@@ -64,8 +64,40 @@ class LoadStockIAControllerTest {
     }
 
     @Test
+    void uploadImage_ConContentTypeNull_LanzaExcepcion() {
+        MockMultipartFile file = new MockMultipartFile("image", "test.jpg", null, "content".getBytes());
+
+        ImageValidationException exception = assertThrows(ImageValidationException.class, () -> controller.uploadImage(file));
+        assertEquals("Solo se aceptan imágenes JPG, JPEG o PNG", exception.getMessage());
+    }
+
+    @Test
+    void uploadImage_ConTipoPng_RetornaOk() {
+        MockMultipartFile file = new MockMultipartFile("image", "test.png", "image/png", "content".getBytes());
+        LoadStockPredictionDTO expectedResponse = LoadStockPredictionDTO.builder().nombre("Test").build();
+        when(loadStockIA.procesarImagen(file)).thenReturn(expectedResponse);
+
+        ResponseEntity<LoadStockPredictionDTO> response = controller.uploadImage(file);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(expectedResponse, response.getBody());
+    }
+
+    @Test
+    void uploadImage_ConTipoJpg_RetornaOk() {
+        MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpg", "content".getBytes());
+        LoadStockPredictionDTO expectedResponse = LoadStockPredictionDTO.builder().nombre("Test").build();
+        when(loadStockIA.procesarImagen(file)).thenReturn(expectedResponse);
+
+        ResponseEntity<LoadStockPredictionDTO> response = controller.uploadImage(file);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(expectedResponse, response.getBody());
+    }
+
+    @Test
     void saveProduct_ConDatosValidos_RetornaCreated() {
-        SaveProductDTO dto = new SaveProductDTO("Prod", "Desc", null, null, false, UUID.randomUUID(), UUID.randomUUID(), 10, null, null);
+        SaveProductDTO dto = new SaveProductDTO("Prod", "Desc", null, null, false, UUID.randomUUID(), null, UUID.randomUUID(), 10, null, null);
         Producto savedProduct = new Producto();
         when(saveProduct.execute(any(SaveProductCommand.class))).thenReturn(savedProduct);
 

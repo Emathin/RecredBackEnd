@@ -24,14 +24,16 @@ public class CategoryRepositoryImpl implements CategoryRepository {
 
     @Override
     public Optional<CategoriaProducto> findByDescription(String description) {
-        return springDataRepository.findByDescripcion(description).map(CategoriaProductoEntity::toDomain);
+        return springDataRepository.findByDescripcion(description)
+                .map(CategoriaProductoEntity::toDomain);
     }
 
     @Override
     public CategoriaProducto save(CategoriaProducto category) {
         CategoriaProductoEntity entity = new CategoriaProductoEntity();
         if (category.getId() != null) {
-            entity = springDataRepository.findById(category.getId()).orElse(new CategoriaProductoEntity());
+            entity = springDataRepository.findById(category.getId())
+                    .orElse(new CategoriaProductoEntity());
         }
         entity.setDescripcion(category.getDescripcion());
         entity.setActivo(category.getActivo());

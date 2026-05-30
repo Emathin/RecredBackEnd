@@ -5,7 +5,11 @@ import com.recred.backend.domain.models.ClasificacionTipo;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.ProductoMedida;
 import com.recred.backend.domain.repositories.ProductRepository;
-import com.recred.backend.infrastructure.entities.*;
+import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
+import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
+import com.recred.backend.infrastructure.entities.ClasificacionTipoEntity;
+import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.ProductoMedidaEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -26,6 +30,7 @@ public class ProductRepositoryImpl implements ProductRepository {
     public Optional<Producto> findById(UUID id) {
         return springDataRepository.findById(id).map(ProductoEntity::toDomain);
     }
+
     @Override
     public Producto save(Producto producto) {
         ProductoEntity entityExistente;
@@ -38,8 +43,8 @@ public class ProductRepositoryImpl implements ProductRepository {
         }
 
         ProductoEntity entityLista = toEntity(producto, entityExistente);
-        springDataRepository.save(entityLista);
-        return entityLista.toDomain();
+        ProductoEntity entityGuardada = springDataRepository.save(entityLista);
+        return entityGuardada.toDomain();
     }
 
     private ProductoEntity toEntity(Producto modelo, ProductoEntity entity) {
@@ -54,10 +59,7 @@ public class ProductRepositoryImpl implements ProductRepository {
         entity.setRequierePreparacion(modelo.getRequierePreparacion());
         entity.setActivo(modelo.getActivo());
 
-        // CORRECCIÓN LÓGICA: Evaluar el 'modelo' y no la 'entity'
-        if (modelo.getCategoria() != null) {
-            mapearCategoria(modelo, entity);
-        }
+        mapearCategoria(modelo, entity);
 
         if (tieneMedias(modelo)) {
             mapearMedidas(modelo, entity);
@@ -81,28 +83,39 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     private boolean tieneMedias(Producto modelo) {
-        return modelo.getMedidas() != null && !modelo.getMedidas().isEmpty();
+        if (modelo.getMedidas() == null) {
+            return false;
+        }
+        return !modelo.getMedidas().isEmpty();
     }
 
     private boolean tieneTipos(Producto modelo) {
-        return modelo.getTipos() != null && !modelo.getTipos().isEmpty();
+        if (modelo.getTipos() == null) {
+            return false;
+        }
+        return !modelo.getTipos().isEmpty();
     }
 
     private boolean tieneClasificacionesSalud(Producto modelo) {
-        return modelo.getClasificacionesSalud() != null && !modelo.getClasificacionesSalud().isEmpty();
+        if (modelo.getClasificacionesSalud() == null) {
+            return false;
+        }
+        return !modelo.getClasificacionesSalud().isEmpty();
     }
 
     private void mapearCategoria(Producto modelo, ProductoEntity entity) {
         if (modelo.getCategoria() != null) {
             // Solo reasignamos si el ID de la categoría cambió para evitar toques innecesarios
-            if (entity.getCategoria() == null || !entity.getCategoria().getId().equals(modelo.getCategoria().getId())) {
+            if (entity.getCategoria() == null
+                    || !entity.getCategoria().getId().equals(modelo.getCategoria().getId())) {
                 CategoriaProductoEntity categoriaEntity = new CategoriaProductoEntity();
                 categoriaEntity.setId(modelo.getCategoria().getId());
                 entity.setCategoria(categoriaEntity);
             }
         } else {
             // Si la categoría es nula, lanzar una excepción clara
-            throw new IllegalArgumentException("La categoría del producto no puede ser nula");
+            throw new IllegalArgumentException(
+                    "La categoría del producto no puede ser nula");
         }
     }
 
@@ -158,13 +171,15 @@ public class ProductRepositoryImpl implements ProductRepository {
         // 1. Limpiamos la colección actual
         entity.getClasificacionesSalud().clear();
         // 2. Convertimos y agregamos todo a la colección existente
-        Set<ClasificacionSaludEntity> clasificacionesEntities = modelo.getClasificacionesSalud().stream()
+        Set<ClasificacionSaludEntity> clasificacionesEntities = modelo
+                .getClasificacionesSalud().stream()
                 .map(this::convertirClasificacionSalud)
                 .collect(Collectors.toSet());
         entity.getClasificacionesSalud().addAll(clasificacionesEntities);
     }
 
-    private ClasificacionSaludEntity convertirClasificacionSalud(ClasificacionSalud clasificacionDominio) {
+    private ClasificacionSaludEntity convertirClasificacionSalud(
+            ClasificacionSalud clasificacionDominio) {
         ClasificacionSaludEntity clasificacionEntity = new ClasificacionSaludEntity();
         clasificacionEntity.setId(clasificacionDominio.getId());
         clasificacionEntity.setDescripcion(clasificacionDominio.getDescripcion());

@@ -7,5 +7,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface SpringDataInventoryRepository extends JpaRepository<InventarioBuffetEntity, UUID> {
-    Optional<InventarioBuffetEntity> findByBuffetEntityIdAndProductoEntityId(UUID buffetId, UUID productoId);
+    Optional<InventarioBuffetEntity> findByBuffetEntityIdAndProductoEntityId(
+            UUID buffetId, UUID productoId);
 }
