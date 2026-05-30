@@ -1,5 +1,6 @@
 package com.recred.backend.config;
 
+import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CreateBudget;
@@ -15,12 +16,16 @@ import com.recred.backend.application.GenerateHealthyProductRecommendations;
 import com.recred.backend.application.GenerateProductChangeRecommendation;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
+import com.recred.backend.application.GetActiveBudgetByStudent;
+import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
+import com.recred.backend.application.LoadStockIA;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AskSchoolAssistant;
@@ -29,30 +34,38 @@ import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.PredictStudentSpending;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.RemoveHealthRestrictions;
+import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.application.UpdatePurchaseStatus;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.config.HealthyRecommendationProperties;
+import com.recred.backend.config.StatisticalConsumptionAlertProperties;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.CategoryRepository;
 import com.recred.backend.domain.repositories.ChatMessageRepository;
 import com.recred.backend.domain.repositories.ChatSessionRepository;
 import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertNotificationRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertPurchaseRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
+import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
 import com.recred.backend.domain.repositories.CompraRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
+import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
+import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.InventarioRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
@@ -66,7 +79,9 @@ import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 
 import java.time.Clock;
 import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
+import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
@@ -75,6 +90,10 @@ import com.recred.backend.domain.services.SpendingPredictionRangeService;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
 import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
+
+import java.time.Clock;
+
+import com.recred.backend.infrastructure.gemini.LoadStockIAService;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
@@ -353,6 +372,21 @@ public class UseCases {
             PresupuestoRepository presupuestoRepository) {
         return new DisableBudget(presupuestoRepository);
     }
+
+    @Bean
+    public LoadStockIA loadStockIA(LoadStockIAService loadStockIAService) {
+        return new LoadStockIA(loadStockIAService);
+    }
+
+    @Bean
+    public SaveProduct saveProduct(
+            ProductRepository productRepository,
+            InventoryRepository inventoryRepository,
+            CategoryRepository categoryRepository) {
+        return new SaveProduct(productRepository, inventoryRepository, categoryRepository);
+    }
+
+
 
     @Bean
     public GenerateProductChangeRecommendation generateProductChangeRecommendation(
