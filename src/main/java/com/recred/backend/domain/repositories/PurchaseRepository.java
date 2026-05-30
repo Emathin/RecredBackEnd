@@ -1,7 +1,9 @@
 package com.recred.backend.domain.repositories;
-
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.PurchaseResume;
 
+import java.util.Optional;
+import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,4 +25,6 @@ public interface PurchaseRepository {
 
     List<PreferenceAIRepository.CompraResumen> findLastPurchasesByAlumno(
             UUID alumnoId, int limit);
+
+    List<PurchaseResume> findPurchasesByAlumno(UUID alumnoId);
 }
