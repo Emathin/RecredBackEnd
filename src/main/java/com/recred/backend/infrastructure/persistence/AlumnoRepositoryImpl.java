@@ -40,6 +40,11 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
     }
 
     @Override
+    public UUID findUserID(UUID alumnoId) {
+        return springDataRepository.findUserId(alumnoId);
+    }
+
+    @Override
     public void save(Alumno alumno) {
         AlumnoEntity entityExistente = springDataRepository.findById(alumno.getId())
                 .orElseGet(AlumnoEntity::new);

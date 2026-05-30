@@ -14,6 +14,7 @@ import java.util.UUID;
 public class Alumno {
 
     private UUID id;
+    private UUID usuarioId;
     private Usuario usuario;
     private Boolean activo = true;
     private Grado grado;

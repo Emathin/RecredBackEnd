@@ -9,6 +9,7 @@ import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.GeneratePurchaseRecommendation;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.application.GetStudentPreferences;
@@ -61,6 +62,7 @@ import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.PurchaseRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -74,6 +76,7 @@ import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCalendarRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
 import com.recred.backend.domain.repositories.StudentConsumptionRepository;
+import com.recred.backend.domain.repositories.SuggestionAiRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 
@@ -83,6 +86,7 @@ import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
+import com.recred.backend.domain.services.PurchaseAnalyzer;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
@@ -414,6 +418,18 @@ public class UseCases {
                 kiosqueroRepository,
                 inventoryRepository,
                 aiEventRepository);
+    }
+
+    @Bean
+    public GeneratePurchaseRecommendation generatePurchaseRecommendation(
+            AlumnoRepository alumnoRepository,PurchaseRepository purchaseRepository,
+            PurchaseAnalyzer purchaseAnalyzer,AIEventRepository aiEventRepository,
+            PurchaseRecommendationNotificationRepository notificationRepository,
+            ConsumptionAlertStudentRepository studentRepository,
+            SuggestionAiRepository suggestionAiRepository) {
+        return new GeneratePurchaseRecommendation(alumnoRepository,
+                purchaseRepository,purchaseAnalyzer,aiEventRepository, notificationRepository,
+                studentRepository,suggestionAiRepository);
     }
 
 }

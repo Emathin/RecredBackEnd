@@ -15,4 +15,7 @@ public interface AlumnoRepository {
     void save(Alumno alumno);
 
     boolean existsById(UUID alumnoId);
+
+    UUID findUserID(UUID alumnoId);
+
 }

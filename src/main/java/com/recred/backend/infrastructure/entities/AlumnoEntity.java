@@ -80,6 +80,7 @@ public class AlumnoEntity {
 
         alumnoDominio.setId(this.id);
         alumnoDominio.setActivo(this.activo);
+        alumnoDominio.setUsuarioId(this.usuario.getId());
 
         if (this.restriccionesSalud != null && !this.restriccionesSalud.isEmpty()) {
             Set<ClasificacionSalud> restriccionesDominio = this.restriccionesSalud.stream()
