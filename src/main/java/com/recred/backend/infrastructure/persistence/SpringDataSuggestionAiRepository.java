@@ -13,4 +13,12 @@ public interface SpringDataSuggestionAiRepository
             "JOIN NotificacionEntity n ON s.id = n.sugerenciaIaEntity.id WHERE " +
             "CAST(s.tipo AS STRING) = :tomorrow")
     List<NotificacionEntity> findByTipo(String tomorrow);
+
+
+    @Query("SELECT n FROM SugerenciaIAEntity s " +
+            "JOIN NotificacionEntity n ON s.id = n.sugerenciaIaEntity.id WHERE " +
+            "CAST(s.tipo AS STRING) = :today " +
+            "and n.alumnoEntity.id = CAST (:studentId AS java.util.UUID)" +
+            "")
+    NotificacionEntity findByTipoAndStudentId(String today, UUID studentId);
 }

@@ -11,7 +11,9 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SuggestionAiRepository;
 import com.recred.backend.domain.services.PurchaseAnalyzer;
 import com.recred.backend.domain.models.PurchaseRecommendationResult;
+import com.recred.backend.infrastructure.entities.NotificacionEntity;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -62,4 +64,12 @@ public class GeneratePurchaseRecommendation {
         }
     }
 
+    public NotificacionEntity findSuggestionForToday(UUID studentID) {
+        String today = LocalDate.now().getDayOfWeek().name();
+        return suggestionAiRepository.findByTipoAndStudentId(today, studentID);
+    }
+    public NotificacionEntity findSuggestionForTomorrow(UUID studentID) {
+        String today = LocalDate.now().plusDays(1).getDayOfWeek().name();
+        return suggestionAiRepository.findByTipoAndStudentId(today, studentID);
+    }
 }

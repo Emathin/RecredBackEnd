@@ -11,4 +11,6 @@ public interface SuggestionAiRepository {
     SugerenciaIAEntity save(UUID eventID, PurchaseRecommendationResult result);
 
     List<NotificacionEntity> findByTipo(String tomorrow);
+
+    NotificacionEntity findByTipoAndStudentId(String today, UUID studentID);
 }

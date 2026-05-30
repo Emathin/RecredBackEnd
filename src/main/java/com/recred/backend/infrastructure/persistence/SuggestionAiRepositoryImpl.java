@@ -50,4 +50,9 @@ public class SuggestionAiRepositoryImpl implements SuggestionAiRepository {
     public List<NotificacionEntity> findByTipo(String tomorrow) {
         return repository.findByTipo(tomorrow);
     }
+
+    @Override
+    public NotificacionEntity findByTipoAndStudentId(String today, UUID studentID) {
+        return repository.findByTipoAndStudentId(today, studentID);
+    }
 }
