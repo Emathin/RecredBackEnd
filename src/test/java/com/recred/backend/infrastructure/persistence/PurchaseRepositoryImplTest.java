@@ -5,7 +5,9 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
 import com.recred.backend.infrastructure.entities.CompraEntity;
 import com.recred.backend.infrastructure.entities.CompraPresencialEntity;
@@ -15,9 +17,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,6 +29,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -148,6 +153,58 @@ class PurchaseRepositoryImplTest {
         );
 
         assertEquals(new BigDecimal("10.00"), result);
+    }
+
+    @Test
+    void findLastPurchasesByAlumno_ShouldMapToDomainSummary() {
+        com.recred.backend.infrastructure.entities.ProductoEntity productoEntity =
+                new com.recred.backend.infrastructure.entities.ProductoEntity();
+        productoEntity.setNombre("Alfajor");
+        CategoriaProductoEntity categoria = new CategoriaProductoEntity();
+        categoria.setDescripcion("Snacks");
+        productoEntity.setCategoria(categoria);
+
+        CompraEntity compra = new CompraPresencialEntity();
+        compra.setFechaHora(LocalDateTime.now());
+
+        CompraDetalleEntity detalle = new CompraDetalleEntity();
+        detalle.setProductoEntity(productoEntity);
+        detalle.setCompra(compra);
+        compra.setDetalles(List.of(detalle));
+
+        when(springDataRepository.findLastByAlumno(eq(studentId), any(PageRequest.class)))
+                .thenReturn(List.of(compra));
+
+        List<PreferenceAIRepository.CompraResumen> result =
+                repository.findLastPurchasesByAlumno(studentId, 5);
+
+        assertEquals(1, result.size());
+        assertEquals("Alfajor", result.get(0).productoNombre());
+        assertEquals("Snacks", result.get(0).categoria());
+    }
+
+    @Test
+    void findLastPurchasesByAlumno_ShouldHandleNullProductCategory() {
+        com.recred.backend.infrastructure.entities.ProductoEntity productoEntity =
+                new com.recred.backend.infrastructure.entities.ProductoEntity();
+        productoEntity.setNombre("Agua");
+        productoEntity.setCategoria(null);
+
+        CompraEntity compra = new CompraPresencialEntity();
+        compra.setFechaHora(LocalDateTime.now());
+
+        CompraDetalleEntity detalle = new CompraDetalleEntity();
+        detalle.setProductoEntity(productoEntity);
+        detalle.setCompra(compra);
+        compra.setDetalles(List.of(detalle));
+
+        when(springDataRepository.findLastByAlumno(eq(studentId), any(PageRequest.class)))
+                .thenReturn(List.of(compra));
+
+        List<PreferenceAIRepository.CompraResumen> result =
+                repository.findLastPurchasesByAlumno(studentId, 5);
+
+        assertEquals("Sin Categoria", result.get(0).categoria());
     }
 
     private Purchase purchase(UUID id) {

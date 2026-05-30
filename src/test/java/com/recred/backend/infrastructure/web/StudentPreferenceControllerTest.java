@@ -68,9 +68,9 @@ class StudentPreferenceControllerTest {
                 detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
         
         UUID studentId = UUID.randomUUID();
-        when(getStudentPreferences.execute(studentId, false)).thenReturn(List.of());
+        when(getStudentPreferences.execute(studentId, false, null)).thenReturn(List.of());
 
-        ResponseEntity<List<StudentPreferenceResponse>> response = controller.getPreferences(studentId, false);
+        ResponseEntity<List<StudentPreferenceResponse>> response = controller.getPreferences(studentId, false, null);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
     }
@@ -90,9 +90,9 @@ class StudentPreferenceControllerTest {
         entity.setMensaje("Msg");
         entity.setTipo(com.recred.backend.domain.models.TipoSugerenciaIA.PREFERENCIA_DETECTADA);
         
-        when(getStudentPreferences.execute(studentId, false)).thenReturn(List.of(entity));
+        when(getStudentPreferences.execute(studentId, false, null)).thenReturn(List.of(entity));
 
-        ResponseEntity<List<StudentPreferenceResponse>> response = controller.getPreferences(studentId, false);
+        ResponseEntity<List<StudentPreferenceResponse>> response = controller.getPreferences(studentId, false, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());

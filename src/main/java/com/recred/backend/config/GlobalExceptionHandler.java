@@ -1,6 +1,7 @@
 package com.recred.backend.config;
 
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
@@ -73,6 +74,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse>
     handleInsufficientBalance(InsufficientBalanceException ex){
         return buildResponse(HttpStatus.BAD_REQUEST, "Saldo Insuficiente",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(ImageValidationException.class)
+    public ResponseEntity<ErrorResponse> handleImageValidation(ImageValidationException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Error de validación de imagen",
                 ex.getMessage());
     }
 
