@@ -1,19 +1,21 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.PurchaseResume;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.infrastructure.entities.CompraEntity;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity, UUID>,
@@ -40,6 +42,12 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             Pageable pageable
     );
 
+    @Query("SELECT c " +
+            "FROM CompraEntity c " +
+            "WHERE c.alumnoEntity.id = :alumnoId " +
+            "ORDER BY c.fechaHora DESC")
+    List<CompraEntity> findLastByAlumno(@Param("alumnoId") UUID alumnoId, Pageable pageable);
+
     @Query("SELECT COALESCE(SUM(c.montoTotal), 0) FROM CompraEntity c " +
             "WHERE c.alumnoEntity.id = :alumnoId " +
             "AND c.estado = :estadoValido " +
@@ -65,4 +73,15 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             @Param("inicio") LocalDateTime inicio,
             @Param("fin") LocalDateTime fin
     );
+
+    @Query(""" 
+            SELECT NEW com.recred.backend.domain.models.PurchaseResume(
+                        c.alumnoEntity.id,cd.productoEntity.id,
+                                    p.nombre, cd.precioUnitario, c.fechaHora) 
+            FROM CompraEntity c
+                        JOIN CompraDetalleEntity cd on cd.compra.id = c.id
+                         join ProductoEntity p on p.id = cd.productoEntity.id 
+            WHERE c.alumnoEntity.id = CAST(:alumnoEntityId AS java.util.UUID)
+                        """)
+    List<PurchaseResume> findByAlumno(UUID alumnoEntityId);
 }

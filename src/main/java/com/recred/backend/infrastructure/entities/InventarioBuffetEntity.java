@@ -57,4 +57,16 @@ public class InventarioBuffetEntity {
     @UpdateTimestamp
     @Column(name = "actualizado_en")
     private LocalDateTime actualizadoEn;
-}
+
+    public com.recred.backend.domain.models.Inventario toDomain() {
+        return new com.recred.backend.domain.models.Inventario(
+                this.id,
+                this.buffetEntity != null ? this.buffetEntity.getId() : null,
+                this.productoEntity != null ? this.productoEntity.getId() : null,
+                this.stockActual,
+                this.stockMinimo,
+                this.estado,
+                this.actualizadoEn
+        );
+    }
+    }

@@ -77,7 +77,7 @@ public class GeminiproductChangeAnalyzer implements ProductChangeAnalyzer {
             return Optional.of(new ProductChangeAnalysis(
                     payload.summary(),
                     normalizeList(payload.alerts()),
-                    normalizeList(payload.recommendations()),
+                    payload.recommendations(),
                     response.model()
             ));
         } catch (JsonProcessingException exception) {
