@@ -65,6 +65,7 @@ import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
 import com.recred.backend.domain.repositories.StudentAIProfileRepository;
 import com.recred.backend.domain.repositories.StudentConsumptionRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
+import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
@@ -74,6 +75,7 @@ import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
 import com.recred.backend.domain.services.SpendingPredictionRangeService;
+import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
 import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
@@ -134,6 +136,11 @@ public class UseCases {
                 presupuestoRepository,
                 purchaseRepository,
                 calculadorPeriodo);
+    }
+
+    @Bean
+    public UsuarioService usuarioService(UsuarioRepository usuarioRepository) {
+        return new UsuarioService(usuarioRepository);
     }
 
     @Bean

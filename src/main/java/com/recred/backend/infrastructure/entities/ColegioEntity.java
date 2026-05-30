@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.domain.models.Colegio;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -61,4 +62,25 @@ public class ColegioEntity {
     @UpdateTimestamp
     @Column(name = "actualizado_en")
     private LocalDateTime actualizadoEn;
+
+    public Colegio toDomain() {
+        Colegio colegio = new Colegio();
+
+        colegio.setId(this.id);
+        colegio.setNombre(this.nombre);
+        colegio.setLatitud(this.latitud);
+        colegio.setLongitud(this.longitud);
+        colegio.setTelefono(this.telefono);
+        colegio.setEmail(this.email);
+        colegio.setCue(this.cue);
+        colegio.setActivo(this.activo);
+        colegio.setCreadoEn(this.creadoEn);
+        colegio.setActualizadoEn(this.actualizadoEn);
+
+        if (this.nivelEntity != null) {
+            colegio.setNivel(this.nivelEntity.toDomain());
+        }
+
+        return colegio;
+    }
 }

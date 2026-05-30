@@ -20,9 +20,4 @@ public class Kiosquero {
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
 
-
-    public static void setBuffet(BuffetEntity buffetEntity) {
-        Buffet buffet = new Buffet();
-        buffet.setId(buffetEntity.getId());
-    }
 }

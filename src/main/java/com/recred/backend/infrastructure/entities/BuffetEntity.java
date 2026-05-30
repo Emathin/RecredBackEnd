@@ -1,6 +1,8 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.domain.models.Buffet;
+import com.recred.backend.domain.models.Kiosquero;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -55,4 +57,30 @@ public class BuffetEntity {
     @UpdateTimestamp
     @Column(name = "actualizado_en")
     private LocalDateTime actualizadoEn;
+
+    public Buffet toDomain() {
+        Buffet buffet = new Buffet();
+
+        buffet.setId(this.id);
+        buffet.setNombre(this.nombre);
+        buffet.setFechaVencimientoHabilitacion(this.fechaVencimientoHabilitacion);
+        buffet.setActivo(this.activo);
+        buffet.setCreadoEn(this.creadoEn);
+        buffet.setActualizadoEn(this.actualizadoEn);
+
+        if (this.colegioEntity != null) {
+            buffet.setColegio(this.colegioEntity.toDomain());
+        }
+
+        if (this.vendedor != null) {
+
+            Kiosquero kiosqueroDominio = new Kiosquero();
+            kiosqueroDominio.setId(this.vendedor.getId());
+            kiosqueroDominio.setCuit(this.vendedor.getCuit());
+
+            buffet.setVendedor(kiosqueroDominio);
+        }
+
+        return buffet;
+    }
 }
