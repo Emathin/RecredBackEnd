@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.persistence;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
+import com.recred.backend.domain.models.PurchaseResume;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
@@ -112,6 +113,11 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
                 })
                 .limit(limit)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PurchaseResume> findPurchasesByAlumno(UUID alumnoId) {
+        return springDataRepository.findByAlumno(alumnoId);
     }
 
 }

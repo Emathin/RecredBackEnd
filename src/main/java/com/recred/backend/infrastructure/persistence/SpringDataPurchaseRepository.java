@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.PurchaseResume;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.infrastructure.entities.CompraEntity;
@@ -72,4 +73,15 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             @Param("inicio") LocalDateTime inicio,
             @Param("fin") LocalDateTime fin
     );
+
+    @Query(""" 
+            SELECT NEW com.recred.backend.domain.models.PurchaseResume(
+                        c.alumnoEntity.id,cd.productoEntity.id,
+                                    p.nombre, cd.precioUnitario, c.fechaHora) 
+            FROM CompraEntity c
+                        JOIN CompraDetalleEntity cd on cd.compra.id = c.id
+                         join ProductoEntity p on p.id = cd.productoEntity.id 
+            WHERE c.alumnoEntity.id = CAST(:alumnoEntityId AS java.util.UUID)
+                        """)
+    List<PurchaseResume> findByAlumno(UUID alumnoEntityId);
 }
