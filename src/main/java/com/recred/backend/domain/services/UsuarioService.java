@@ -1,5 +1,6 @@
 package com.recred.backend.domain.services;
 
+import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -32,7 +33,6 @@ public class UsuarioService {
         Usuario nuevoUsuario = new Usuario();
 
         nuevoUsuario.setId(UUID.randomUUID());
-
         nuevoUsuario.setIdCognito(sub);
         nuevoUsuario.setEmail(email);
         nuevoUsuario.setNombre(nombre);
@@ -44,5 +44,20 @@ public class UsuarioService {
         nuevoUsuario.setActualizadoEn(LocalDateTime.now());
 
         return usuarioRepository.save(nuevoUsuario);
+    }
+
+    public Usuario obtenerUsuarioActual(String cognitoId) {
+        return usuarioRepository.findByIdCognito(cognitoId)
+                .orElseThrow(() -> new RuntimeException
+                        ("Usuario no encontrado en la base de datos"));
+    }
+
+    public Usuario actualizarRol(String cognitoId, String nuevoRol) {
+        Usuario usuario = obtenerUsuarioActual(cognitoId);
+
+        usuario.setRol(RolUsuario.valueOf(nuevoRol.toUpperCase()));
+        usuario.setActualizadoEn(LocalDateTime.now());
+
+        return usuarioRepository.save(usuario);
     }
 }

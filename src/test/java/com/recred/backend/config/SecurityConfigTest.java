@@ -2,6 +2,7 @@ package com.recred.backend.config;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -19,7 +20,12 @@ class SecurityConfigTest {
             "http://127.0.0.1:*"
     );
 
-    private final SecurityConfig config = new SecurityConfig();
+    // 1. Creamos mocks "vacíos" de las nuevas dependencias de seguridad
+    private final CustomAuthenticationEntryPoint entryPointMock = Mockito.mock(CustomAuthenticationEntryPoint.class);
+    private final CustomJwtAuthenticationConverter converterMock = Mockito.mock(CustomJwtAuthenticationConverter.class);
+
+    // 2. Instanciamos el SecurityConfig pasándole los mocks al constructor
+    private final SecurityConfig config = new SecurityConfig(entryPointMock, converterMock);
 
     @Test
     void corsConfigurationAllowsFrontendAndLocalhostOrigins() {
