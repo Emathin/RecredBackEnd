@@ -4,6 +4,7 @@ import com.recred.backend.infrastructure.entities.KiosqueroEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface SpringDataKiosqueroRepository extends
@@ -15,4 +16,7 @@ public interface SpringDataKiosqueroRepository extends
                     where k.id = CAST(:kiosqueroId AS java.util.UUID)
     """)
     UUID findBuffet(UUID kiosqueroId);
+
+    @Query("select k.id from KiosqueroEntity k")
+    List<UUID> findAllIds();
 }

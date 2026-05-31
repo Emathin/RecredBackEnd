@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.persistence;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -17,5 +18,10 @@ public class KiosqueroRepositoryImpl implements KiosqueroRepository {
     @Override
     public UUID findBuffetById(UUID kiosqueroId) {
         return springDataKiosqueroRepository.findBuffet(kiosqueroId);
+    }
+
+    @Override
+    public List<UUID> findAllIds() {
+        return springDataKiosqueroRepository.findAllIds();
     }
 }
