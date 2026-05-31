@@ -68,4 +68,13 @@ public class GenerateProductChangeRecommendation {
         return result;
     }
 
+    @Transactional(readOnly = true)
+    public Optional<ProductRecommendationResult> findLatestResult(UUID sellerId) {
+        UUID buffetId = kiosqueroRepository.findBuffetById(sellerId);
+        if (buffetId == null) {
+            throw new KiosqueroNotFoundException(sellerId);
+        }
+        return aiEventRepository.findLatestProductChangeRecommendation(buffetId);
+    }
+
 }

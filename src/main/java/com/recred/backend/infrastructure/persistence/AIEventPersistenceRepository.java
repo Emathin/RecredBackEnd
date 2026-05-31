@@ -4,6 +4,7 @@ import com.recred.backend.domain.models.AIEventType;
 import com.recred.backend.domain.models.ConsumptionCategory;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.ProductChangeAnalysis;
+import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.ProductRecommendationResult;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.PurchasePatternAnalysis;
@@ -18,9 +19,12 @@ import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import jakarta.persistence.EntityManager;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
@@ -39,6 +43,41 @@ public class AIEventPersistenceRepository implements AIEventRepository {
     ) {
         this.aiEventJpaRepository = aiEventJpaRepository;
         this.entityManager = entityManager;
+    }
+
+    @Override
+    public Optional<ProductRecommendationResult> findLatestProductChangeRecommendation(
+            UUID buffetId
+    ) {
+        return aiEventJpaRepository.findFirstByTypeAndBuffetEntityIdOrderByCreatedAtDesc(
+                AIEventType.PRODUCTO_CAMBIO,
+                buffetId
+        ).map(this::mapToResult);
+    }
+
+    private ProductRecommendationResult mapToResult(AIEventEntity entity) {
+        ProductChangeRecommendation recommendation = new ProductChangeRecommendation();
+        recommendation.setId(entity.getProductoEntity().getId());
+        recommendation.setIdBuffet(entity.getBuffetEntity().getId());
+        recommendation.setNombre((String) entity.getInputData().get("nombre"));
+        Object precio = entity.getInputData().get("precio");
+        if (precio instanceof Number) {
+            recommendation.setPrecio(BigDecimal.valueOf(((Number) precio).doubleValue()));
+        }
+
+        Map<String, Object> analysisMap = (Map<String, Object>) entity.getResultData()
+                .get("analisisIa");
+        ProductChangeAnalysis analysis = null;
+        if (analysisMap != null) {
+            analysis = new ProductChangeAnalysis(
+                    (String) analysisMap.get("resumen"),
+                    (List<String>) analysisMap.getOrDefault("alertas", new ArrayList<>()),
+                    (List<String>) analysisMap.getOrDefault("recomendaciones", new ArrayList<>()),
+                    (String) analysisMap.get("modelo")
+            );
+        }
+
+        return new ProductRecommendationResult(recommendation, Optional.ofNullable(analysis));
     }
 
     @Override
