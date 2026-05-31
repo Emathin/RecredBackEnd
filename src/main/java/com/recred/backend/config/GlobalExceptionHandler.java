@@ -1,10 +1,15 @@
 package com.recred.backend.config;
 
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
+import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
+import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
 import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
+import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
+import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import org.slf4j.Logger;
@@ -33,7 +38,8 @@ public class GlobalExceptionHandler {
                 "Restricción Horaria",
                 ex.getMessage(),
                 LocalDateTime.now(),
-                HttpStatus.FORBIDDEN.value()
+                HttpStatus.FORBIDDEN.value(),
+                currentRequestId()
         );
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
@@ -47,6 +53,7 @@ public class GlobalExceptionHandler {
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("error", "Límite de Presupuesto Superado");
         body.put("message", ex.getMessage());
+        addRequestId(body);
 
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
@@ -71,6 +78,32 @@ public class GlobalExceptionHandler {
                 ex.getMessage());
     }
 
+    @ExceptionHandler(ImageValidationException.class)
+    public ResponseEntity<ErrorResponse> handleImageValidation(ImageValidationException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Error de validación de imagen",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(PurchaseNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePurchaseNotFound(PurchaseNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Compra no encontrada", ex.getMessage());
+    }
+
+    @ExceptionHandler(PurchaseAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handlePurchaseAccessDenied(
+            PurchaseAccessDeniedException ex
+    ) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Compra no autorizada", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidPurchaseStatusTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPurchaseStatusTransition(
+            InvalidPurchaseStatusTransitionException ex
+    ) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Estado de compra invalido",
+                ex.getMessage());
+    }
+
     @ExceptionHandler(InvalidChatMessageException.class)
     public ResponseEntity<ErrorResponse> handleInvalidChatMessage(
             InvalidChatMessageException ex) {
@@ -81,6 +114,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleChatSessionNotFound(
             ChatSessionNotFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Sesion de chat no encontrada",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleProductNotFound(ProductNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Producto no encontrado",
                 ex.getMessage());
     }
 
@@ -120,7 +159,16 @@ public class GlobalExceptionHandler {
     private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status,
                                                         String error, String message) {
         ErrorResponse response = new ErrorResponse(error, message,
-                LocalDateTime.now(), status.value());
+                LocalDateTime.now(), status.value(), currentRequestId());
         return ResponseEntity.status(status).body(response);
+    }
+
+    private String currentRequestId() {
+        return RequestIdContext.currentRequestId().orElse(null);
+    }
+
+    private void addRequestId(Map<String, Object> body) {
+        RequestIdContext.currentRequestId()
+                .ifPresent(requestId -> body.put("requestId", requestId));
     }
 }

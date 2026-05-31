@@ -1,0 +1,81 @@
+package com.recred.backend.infrastructure.web;
+
+import com.recred.backend.domain.models.Producto;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+public record ProductResponseDTO(
+        UUID id,
+        String nombre,
+        String descripcion,
+        BigDecimal precio,
+        BigDecimal peso,
+        Boolean requierePreparacion,
+        Boolean activo,
+        LocalDateTime creadoEn,
+        LocalDateTime actualizadoEn,
+        Integer stockActual,
+        CategoryDTO categoria,
+        Set<ClasificacionDTO> clasificacionesSalud,
+        Set<ClasificacionDTO> tipos
+) {
+
+    public static ProductResponseDTO fromDomain(Producto producto) {
+        CategoryDTO categoriaDTO = null;
+        if (producto.getCategoria() != null) {
+            categoriaDTO = new CategoryDTO(
+                    producto.getCategoria().getId(),
+                    producto.getCategoria().getDescripcion()
+            );
+        }
+
+        Set<ClasificacionDTO> saludDTOs = mapClasificacionesSalud(producto);
+        Set<ClasificacionDTO> tiposDTOs = mapTipos(producto);
+
+        return new ProductResponseDTO(
+                producto.getId(),
+                producto.getNombre(),
+                producto.getDescripcion(),
+                producto.getPrecio(),
+                producto.getPeso(),
+                producto.getRequierePreparacion(),
+                producto.getActivo(),
+                producto.getCreadoEn(),
+                producto.getActualizadoEn(),
+                producto.getStockActual(),
+                categoriaDTO,
+                saludDTOs,
+                tiposDTOs
+        );
+    }
+
+    private static Set<ClasificacionDTO> mapClasificacionesSalud(Producto producto) {
+        if (producto.getClasificacionesSalud() == null) {
+            return Set.of();
+        }
+
+        return producto.getClasificacionesSalud().stream()
+                .map(cs -> new ClasificacionDTO(cs.getId(), cs.getDescripcion()))
+                .collect(Collectors.toSet());
+    }
+
+    private static Set<ClasificacionDTO> mapTipos(Producto producto) {
+        if (producto.getTipos() == null) {
+            return Set.of();
+        }
+
+        return producto.getTipos().stream()
+                .map(ct -> new ClasificacionDTO(ct.getId(), ct.getDescripcion()))
+                .collect(Collectors.toSet());
+    }
+
+    public record CategoryDTO(UUID id, String descripcion) {
+    }
+
+    public record ClasificacionDTO(UUID id, String descripcion) {
+    }
+}

@@ -1,10 +1,14 @@
 package com.recred.backend.infrastructure.persistence;
 
+import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.infrastructure.entities.KiosqueroEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.UUID;
+
+import static java.util.stream.Collectors.toList;
 
 @Component
 public class KiosqueroRepositoryImpl implements KiosqueroRepository {
@@ -23,5 +27,13 @@ public class KiosqueroRepositoryImpl implements KiosqueroRepository {
     @Override
     public List<UUID> findAllIds() {
         return springDataKiosqueroRepository.findAllIds();
+    }
+
+    @Override
+    public List<Kiosquero> findAll() {
+        List<Kiosquero> kiosqueros = springDataKiosqueroRepository.findAll()
+                .stream().map(KiosqueroEntity::toDomain).collect(toList());
+
+        return kiosqueros;
     }
 }

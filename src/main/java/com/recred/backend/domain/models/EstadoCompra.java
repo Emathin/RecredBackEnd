@@ -1,9 +1,19 @@
 package com.recred.backend.domain.models;
 
 public enum EstadoCompra {
-    PENDIENTE,
-    EN_PREPARACION,
-    LISTO,
-    ENTREGADO,
-    CANCELADO
+    PENDIENTE("A preparar"),
+    EN_PREPARACION("En preparacion"),
+    LISTO("Listo para retirar"),
+    ENTREGADO("Entregado"),
+    CANCELADO("Cancelado");
+
+    private final String label;
+
+    EstadoCompra(String label) {
+        this.label = label;
+    }
+
+    public String getLabel() {
+        return label;
+    }
 }

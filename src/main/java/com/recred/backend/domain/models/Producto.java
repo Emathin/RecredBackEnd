@@ -26,6 +26,8 @@ public class Producto {
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
 
+    private Integer stockActual;
+
     private Set<ProductoMedida> medidas = new HashSet<>();
     private Set<ClasificacionTipo> tipos = new HashSet<>();
     private Set<ClasificacionSalud> clasificacionesSalud = new HashSet<>();
@@ -48,4 +50,11 @@ public class Producto {
         return clasificacionesSalud;
     }
 
+    public boolean isActive() {
+        return Boolean.TRUE.equals(activo);
+    }
+
+    public void deactivate() {
+        this.activo = false;
+    }
 }
