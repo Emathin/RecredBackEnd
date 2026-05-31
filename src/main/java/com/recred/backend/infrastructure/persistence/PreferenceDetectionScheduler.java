@@ -27,7 +27,7 @@ public class PreferenceDetectionScheduler {
         this.detectStudentPreferences = detectStudentPreferences;
     }
 
-    @Scheduled(cron = "0 0 2 * * *")
+    @Scheduled(cron = "${preference-detection.cron:0 0 2 * * MON}")
     public void runDetectionForAllStudents() {
         log.info("Starting scheduled preference detection for all students...");
         

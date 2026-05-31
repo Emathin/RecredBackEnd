@@ -12,6 +12,7 @@ import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.NotificacionEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
+import com.recred.backend.infrastructure.entities.TutorEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
 import jakarta.persistence.EntityManager;
@@ -51,6 +52,28 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
     @Override
     public void guardar(SugerenciaIAEntity sugerencia) {
         springDataRepository.save(sugerencia);
+    }
+
+    @Override
+    public void savePreferenceDetection(SugerenciaIAEntity suggestion) {
+        SugerenciaIAEntity savedSuggestion = springDataRepository.save(suggestion);
+        if (savedSuggestion == null) {
+            savedSuggestion = suggestion;
+        }
+
+        AlumnoEntity student = entityManager.find(
+                AlumnoEntity.class,
+                savedSuggestion.getAlumnoEntity().getId()
+        );
+        if (student == null || student.getTutores() == null) {
+            return;
+        }
+
+        for (TutorEntity tutor : student.getTutores()) {
+            if (isActiveTutor(tutor)) {
+                saveAndPublishPreferenceNotification(savedSuggestion, tutor.getUsuario().getId());
+            }
+        }
     }
 
     @Override
@@ -130,6 +153,41 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
             savedNotification = notification;
         }
         publishPushNotification(savedNotification);
+    }
+
+    private void saveAndPublishPreferenceNotification(
+            SugerenciaIAEntity suggestion,
+            UUID tutorUserId
+    ) {
+        NotificacionEntity notification = new NotificacionEntity();
+        notification.setUsuarioEntity(reference(UsuarioEntity.class, tutorUserId));
+        notification.setAlumnoEntity(reference(
+                AlumnoEntity.class,
+                suggestion.getAlumnoEntity().getId()
+        ));
+        notification.setProductoEntity(reference(
+                ProductoEntity.class,
+                suggestion.getProductoEntity().getId()
+        ));
+        notification.setSugerenciaIaEntity(suggestion);
+        notification.setTipo(TipoNotificacion.SUGERENCIA_IA);
+        notification.setTitulo(suggestion.getTitulo());
+        notification.setMensaje(suggestion.getMensaje());
+        notification.setLeida(false);
+
+        NotificacionEntity savedNotification = notificationJpaRepository.save(notification);
+        if (savedNotification == null) {
+            savedNotification = notification;
+        }
+        publishPushNotification(savedNotification);
+    }
+
+    private boolean isActiveTutor(TutorEntity tutor) {
+        return tutor != null
+                && Boolean.TRUE.equals(tutor.getActiva())
+                && tutor.getUsuario() != null
+                && tutor.getUsuario().getId() != null
+                && Boolean.TRUE.equals(tutor.getUsuario().getActivo());
     }
 
     @Override

@@ -95,7 +95,7 @@ public class DetectStudentPreferences {
                 productoEntity.setId(UUID.fromString(preferencia.productoId()));
                 sugerencia.setProductoEntity(productoEntity);
 
-                sugerenciaIARepository.guardar(sugerencia);
+                sugerenciaIARepository.savePreferenceDetection(sugerencia);
             });
 
             return resultado;

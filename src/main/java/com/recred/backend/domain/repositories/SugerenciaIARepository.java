@@ -11,6 +11,8 @@ import java.util.UUID;
 public interface SugerenciaIARepository {
     void guardar(SugerenciaIAEntity sugerencia);
 
+    void savePreferenceDetection(SugerenciaIAEntity suggestion);
+
     void savePriceAlert(PriceAlertSuggestion suggestion);
 
     boolean hasRecentPriceAlert(UUID studentId, UUID productId, LocalDateTime since);

@@ -10,6 +10,7 @@ import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.NotificacionEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
+import com.recred.backend.infrastructure.entities.TutorEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
 import jakarta.persistence.EntityManager;
@@ -66,6 +67,56 @@ class SugerenciaIARepositoryImplTest {
         SugerenciaIAEntity entity = new SugerenciaIAEntity();
         repository.guardar(entity);
         verify(springDataRepository).save(entity);
+    }
+
+    @Test
+    void savePreferenceDetectionPersistsTutorNotificationAndPublishesPush() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UUID tutorUserId = UUID.randomUUID();
+
+        AlumnoEntity student = new AlumnoEntity();
+        student.setId(studentId);
+        ProductoEntity product = new ProductoEntity();
+        product.setId(productId);
+        UsuarioEntity tutorUser = new UsuarioEntity();
+        tutorUser.setId(tutorUserId);
+        tutorUser.setActivo(true);
+        TutorEntity tutor = new TutorEntity();
+        tutor.setActiva(true);
+        tutor.setUsuario(tutorUser);
+        student.getTutores().add(tutor);
+
+        SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
+        suggestion.setTipo(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+        suggestion.setTitulo("Preferencia detectada");
+        suggestion.setMensaje("Mensaje para el tutor");
+        suggestion.setAlumnoEntity(student);
+        suggestion.setProductoEntity(product);
+
+        when(springDataRepository.save(suggestion)).thenReturn(suggestion);
+        when(entityManager.find(AlumnoEntity.class, studentId)).thenReturn(student);
+        when(entityManager.getReference(UsuarioEntity.class, tutorUserId)).thenReturn(tutorUser);
+        when(entityManager.getReference(AlumnoEntity.class, studentId)).thenReturn(student);
+        when(entityManager.getReference(ProductoEntity.class, productId)).thenReturn(product);
+
+        repository.savePreferenceDetection(suggestion);
+
+        ArgumentCaptor<NotificacionEntity> notificationCaptor =
+                ArgumentCaptor.forClass(NotificacionEntity.class);
+        verify(notificationJpaRepository).save(notificationCaptor.capture());
+
+        NotificacionEntity notification = notificationCaptor.getValue();
+        assertSame(tutorUser, notification.getUsuarioEntity());
+        assertSame(suggestion, notification.getSugerenciaIaEntity());
+        assertEquals(TipoNotificacion.SUGERENCIA_IA, notification.getTipo());
+
+        ArgumentCaptor<PushNotificationRequestedEvent> pushCaptor =
+                ArgumentCaptor.forClass(PushNotificationRequestedEvent.class);
+        verify(eventPublisher).publishEvent(pushCaptor.capture());
+        assertEquals(tutorUserId, pushCaptor.getValue().notification().userId());
+        assertEquals(productId.toString(),
+                pushCaptor.getValue().notification().data().get("productoId"));
     }
 
     @Test

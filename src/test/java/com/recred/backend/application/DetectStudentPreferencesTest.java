@@ -86,7 +86,7 @@ class DetectStudentPreferencesTest {
         detectStudentPreferences.execute(studentId, buffetId);
 
         ArgumentCaptor<SugerenciaIAEntity> captor = ArgumentCaptor.forClass(SugerenciaIAEntity.class);
-        verify(sugerenciaIARepository).guardar(captor.capture());
+        verify(sugerenciaIARepository).savePreferenceDetection(captor.capture());
 
         SugerenciaIAEntity saved = captor.getValue();
         assertEquals(TipoSugerenciaIA.PREFERENCIA_DETECTADA, saved.getTipo());
@@ -148,7 +148,7 @@ class DetectStudentPreferencesTest {
                 detectStudentPreferences.execute(studentId, buffetId);
 
         assertTrue(result.isEmpty());
-        verify(sugerenciaIARepository, never()).guardar(any());
+        verify(sugerenciaIARepository, never()).savePreferenceDetection(any());
     }
 
     @Test
@@ -171,7 +171,7 @@ class DetectStudentPreferencesTest {
         detectStudentPreferences.execute(studentId, buffetId);
 
         verify(preferenceAIRepository, never()).analizarPreferencias(any(), any(), any());
-        verify(sugerenciaIARepository, never()).guardar(any());
+        verify(sugerenciaIARepository, never()).savePreferenceDetection(any());
     }
 
     @Test
@@ -197,7 +197,7 @@ class DetectStudentPreferencesTest {
 
         detectStudentPreferences.execute(studentId, buffetId);
 
-        verify(sugerenciaIARepository, never()).guardar(any());
+        verify(sugerenciaIARepository, never()).savePreferenceDetection(any());
     }
 
     @Test
