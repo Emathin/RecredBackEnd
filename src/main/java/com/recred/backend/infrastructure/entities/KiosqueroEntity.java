@@ -51,10 +51,35 @@ public class KiosqueroEntity {
     @Column(name = "actualizado_en")
     private LocalDateTime actualizadoEn;
 
-    public static Kiosquero toDomain(KiosqueroEntity kiosqueroEntity) {
+    public static KiosqueroEntity fromDomain(Kiosquero kiosquero) {
+        if (kiosquero == null) {
+            return null;
+        }
+
+        KiosqueroEntity entity = new KiosqueroEntity();
+
+        entity.setId(kiosquero.getId());
+        entity.setCuit(kiosquero.getCuit());
+        entity.setCreadoEn(kiosquero.getCreadoEn());
+        entity.setActualizadoEn(kiosquero.getActualizadoEn());
+
+        if (kiosquero.getBuffet() != null && kiosquero.getBuffet().getId() != null) {
+            BuffetEntity buffetProxy = new BuffetEntity();
+            buffetProxy.setId(kiosquero.getBuffet().getId());
+            entity.setBuffetEntity(buffetProxy);
+        }
+
+        return entity;
+    }
+
+    public Kiosquero toDomain() {
         Kiosquero kiosquero = new Kiosquero();
-        kiosquero.setId(kiosqueroEntity.getId());
-        Kiosquero.setBuffet(kiosqueroEntity.getBuffetEntity());
+        kiosquero.setId(this.getId());
+
+        if (this.getBuffetEntity() != null) {
+            kiosquero.setBuffet(this.getBuffetEntity().toDomain());
+        }
         return kiosquero;
     }
+
 }

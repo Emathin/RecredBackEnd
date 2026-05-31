@@ -5,6 +5,8 @@ import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictions;
+import com.recred.backend.config.CustomAuthenticationEntryPoint;
+import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,7 @@ import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
@@ -60,6 +63,15 @@ class ControlParentalControllerTest {
 
     @MockitoBean
     private DetectStudentPreferences detectStudentPreferences;
+
+    @MockitoBean
+    private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
+
+    @MockitoBean
+    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
     private UUID alumnoId;
     private UUID clasificacionId;

@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.domain.models.Tutor;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -65,5 +66,46 @@ public class TutorEntity {
     public void removeHijo(AlumnoEntity alumnoEntity) {
         this.hijos.remove(alumnoEntity);
         alumnoEntity.getTutores().remove(this);
+    }
+
+    public Tutor toDomain() {
+        Tutor tutor = new Tutor();
+
+        tutor.setId(this.id);
+        tutor.setActiva(this.activa);
+        tutor.setCreadoEn(this.creadoEn);
+        tutor.setActualizadoEn(this.actualizadoEn);
+
+        if (this.hijos != null && !this.hijos.isEmpty()) {
+            this.hijos.forEach(hijoEntity -> {
+                tutor.getHijos().add(hijoEntity.toDomain());
+            });
+        }
+
+        return tutor;
+    }
+
+    public static TutorEntity fromDomain(Tutor tutor) {
+        if (tutor == null) {
+            return null;
+        }
+
+        TutorEntity entity = new TutorEntity();
+        entity.setId(tutor.getId());
+        entity.setActiva(tutor.getActiva());
+        entity.setCreadoEn(tutor.getCreadoEn());
+        entity.setActualizadoEn(tutor.getActualizadoEn());
+
+        if (tutor.getHijos() != null && !tutor.getHijos().isEmpty()) {
+            tutor.getHijos().forEach(alumno -> {
+                if (alumno.getId() != null) {
+                    AlumnoEntity alumnoProxy = new AlumnoEntity();
+                    alumnoProxy.setId(alumno.getId());
+                    entity.addHijo(alumnoProxy);
+                }
+            });
+        }
+
+        return entity;
     }
 }

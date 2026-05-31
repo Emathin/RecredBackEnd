@@ -1,12 +1,15 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GenerateSeasonalRecommendation;
+import com.recred.backend.config.CustomAuthenticationEntryPoint;
+import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,6 +31,15 @@ class SeasonalRecommendationControllerTest {
 
     @MockitoBean
     private GenerateSeasonalRecommendation useCase;
+
+    @MockitoBean
+    private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
+
+    @MockitoBean
+    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
     @Test
     void dadoQueElCasoDeUsoRespondeCorrectamente_cuandoSeLlamaAlEndpoint_entoncesRetorna200ConJson() throws Exception {
