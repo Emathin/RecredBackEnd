@@ -8,18 +8,18 @@ import java.util.UUID;
 
 public class RespondToAISuggestion {
 
-    private final AISuggestionRepository AISuggestionRepository;
+    private final AISuggestionRepository aiSuggestionRepository;
 
     public RespondToAISuggestion(AISuggestionRepository aiSuggestionRepository) {
-        this.AISuggestionRepository = aiSuggestionRepository;
+        this.aiSuggestionRepository = aiSuggestionRepository;
     }
 
     @Transactional
     public void execute(UUID sugerenciaId, boolean aceptada) {
-        AISuggestionRepository.findById(sugerenciaId).ifPresent(sugerencia -> {
+        aiSuggestionRepository.findById(sugerenciaId).ifPresent(sugerencia -> {
             sugerencia.setAccepted(aceptada);
             sugerencia.setAnsweredAt(LocalDateTime.now());
-            AISuggestionRepository.save(sugerencia);
+            aiSuggestionRepository.save(sugerencia);
         });
     }
 }
