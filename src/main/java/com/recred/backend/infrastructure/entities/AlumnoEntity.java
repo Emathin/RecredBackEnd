@@ -114,4 +114,71 @@ public class AlumnoEntity {
 
         return alumnoDominio;
     }
+
+    public static AlumnoEntity fromDomain(Alumno alumno) {
+        if (alumno == null) {
+            return null;
+        }
+
+        AlumnoEntity entity = new AlumnoEntity();
+
+        entity.setId(alumno.getId());
+        entity.setActivo(alumno.getActivo() != null ? alumno.getActivo() : true);
+
+        if (alumno.getGrado() != null && alumno.getGrado().getId() != null) {
+            GradoEntity gradoProxy = new GradoEntity();
+            gradoProxy.setId(alumno.getGrado().getId());
+            entity.setGradoEntity(gradoProxy);
+        }
+
+        if (alumno.getBilletera() != null) {
+
+            BilleteraEntity billeteraEntity = BilleteraEntity.fromDomain(alumno.getBilletera());
+            if (billeteraEntity != null) {
+                billeteraEntity.setAlumnoEntity(entity);
+                entity.setBilleteraEntity(billeteraEntity);
+            }
+        }
+
+        if (alumno.getRestriccionesSalud() != null && !alumno.getRestriccionesSalud().isEmpty()) {
+            Set<ClasificacionSaludEntity> saludProxies = alumno.getRestriccionesSalud().stream()
+                    .filter(rs -> rs.getId() != null)
+                    .map(rs -> {
+                        ClasificacionSaludEntity proxy = new ClasificacionSaludEntity();
+                        proxy.setId(rs.getId());
+                        return proxy;
+                    })
+                    .collect(Collectors.toSet());
+            entity.setRestriccionesSalud(saludProxies);
+        }
+
+        if (alumno.getProductosFavoritos() != null && !alumno.getProductosFavoritos().isEmpty()) {
+            Set<ProductoEntity> productosProxies = alumno.getProductosFavoritos().stream()
+                    .filter(p -> p.getId() != null)
+                    .map(p -> {
+                        ProductoEntity proxy = new ProductoEntity();
+                        proxy.setId(p.getId());
+                        return proxy;
+                    })
+                    .collect(Collectors.toSet());
+            entity.setProductosFavoritos(productosProxies);
+        }
+
+        if (alumno.getRestriccionesHorarias() != null && !alumno.
+                getRestriccionesHorarias().isEmpty()) {
+            Set<RestriccionHorariaEntity> horariasEntities = alumno.
+                    getRestriccionesHorarias().stream()
+                    .map(rh -> {
+
+                        RestriccionHorariaEntity rhEntity = new RestriccionHorariaEntity();
+                        rhEntity.setId(rh.getId());
+                        rhEntity.setAlumnoEntity(entity);
+                        return rhEntity;
+                    })
+                    .collect(Collectors.toSet());
+            entity.setRestriccionesHorarias(horariasEntities);
+        }
+
+        return entity;
+    }
 }

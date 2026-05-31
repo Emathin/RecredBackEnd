@@ -25,6 +25,11 @@ public class KiosqueroRepositoryImpl implements KiosqueroRepository {
     }
 
     @Override
+    public List<UUID> findAllIds() {
+        return springDataKiosqueroRepository.findAllIds();
+    }
+
+    @Override
     public List<Kiosquero> findAll() {
         List<Kiosquero> kiosqueros = springDataKiosqueroRepository.findAll()
                 .stream().map(KiosqueroEntity::toDomain).collect(toList());

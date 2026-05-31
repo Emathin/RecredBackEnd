@@ -1,10 +1,13 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
+import com.recred.backend.config.CustomAuthenticationEntryPoint;
+import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -31,6 +34,15 @@ class ClasificacionSaludControllerTest {
 
     @MockitoBean
     private GetHealthRestrictionsCatalog obtenerCatalogo;
+
+    @MockitoBean
+    private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
+
+    @MockitoBean
+    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
     @Test
     void obtenerCatalogo_DeberiaRetornarListaY200Ok() throws Exception {

@@ -66,4 +66,22 @@ public class BilleteraEntity {
         domain.setActualizadoEn(this.actualizadoEn);
         return domain;
     }
+
+    public static BilleteraEntity fromDomain(Billetera billetera) {
+        if (billetera == null) {
+            return null;
+        }
+
+        BilleteraEntity entity = new BilleteraEntity();
+
+        entity.setId(billetera.getId());
+        entity.setSaldoCreditos(billetera.getSaldoCreditos());
+        entity.setLimiteCredito(billetera.getLimiteCredito());
+        entity.setSaldoDeudaInterno(billetera.getSaldoDeudaInterno());
+        entity.setCreditoHabilitado(billetera.getCreditoHabilitado());
+        entity.setCreadoEn(billetera.getCreadoEn());
+        entity.setActualizadoEn(billetera.getActualizadoEn());
+
+        return entity;
+    }
 }

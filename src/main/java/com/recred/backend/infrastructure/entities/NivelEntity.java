@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.domain.models.Nivel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -29,4 +30,14 @@ public class NivelEntity {
 
     @Column(nullable = false)
     private Boolean activo = true;
+
+    public Nivel toDomain() {
+        Nivel nivel = new Nivel();
+
+        nivel.setId(this.id);
+        nivel.setDescripcion(this.descripcion);
+        nivel.setActivo(this.activo);
+
+        return nivel;
+    }
 }
