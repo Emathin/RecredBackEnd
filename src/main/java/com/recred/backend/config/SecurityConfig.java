@@ -11,7 +11,11 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.jwt.*;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtDecoders;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -67,7 +71,8 @@ public class SecurityConfig {
                                 .authenticationEntryPoint(customAuthenticationEntryPoint)
                                 .jwt(jwt -> jwt
                                         .decoder(jwtDecoder())
-                                        .jwtAuthenticationConverter(customJwtAuthenticationConverter)
+                                        .jwtAuthenticationConverter
+                                                (customJwtAuthenticationConverter)
                                 )
                         );
 
@@ -78,7 +83,8 @@ public class SecurityConfig {
         public JwtDecoder jwtDecoder() {
                 NimbusJwtDecoder jwtDecoder = JwtDecoders.fromIssuerLocation(issuerUri);
 
-                OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuerUri);
+                OAuth2TokenValidator<Jwt> withIssuer = JwtValidators
+                        .createDefaultWithIssuer(issuerUri);
                 OAuth2TokenValidator<Jwt> withAudience = new CognitoAudienceValidator(clientId);
 
                 OAuth2TokenValidator<Jwt> validator = new
