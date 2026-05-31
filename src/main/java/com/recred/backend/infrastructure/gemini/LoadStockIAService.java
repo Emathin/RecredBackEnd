@@ -18,7 +18,7 @@ import java.util.Optional;
 public class LoadStockIAService implements LoadStockAnalyzer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LoadStockIAService.class);
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
     private static final List<String> ALLOWED_FORMATS =
             List.of("image/jpeg", "image/png", "image/jpg");
     private static final String PROMPT_TEMPLATE = """

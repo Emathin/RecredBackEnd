@@ -32,7 +32,6 @@ public class CustomJwtAuthenticationConverter implements
         List<GrantedAuthority> authorities = Collections.emptyList();
 
         if (usuarioOpt.isPresent() && usuarioOpt.get().getRol() != null) {
-            // Spring Security requiere el prefijo ROLE_ por convención
             authorities = List.of(new SimpleGrantedAuthority("ROLE_" +
                     usuarioOpt.get().getRol().name()));
         }
