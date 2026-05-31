@@ -4,8 +4,8 @@ import com.recred.backend.domain.models.*;
 import com.recred.backend.infrastructure.entities.*;
 import org.junit.jupiter.api.BeforeEach;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
-import com.recred.backend.domain.models.Producto;
-import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.domain.models.Product;
+import com.recred.backend.infrastructure.entities.ProductEntity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -13,7 +13,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -43,17 +42,17 @@ public class ProductRepositoryImplTest {
     @Test
     void findByIdReturnsDomainObjectIfExists() {
         UUID id = UUID.randomUUID();
-        ProductoEntity entity = new ProductoEntity();
+        ProductEntity entity = new ProductEntity();
         entity.setId(id);
-        entity.setNombre("Producto Test");
+        entity.setName("Producto Test");
 
         when(springDataRepository.findById(id)).thenReturn(Optional.of(entity));
 
-        Optional<Producto> result = repositoryImpl.findById(id);
+        Optional<Product> result = repositoryImpl.findById(id);
 
         assertTrue(result.isPresent());
         assertEquals(id, result.get().getId());
-        assertEquals("Producto Test", result.get().getNombre());
+        assertEquals("Producto Test", result.get().getName());
     }
 
     @Test
@@ -61,121 +60,121 @@ public class ProductRepositoryImplTest {
         UUID id = UUID.randomUUID();
         when(springDataRepository.findById(id)).thenReturn(Optional.empty());
 
-        Optional<Producto> result = productRepository.findById(id);
+        Optional<Product> result = productRepository.findById(id);
 
         assertTrue(result.isEmpty());
     }
 
     @Test
     void save_DeberiaCrearNuevaEntidad_CuandoProductoNoTieneId() {
-        Producto producto = new Producto();
-        producto.setNombre("Nuevo");
-        CategoriaProducto cat = new CategoriaProducto();
+        Product product = new Product();
+        product.setName("Nuevo");
+        ProductCategory cat = new ProductCategory();
         cat.setId(UUID.randomUUID());
-        producto.setCategoria(cat);
+        product.setCategory(cat);
 
-        ProductoEntity savedEntity = new ProductoEntity();
+        ProductEntity savedEntity = new ProductEntity();
         savedEntity.setId(UUID.randomUUID());
-        savedEntity.setNombre("Nuevo");
-        when(springDataRepository.save(any(ProductoEntity.class))).thenReturn(savedEntity);
+        savedEntity.setName("Nuevo");
+        when(springDataRepository.save(any(ProductEntity.class))).thenReturn(savedEntity);
 
-        Producto result = productRepository.save(producto);
+        Product result = productRepository.save(product);
 
         assertNotNull(result.getId());
-        verify(springDataRepository).save(any(ProductoEntity.class));
+        verify(springDataRepository).save(any(ProductEntity.class));
     }
 
     @Test
     void save_DeberiaActualizarEntidadExistente_CuandoProductoTieneId() {
         UUID id = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(id);
-        producto.setNombre("Actualizado");
-        CategoriaProducto cat = new CategoriaProducto();
+        Product product = new Product();
+        product.setId(id);
+        product.setName("Actualizado");
+        ProductCategory cat = new ProductCategory();
         cat.setId(UUID.randomUUID());
-        producto.setCategoria(cat);
+        product.setCategory(cat);
 
-        ProductoEntity existingEntity = new ProductoEntity();
+        ProductEntity existingEntity = new ProductEntity();
         existingEntity.setId(id);
-        existingEntity.setNombre("Viejo");
+        existingEntity.setName("Viejo");
 
         when(springDataRepository.findById(id)).thenReturn(Optional.of(existingEntity));
-        when(springDataRepository.save(any(ProductoEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataRepository.save(any(ProductEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        productRepository.save(producto);
+        productRepository.save(product);
 
-        ArgumentCaptor<ProductoEntity> captor = ArgumentCaptor.forClass(ProductoEntity.class);
+        ArgumentCaptor<ProductEntity> captor = ArgumentCaptor.forClass(ProductEntity.class);
         verify(springDataRepository).save(captor.capture());
-        assertEquals("Actualizado", captor.getValue().getNombre());
+        assertEquals("Actualizado", captor.getValue().getName());
     }
 
     @Test
     void save_DeberiaMapearTodo_IncluyendoMedidasTiposYClasificaciones() {
-        Producto producto = new Producto();
-        producto.setNombre("Completo");
+        Product product = new Product();
+        product.setName("Completo");
 
-        CategoriaProducto cat = new CategoriaProducto();
+        ProductCategory cat = new ProductCategory();
         cat.setId(UUID.randomUUID());
-        producto.setCategoria(cat);
+        product.setCategory(cat);
 
-        ProductoMedida medida = new ProductoMedida();
+        ProductMeasure medida = new ProductMeasure();
         medida.setId(UUID.randomUUID());
-        producto.addMedida(medida);
+        product.addMeasure(medida);
 
-        ClasificacionTipo tipo = new ClasificacionTipo();
+        TypeClassification tipo = new TypeClassification();
         tipo.setId(UUID.randomUUID());
-        producto.setTipos(Set.of(tipo));
+        product.setTypes(Set.of(tipo));
 
-        ClasificacionSalud salud = new ClasificacionSalud();
+        HealthClassification salud = new HealthClassification();
         salud.setId(UUID.randomUUID());
-        producto.setClasificacionesSalud(Set.of(salud));
+        product.setHealthClassifications(Set.of(salud));
 
-        when(springDataRepository.save(any(ProductoEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataRepository.save(any(ProductEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        productRepository.save(producto);
+        productRepository.save(product);
 
-        ArgumentCaptor<ProductoEntity> captor = ArgumentCaptor.forClass(ProductoEntity.class);
+        ArgumentCaptor<ProductEntity> captor = ArgumentCaptor.forClass(ProductEntity.class);
         verify(springDataRepository).save(captor.capture());
-        ProductoEntity saved = captor.getValue();
+        ProductEntity saved = captor.getValue();
 
-        assertNotNull(saved.getCategoria());
-        assertFalse(saved.getMedidas().isEmpty());
-        assertFalse(saved.getTipos().isEmpty());
-        assertFalse(saved.getClasificacionesSalud().isEmpty());
+        assertNotNull(saved.getCategory());
+        assertFalse(saved.getMeasures().isEmpty());
+        assertFalse(saved.getTypes().isEmpty());
+        assertFalse(saved.getHealthClassifications().isEmpty());
     }
 
     @Test
     void save_DeberiaLimpiarColecciones_CuandoVienenVacias() {
         UUID id = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(id);
-        CategoriaProducto cat = new CategoriaProducto();
+        Product product = new Product();
+        product.setId(id);
+        ProductCategory cat = new ProductCategory();
         cat.setId(UUID.randomUUID());
-        producto.setCategoria(cat);
+        product.setCategory(cat);
 
-        ProductoEntity entity = new ProductoEntity();
+        ProductEntity entity = new ProductEntity();
         entity.setId(id);
-        entity.getMedidas().add(new ProductoMedidaEntity());
-        entity.getTipos().add(new ClasificacionTipoEntity());
-        entity.getClasificacionesSalud().add(new ClasificacionSaludEntity());
+        entity.getMeasures().add(new ProductMeasureEntity());
+        entity.getTypes().add(new TypeClassificationEntity());
+        entity.getHealthClassifications().add(new HealthClassificationEntity());
 
         when(springDataRepository.findById(id)).thenReturn(Optional.of(entity));
-        when(springDataRepository.save(any(ProductoEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataRepository.save(any(ProductEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        productRepository.save(producto);
+        productRepository.save(product);
 
-        assertTrue(entity.getMedidas().isEmpty());
-        assertTrue(entity.getTipos().isEmpty());
-        assertTrue(entity.getClasificacionesSalud().isEmpty());
+        assertTrue(entity.getMeasures().isEmpty());
+        assertTrue(entity.getTypes().isEmpty());
+        assertTrue(entity.getHealthClassifications().isEmpty());
     }
 
     @Test
     void findBuffetLeastSoldProductsReturnsAProduct() {
         UUID buffetId = java.util.UUID.randomUUID();
-        ProductoEntity entity = new ProductoEntity();
+        ProductEntity entity = new ProductEntity();
         entity.setId(java.util.UUID.randomUUID());
-        entity.setNombre("Menos Vendido");
-        entity.setPrecio(new java.math.BigDecimal("100.00"));
+        entity.setName("Menos Vendido");
+        entity.setPrice(new java.math.BigDecimal("100.00"));
 
         when(springDataRepository.findBuffetLeastSoldProducts(buffetId)).thenReturn(entity);
 
@@ -189,88 +188,88 @@ public class ProductRepositoryImplTest {
     void save_DeberiaNoReasignarCategoria_CuandoIdEsIgual() {
         UUID id = UUID.randomUUID();
         UUID catId = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(id);
-        CategoriaProducto cat = new CategoriaProducto();
+        Product product = new Product();
+        product.setId(id);
+        ProductCategory cat = new ProductCategory();
         cat.setId(catId);
-        producto.setCategoria(cat);
+        product.setCategory(cat);
 
-        ProductoEntity entity = new ProductoEntity();
+        ProductEntity entity = new ProductEntity();
         entity.setId(id);
-        CategoriaProductoEntity catEntity = new CategoriaProductoEntity();
+        ProductCategoryEntity catEntity = new ProductCategoryEntity();
         catEntity.setId(catId);
-        entity.setCategoria(catEntity);
+        entity.setCategory(catEntity);
 
         when(springDataRepository.findById(id)).thenReturn(Optional.of(entity));
-        when(springDataRepository.save(any(ProductoEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataRepository.save(any(ProductEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        productRepository.save(producto);
+        productRepository.save(product);
 
-        assertSame(catEntity, entity.getCategoria());
+        assertSame(catEntity, entity.getCategory());
     }
 
     @Test
     void save_DeberiaLimpiarColecciones_CuandoVienenNulasEnModelo() {
         UUID id = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(id);
-        producto.setMedidas(null);
-        producto.setTipos(null);
-        producto.setClasificacionesSalud(null);
-        CategoriaProducto cat = new CategoriaProducto();
+        Product product = new Product();
+        product.setId(id);
+        product.setMeasures(null);
+        product.setTypes(null);
+        product.setHealthClassifications(null);
+        ProductCategory cat = new ProductCategory();
         cat.setId(UUID.randomUUID());
-        producto.setCategoria(cat);
+        product.setCategory(cat);
 
-        ProductoEntity entity = new ProductoEntity();
+        ProductEntity entity = new ProductEntity();
         entity.setId(id);
 
         when(springDataRepository.findById(id)).thenReturn(Optional.of(entity));
-        when(springDataRepository.save(any(ProductoEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataRepository.save(any(ProductEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        productRepository.save(producto);
+        productRepository.save(product);
 
-        verify(springDataRepository).save(any(ProductoEntity.class));
+        verify(springDataRepository).save(any(ProductEntity.class));
     }
 
     @Test
     void save_DeberiaLimpiarColecciones_CuandoVienenVaciasEnModelo() {
         UUID id = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(id);
-        producto.setMedidas(new java.util.HashSet<>());
-        producto.setTipos(new java.util.HashSet<>());
-        producto.setClasificacionesSalud(new java.util.HashSet<>());
-        CategoriaProducto cat = new CategoriaProducto();
+        Product product = new Product();
+        product.setId(id);
+        product.setMeasures(new java.util.HashSet<>());
+        product.setTypes(new java.util.HashSet<>());
+        product.setHealthClassifications(new java.util.HashSet<>());
+        ProductCategory cat = new ProductCategory();
         cat.setId(UUID.randomUUID());
-        producto.setCategoria(cat);
+        product.setCategory(cat);
 
-        ProductoEntity entity = new ProductoEntity();
+        ProductEntity entity = new ProductEntity();
         entity.setId(id);
 
         when(springDataRepository.findById(id)).thenReturn(Optional.of(entity));
-        when(springDataRepository.save(any(ProductoEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataRepository.save(any(ProductEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        productRepository.save(producto);
+        productRepository.save(product);
 
-        verify(springDataRepository).save(any(ProductoEntity.class));
+        verify(springDataRepository).save(any(ProductEntity.class));
     }
 
     @Test
     void save_DeberiaCrearNuevaEntidad_CuandoIdNoExisteEnBaseDeDatos() {
         UUID id = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(id);
-        producto.setNombre("Nuevo");
-        CategoriaProducto cat = new CategoriaProducto();
+        Product product = new Product();
+        product.setId(id);
+        product.setName("Nuevo");
+        ProductCategory cat = new ProductCategory();
         cat.setId(UUID.randomUUID());
-        producto.setCategoria(cat);
+        product.setCategory(cat);
 
         when(springDataRepository.findById(id)).thenReturn(Optional.empty());
-        when(springDataRepository.save(any(ProductoEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataRepository.save(any(ProductEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        productRepository.save(producto);
+        productRepository.save(product);
 
-        verify(springDataRepository).save(any(ProductoEntity.class));
+        verify(springDataRepository).save(any(ProductEntity.class));
     }
 
     @Test
@@ -278,23 +277,23 @@ public class ProductRepositoryImplTest {
         UUID id = UUID.randomUUID();
         UUID catId1 = UUID.randomUUID();
         UUID catId2 = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(id);
-        CategoriaProducto cat = new CategoriaProducto();
+        Product product = new Product();
+        product.setId(id);
+        ProductCategory cat = new ProductCategory();
         cat.setId(catId2);
-        producto.setCategoria(cat);
+        product.setCategory(cat);
 
-        ProductoEntity entity = new ProductoEntity();
+        ProductEntity entity = new ProductEntity();
         entity.setId(id);
-        CategoriaProductoEntity catEntity = new CategoriaProductoEntity();
+        ProductCategoryEntity catEntity = new ProductCategoryEntity();
         catEntity.setId(catId1);
-        entity.setCategoria(catEntity);
+        entity.setCategory(catEntity);
 
         when(springDataRepository.findById(id)).thenReturn(Optional.of(entity));
-        when(springDataRepository.save(any(ProductoEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataRepository.save(any(ProductEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        productRepository.save(producto);
+        productRepository.save(product);
 
-        assertEquals(catId2, entity.getCategoria().getId());
+        assertEquals(catId2, entity.getCategory().getId());
     }
 }

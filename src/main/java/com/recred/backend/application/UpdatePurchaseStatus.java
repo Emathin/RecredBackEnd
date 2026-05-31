@@ -2,7 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
-import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.PurchaseState;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -17,11 +17,11 @@ public class UpdatePurchaseStatus {
         this.purchaseRepository = purchaseRepository;
     }
 
-    public PurchaseStatus execute(UUID purchaseId, EstadoCompra requestedStatus) {
+    public PurchaseStatus execute(UUID purchaseId, PurchaseState requestedStatus) {
         Purchase purchase = purchaseRepository.findById(purchaseId)
                 .orElseThrow(() -> new PurchaseNotFoundException(purchaseId));
 
-        if (requestedStatus == EstadoCompra.CANCELADO) {
+        if (requestedStatus == PurchaseState.CANCELADO) {
             InvalidPurchaseStatusTransitionException exception =
                     new InvalidPurchaseStatusTransitionException(
                             purchase.getStatus(),

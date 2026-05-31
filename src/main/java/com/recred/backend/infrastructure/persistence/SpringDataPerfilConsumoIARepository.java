@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
-import com.recred.backend.infrastructure.entities.PerfilConsumoIAEntity;
+import com.recred.backend.infrastructure.entities.StudentEntity;
+import com.recred.backend.infrastructure.entities.IAConsumptionProfileEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -11,14 +11,14 @@ import java.util.UUID;
 
 @Repository
 public interface SpringDataPerfilConsumoIARepository 
-        extends JpaRepository<PerfilConsumoIAEntity, UUID> {
-    List<PerfilConsumoIAEntity> findByProductoEntityFavoritoId(UUID productoId);
+        extends JpaRepository<IAConsumptionProfileEntity, UUID> {
+    List<IAConsumptionProfileEntity> findByProductoEntityFavoritoId(UUID productoId);
 
     @Query("""
             select distinct student
-            from AlumnoEntity student
-            join student.productosFavoritos product
+            from StudentEntity student
+            join student.favouriteProducts product
             where product.id = :productoId
             """)
-    List<AlumnoEntity> findStudentsWithManualFavoriteProduct(UUID productoId);
+    List<StudentEntity> findStudentsWithManualFavoriteProduct(UUID productoId);
 }

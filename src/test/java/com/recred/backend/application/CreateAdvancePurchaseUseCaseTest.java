@@ -2,7 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.DietaryRestrictionException;
 import com.recred.backend.domain.models.*;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.StudentRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.PurchaseValidator;
@@ -31,7 +31,7 @@ class CreateAdvancePurchaseUseCaseTest {
     @Mock
     private PurchaseValidator purchaseValidator;
     @Mock
-    private AlumnoRepository alumnoRepository;
+    private StudentRepository studentRepository;
     @Mock
     private ProductRepository productRepository;
     @Mock
@@ -47,7 +47,7 @@ class CreateAdvancePurchaseUseCaseTest {
         MockitoAnnotations.openMocks(this);
         createAdvancePurchaseUseCase = new CreateAdvancePurchaseUseCase(
                 purchaseValidator,
-                alumnoRepository,
+                studentRepository,
                 productRepository,
                 purchaseRepository,
                 withdrawalCodeService
@@ -67,21 +67,21 @@ class CreateAdvancePurchaseUseCaseTest {
         );
         AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
-        Alumno student = new Alumno();
+        Student student = new Student();
         student.setId(studentId);
 
-        Producto product = new Producto();
+        Product product = new Product();
         product.setId(productId);
-        product.setPrecio(BigDecimal.TEN);
-        product.setRequierePreparacion(true);
+        product.setPrice(BigDecimal.TEN);
+        product.setRequiresPreparation(true);
 
-        Map<Producto, Integer> items = new HashMap<>();
+        Map<Product, Integer> items = new HashMap<>();
         items.put(product, 1);
 
         Purchase purchase = new Purchase(student, items, null);
         purchase.setId(UUID.randomUUID());
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
         when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("test-code");
@@ -89,7 +89,7 @@ class CreateAdvancePurchaseUseCaseTest {
         AdvancePurchaseResponse response = createAdvancePurchaseUseCase.execute(request);
 
         assertNotNull(response);
-        assertEquals(EstadoCompra.PENDIENTE, response.status().status());
+        assertEquals(PurchaseState.PENDIENTE, response.status().status());
         assertEquals(10.0, response.total());
         assertTrue(response.codes().containsKey(studentId));
         assertEquals("test-code", response.codes().get(studentId));
@@ -108,13 +108,13 @@ class CreateAdvancePurchaseUseCaseTest {
         );
         AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
-        Alumno student = new Alumno();
+        Student student = new Student();
         student.setId(studentId);
 
-        Producto product = new Producto();
+        Product product = new Product();
         product.setId(productId);
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
         doThrow(new DietaryRestrictionException("Dietary restriction violated"))

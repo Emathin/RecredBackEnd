@@ -1,33 +1,33 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.ClasificacionSalud;
-import com.recred.backend.domain.repositories.AlumnoRepository;
-import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.models.HealthClassification;
+import com.recred.backend.domain.repositories.StudentRepository;
+import com.recred.backend.domain.repositories.HealthClassificationRepository;
 
 import java.util.UUID;
 
 public class AddHealthRestriction {
 
-    private final AlumnoRepository alumnoRepository;
-    private final ClasificacionSaludRepository clasificacionRepository;
+    private final StudentRepository studentRepository;
+    private final HealthClassificationRepository clasificacionRepository;
 
-    public AddHealthRestriction(AlumnoRepository alumnoRepository,
-                                ClasificacionSaludRepository clasificacionRepository) {
-        this.alumnoRepository = alumnoRepository;
+    public AddHealthRestriction(StudentRepository studentRepository,
+                                HealthClassificationRepository clasificacionRepository) {
+        this.studentRepository = studentRepository;
         this.clasificacionRepository = clasificacionRepository;
     }
 
     public void execute(UUID studentId, UUID classificationId) {
-        Alumno student = alumnoRepository.findById(studentId)
+        Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
 
-        ClasificacionSalud classification = clasificacionRepository.findById(classificationId)
+        HealthClassification classification = clasificacionRepository.findById(classificationId)
                 .orElseThrow(() -> new IllegalArgumentException
                         ("La clasificación médica no existe."));
 
-        student.agregarRestriccionSalud(classification);
+        student.addHealthRestriction(classification);
 
-        alumnoRepository.save(student);
+        studentRepository.save(student);
     }
 }

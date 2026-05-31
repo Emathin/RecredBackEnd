@@ -2,7 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.events.ProductPriceChangedEvent;
 import com.recred.backend.domain.events.ProductPriceChangedPublisher;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Product;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ class UpdateProductPriceTest {
     void updatePriceAndPublishEventWhenPriceChanges() {
         UUID productId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        Producto product = product(productId, "100.00");
+        Product product = product(productId, "100.00");
         BigDecimal newPrice = new BigDecimal("120.00");
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
@@ -52,7 +52,7 @@ class UpdateProductPriceTest {
                 ArgumentCaptor.forClass(ProductPriceChangedEvent.class);
         verify(eventPublisher).publish(captor.capture());
         ProductPriceChangedEvent event = captor.getValue();
-        assertEquals(product, event.producto());
+        assertEquals(product, event.product());
         assertEquals(new BigDecimal("100.00"), event.oldPrice());
         assertEquals(newPrice, event.newPrice());
         assertEquals(buffetId, event.buffetId());
@@ -61,7 +61,7 @@ class UpdateProductPriceTest {
     @Test
     void doNothingWhenPriceDoesNotChange() {
         UUID productId = UUID.randomUUID();
-        Producto product = product(productId, "100.00");
+        Product product = product(productId, "100.00");
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
         updateProductPrice.execute(productId, new BigDecimal("100.00"), null);
@@ -73,8 +73,8 @@ class UpdateProductPriceTest {
     @Test
     void updatePriceDoesNotRequireProductCategory() {
         UUID productId = UUID.randomUUID();
-        Producto product = product(productId, "100.00");
-        product.setCategoria(null);
+        Product product = product(productId, "100.00");
+        product.setCategory(null);
         BigDecimal newPrice = new BigDecimal("120.00");
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
@@ -97,10 +97,10 @@ class UpdateProductPriceTest {
         );
     }
 
-    private Producto product(UUID productId, String price) {
-        Producto product = new Producto();
+    private Product product(UUID productId, String price) {
+        Product product = new Product();
         product.setId(productId);
-        product.setPrecio(new BigDecimal(price));
+        product.setPrice(new BigDecimal(price));
         return product;
     }
 }

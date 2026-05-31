@@ -1,9 +1,9 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.ChatSession;
-import com.recred.backend.domain.models.EstadoChatSesion;
-import com.recred.backend.infrastructure.entities.ChatSesionEntity;
-import com.recred.backend.infrastructure.entities.UsuarioEntity;
+import com.recred.backend.domain.models.ChatSessionState;
+import com.recred.backend.infrastructure.entities.ChatSessionEntity;
+import com.recred.backend.infrastructure.entities.UserEntity;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -37,14 +37,14 @@ class ChatSessionPersistenceRepositoryTest {
         UUID userId = UUID.randomUUID();
         UUID sessionId = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.of(2026, 5, 27, 12, 0);
-        UsuarioEntity user = new UsuarioEntity();
+        UserEntity user = new UserEntity();
         ChatSessionPersistenceRepository repository = repository();
 
         when(alumnoRepository.findUserIdByStudentId(studentId)).thenReturn(Optional.of(userId));
-        when(entityManager.getReference(UsuarioEntity.class, userId)).thenReturn(user);
+        when(entityManager.getReference(UserEntity.class, userId)).thenReturn(user);
         when(chatSessionRepository.save(org.mockito.ArgumentMatchers.any()))
                 .thenAnswer(invocation -> {
-                    ChatSesionEntity entity = invocation.getArgument(0);
+                    ChatSessionEntity entity = invocation.getArgument(0);
                     entity.setId(sessionId);
                     return entity;
                 });
@@ -52,14 +52,14 @@ class ChatSessionPersistenceRepositoryTest {
         ChatSession session = repository.startForStudent(studentId, now);
 
         assertEquals(sessionId, session.id());
-        assertEquals(EstadoChatSesion.ABIERTA, session.status());
-        ArgumentCaptor<ChatSesionEntity> captor = ArgumentCaptor
-                .forClass(ChatSesionEntity.class);
+        assertEquals(ChatSessionState.ABIERTA, session.status());
+        ArgumentCaptor<ChatSessionEntity> captor = ArgumentCaptor
+                .forClass(ChatSessionEntity.class);
         verify(chatSessionRepository).save(captor.capture());
-        ChatSesionEntity saved = captor.getValue();
-        assertSame(user, saved.getUsuarioEntity());
-        assertEquals(now, saved.getFechaInicio());
-        assertEquals(now, saved.getFechaUltimaActividad());
+        ChatSessionEntity saved = captor.getValue();
+        assertSame(user, saved.getUserEntity());
+        assertEquals(now, saved.getStartDate());
+        assertEquals(now, saved.getLastActivityDate());
     }
 
     @Test
@@ -67,17 +67,17 @@ class ChatSessionPersistenceRepositoryTest {
         UUID studentId = UUID.randomUUID();
         UUID sessionId = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.of(2026, 5, 27, 12, 0);
-        ChatSesionEntity entity = new ChatSesionEntity();
+        ChatSessionEntity entity = new ChatSessionEntity();
         entity.setId(sessionId);
-        entity.setEstado(EstadoChatSesion.ABIERTA);
-        entity.setFechaInicio(now.minusMinutes(5));
-        entity.setFechaUltimaActividad(now);
+        entity.setState(ChatSessionState.ABIERTA);
+        entity.setStartDate(now.minusMinutes(5));
+        entity.setLastActivityDate(now);
         ChatSessionPersistenceRepository repository = repository();
 
         when(chatSessionRepository.findOpenByIdAndStudentId(
                 sessionId,
                 studentId,
-                EstadoChatSesion.ABIERTA
+                ChatSessionState.ABIERTA
         )).thenReturn(Optional.of(entity));
 
         Optional<ChatSession> session = repository.findOpenByIdAndStudentId(

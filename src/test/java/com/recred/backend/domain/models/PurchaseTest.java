@@ -14,34 +14,34 @@ class PurchaseTest {
     @Test
     void constructor_WhenProductRequiresPreparation_ShouldStartAsPending() {
         Purchase purchase = new Purchase(
-                new Alumno(),
+                new Student(),
                 Map.of(product(true), 1),
-                MedioPago.CREDITOS
+                PaymentMethod.CREDITOS
         );
 
-        assertEquals(EstadoCompra.PENDIENTE, purchase.getStatus());
+        assertEquals(PurchaseState.PENDIENTE, purchase.getStatus());
     }
 
     @Test
     void constructor_WhenNoProductRequiresPreparation_ShouldStartAsDelivered() {
         Purchase purchase = new Purchase(
-                new Alumno(),
+                new Student(),
                 Map.of(product(false), 1),
-                MedioPago.CREDITOS
+                PaymentMethod.CREDITOS
         );
 
-        assertEquals(EstadoCompra.ENTREGADO, purchase.getStatus());
+        assertEquals(PurchaseState.ENTREGADO, purchase.getStatus());
     }
 
     @Test
     void constructor_WhenProductPriceIsNull_ShouldCalculateZeroTotal() {
-        Producto product = product(false);
-        product.setPrecio(null);
+        Product product = product(false);
+        product.setPrice(null);
 
         Purchase purchase = new Purchase(
-                new Alumno(),
+                new Student(),
                 Map.of(product, 2),
-                MedioPago.CREDITOS
+                PaymentMethod.CREDITOS
         );
 
         assertEquals(BigDecimal.ZERO, purchase.getTotalAmount());
@@ -49,88 +49,88 @@ class PurchaseTest {
 
     @Test
     void changeStatusTo_WhenTransitionIsValid_ShouldUpdateStatus() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+        Purchase purchase = purchaseWithStatus(PurchaseState.PENDIENTE);
 
-        purchase.changeStatusTo(EstadoCompra.EN_PREPARACION);
-        purchase.changeStatusTo(EstadoCompra.LISTO);
+        purchase.changeStatusTo(PurchaseState.EN_PREPARACION);
+        purchase.changeStatusTo(PurchaseState.LISTO);
 
-        assertEquals(EstadoCompra.LISTO, purchase.getStatus());
+        assertEquals(PurchaseState.LISTO, purchase.getStatus());
     }
 
     @Test
     void changeStatusTo_WhenTransitionIsInvalid_ShouldThrowException() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+        Purchase purchase = purchaseWithStatus(PurchaseState.PENDIENTE);
 
         assertThrows(InvalidPurchaseStatusTransitionException.class,
-                () -> purchase.changeStatusTo(EstadoCompra.LISTO));
+                () -> purchase.changeStatusTo(PurchaseState.LISTO));
     }
 
     @Test
     void changeStatusTo_WhenPendingIsCancelled_ShouldUpdateStatus() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+        Purchase purchase = purchaseWithStatus(PurchaseState.PENDIENTE);
 
-        purchase.changeStatusTo(EstadoCompra.CANCELADO);
+        purchase.changeStatusTo(PurchaseState.CANCELADO);
 
-        assertEquals(EstadoCompra.CANCELADO, purchase.getStatus());
+        assertEquals(PurchaseState.CANCELADO, purchase.getStatus());
     }
 
     @Test
     void changeStatusTo_WhenPreparationIsCancelled_ShouldUpdateStatus() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.EN_PREPARACION);
+        Purchase purchase = purchaseWithStatus(PurchaseState.EN_PREPARACION);
 
-        purchase.changeStatusTo(EstadoCompra.CANCELADO);
+        purchase.changeStatusTo(PurchaseState.CANCELADO);
 
-        assertEquals(EstadoCompra.CANCELADO, purchase.getStatus());
+        assertEquals(PurchaseState.CANCELADO, purchase.getStatus());
     }
 
     @Test
     void changeStatusTo_WhenPreparationReceivesInvalidStatus_ShouldThrowException() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.EN_PREPARACION);
+        Purchase purchase = purchaseWithStatus(PurchaseState.EN_PREPARACION);
 
         assertThrows(InvalidPurchaseStatusTransitionException.class,
-                () -> purchase.changeStatusTo(EstadoCompra.ENTREGADO));
+                () -> purchase.changeStatusTo(PurchaseState.ENTREGADO));
     }
 
     @Test
     void changeStatusTo_WhenReadyIsDelivered_ShouldUpdateStatus() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.LISTO);
+        Purchase purchase = purchaseWithStatus(PurchaseState.LISTO);
 
-        purchase.changeStatusTo(EstadoCompra.ENTREGADO);
+        purchase.changeStatusTo(PurchaseState.ENTREGADO);
 
-        assertEquals(EstadoCompra.ENTREGADO, purchase.getStatus());
+        assertEquals(PurchaseState.ENTREGADO, purchase.getStatus());
     }
 
     @Test
     void changeStatusTo_WhenReadyIsCancelled_ShouldUpdateStatus() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.LISTO);
+        Purchase purchase = purchaseWithStatus(PurchaseState.LISTO);
 
-        purchase.changeStatusTo(EstadoCompra.CANCELADO);
+        purchase.changeStatusTo(PurchaseState.CANCELADO);
 
-        assertEquals(EstadoCompra.CANCELADO, purchase.getStatus());
+        assertEquals(PurchaseState.CANCELADO, purchase.getStatus());
     }
 
     @Test
     void changeStatusTo_WhenReadyReceivesInvalidStatus_ShouldThrowException() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.LISTO);
+        Purchase purchase = purchaseWithStatus(PurchaseState.LISTO);
 
         assertThrows(InvalidPurchaseStatusTransitionException.class,
-                () -> purchase.changeStatusTo(EstadoCompra.PENDIENTE));
+                () -> purchase.changeStatusTo(PurchaseState.PENDIENTE));
     }
 
     @Test
     void changeStatusTo_WhenDelivered_ShouldThrowException() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.ENTREGADO);
+        Purchase purchase = purchaseWithStatus(PurchaseState.ENTREGADO);
 
         assertThrows(InvalidPurchaseStatusTransitionException.class,
-                () -> purchase.changeStatusTo(EstadoCompra.LISTO));
+                () -> purchase.changeStatusTo(PurchaseState.LISTO));
     }
 
     @Test
     void changeStatusTo_WhenCancelled_ShouldThrowException() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.CANCELADO);
+        Purchase purchase = purchaseWithStatus(PurchaseState.CANCELADO);
 
         assertThrows(InvalidPurchaseStatusTransitionException.class,
-                () -> purchase.changeStatusTo(EstadoCompra.ENTREGADO));
+                () -> purchase.changeStatusTo(PurchaseState.ENTREGADO));
     }
 
     @Test
@@ -138,12 +138,12 @@ class PurchaseTest {
         Purchase purchase = purchaseWithStatus(null);
 
         assertThrows(InvalidPurchaseStatusTransitionException.class,
-                () -> purchase.changeStatusTo(EstadoCompra.LISTO));
+                () -> purchase.changeStatusTo(PurchaseState.LISTO));
     }
 
     @Test
     void changeStatusTo_WhenNextStatusIsNull_ShouldThrowException() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+        Purchase purchase = purchaseWithStatus(PurchaseState.PENDIENTE);
 
         assertThrows(InvalidPurchaseStatusTransitionException.class,
                 () -> purchase.changeStatusTo(null));
@@ -151,21 +151,21 @@ class PurchaseTest {
 
     @Test
     void cancel_WhenPurchaseIsAlreadyCancelled_ShouldThrowException() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.CANCELADO);
+        Purchase purchase = purchaseWithStatus(PurchaseState.CANCELADO);
 
         assertThrows(IllegalStateException.class, purchase::cancel);
     }
 
-    private Purchase purchaseWithStatus(EstadoCompra status) {
+    private Purchase purchaseWithStatus(PurchaseState status) {
         Purchase purchase = new Purchase();
         purchase.setStatus(status);
         return purchase;
     }
 
-    private Producto product(Boolean requiresPreparation) {
-        Producto product = new Producto();
-        product.setPrecio(new BigDecimal("10.00"));
-        product.setRequierePreparacion(requiresPreparation);
+    private Product product(Boolean requiresPreparation) {
+        Product product = new Product();
+        product.setPrice(new BigDecimal("10.00"));
+        product.setRequiresPreparation(requiresPreparation);
         return product;
     }
 }

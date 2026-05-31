@@ -21,9 +21,9 @@ public class GeminiSpendingPredictionAnalyzer implements SpendingPredictionAnaly
             GeminiSpendingPredictionAnalyzer.class);
     private static final String CATEGORY_SEPARATOR = "=";
     private static final String PROMPT_TEMPLATE = """
-            Sos un asistente para tutores y alumnos de una app escolar.
+            Sos un asistente para tutores y students de una app escolar.
             Analiza una prediccion de gasto sin recalcular los importes.
-            Usa lenguaje simple, claro y accionable para usuario final.
+            Usa lenguaje simple, claro y accionable para user final.
             No menciones modelo, confianza, calidad predictiva ni cantidad de datos historicos.
             No digas que el gasto proyectado sube respecto al actual como alerta: eso es esperable.
             Genera alertas solo si hay riesgo real o un punto concreto para revisar.
@@ -39,9 +39,9 @@ public class GeminiSpendingPredictionAnalyzer implements SpendingPredictionAnaly
             }
 
             Datos:
-            periodo=%s
+            period=%s
             fechaCalculo=%s
-            fechaInicio=%s
+            startDate=%s
             fechaFin=%s
             gastoActual=%s
             gastoPredicho=%s

@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.infrastructure.entities.PresupuestoAlumnoEntity;
+import com.recred.backend.infrastructure.entities.StudentBudgetEntity;
 import com.recred.backend.domain.models.SpendingPeriodPreference;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
 import java.time.LocalDate;
@@ -11,20 +11,20 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SpendingPreferenceJpaRepository
-        extends JpaRepository<PresupuestoAlumnoEntity, UUID>, SpendingPreferenceRepository {
+        extends JpaRepository<StudentBudgetEntity, UUID>, SpendingPreferenceRepository {
 
     @Override
     @Query("""
             select new com.recred.backend.domain.models.SpendingPeriodPreference(
-                p.periodo,
-                p.montoLimite
+                p.period,
+                p.limitAmount
             )
-            from PresupuestoAlumnoEntity p
-            where p.alumnoEntity.id = :studentId
-            and p.activo = true
-            and p.fechaInicio <= :date
-            and (p.fechaFin is null or p.fechaFin >= :date)
-            order by p.fechaInicio desc
+            from StudentBudgetEntity p
+            where p.studentEntity.id = :studentId
+            and p.active = true
+            and p.startDate <= :date
+            and (p.endDate is null or p.endDate >= :date)
+            order by p.startDate desc
             """)
     List<SpendingPeriodPreference> findActivePreferences(
             @Param("studentId") UUID studentId,

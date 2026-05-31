@@ -1,8 +1,8 @@
 package com.recred.backend.domain.repositories;
 
-import com.recred.backend.domain.models.Kiosquero;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Merchant;
+import com.recred.backend.domain.models.Product;
 
 public interface ProductRecommendationRepository {
-    void registerProductAdditionRecommendation(Producto product, Kiosquero kiosquero);
+    void registerProductAdditionRecommendation(Product product, Merchant merchant);
 }

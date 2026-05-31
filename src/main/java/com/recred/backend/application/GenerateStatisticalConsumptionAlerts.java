@@ -8,7 +8,7 @@ import com.recred.backend.domain.models.ConsumptionAlertPattern;
 import com.recred.backend.domain.models.ConsumptionAlertType;
 import com.recred.backend.domain.models.ConsumptionCategoryStatistic;
 import com.recred.backend.domain.models.ConsumptionProductStatistic;
-import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.PurchaseState;
 import com.recred.backend.domain.repositories.ConsumptionAlertNotificationRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertPurchaseRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
@@ -30,7 +30,7 @@ public class GenerateStatisticalConsumptionAlerts {
     private static final int MINIMUM_LOOKBACK_DAYS = 1;
     private static final int PERCENTAGE_SCALE = 2;
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100.00");
-    private static final Set<EstadoCompra> PURCHASE_STATUSES = Set.of(EstadoCompra.ENTREGADO);
+    private static final Set<PurchaseState> PURCHASE_STATUSES = Set.of(PurchaseState.ENTREGADO);
 
     private final ConsumptionAlertStudentRepository studentRepository;
     private final ConsumptionAlertPurchaseRepository purchaseRepository;

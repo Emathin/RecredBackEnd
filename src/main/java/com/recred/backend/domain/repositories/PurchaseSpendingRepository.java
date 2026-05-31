@@ -1,6 +1,6 @@
 package com.recred.backend.domain.repositories;
 
-import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.PurchaseState;
 import com.recred.backend.domain.models.ConsumptionCategory;
 import com.recred.backend.domain.models.PurchaseSpending;
 import java.time.LocalDateTime;
@@ -12,14 +12,14 @@ public interface PurchaseSpendingRepository {
 
     List<PurchaseSpending> findSpending(
             UUID studentId,
-            Collection<EstadoCompra> statuses,
+            Collection<PurchaseState> statuses,
             LocalDateTime startDateTime,
             LocalDateTime endDateTime
     );
 
     List<ConsumptionCategory> findMostConsumedCategories(
             UUID studentId,
-            Collection<EstadoCompra> statuses,
+            Collection<PurchaseState> statuses,
             LocalDateTime startDateTime,
             LocalDateTime endDateTime
     );

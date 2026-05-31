@@ -1,13 +1,13 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.exceptions.AlumnoRequeridoParaConsumoException;
-import com.recred.backend.domain.exceptions.ConsumoAlumnoNoAutorizadoException;
-import com.recred.backend.domain.exceptions.RangoFechasConsumoInvalidoException;
-import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
+import com.recred.backend.domain.exceptions.RequiredStudentForConsumptionException;
+import com.recred.backend.domain.exceptions.NotAuthorizedStudentConsumptionException;
+import com.recred.backend.domain.exceptions.InvalidConsumptionDateRangeException;
+import com.recred.backend.domain.exceptions.AuthenticatedUserNotFoundException;
 import com.recred.backend.domain.models.ConsumptionRequester;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.MedioPago;
-import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.PaymentMethod;
+import com.recred.backend.domain.models.UserRole;
 import com.recred.backend.domain.models.StudentConsumptionDetail;
 import com.recred.backend.domain.models.StudentConsumptionProduct;
 import com.recred.backend.domain.models.StudentConsumptionPurchase;
@@ -72,7 +72,7 @@ class GetLoggedUserConsumptionDetailTest {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.of(new ConsumptionRequester(
                         userId,
-                        RolUsuario.ALUMNO,
+                        UserRole.ALUMNO,
                         studentId
                 )));
         when(consumptionRepository.findPurchasesByStudentIdAndDateRange(
@@ -99,7 +99,7 @@ class GetLoggedUserConsumptionDetailTest {
 
         verify(consumptionRepository).findPurchasesByStudentIdAndDateRange(
                 eq(studentId),
-                eq(Set.of(EstadoCompra.ENTREGADO)),
+                eq(Set.of(PurchaseState.ENTREGADO)),
                 any(),
                 any()
         );
@@ -112,7 +112,7 @@ class GetLoggedUserConsumptionDetailTest {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.of(new ConsumptionRequester(
                         userId,
-                        RolUsuario.PADRE,
+                        UserRole.PADRE,
                         null
                 )));
         when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(true);
@@ -143,12 +143,12 @@ class GetLoggedUserConsumptionDetailTest {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.of(new ConsumptionRequester(
                         userId,
-                        RolUsuario.PADRE,
+                        UserRole.PADRE,
                         null
                 )));
 
         assertThrows(
-                AlumnoRequeridoParaConsumoException.class,
+                RequiredStudentForConsumptionException.class,
                 () -> useCase.execute(
                         COGNITO_SUBJECT,
                         new StudentConsumptionCommand(
@@ -173,13 +173,13 @@ class GetLoggedUserConsumptionDetailTest {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.of(new ConsumptionRequester(
                         userId,
-                        RolUsuario.PADRE,
+                        UserRole.PADRE,
                         null
                 )));
         when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(false);
 
         assertThrows(
-                ConsumoAlumnoNoAutorizadoException.class,
+                NotAuthorizedStudentConsumptionException.class,
                 () -> useCase.execute(
                         COGNITO_SUBJECT,
                         new StudentConsumptionCommand(
@@ -204,7 +204,7 @@ class GetLoggedUserConsumptionDetailTest {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.of(new ConsumptionRequester(
                         userId,
-                        RolUsuario.ALUMNO,
+                        UserRole.ALUMNO,
                         studentId
                 )));
         when(consumptionRepository.findPurchasesByStudentIdAndDateRange(
@@ -234,12 +234,12 @@ class GetLoggedUserConsumptionDetailTest {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.of(new ConsumptionRequester(
                         userId,
-                        RolUsuario.ALUMNO,
+                        UserRole.ALUMNO,
                         studentId
                 )));
 
         assertThrows(
-                ConsumoAlumnoNoAutorizadoException.class,
+                NotAuthorizedStudentConsumptionException.class,
                 () -> useCase.execute(
                         COGNITO_SUBJECT,
                         new StudentConsumptionCommand(
@@ -257,12 +257,12 @@ class GetLoggedUserConsumptionDetailTest {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.of(new ConsumptionRequester(
                         userId,
-                        RolUsuario.ALUMNO,
+                        UserRole.ALUMNO,
                         null
                 )));
 
         assertThrows(
-                ConsumoAlumnoNoAutorizadoException.class,
+                NotAuthorizedStudentConsumptionException.class,
                 () -> useCase.execute(
                         COGNITO_SUBJECT,
                         new StudentConsumptionCommand(
@@ -281,12 +281,12 @@ class GetLoggedUserConsumptionDetailTest {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.of(new ConsumptionRequester(
                         userId,
-                        RolUsuario.ADMIN,
+                        UserRole.ADMIN,
                         null
                 )));
 
         assertThrows(
-                ConsumoAlumnoNoAutorizadoException.class,
+                NotAuthorizedStudentConsumptionException.class,
                 () -> useCase.execute(
                         COGNITO_SUBJECT,
                         new StudentConsumptionCommand(
@@ -305,12 +305,12 @@ class GetLoggedUserConsumptionDetailTest {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.of(new ConsumptionRequester(
                         userId,
-                        RolUsuario.ALUMNO,
+                        UserRole.ALUMNO,
                         studentId
                 )));
 
         assertThrows(
-                RangoFechasConsumoInvalidoException.class,
+                InvalidConsumptionDateRangeException.class,
                 () -> useCase.execute(
                         COGNITO_SUBJECT,
                         new StudentConsumptionCommand(
@@ -328,7 +328,7 @@ class GetLoggedUserConsumptionDetailTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(
-                UsuarioAutenticadoNoEncontradoException.class,
+                AuthenticatedUserNotFoundException.class,
                 () -> useCase.execute(
                         COGNITO_SUBJECT,
                         new StudentConsumptionCommand(
@@ -344,8 +344,8 @@ class GetLoggedUserConsumptionDetailTest {
         return new StudentConsumptionPurchase(
                 UUID.randomUUID(),
                 LocalDateTime.of(2026, 5, 20, 10, 0),
-                EstadoCompra.ENTREGADO,
-                MedioPago.CREDITOS,
+                PurchaseState.ENTREGADO,
+                PaymentMethod.CREDITOS,
                 new BigDecimal(totalAmount),
                 UUID.randomUUID(),
                 "Buffet",

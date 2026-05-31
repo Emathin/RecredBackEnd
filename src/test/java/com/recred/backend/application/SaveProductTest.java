@@ -1,8 +1,8 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.CategoriaProducto;
-import com.recred.backend.domain.models.Inventario;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Product;
+import com.recred.backend.domain.models.ProductCategory;
+import com.recred.backend.domain.models.Inventory;
 import com.recred.backend.domain.repositories.CategoryRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -57,17 +57,17 @@ class SaveProductTest {
                 Set.of(UUID.randomUUID())
         );
 
-        Producto savedProduct = new Producto();
+        Product savedProduct = new Product();
         savedProduct.setId(UUID.randomUUID());
-        when(productRepository.save(any(Producto.class))).thenReturn(savedProduct);
+        when(productRepository.save(any(Product.class))).thenReturn(savedProduct);
         when(inventoryRepository.findByBuffetAndProduct(any(), any())).thenReturn(java.util.Optional.empty());
 
-        Producto result = saveProduct.execute(command);
+        Product result = saveProduct.execute(command);
 
         assertNotNull(result);
-        assertEquals(50, result.getStockActual());
-        verify(productRepository).save(any(Producto.class));
-        verify(inventoryRepository).save(any(Inventario.class));
+        assertEquals(50, result.getCurrentStock());
+        verify(productRepository).save(any(Product.class));
+        verify(inventoryRepository).save(any(Inventory.class));
     }
 
     @Test
@@ -78,16 +78,16 @@ class SaveProductTest {
         );
 
         when(categoryRepository.findByDescription("Nueva Cat")).thenReturn(java.util.Optional.empty());
-        CategoriaProducto newCat = new CategoriaProducto();
-        newCat.setDescripcion("Nueva Cat");
-        when(categoryRepository.save(any(CategoriaProducto.class))).thenReturn(newCat);
-        when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
+        ProductCategory newCat = new ProductCategory();
+        newCat.setDescription("Nueva Cat");
+        when(categoryRepository.save(any(ProductCategory.class))).thenReturn(newCat);
+        when(productRepository.save(any(Product.class))).thenAnswer(i -> i.getArgument(0));
 
-        Producto result = saveProduct.execute(command);
+        Product result = saveProduct.execute(command);
 
-        assertNotNull(result.getCategoria());
-        assertEquals("Nueva Cat", result.getCategoria().getDescripcion());
-        verify(categoryRepository).save(any(CategoriaProducto.class));
+        assertNotNull(result.getCategory());
+        assertEquals("Nueva Cat", result.getCategory().getDescription());
+        verify(categoryRepository).save(any(ProductCategory.class));
     }
 
     @Test
@@ -97,14 +97,14 @@ class SaveProductTest {
                 null, "Cat Existente", null, null, null, null
         );
 
-        CategoriaProducto existingCat = new CategoriaProducto();
-        existingCat.setDescripcion("Cat Existente");
+        ProductCategory existingCat = new ProductCategory();
+        existingCat.setDescription("Cat Existente");
         when(categoryRepository.findByDescription("Cat Existente")).thenReturn(java.util.Optional.of(existingCat));
-        when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
+        when(productRepository.save(any(Product.class))).thenAnswer(i -> i.getArgument(0));
 
-        Producto result = saveProduct.execute(command);
+        Product result = saveProduct.execute(command);
 
-        assertEquals(existingCat, result.getCategoria());
+        assertEquals(existingCat, result.getCategory());
     }
 
     @Test
@@ -116,17 +116,17 @@ class SaveProductTest {
                 null, null, buffetId, 100, null, null
         );
 
-        Producto savedProduct = new Producto();
+        Product savedProduct = new Product();
         savedProduct.setId(productId);
-        when(productRepository.save(any(Producto.class))).thenReturn(savedProduct);
+        when(productRepository.save(any(Product.class))).thenReturn(savedProduct);
 
-        Inventario existingInventory = new Inventario();
+        Inventory existingInventory = new Inventory();
         when(inventoryRepository.findByBuffetAndProduct(buffetId, productId))
                 .thenReturn(java.util.Optional.of(existingInventory));
 
         saveProduct.execute(command);
 
-        assertEquals(100, existingInventory.getStockActual());
+        assertEquals(100, existingInventory.getCurrentStock());
         verify(inventoryRepository).save(existingInventory);
     }
 
@@ -139,14 +139,14 @@ class SaveProductTest {
                 null, null, null, null, Set.of(saludId), Set.of(tipoId)
         );
 
-        when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
+        when(productRepository.save(any(Product.class))).thenAnswer(i -> i.getArgument(0));
 
-        Producto result = saveProduct.execute(command);
+        Product result = saveProduct.execute(command);
 
-        assertEquals(1, result.getClasificacionesSalud().size());
-        assertEquals(saludId, result.getClasificacionesSalud().iterator().next().getId());
-        assertEquals(1, result.getTipos().size());
-        assertEquals(tipoId, result.getTipos().iterator().next().getId());
+        assertEquals(1, result.getHealthClassifications().size());
+        assertEquals(saludId, result.getHealthClassifications().iterator().next().getId());
+        assertEquals(1, result.getTypes().size());
+        assertEquals(tipoId, result.getTypes().iterator().next().getId());
     }
 
     @Test
@@ -156,11 +156,11 @@ class SaveProductTest {
                 null, "", null, null, null, null
         );
 
-        when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
+        when(productRepository.save(any(Product.class))).thenAnswer(i -> i.getArgument(0));
 
-        Producto result = saveProduct.execute(command);
+        Product result = saveProduct.execute(command);
 
-        assertNull(result.getCategoria());
+        assertNull(result.getCategory());
     }
 
     @Test
@@ -171,7 +171,7 @@ class SaveProductTest {
                 null, null, buffetId, null, null, null
         );
 
-        when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
+        when(productRepository.save(any(Product.class))).thenAnswer(i -> i.getArgument(0));
 
         saveProduct.execute(command);
 
@@ -185,7 +185,7 @@ class SaveProductTest {
                 null, null, null, 100, null, null
         );
 
-        when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
+        when(productRepository.save(any(Product.class))).thenAnswer(i -> i.getArgument(0));
 
         saveProduct.execute(command);
 

@@ -1,12 +1,11 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.BudgetCommand;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
-import com.recred.backend.domain.models.PresupuestoAlumno;
+import com.recred.backend.domain.models.StudentBudget;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,7 +56,7 @@ class BudgetControllerTest {
 
     private UUID budgetId;
     private UUID studentId;
-    private PresupuestoAlumno presupuestoMock;
+    private StudentBudget presupuestoMock;
 
     @BeforeEach
     void setUp() {
@@ -67,9 +66,9 @@ class BudgetControllerTest {
         budgetId = UUID.randomUUID();
         studentId = UUID.randomUUID();
 
-        presupuestoMock = new PresupuestoAlumno();
+        presupuestoMock = new StudentBudget();
         presupuestoMock.setId(budgetId);
-        presupuestoMock.setActivo(true);
+        presupuestoMock.setActive(true);
     }
 
     @Test
@@ -147,7 +146,7 @@ class BudgetControllerTest {
                   "rules": [
                     {
                       "categoryId": "123e4567-e89b-12d3-a456-426614174000",
-                      "porcentajeLimite": 50.00
+                      "limitAverage": 50.00
                     }
                   ]
                 }

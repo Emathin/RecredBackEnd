@@ -1,7 +1,7 @@
 package com.recred.backend.domain.repositories;
 
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.EstadoInventario;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.InventoryState;
 import com.recred.backend.domain.models.HealthyProductOption;
 import com.recred.backend.domain.models.RecentProductConsumption;
 import java.time.LocalDateTime;
@@ -13,7 +13,7 @@ public interface HealthyRecommendationPurchaseRepository {
 
     List<RecentProductConsumption> findConsumptions(
             UUID studentId,
-            Collection<EstadoCompra> statuses,
+            Collection<PurchaseState> statuses,
             LocalDateTime startDateTime,
             LocalDateTime endDateTime
     );
@@ -22,6 +22,6 @@ public interface HealthyRecommendationPurchaseRepository {
             UUID studentId,
             UUID buffetId,
             UUID excludedProductId,
-            Collection<EstadoInventario> states
+            Collection<InventoryState> states
     );
 }

@@ -15,23 +15,23 @@ import java.util.UUID;
 public class Tutor {
 
     private UUID id;
-    private Usuario usuario;
-    private Boolean activa = true;
-    private LocalDateTime creadoEn;
-    private LocalDateTime actualizadoEn;
-    private Set<Alumno> hijos = new HashSet<>();
+    private User user;
+    private Boolean active = true;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private Set<Student> children = new HashSet<>();
 
-    public void addHijo(Alumno alumno) {
-        if (alumno != null) {
-            this.hijos.add(alumno);
-            alumno.getTutores().add(this);
+    public void addChild(Student student) {
+        if (student != null) {
+            this.children.add(student);
+            student.getTutors().add(this);
         }
     }
 
-    public void removeHijo(Alumno alumno) {
-        if (alumno != null) {
-            this.hijos.remove(alumno);
-            alumno.getTutores().remove(this);
+    public void removeChild(Student student) {
+        if (student != null) {
+            this.children.remove(student);
+            student.getTutors().remove(this);
         }
     }
 }

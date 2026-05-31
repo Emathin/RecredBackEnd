@@ -1,17 +1,18 @@
 package com.recred.backend.domain.repositories;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.models.Product;
+
 import java.util.List;
 import java.util.Optional;
 
 public interface PreferenceAIRepository {
 
-    Optional<PreferenciaDetectada> analizarPreferencias(Alumno alumno,
-                                                        List<CompraResumen> historial,
-                                                        List<Producto> stockDisponible);
+    Optional<DetectedPreference> analizarPreferencias(Student student,
+                                                      List<PurchaseSummary> history,
+                                                      List<Product> availableStock);
 
-    record CompraResumen(String productoNombre, String categoria, java.time.LocalDateTime fecha) {}
+    record PurchaseSummary(String productName, String category, java.time.LocalDateTime date) {}
     
-    record PreferenciaDetectada(String titulo, String mensaje, String productoId, String razonIA) {}
+    record DetectedPreference(String tittle, String message, String productoId, String razonIA) {}
 }

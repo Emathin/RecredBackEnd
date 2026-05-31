@@ -1,21 +1,21 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.StudentNotFoundException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
-import com.recred.backend.domain.exceptions.RestriccionHorariaException;
-import com.recred.backend.domain.exceptions.RestriccionSaludException;
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.Billetera;
-import com.recred.backend.domain.models.CategoriaProducto;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.exceptions.TimeRestrictionException;
+import com.recred.backend.domain.exceptions.HealthRestrictionException;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.models.Wallet;
+import com.recred.backend.domain.models.ProductCategory;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.Product;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.StudentRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.RestrictionsValidatorService;
+import com.recred.backend.domain.services.TimeValidatorService;
+import com.recred.backend.domain.services.BudgetValidatorService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,46 +45,46 @@ import static org.mockito.Mockito.when;
 class ProcessPresentialPurchaseTest {
 
     @Mock
-    private AlumnoRepository studentRepository;
+    private StudentRepository studentRepository;
     @Mock
     private WalletRepository walletRepository;
     @Mock
     private PurchaseRepository purchaseRepository;
     @Mock
-    private ValidadorHorarioService timeValidator;
+    private TimeValidatorService timeValidator;
     @Mock
-    private ValidacionRestriccionesService healthValidator;
+    private RestrictionsValidatorService healthValidator;
     @Mock
-    private ValidadorPresupuestoService budgetValidator;
+    private BudgetValidatorService budgetValidator;
 
     @InjectMocks
     private ProcessPresentialPurchase useCase;
 
     private UUID studentId;
-    private Alumno student;
-    private Billetera wallet;
-    private Map<Producto, Integer> cart;
-    private Producto product;
-    private CategoriaProducto category;
+    private Student student;
+    private Wallet wallet;
+    private Map<Product, Integer> cart;
+    private Product product;
+    private ProductCategory category;
 
     @BeforeEach
     void setUp() {
         studentId = UUID.randomUUID();
-        student = new Alumno();
+        student = new Student();
         student.setId(studentId);
 
-        wallet = new Billetera();
+        wallet = new Wallet();
         wallet.setId(UUID.randomUUID());
-        wallet.setSaldoCreditos(new BigDecimal("100.00"));
+        wallet.setCreditBalance(new BigDecimal("100.00"));
 
-        category = new CategoriaProducto();
+        category = new ProductCategory();
         category.setId(UUID.randomUUID());
 
-        product = new Producto();
+        product = new Product();
         product.setId(UUID.randomUUID());
-        product.setNombre("Test Product");
-        product.setPrecio(new BigDecimal("10.00"));
-        product.setCategoria(category);
+        product.setName("Test Product");
+        product.setPrice(new BigDecimal("10.00"));
+        product.setCategory(category);
 
         cart = new HashMap<>();
         cart.put(product, 2);
@@ -97,17 +97,17 @@ class ProcessPresentialPurchaseTest {
 
         useCase.execute(studentId, cart);
 
-        verify(timeValidator).validarCompra(
+        verify(timeValidator).validatePurchase(
                 eq(student),
                 eq(cart.keySet()),
                 any(LocalDateTime.class)
         );
-        verify(healthValidator).validarCompra(student, cart.keySet());
+        verify(healthValidator).validatePurchase(student, cart.keySet());
 
         Map<UUID, BigDecimal> expectedCategoryTotals = new HashMap<>();
         expectedCategoryTotals.put(category.getId(), new BigDecimal("20.00"));
 
-        verify(budgetValidator).validarPresupuesto(
+        verify(budgetValidator).validateBudget(
                 eq(studentId),
                 eq(new BigDecimal("20.00")),
                 eq(expectedCategoryTotals),
@@ -115,14 +115,14 @@ class ProcessPresentialPurchaseTest {
         );
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
-        verify(walletRepository).save(any(Billetera.class));
+        verify(walletRepository).save(any(Wallet.class));
         verify(purchaseRepository).save(purchaseCaptor.capture());
-        assertEquals(EstadoCompra.ENTREGADO, purchaseCaptor.getValue().getStatus());
+        assertEquals(PurchaseState.ENTREGADO, purchaseCaptor.getValue().getStatus());
     }
 
     @Test
     void execute_WhenProductRequiresPreparation_ShouldSavePendingPurchase() {
-        product.setRequierePreparacion(true);
+        product.setRequiresPreparation(true);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
@@ -130,18 +130,18 @@ class ProcessPresentialPurchaseTest {
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
-        assertEquals(EstadoCompra.PENDIENTE, purchaseCaptor.getValue().getStatus());
+        assertEquals(PurchaseState.PENDIENTE, purchaseCaptor.getValue().getStatus());
     }
 
     @Test
     void execute_WhenProductHasNoCategory_ShouldValidateEmptyCategoryTotals() {
-        product.setCategoria(null);
+        product.setCategory(null);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
         useCase.execute(studentId, cart);
 
-        verify(budgetValidator).validarPresupuesto(
+        verify(budgetValidator).validateBudget(
                 eq(studentId),
                 eq(new BigDecimal("20.00")),
                 eq(Map.of()),
@@ -157,7 +157,7 @@ class ProcessPresentialPurchaseTest {
 
         useCase.execute(studentId, cart);
 
-        verify(budgetValidator).validarPresupuesto(
+        verify(budgetValidator).validateBudget(
                 eq(studentId),
                 eq(new BigDecimal("20.00")),
                 eq(Map.of()),
@@ -167,7 +167,7 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WhenProductPriceIsNull_ShouldUseZeroTotals() {
-        product.setPrecio(null);
+        product.setPrice(null);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
@@ -175,7 +175,7 @@ class ProcessPresentialPurchaseTest {
 
         Map<UUID, BigDecimal> expectedCategoryTotals = new HashMap<>();
         expectedCategoryTotals.put(category.getId(), BigDecimal.ZERO);
-        verify(budgetValidator).validarPresupuesto(
+        verify(budgetValidator).validateBudget(
                 eq(studentId),
                 eq(BigDecimal.ZERO),
                 eq(expectedCategoryTotals),
@@ -187,7 +187,7 @@ class ProcessPresentialPurchaseTest {
     void execute_WhenStudentNotFound_ShouldThrowException() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
 
-        assertThrows(AlumnoNoEncontradoException.class, () -> useCase.execute(studentId, cart));
+        assertThrows(StudentNotFoundException.class, () -> useCase.execute(studentId, cart));
 
         verifyNoInteractions(
                 timeValidator,
@@ -200,20 +200,20 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WhenInsufficientBalance_ShouldThrowException() {
-        wallet.setSaldoCreditos(new BigDecimal("10.00"));
+        wallet.setCreditBalance(new BigDecimal("10.00"));
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
         assertThrows(InsufficientBalanceException.class,
                 () -> useCase.execute(studentId, cart));
 
-        verify(timeValidator).validarCompra(
+        verify(timeValidator).validatePurchase(
                 eq(student),
                 eq(cart.keySet()),
                 any(LocalDateTime.class)
         );
-        verify(healthValidator).validarCompra(student, cart.keySet());
-        verify(budgetValidator).validarPresupuesto(any(), any(), any(), any());
+        verify(healthValidator).validatePurchase(student, cart.keySet());
+        verify(budgetValidator).validateBudget(any(), any(), any(), any());
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
     }
@@ -233,13 +233,13 @@ class ProcessPresentialPurchaseTest {
     @Test
     void execute_WhenHealthRestrictionFails_ShouldThrowException() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        doThrow(new RestriccionSaludException(""))
+        doThrow(new HealthRestrictionException(""))
                 .when(healthValidator)
-                .validarCompra(student, cart.keySet());
+                .validatePurchase(student, cart.keySet());
 
-        assertThrows(RestriccionSaludException.class, () -> useCase.execute(studentId, cart));
+        assertThrows(HealthRestrictionException.class, () -> useCase.execute(studentId, cart));
 
-        verify(timeValidator).validarCompra(
+        verify(timeValidator).validatePurchase(
                 eq(student),
                 eq(cart.keySet()),
                 any(LocalDateTime.class)
@@ -250,15 +250,15 @@ class ProcessPresentialPurchaseTest {
     @Test
     void execute_WhenTimeRestrictionFails_ShouldThrowException() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        doThrow(new RestriccionHorariaException(""))
+        doThrow(new TimeRestrictionException(""))
                 .when(timeValidator)
-                .validarCompra(
+                .validatePurchase(
                         eq(student),
                         eq(cart.keySet()),
                         any(LocalDateTime.class)
                 );
 
-        assertThrows(RestriccionHorariaException.class,
+        assertThrows(TimeRestrictionException.class,
                 () -> useCase.execute(studentId, cart));
 
         verifyNoInteractions(

@@ -1,7 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.FranjaHoraria;
-import com.recred.backend.domain.repositories.FranjaHorariaRepository;
+import com.recred.backend.domain.models.TimeBadge;
+import com.recred.backend.domain.repositories.TimeBadgeRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 class GetTimeSlotsBySchoolTest {
 
     @Mock
-    private FranjaHorariaRepository repository;
+    private TimeBadgeRepository repository;
 
     @InjectMocks
     private GetTimeSlotsBySchool getTimeSlotsBySchool;
@@ -27,11 +27,11 @@ class GetTimeSlotsBySchoolTest {
     @Test
     void execute_DevuelveListaDeFranjas() {
         UUID colegioId = UUID.randomUUID();
-        List<FranjaHoraria> franjasEsperadas = List.of(new FranjaHoraria(), new FranjaHoraria());
+        List<TimeBadge> franjasEsperadas = List.of(new TimeBadge(), new TimeBadge());
 
         when(repository.findAllByColegioId(colegioId)).thenReturn(franjasEsperadas);
 
-        List<FranjaHoraria> resultado = getTimeSlotsBySchool.execute(colegioId);
+        List<TimeBadge> resultado = getTimeSlotsBySchool.execute(colegioId);
 
         assertEquals(2, resultado.size());
         verify(repository).findAllByColegioId(colegioId);

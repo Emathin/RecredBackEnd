@@ -1,9 +1,10 @@
 package com.recred.backend.domain.repositories;
 
-import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Student;
+
 import java.util.List;
 import java.util.UUID;
 
 public interface StudentAIProfileRepository {
-    List<Alumno> findStudentsWithFavoriteProduct(UUID productId);
+    List<Student> findStudentsWithFavoriteProduct(UUID productId);
 }

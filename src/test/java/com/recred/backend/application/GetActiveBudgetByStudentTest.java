@@ -1,7 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.PresupuestoAlumno;
-import com.recred.backend.domain.repositories.PresupuestoRepository;
+import com.recred.backend.domain.models.StudentBudget;
+import com.recred.backend.domain.repositories.BudgetRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,7 +20,7 @@ import static org.mockito.Mockito.when;
 class GetActiveBudgetByStudentTest {
 
     @Mock
-    private PresupuestoRepository repository;
+    private BudgetRepository repository;
 
     @InjectMocks
     private GetActiveBudgetByStudent getActiveBudgetByStudent;
@@ -28,14 +28,14 @@ class GetActiveBudgetByStudentTest {
     @Test
     void execute_DelegaLaConsultaAlRepositorio() {
         UUID studentId = UUID.randomUUID();
-        PresupuestoAlumno presupuesto = new PresupuestoAlumno();
+        StudentBudget presupuesto = new StudentBudget();
 
-        when(repository.findActivoByAlumnoId(studentId)).thenReturn(Optional.of(presupuesto));
+        when(repository.findByActiveStudentID(studentId)).thenReturn(Optional.of(presupuesto));
 
-        Optional<PresupuestoAlumno> resultado = getActiveBudgetByStudent.execute(studentId);
+        Optional<StudentBudget> resultado = getActiveBudgetByStudent.execute(studentId);
 
         assertTrue(resultado.isPresent());
         assertEquals(presupuesto, resultado.get());
-        verify(repository).findActivoByAlumnoId(studentId);
+        verify(repository).findByActiveStudentID(studentId);
     }
 }

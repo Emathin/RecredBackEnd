@@ -1,8 +1,8 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.application.DetectStudentPreferences;
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.repositories.StudentRepository;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,15 +14,15 @@ import java.util.List;
 @Slf4j
 public class PreferenceDetectionScheduler {
 
-    private final AlumnoRepository alumnoRepository;
+    private final StudentRepository studentRepository;
     private final SpringDataBuffetRepository buffetRepository;
     private final DetectStudentPreferences detectStudentPreferences;
 
     public PreferenceDetectionScheduler(
-            AlumnoRepository alumnoRepository,
+            StudentRepository studentRepository,
             SpringDataBuffetRepository buffetRepository,
             DetectStudentPreferences detectStudentPreferences) {
-        this.alumnoRepository = alumnoRepository;
+        this.studentRepository = studentRepository;
         this.buffetRepository = buffetRepository;
         this.detectStudentPreferences = detectStudentPreferences;
     }
@@ -31,7 +31,7 @@ public class PreferenceDetectionScheduler {
     public void runDetectionForAllStudents() {
         log.info("Starting scheduled preference detection for all students...");
         
-        List<Alumno> alumnos = alumnoRepository.findAll();
+        List<Student> students = studentRepository.findAll();
         List<BuffetEntity> buffets = buffetRepository.findAll();
 
         if (buffets.isEmpty()) {
@@ -40,8 +40,8 @@ public class PreferenceDetectionScheduler {
         }
 
         buffets.forEach(buffet -> {
-            alumnos.stream()
-                    .filter(Alumno::getActivo)
+            students.stream()
+                    .filter(Student::getActive)
                     .forEach(alumno -> {
                         try {
                             detectStudentPreferences.execute(alumno.getId(), buffet.getId());

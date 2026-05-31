@@ -77,7 +77,7 @@ class LoadStockIAServiceTest {
     @Test
     void analyze_DeberiaRetornarPrediccion_CuandoIAEsExitosa() {
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
-        GeminiTextResponse geminiResponse = new GeminiTextResponse("{\"nombre\":\"Galleta\",\"descripcion\":\"Pepitos\",\"peso\":\"100g\",\"contiene_azucar\":\"si\",\"contiene_mani\":\"no\",\"contiene_lactosa\":\"si\",\"contiene_tacc\":\"si\"}", "gemini-pro");
+        GeminiTextResponse geminiResponse = new GeminiTextResponse("{\"name\":\"Galleta\",\"description\":\"Pepitos\",\"weight\":\"100g\",\"contiene_azucar\":\"si\",\"contiene_mani\":\"no\",\"contiene_lactosa\":\"si\",\"contiene_tacc\":\"si\"}", "gemini-pro");
         when(geminiTextClient.generateWithImage(anyString(), any())).thenReturn(Optional.of(geminiResponse));
 
         LoadStockPredictionDTO result = loadStockIAService.analyze(file);

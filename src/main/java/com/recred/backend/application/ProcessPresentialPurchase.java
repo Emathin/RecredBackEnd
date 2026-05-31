@@ -1,18 +1,18 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.StudentNotFoundException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.Billetera;
-import com.recred.backend.domain.models.MedioPago;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Product;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.models.Wallet;
+import com.recred.backend.domain.models.PaymentMethod;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.StudentRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.RestrictionsValidatorService;
+import com.recred.backend.domain.services.TimeValidatorService;
+import com.recred.backend.domain.services.BudgetValidatorService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,19 +22,19 @@ import java.util.stream.Collectors;
 
 public class ProcessPresentialPurchase {
 
-    private final AlumnoRepository studentRepository;
+    private final StudentRepository studentRepository;
     private final WalletRepository walletRepository;
     private final PurchaseRepository purchaseRepository;
-    private final ValidadorHorarioService timeValidator;
-    private final ValidacionRestriccionesService healthValidator;
-    private final ValidadorPresupuestoService budgetValidator;
+    private final TimeValidatorService timeValidator;
+    private final RestrictionsValidatorService healthValidator;
+    private final BudgetValidatorService budgetValidator;
 
-    public ProcessPresentialPurchase(AlumnoRepository studentRepository,
+    public ProcessPresentialPurchase(StudentRepository studentRepository,
                                      WalletRepository walletRepository,
                                      PurchaseRepository purchaseRepository,
-                                     ValidadorHorarioService timeValidator,
-                                     ValidacionRestriccionesService healthValidator,
-                                     ValidadorPresupuestoService budgetValidator) {
+                                     TimeValidatorService timeValidator,
+                                     RestrictionsValidatorService healthValidator,
+                                     BudgetValidatorService budgetValidator) {
 
         this.studentRepository = studentRepository;
         this.walletRepository = walletRepository;
@@ -44,42 +44,42 @@ public class ProcessPresentialPurchase {
         this.budgetValidator = budgetValidator;
     }
 
-    public Purchase execute(UUID studentId, Map<Producto, Integer> cart) {
+    public Purchase execute(UUID studentId, Map<Product, Integer> cart) {
 
-        Alumno student = studentRepository.findById(studentId)
-                .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new StudentNotFoundException(studentId));
 
         LocalDateTime momentoCompra = LocalDateTime.now();
 
-        timeValidator.validarCompra(student, cart.keySet(), momentoCompra);
-        healthValidator.validarCompra(student, cart.keySet());
+        timeValidator.validatePurchase(student, cart.keySet(), momentoCompra);
+        healthValidator.validatePurchase(student, cart.keySet());
 
         BigDecimal montoTotalCarrito = calculateTotal(cart);
 
         Map<UUID, BigDecimal> montosPorCategoria = cart.entrySet().stream()
-                .filter(entry -> entry.getKey().getCategoria() != null &&
-                        entry.getKey().getCategoria().getId() != null)
+                .filter(entry -> entry.getKey().getCategory() != null &&
+                        entry.getKey().getCategory().getId() != null)
                 .collect(Collectors.groupingBy(
-                        entry -> entry.getKey().getCategoria().getId(),
+                        entry -> entry.getKey().getCategory().getId(),
                         Collectors.reducing(
                                 BigDecimal.ZERO,
                                 entry -> {
-                                    BigDecimal precio = entry.getKey().getPrecio() != null ?
-                                            entry.getKey().getPrecio() : BigDecimal.ZERO;
+                                    BigDecimal precio = entry.getKey().getPrice() != null ?
+                                            entry.getKey().getPrice() : BigDecimal.ZERO;
                                     return precio.multiply(new BigDecimal(entry.getValue()));
                                 },
                                 BigDecimal::add
                         )
                 ));
 
-        budgetValidator.validarPresupuesto(
+        budgetValidator.validateBudget(
                 studentId,
                 montoTotalCarrito,
                 montosPorCategoria,
                 momentoCompra
         );
 
-        Billetera wallet = walletRepository.findByStudentId(studentId)
+        Wallet wallet = walletRepository.findByStudentId(studentId)
                 .orElseThrow(() ->
                         new IllegalStateException("Student wallet not found: " + studentId));
 
@@ -90,17 +90,17 @@ public class ProcessPresentialPurchase {
 
         wallet.debit(montoTotalCarrito);
 
-        Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS);
+        Purchase purchase = new Purchase(student, cart, PaymentMethod.CREDITOS);
 
         walletRepository.save(wallet);
         return purchaseRepository.save(purchase);
     }
 
-    private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
+    private BigDecimal calculateTotal(Map<Product, Integer> cart) {
         return cart.entrySet().stream()
                 .map(entry -> {
-                    BigDecimal precio = entry.getKey().getPrecio() != null ?
-                            entry.getKey().getPrecio() : BigDecimal.ZERO;
+                    BigDecimal precio = entry.getKey().getPrice() != null ?
+                            entry.getKey().getPrice() : BigDecimal.ZERO;
                     return precio.multiply(new BigDecimal(entry.getValue()));
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);

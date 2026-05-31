@@ -1,9 +1,9 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.CategoriaProducto;
-import com.recred.backend.domain.models.PresupuestoAlumno;
-import com.recred.backend.domain.models.ReglaPresupuestoCategoria;
-import com.recred.backend.domain.repositories.PresupuestoRepository;
+import com.recred.backend.domain.models.ProductCategory;
+import com.recred.backend.domain.models.StudentBudget;
+import com.recred.backend.domain.models.BudgetCategoryRule;
+import com.recred.backend.domain.repositories.BudgetRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -12,29 +12,29 @@ import java.util.stream.Collectors;
 
 public class UpdateBudget {
 
-    private final PresupuestoRepository repository;
+    private final BudgetRepository repository;
 
-    public UpdateBudget(PresupuestoRepository repository) {
+    public UpdateBudget(BudgetRepository repository) {
         this.repository = repository;
     }
 
     @Transactional
-    public PresupuestoAlumno execute(UUID budgetId, BudgetCommand command) {
-        PresupuestoAlumno presupuesto = repository.findById(budgetId)
+    public StudentBudget execute(UUID budgetId, BudgetCommand command) {
+        StudentBudget presupuesto = repository.findById(budgetId)
                 .orElseThrow(() -> new RuntimeException
                         ("Presupuesto no encontrado con ID: " + budgetId));
 
-        presupuesto.setMontoLimiteGeneral(command.limitAmount());
-        presupuesto.setPeriodo(command.period());
-        presupuesto.setFechaInicio(command.startDate());
+        presupuesto.setLimitAmount(command.limitAmount());
+        presupuesto.setPeriod(command.period());
+        presupuesto.setStartDate(command.startDate());
 
         if (command.categoryRules() != null && !command.categoryRules().isEmpty()) {
-            List<ReglaPresupuestoCategoria> nuevasReglas =
+            List<BudgetCategoryRule> nuevasReglas =
                     command.categoryRules().stream().map(rule -> {
-                CategoriaProducto categoria = new CategoriaProducto();
+                ProductCategory categoria = new ProductCategory();
                 categoria.setId(rule.categoryId());
 
-                return new ReglaPresupuestoCategoria(
+                return new BudgetCategoryRule(
                         null,
                         categoria,
                         rule.porcentajeLimite(),
@@ -43,11 +43,11 @@ public class UpdateBudget {
                 );
             }).collect(Collectors.toList());
 
-            presupuesto.setReglasCategoria(nuevasReglas);
+            presupuesto.setCategoryRules(nuevasReglas);
         }
 
-        presupuesto.validarPorcentajes();
-        presupuesto.recalcularMontosReglas();
+        presupuesto.validatePercentage();
+        presupuesto.recalculateRulesBudgets();
 
         return repository.save(presupuesto);
     }

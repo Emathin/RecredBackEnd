@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 public record SchoolAssistantPayment(
         BigDecimal amount,
-        EstadoPagoExterno status,
+        ExternalPaymentStatus status,
         LocalDateTime createdAt,
         LocalDateTime approvedAt
 ) {

@@ -25,7 +25,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Entity
-@Table(name = "tutores")
+@Table(name = "tutors")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -37,18 +37,18 @@ public class TutorEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false, unique = true)
-    private UsuarioEntity usuario;
+    private UserEntity user;
 
     @Column(nullable = false)
-    private Boolean activa = true;
+    private Boolean active = true;
 
     @CreationTimestamp
     @Column(name = "creado_en", updatable = false)
-    private LocalDateTime creadoEn;
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "actualizado_en", updatable = false)
-    private LocalDateTime actualizadoEn;
+    private LocalDateTime updatedAt;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -56,29 +56,29 @@ public class TutorEntity {
             joinColumns = @JoinColumn(name = "tutor_id"),
             inverseJoinColumns = @JoinColumn(name = "alumno_id")
     )
-    private Set<AlumnoEntity> hijos = new HashSet<>();
+    private Set<StudentEntity> children = new HashSet<>();
 
-    public void addHijo(AlumnoEntity alumnoEntity) {
-        this.hijos.add(alumnoEntity);
-        alumnoEntity.getTutores().add(this);
+    public void addHijo(StudentEntity studentEntity) {
+        this.children.add(studentEntity);
+        studentEntity.getTutors().add(this);
     }
 
-    public void removeHijo(AlumnoEntity alumnoEntity) {
-        this.hijos.remove(alumnoEntity);
-        alumnoEntity.getTutores().remove(this);
+    public void removeHijo(StudentEntity studentEntity) {
+        this.children.remove(studentEntity);
+        studentEntity.getTutors().remove(this);
     }
 
     public Tutor toDomain() {
         Tutor tutor = new Tutor();
 
         tutor.setId(this.id);
-        tutor.setActiva(this.activa);
-        tutor.setCreadoEn(this.creadoEn);
-        tutor.setActualizadoEn(this.actualizadoEn);
+        tutor.setActive(this.active);
+        tutor.setCreatedAt(this.createdAt);
+        tutor.setUpdatedAt(this.updatedAt);
 
-        if (this.hijos != null && !this.hijos.isEmpty()) {
-            this.hijos.forEach(hijoEntity -> {
-                tutor.getHijos().add(hijoEntity.toDomain());
+        if (this.children != null && !this.children.isEmpty()) {
+            this.children.forEach(hijoEntity -> {
+                tutor.getChildren().add(hijoEntity.toDomain());
             });
         }
 
@@ -92,14 +92,14 @@ public class TutorEntity {
 
         TutorEntity entity = new TutorEntity();
         entity.setId(tutor.getId());
-        entity.setActiva(tutor.getActiva());
-        entity.setCreadoEn(tutor.getCreadoEn());
-        entity.setActualizadoEn(tutor.getActualizadoEn());
+        entity.setActive(tutor.getActive());
+        entity.setCreatedAt(tutor.getCreatedAt());
+        entity.setUpdatedAt(tutor.getUpdatedAt());
 
-        if (tutor.getHijos() != null && !tutor.getHijos().isEmpty()) {
-            tutor.getHijos().forEach(alumno -> {
+        if (tutor.getChildren() != null && !tutor.getChildren().isEmpty()) {
+            tutor.getChildren().forEach(alumno -> {
                 if (alumno.getId() != null) {
-                    AlumnoEntity alumnoProxy = new AlumnoEntity();
+                    StudentEntity alumnoProxy = new StudentEntity();
                     alumnoProxy.setId(alumno.getId());
                     entity.addHijo(alumnoProxy);
                 }

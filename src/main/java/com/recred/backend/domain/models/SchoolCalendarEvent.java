@@ -4,7 +4,7 @@ import java.time.LocalDate;
 
 public record SchoolCalendarEvent(
         LocalDate date,
-        TipoDiaEscolar type,
+        DayType type,
         String description
 ) {
 }

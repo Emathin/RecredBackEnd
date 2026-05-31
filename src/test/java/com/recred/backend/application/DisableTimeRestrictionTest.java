@@ -1,7 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.RestriccionHoraria;
-import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.models.TimeRestriction;
+import com.recred.backend.domain.repositories.TimeRestrictionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 class DisableTimeRestrictionTest {
 
     @Mock
-    private RestriccionHorariaRepository repository;
+    private TimeRestrictionRepository repository;
 
     @InjectMocks
     private DisableTimeRestriction disableTimeRestriction;
@@ -27,14 +27,14 @@ class DisableTimeRestrictionTest {
     @Test
     void execute_DesactivaLaRestriccion_CuandoExiste() {
         UUID restrictionId = UUID.randomUUID();
-        RestriccionHoraria restriccion = new RestriccionHoraria();
-        restriccion.setActiva(true);
+        TimeRestriction restriccion = new TimeRestriction();
+        restriccion.setActive(true);
 
         when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccion));
 
         disableTimeRestriction.execute(restrictionId);
 
-        assertFalse(restriccion.isActiva());
+        assertFalse(restriccion.isActive());
         verify(repository).save(restriccion);
     }
 

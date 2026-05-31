@@ -1,9 +1,9 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.ClasificacionSalud;
-import com.recred.backend.domain.repositories.AlumnoRepository;
-import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
+import com.recred.backend.domain.models.HealthClassification;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.repositories.StudentRepository;
+import com.recred.backend.domain.repositories.HealthClassificationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,47 +22,47 @@ import static org.mockito.Mockito.*;
 class ManageRestrictionsTest {
 
     @Mock
-    private AlumnoRepository alumnoRepository;
+    private StudentRepository studentRepository;
 
     @Mock
-    private ClasificacionSaludRepository clasificacionRepository;
+    private HealthClassificationRepository clasificacionRepository;
 
     @InjectMocks
     private ManageRestrictions useCase;
 
     private UUID alumnoId;
     private UUID clasificacionId;
-    private Alumno alumno;
+    private Student student;
 
     @BeforeEach
     void setUp() {
         alumnoId = UUID.randomUUID();
         clasificacionId = UUID.randomUUID();
-        alumno = new Alumno();
-        alumno.setId(alumnoId);
+        student = new Student();
+        student.setId(alumnoId);
     }
 
     @Test
     void ejecutar_ConDatosValidos_DeberiaReemplazarYGuardar() {
-        ClasificacionSalud clasificacion = new ClasificacionSalud();
+        HealthClassification clasificacion = new HealthClassification();
         clasificacion.setId(clasificacionId);
         List<UUID> nuevasClasificacionesIds = List.of(clasificacionId);
-        List<ClasificacionSalud> clasificacionesMock = List.of(clasificacion);
+        List<HealthClassification> clasificacionesMock = List.of(clasificacion);
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(studentRepository.findById(alumnoId)).thenReturn(Optional.of(student));
         when(clasificacionRepository.findAllById(nuevasClasificacionesIds)).thenReturn(clasificacionesMock);
 
         useCase.execute(alumnoId, nuevasClasificacionesIds);
 
-        assertTrue(alumno.getRestriccionesSalud().contains(clasificacion));
-        assertEquals(1, alumno.getRestriccionesSalud().size());
-        verify(alumnoRepository).save(alumno);
+        assertTrue(student.getHealthRestrictions().contains(clasificacion));
+        assertEquals(1, student.getHealthRestrictions().size());
+        verify(studentRepository).save(student);
     }
 
     @Test
     void ejecutar_CuandoAlumnoNoExiste_DeberiaLanzarExcepcion() {
         List<UUID> nuevasClasificacionesIds = List.of(clasificacionId);
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        when(studentRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             useCase.execute(alumnoId, nuevasClasificacionesIds);
@@ -70,6 +70,6 @@ class ManageRestrictionsTest {
 
         assertEquals("El alumno con ID " + alumnoId + " no existe.", exception.getMessage());
         verify(clasificacionRepository, never()).findAllById(any());
-        verify(alumnoRepository, never()).save(any());
+        verify(studentRepository, never()).save(any());
     }
 }

@@ -14,13 +14,13 @@ public interface PurchaseRepository {
 
     Optional<Purchase> findById(UUID id);
 
-    BigDecimal sumarGastosPorAlumnoEnRango(UUID alumnoId,
-                                           LocalDateTime inicio, LocalDateTime fin);
+    BigDecimal sumExpensesByStudentInRange(UUID studentID,
+                                           LocalDateTime start, LocalDateTime end);
 
-    BigDecimal sumarGastosPorCategoriaEnRango(UUID alumnoId,
-                                              UUID categoriaId, LocalDateTime inicio,
-                                              LocalDateTime fin);
+    BigDecimal sumExpensesByCategoryInRange(UUID studentID,
+                                            UUID categoryID, LocalDateTime start,
+                                            LocalDateTime end);
 
-    List<PreferenceAIRepository.CompraResumen> findLastPurchasesByAlumno(
+    List<PreferenceAIRepository.PurchaseSummary> findLastPurchasesByStudent(
             UUID alumnoId, int limit);
 }

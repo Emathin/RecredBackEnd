@@ -1,10 +1,10 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Kiosquero;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Merchant;
+import com.recred.backend.domain.models.Product;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
-import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.domain.repositories.MerchantRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,7 +27,7 @@ public class AddProductRecommendationTest {
     private ProductRepository productRepository;
 
     @Mock
-    private KiosqueroRepository kiosqueroRepository;
+    private MerchantRepository merchantRepository;
 
     @Mock
     private InventoryRepository inventoryRepository;
@@ -38,40 +38,40 @@ public class AddProductRecommendationTest {
     @InjectMocks
     private AddProductRecommendation useCase;
 
-    private Producto producto;
-    private Kiosquero kiosquero;
+    private Product product;
+    private Merchant merchant;
     private UUID buffetId;
 
     @BeforeEach
     void setUp() {
-        producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        producto.setNombre("Producto Test");
+        product = new Product();
+        product.setId(UUID.randomUUID());
+        product.setName("Producto Test");
 
-        kiosquero = new Kiosquero();
-        kiosquero.setId(UUID.randomUUID());
+        merchant = new Merchant();
+        merchant.setId(UUID.randomUUID());
 
         buffetId = UUID.randomUUID();
     }
 
     @Test
     void WhenProductIsNotInStockShouldRegisterRecommendation() {
-        when(productRepository.findBestSoldProducts()).thenReturn(List.of(producto));
-        when(kiosqueroRepository.findAll()).thenReturn(List.of(kiosquero));
-        when(kiosqueroRepository.findBuffetById(kiosquero.getId())).thenReturn(buffetId);
-        when(inventoryRepository.checkIfProductIsInStock(producto.getId(), buffetId)).thenReturn(false);
+        when(productRepository.findBestSoldProducts()).thenReturn(List.of(product));
+        when(merchantRepository.findAll()).thenReturn(List.of(merchant));
+        when(merchantRepository.findBuffetById(merchant.getId())).thenReturn(buffetId);
+        when(inventoryRepository.checkIfProductIsInStock(product.getId(), buffetId)).thenReturn(false);
 
         useCase.execute();
 
-        verify(aiEventRepository).registerProductAdditionRecommendation(producto, kiosquero, buffetId);
+        verify(aiEventRepository).registerProductAdditionRecommendation(product, merchant, buffetId);
     }
 
     @Test
     void WhenProductAlreadyInStock_ShouldNotRegisterRecommendation() {
-        when(productRepository.findBestSoldProducts()).thenReturn(List.of(producto));
-        when(kiosqueroRepository.findAll()).thenReturn(List.of(kiosquero));
-        when(kiosqueroRepository.findBuffetById(kiosquero.getId())).thenReturn(buffetId);
-        when(inventoryRepository.checkIfProductIsInStock(producto.getId(), buffetId)).thenReturn(true);
+        when(productRepository.findBestSoldProducts()).thenReturn(List.of(product));
+        when(merchantRepository.findAll()).thenReturn(List.of(merchant));
+        when(merchantRepository.findBuffetById(merchant.getId())).thenReturn(buffetId);
+        when(inventoryRepository.checkIfProductIsInStock(product.getId(), buffetId)).thenReturn(true);
 
         useCase.execute();
 

@@ -1,20 +1,20 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.RestriccionHoraria;
-import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.models.TimeRestriction;
+import com.recred.backend.domain.repositories.TimeRestrictionRepository;
 
 import java.util.List;
 import java.util.UUID;
 
 public class GetTimeRestrictionsByStudent {
 
-    private final RestriccionHorariaRepository repository;
+    private final TimeRestrictionRepository repository;
 
-    public GetTimeRestrictionsByStudent(RestriccionHorariaRepository repository) {
+    public GetTimeRestrictionsByStudent(TimeRestrictionRepository repository) {
         this.repository = repository;
     }
 
-    public List<RestriccionHoraria> execute(UUID studentId) {
+    public List<TimeRestriction> execute(UUID studentId) {
         return repository.findAllByAlumnoId(studentId);
     }
 }

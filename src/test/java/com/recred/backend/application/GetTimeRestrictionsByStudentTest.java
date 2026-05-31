@@ -1,7 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.RestriccionHoraria;
-import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.models.TimeRestriction;
+import com.recred.backend.domain.repositories.TimeRestrictionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 class GetTimeRestrictionsByStudentTest {
 
     @Mock
-    private RestriccionHorariaRepository repository;
+    private TimeRestrictionRepository repository;
 
     @InjectMocks
     private GetTimeRestrictionsByStudent getTimeRestrictionsByStudent;
@@ -27,11 +27,11 @@ class GetTimeRestrictionsByStudentTest {
     @Test
     void execute_DevuelveListaDeRestriccionesDelAlumno() {
         UUID studentId = UUID.randomUUID();
-        List<RestriccionHoraria> restriccionesEsperadas = List.of(new RestriccionHoraria());
+        List<TimeRestriction> restriccionesEsperadas = List.of(new TimeRestriction());
 
         when(repository.findAllByAlumnoId(studentId)).thenReturn(restriccionesEsperadas);
 
-        List<RestriccionHoraria> resultado = getTimeRestrictionsByStudent.execute(studentId);
+        List<TimeRestriction> resultado = getTimeRestrictionsByStudent.execute(studentId);
 
         assertEquals(1, resultado.size());
         verify(repository).findAllByAlumnoId(studentId);

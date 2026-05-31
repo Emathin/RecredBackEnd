@@ -1,18 +1,18 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.StudentNotFoundException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
-import com.recred.backend.domain.models.Billetera;
+import com.recred.backend.domain.models.Wallet;
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.ChatSession;
-import com.recred.backend.domain.models.RolChatMensaje;
+import com.recred.backend.domain.models.ChatMessageRole;
 import com.recred.backend.domain.models.SchoolAssistantAnswer;
 import com.recred.backend.domain.models.SchoolAssistantCapability;
 import com.recred.backend.domain.models.SchoolAssistantContext;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.StudentRepository;
 import com.recred.backend.domain.repositories.ChatMessageRepository;
 import com.recred.backend.domain.repositories.ChatSessionRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
@@ -45,7 +45,7 @@ public class AskSchoolAssistant {
             "No pude responder ahora. Puedo ayudarte con saldos, pagos, compras "
                     + "y eventos escolares.";
 
-    private final AlumnoRepository alumnoRepository;
+    private final StudentRepository studentRepository;
     private final WalletRepository walletRepository;
     private final SchoolAssistantPaymentRepository paymentRepository;
     private final SchoolAssistantPurchaseRepository purchaseRepository;
@@ -56,7 +56,7 @@ public class AskSchoolAssistant {
     private final Clock clock;
 
     public AskSchoolAssistant(
-            AlumnoRepository alumnoRepository,
+            StudentRepository studentRepository,
             WalletRepository walletRepository,
             SchoolAssistantPaymentRepository paymentRepository,
             SchoolAssistantPurchaseRepository purchaseRepository,
@@ -66,7 +66,7 @@ public class AskSchoolAssistant {
             SchoolAssistantResponder schoolAssistantResponder,
             Clock clock
     ) {
-        this.alumnoRepository = alumnoRepository;
+        this.studentRepository = studentRepository;
         this.walletRepository = walletRepository;
         this.paymentRepository = paymentRepository;
         this.purchaseRepository = purchaseRepository;
@@ -111,8 +111,8 @@ public class AskSchoolAssistant {
     }
 
     private void validateStudent(UUID studentId) {
-        if (!alumnoRepository.existsById(studentId)) {
-            throw new AlumnoNoEncontradoException(studentId);
+        if (!studentRepository.existsById(studentId)) {
+            throw new StudentNotFoundException(studentId);
         }
     }
 
@@ -145,7 +145,7 @@ public class AskSchoolAssistant {
         LocalDate today = LocalDate.now(clock);
         return new SchoolAssistantContext(
                 studentId,
-                walletRepository.findByStudentId(studentId).map(Billetera::getSaldoCreditos),
+                walletRepository.findByStudentId(studentId).map(Wallet::getCreditBalance),
                 paymentRepository.findRecentByStudentId(studentId, RECENT_PAYMENT_LIMIT),
                 purchaseRepository.findRecentByStudentId(studentId, RECENT_PURCHASE_LIMIT),
                 schoolCalendarRepository.findByStudentIdAndDateRange(
@@ -163,7 +163,7 @@ public class AskSchoolAssistant {
     ) {
         chatMessageRepository.save(new ChatMessage(
                 session.id(),
-                RolChatMensaje.USUARIO,
+                ChatMessageRole.USUARIO,
                 message,
                 messageMetadata(),
                 now
@@ -173,7 +173,7 @@ public class AskSchoolAssistant {
     private void saveAssistantMessage(SchoolAssistantAnswer answer, LocalDateTime now) {
         chatMessageRepository.save(new ChatMessage(
                 answer.sessionId(),
-                RolChatMensaje.ASISTENTE_IA,
+                ChatMessageRole.ASISTENTE_IA,
                 answer.answer(),
                 answerMetadata(answer),
                 now

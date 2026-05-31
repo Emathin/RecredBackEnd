@@ -38,9 +38,9 @@ class GeminiSeasonalSuggesterTest {
                 {
                   "sugerencias": [
                     {
-                      "categoria": "Bebidas Calientes",
-                      "accion": "AUMENTAR",
-                      "motivo": "Hace mucho frío."
+                      "category": "Bebidas Calientes",
+                      "action": "AUMENTAR",
+                      "reason": "Hace mucho frío."
                     }
                   ],
                   "tip_promocional": "Combo café y alfajor."
@@ -56,7 +56,7 @@ class GeminiSeasonalSuggesterTest {
         assertNotNull(resultado);
         assertEquals("Combo café y alfajor.", resultado.getPromocionalTip());
         assertEquals(1, resultado.getSugerences().size());
-        assertEquals("Bebidas Calientes", resultado.getSugerences().get(0).getCategoria());
+        assertEquals("Bebidas Calientes", resultado.getSugerences().get(0).getCategory());
 
         verify(geminiTextClientMock, times(1)).generate(anyString());
     }

@@ -6,11 +6,11 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record StudentConsumptionProductResponse(
-        @JsonProperty("productoId")
+        @JsonProperty("productId")
         UUID productId,
-        @JsonProperty("nombre")
+        @JsonProperty("name")
         String productName,
-        @JsonProperty("categoria")
+        @JsonProperty("category")
         String categoryName,
         @JsonProperty("cantidad")
         Integer quantity,

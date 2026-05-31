@@ -1,9 +1,9 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.ClasificacionSalud;
-import com.recred.backend.domain.repositories.AlumnoRepository;
-import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.models.HealthClassification;
+import com.recred.backend.domain.repositories.StudentRepository;
+import com.recred.backend.domain.repositories.HealthClassificationRepository;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -11,28 +11,28 @@ import java.util.UUID;
 
 public class ManageRestrictions {
 
-    private final AlumnoRepository studentRepository;
-    private final ClasificacionSaludRepository healthClassificationRepository;
+    private final StudentRepository studentRepository;
+    private final HealthClassificationRepository healthClassificationRepository;
 
     public ManageRestrictions(
-            AlumnoRepository studentRepository,
-            ClasificacionSaludRepository healthClassificationRepository
+            StudentRepository studentRepository,
+            HealthClassificationRepository healthClassificationRepository
     ) {
         this.studentRepository = studentRepository;
         this.healthClassificationRepository = healthClassificationRepository;
     }
 
     public void execute(UUID studentId, List<UUID> newClassificationIds) {
-        Alumno student = studentRepository.findById(studentId)
+        Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "El alumno con ID " + studentId + " no existe."
                 ));
 
-        Set<ClasificacionSalud> newRestrictions = new HashSet<>(
+        Set<HealthClassification> newRestrictions = new HashSet<>(
                 healthClassificationRepository.findAllById(newClassificationIds)
         );
 
-        student.setRestriccionesSalud(newRestrictions);
+        student.setHealthRestrictions(newRestrictions);
 
         studentRepository.save(student);
     }

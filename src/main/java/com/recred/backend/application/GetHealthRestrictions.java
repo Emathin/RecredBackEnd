@@ -1,27 +1,27 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.ClasificacionSalud;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.models.HealthClassification;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.repositories.StudentRepository;
 
 import java.util.Set;
 import java.util.UUID;
 
 public class GetHealthRestrictions {
 
-    private final AlumnoRepository alumnoRepository;
+    private final StudentRepository studentRepository;
 
-    public GetHealthRestrictions(AlumnoRepository alumnoRepository) {
-        this.alumnoRepository = alumnoRepository;
+    public GetHealthRestrictions(StudentRepository studentRepository) {
+        this.studentRepository = studentRepository;
     }
 
-    public Set<ClasificacionSalud> ejecutar(UUID alumnoId) {
+    public Set<HealthClassification> ejecutar(UUID alumnoId) {
 
-        Alumno alumno = alumnoRepository.findById(alumnoId)
+        Student student = studentRepository.findById(alumnoId)
                 .orElseThrow(() -> new IllegalArgumentException("El alumno con ID " + alumnoId +
                         " no existe."));
 
-        Set<ClasificacionSalud> restricciones = alumno.getRestriccionesSalud();
+        Set<HealthClassification> restricciones = student.getHealthRestrictions();
 
         return restricciones;
     }

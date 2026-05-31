@@ -5,14 +5,14 @@ import com.recred.backend.domain.models.ConsumptionAlertCandidate;
 import com.recred.backend.domain.models.HealthyProductRecommendation;
 import com.recred.backend.domain.models.HealthyRecommendationMessages;
 import com.recred.backend.domain.models.HealthyRecommendationPattern;
-import com.recred.backend.domain.models.TipoNotificacion;
-import com.recred.backend.domain.models.TipoSugerenciaIA;
+import com.recred.backend.domain.models.NotificationType;
+import com.recred.backend.domain.models.IaSuggestionType;
 import com.recred.backend.infrastructure.entities.AIEventEntity;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
-import com.recred.backend.infrastructure.entities.NotificacionEntity;
-import com.recred.backend.infrastructure.entities.ProductoEntity;
-import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
-import com.recred.backend.infrastructure.entities.UsuarioEntity;
+import com.recred.backend.infrastructure.entities.StudentEntity;
+import com.recred.backend.infrastructure.entities.NotificationEntity;
+import com.recred.backend.infrastructure.entities.ProductEntity;
+import com.recred.backend.infrastructure.entities.AISuggestionEntity;
+import com.recred.backend.infrastructure.entities.UserEntity;
 import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
@@ -73,24 +73,24 @@ class HealthyRecommendationNotificationPersistenceRepositoryTest {
         UUID repeatedProductId = UUID.randomUUID();
         UUID suggestedProductId = UUID.randomUUID();
         UUID notificationId = UUID.randomUUID();
-        AlumnoEntity student = new AlumnoEntity();
-        UsuarioEntity studentUser = new UsuarioEntity();
-        ProductoEntity suggestedProduct = new ProductoEntity();
+        StudentEntity student = new StudentEntity();
+        UserEntity studentUser = new UserEntity();
+        ProductEntity suggestedProduct = new ProductEntity();
         AIEventEntity event = new AIEventEntity();
-        SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
+        AISuggestionEntity suggestion = new AISuggestionEntity();
         student.setId(studentId);
         studentUser.setId(studentUserId);
         suggestedProduct.setId(suggestedProductId);
         suggestion.setId(UUID.randomUUID());
-        when(entityManager.getReference(AlumnoEntity.class, studentId)).thenReturn(student);
-        when(entityManager.getReference(UsuarioEntity.class, studentUserId))
+        when(entityManager.getReference(StudentEntity.class, studentId)).thenReturn(student);
+        when(entityManager.getReference(UserEntity.class, studentUserId))
                 .thenReturn(studentUser);
-        when(entityManager.getReference(ProductoEntity.class, suggestedProductId))
+        when(entityManager.getReference(ProductEntity.class, suggestedProductId))
                 .thenReturn(suggestedProduct);
         when(aiEventJpaRepository.save(any())).thenReturn(event);
         when(suggestionJpaRepository.save(any())).thenReturn(suggestion);
         when(notificationJpaRepository.save(any())).thenAnswer(invocation -> {
-            NotificacionEntity notification = invocation.getArgument(0);
+            NotificationEntity notification = invocation.getArgument(0);
             notification.setId(notificationId);
             return notification;
         });
@@ -107,8 +107,8 @@ class HealthyRecommendationNotificationPersistenceRepositoryTest {
         verify(aiEventJpaRepository).save(eventCaptor.capture());
         AIEventEntity savedEvent = eventCaptor.getValue();
         assertEquals(AIEventType.ANALISIS_CONSUMO, savedEvent.getType());
-        assertSame(student, savedEvent.getAlumnoEntity());
-        assertSame(suggestedProduct, savedEvent.getProductoEntity());
+        assertSame(student, savedEvent.getStudentEntity());
+        assertSame(suggestedProduct, savedEvent.getProductEntity());
         assertEquals("BACKEND_RECOMENDACION_SALUDABLE", savedEvent.getInputOrigin());
         assertEquals("Coca Cola", savedEvent.getInputData().get("productoRepetido"));
         assertEquals("Agua mineral", savedEvent.getInputData().get("productoSugerido"));
@@ -117,25 +117,25 @@ class HealthyRecommendationNotificationPersistenceRepositoryTest {
         assertEquals(suggestedProductId, savedEvent.getResultData()
                 .get("productoIdSugerido"));
 
-        ArgumentCaptor<SugerenciaIAEntity> suggestionCaptor = ArgumentCaptor.forClass(
-                SugerenciaIAEntity.class);
+        ArgumentCaptor<AISuggestionEntity> suggestionCaptor = ArgumentCaptor.forClass(
+                AISuggestionEntity.class);
         verify(suggestionJpaRepository).save(suggestionCaptor.capture());
-        SugerenciaIAEntity savedSuggestion = suggestionCaptor.getValue();
-        assertEquals(TipoSugerenciaIA.RECOMENDACION_SALUDABLE, savedSuggestion.getTipo());
-        assertSame(student, savedSuggestion.getAlumnoEntity());
-        assertSame(suggestedProduct, savedSuggestion.getProductoEntity());
+        AISuggestionEntity savedSuggestion = suggestionCaptor.getValue();
+        assertEquals(IaSuggestionType.RECOMENDACION_SALUDABLE, savedSuggestion.getType());
+        assertSame(student, savedSuggestion.getStudentEntity());
+        assertSame(suggestedProduct, savedSuggestion.getProductEntity());
         assertSame(event, savedSuggestion.getEventoIaEntity());
-        assertEquals("Proba agua", savedSuggestion.getTitulo());
+        assertEquals("Proba agua", savedSuggestion.getTittle());
 
-        ArgumentCaptor<NotificacionEntity> notificationCaptor = ArgumentCaptor.forClass(
-                NotificacionEntity.class);
+        ArgumentCaptor<NotificationEntity> notificationCaptor = ArgumentCaptor.forClass(
+                NotificationEntity.class);
         verify(notificationJpaRepository).save(notificationCaptor.capture());
-        NotificacionEntity notification = notificationCaptor.getValue();
-        assertSame(studentUser, notification.getUsuarioEntity());
-        assertSame(student, notification.getAlumnoEntity());
-        assertSame(suggestedProduct, notification.getProductoEntity());
-        assertSame(suggestion, notification.getSugerenciaIaEntity());
-        assertEquals(TipoNotificacion.SUGERENCIA_IA, notification.getTipo());
+        NotificationEntity notification = notificationCaptor.getValue();
+        assertSame(studentUser, notification.getUserEntity());
+        assertSame(student, notification.getStudentEntity());
+        assertSame(suggestedProduct, notification.getProductEntity());
+        assertSame(suggestion, notification.getAISuggestionEntity());
+        assertEquals(NotificationType.SUGERENCIA_IA, notification.getType());
 
         ArgumentCaptor<Object> pushEventCaptor = ArgumentCaptor.forClass(Object.class);
         verify(eventPublisher).publishEvent(pushEventCaptor.capture());
@@ -145,7 +145,7 @@ class HealthyRecommendationNotificationPersistenceRepositoryTest {
         assertEquals(notificationId.toString(), pushEvent.notification().data()
                 .get("notificacionId"));
         assertEquals(suggestedProductId.toString(), pushEvent.notification().data()
-                .get("productoId"));
+                .get("productId"));
     }
 
     @Test
@@ -154,7 +154,7 @@ class HealthyRecommendationNotificationPersistenceRepositoryTest {
         LocalDateTime since = LocalDateTime.parse("2026-05-23T00:00:00");
         when(suggestionJpaRepository.existsForStudentAndTypeSince(
                 studentId,
-                TipoSugerenciaIA.RECOMENDACION_SALUDABLE,
+                IaSuggestionType.RECOMENDACION_SALUDABLE,
                 since
         )).thenReturn(true);
 
@@ -168,12 +168,12 @@ class HealthyRecommendationNotificationPersistenceRepositoryTest {
         UUID studentId = UUID.randomUUID();
         UUID studentUserId = UUID.randomUUID();
         UUID repeatedProductId = UUID.randomUUID();
-        AlumnoEntity student = new AlumnoEntity();
-        UsuarioEntity studentUser = new UsuarioEntity();
+        StudentEntity student = new StudentEntity();
+        UserEntity studentUser = new UserEntity();
         student.setId(studentId);
         studentUser.setId(studentUserId);
-        when(entityManager.getReference(AlumnoEntity.class, studentId)).thenReturn(student);
-        when(entityManager.getReference(UsuarioEntity.class, studentUserId))
+        when(entityManager.getReference(StudentEntity.class, studentId)).thenReturn(student);
+        when(entityManager.getReference(UserEntity.class, studentUserId))
                 .thenReturn(studentUser);
         when(aiEventJpaRepository.save(any())).thenReturn(null);
         when(suggestionJpaRepository.save(any())).thenReturn(null);
@@ -183,8 +183,8 @@ class HealthyRecommendationNotificationPersistenceRepositoryTest {
 
         ArgumentCaptor<AIEventEntity> eventCaptor = ArgumentCaptor.forClass(
                 AIEventEntity.class);
-        ArgumentCaptor<SugerenciaIAEntity> suggestionCaptor = ArgumentCaptor.forClass(
-                SugerenciaIAEntity.class);
+        ArgumentCaptor<AISuggestionEntity> suggestionCaptor = ArgumentCaptor.forClass(
+                AISuggestionEntity.class);
         verify(aiEventJpaRepository).save(eventCaptor.capture());
         verify(suggestionJpaRepository).save(suggestionCaptor.capture());
         assertSame(eventCaptor.getValue(), suggestionCaptor.getValue().getEventoIaEntity());
@@ -194,7 +194,7 @@ class HealthyRecommendationNotificationPersistenceRepositoryTest {
         PushNotificationRequestedEvent pushEvent =
                 (PushNotificationRequestedEvent) pushEventCaptor.getValue();
         assertEquals(studentUserId, pushEvent.notification().userId());
-        assertFalse(pushEvent.notification().data().containsKey("productoId"));
+        assertFalse(pushEvent.notification().data().containsKey("productId"));
         assertFalse(pushEvent.notification().data().containsKey("sugerenciaIaId"));
     }
 

@@ -2,13 +2,13 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
-import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
-import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.exceptions.AuthenticatedUserNotFoundException;
+import com.recred.backend.domain.models.Student;
 import com.recred.backend.domain.models.ConsumptionRequester;
-import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.PurchaseState;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
-import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.UserRole;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,20 +53,20 @@ class GetPurchaseStatusTest {
         studentId = UUID.randomUUID();
         userId = UUID.randomUUID();
 
-        Alumno student = new Alumno();
+        Student student = new Student();
         student.setId(studentId);
 
         purchase = new Purchase();
         purchase.setId(purchaseId);
         purchase.setStudent(student);
-        purchase.setStatus(EstadoCompra.PENDIENTE);
+        purchase.setStatus(PurchaseState.PENDIENTE);
     }
 
     @Test
     void execute_WhenStudentOwnsPurchase_ShouldReturnStatus() {
         ConsumptionRequester requester = new ConsumptionRequester(
                 userId,
-                RolUsuario.ALUMNO,
+                UserRole.ALUMNO,
                 studentId
         );
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
@@ -77,7 +77,7 @@ class GetPurchaseStatusTest {
 
         assertEquals(purchaseId, result.purchaseId());
         assertEquals(studentId, result.studentId());
-        assertEquals(EstadoCompra.PENDIENTE, result.status());
+        assertEquals(PurchaseState.PENDIENTE, result.status());
         assertEquals("A preparar", result.statusLabel());
         verify(accessRepository, never()).tutorCanAccessStudent(userId, studentId);
     }
@@ -86,7 +86,7 @@ class GetPurchaseStatusTest {
     void execute_WhenTutorCanAccessStudent_ShouldReturnStatus() {
         ConsumptionRequester requester = new ConsumptionRequester(
                 userId,
-                RolUsuario.PADRE,
+                UserRole.PADRE,
                 null
         );
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
@@ -96,7 +96,7 @@ class GetPurchaseStatusTest {
 
         PurchaseStatus result = useCase.execute(COGNITO_SUBJECT, purchaseId);
 
-        assertEquals(EstadoCompra.PENDIENTE, result.status());
+        assertEquals(PurchaseState.PENDIENTE, result.status());
         verify(accessRepository).tutorCanAccessStudent(userId, studentId);
     }
 
@@ -106,7 +106,7 @@ class GetPurchaseStatusTest {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.empty());
 
-        assertThrows(UsuarioAutenticadoNoEncontradoException.class,
+        assertThrows(AuthenticatedUserNotFoundException.class,
                 () -> useCase.execute(COGNITO_SUBJECT, purchaseId));
     }
 
@@ -114,7 +114,7 @@ class GetPurchaseStatusTest {
     void execute_WhenRequesterCannotAccessPurchase_ShouldThrowException() {
         ConsumptionRequester requester = new ConsumptionRequester(
                 userId,
-                RolUsuario.ALUMNO,
+                UserRole.ALUMNO,
                 UUID.randomUUID()
         );
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
@@ -130,7 +130,7 @@ class GetPurchaseStatusTest {
         purchase.setStudent(null);
         ConsumptionRequester requester = new ConsumptionRequester(
                 userId,
-                RolUsuario.ALUMNO,
+                UserRole.ALUMNO,
                 studentId
         );
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
@@ -146,7 +146,7 @@ class GetPurchaseStatusTest {
         purchase.getStudent().setId(null);
         ConsumptionRequester requester = new ConsumptionRequester(
                 userId,
-                RolUsuario.ALUMNO,
+                UserRole.ALUMNO,
                 studentId
         );
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
@@ -161,7 +161,7 @@ class GetPurchaseStatusTest {
     void execute_WhenTutorCannotAccessStudent_ShouldThrowException() {
         ConsumptionRequester requester = new ConsumptionRequester(
                 userId,
-                RolUsuario.PADRE,
+                UserRole.PADRE,
                 null
         );
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
@@ -179,7 +179,7 @@ class GetPurchaseStatusTest {
     void execute_WhenRoleCannotAccessPurchases_ShouldThrowException() {
         ConsumptionRequester requester = new ConsumptionRequester(
                 userId,
-                RolUsuario.ADMIN,
+                UserRole.ADMIN,
                 null
         );
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));

@@ -3,7 +3,7 @@ package com.recred.backend.domain.exceptions;
 import com.recred.backend.config.ErrorResponse;
 import com.recred.backend.config.GlobalExceptionHandler;
 import com.recred.backend.config.RequestIdContext;
-import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.PurchaseState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +44,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleRestriccionHoraria_RetornaForbidden() {
-        RestriccionHorariaException ex = new RestriccionHorariaException("Fuera de horario");
+        TimeRestrictionException ex = new TimeRestrictionException("Fuera de horario");
 
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleRestriccionHoraria(ex);
         ErrorResponse body = response.getBody();
@@ -59,7 +59,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handlePresupuestoExcedido_RetornaBadRequestConMap() {
-        PresupuestoExcedidoException ex = new PresupuestoExcedidoException("Límite superado");
+        ExceededBudgetException ex = new ExceededBudgetException("Límite superado");
 
         ResponseEntity<Map<String, Object>> response =
                 exceptionHandler.handlePresupuestoExcedido(ex);
@@ -76,7 +76,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleRestriccionSalud_RetornaConflict() {
-        RestriccionSaludException ex = new RestriccionSaludException("El alumno es celíaco");
+        HealthRestrictionException ex = new HealthRestrictionException("El alumno es celíaco");
 
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleRestriccionSalud(ex);
         ErrorResponse body = response.getBody();
@@ -90,7 +90,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleAlumnoNoEncontrado_RetornaNotFound() {
-        AlumnoNoEncontradoException ex = new AlumnoNoEncontradoException(UUID.randomUUID());
+        StudentNotFoundException ex = new StudentNotFoundException(UUID.randomUUID());
 
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleAlumnoNoEncontrado(ex);
         ErrorResponse body = response.getBody();
@@ -141,7 +141,7 @@ class GlobalExceptionHandlerTest {
     void handleValidation_ConErroresDeCampo_ExtraeElPrimerError() {
         MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
         BindingResult bindingResult = mock(BindingResult.class);
-        FieldError fieldError = new FieldError("objeto", "nombre", "El nombre es obligatorio");
+        FieldError fieldError = new FieldError("objeto", "name", "El name es obligatorio");
 
         when(ex.getBindingResult()).thenReturn(bindingResult);
         when(bindingResult.getFieldErrors()).thenReturn(List.of(fieldError));
@@ -152,7 +152,7 @@ class GlobalExceptionHandlerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertNotNull(body);
         assertEquals("Error de validación", body.error());
-        assertEquals("nombre: El nombre es obligatorio", body.mensaje());
+        assertEquals("name: El name es obligatorio", body.mensaje());
     }
 
     @Test
@@ -200,8 +200,8 @@ class GlobalExceptionHandlerTest {
     void handleInvalidPurchaseStatusTransition_RetornaBadRequest() {
         InvalidPurchaseStatusTransitionException ex =
                 new InvalidPurchaseStatusTransitionException(
-                        EstadoCompra.PENDIENTE,
-                        EstadoCompra.LISTO
+                        PurchaseState.PENDIENTE,
+                        PurchaseState.LISTO
                 );
 
         ResponseEntity<ErrorResponse> response =

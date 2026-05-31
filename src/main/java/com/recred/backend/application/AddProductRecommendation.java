@@ -1,10 +1,10 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Kiosquero;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Merchant;
+import com.recred.backend.domain.models.Product;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
-import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.domain.repositories.MerchantRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,40 +15,40 @@ import java.util.UUID;
 public class AddProductRecommendation {
 
     private final ProductRepository productRepository;
-    private final KiosqueroRepository kiosqueroRepository;
+    private final MerchantRepository merchantRepository;
     private final InventoryRepository inventoryRepository;
     private final AIEventRepository aiEventRepository;
 
 
     public  AddProductRecommendation(ProductRepository productRepository,
-                                     KiosqueroRepository kiosqueroRepository,
+                                     MerchantRepository merchantRepository,
             InventoryRepository inventoryRepository,
                                      AIEventRepository aiEventRepository){
         this.productRepository = productRepository;
-        this.kiosqueroRepository = kiosqueroRepository;
+        this.merchantRepository = merchantRepository;
         this.inventoryRepository = inventoryRepository;
         this.aiEventRepository = aiEventRepository;
     }
     @Transactional
     public void execute() {
 
-        List<Producto> bestSoldProducts = productRepository.findBestSoldProducts();
-        List<Kiosquero> kiosqueros = kiosqueroRepository.findAll();
+        List<Product> bestSoldProducts = productRepository.findBestSoldProducts();
+        List<Merchant> merchants = merchantRepository.findAll();
 
-        for (Producto product : bestSoldProducts) {
-            for (Kiosquero kiosquero : kiosqueros) {
-                UUID buffetId = kiosqueroRepository.findBuffetById(kiosquero.getId());
+        for (Product product : bestSoldProducts) {
+            for (Merchant merchant : merchants) {
+                UUID buffetId = merchantRepository.findBuffetById(merchant.getId());
                 if(!this.alreadyInStock(product, buffetId)){
 
                     aiEventRepository
-                            .registerProductAdditionRecommendation(product, kiosquero,buffetId);
+                            .registerProductAdditionRecommendation(product, merchant,buffetId);
                 }
             }
         }
 
     }
 
-    private boolean alreadyInStock(Producto product,UUID buffetId) {
+    private boolean alreadyInStock(Product product, UUID buffetId) {
         return inventoryRepository.checkIfProductIsInStock(product.getId(),buffetId);
     }
 }

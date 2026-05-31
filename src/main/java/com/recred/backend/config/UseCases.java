@@ -37,37 +37,37 @@ import com.recred.backend.application.UpdatePurchaseStatus;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.domain.events.ProductPriceChangedPublisher;
 import com.recred.backend.domain.repositories.AIEventRepository;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.StudentRepository;
 import com.recred.backend.domain.repositories.CategoryRepository;
 import com.recred.backend.domain.repositories.ChatMessageRepository;
 import com.recred.backend.domain.repositories.ChatSessionRepository;
-import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
+import com.recred.backend.domain.repositories.HealthClassificationRepository;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertNotificationRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertPurchaseRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
-import com.recred.backend.domain.repositories.FranjaHorariaRepository;
+import com.recred.backend.domain.repositories.TimeBadgeRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
-import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.domain.repositories.MerchantRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
-import com.recred.backend.domain.repositories.PresupuestoRepository;
+import com.recred.backend.domain.repositories.BudgetRepository;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
-import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.repositories.TimeRestrictionRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCalendarRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
 import com.recred.backend.domain.repositories.StudentAIProfileRepository;
 import com.recred.backend.domain.repositories.StudentConsumptionRepository;
-import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import com.recred.backend.domain.repositories.UsuarioRepository;
+import com.recred.backend.domain.repositories.AISuggestionRepository;
+import com.recred.backend.domain.repositories.UserRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
+import com.recred.backend.domain.services.BudgetPeriodCalculator;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
@@ -75,10 +75,10 @@ import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
 import com.recred.backend.domain.services.SpendingPredictionRangeService;
-import com.recred.backend.domain.services.UsuarioService;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.UserService;
+import com.recred.backend.domain.services.RestrictionsValidatorService;
+import com.recred.backend.domain.services.TimeValidatorService;
+import com.recred.backend.domain.services.BudgetValidatorService;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.gemini.LoadStockIAService;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
@@ -94,10 +94,10 @@ public class UseCases {
     public GeneratePriceAlert generatePriceAlert(
             StudentAIProfileRepository studentAIProfileRepository,
             PriceAlertAIRepository priceAlertAIRepository,
-            SugerenciaIARepository sugerenciaIARepository,
+            AISuggestionRepository AISuggestionRepository,
             Clock clock) {
         return new GeneratePriceAlert(studentAIProfileRepository,
-                priceAlertAIRepository, sugerenciaIARepository, clock);
+                priceAlertAIRepository, AISuggestionRepository, clock);
     }
 
     @Bean
@@ -108,44 +108,44 @@ public class UseCases {
     }
 
     @Bean
-    public CalculadorPeriodoPresupuesto calculadorPeriodoPresupuesto() {
-        return new CalculadorPeriodoPresupuesto();
+    public BudgetPeriodCalculator calculadorPeriodoPresupuesto() {
+        return new BudgetPeriodCalculator();
     }
 
     @Bean
-    public ValidacionRestriccionesService validacionRestriccionesService() {
-        return new ValidacionRestriccionesService();
+    public RestrictionsValidatorService validacionRestriccionesService() {
+        return new RestrictionsValidatorService();
     }
 
     @Bean
-    public UpdateBudgetRules updateBudgetRules(PresupuestoRepository repository) {
+    public UpdateBudgetRules updateBudgetRules(BudgetRepository repository) {
         return new UpdateBudgetRules(repository);
     }
 
     @Bean
-    public ValidadorHorarioService validadorHorarioService() {
-        return new ValidadorHorarioService();
+    public TimeValidatorService validadorHorarioService() {
+        return new TimeValidatorService();
     }
 
     @Bean
-    public ValidadorPresupuestoService validadorPresupuestoService(
-            PresupuestoRepository presupuestoRepository,
+    public BudgetValidatorService validadorPresupuestoService(
+            BudgetRepository budgetRepository,
             PurchaseRepository purchaseRepository,
-            CalculadorPeriodoPresupuesto calculadorPeriodo) {
-        return new ValidadorPresupuestoService(
-                presupuestoRepository,
+            BudgetPeriodCalculator calculadorPeriodo) {
+        return new BudgetValidatorService(
+                budgetRepository,
                 purchaseRepository,
                 calculadorPeriodo);
     }
 
     @Bean
-    public UsuarioService usuarioService(UsuarioRepository usuarioRepository) {
-        return new UsuarioService(usuarioRepository);
+    public UserService usuarioService(UserRepository userRepository) {
+        return new UserService(userRepository);
     }
 
     @Bean
     public AskSchoolAssistant askSchoolAssistant(
-            AlumnoRepository alumnoRepository,
+            StudentRepository studentRepository,
             WalletRepository walletRepository,
             SchoolAssistantPaymentRepository paymentRepository,
             SchoolAssistantPurchaseRepository purchaseRepository,
@@ -155,7 +155,7 @@ public class UseCases {
             SchoolAssistantResponder schoolAssistantResponder,
             Clock clock) {
         return new AskSchoolAssistant(
-                alumnoRepository,
+                studentRepository,
                 walletRepository,
                 paymentRepository,
                 purchaseRepository,
@@ -179,12 +179,12 @@ public class UseCases {
 
     @Bean
     public ProcessPresentialPurchase processPresentialPurchase(
-            AlumnoRepository studentRepository,
+            StudentRepository studentRepository,
             WalletRepository walletRepository,
             PurchaseRepository purchaseRepository,
-            ValidadorHorarioService timeValidator,
-            ValidacionRestriccionesService healthValidator,
-            ValidadorPresupuestoService budgetValidator) {
+            TimeValidatorService timeValidator,
+            RestrictionsValidatorService healthValidator,
+            BudgetValidatorService budgetValidator) {
         return new ProcessPresentialPurchase(
                 studentRepository,
                 walletRepository,
@@ -219,92 +219,92 @@ public class UseCases {
 
     @Bean
     public ManageRestrictions administrarRestricciones(
-            AlumnoRepository alumnoRepository,
-            ClasificacionSaludRepository clasificacionRepository) {
-        return new ManageRestrictions(alumnoRepository, clasificacionRepository);
+            StudentRepository studentRepository,
+            HealthClassificationRepository clasificacionRepository) {
+        return new ManageRestrictions(studentRepository, clasificacionRepository);
     }
 
     @Bean
     public DetectStudentPreferences detectStudentPreferences(
-            AlumnoRepository alumnoRepository,
+            StudentRepository studentRepository,
             PreferenceAIRepository preferenceAIRepository,
-            SugerenciaIARepository sugerenciaIARepository,
+            AISuggestionRepository AISuggestionRepository,
             PurchaseRepository purchaseRepository,
             InventoryRepository inventoryRepository) {
-        return new DetectStudentPreferences(alumnoRepository, preferenceAIRepository,
-                sugerenciaIARepository, purchaseRepository, inventoryRepository);
+        return new DetectStudentPreferences(studentRepository, preferenceAIRepository,
+                AISuggestionRepository, purchaseRepository, inventoryRepository);
     }
 
     @Bean
     public GetHealthRestrictions obtenerRestriccionesSalud(
-            AlumnoRepository alumnoRepository) {
-        return new GetHealthRestrictions(alumnoRepository);
+            StudentRepository studentRepository) {
+        return new GetHealthRestrictions(studentRepository);
     }
 
     @Bean
     public AddHealthRestriction agregarRestriccionSalud(
-            AlumnoRepository alumnoRepository,
-            ClasificacionSaludRepository clasificacionRepository) {
-        return new AddHealthRestriction(alumnoRepository, clasificacionRepository);
+            StudentRepository studentRepository,
+            HealthClassificationRepository clasificacionRepository) {
+        return new AddHealthRestriction(studentRepository, clasificacionRepository);
     }
 
     @Bean
     public RemoveHealthRestrictions eliminarRestriccionSalud(
-            AlumnoRepository alumnoRepository) {
-        return new RemoveHealthRestrictions(alumnoRepository);
+            StudentRepository studentRepository) {
+        return new RemoveHealthRestrictions(studentRepository);
     }
 
     @Bean
     public GetHealthRestrictionsCatalog obtenerCatalogoRestriccionesSalud(
-            ClasificacionSaludRepository clasificacionSaludRepository) {
-        return new GetHealthRestrictionsCatalog(clasificacionSaludRepository);
+            HealthClassificationRepository healthClassificationRepository) {
+        return new GetHealthRestrictionsCatalog(healthClassificationRepository);
     }
 
     @Bean
     public GetTimeSlotsBySchool getTimeSlotsBySchool(
-            FranjaHorariaRepository franjaHorariaRepository) {
-        return new GetTimeSlotsBySchool(franjaHorariaRepository);
+            TimeBadgeRepository timeBadgeRepository) {
+        return new GetTimeSlotsBySchool(timeBadgeRepository);
     }
 
     @Bean
     public CreateTimeRestriction createTimeRestriction(
-            RestriccionHorariaRepository restriccionHorariaRepository) {
-        return new CreateTimeRestriction(restriccionHorariaRepository);
+            TimeRestrictionRepository timeRestrictionRepository) {
+        return new CreateTimeRestriction(timeRestrictionRepository);
     }
 
     @Bean
     public DisableTimeRestriction disableTimeRestriction(
-            RestriccionHorariaRepository restriccionHorariaRepository) {
-        return new DisableTimeRestriction(restriccionHorariaRepository);
+            TimeRestrictionRepository timeRestrictionRepository) {
+        return new DisableTimeRestriction(timeRestrictionRepository);
     }
 
     @Bean
     public GetTimeRestrictionsByStudent getTimeRestrictionsByStudent(
-            RestriccionHorariaRepository restriccionHorariaRepository) {
-        return new GetTimeRestrictionsByStudent(restriccionHorariaRepository);
+            TimeRestrictionRepository timeRestrictionRepository) {
+        return new GetTimeRestrictionsByStudent(timeRestrictionRepository);
     }
 
     @Bean
     public UpdateTimeRestriction updateTimeRestriction(
-            RestriccionHorariaRepository restriccionHorariaRepository) {
-        return new UpdateTimeRestriction(restriccionHorariaRepository);
+            TimeRestrictionRepository timeRestrictionRepository) {
+        return new UpdateTimeRestriction(timeRestrictionRepository);
     }
 
     @Bean
     public GetStudentPreferences obtenerPreferenciasAlumno(
-            SugerenciaIARepository sugerenciaIARepository) {
-        return new GetStudentPreferences(sugerenciaIARepository);
+            AISuggestionRepository AISuggestionRepository) {
+        return new GetStudentPreferences(AISuggestionRepository);
     }
 
     @Bean
     public RespondToAISuggestion responderSugerenciaIA(
-            SugerenciaIARepository sugerenciaIARepository) {
-        return new RespondToAISuggestion(sugerenciaIARepository);
+            AISuggestionRepository AISuggestionRepository) {
+        return new RespondToAISuggestion(AISuggestionRepository);
     }
 
     @Bean
     public PredictStudentSpending predictStudentSpending(
-            AlumnoRepository alumnoRepository,
+            StudentRepository studentRepository,
             SpendingPreferenceRepository spendingPreferenceRepository,
             PurchaseSpendingRepository purchaseSpendingRepository,
             SpendingPredictionAnalyzer spendingPredictionAnalyzer,
@@ -313,7 +313,7 @@ public class UseCases {
             SpendingPredictionCalculator spendingPredictionCalculator,
             Clock clock) {
         return new PredictStudentSpending(
-                alumnoRepository,
+                studentRepository,
                 spendingPreferenceRepository,
                 purchaseSpendingRepository,
                 spendingPredictionAnalyzer,
@@ -359,26 +359,26 @@ public class UseCases {
 
     @Bean
     public GetActiveBudgetByStudent getActiveBudgetByStudent(
-            PresupuestoRepository presupuestoRepository) {
-        return new GetActiveBudgetByStudent(presupuestoRepository);
+            BudgetRepository budgetRepository) {
+        return new GetActiveBudgetByStudent(budgetRepository);
     }
 
     @Bean
     public CreateBudget createBudget(
-            PresupuestoRepository presupuestoRepository) {
-        return new CreateBudget(presupuestoRepository);
+            BudgetRepository budgetRepository) {
+        return new CreateBudget(budgetRepository);
     }
 
     @Bean
     public UpdateBudget updateBudget(
-            PresupuestoRepository presupuestoRepository) {
-        return new UpdateBudget(presupuestoRepository);
+            BudgetRepository budgetRepository) {
+        return new UpdateBudget(budgetRepository);
     }
 
     @Bean
     public DisableBudget disableBudget(
-            PresupuestoRepository presupuestoRepository) {
-        return new DisableBudget(presupuestoRepository);
+            BudgetRepository budgetRepository) {
+        return new DisableBudget(budgetRepository);
     }
 
     @Bean
@@ -399,9 +399,9 @@ public class UseCases {
     @Bean
     public GenerateProductChangeRecommendation generateProductChangeRecommendation(
             ProductRepository productRepository, ProductChangeAnalyzer productChangeAnalyzer,
-            AIEventRepository aiEventRepository, KiosqueroRepository kiosqueroRepository) {
+            AIEventRepository aiEventRepository, MerchantRepository merchantRepository) {
         return new GenerateProductChangeRecommendation(
-                productRepository, productChangeAnalyzer, aiEventRepository, kiosqueroRepository);
+                productRepository, productChangeAnalyzer, aiEventRepository, merchantRepository);
     }
 
     @Bean
@@ -414,12 +414,12 @@ public class UseCases {
     @Bean
     public AddProductRecommendation addProductRecommendation(
             ProductRepository productRepository,
-            KiosqueroRepository kiosqueroRepository,
+            MerchantRepository merchantRepository,
             InventoryRepository inventoryRepository,
             AIEventRepository aiEventRepository) {
         return new AddProductRecommendation(
                 productRepository,
-                kiosqueroRepository,
+                merchantRepository,
                 inventoryRepository,
                 aiEventRepository);
     }

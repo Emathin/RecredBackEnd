@@ -1,7 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.PresupuestoAlumno;
-import com.recred.backend.domain.repositories.PresupuestoRepository;
+import com.recred.backend.domain.models.StudentBudget;
+import com.recred.backend.domain.repositories.BudgetRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,20 +27,20 @@ import static org.mockito.Mockito.when;
 class UpdateBudgetRulesTest {
 
     @Mock
-    private PresupuestoRepository repository;
+    private BudgetRepository repository;
 
     @InjectMocks
     private UpdateBudgetRules updateBudgetRules;
 
     private UUID budgetId;
-    private PresupuestoAlumno presupuestoExistente;
+    private StudentBudget presupuestoExistente;
 
     @BeforeEach
     void setUp() {
         budgetId = UUID.randomUUID();
-        presupuestoExistente = new PresupuestoAlumno();
+        presupuestoExistente = new StudentBudget();
         presupuestoExistente.setId(budgetId);
-        presupuestoExistente.setMontoLimiteGeneral(new BigDecimal("5000.00"));
+        presupuestoExistente.setLimitAmount(new BigDecimal("5000.00"));
     }
 
     @Test
@@ -54,7 +54,7 @@ class UpdateBudgetRulesTest {
     @Test
     void execute_ActualizaReglasYGuarda() {
         when(repository.findById(budgetId)).thenReturn(Optional.of(presupuestoExistente));
-        when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(repository.save(any(StudentBudget.class))).thenAnswer(i -> i.getArguments()[0]);
 
         UpdateBudgetRulesCommand.CategoryRuleCommand ruleCommand =
                 new UpdateBudgetRulesCommand.CategoryRuleCommand(UUID.randomUUID(), new BigDecimal("10.00"));
@@ -62,28 +62,28 @@ class UpdateBudgetRulesTest {
 
         updateBudgetRules.execute(budgetId, command);
 
-        ArgumentCaptor<PresupuestoAlumno> captor = ArgumentCaptor.forClass(PresupuestoAlumno.class);
+        ArgumentCaptor<StudentBudget> captor = ArgumentCaptor.forClass(StudentBudget.class);
         verify(repository).save(captor.capture());
-        PresupuestoAlumno guardado = captor.getValue();
+        StudentBudget guardado = captor.getValue();
 
-        assertEquals(1, guardado.getReglasCategoria().size());
-        assertEquals(new BigDecimal("10.00"), guardado.getReglasCategoria().get(0).getPorcentajeLimite());
+        assertEquals(1, guardado.getCategoryRules().size());
+        assertEquals(new BigDecimal("10.00"), guardado.getCategoryRules().get(0).getLimitAverage());
 
-        assertEquals(new BigDecimal("500.00"), guardado.getReglasCategoria().get(0).getMontoLimiteCalculado());
+        assertEquals(new BigDecimal("500.00"), guardado.getCategoryRules().get(0).getCalculatedLimitAmount());
     }
 
     @Test
     void execute_ListaVacia_LimpiaLasReglas() {
         when(repository.findById(budgetId)).thenReturn(Optional.of(presupuestoExistente));
-        when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(repository.save(any(StudentBudget.class))).thenAnswer(i -> i.getArguments()[0]);
 
         UpdateBudgetRulesCommand command = new UpdateBudgetRulesCommand(Collections.emptyList());
 
         updateBudgetRules.execute(budgetId, command);
 
-        ArgumentCaptor<PresupuestoAlumno> captor = ArgumentCaptor.forClass(PresupuestoAlumno.class);
+        ArgumentCaptor<StudentBudget> captor = ArgumentCaptor.forClass(StudentBudget.class);
         verify(repository).save(captor.capture());
 
-        assertTrue(captor.getValue().getReglasCategoria().isEmpty(), "La lista de reglas debería quedar vacía");
+        assertTrue(captor.getValue().getCategoryRules().isEmpty(), "La lista de reglas debería quedar vacía");
     }
 }

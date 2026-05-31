@@ -28,9 +28,9 @@ public class LoadStockIAService implements LoadStockAnalyzer {
             No me retornes nada mas que el JSON que te pido con los siguientes datos,\s
             si no tiene datos solo coloca este caracter "-"
             {
-              "nombre": "texto breve",
-              "descripcion": "texto breve",
-              "peso": "texto breve",
+              "name": "texto breve",
+              "description": "texto breve",
+              "weight": "texto breve",
               "contiene_azucar": "true o false",
               "contiene_mani": "true o false",
               "contiene_lactosa": "true o false",
@@ -132,13 +132,13 @@ public class LoadStockIAService implements LoadStockAnalyzer {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static class LoadStockAnalysisResponse {
-        @JsonProperty("nombre")
+        @JsonProperty("name")
         public String nombre;
 
-        @JsonProperty("descripcion")
+        @JsonProperty("description")
         public String descripcion;
 
-        @JsonProperty("peso")
+        @JsonProperty("weight")
         public String peso;
 
         @JsonProperty("contiene_azucar")

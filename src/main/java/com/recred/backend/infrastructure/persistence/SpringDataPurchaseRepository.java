@@ -1,9 +1,9 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.PurchaseState;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
-import com.recred.backend.infrastructure.entities.CompraEntity;
+import com.recred.backend.infrastructure.entities.PurchaseEntity;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity, UUID>,
+public interface SpringDataPurchaseRepository extends JpaRepository<PurchaseEntity, UUID>,
         SchoolAssistantPurchaseRepository {
 
     @Override
@@ -27,14 +27,14 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
 
     @Query("""
             select new com.recred.backend.domain.models.SchoolAssistantPurchase(
-                purchase.montoTotal,
-                purchase.estado,
-                purchase.medioPago,
-                purchase.fechaHora
+                purchase.totalAmount,
+                purchase.purchaseState,
+                purchase.paymentMethod,
+                purchase.dateAndTime
             )
-            from CompraEntity purchase
-            where purchase.alumnoEntity.id = :studentId
-            order by purchase.fechaHora desc
+            from PurchaseEntity purchase
+            where purchase.studentEntity.id = :studentId
+            order by purchase.dateAndTime desc
             """)
     List<SchoolAssistantPurchase> findRecentByStudentId(
             @Param("studentId") UUID studentId,
@@ -42,33 +42,33 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
     );
 
     @Query("SELECT c " +
-            "FROM CompraEntity c " +
-            "WHERE c.alumnoEntity.id = :alumnoId " +
-            "ORDER BY c.fechaHora DESC")
-    List<CompraEntity> findLastByAlumno(@Param("alumnoId") UUID alumnoId, Pageable pageable);
+            "FROM PurchaseEntity c " +
+            "WHERE c.studentEntity.id = :alumnoId " +
+            "ORDER BY c.dateAndTime DESC")
+    List<PurchaseEntity> findLastByAlumno(@Param("studentId") UUID alumnoId, Pageable pageable);
 
-    @Query("SELECT COALESCE(SUM(c.montoTotal), 0) FROM CompraEntity c " +
-            "WHERE c.alumnoEntity.id = :alumnoId " +
-            "AND c.estado = :estadoValido " +
-            "AND c.fechaHora BETWEEN :inicio AND :fin")
+    @Query("SELECT COALESCE(SUM(c.totalAmount), 0) FROM PurchaseEntity c " +
+            "WHERE c.studentEntity.id = :alumnoId " +
+            "AND c.purchaseState = :estadoValido " +
+            "AND c.dateAndTime BETWEEN :inicio AND :fin")
     BigDecimal sumarGastosGeneralesEnRango(
-            @Param("alumnoId") UUID alumnoId,
-            @Param("estadoValido") EstadoCompra estadoValido,
+            @Param("studentId") UUID alumnoId,
+            @Param("estadoValido") PurchaseState estadoValido,
             @Param("inicio") LocalDateTime inicio,
             @Param("fin") LocalDateTime fin
     );
 
-    @Query("SELECT COALESCE(SUM(d.subtotal), 0) FROM CompraEntity c " +
-            "JOIN c.detalles d " +
-            "JOIN d.productoEntity p " +
-            "WHERE c.alumnoEntity.id = :alumnoId " +
-            "AND c.estado = :estadoValido " +
-            "AND c.fechaHora BETWEEN :inicio AND :fin " +
-            "AND p.categoria.id = :categoriaId")
+    @Query("SELECT COALESCE(SUM(d.subtotal), 0) FROM PurchaseEntity c " +
+            "JOIN c.details d " +
+            "JOIN d.productEntity p " +
+            "WHERE c.studentEntity.id = :alumnoId " +
+            "AND c.purchaseState = :estadoValido " +
+            "AND c.dateAndTime BETWEEN :inicio AND :fin " +
+            "AND p.category.id = :categoriaId")
     BigDecimal sumarGastosPorCategoriaEnRango(
-            @Param("alumnoId") UUID alumnoId,
-            @Param("estadoValido") EstadoCompra estadoValido,
-            @Param("categoriaId") UUID categoriaId,
+            @Param("studentId") UUID alumnoId,
+            @Param("estadoValido") PurchaseState estadoValido,
+            @Param("categoryID") UUID categoriaId,
             @Param("inicio") LocalDateTime inicio,
             @Param("fin") LocalDateTime fin
     );

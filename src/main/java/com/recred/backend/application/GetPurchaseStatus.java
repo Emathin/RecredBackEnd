@@ -2,11 +2,11 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
-import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
+import com.recred.backend.domain.exceptions.AuthenticatedUserNotFoundException;
 import com.recred.backend.domain.models.ConsumptionRequester;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
-import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.UserRole;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 
@@ -30,7 +30,7 @@ public class GetPurchaseStatus {
                 .orElseThrow(() -> new PurchaseNotFoundException(purchaseId));
         ConsumptionRequester requester = accessRepository
                 .findRequesterByCognitoSubject(cognitoSubject)
-                .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(cognitoSubject));
+                .orElseThrow(() -> new AuthenticatedUserNotFoundException(cognitoSubject));
 
         if (requesterCannotAccessPurchase(requester, purchase)) {
             PurchaseAccessDeniedException exception = new PurchaseAccessDeniedException(purchaseId);
@@ -61,14 +61,14 @@ public class GetPurchaseStatus {
             ConsumptionRequester requester,
             UUID studentId
     ) {
-        return requester.role() == RolUsuario.ALUMNO && studentId.equals(requester.studentId());
+        return requester.role() == UserRole.ALUMNO && studentId.equals(requester.studentId());
     }
 
     private boolean tutorUserCanAccessStudent(
             ConsumptionRequester requester,
             UUID studentId
     ) {
-        return requester.role() == RolUsuario.PADRE
+        return requester.role() == UserRole.PADRE
                 && accessRepository.tutorCanAccessStudent(requester.userId(), studentId);
     }
 }

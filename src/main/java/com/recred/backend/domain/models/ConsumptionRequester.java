@@ -4,7 +4,7 @@ import java.util.UUID;
 
 public record ConsumptionRequester(
         UUID userId,
-        RolUsuario role,
+        UserRole role,
         UUID studentId
 ) {
 }

@@ -7,31 +7,31 @@ import java.util.Set;
 import java.util.UUID;
 
 public record SaveProductDTO(
-        String nombre,
-        String descripcion,
-        BigDecimal precio,
-        BigDecimal peso,
-        boolean requierePreparacion,
-        UUID categoriaId,
-        String nuevaCategoriaNombre,
+        String name,
+        String description,
+        BigDecimal price,
+        BigDecimal weight,
+        boolean requiresPreparation,
+        UUID categoryID,
+        String newCategoryName,
         UUID buffetId,
-        Integer stockActual,
-        Set<UUID> clasificacionesSaludIds,
-        Set<UUID> tiposIds
+        Integer currentStock,
+        Set<UUID> healthClassificationIds,
+        Set<UUID> idsTypes
 ) {
     public SaveProductCommand toCommand() {
         return new SaveProductCommand(
-                nombre,
-                descripcion,
-                precio,
-                peso,
-                requierePreparacion,
-                categoriaId,
-                nuevaCategoriaNombre,
+                name,
+                description,
+                price,
+                weight,
+                requiresPreparation,
+                categoryID,
+                newCategoryName,
                 buffetId,
-                stockActual,
-                clasificacionesSaludIds,
-                tiposIds
+                currentStock,
+                healthClassificationIds,
+                idsTypes
         );
     }
 }

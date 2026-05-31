@@ -111,7 +111,7 @@ Eso evita que la base se borre cada vez que apagamos Docker.
 
 Docker Compose crea automáticamente una red interna entre servicios.
 
-Gracias a eso, el backend puede conectarse a PostgreSQL usando el nombre del servicio:
+Gracias a eso, el backend puede conectarse a PostgreSQL usando el name del servicio:
 
 ```txt
 postgres
@@ -379,7 +379,7 @@ volumes:
 
 ## 11. ¿Cómo se comunican backend y DB?
 
-Dentro de Docker Compose, los servicios se comunican por nombre.
+Dentro de Docker Compose, los servicios se comunican por name.
 
 El servicio de DB se llama:
 
@@ -677,7 +677,7 @@ sudo systemctl stop recred.service || true
 sudo docker rm -f recred-backend || true
 ```
 
-Esto frena el servicio viejo, si existe, y elimina un contenedor anterior del backend para evitar conflictos de nombre o de puerto. No borra el volumen de PostgreSQL.
+Esto frena el servicio viejo, si existe, y elimina un contenedor anterior del backend para evitar conflictos de name o de puerto. No borra el volumen de PostgreSQL.
 
 ---
 

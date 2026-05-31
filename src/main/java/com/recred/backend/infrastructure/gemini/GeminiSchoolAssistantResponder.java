@@ -27,21 +27,21 @@ public class GeminiSchoolAssistantResponder implements SchoolAssistantResponder 
             Usa solamente los datos provistos en la seccion Datos.
             Si un dato no esta presente, deci que no hay informacion registrada.
             No inventes saldos, pagos, compras, fechas ni eventos.
-            Si el usuario pregunta otra cosa, responde exactamente:
+            Si el user pregunta otra cosa, responde exactamente:
             "No puedo ayudarte con ese tema ahora mismo."
             No ofrezcas hacer pagos, cancelar compras ni modificar datos.
             Responde en espanol rioplatense, claro y breve.
             La respuesta debe tener como maximo 2 oraciones.
             Responde solo JSON valido con esta forma:
             {
-              "respuesta": "texto para usuario final"
+              "respuesta": "texto para user final"
             }
 
             Consulta:
             %s
 
             Datos:
-            alumnoId=%s
+            studentId=%s
             saldo=%s
             pagosRecientes=%s
             comprasRecientes=%s

@@ -14,7 +14,7 @@ public class ProductChangeRecommendation {
 
     private UUID id;
     private UUID idBuffet;
-    private String nombre;
-    private BigDecimal precio;
+    private String name;
+    private BigDecimal price;
 
 }

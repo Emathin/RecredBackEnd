@@ -1,12 +1,12 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.EstadoInventario;
-import com.recred.backend.domain.models.Inventario;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.InventoryState;
+import com.recred.backend.domain.models.Inventory;
+import com.recred.backend.domain.models.Product;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
-import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
-import com.recred.backend.infrastructure.entities.InventarioBuffetEntity;
-import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.ProductCategoryEntity;
+import com.recred.backend.infrastructure.entities.BuffetInventoryEntity;
+import com.recred.backend.infrastructure.entities.ProductEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,42 +41,42 @@ class InventoryRepositoryImplTest {
     void save_DeberiaCrearNuevaEntidad_CuandoNoExiste() {
         UUID buffetId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        Inventario inventario = new Inventario();
-        inventario.setBuffetId(buffetId);
-        inventario.setProductoId(productId);
-        inventario.setStockActual(10);
-        inventario.setEstado(EstadoInventario.DISPONIBLE);
+        Inventory inventory = new Inventory();
+        inventory.setBuffetId(buffetId);
+        inventory.setProductId(productId);
+        inventory.setCurrentStock(10);
+        inventory.setStock(InventoryState.DISPONIBLE);
 
         when(springDataInventoryRepository.findByBuffetEntityIdAndProductoEntityId(buffetId, productId))
                 .thenReturn(Optional.empty());
-        when(springDataInventoryRepository.save(any(InventarioBuffetEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataInventoryRepository.save(any(BuffetInventoryEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        inventoryRepository.save(inventario);
+        inventoryRepository.save(inventory);
 
-        verify(springDataInventoryRepository).save(any(InventarioBuffetEntity.class));
+        verify(springDataInventoryRepository).save(any(BuffetInventoryEntity.class));
     }
 
     @Test
     void save_DeberiaActualizarEntidad_CuandoYaExiste() {
         UUID buffetId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        Inventario inventario = new Inventario();
-        inventario.setBuffetId(buffetId);
-        inventario.setProductoId(productId);
-        inventario.setStockActual(50);
+        Inventory inventory = new Inventory();
+        inventory.setBuffetId(buffetId);
+        inventory.setProductId(productId);
+        inventory.setCurrentStock(50);
 
-        InventarioBuffetEntity existingEntity = new InventarioBuffetEntity();
-        existingEntity.setStockActual(10);
+        BuffetInventoryEntity existingEntity = new BuffetInventoryEntity();
+        existingEntity.setCurrentStock(10);
         existingEntity.setBuffetEntity(new BuffetEntity());
-        existingEntity.setProductoEntity(new ProductoEntity());
+        existingEntity.setProductEntity(new ProductEntity());
 
         when(springDataInventoryRepository.findByBuffetEntityIdAndProductoEntityId(buffetId, productId))
                 .thenReturn(Optional.of(existingEntity));
-        when(springDataInventoryRepository.save(any(InventarioBuffetEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataInventoryRepository.save(any(BuffetInventoryEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        inventoryRepository.save(inventario);
+        inventoryRepository.save(inventory);
 
-        assertEquals(50, existingEntity.getStockActual());
+        assertEquals(50, existingEntity.getCurrentStock());
     }
 
     @Test
@@ -107,44 +107,44 @@ class InventoryRepositoryImplTest {
     void findAvailableProductsByBuffet_ShouldMapAvailableProductsToDomain() {
         UUID buffetId = UUID.randomUUID();
 
-        ProductoEntity productoEntity = new ProductoEntity();
-        productoEntity.setId(UUID.randomUUID());
-        productoEntity.setNombre("Jugo");
+        ProductEntity productEntity = new ProductEntity();
+        productEntity.setId(UUID.randomUUID());
+        productEntity.setName("Jugo");
 
-        CategoriaProductoEntity categoria = new CategoriaProductoEntity();
-        categoria.setDescripcion("Bebidas");
-        productoEntity.setCategoria(categoria);
+        ProductCategoryEntity categoria = new ProductCategoryEntity();
+        categoria.setDescription("Bebidas");
+        productEntity.setCategory(categoria);
 
-        InventarioBuffetEntity inventario = new InventarioBuffetEntity();
-        inventario.setProductoEntity(productoEntity);
+        BuffetInventoryEntity inventario = new BuffetInventoryEntity();
+        inventario.setProductEntity(productEntity);
 
         when(springDataInventoryRepository.findAvailableByBuffetId(buffetId))
                 .thenReturn(List.of(inventario));
 
-        List<Producto> result = inventoryRepository.findAvailableProductsByBuffet(buffetId);
+        List<Product> result = inventoryRepository.findAvailableProductsByBuffet(buffetId);
 
         assertEquals(1, result.size());
-        assertEquals("Jugo", result.get(0).getNombre());
-        assertEquals("Bebidas", result.get(0).getCategoria().getDescripcion());
+        assertEquals("Jugo", result.get(0).getName());
+        assertEquals("Bebidas", result.get(0).getCategory().getDescription());
     }
 
     @Test
     void findAvailableProductsByBuffet_ShouldHandleNullCategory() {
         UUID buffetId = UUID.randomUUID();
 
-        ProductoEntity productoEntity = new ProductoEntity();
-        productoEntity.setId(UUID.randomUUID());
-        productoEntity.setNombre("Fruta");
-        productoEntity.setCategoria(null);
+        ProductEntity productEntity = new ProductEntity();
+        productEntity.setId(UUID.randomUUID());
+        productEntity.setName("Fruta");
+        productEntity.setCategory(null);
 
-        InventarioBuffetEntity inventario = new InventarioBuffetEntity();
-        inventario.setProductoEntity(productoEntity);
+        BuffetInventoryEntity inventario = new BuffetInventoryEntity();
+        inventario.setProductEntity(productEntity);
 
         when(springDataInventoryRepository.findAvailableByBuffetId(buffetId))
                 .thenReturn(List.of(inventario));
 
-        List<Producto> result = inventoryRepository.findAvailableProductsByBuffet(buffetId);
+        List<Product> result = inventoryRepository.findAvailableProductsByBuffet(buffetId);
 
-        assertNull(result.get(0).getCategoria());
+        assertNull(result.get(0).getCategory());
     }
 }

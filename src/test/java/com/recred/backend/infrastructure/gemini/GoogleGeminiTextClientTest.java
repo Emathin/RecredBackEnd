@@ -152,7 +152,7 @@ class GoogleGeminiTextClientTest {
                       "content": {
                         "parts": [
                           {
-                            "text": "{\\"nombre\\":\\"Coca Cola\\"}"
+                            "text": "{\\"name\\":\\"Coca Cola\\"}"
                           }
                         ],
                         "role": "model"
@@ -171,7 +171,7 @@ class GoogleGeminiTextClientTest {
             Optional<GeminiTextResponse> response = client.generateWithImage("prompt", file);
 
             assertTrue(response.isPresent());
-            assertEquals("{\"nombre\":\"Coca Cola\"}", response.orElseThrow().text());
+            assertEquals("{\"name\":\"Coca Cola\"}", response.orElseThrow().text());
             assertEquals(VISION_MODEL, response.orElseThrow().model());
         } finally {
             cerrarServidor(server);

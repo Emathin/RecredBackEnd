@@ -5,15 +5,15 @@ import com.recred.backend.domain.models.HealthyProductRecommendation;
 import com.recred.backend.domain.models.HealthyRecommendationMessages;
 import com.recred.backend.domain.models.HealthyRecommendationPattern;
 import com.recred.backend.domain.models.PushNotification;
-import com.recred.backend.domain.models.TipoNotificacion;
-import com.recred.backend.domain.models.TipoSugerenciaIA;
+import com.recred.backend.domain.models.NotificationType;
+import com.recred.backend.domain.models.IaSuggestionType;
 import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
 import com.recred.backend.infrastructure.entities.AIEventEntity;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
-import com.recred.backend.infrastructure.entities.NotificacionEntity;
-import com.recred.backend.infrastructure.entities.ProductoEntity;
-import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
-import com.recred.backend.infrastructure.entities.UsuarioEntity;
+import com.recred.backend.infrastructure.entities.StudentEntity;
+import com.recred.backend.infrastructure.entities.NotificationEntity;
+import com.recred.backend.infrastructure.entities.ProductEntity;
+import com.recred.backend.infrastructure.entities.AISuggestionEntity;
+import com.recred.backend.infrastructure.entities.UserEntity;
 import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
@@ -53,7 +53,7 @@ public class HealthyRecommendationNotificationPersistenceRepository
     public boolean hasRecommendationSince(UUID studentId, LocalDateTime since) {
         return suggestionJpaRepository.existsForStudentAndTypeSince(
                 studentId,
-                TipoSugerenciaIA.RECOMENDACION_SALUDABLE,
+                IaSuggestionType.RECOMENDACION_SALUDABLE,
                 since
         );
     }
@@ -61,7 +61,7 @@ public class HealthyRecommendationNotificationPersistenceRepository
     @Override
     public void save(HealthyProductRecommendation recommendation) {
         AIEventEntity event = saveEvent(recommendation);
-        SugerenciaIAEntity suggestion = saveSuggestion(recommendation, event);
+        AISuggestionEntity suggestion = saveSuggestion(recommendation, event);
         saveAndPublishNotification(notification(recommendation, suggestion));
     }
 
@@ -69,8 +69,8 @@ public class HealthyRecommendationNotificationPersistenceRepository
         HealthyRecommendationPattern pattern = recommendation.pattern();
         AIEventEntity event = new AIEventEntity();
         event.setType(AIEventType.ANALISIS_CONSUMO);
-        event.setAlumnoEntity(studentReference(pattern.studentId()));
-        event.setProductoEntity(productReference(pattern.suggestedProductId()));
+        event.setStudentEntity(studentReference(pattern.studentId()));
+        event.setProductEntity(productReference(pattern.suggestedProductId()));
         event.setInputOrigin(INPUT_ORIGIN);
         event.setInputData(inputData(pattern));
         event.setResultData(resultData(recommendation.messages()));
@@ -84,47 +84,47 @@ public class HealthyRecommendationNotificationPersistenceRepository
         return savedEvent;
     }
 
-    private SugerenciaIAEntity saveSuggestion(
+    private AISuggestionEntity saveSuggestion(
             HealthyProductRecommendation recommendation,
             AIEventEntity event
     ) {
         HealthyRecommendationPattern pattern = recommendation.pattern();
         HealthyRecommendationMessages messages = recommendation.messages();
-        SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
-        suggestion.setTipo(TipoSugerenciaIA.RECOMENDACION_SALUDABLE);
-        suggestion.setAlumnoEntity(studentReference(pattern.studentId()));
-        suggestion.setProductoEntity(productReference(pattern.suggestedProductId()));
-        suggestion.setTitulo(messages.title());
-        suggestion.setMensaje(messages.studentMessage());
+        AISuggestionEntity suggestion = new AISuggestionEntity();
+        suggestion.setType(IaSuggestionType.RECOMENDACION_SALUDABLE);
+        suggestion.setStudentEntity(studentReference(pattern.studentId()));
+        suggestion.setProductEntity(productReference(pattern.suggestedProductId()));
+        suggestion.setTittle(messages.title());
+        suggestion.setMessage(messages.studentMessage());
         suggestion.setMetadata(metadata(recommendation));
-        suggestion.setAceptada(false);
+        suggestion.setAccepted(false);
         suggestion.setEventoIaEntity(event);
         return suggestionJpaRepository.save(suggestion);
     }
 
-    private NotificacionEntity notification(
+    private NotificationEntity notification(
             HealthyProductRecommendation recommendation,
-            SugerenciaIAEntity suggestion
+            AISuggestionEntity suggestion
     ) {
-        NotificacionEntity notification = new NotificacionEntity();
-        notification.setUsuarioEntity(reference(
-                UsuarioEntity.class,
+        NotificationEntity notification = new NotificationEntity();
+        notification.setUserEntity(reference(
+                UserEntity.class,
                 recommendation.candidate().studentUserId()
         ));
-        notification.setAlumnoEntity(studentReference(recommendation.pattern().studentId()));
-        notification.setProductoEntity(productReference(
+        notification.setStudentEntity(studentReference(recommendation.pattern().studentId()));
+        notification.setProductEntity(productReference(
                 recommendation.pattern().suggestedProductId()
         ));
-        notification.setSugerenciaIaEntity(suggestion);
-        notification.setTipo(TipoNotificacion.SUGERENCIA_IA);
-        notification.setTitulo(recommendation.messages().title());
-        notification.setMensaje(recommendation.messages().studentMessage());
-        notification.setLeida(false);
+        notification.setAISuggestionEntity(suggestion);
+        notification.setType(NotificationType.SUGERENCIA_IA);
+        notification.setTittle(recommendation.messages().title());
+        notification.setMessage(recommendation.messages().studentMessage());
+        notification.setSeen(false);
         return notification;
     }
 
-    private void saveAndPublishNotification(NotificacionEntity notification) {
-        NotificacionEntity savedNotification = notificationJpaRepository.save(notification);
+    private void saveAndPublishNotification(NotificationEntity notification) {
+        NotificationEntity savedNotification = notificationJpaRepository.save(notification);
         if (savedNotification == null) {
             savedNotification = notification;
         }
@@ -132,39 +132,39 @@ public class HealthyRecommendationNotificationPersistenceRepository
         publishPushNotification(savedNotification);
     }
 
-    private void publishPushNotification(NotificacionEntity notification) {
+    private void publishPushNotification(NotificationEntity notification) {
         eventPublisher.publishEvent(new PushNotificationRequestedEvent(new PushNotification(
-                notification.getUsuarioEntity().getId(),
-                notification.getTitulo(),
-                notification.getMensaje(),
+                notification.getUserEntity().getId(),
+                notification.getTittle(),
+                notification.getMessage(),
                 pushData(notification)
         )));
     }
 
-    private Map<String, String> pushData(NotificacionEntity notification) {
+    private Map<String, String> pushData(NotificationEntity notification) {
         Map<String, String> data = new LinkedHashMap<>();
         putIfPresent(data, "notificacionId", notification.getId());
-        putIfPresent(data, "alumnoId", notification.getAlumnoEntity().getId());
-        putIfPresent(data, "productoId", productId(notification));
+        putIfPresent(data, "studentId", notification.getStudentEntity().getId());
+        putIfPresent(data, "productId", productId(notification));
         putIfPresent(data, "sugerenciaIaId", suggestionId(notification));
-        data.put("tipo", notification.getTipo().name());
+        data.put("tipo", notification.getType().name());
         return data;
     }
 
-    private UUID productId(NotificacionEntity notification) {
-        if (notification.getProductoEntity() == null) {
+    private UUID productId(NotificationEntity notification) {
+        if (notification.getProductEntity() == null) {
             return null;
         }
 
-        return notification.getProductoEntity().getId();
+        return notification.getProductEntity().getId();
     }
 
-    private UUID suggestionId(NotificacionEntity notification) {
-        if (notification.getSugerenciaIaEntity() == null) {
+    private UUID suggestionId(NotificationEntity notification) {
+        if (notification.getAISuggestionEntity() == null) {
             return null;
         }
 
-        return notification.getSugerenciaIaEntity().getId();
+        return notification.getAISuggestionEntity().getId();
     }
 
     private void putIfPresent(Map<String, String> data, String key, UUID value) {
@@ -205,16 +205,16 @@ public class HealthyRecommendationNotificationPersistenceRepository
         return data;
     }
 
-    private AlumnoEntity studentReference(UUID studentId) {
-        return reference(AlumnoEntity.class, studentId);
+    private StudentEntity studentReference(UUID studentId) {
+        return reference(StudentEntity.class, studentId);
     }
 
-    private ProductoEntity productReference(UUID productId) {
+    private ProductEntity productReference(UUID productId) {
         if (productId == null) {
             return null;
         }
 
-        return reference(ProductoEntity.class, productId);
+        return reference(ProductEntity.class, productId);
     }
 
     private <T> T reference(Class<T> type, UUID id) {

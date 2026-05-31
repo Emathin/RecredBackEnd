@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 public record SpendingPredictionResponse(
-        @JsonProperty("alumnoId")
+        @JsonProperty("studentId")
         UUID studentId,
         @JsonProperty("periodo")
         BudgetPeriod period,

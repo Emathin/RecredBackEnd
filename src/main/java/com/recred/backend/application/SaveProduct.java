@@ -1,11 +1,11 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.CategoriaProducto;
-import com.recred.backend.domain.models.ClasificacionSalud;
-import com.recred.backend.domain.models.ClasificacionTipo;
-import com.recred.backend.domain.models.EstadoInventario;
-import com.recred.backend.domain.models.Inventario;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Product;
+import com.recred.backend.domain.models.TypeClassification;
+import com.recred.backend.domain.models.ProductCategory;
+import com.recred.backend.domain.models.HealthClassification;
+import com.recred.backend.domain.models.InventoryState;
+import com.recred.backend.domain.models.Inventory;
 import com.recred.backend.domain.repositories.CategoryRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -30,90 +30,90 @@ public class SaveProduct {
     }
 
     @Transactional
-    public Producto execute(SaveProductCommand command) {
-        Producto producto = mapToModel(command);
-        Producto savedProduct = productRepository.save(producto);
+    public Product execute(SaveProductCommand command) {
+        Product product = mapToModel(command);
+        Product savedProduct = productRepository.save(product);
 
         if (command.buffetId() != null && command.stockActual() != null) {
             saveInventory(command, savedProduct);
-            savedProduct.setStockActual(command.stockActual());
+            savedProduct.setCurrentStock(command.stockActual());
         }
 
         return savedProduct;
     }
 
-    private void saveInventory(SaveProductCommand command, Producto savedProduct) {
-        Inventario inventario = inventoryRepository
+    private void saveInventory(SaveProductCommand command, Product savedProduct) {
+        Inventory inventory = inventoryRepository
                 .findByBuffetAndProduct(command.buffetId(), savedProduct.getId())
                 .orElseGet(() -> createNewInventory(command, savedProduct.getId()));
 
-        inventario.setStockActual(command.stockActual());
-        inventoryRepository.save(inventario);
+        inventory.setCurrentStock(command.stockActual());
+        inventoryRepository.save(inventory);
     }
 
-    private Inventario createNewInventory(SaveProductCommand command, UUID productoId) {
-        Inventario inventario = new Inventario();
-        inventario.setBuffetId(command.buffetId());
-        inventario.setProductoId(productoId);
-        inventario.setStockMinimo(0);
-        inventario.setEstado(EstadoInventario.DISPONIBLE);
-        return inventario;
+    private Inventory createNewInventory(SaveProductCommand command, UUID productoId) {
+        Inventory inventory = new Inventory();
+        inventory.setBuffetId(command.buffetId());
+        inventory.setProductId(productoId);
+        inventory.setMinimumStock(0);
+        inventory.setStock(InventoryState.DISPONIBLE);
+        return inventory;
     }
 
-    private Producto mapToModel(SaveProductCommand command) {
-        Producto producto = new Producto();
-        producto.setNombre(command.nombre());
-        producto.setDescripcion(command.descripcion());
-        producto.setPrecio(command.precio());
-        producto.setPeso(command.peso());
-        producto.setRequierePreparacion(command.requierePreparacion());
-        producto.setActivo(true);
+    private Product mapToModel(SaveProductCommand command) {
+        Product product = new Product();
+        product.setName(command.nombre());
+        product.setDescription(command.descripcion());
+        product.setPrice(command.precio());
+        product.setWeight(command.peso());
+        product.setRequiresPreparation(command.requierePreparacion());
+        product.setActive(true);
 
-        handleCategory(command, producto);
+        handleCategory(command, product);
 
         if (command.clasificacionesSaludIds() != null) {
-            Set<ClasificacionSalud> clasificaciones = command.clasificacionesSaludIds()
+            Set<HealthClassification> clasificaciones = command.clasificacionesSaludIds()
                     .stream().map(id -> {
-                        ClasificacionSalud cs = new ClasificacionSalud();
+                        HealthClassification cs = new HealthClassification();
                         cs.setId(id);
                         return cs;
                     }).collect(Collectors.toSet());
-            producto.setClasificacionesSalud(clasificaciones);
+            product.setHealthClassifications(clasificaciones);
         }
 
         if (command.tiposIds() != null) {
-            Set<ClasificacionTipo> tipos = command.tiposIds().stream().map(id -> {
-                ClasificacionTipo ct = new ClasificacionTipo();
+            Set<TypeClassification> tipos = command.tiposIds().stream().map(id -> {
+                TypeClassification ct = new TypeClassification();
                 ct.setId(id);
                 return ct;
             }).collect(Collectors.toSet());
-            producto.setTipos(tipos);
+            product.setTypes(tipos);
         }
 
-        return producto;
+        return product;
     }
 
-    private void handleCategory(SaveProductCommand command, Producto producto) {
+    private void handleCategory(SaveProductCommand command, Product product) {
         if (command.nuevaCategoriaNombre() != null
                 && !command.nuevaCategoriaNombre().isBlank()) {
-            CategoriaProducto category = categoryRepository
+            ProductCategory category = categoryRepository
                     .findByDescription(command.nuevaCategoriaNombre())
                     .orElseGet(() -> createAndSaveCategory(command.nuevaCategoriaNombre()));
-            producto.setCategoria(category);
+            product.setCategory(category);
             return;
         }
 
         if (command.categoriaId() != null) {
-            CategoriaProducto categoria = new CategoriaProducto();
+            ProductCategory categoria = new ProductCategory();
             categoria.setId(command.categoriaId());
-            producto.setCategoria(categoria);
+            product.setCategory(categoria);
         }
     }
 
-    private CategoriaProducto createAndSaveCategory(String name) {
-        CategoriaProducto category = new CategoriaProducto();
-        category.setDescripcion(name);
-        category.setActivo(true);
+    private ProductCategory createAndSaveCategory(String name) {
+        ProductCategory category = new ProductCategory();
+        category.setDescription(name);
+        category.setActive(true);
         return categoryRepository.save(category);
     }
 }

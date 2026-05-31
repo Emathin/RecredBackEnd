@@ -1,43 +1,43 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.CategoriaProducto;
-import com.recred.backend.domain.models.ClasificacionTipo;
-import com.recred.backend.domain.models.FranjaHoraria;
-import com.recred.backend.domain.models.RestriccionHoraria;
-import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.models.ProductCategory;
+import com.recred.backend.domain.models.TypeClassification;
+import com.recred.backend.domain.models.TimeBadge;
+import com.recred.backend.domain.models.TimeRestriction;
+import com.recred.backend.domain.repositories.TimeRestrictionRepository;
 
 import java.util.UUID;
 
 public class UpdateTimeRestriction {
 
-    private final RestriccionHorariaRepository repository;
+    private final TimeRestrictionRepository repository;
 
-    public UpdateTimeRestriction(RestriccionHorariaRepository repository) {
+    public UpdateTimeRestriction(TimeRestrictionRepository repository) {
         this.repository = repository;
     }
 
-    public RestriccionHoraria execute(UUID restrictionId, TimeRestrictionCommand command) {
-        RestriccionHoraria existingRestriction = repository.findById(restrictionId)
+    public TimeRestriction execute(UUID restrictionId, TimeRestrictionCommand command) {
+        TimeRestriction existingRestriction = repository.findById(restrictionId)
                 .orElseThrow(() -> new RuntimeException("Restricción no encontrada"));
 
-        FranjaHoraria timeSlot = new FranjaHoraria();
+        TimeBadge timeSlot = new TimeBadge();
         timeSlot.setId(command.timeSlotId());
-        existingRestriction.setFranjaHoraria(timeSlot);
+        existingRestriction.setTimeBadge(timeSlot);
 
         if (command.categoryId() != null) {
-            CategoriaProducto category = new CategoriaProducto();
+            ProductCategory category = new ProductCategory();
             category.setId(command.categoryId());
-            existingRestriction.setCategoria(category);
+            existingRestriction.setCategory(category);
         } else {
-            existingRestriction.setCategoria(null);
+            existingRestriction.setCategory(null);
         }
 
         if (command.classificationId() != null) {
-            ClasificacionTipo classification = new ClasificacionTipo();
+            TypeClassification classification = new TypeClassification();
             classification.setId(command.classificationId());
-            existingRestriction.setClasificacion(classification);
+            existingRestriction.setClassification(classification);
         } else {
-            existingRestriction.setClasificacion(null);
+            existingRestriction.setClassification(null);
         }
 
         return repository.save(existingRestriction);

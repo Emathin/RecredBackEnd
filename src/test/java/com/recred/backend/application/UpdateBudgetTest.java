@@ -1,8 +1,8 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.PeriodoPresupuesto;
-import com.recred.backend.domain.models.PresupuestoAlumno;
-import com.recred.backend.domain.repositories.PresupuestoRepository;
+import com.recred.backend.domain.models.PeriodBudget;
+import com.recred.backend.domain.models.StudentBudget;
+import com.recred.backend.domain.repositories.BudgetRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,18 +29,18 @@ import static org.mockito.Mockito.when;
 class UpdateBudgetTest {
 
     @Mock
-    private PresupuestoRepository repository;
+    private BudgetRepository repository;
 
     @InjectMocks
     private UpdateBudget updateBudget;
 
     private UUID budgetId;
-    private PresupuestoAlumno presupuestoExistente;
+    private StudentBudget presupuestoExistente;
 
     @BeforeEach
     void setUp() {
         budgetId = UUID.randomUUID();
-        presupuestoExistente = new PresupuestoAlumno();
+        presupuestoExistente = new StudentBudget();
         presupuestoExistente.setId(budgetId);
     }
 
@@ -57,11 +57,11 @@ class UpdateBudgetTest {
     void execute_ActualizaDatosYCalculaPorcentajesCorrectamente() {
         when(repository.findById(budgetId)).thenReturn(Optional.of(presupuestoExistente));
 
-        when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(repository.save(any(StudentBudget.class))).thenAnswer(i -> i.getArguments()[0]);
 
         BudgetCommand command = mock(BudgetCommand.class);
         when(command.limitAmount()).thenReturn(new BigDecimal("10000.00"));
-        when(command.period()).thenReturn(PeriodoPresupuesto.SEMANAL);
+        when(command.period()).thenReturn(PeriodBudget.SEMANAL);
         when(command.startDate()).thenReturn(LocalDate.now());
 
         var ruleMock = mock(BudgetCommand.CategoryRuleCommand.class);
@@ -69,19 +69,19 @@ class UpdateBudgetTest {
         when(ruleMock.porcentajeLimite()).thenReturn(new BigDecimal("20.00"));
         when(command.categoryRules()).thenReturn(List.of(ruleMock));
 
-        PresupuestoAlumno resultado = updateBudget.execute(budgetId, command);
+        StudentBudget resultado = updateBudget.execute(budgetId, command);
 
-        ArgumentCaptor<PresupuestoAlumno> captor = ArgumentCaptor.forClass(PresupuestoAlumno.class);
+        ArgumentCaptor<StudentBudget> captor = ArgumentCaptor.forClass(StudentBudget.class);
         verify(repository).save(captor.capture());
-        PresupuestoAlumno guardado = captor.getValue();
+        StudentBudget guardado = captor.getValue();
 
-        assertEquals(new BigDecimal("10000.00"), guardado.getMontoLimiteGeneral());
-        assertEquals(PeriodoPresupuesto.SEMANAL, guardado.getPeriodo());
+        assertEquals(new BigDecimal("10000.00"), guardado.getLimitAmount());
+        assertEquals(PeriodBudget.SEMANAL, guardado.getPeriod());
 
-        assertNotNull(guardado.getReglasCategoria());
-        assertEquals(1, guardado.getReglasCategoria().size());
+        assertNotNull(guardado.getCategoryRules());
+        assertEquals(1, guardado.getCategoryRules().size());
 
-        BigDecimal montoCalculado = guardado.getReglasCategoria().get(0).getMontoLimiteCalculado();
+        BigDecimal montoCalculado = guardado.getCategoryRules().get(0).getCalculatedLimitAmount();
         assertEquals(new BigDecimal("2000.00"), montoCalculado);
     }
 }

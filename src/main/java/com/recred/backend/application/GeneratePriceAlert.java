@@ -1,11 +1,11 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Student;
 import com.recred.backend.domain.models.PriceAlertSuggestion;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Product;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
 import com.recred.backend.domain.repositories.StudentAIProfileRepository;
-import com.recred.backend.domain.repositories.SugerenciaIARepository;
+import com.recred.backend.domain.repositories.AISuggestionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,48 +25,48 @@ public class GeneratePriceAlert {
 
     private final StudentAIProfileRepository studentAIProfileRepository;
     private final PriceAlertAIRepository priceAlertAIRepository;
-    private final SugerenciaIARepository sugerenciaIARepository;
+    private final AISuggestionRepository AISuggestionRepository;
     private final Clock clock;
 
     public GeneratePriceAlert(
             StudentAIProfileRepository studentAIProfileRepository,
             PriceAlertAIRepository priceAlertAIRepository,
-            SugerenciaIARepository sugerenciaIARepository,
+            AISuggestionRepository AISuggestionRepository,
             Clock clock) {
         this.studentAIProfileRepository = studentAIProfileRepository;
         this.priceAlertAIRepository = priceAlertAIRepository;
-        this.sugerenciaIARepository = sugerenciaIARepository;
+        this.AISuggestionRepository = AISuggestionRepository;
         this.clock = clock;
     }
 
     @Transactional
-    public void execute(Producto producto, BigDecimal oldPrice,
+    public void execute(Product product, BigDecimal oldPrice,
                         BigDecimal newPrice, UUID buffetId) {
-        List<Alumno> affectedStudents = studentAIProfileRepository
-                .findStudentsWithFavoriteProduct(producto.getId());
+        List<Student> affectedStudents = studentAIProfileRepository
+                .findStudentsWithFavoriteProduct(product.getId());
 
         LOGGER.info(
                 "price_alert_candidates productId={} affectedStudents={}",
-                producto.getId(),
+                product.getId(),
                 affectedStudents.size()
         );
 
-        for (Alumno alumno : affectedStudents) {
-            if (hasRecentAlert(alumno.getId(), producto.getId())) {
+        for (Student student : affectedStudents) {
+            if (hasRecentAlert(student.getId(), product.getId())) {
                 LOGGER.info(
                         "price_alert_skipped_recent studentId={} productId={}",
-                        alumno.getId(),
-                        producto.getId()
+                        student.getId(),
+                        product.getId()
                 );
                 continue;
             }
-            priceAlertAIRepository.analyzeImpact(alumno, producto, oldPrice, newPrice)
+            priceAlertAIRepository.analyzeImpact(student, product, oldPrice, newPrice)
                     .map(result -> new PriceAlertSuggestion(
-                            alumno.getId(),
-                            producto.getId(),
+                            student.getId(),
+                            product.getId(),
                             buffetId,
-                            tutorUserIds(alumno),
-                            producto.getNombre(),
+                            tutorUserIds(student),
+                            product.getName(),
                             result.titulo(),
                             result.mensaje(),
                             oldPrice,
@@ -74,11 +74,11 @@ public class GeneratePriceAlert {
                             result.razonIA()
                     ))
                     .ifPresentOrElse(
-                            sugerenciaIARepository::savePriceAlert,
+                            AISuggestionRepository::savePriceAlert,
                             () -> LOGGER.warn(
                                     "price_alert_ai_empty studentId={} productId={}",
-                                    alumno.getId(),
-                                    producto.getId()
+                                    student.getId(),
+                                    product.getId()
                             )
                     );
         }
@@ -86,14 +86,14 @@ public class GeneratePriceAlert {
 
     private boolean hasRecentAlert(UUID studentId, UUID productId) {
         LocalDateTime since = LocalDateTime.now(clock).minusHours(COOLDOWN_HOURS);
-        return sugerenciaIARepository.hasRecentPriceAlert(studentId, productId, since);
+        return AISuggestionRepository.hasRecentPriceAlert(studentId, productId, since);
     }
 
-    private Set<UUID> tutorUserIds(Alumno alumno) {
-        return alumno.getTutores().stream()
-                .filter(tutor -> tutor.getUsuario() != null)
-                .filter(tutor -> tutor.getUsuario().getId() != null)
-                .map(tutor -> tutor.getUsuario().getId())
+    private Set<UUID> tutorUserIds(Student student) {
+        return student.getTutors().stream()
+                .filter(tutor -> tutor.getUser() != null)
+                .filter(tutor -> tutor.getUser().getId() != null)
+                .map(tutor -> tutor.getUser().getId())
                 .collect(Collectors.toSet());
     }
 }

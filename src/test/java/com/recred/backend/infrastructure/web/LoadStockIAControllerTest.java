@@ -4,7 +4,7 @@ import com.recred.backend.application.LoadStockIA;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SaveProductCommand;
 import com.recred.backend.domain.exceptions.ImageValidationException;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Product;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -98,10 +98,10 @@ class LoadStockIAControllerTest {
     @Test
     void saveProduct_ConDatosValidos_RetornaCreated() {
         SaveProductDTO dto = new SaveProductDTO("Prod", "Desc", null, null, false, UUID.randomUUID(), null, UUID.randomUUID(), 10, null, null);
-        Producto savedProduct = new Producto();
+        Product savedProduct = new Product();
         when(saveProduct.execute(any(SaveProductCommand.class))).thenReturn(savedProduct);
 
-        ResponseEntity<Producto> response = controller.saveProduct(dto);
+        ResponseEntity<Product> response = controller.saveProduct(dto);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(savedProduct, response.getBody());

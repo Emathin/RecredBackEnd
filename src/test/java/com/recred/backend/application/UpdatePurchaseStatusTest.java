@@ -2,8 +2,8 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.models.PurchaseState;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -39,13 +39,13 @@ class UpdatePurchaseStatusTest {
     void setUp() {
         purchaseId = UUID.randomUUID();
 
-        Alumno student = new Alumno();
+        Student student = new Student();
         student.setId(UUID.randomUUID());
 
         purchase = new Purchase();
         purchase.setId(purchaseId);
         purchase.setStudent(student);
-        purchase.setStatus(EstadoCompra.PENDIENTE);
+        purchase.setStatus(PurchaseState.PENDIENTE);
     }
 
     @Test
@@ -53,10 +53,10 @@ class UpdatePurchaseStatusTest {
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
         when(purchaseRepository.save(purchase)).thenReturn(purchase);
 
-        PurchaseStatus result = useCase.execute(purchaseId, EstadoCompra.EN_PREPARACION);
+        PurchaseStatus result = useCase.execute(purchaseId, PurchaseState.EN_PREPARACION);
 
-        assertEquals(EstadoCompra.EN_PREPARACION, purchase.getStatus());
-        assertEquals(EstadoCompra.EN_PREPARACION, result.status());
+        assertEquals(PurchaseState.EN_PREPARACION, purchase.getStatus());
+        assertEquals(PurchaseState.EN_PREPARACION, result.status());
         verify(purchaseRepository).save(purchase);
     }
 
@@ -65,7 +65,7 @@ class UpdatePurchaseStatusTest {
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
 
         assertThrows(InvalidPurchaseStatusTransitionException.class,
-                () -> useCase.execute(purchaseId, EstadoCompra.LISTO));
+                () -> useCase.execute(purchaseId, PurchaseState.LISTO));
 
         verify(purchaseRepository, never()).save(purchase);
     }
@@ -75,7 +75,7 @@ class UpdatePurchaseStatusTest {
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
 
         assertThrows(InvalidPurchaseStatusTransitionException.class,
-                () -> useCase.execute(purchaseId, EstadoCompra.CANCELADO));
+                () -> useCase.execute(purchaseId, PurchaseState.CANCELADO));
 
         verify(purchaseRepository, never()).save(purchase);
     }
@@ -85,6 +85,6 @@ class UpdatePurchaseStatusTest {
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.empty());
 
         assertThrows(PurchaseNotFoundException.class,
-                () -> useCase.execute(purchaseId, EstadoCompra.EN_PREPARACION));
+                () -> useCase.execute(purchaseId, PurchaseState.EN_PREPARACION));
     }
 }

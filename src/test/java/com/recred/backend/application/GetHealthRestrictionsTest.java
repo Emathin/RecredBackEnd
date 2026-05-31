@@ -1,8 +1,8 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.ClasificacionSalud;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.models.HealthClassification;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.repositories.StudentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,30 +21,30 @@ import static org.mockito.Mockito.*;
 class GetHealthRestrictionsTest {
 
     @Mock
-    private AlumnoRepository alumnoRepository;
+    private StudentRepository studentRepository;
 
     @InjectMocks
     private GetHealthRestrictions useCase;
 
     private UUID alumnoId;
-    private Alumno alumno;
+    private Student student;
 
     @BeforeEach
     void setUp() {
         alumnoId = UUID.randomUUID();
-        alumno = new Alumno();
-        alumno.setId(alumnoId);
+        student = new Student();
+        student.setId(alumnoId);
     }
 
     @Test
     void ejecutar_CuandoAlumnoExiste_DeberiaRetornarRestricciones() {
-        ClasificacionSalud clasificacion = new ClasificacionSalud();
+        HealthClassification clasificacion = new HealthClassification();
         clasificacion.setId(UUID.randomUUID());
-        alumno.getRestriccionesSalud().add(clasificacion);
+        student.getHealthRestrictions().add(clasificacion);
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(studentRepository.findById(alumnoId)).thenReturn(Optional.of(student));
 
-        Set<ClasificacionSalud> resultado = useCase.ejecutar(alumnoId);
+        Set<HealthClassification> resultado = useCase.ejecutar(alumnoId);
 
         assertNotNull(resultado);
         assertEquals(1, resultado.size());
@@ -53,7 +53,7 @@ class GetHealthRestrictionsTest {
 
     @Test
     void ejecutar_CuandoAlumnoNoExiste_DeberiaLanzarExcepcion() {
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        when(studentRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             useCase.ejecutar(alumnoId);

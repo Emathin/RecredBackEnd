@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public record ChatSession(
         UUID id,
-        EstadoChatSesion status,
+        ChatSessionState status,
         LocalDateTime startedAt,
         LocalDateTime lastActivityAt
 ) {

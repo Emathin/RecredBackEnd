@@ -1,13 +1,13 @@
 package com.recred.backend.domain.exceptions;
 
-import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.PurchaseState;
 
 public class InvalidPurchaseStatusTransitionException extends RuntimeException {
 
     public InvalidPurchaseStatusTransitionException(
-            EstadoCompra currentStatus,
-            EstadoCompra requestedStatus
+            PurchaseState currentStatus,
+            PurchaseState requestedStatus
     ) {
-        super("No se puede cambiar el estado de " + currentStatus + " a " + requestedStatus);
+        super("No se puede cambiar el stock de " + currentStatus + " a " + requestedStatus);
     }
 }

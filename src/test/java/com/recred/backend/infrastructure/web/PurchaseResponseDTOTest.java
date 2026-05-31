@@ -1,9 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.MedioPago;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.PaymentMethod;
+import com.recred.backend.domain.models.Product;
 import com.recred.backend.domain.models.Purchase;
 import org.junit.jupiter.api.Test;
 
@@ -23,15 +23,15 @@ class PurchaseResponseDTOTest {
         UUID studentId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         LocalDateTime date = LocalDateTime.now();
-        Producto product = new Producto();
+        Product product = new Product();
         product.setId(productId);
 
         Purchase purchase = new Purchase();
         purchase.setId(purchaseId);
         purchase.setStudent(student(studentId));
         purchase.setTotalAmount(new BigDecimal("15.00"));
-        purchase.setStatus(EstadoCompra.PENDIENTE);
-        purchase.setPaymentMethod(MedioPago.CREDITOS);
+        purchase.setStatus(PurchaseState.PENDIENTE);
+        purchase.setPaymentMethod(PaymentMethod.CREDITOS);
         purchase.setDate(date);
         purchase.setItems(Map.of(product, 3));
 
@@ -40,9 +40,9 @@ class PurchaseResponseDTOTest {
         assertEquals(purchaseId, response.getId());
         assertEquals(studentId, response.getStudentId());
         assertEquals(new BigDecimal("15.00"), response.getTotalAmount());
-        assertEquals(EstadoCompra.PENDIENTE.name(), response.getStatus());
+        assertEquals(PurchaseState.PENDIENTE.name(), response.getStatus());
         assertEquals("A preparar", response.getStatusLabel());
-        assertEquals(MedioPago.CREDITOS.name(), response.getPaymentMethod());
+        assertEquals(PaymentMethod.CREDITOS.name(), response.getPaymentMethod());
         assertEquals(date, response.getDate());
         assertEquals(productId, response.getItems().get(0).getProductId());
         assertEquals(3, response.getItems().get(0).getQuantity());
@@ -62,8 +62,8 @@ class PurchaseResponseDTOTest {
         assertNull(response.getItems());
     }
 
-    private Alumno student(UUID studentId) {
-        Alumno student = new Alumno();
+    private Student student(UUID studentId) {
+        Student student = new Student();
         student.setId(studentId);
         return student;
     }

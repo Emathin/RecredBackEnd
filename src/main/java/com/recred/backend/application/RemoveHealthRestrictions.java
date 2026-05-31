@@ -1,23 +1,23 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.repositories.StudentRepository;
 
 import java.util.UUID;
 
 public class RemoveHealthRestrictions {
-    private final AlumnoRepository alumnoRepository;
+    private final StudentRepository studentRepository;
 
-    public RemoveHealthRestrictions(AlumnoRepository alumnoRepository) {
-        this.alumnoRepository = alumnoRepository;
+    public RemoveHealthRestrictions(StudentRepository studentRepository) {
+        this.studentRepository = studentRepository;
     }
 
     public void ejecutar(UUID alumnoId, UUID clasificacionId) {
-        Alumno alumno = alumnoRepository.findById(alumnoId)
+        Student student = studentRepository.findById(alumnoId)
                 .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
 
-        alumno.removerRestriccionSalud(clasificacionId);
+        student.removeHealthRestriction(clasificacionId);
 
-        alumnoRepository.save(alumno);
+        studentRepository.save(student);
     }
 }

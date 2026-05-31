@@ -1,20 +1,20 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.FranjaHoraria;
-import com.recred.backend.domain.repositories.FranjaHorariaRepository;
+import com.recred.backend.domain.models.TimeBadge;
+import com.recred.backend.domain.repositories.TimeBadgeRepository;
 
 import java.util.List;
 import java.util.UUID;
 
 public class GetTimeSlotsBySchool {
 
-    private final FranjaHorariaRepository repository;
+    private final TimeBadgeRepository repository;
 
-    public GetTimeSlotsBySchool(FranjaHorariaRepository repository) {
+    public GetTimeSlotsBySchool(TimeBadgeRepository repository) {
         this.repository = repository;
     }
 
-    public List<FranjaHoraria> execute(UUID colegioId) {
+    public List<TimeBadge> execute(UUID colegioId) {
         return repository.findAllByColegioId(colegioId);
     }
 }

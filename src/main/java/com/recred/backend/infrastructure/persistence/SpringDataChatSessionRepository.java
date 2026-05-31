@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.EstadoChatSesion;
-import com.recred.backend.infrastructure.entities.ChatSesionEntity;
+import com.recred.backend.domain.models.ChatSessionState;
+import com.recred.backend.infrastructure.entities.ChatSessionEntity;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,18 +9,18 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SpringDataChatSessionRepository
-        extends JpaRepository<ChatSesionEntity, UUID> {
+        extends JpaRepository<ChatSessionEntity, UUID> {
 
     @Query("""
             select session
-            from ChatSesionEntity session
+            from ChatSessionEntity session
             where session.id = :sessionId
-            and session.estado = :status
-            and session.usuarioEntity.alumnoEntity.id = :studentId
+            and session.state = :status
+            and session.userEntity.studentEntity.id = :studentId
             """)
-    Optional<ChatSesionEntity> findOpenByIdAndStudentId(
+    Optional<ChatSessionEntity> findOpenByIdAndStudentId(
             @Param("sessionId") UUID sessionId,
             @Param("studentId") UUID studentId,
-            @Param("status") EstadoChatSesion status
+            @Param("status") ChatSessionState status
     );
 }

@@ -1,15 +1,15 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.Grado;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.models.Grade;
 import com.recred.backend.domain.models.Tutor;
-import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.User;
 import com.recred.backend.domain.repositories.StudentAIProfileRepository;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
-import com.recred.backend.infrastructure.entities.GradoEntity;
-import com.recred.backend.infrastructure.entities.PerfilConsumoIAEntity;
+import com.recred.backend.infrastructure.entities.StudentEntity;
+import com.recred.backend.infrastructure.entities.GradeEntity;
+import com.recred.backend.infrastructure.entities.IAConsumptionProfileEntity;
 import com.recred.backend.infrastructure.entities.TutorEntity;
-import com.recred.backend.infrastructure.entities.UsuarioEntity;
+import com.recred.backend.infrastructure.entities.UserEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
@@ -28,11 +28,11 @@ public class StudentAIProfileRepositoryImpl implements StudentAIProfileRepositor
     }
 
     @Override
-    public List<Alumno> findStudentsWithFavoriteProduct(UUID productId) {
-        Map<UUID, AlumnoEntity> studentsById = new LinkedHashMap<>();
+    public List<Student> findStudentsWithFavoriteProduct(UUID productId) {
+        Map<UUID, StudentEntity> studentsById = new LinkedHashMap<>();
         springDataRepository.findByProductoEntityFavoritoId(productId)
                 .stream()
-                .map(PerfilConsumoIAEntity::getAlumnoEntity)
+                .map(IAConsumptionProfileEntity::getStudentEntity)
                 .forEach(student -> studentsById.put(student.getId(), student));
         springDataRepository.findStudentsWithManualFavoriteProduct(productId)
                 .forEach(student -> studentsById.put(student.getId(), student));
@@ -43,44 +43,44 @@ public class StudentAIProfileRepositoryImpl implements StudentAIProfileRepositor
                 .toList();
     }
 
-    private Alumno toStudentWithNotificationContext(AlumnoEntity entity) {
-        Alumno alumno = entity.toDomain();
-        alumno.setGrado(toGrade(entity.getGradoEntity()));
-        alumno.setTutores(entity.getTutores().stream()
-                .filter(tutorEntity -> Boolean.TRUE.equals(tutorEntity.getActiva()))
+    private Student toStudentWithNotificationContext(StudentEntity entity) {
+        Student student = entity.toDomain();
+        student.setGrade(toGrade(entity.getGradeEntity()));
+        student.setTutors(entity.getTutors().stream()
+                .filter(tutorEntity -> Boolean.TRUE.equals(tutorEntity.getActive()))
                 .map(this::toTutor)
                 .collect(java.util.stream.Collectors.toSet()));
-        return alumno;
+        return student;
     }
 
-    private Grado toGrade(GradoEntity entity) {
+    private Grade toGrade(GradeEntity entity) {
         if (entity == null) {
             return null;
         }
-        Grado grado = new Grado();
-        grado.setId(entity.getId());
-        grado.setAnio(entity.getAnio());
-        grado.setDivision(entity.getDivision());
-        grado.setActivo(entity.getActivo());
-        return grado;
+        Grade grade = new Grade();
+        grade.setId(entity.getId());
+        grade.setAnio(entity.getYear());
+        grade.setDivision(entity.getDivision());
+        grade.setActivo(entity.getActive());
+        return grade;
     }
 
     private Tutor toTutor(TutorEntity entity) {
         Tutor tutor = new Tutor();
         tutor.setId(entity.getId());
-        tutor.setActiva(entity.getActiva());
-        tutor.setUsuario(toUser(entity.getUsuario()));
+        tutor.setActive(entity.getActive());
+        tutor.setUser(toUser(entity.getUser()));
         return tutor;
     }
 
-    private Usuario toUser(UsuarioEntity entity) {
-        Usuario usuario = new Usuario();
-        usuario.setId(entity.getId());
-        usuario.setNombre(entity.getNombre());
-        usuario.setApellido(entity.getApellido());
-        usuario.setEmail(entity.getEmail());
-        usuario.setRol(entity.getRol());
-        usuario.setActivo(entity.getActivo());
-        return usuario;
+    private User toUser(UserEntity entity) {
+        User user = new User();
+        user.setId(entity.getId());
+        user.setName(entity.getName());
+        user.setSurname(entity.getSurname());
+        user.setEmail(entity.getEmail());
+        user.setRole(entity.getRol());
+        user.setActive(entity.getActive());
+        return user;
     }
 }

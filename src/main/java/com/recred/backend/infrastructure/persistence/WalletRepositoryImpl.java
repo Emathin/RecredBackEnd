@@ -1,8 +1,8 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.Billetera;
+import com.recred.backend.domain.models.Wallet;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.infrastructure.entities.BilleteraEntity;
+import com.recred.backend.infrastructure.entities.WalletEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -18,20 +18,20 @@ public class WalletRepositoryImpl implements WalletRepository {
     }
 
     @Override
-    public Optional<Billetera> findByStudentId(UUID studentId) {
+    public Optional<Wallet> findByStudentId(UUID studentId) {
         return springDataRepository.findByAlumnoEntityId(studentId)
-                .map(BilleteraEntity::toDomain);
+                .map(WalletEntity::toDomain);
     }
 
     @Override
-    public void save(Billetera wallet) {
-        BilleteraEntity entity = springDataRepository.findById(wallet.getId())
+    public void save(Wallet wallet) {
+        WalletEntity entity = springDataRepository.findById(wallet.getId())
                 .orElseThrow(() -> new RuntimeException("Wallet not found"));
 
-        entity.setSaldoCreditos(wallet.getSaldoCreditos());
-        entity.setLimiteCredito(wallet.getLimiteCredito());
-        entity.setSaldoDeudaInterno(wallet.getSaldoDeudaInterno());
-        entity.setCreditoHabilitado(wallet.getCreditoHabilitado());
+        entity.setCreditBalance(wallet.getCreditBalance());
+        entity.setCreditLimit(wallet.getCreditLimit());
+        entity.setInnerDebtBalance(wallet.getInnerDebtBalance());
+        entity.setEnabledCredit(wallet.getEnabledCredit());
 
         springDataRepository.save(entity);
     }

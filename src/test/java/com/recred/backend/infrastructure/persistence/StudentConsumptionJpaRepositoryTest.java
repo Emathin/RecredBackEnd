@@ -1,13 +1,14 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.MedioPago;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.PaymentMethod;
 import com.recred.backend.domain.models.StudentConsumptionPurchase;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
-import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
-import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
-import com.recred.backend.infrastructure.entities.CompraPresencialEntity;
-import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.ProductCategoryEntity;
+import com.recred.backend.infrastructure.entities.ProductEntity;
+import com.recred.backend.infrastructure.entities.PurchaseDetailEntity;
+import com.recred.backend.infrastructure.entities.PresentialPurchaseEntity;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,10 +30,10 @@ class StudentConsumptionJpaRepositoryTest {
                 CALLS_REAL_METHODS
         );
         UUID studentId = UUID.randomUUID();
-        List<EstadoCompra> statuses = List.of(EstadoCompra.ENTREGADO);
+        List<PurchaseState> statuses = List.of(PurchaseState.ENTREGADO);
         LocalDateTime startDateTime = LocalDateTime.of(2026, 5, 1, 0, 0);
         LocalDateTime endDateTime = LocalDateTime.of(2026, 5, 31, 23, 59);
-        CompraPresencialEntity purchase = purchase();
+        PresentialPurchaseEntity purchase = purchase();
 
         when(repository.findPurchaseEntitiesByStudentIdAndDateRange(
                 studentId,
@@ -52,9 +53,9 @@ class StudentConsumptionJpaRepositoryTest {
         assertEquals(1, purchases.size());
         StudentConsumptionPurchase mapped = purchases.get(0);
         assertEquals(purchase.getId(), mapped.purchaseId());
-        assertEquals(purchase.getFechaHora(), mapped.dateTime());
-        assertEquals(EstadoCompra.ENTREGADO, mapped.status());
-        assertEquals(MedioPago.CREDITOS, mapped.paymentMethod());
+        assertEquals(purchase.getDateAndTime(), mapped.dateTime());
+        assertEquals(PurchaseState.ENTREGADO, mapped.status());
+        assertEquals(PaymentMethod.CREDITOS, mapped.paymentMethod());
         assertEquals(new BigDecimal("1500.00"), mapped.totalAmount());
         assertEquals(purchase.getBuffetEntity().getId(), mapped.buffetId());
         assertEquals("Buffet Primario", mapped.buffetName());
@@ -71,13 +72,13 @@ class StudentConsumptionJpaRepositoryTest {
         );
     }
 
-    private CompraPresencialEntity purchase() {
-        CompraPresencialEntity purchase = new CompraPresencialEntity();
+    private PresentialPurchaseEntity purchase() {
+        PresentialPurchaseEntity purchase = new PresentialPurchaseEntity();
         purchase.setId(UUID.randomUUID());
-        purchase.setFechaHora(LocalDateTime.of(2026, 5, 20, 10, 30));
-        purchase.setEstado(EstadoCompra.ENTREGADO);
-        purchase.setMedioPago(MedioPago.CREDITOS);
-        purchase.setMontoTotal(new BigDecimal("1500.00"));
+        purchase.setDateAndTime(LocalDateTime.of(2026, 5, 20, 10, 30));
+        purchase.setPurchaseState(PurchaseState.ENTREGADO);
+        purchase.setPaymentMethod(PaymentMethod.CREDITOS);
+        purchase.setTotalAmount(new BigDecimal("1500.00"));
         purchase.setBuffetEntity(buffet());
         purchase.addDetalle(detail("Sandwich", "Comida", "1200.00"));
         purchase.addDetalle(detail("Agua", "Bebidas", "300.00"));
@@ -87,36 +88,36 @@ class StudentConsumptionJpaRepositoryTest {
     private BuffetEntity buffet() {
         BuffetEntity buffet = new BuffetEntity();
         buffet.setId(UUID.randomUUID());
-        buffet.setNombre("Buffet Primario");
+        buffet.setName("Buffet Primario");
         return buffet;
     }
 
-    private CompraDetalleEntity detail(
+    private PurchaseDetailEntity detail(
             String productName,
             String categoryName,
             String amount
     ) {
-        CompraDetalleEntity detail = new CompraDetalleEntity();
+        PurchaseDetailEntity detail = new PurchaseDetailEntity();
         detail.setId(UUID.randomUUID());
-        detail.setProductoEntity(product(productName, categoryName));
-        detail.setCantidad(1);
-        detail.setPrecioUnitario(new BigDecimal(amount));
+        detail.setProductEntity(product(productName, categoryName));
+        detail.setAmount(1);
+        detail.setUnitPrice(new BigDecimal(amount));
         detail.setSubtotal(new BigDecimal(amount));
         return detail;
     }
 
-    private ProductoEntity product(String name, String categoryName) {
-        ProductoEntity product = new ProductoEntity();
+    private ProductEntity product(String name, String categoryName) {
+        ProductEntity product = new ProductEntity();
         product.setId(UUID.randomUUID());
-        product.setNombre(name);
-        product.setCategoria(category(categoryName));
+        product.setName(name);
+        product.setCategory(category(categoryName));
         return product;
     }
 
-    private CategoriaProductoEntity category(String name) {
-        CategoriaProductoEntity category = new CategoriaProductoEntity();
+    private ProductCategoryEntity category(String name) {
+        ProductCategoryEntity category = new ProductCategoryEntity();
         category.setId(UUID.randomUUID());
-        category.setDescripcion(name);
+        category.setDescription(name);
         return category;
     }
 }

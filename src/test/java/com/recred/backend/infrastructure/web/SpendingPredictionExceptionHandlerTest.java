@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.StudentNotFoundException;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -14,8 +14,8 @@ class SpendingPredictionExceptionHandlerTest {
         UUID studentId = UUID.randomUUID();
         SpendingPredictionExceptionHandler handler = new SpendingPredictionExceptionHandler();
 
-        Map<String, String> response = handler.handleAlumnoNoEncontrado(
-                new AlumnoNoEncontradoException(studentId)
+        Map<String, String> response = handler.handleStudentNotFound(
+                new StudentNotFoundException(studentId)
         );
 
         assertEquals("No existe el alumno con id " + studentId, response.get("error"));

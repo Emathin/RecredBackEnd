@@ -1,8 +1,8 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Product;
+import com.recred.backend.domain.models.Student;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
 import com.recred.backend.infrastructure.gemini.GeminiTextClient;
 import com.recred.backend.infrastructure.gemini.GeminiTextResponse;
@@ -48,7 +48,7 @@ class GeminiPriceAlertAIAdapterTest {
                 );
 
         assertTrue(result.isPresent());
-        assertEquals("Ajuste de precio", result.get().titulo());
+        assertEquals("Ajuste de price", result.get().titulo());
         assertEquals("Cambio del 20%", result.get().razonIA());
     }
 
@@ -65,7 +65,7 @@ class GeminiPriceAlertAIAdapterTest {
                 );
 
         assertTrue(result.isPresent());
-        assertEquals("Cambio de precio en Alfajor", result.get().titulo());
+        assertEquals("Cambio de price en Alfajor", result.get().titulo());
         assertEquals("Cambio automatico detectado de 20.00, equivalente a 20.00%.",
                 result.get().razonIA());
     }
@@ -83,7 +83,7 @@ class GeminiPriceAlertAIAdapterTest {
                 );
 
         assertTrue(result.isPresent());
-        assertEquals("Cambio de precio en Alfajor", result.get().titulo());
+        assertEquals("Cambio de price en Alfajor", result.get().titulo());
         assertEquals("Cambio automatico detectado de -20.00, equivalente a -16.67%.",
                 result.get().razonIA());
     }
@@ -96,22 +96,22 @@ class GeminiPriceAlertAIAdapterTest {
     private String validJsonResponse() {
         return """
                 {
-                  "titulo": "Ajuste de precio",
+                  "titulo": "Ajuste de price",
                   "mensaje": "Notamos que el alfajor subio",
                   "razonIA": "Cambio del 20%"
                 }
                 """;
     }
 
-    private Alumno student() {
-        Alumno alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
-        return alumno;
+    private Student student() {
+        Student student = new Student();
+        student.setId(UUID.randomUUID());
+        return student;
     }
 
-    private Producto product() {
-        Producto producto = new Producto();
-        producto.setNombre("Alfajor");
-        return producto;
+    private Product product() {
+        Product product = new Product();
+        product.setName("Alfajor");
+        return product;
     }
 }

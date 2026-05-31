@@ -1,16 +1,16 @@
 package com.recred.backend.config;
 
-import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.StudentNotFoundException;
 import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
-import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
+import com.recred.backend.domain.exceptions.ExceededBudgetException;
 import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
-import com.recred.backend.domain.exceptions.RestriccionHorariaException;
-import com.recred.backend.domain.exceptions.RestriccionSaludException;
+import com.recred.backend.domain.exceptions.TimeRestrictionException;
+import com.recred.backend.domain.exceptions.HealthRestrictionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -30,9 +30,9 @@ public class GlobalExceptionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(
             GlobalExceptionHandler.class);
 
-    @ExceptionHandler(RestriccionHorariaException.class)
+    @ExceptionHandler(TimeRestrictionException.class)
     public ResponseEntity<ErrorResponse>
-    handleRestriccionHoraria(RestriccionHorariaException ex){
+    handleRestriccionHoraria(TimeRestrictionException ex){
         ErrorResponse error = new ErrorResponse(
                 "Restricción Horaria",
                 ex.getMessage(),
@@ -43,9 +43,9 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
-    @ExceptionHandler(PresupuestoExcedidoException.class)
+    @ExceptionHandler(ExceededBudgetException.class)
     public ResponseEntity<Map<String, Object>> handlePresupuestoExcedido(
-            PresupuestoExcedidoException ex) {
+            ExceededBudgetException ex) {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
@@ -57,15 +57,15 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(RestriccionSaludException.class)
+    @ExceptionHandler(HealthRestrictionException.class)
     public ResponseEntity<ErrorResponse> handleRestriccionSalud(
-            RestriccionSaludException ex) {
+            HealthRestrictionException ex) {
         return buildResponse(HttpStatus.CONFLICT, "Conflicto de Restricción Médica",
                 ex.getMessage());
     }
 
-    @ExceptionHandler(AlumnoNoEncontradoException.class)
-    public ResponseEntity<ErrorResponse> handleAlumnoNoEncontrado(AlumnoNoEncontradoException ex) {
+    @ExceptionHandler(StudentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleAlumnoNoEncontrado(StudentNotFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Alumno no encontrado",
                 ex.getMessage());
     }

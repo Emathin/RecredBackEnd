@@ -1,15 +1,15 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.infrastructure.entities.RestriccionHorariaEntity;
+import com.recred.backend.infrastructure.entities.TimeRestrictionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.UUID;
 
 public interface SpringDataRestriccionHorariaRepository extends
-        JpaRepository<RestriccionHorariaEntity, UUID> {
+        JpaRepository<TimeRestrictionEntity, UUID> {
 
-    List<RestriccionHorariaEntity> findAllByAlumnoEntityIdAndActiva
+    List<TimeRestrictionEntity> findAllByAlumnoEntityIdAndActiva
             (UUID alumnoId, Boolean activa);
-    List<RestriccionHorariaEntity> findAllByAlumnoEntityId(UUID alumnoId);
+    List<TimeRestrictionEntity> findAllByAlumnoEntityId(UUID alumnoId);
 
 }

@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.infrastructure.entities.CompraEntity;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.infrastructure.entities.PurchaseEntity;
 import com.recred.backend.domain.models.ConsumptionCategory;
 import com.recred.backend.domain.models.PurchaseSpending;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
@@ -14,22 +14,22 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PurchaseSpendingJpaRepository
-        extends JpaRepository<CompraEntity, UUID>, PurchaseSpendingRepository {
+        extends JpaRepository<PurchaseEntity, UUID>, PurchaseSpendingRepository {
 
     @Override
     @Query("""
             select new com.recred.backend.domain.models.PurchaseSpending(
-                c.fechaHora,
-                c.montoTotal
+                c.dateAndTime,
+                c.totalAmount
             )
-            from CompraEntity c
-            where c.alumnoEntity.id = :studentId
-            and c.estado in :statuses
-            and c.fechaHora between :startDateTime and :endDateTime
+            from PurchaseEntity c
+            where c.studentEntity.id = :studentId
+            and c.purchaseState in :statuses
+            and c.dateAndTime between :startDateTime and :endDateTime
             """)
     List<PurchaseSpending> findSpending(
             @Param("studentId") UUID studentId,
-            @Param("statuses") Collection<EstadoCompra> statuses,
+            @Param("statuses") Collection<PurchaseState> statuses,
             @Param("startDateTime") LocalDateTime startDateTime,
             @Param("endDateTime") LocalDateTime endDateTime
     );
@@ -37,19 +37,19 @@ public interface PurchaseSpendingJpaRepository
     @Override
     @Query("""
             select new com.recred.backend.domain.models.ConsumptionCategory(
-                d.productoEntity.categoria.descripcion,
+                d.productEntity.category.description,
                 sum(d.subtotal)
             )
-            from CompraDetalleEntity d
-            where d.compra.alumnoEntity.id = :studentId
-            and d.compra.estado in :statuses
-            and d.compra.fechaHora between :startDateTime and :endDateTime
-            group by d.productoEntity.categoria.descripcion
+            from PurchaseDetailEntity d
+            where d.purchase.studentEntity.id = :studentId
+            and d.purchase.purchaseState in :statuses
+            and d.purchase.dateAndTime between :startDateTime and :endDateTime
+            group by d.productEntity.category.description
             order by sum(d.subtotal) desc
             """)
     List<ConsumptionCategory> findMostConsumedCategories(
             @Param("studentId") UUID studentId,
-            @Param("statuses") Collection<EstadoCompra> statuses,
+            @Param("statuses") Collection<PurchaseState> statuses,
             @Param("startDateTime") LocalDateTime startDateTime,
             @Param("endDateTime") LocalDateTime endDateTime
     );

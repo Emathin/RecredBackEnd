@@ -3,9 +3,9 @@ package com.recred.backend.infrastructure.persistence;
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
 import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.StudentEntity;
 import com.recred.backend.infrastructure.entities.TutorEntity;
-import com.recred.backend.infrastructure.entities.UsuarioEntity;
+import com.recred.backend.infrastructure.entities.UserEntity;
 import java.util.Comparator;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -32,8 +32,8 @@ public class ConsumptionAlertStudentPersistenceRepository
                 .toList();
     }
 
-    private ConsumptionAlertCandidate mapCandidate(AlumnoEntity student) {
-        UsuarioEntity user = student.getUsuario();
+    private ConsumptionAlertCandidate mapCandidate(StudentEntity student) {
+        UserEntity user = student.getUser();
         return new ConsumptionAlertCandidate(
                 student.getId(),
                 user.getId(),
@@ -42,8 +42,8 @@ public class ConsumptionAlertStudentPersistenceRepository
         );
     }
 
-    private List<ConsumptionAlertTutor> tutors(AlumnoEntity student) {
-        return student.getTutores()
+    private List<ConsumptionAlertTutor> tutors(StudentEntity student) {
+        return student.getTutors()
                 .stream()
                 .filter(this::isActiveTutor)
                 .map(this::mapTutor)
@@ -52,20 +52,20 @@ public class ConsumptionAlertStudentPersistenceRepository
     }
 
     private boolean isActiveTutor(TutorEntity tutor) {
-        return Boolean.TRUE.equals(tutor.getActiva())
-                && tutor.getUsuario() != null
-                && Boolean.TRUE.equals(tutor.getUsuario().getActivo());
+        return Boolean.TRUE.equals(tutor.getActive())
+                && tutor.getUser() != null
+                && Boolean.TRUE.equals(tutor.getUser().getActive());
     }
 
     private ConsumptionAlertTutor mapTutor(TutorEntity tutor) {
         return new ConsumptionAlertTutor(
-                tutor.getUsuario().getId(),
-                fullName(tutor.getUsuario())
+                tutor.getUser().getId(),
+                fullName(tutor.getUser())
         );
     }
 
-    private String fullName(UsuarioEntity user) {
-        String fullName = (safeText(user.getNombre()) + " " + safeText(user.getApellido()))
+    private String fullName(UserEntity user) {
+        String fullName = (safeText(user.getName()) + " " + safeText(user.getSurname()))
                 .trim();
         if (fullName.isBlank()) {
             return DEFAULT_STUDENT_NAME;

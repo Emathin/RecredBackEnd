@@ -1,8 +1,8 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.PeriodoPresupuesto;
-import com.recred.backend.domain.models.PresupuestoAlumno;
-import com.recred.backend.domain.repositories.PresupuestoRepository;
+import com.recred.backend.domain.models.PeriodBudget;
+import com.recred.backend.domain.models.StudentBudget;
+import com.recred.backend.domain.repositories.BudgetRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 class CreateBudgetTest {
 
     @Mock
-    private PresupuestoRepository repository;
+    private BudgetRepository repository;
 
     @InjectMocks
     private CreateBudget createBudget;
@@ -35,12 +35,12 @@ class CreateBudgetTest {
     @Test
     void execute_CreaPresupuesto_CalculaReglas_YLoGuarda() {
 
-        when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(repository.save(any(StudentBudget.class))).thenAnswer(i -> i.getArguments()[0]);
 
         BudgetCommand command = mock(BudgetCommand.class);
         when(command.studentId()).thenReturn(UUID.randomUUID());
         when(command.limitAmount()).thenReturn(new BigDecimal("5000.00"));
-        when(command.period()).thenReturn(PeriodoPresupuesto.MENSUAL);
+        when(command.period()).thenReturn(PeriodBudget.MENSUAL);
         when(command.startDate()).thenReturn(LocalDate.now());
 
         var ruleMock = mock(BudgetCommand.CategoryRuleCommand.class);
@@ -48,18 +48,18 @@ class CreateBudgetTest {
         when(ruleMock.porcentajeLimite()).thenReturn(new BigDecimal("10.00"));
         when(command.categoryRules()).thenReturn(List.of(ruleMock));
 
-        PresupuestoAlumno resultado = createBudget.execute(command);
+        StudentBudget resultado = createBudget.execute(command);
 
-        ArgumentCaptor<PresupuestoAlumno> captor = ArgumentCaptor.forClass(PresupuestoAlumno.class);
+        ArgumentCaptor<StudentBudget> captor = ArgumentCaptor.forClass(StudentBudget.class);
         verify(repository).save(captor.capture());
-        PresupuestoAlumno guardado = captor.getValue();
+        StudentBudget guardado = captor.getValue();
 
         assertNotNull(guardado);
-        assertTrue(guardado.isActivo());
-        assertEquals(new BigDecimal("5000.00"), guardado.getMontoLimiteGeneral());
-        assertEquals(PeriodoPresupuesto.MENSUAL, guardado.getPeriodo());
+        assertTrue(guardado.isActive());
+        assertEquals(new BigDecimal("5000.00"), guardado.getLimitAmount());
+        assertEquals(PeriodBudget.MENSUAL, guardado.getPeriod());
 
-        assertEquals(1, guardado.getReglasCategoria().size());
-        assertEquals(new BigDecimal("500.00"), guardado.getReglasCategoria().get(0).getMontoLimiteCalculado());
+        assertEquals(1, guardado.getCategoryRules().size());
+        assertEquals(new BigDecimal("500.00"), guardado.getCategoryRules().get(0).getCalculatedLimitAmount());
     }
 }

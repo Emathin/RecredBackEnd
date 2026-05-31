@@ -2,14 +2,14 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
-import com.recred.backend.domain.models.Billetera;
+import com.recred.backend.domain.models.Wallet;
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.ChatSession;
-import com.recred.backend.domain.models.EstadoChatSesion;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.EstadoPagoExterno;
-import com.recred.backend.domain.models.MedioPago;
-import com.recred.backend.domain.models.RolChatMensaje;
+import com.recred.backend.domain.models.ChatSessionState;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.ExternalPaymentStatus;
+import com.recred.backend.domain.models.PaymentMethod;
+import com.recred.backend.domain.models.ChatMessageRole;
 import com.recred.backend.domain.models.SchoolAssistantAnswer;
 import com.recred.backend.domain.models.SchoolAssistantCapability;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
@@ -17,8 +17,8 @@ import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
-import com.recred.backend.domain.models.TipoDiaEscolar;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.models.DayType;
+import com.recred.backend.domain.repositories.StudentRepository;
 import com.recred.backend.domain.repositories.ChatMessageRepository;
 import com.recred.backend.domain.repositories.ChatSessionRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
@@ -69,7 +69,7 @@ class AskSchoolAssistantTest {
     );
 
     @Mock
-    private AlumnoRepository alumnoRepository;
+    private StudentRepository studentRepository;
 
     @Mock
     private WalletRepository walletRepository;
@@ -100,7 +100,7 @@ class AskSchoolAssistantTest {
     @BeforeEach
     void setUp() {
         askSchoolAssistant = new AskSchoolAssistant(
-                alumnoRepository,
+                studentRepository,
                 walletRepository,
                 paymentRepository,
                 purchaseRepository,
@@ -112,31 +112,31 @@ class AskSchoolAssistantTest {
         );
         studentId = UUID.randomUUID();
         sessionId = UUID.randomUUID();
-        session = new ChatSession(sessionId, EstadoChatSesion.ABIERTA, NOW, NOW);
+        session = new ChatSession(sessionId, ChatSessionState.ABIERTA, NOW, NOW);
     }
 
     @Test
     void executeBuildsFullContextAndReturnsAiAnswer() {
-        Billetera wallet = wallet(new BigDecimal("1500.00"));
+        Wallet wallet = wallet(new BigDecimal("1500.00"));
         SchoolAssistantPayment payment = new SchoolAssistantPayment(
                 new BigDecimal("500.00"),
-                EstadoPagoExterno.APROBADO,
+                ExternalPaymentStatus.APROBADO,
                 NOW.minusDays(1),
                 NOW.minusDays(1)
         );
         SchoolAssistantPurchase purchase = new SchoolAssistantPurchase(
                 new BigDecimal("320.00"),
-                EstadoCompra.ENTREGADO,
-                MedioPago.CREDITOS,
+                PurchaseState.ENTREGADO,
+                PaymentMethod.CREDITOS,
                 NOW.minusHours(2)
         );
         SchoolCalendarEvent event = new SchoolCalendarEvent(
                 LocalDate.of(2026, 5, 29),
-                TipoDiaEscolar.JORNADA_ESPECIAL,
+                DayType.JORNADA_ESPECIAL,
                 "Acto escolar"
         );
 
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+        when(studentRepository.existsById(studentId)).thenReturn(true);
         when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
         when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
@@ -180,8 +180,8 @@ class AskSchoolAssistantTest {
         ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
         verify(chatMessageRepository, times(2)).save(messageCaptor.capture());
         List<ChatMessage> messages = messageCaptor.getAllValues();
-        assertEquals(RolChatMensaje.USUARIO, messages.get(0).role());
-        assertEquals(RolChatMensaje.ASISTENTE_IA, messages.get(1).role());
+        assertEquals(ChatMessageRole.USUARIO, messages.get(0).role());
+        assertEquals(ChatMessageRole.ASISTENTE_IA, messages.get(1).role());
         assertEquals("Respuesta IA.", messages.get(1).content());
         assertEquals(true, messages.get(1).metadata().get("generadoPorIa"));
         assertEquals("gemini-test", messages.get(1).metadata().get("modelo"));
@@ -194,7 +194,7 @@ class AskSchoolAssistantTest {
 
     @Test
     void executeUsesFallbackWhenGeminiDoesNotReturnAnswer() {
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+        when(studentRepository.existsById(studentId)).thenReturn(true);
         when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
         when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
@@ -225,7 +225,7 @@ class AskSchoolAssistantTest {
 
     @Test
     void executeThrowsWhenMessageIsBlank() {
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+        when(studentRepository.existsById(studentId)).thenReturn(true);
 
         assertThrows(
                 InvalidChatMessageException.class,
@@ -240,7 +240,7 @@ class AskSchoolAssistantTest {
 
     @Test
     void executeThrowsWhenRequestedSessionIsNotOpenForStudent() {
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+        when(studentRepository.existsById(studentId)).thenReturn(true);
         when(chatSessionRepository.findOpenByIdAndStudentId(sessionId, studentId))
                 .thenReturn(Optional.empty());
 
@@ -255,9 +255,9 @@ class AskSchoolAssistantTest {
         verify(chatMessageRepository, never()).save(any());
     }
 
-    private Billetera wallet(BigDecimal balance) {
-        Billetera wallet = new Billetera();
-        wallet.setSaldoCreditos(balance);
+    private Wallet wallet(BigDecimal balance) {
+        Wallet wallet = new Wallet();
+        wallet.setCreditBalance(balance);
         return wallet;
     }
 }

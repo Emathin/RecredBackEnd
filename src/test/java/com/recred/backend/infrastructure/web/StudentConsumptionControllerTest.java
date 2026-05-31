@@ -2,8 +2,8 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.StudentConsumptionCommand;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.MedioPago;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.PaymentMethod;
 import com.recred.backend.domain.models.StudentConsumptionDetail;
 import com.recred.backend.domain.models.StudentConsumptionProduct;
 import com.recred.backend.domain.models.StudentConsumptionPurchase;
@@ -61,8 +61,8 @@ class StudentConsumptionControllerTest {
                 List.of(new StudentConsumptionPurchase(
                         purchaseId,
                         LocalDateTime.of(2026, 5, 20, 10, 30),
-                        EstadoCompra.ENTREGADO,
-                        MedioPago.CREDITOS,
+                        PurchaseState.ENTREGADO,
+                        PaymentMethod.CREDITOS,
                         new BigDecimal("1500.00"),
                         buffetId,
                         "Buffet Primario",
@@ -81,7 +81,7 @@ class StudentConsumptionControllerTest {
 
         mockMvc.perform(get("/api/v1/consumos")
                         .principal(authentication())
-                        .param("alumnoId", studentId.toString())
+                        .param("studentId", studentId.toString())
                         .param("desde", "2026-05-01")
                         .param("hasta", "2026-05-20"))
                 .andExpect(status().isOk())

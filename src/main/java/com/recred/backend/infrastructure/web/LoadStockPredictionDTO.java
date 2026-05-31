@@ -8,11 +8,11 @@ import lombok.Data;
 @Data
 @Builder
 public class LoadStockPredictionDTO {
-    @JsonProperty("nombre")
+    @JsonProperty("name")
     private String nombre;
-    @JsonProperty("descripcion")
+    @JsonProperty("description")
     private String descripcion;
-    @JsonProperty("peso")
+    @JsonProperty("weight")
     private String peso;
     @JsonProperty("contiene_azucar")
     private String contieneAzucar;

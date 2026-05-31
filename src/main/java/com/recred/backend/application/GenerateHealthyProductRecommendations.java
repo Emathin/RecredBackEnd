@@ -2,8 +2,8 @@ package com.recred.backend.application;
 
 import com.recred.backend.config.HealthyRecommendationProperties;
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.EstadoInventario;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.InventoryState;
 import com.recred.backend.domain.models.HealthyProductOption;
 import com.recred.backend.domain.models.HealthyProductRecommendation;
 import com.recred.backend.domain.models.HealthyRecommendationAnalysisRequest;
@@ -31,10 +31,10 @@ public class GenerateHealthyProductRecommendations {
 
     private static final int MINIMUM_LOOKBACK_DAYS = 1;
     private static final int MINIMUM_REPEATED_DAYS = 1;
-    private static final Set<EstadoCompra> PURCHASE_STATUSES = Set.of(EstadoCompra.ENTREGADO);
-    private static final Set<EstadoInventario> AVAILABLE_STATES = Set.of(
-            EstadoInventario.DISPONIBLE,
-            EstadoInventario.BAJO_STOCK
+    private static final Set<PurchaseState> PURCHASE_STATUSES = Set.of(PurchaseState.ENTREGADO);
+    private static final Set<InventoryState> AVAILABLE_STATES = Set.of(
+            InventoryState.DISPONIBLE,
+            InventoryState.BAJO_STOCK
     );
 
     private final ConsumptionAlertStudentRepository studentRepository;

@@ -2,8 +2,8 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.repositories.ChatMessageRepository;
-import com.recred.backend.infrastructure.entities.ChatMensajeEntity;
-import com.recred.backend.infrastructure.entities.ChatSesionEntity;
+import com.recred.backend.infrastructure.entities.ChatMessageEntity;
+import com.recred.backend.infrastructure.entities.ChatSessionEntity;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.UUID;
@@ -26,12 +26,12 @@ public class ChatMessagePersistenceRepository implements ChatMessageRepository {
 
     @Override
     public void save(ChatMessage message) {
-        ChatMensajeEntity entity = new ChatMensajeEntity();
-        entity.setSesion(entityManager.getReference(ChatSesionEntity.class, message.sessionId()));
-        entity.setRol(message.role());
-        entity.setContenido(message.content());
+        ChatMessageEntity entity = new ChatMessageEntity();
+        entity.setSession(entityManager.getReference(ChatSessionEntity.class, message.sessionId()));
+        entity.setRole(message.role());
+        entity.setContent(message.content());
         entity.setMetadata(message.metadata());
-        entity.setFechaHora(message.dateTime());
+        entity.setDateAndTime(message.dateTime());
 
         chatMessageRepository.save(entity);
     }
@@ -44,13 +44,13 @@ public class ChatMessagePersistenceRepository implements ChatMessageRepository {
                 .toList();
     }
 
-    private ChatMessage toDomain(ChatMensajeEntity entity) {
+    private ChatMessage toDomain(ChatMessageEntity entity) {
         return new ChatMessage(
-                entity.getSesion().getId(),
-                entity.getRol(),
-                entity.getContenido(),
+                entity.getSession().getId(),
+                entity.getRole(),
+                entity.getContent(),
                 entity.getMetadata(),
-                entity.getFechaHora()
+                entity.getDateAndTime()
         );
     }
 }

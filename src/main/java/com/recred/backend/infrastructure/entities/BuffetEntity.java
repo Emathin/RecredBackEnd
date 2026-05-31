@@ -2,7 +2,7 @@ package com.recred.backend.infrastructure.entities;
 
 
 import com.recred.backend.domain.models.Buffet;
-import com.recred.backend.domain.models.Kiosquero;
+import com.recred.backend.domain.models.Merchant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -35,50 +35,50 @@ public class BuffetEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "colegio_id", nullable = false)
-    private ColegioEntity colegioEntity;
+    private SchoolEntity schoolEntity;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vendedor_id", nullable = false)
-    private KiosqueroEntity vendedor;
+    private MerchantEntity merchant;
 
     @Column(nullable = false)
-    private String nombre;
+    private String name;
 
     @Column(name = "fecha_vencimiento_habilitacion")
-    private LocalDate fechaVencimientoHabilitacion;
+    private LocalDate contractExpirationDate;
 
     @Column(nullable = false)
-    private Boolean activo = true;
+    private Boolean active = true;
 
     @CreationTimestamp
     @Column(name = "creado_en", updatable = false)
-    private LocalDateTime creadoEn;
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "actualizado_en")
-    private LocalDateTime actualizadoEn;
+    private LocalDateTime updatedAt;
 
     public Buffet toDomain() {
         Buffet buffet = new Buffet();
 
         buffet.setId(this.id);
-        buffet.setNombre(this.nombre);
-        buffet.setFechaVencimientoHabilitacion(this.fechaVencimientoHabilitacion);
-        buffet.setActivo(this.activo);
-        buffet.setCreadoEn(this.creadoEn);
-        buffet.setActualizadoEn(this.actualizadoEn);
+        buffet.setName(this.name);
+        buffet.setContractExpirationDate(this.contractExpirationDate);
+        buffet.setActive(this.active);
+        buffet.setCreatedAt(this.createdAt);
+        buffet.setUpdatedAt(this.updatedAt);
 
-        if (this.colegioEntity != null) {
-            buffet.setColegio(this.colegioEntity.toDomain());
+        if (this.schoolEntity != null) {
+            buffet.setSchool(this.schoolEntity.toDomain());
         }
 
-        if (this.vendedor != null) {
+        if (this.merchant != null) {
 
-            Kiosquero kiosqueroDominio = new Kiosquero();
-            kiosqueroDominio.setId(this.vendedor.getId());
-            kiosqueroDominio.setCuit(this.vendedor.getCuit());
+            Merchant merchantDominio = new Merchant();
+            merchantDominio.setId(this.merchant.getId());
+            merchantDominio.setCuit(this.merchant.getCuit());
 
-            buffet.setVendedor(kiosqueroDominio);
+            buffet.setMerchant(merchantDominio);
         }
 
         return buffet;

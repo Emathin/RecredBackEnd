@@ -2,7 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.events.ProductPriceChangedEvent;
 import com.recred.backend.domain.events.ProductPriceChangedPublisher;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Product;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,17 +26,17 @@ public class UpdateProductPrice {
             throw new IllegalArgumentException("Product price must be greater than zero");
         }
 
-        Producto producto = productRepository.findById(productId)
+        Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
 
-        BigDecimal oldPrice = producto.getPrecio();
+        BigDecimal oldPrice = product.getPrice();
 
         if (oldPrice.compareTo(newPrice) != 0) {
-            producto.setPrecio(newPrice);
+            product.setPrice(newPrice);
             productRepository.updatePrice(productId, newPrice);
 
             eventPublisher.publish(new ProductPriceChangedEvent(
-                    producto,
+                    product,
                     oldPrice,
                     newPrice,
                     buffetId

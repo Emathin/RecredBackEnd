@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.domain.models.RestriccionHoraria;
+import com.recred.backend.domain.models.TimeRestriction;
 
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DisableTimeRestriction;
@@ -43,25 +43,25 @@ public class TimeRestrictionController {
     }
 
     @PostMapping
-    public ResponseEntity<RestriccionHoraria> create(@RequestBody
+    public ResponseEntity<TimeRestriction> create(@RequestBody
                                                          TimeRestrictionCommand command) {
-        RestriccionHoraria created = createTimeRestriction.execute(command);
+        TimeRestriction created = createTimeRestriction.execute(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<RestriccionHoraria>>
+    public ResponseEntity<List<TimeRestriction>>
     getByStudent(@PathVariable UUID studentId) {
-        List<RestriccionHoraria> restrictions =
+        List<TimeRestriction> restrictions =
                 getTimeRestrictionsByStudent.execute(studentId);
         return ResponseEntity.ok(restrictions);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<RestriccionHoraria> update(
+    public ResponseEntity<TimeRestriction> update(
             @PathVariable UUID id,
             @RequestBody TimeRestrictionCommand command) {
-        RestriccionHoraria updated = updateTimeRestriction.execute(id, command);
+        TimeRestriction updated = updateTimeRestriction.execute(id, command);
         return ResponseEntity.ok(updated);
     }
 

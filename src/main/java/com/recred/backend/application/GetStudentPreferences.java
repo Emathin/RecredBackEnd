@@ -1,27 +1,27 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.TipoSugerenciaIA;
-import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
+import com.recred.backend.domain.models.IaSuggestionType;
+import com.recred.backend.domain.repositories.AISuggestionRepository;
+import com.recred.backend.infrastructure.entities.AISuggestionEntity;
 import java.util.List;
 import java.util.UUID;
 
 public class GetStudentPreferences {
 
-    private final SugerenciaIARepository sugerenciaIARepository;
+    private final AISuggestionRepository AISuggestionRepository;
 
-    public GetStudentPreferences(SugerenciaIARepository sugerenciaIARepository) {
-        this.sugerenciaIARepository = sugerenciaIARepository;
+    public GetStudentPreferences(AISuggestionRepository AISuggestionRepository) {
+        this.AISuggestionRepository = AISuggestionRepository;
     }
 
-    public List<SugerenciaIAEntity> execute(
-            UUID alumnoId, boolean onlyLast, TipoSugerenciaIA tipo) {
-        List<SugerenciaIAEntity> preferences;
+    public List<AISuggestionEntity> execute(
+            UUID alumnoId, boolean onlyLast, IaSuggestionType tipo) {
+        List<AISuggestionEntity> preferences;
 
         if (tipo != null) {
-            preferences = sugerenciaIARepository.findByAlumnoIdAndTipo(alumnoId, tipo);
+            preferences = AISuggestionRepository.findByAlumnoIdAndTipo(alumnoId, tipo);
         } else {
-            preferences = sugerenciaIARepository.findByAlumnoId(alumnoId);
+            preferences = AISuggestionRepository.findByAlumnoId(alumnoId);
         }
         
         if (onlyLast && !preferences.isEmpty()) {

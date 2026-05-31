@@ -1,7 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.PresupuestoAlumno;
-import com.recred.backend.domain.repositories.PresupuestoRepository;
+import com.recred.backend.domain.models.StudentBudget;
+import com.recred.backend.domain.repositories.BudgetRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,7 +20,7 @@ import static org.mockito.Mockito.when;
 class DisableBudgetTest {
 
     @Mock
-    private PresupuestoRepository repository;
+    private BudgetRepository repository;
 
     @InjectMocks
     private DisableBudget disableBudget;
@@ -36,15 +36,15 @@ class DisableBudgetTest {
     @Test
     void execute_PresupuestoExiste_LoDesactivaYGuarda() {
         UUID budgetId = UUID.randomUUID();
-        PresupuestoAlumno presupuesto = new PresupuestoAlumno();
+        StudentBudget presupuesto = new StudentBudget();
         presupuesto.setId(budgetId);
-        presupuesto.setActivo(true);
+        presupuesto.setActive(true);
 
         when(repository.findById(budgetId)).thenReturn(Optional.of(presupuesto));
 
         disableBudget.execute(budgetId);
 
-        assertFalse(presupuesto.isActivo(), "El presupuesto debería haber sido desactivado");
+        assertFalse(presupuesto.isActive(), "El presupuesto debería haber sido desactivado");
         verify(repository).save(presupuesto);
     }
 }

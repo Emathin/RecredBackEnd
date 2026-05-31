@@ -1,7 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.ClasificacionSalud;
-import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
+import com.recred.backend.domain.models.HealthClassification;
+import com.recred.backend.domain.repositories.HealthClassificationRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,17 +17,17 @@ import static org.mockito.Mockito.*;
 class GetHealthRestrictionsCatalogTest {
 
     @Mock
-    private ClasificacionSaludRepository repository;
+    private HealthClassificationRepository repository;
 
     @InjectMocks
     private GetHealthRestrictionsCatalog useCase;
 
     @Test
     void ejecutar_DeberiaRetornarListaDelRepositorio() {
-        ClasificacionSalud item = new ClasificacionSalud();
+        HealthClassification item = new HealthClassification();
         when(repository.findAll()).thenReturn(List.of(item));
 
-        List<ClasificacionSalud> resultado = useCase.ejecutar();
+        List<HealthClassification> resultado = useCase.ejecutar();
 
         assertEquals(1, resultado.size());
         verify(repository).findAll();

@@ -2,18 +2,18 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.AIEventType;
 import com.recred.backend.domain.models.ConsumptionCategory;
-import com.recred.backend.domain.models.Kiosquero;
+import com.recred.backend.domain.models.Merchant;
+import com.recred.backend.domain.models.Product;
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductRecommendationResult;
-import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.infrastructure.entities.AIEventEntity;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.StudentEntity;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
-import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.ProductEntity;
 import jakarta.persistence.EntityManager;
 
 import java.util.LinkedHashMap;
@@ -44,8 +44,8 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         SpendingPrediction spendingPrediction = result.spendingPrediction();
         AIEventEntity aiEventEntity = new AIEventEntity();
         aiEventEntity.setType(AIEventType.PREDICCION_GASTO);
-        aiEventEntity.setAlumnoEntity(entityManager.getReference(
-                AlumnoEntity.class,
+        aiEventEntity.setStudentEntity(entityManager.getReference(
+                StudentEntity.class,
                 spendingPrediction.studentId()
         ));
         aiEventEntity.setInputOrigin(INPUT_ORIGIN);
@@ -111,16 +111,16 @@ public class AIEventPersistenceRepository implements AIEventRepository {
                 BuffetEntity.class,
                 result.getProductChangeRecommendation().getIdBuffet()
         ));
-        aiEventEntity.setProductoEntity(entityManager.getReference(
-                ProductoEntity.class,
+        aiEventEntity.setProductEntity(entityManager.getReference(
+                ProductEntity.class,
                 result.getProductChangeRecommendation().getId()
         ));
         aiEventEntity.setInputOrigin("Backend Product Reco");
 
         Map<String, Object> inputData = new LinkedHashMap<>();
         inputData.put("id", result.getProductChangeRecommendation().getId());
-        inputData.put("nombre", result.getProductChangeRecommendation().getNombre());
-        inputData.put("precio", result.getProductChangeRecommendation().getPrecio());
+        inputData.put("nombre", result.getProductChangeRecommendation().getName());
+        inputData.put("precio", result.getProductChangeRecommendation().getPrice());
 
         aiEventEntity.setInputData(inputData);
 
@@ -144,20 +144,20 @@ public class AIEventPersistenceRepository implements AIEventRepository {
 
     @Override
     public void registerProductAdditionRecommendation(
-            Producto product, Kiosquero kiosquero, UUID buffetId) {
+            Product product, Merchant merchant, UUID buffetId) {
         AIEventEntity aiEventEntity = new AIEventEntity();
         aiEventEntity.setType(AIEventType.AGREGAR_PRODUCTO);
         aiEventEntity.setBuffetEntity(entityManager.getReference(
                 BuffetEntity.class,
                 buffetId
         ));
-        aiEventEntity.setProductoEntity(entityManager.getReference(
-                ProductoEntity.class,
+        aiEventEntity.setProductEntity(entityManager.getReference(
+                ProductEntity.class,
                 product.getId()
         ));
         aiEventEntity.setInputOrigin("BACKEND PRODUCT ADDITION RECO");
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("resumen", "El producto " + product.getNombre() +
+        data.put("resumen", "El producto " + product.getName() +
                 " experimenta una gran cantidad de ventas. Te sugerimos " +
                 "que lo agregues a tu stock") ;
         aiEventEntity.setResultData(data);

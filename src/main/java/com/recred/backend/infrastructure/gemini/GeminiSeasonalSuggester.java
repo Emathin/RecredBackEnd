@@ -61,7 +61,7 @@ public class GeminiSeasonalSuggester {
         - Clima actual: %s°C, %s
         - Tipo de establecimiento: Kiosco en escuela Primaria (solo venta de alimentos y bebidas).
         REGLAS DE NEGOCIO:
-        1. Evalúa el contexto y selecciona productos de las siguientes categorías predefinidas:
+        1. Evalúa el contexto y selecciona products de las siguientes categorías predefinidas:
            - Alta Sensibilidad: Chocolates y Alfajores, Helados y Congelados, Panificados y
            Horneados, Bebidas Frías, Bebidas Calientes.
            - Resistencia: Golosinas de Azúcar/Frutales, Snacks Salados.
@@ -77,9 +77,9 @@ public class GeminiSeasonalSuggester {
         {
           "sugerencias": [
             {
-              "categoria": "Nombre de la categoría",
-              "accion": "AUMENTAR",
-              "motivo": "Justificación comercial breve."
+              "category": "Nombre de la categoría",
+              "action": "AUMENTAR",
+              "reason": "Justificación comercial breve."
             }
           ],
           "tip_promocional": "Idea breve de promo cruzada."

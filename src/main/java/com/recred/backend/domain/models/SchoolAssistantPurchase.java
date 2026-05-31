@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 
 public record SchoolAssistantPurchase(
         BigDecimal totalAmount,
-        EstadoCompra status,
-        MedioPago paymentMethod,
+        PurchaseState status,
+        PaymentMethod paymentMethod,
         LocalDateTime dateTime
 ) {
 }

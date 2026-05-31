@@ -1,16 +1,16 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.PurchaseState;
 import com.recred.backend.domain.models.BudgetPeriod;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
-import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.StudentNotFoundException;
 import com.recred.backend.domain.models.ConsumptionCategory;
 import com.recred.backend.domain.models.PurchaseSpending;
 import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.models.SpendingPeriodPreference;
 import com.recred.backend.domain.models.DateRange;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.StudentRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
@@ -31,10 +31,10 @@ public class PredictStudentSpending {
 
     private static final int HISTORICAL_DAYS = 90;
     private static final int MAX_CATEGORIES = 5;
-    private static final Set<EstadoCompra> ACTUAL_SPENDING_STATUSES = Set.of(
-            EstadoCompra.ENTREGADO);
+    private static final Set<PurchaseState> ACTUAL_SPENDING_STATUSES = Set.of(
+            PurchaseState.ENTREGADO);
 
-    private final AlumnoRepository alumnoRepository;
+    private final StudentRepository studentRepository;
     private final SpendingPreferenceRepository spendingPreferenceRepository;
     private final PurchaseSpendingRepository purchaseSpendingRepository;
     private final SpendingPredictionAnalyzer spendingPredictionAnalyzer;
@@ -44,7 +44,7 @@ public class PredictStudentSpending {
     private final Clock clock;
 
     public PredictStudentSpending(
-            AlumnoRepository alumnoRepository,
+            StudentRepository studentRepository,
             SpendingPreferenceRepository spendingPreferenceRepository,
             PurchaseSpendingRepository purchaseSpendingRepository,
             SpendingPredictionAnalyzer spendingPredictionAnalyzer,
@@ -53,7 +53,7 @@ public class PredictStudentSpending {
             SpendingPredictionCalculator spendingPredictionCalculator,
             Clock clock
     ) {
-        this.alumnoRepository = alumnoRepository;
+        this.studentRepository = studentRepository;
         this.spendingPreferenceRepository = spendingPreferenceRepository;
         this.purchaseSpendingRepository = purchaseSpendingRepository;
         this.spendingPredictionAnalyzer = spendingPredictionAnalyzer;
@@ -65,8 +65,8 @@ public class PredictStudentSpending {
 
     @Transactional
     public SpendingPredictionResult execute(UUID studentId, BudgetPeriod requestedPeriod) {
-        if (!alumnoRepository.existsById(studentId)) {
-            throw new AlumnoNoEncontradoException(studentId);
+        if (!studentRepository.existsById(studentId)) {
+            throw new StudentNotFoundException(studentId);
         }
 
         LocalDate calculationDate = LocalDate.now(clock);

@@ -1,8 +1,8 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.CategoriaProducto;
+import com.recred.backend.domain.models.ProductCategory;
 import com.recred.backend.domain.repositories.CategoryRepository;
-import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
+import com.recred.backend.infrastructure.entities.ProductCategoryEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -18,25 +18,25 @@ public class CategoryRepositoryImpl implements CategoryRepository {
     }
 
     @Override
-    public Optional<CategoriaProducto> findById(UUID id) {
-        return springDataRepository.findById(id).map(CategoriaProductoEntity::toDomain);
+    public Optional<ProductCategory> findById(UUID id) {
+        return springDataRepository.findById(id).map(ProductCategoryEntity::toDomain);
     }
 
     @Override
-    public Optional<CategoriaProducto> findByDescription(String description) {
+    public Optional<ProductCategory> findByDescription(String description) {
         return springDataRepository.findByDescripcion(description)
-                .map(CategoriaProductoEntity::toDomain);
+                .map(ProductCategoryEntity::toDomain);
     }
 
     @Override
-    public CategoriaProducto save(CategoriaProducto category) {
-        CategoriaProductoEntity entity = new CategoriaProductoEntity();
+    public ProductCategory save(ProductCategory category) {
+        ProductCategoryEntity entity = new ProductCategoryEntity();
         if (category.getId() != null) {
             entity = springDataRepository.findById(category.getId())
-                    .orElse(new CategoriaProductoEntity());
+                    .orElse(new ProductCategoryEntity());
         }
-        entity.setDescripcion(category.getDescripcion());
-        entity.setActivo(category.getActivo());
+        entity.setDescription(category.getDescription());
+        entity.setActive(category.getActive());
         return springDataRepository.save(entity).toDomain();
     }
 }

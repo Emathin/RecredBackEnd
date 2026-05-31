@@ -41,7 +41,7 @@ public class AIEventEntity {
 
     @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "alumno_id")
-    private AlumnoEntity alumnoEntity;
+    private StudentEntity studentEntity;
 
     @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "buffet_id")
@@ -49,7 +49,7 @@ public class AIEventEntity {
 
     @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "producto_id")
-    private ProductoEntity productoEntity;
+    private ProductEntity productEntity;
 
     @Column(name = "origen_entrada", columnDefinition = "TEXT")
     private String inputOrigin;

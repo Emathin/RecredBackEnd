@@ -1,11 +1,11 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.EstadoInventario;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.InventoryState;
 import com.recred.backend.domain.models.HealthyProductOption;
 import com.recred.backend.domain.models.RecentProductConsumption;
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
-import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
+import com.recred.backend.infrastructure.entities.PurchaseDetailEntity;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -15,28 +15,28 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface HealthyRecommendationPurchaseJpaRepository
-        extends JpaRepository<CompraDetalleEntity, UUID>,
+        extends JpaRepository<PurchaseDetailEntity, UUID>,
         HealthyRecommendationPurchaseRepository {
 
     @Override
     @Query("""
             select new com.recred.backend.domain.models.RecentProductConsumption(
-                d.productoEntity.id,
-                d.productoEntity.nombre,
-                d.productoEntity.descripcion,
-                d.productoEntity.categoria.descripcion,
-                d.compra.buffetEntity.id,
-                d.compra.fechaHora,
-                d.cantidad
+                d.productEntity.id,
+                d.productEntity.name,
+                d.productEntity.description,
+                d.productEntity.category.description,
+                d.purchase.buffetEntity.id,
+                d.purchase.dateAndTime,
+                d.amount
             )
-            from CompraDetalleEntity d
-            where d.compra.alumnoEntity.id = :studentId
-            and d.compra.estado in :statuses
-            and d.compra.fechaHora between :startDateTime and :endDateTime
+            from PurchaseDetailEntity d
+            where d.purchase.studentEntity.id = :studentId
+            and d.purchase.purchaseState in :statuses
+            and d.purchase.dateAndTime between :startDateTime and :endDateTime
             """)
     List<RecentProductConsumption> findConsumptions(
             @Param("studentId") UUID studentId,
-            @Param("statuses") Collection<EstadoCompra> statuses,
+            @Param("statuses") Collection<PurchaseState> statuses,
             @Param("startDateTime") LocalDateTime startDateTime,
             @Param("endDateTime") LocalDateTime endDateTime
     );
@@ -45,35 +45,35 @@ public interface HealthyRecommendationPurchaseJpaRepository
     @Query("""
             select distinct new com.recred.backend.domain.models.HealthyProductOption(
                 p.id,
-                p.nombre,
-                p.descripcion,
-                p.categoria.descripcion
+                p.name,
+                p.description,
+                p.category.description
             )
-            from InventarioBuffetEntity i
-            join i.productoEntity p
+            from BuffetInventoryEntity i
+            join i.productEntity p
             where i.buffetEntity.id = :buffetId
-            and i.stockActual > 0
-            and i.estado in :states
-            and p.activo = true
+            and i.currentStock > 0
+            and i.state in :states
+            and p.active = true
             and p.id <> :excludedProductId
             and not exists (
                 select h.id
-                from ProductoEntity product
-                join product.clasificacionesSalud h
+                from ProductEntity product
+                join product.healthClassifications h
                 where product.id = p.id
                 and h.id in (
                     select r.id
-                    from AlumnoEntity student
-                    join student.restriccionesSalud r
+                    from StudentEntity student
+                    join student.healthRestrictions r
                     where student.id = :studentId
                 )
             )
-            order by p.nombre
+            order by p.name
             """)
     List<HealthyProductOption> findAvailableOptions(
             @Param("studentId") UUID studentId,
             @Param("buffetId") UUID buffetId,
             @Param("excludedProductId") UUID excludedProductId,
-            @Param("states") Collection<EstadoInventario> states
+            @Param("states") Collection<InventoryState> states
     );
 }

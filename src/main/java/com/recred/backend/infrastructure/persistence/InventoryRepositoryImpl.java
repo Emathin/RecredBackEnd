@@ -1,11 +1,12 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.Inventario;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Inventory;
+import com.recred.backend.domain.models.Product;
+import com.recred.backend.domain.models.ProductCategory;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
-import com.recred.backend.infrastructure.entities.InventarioBuffetEntity;
-import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.BuffetInventoryEntity;
+import com.recred.backend.infrastructure.entities.ProductEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -30,58 +31,58 @@ public class InventoryRepositoryImpl implements InventoryRepository {
     }
 
     @Override
-    public Inventario save(Inventario inventario) {
-        InventarioBuffetEntity entity = springDataInventoryRepository
+    public Inventory save(Inventory inventory) {
+        BuffetInventoryEntity entity = springDataInventoryRepository
                 .findByBuffetEntityIdAndProductoEntityId(
-                        inventario.getBuffetId(), inventario.getProductoId())
-                .orElse(new InventarioBuffetEntity());
+                        inventory.getBuffetId(), inventory.getProductId())
+                .orElse(new BuffetInventoryEntity());
 
-        entity.setStockActual(inventario.getStockActual());
-        entity.setStockMinimo(inventario.getStockMinimo());
-        entity.setEstado(inventario.getEstado());
+        entity.setCurrentStock(inventory.getCurrentStock());
+        entity.setMinimumStock(inventory.getMinimumStock());
+        entity.setState(inventory.getStock());
 
         if (entity.getBuffetEntity() == null) {
             BuffetEntity buffet = new BuffetEntity();
-            buffet.setId(inventario.getBuffetId());
+            buffet.setId(inventory.getBuffetId());
             entity.setBuffetEntity(buffet);
         }
 
-        if (entity.getProductoEntity() == null) {
-            ProductoEntity producto = new ProductoEntity();
-            producto.setId(inventario.getProductoId());
-            entity.setProductoEntity(producto);
+        if (entity.getProductEntity() == null) {
+            ProductEntity producto = new ProductEntity();
+            producto.setId(inventory.getProductId());
+            entity.setProductEntity(producto);
         }
 
         return springDataInventoryRepository.save(entity).toDomain();
     }
 
     @Override
-    public Optional<Inventario> findByBuffetAndProduct(UUID buffetId, UUID productoId) {
+    public Optional<Inventory> findByBuffetAndProduct(UUID buffetId, UUID productoId) {
         return springDataInventoryRepository
                 .findByBuffetEntityIdAndProductoEntityId(buffetId, productoId)
-                .map(InventarioBuffetEntity::toDomain);
+                .map(BuffetInventoryEntity::toDomain);
     }
 
     @Override
-    public List<Producto> findAvailableProductsByBuffet(UUID buffetId) {
+    public List<Product> findAvailableProductsByBuffet(UUID buffetId) {
         return springDataInventoryRepository.findAvailableByBuffetId(buffetId).stream()
-                .map(InventarioBuffetEntity::getProductoEntity)
+                .map(BuffetInventoryEntity::getProductEntity)
                 .map(this::toProductDomain)
                 .collect(Collectors.toList());
     }
 
-    private Producto toProductDomain(ProductoEntity entity) {
-        Producto producto = new Producto();
-        producto.setId(entity.getId());
-        producto.setNombre(entity.getNombre());
+    private Product toProductDomain(ProductEntity entity) {
+        Product product = new Product();
+        product.setId(entity.getId());
+        product.setName(entity.getName());
 
-        if (entity.getCategoria() != null) {
-            com.recred.backend.domain.models.CategoriaProducto category =
-                    new com.recred.backend.domain.models.CategoriaProducto();
-            category.setId(entity.getCategoria().getId());
-            category.setDescripcion(entity.getCategoria().getDescripcion());
-            producto.setCategoria(category);
+        if (entity.getCategory() != null) {
+            ProductCategory category =
+                    new ProductCategory();
+            category.setId(entity.getCategory().getId());
+            category.setDescription(entity.getCategory().getDescription());
+            product.setCategory(category);
         }
-        return producto;
+        return product;
     }
 }

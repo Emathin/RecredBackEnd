@@ -5,7 +5,7 @@ import com.recred.backend.domain.models.ConsumptionCategory;
 import java.math.BigDecimal;
 
 public record ConsumptionCategoryResponse(
-        @JsonProperty("descripcion")
+        @JsonProperty("description")
         String description,
         @JsonProperty("montoTotal")
         BigDecimal totalAmount

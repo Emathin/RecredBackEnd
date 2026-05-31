@@ -1,6 +1,6 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.PeriodoPresupuesto;
+import com.recred.backend.domain.models.PeriodBudget;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -10,7 +10,7 @@ import java.util.UUID;
 public record BudgetCommand(
         UUID studentId,
         BigDecimal limitAmount,
-        PeriodoPresupuesto period,
+        PeriodBudget period,
         LocalDate startDate,
         List<CategoryRuleCommand> categoryRules
 ) {

@@ -7,14 +7,14 @@ import com.recred.backend.domain.models.ConsumptionAlertMessages;
 import com.recred.backend.domain.models.ConsumptionAlertPattern;
 import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.ConsumptionAlertType;
-import com.recred.backend.domain.models.TipoNotificacion;
-import com.recred.backend.domain.models.TipoSugerenciaIA;
+import com.recred.backend.domain.models.NotificationType;
+import com.recred.backend.domain.models.IaSuggestionType;
 import com.recred.backend.infrastructure.entities.AIEventEntity;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
-import com.recred.backend.infrastructure.entities.NotificacionEntity;
-import com.recred.backend.infrastructure.entities.ProductoEntity;
-import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
-import com.recred.backend.infrastructure.entities.UsuarioEntity;
+import com.recred.backend.infrastructure.entities.StudentEntity;
+import com.recred.backend.infrastructure.entities.NotificationEntity;
+import com.recred.backend.infrastructure.entities.ProductEntity;
+import com.recred.backend.infrastructure.entities.AISuggestionEntity;
+import com.recred.backend.infrastructure.entities.UserEntity;
 import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
@@ -76,21 +76,21 @@ class ConsumptionAlertNotificationPersistenceRepositoryTest {
         UUID studentUserId = UUID.randomUUID();
         UUID tutorUserId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        AlumnoEntity student = new AlumnoEntity();
-        UsuarioEntity studentUser = new UsuarioEntity();
-        UsuarioEntity tutorUser = new UsuarioEntity();
-        ProductoEntity product = new ProductoEntity();
+        StudentEntity student = new StudentEntity();
+        UserEntity studentUser = new UserEntity();
+        UserEntity tutorUser = new UserEntity();
+        ProductEntity product = new ProductEntity();
         AIEventEntity event = new AIEventEntity();
-        SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
+        AISuggestionEntity suggestion = new AISuggestionEntity();
         studentUser.setId(studentUserId);
         tutorUser.setId(tutorUserId);
         product.setId(productId);
         suggestion.setId(UUID.randomUUID());
-        when(entityManager.getReference(AlumnoEntity.class, studentId)).thenReturn(student);
-        when(entityManager.getReference(UsuarioEntity.class, studentUserId))
+        when(entityManager.getReference(StudentEntity.class, studentId)).thenReturn(student);
+        when(entityManager.getReference(UserEntity.class, studentUserId))
                 .thenReturn(studentUser);
-        when(entityManager.getReference(UsuarioEntity.class, tutorUserId)).thenReturn(tutorUser);
-        when(entityManager.getReference(ProductoEntity.class, productId)).thenReturn(product);
+        when(entityManager.getReference(UserEntity.class, tutorUserId)).thenReturn(tutorUser);
+        when(entityManager.getReference(ProductEntity.class, productId)).thenReturn(product);
         when(aiEventJpaRepository.save(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(event);
         when(suggestionJpaRepository.save(org.mockito.ArgumentMatchers.any()))
@@ -103,35 +103,35 @@ class ConsumptionAlertNotificationPersistenceRepositoryTest {
         verify(aiEventJpaRepository).save(eventCaptor.capture());
         AIEventEntity savedEvent = eventCaptor.getValue();
         assertEquals(AIEventType.ANALISIS_CONSUMO, savedEvent.getType());
-        assertSame(student, savedEvent.getAlumnoEntity());
-        assertSame(product, savedEvent.getProductoEntity());
+        assertSame(student, savedEvent.getStudentEntity());
+        assertSame(product, savedEvent.getProductEntity());
         assertEquals("BACKEND_ALERTA_ESTADISTICA_CONSUMO", savedEvent.getInputOrigin());
         assertEquals(new BigDecimal("0.8000"), savedEvent.getConfidence());
         assertEquals("STATISTICAL_PATTERN", savedEvent.getInputData().get("tipo"));
         assertEquals("Tomar mas agua.", savedEvent.getResultData().get("accionSugerida"));
 
-        ArgumentCaptor<SugerenciaIAEntity> suggestionCaptor = ArgumentCaptor.forClass(
-                SugerenciaIAEntity.class);
+        ArgumentCaptor<AISuggestionEntity> suggestionCaptor = ArgumentCaptor.forClass(
+                AISuggestionEntity.class);
         verify(suggestionJpaRepository).save(suggestionCaptor.capture());
-        SugerenciaIAEntity savedSuggestion = suggestionCaptor.getValue();
-        assertEquals(TipoSugerenciaIA.RESUMEN_CONSUMO, savedSuggestion.getTipo());
-        assertSame(student, savedSuggestion.getAlumnoEntity());
-        assertSame(product, savedSuggestion.getProductoEntity());
+        AISuggestionEntity savedSuggestion = suggestionCaptor.getValue();
+        assertEquals(IaSuggestionType.RESUMEN_CONSUMO, savedSuggestion.getType());
+        assertSame(student, savedSuggestion.getStudentEntity());
+        assertSame(product, savedSuggestion.getProductEntity());
         assertSame(event, savedSuggestion.getEventoIaEntity());
-        assertEquals("Elegir agua", savedSuggestion.getTitulo());
-        assertEquals("Te recomendamos tomar mas agua.", savedSuggestion.getMensaje());
+        assertEquals("Elegir agua", savedSuggestion.getTittle());
+        assertEquals("Te recomendamos tomar mas agua.", savedSuggestion.getMessage());
         assertEquals("Bebidas", savedSuggestion.getMetadata().get("categoriaPrincipal"));
 
-        ArgumentCaptor<NotificacionEntity> notificationCaptor = ArgumentCaptor.forClass(
-                NotificacionEntity.class);
+        ArgumentCaptor<NotificationEntity> notificationCaptor = ArgumentCaptor.forClass(
+                NotificationEntity.class);
         verify(notificationJpaRepository, org.mockito.Mockito.times(2))
                 .save(notificationCaptor.capture());
-        List<NotificacionEntity> notifications = notificationCaptor.getAllValues();
-        assertSame(studentUser, notifications.get(0).getUsuarioEntity());
-        assertSame(tutorUser, notifications.get(1).getUsuarioEntity());
-        assertEquals(TipoNotificacion.SUGERENCIA_IA, notifications.get(0).getTipo());
-        assertSame(suggestion, notifications.get(0).getSugerenciaIaEntity());
-        assertEquals("Sugerencia para Juan", notifications.get(1).getTitulo());
+        List<NotificationEntity> notifications = notificationCaptor.getAllValues();
+        assertSame(studentUser, notifications.get(0).getUserEntity());
+        assertSame(tutorUser, notifications.get(1).getUserEntity());
+        assertEquals(NotificationType.SUGERENCIA_IA, notifications.get(0).getType());
+        assertSame(suggestion, notifications.get(0).getAISuggestionEntity());
+        assertEquals("Sugerencia para Juan", notifications.get(1).getTittle());
         verify(eventPublisher, times(2)).publishEvent(
                 org.mockito.ArgumentMatchers.any(Object.class)
         );
@@ -141,13 +141,13 @@ class ConsumptionAlertNotificationPersistenceRepositoryTest {
     void saveHealthyRecommendationWithoutProductReference() {
         UUID studentId = UUID.randomUUID();
         UUID studentUserId = UUID.randomUUID();
-        AlumnoEntity student = new AlumnoEntity();
-        UsuarioEntity studentUser = new UsuarioEntity();
+        StudentEntity student = new StudentEntity();
+        UserEntity studentUser = new UserEntity();
         AIEventEntity event = new AIEventEntity();
-        SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
+        AISuggestionEntity suggestion = new AISuggestionEntity();
         studentUser.setId(studentUserId);
-        when(entityManager.getReference(AlumnoEntity.class, studentId)).thenReturn(student);
-        when(entityManager.getReference(UsuarioEntity.class, studentUserId))
+        when(entityManager.getReference(StudentEntity.class, studentId)).thenReturn(student);
+        when(entityManager.getReference(UserEntity.class, studentUserId))
                 .thenReturn(studentUser);
         when(aiEventJpaRepository.save(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(event);
@@ -156,12 +156,12 @@ class ConsumptionAlertNotificationPersistenceRepositoryTest {
 
         repository.save(healthyAlert(studentId, studentUserId));
 
-        ArgumentCaptor<SugerenciaIAEntity> suggestionCaptor = ArgumentCaptor.forClass(
-                SugerenciaIAEntity.class);
+        ArgumentCaptor<AISuggestionEntity> suggestionCaptor = ArgumentCaptor.forClass(
+                AISuggestionEntity.class);
         verify(suggestionJpaRepository).save(suggestionCaptor.capture());
-        assertEquals(TipoSugerenciaIA.RECOMENDACION_SALUDABLE, suggestionCaptor.getValue()
-                .getTipo());
-        assertNull(suggestionCaptor.getValue().getProductoEntity());
+        assertEquals(IaSuggestionType.RECOMENDACION_SALUDABLE, suggestionCaptor.getValue()
+                .getType());
+        assertNull(suggestionCaptor.getValue().getProductEntity());
     }
 
     @Test
@@ -169,18 +169,18 @@ class ConsumptionAlertNotificationPersistenceRepositoryTest {
         UUID studentId = UUID.randomUUID();
         UUID studentUserId = UUID.randomUUID();
         UUID notificationId = UUID.randomUUID();
-        AlumnoEntity student = new AlumnoEntity();
-        UsuarioEntity studentUser = new UsuarioEntity();
+        StudentEntity student = new StudentEntity();
+        UserEntity studentUser = new UserEntity();
         AIEventEntity event = new AIEventEntity();
         student.setId(studentId);
         studentUser.setId(studentUserId);
-        when(entityManager.getReference(AlumnoEntity.class, studentId)).thenReturn(student);
-        when(entityManager.getReference(UsuarioEntity.class, studentUserId))
+        when(entityManager.getReference(StudentEntity.class, studentId)).thenReturn(student);
+        when(entityManager.getReference(UserEntity.class, studentUserId))
                 .thenReturn(studentUser);
         when(aiEventJpaRepository.save(any())).thenReturn(event);
         when(suggestionJpaRepository.save(any())).thenReturn(null);
         when(notificationJpaRepository.save(any())).thenAnswer(invocation -> {
-            NotificacionEntity notification = invocation.getArgument(0);
+            NotificationEntity notification = invocation.getArgument(0);
             notification.setId(notificationId);
             return notification;
         });
@@ -196,9 +196,9 @@ class ConsumptionAlertNotificationPersistenceRepositoryTest {
                 notificationId.toString(),
                 eventPublished.notification().data().get("notificacionId")
         );
-        assertEquals(studentId.toString(), eventPublished.notification().data().get("alumnoId"));
+        assertEquals(studentId.toString(), eventPublished.notification().data().get("studentId"));
         assertEquals(
-                TipoNotificacion.SUGERENCIA_IA.name(),
+                NotificationType.SUGERENCIA_IA.name(),
                 eventPublished.notification().data().get("tipo")
         );
         assertFalse(eventPublished.notification().data().containsKey("sugerenciaIaId"));
@@ -208,12 +208,12 @@ class ConsumptionAlertNotificationPersistenceRepositoryTest {
     void linkSuggestionWithOriginalEventWhenSaveReturnsNull() {
         UUID studentId = UUID.randomUUID();
         UUID studentUserId = UUID.randomUUID();
-        AlumnoEntity student = new AlumnoEntity();
-        UsuarioEntity studentUser = new UsuarioEntity();
-        SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
+        StudentEntity student = new StudentEntity();
+        UserEntity studentUser = new UserEntity();
+        AISuggestionEntity suggestion = new AISuggestionEntity();
         studentUser.setId(studentUserId);
-        when(entityManager.getReference(AlumnoEntity.class, studentId)).thenReturn(student);
-        when(entityManager.getReference(UsuarioEntity.class, studentUserId))
+        when(entityManager.getReference(StudentEntity.class, studentId)).thenReturn(student);
+        when(entityManager.getReference(UserEntity.class, studentUserId))
                 .thenReturn(studentUser);
         when(aiEventJpaRepository.save(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(null);
@@ -224,8 +224,8 @@ class ConsumptionAlertNotificationPersistenceRepositoryTest {
 
         ArgumentCaptor<AIEventEntity> eventCaptor = ArgumentCaptor.forClass(
                 AIEventEntity.class);
-        ArgumentCaptor<SugerenciaIAEntity> suggestionCaptor = ArgumentCaptor.forClass(
-                SugerenciaIAEntity.class);
+        ArgumentCaptor<AISuggestionEntity> suggestionCaptor = ArgumentCaptor.forClass(
+                AISuggestionEntity.class);
         verify(aiEventJpaRepository).save(eventCaptor.capture());
         verify(suggestionJpaRepository).save(suggestionCaptor.capture());
         assertSame(eventCaptor.getValue(), suggestionCaptor.getValue().getEventoIaEntity());
@@ -240,7 +240,7 @@ class ConsumptionAlertNotificationPersistenceRepositoryTest {
                 .thenReturn(true);
         when(suggestionJpaRepository.existsForStudentAndTypeSince(
                 studentId,
-                TipoSugerenciaIA.RESUMEN_CONSUMO,
+                IaSuggestionType.RESUMEN_CONSUMO,
                 start
         )).thenReturn(true);
 

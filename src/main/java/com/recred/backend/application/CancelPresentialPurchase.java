@@ -1,6 +1,6 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Billetera;
+import com.recred.backend.domain.models.Wallet;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
@@ -30,7 +30,7 @@ public class CancelPresentialPurchase {
             throw new IllegalStateException("Purchase does not have an associated student.");
         }
         
-        Billetera wallet = walletRepository.findByStudentId(purchase.getStudent().getId())
+        Wallet wallet = walletRepository.findByStudentId(purchase.getStudent().getId())
                 .orElseThrow(() ->
                         new IllegalStateException("Student wallet not found for refund."));
 

@@ -1,8 +1,8 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Product;
+import com.recred.backend.domain.models.Student;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
 import com.recred.backend.infrastructure.gemini.GeminiTextClient;
 import org.slf4j.Logger;
@@ -31,29 +31,29 @@ public class GeminiPriceAlertAIAdapter implements PriceAlertAIRepository {
     }
 
     @Override
-    public Optional<PriceAlertResult> analyzeImpact(Alumno alumno,
-                                                    Producto producto,
+    public Optional<PriceAlertResult> analyzeImpact(Student student,
+                                                    Product product,
                                                     BigDecimal oldPrice,
                                                     BigDecimal newPrice) {
 
-        String prompt = construirPrompt(alumno, producto, oldPrice, newPrice);
+        String prompt = construirPrompt(student, product, oldPrice, newPrice);
 
         return geminiTextClient.generate(prompt)
                 .flatMap(response -> procesarRespuesta(response.text()))
-                .or(() -> fallback(producto, oldPrice, newPrice));
+                .or(() -> fallback(product, oldPrice, newPrice));
     }
 
-    private String construirPrompt(Alumno alumno, Producto producto,
+    private String construirPrompt(Student student, Product product,
                                    BigDecimal oldPrice, BigDecimal newPrice) {
 
-        String gradoStr = (alumno.getGrado() != null)
+        String gradoStr = (student.getGrade() != null)
                 ? String.format("%s %s",
-                alumno.getGrado().getAnio(), alumno.getGrado().getDivision())
+                student.getGrade().getAnio(), student.getGrade().getDivision())
                 : "No especificado";
 
         String template = """
                 Eres un asistente inteligente de finanzas familiares para el proyecto Recred.
-                Un producto favorito de un alumno ha cambiado de precio y debes notificar al tutor.
+                Un product favorito de un student ha cambiado de price y debes notificar al tutor.
                 
                 DATOS DEL ALUMNO:
                 - Grado: %s
@@ -65,20 +65,20 @@ public class GeminiPriceAlertAIAdapter implements PriceAlertAIRepository {
                 
                 TAREA:
                 Genera una alerta empática para el tutor. 
-                Si el precio aumentó, indica el posible impacto en el presupuesto.
+                Si el price aumentó, indica el posible impacto en el presupuesto.
                 Si bajó, dalo como una buena noticia.
                 
                 REGLAS:
                 1. Responde ÚNICAMENTE en formato JSON.
                 2. Estructura:
                    {
-                     "titulo": "Título de la alerta",
-                     "mensaje": "Mensaje para el tutor",
+                     "tittle": "Título de la alerta",
+                     "message": "Mensaje para el tutor",
                      "razonIA": "Breve análisis técnico del impacto"
                    }
                 """;
 
-        return String.format(template, gradoStr, producto.getNombre(),
+        return String.format(template, gradoStr, product.getName(),
                 oldPrice, newPrice);
     }
 
@@ -87,8 +87,8 @@ public class GeminiPriceAlertAIAdapter implements PriceAlertAIRepository {
             String cleanJson = text.replaceAll("```json|```", "").trim();
             Map data = objectMapper.readValue(cleanJson, Map.class);
 
-            String titulo = (String) data.get("titulo");
-            String mensaje = (String) data.get("mensaje");
+            String titulo = (String) data.get("tittle");
+            String mensaje = (String) data.get("message");
             String razonIA = (String) data.get("razonIA");
 
             if (isBlank(titulo) || isBlank(mensaje) || isBlank(razonIA)) {
@@ -103,16 +103,16 @@ public class GeminiPriceAlertAIAdapter implements PriceAlertAIRepository {
     }
 
     private Optional<PriceAlertResult> fallback(
-            Producto producto,
+            Product product,
             BigDecimal oldPrice,
             BigDecimal newPrice
     ) {
         BigDecimal difference = newPrice.subtract(oldPrice);
         String direction = difference.signum() >= 0 ? "aumento" : "baja";
-        String title = "Cambio de precio en " + producto.getNombre();
+        String title = "Cambio de price en " + product.getName();
         String message = String.format(
-                "El producto %s tuvo un %s de precio: paso de %s a %s.",
-                producto.getNombre(),
+                "El product %s tuvo un %s de price: paso de %s a %s.",
+                product.getName(),
                 direction,
                 oldPrice,
                 newPrice

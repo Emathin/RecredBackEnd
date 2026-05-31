@@ -1,11 +1,11 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.FranjaHoraria;
-import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.models.Product;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.models.TimeBadge;
+import com.recred.backend.domain.services.RestrictionsValidatorService;
+import com.recred.backend.domain.services.TimeValidatorService;
+import com.recred.backend.domain.services.BudgetValidatorService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,50 +17,50 @@ import java.util.stream.Collectors;
 
 public class SchedulePickup {
 
-    private final ValidadorHorarioService timeValidator;
-    private final ValidacionRestriccionesService validacionRestriccionesService;
-    private final ValidadorPresupuestoService budgetValidator;
+    private final TimeValidatorService timeValidator;
+    private final RestrictionsValidatorService restrictionsValidatorService;
+    private final BudgetValidatorService budgetValidator;
 
-    public SchedulePickup(ValidadorHorarioService timeValidator,
-                          ValidacionRestriccionesService validacionRestriccionesService,
-                          ValidadorPresupuestoService budgetValidator) {
+    public SchedulePickup(TimeValidatorService timeValidator,
+                          RestrictionsValidatorService restrictionsValidatorService,
+                          BudgetValidatorService budgetValidator) {
         this.timeValidator = timeValidator;
-        this.validacionRestriccionesService = validacionRestriccionesService;
+        this.restrictionsValidatorService = restrictionsValidatorService;
         this.budgetValidator = budgetValidator;
     }
 
-    public void execute(UUID studentId, Set<Producto> cart,
-                        FranjaHoraria pickupSlot,
+    public void execute(UUID studentId, Set<Product> cart,
+                        TimeBadge pickupSlot,
                         LocalDate pickupDate) {
 
-        Alumno student = new Alumno();
+        Student student = new Student();
         student.setId(studentId);
 
         LocalDateTime projectedPickupTime = LocalDateTime.of(pickupDate,
-                pickupSlot.getHoraInicio());
+                pickupSlot.getStartTime());
 
-        timeValidator.validarCompra(student, cart, projectedPickupTime);
-        validacionRestriccionesService.validarCompra(student, cart);
+        timeValidator.validatePurchase(student, cart, projectedPickupTime);
+        restrictionsValidatorService.validatePurchase(student, cart);
 
         BigDecimal montoTotalCarrito = cart.stream()
-                .map(p -> p.getPrecio() != null ? p.getPrecio() :
+                .map(p -> p.getPrice() != null ? p.getPrice() :
                         BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<UUID, BigDecimal> montosPorCategoria = cart.stream()
-                .filter(p -> p.getCategoria() != null &&
-                        p.getCategoria().getId() != null)
+                .filter(p -> p.getCategory() != null &&
+                        p.getCategory().getId() != null)
                 .collect(Collectors.groupingBy(
-                        p -> p.getCategoria().getId(),
+                        p -> p.getCategory().getId(),
                         Collectors.reducing(
                                 BigDecimal.ZERO,
-                                p -> p.getPrecio() != null ?
-                                        p.getPrecio() : BigDecimal.ZERO,
+                                p -> p.getPrice() != null ?
+                                        p.getPrice() : BigDecimal.ZERO,
                                 BigDecimal::add
                         )
                 ));
 
-        budgetValidator.validarPresupuesto(
+        budgetValidator.validateBudget(
                 studentId,
                 montoTotalCarrito,
                 montosPorCategoria,

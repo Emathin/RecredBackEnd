@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public record ChatMessage(
         UUID sessionId,
-        RolChatMensaje role,
+        ChatMessageRole role,
         String content,
         Map<String, Object> metadata,
         LocalDateTime dateTime

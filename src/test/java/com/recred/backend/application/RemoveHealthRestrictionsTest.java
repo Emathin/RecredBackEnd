@@ -1,7 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.repositories.StudentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,42 +19,42 @@ import static org.mockito.Mockito.*;
 class RemoveHealthRestrictionsTest {
 
     @Mock
-    private AlumnoRepository alumnoRepository;
+    private StudentRepository studentRepository;
 
     @InjectMocks
     private RemoveHealthRestrictions useCase;
 
     private UUID alumnoId;
     private UUID clasificacionId;
-    private Alumno alumno;
+    private Student student;
 
     @BeforeEach
     void setUp() {
         alumnoId = UUID.randomUUID();
         clasificacionId = UUID.randomUUID();
 
-        alumno = mock(Alumno.class);
+        student = mock(Student.class);
     }
 
     @Test
     void ejecutar_ConDatosValidos_DeberiaRemoverYGuardar() {
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(studentRepository.findById(alumnoId)).thenReturn(Optional.of(student));
 
         useCase.ejecutar(alumnoId, clasificacionId);
 
-        verify(alumno).removerRestriccionSalud(clasificacionId);
-        verify(alumnoRepository).save(alumno);
+        verify(student).removeHealthRestriction(clasificacionId);
+        verify(studentRepository).save(student);
     }
 
     @Test
     void ejecutar_CuandoAlumnoNoExiste_DeberiaLanzarExcepcion() {
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        when(studentRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             useCase.ejecutar(alumnoId, clasificacionId);
         });
 
         assertEquals("El alumno no existe.", exception.getMessage());
-        verify(alumnoRepository, never()).save(any());
+        verify(studentRepository, never()).save(any());
     }
 }

@@ -1,7 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.RestriccionHoraria;
-import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.models.TimeRestriction;
+import com.recred.backend.domain.repositories.TimeRestrictionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -20,7 +20,7 @@ import static org.mockito.Mockito.when;
 class CreateTimeRestrictionTest {
 
     @Mock
-    private RestriccionHorariaRepository repository;
+    private TimeRestrictionRepository repository;
 
     @InjectMocks
     private CreateTimeRestriction createTimeRestriction;
@@ -32,18 +32,18 @@ class CreateTimeRestrictionTest {
 
         TimeRestrictionCommand command = new TimeRestrictionCommand(studentId, timeSlotId, null, null);
 
-        when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(repository.save(any(TimeRestriction.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        RestriccionHoraria result = createTimeRestriction.execute(command);
+        TimeRestriction result = createTimeRestriction.execute(command);
 
-        ArgumentCaptor<RestriccionHoraria> captor = ArgumentCaptor.forClass(RestriccionHoraria.class);
+        ArgumentCaptor<TimeRestriction> captor = ArgumentCaptor.forClass(TimeRestriction.class);
         verify(repository).save(captor.capture());
-        RestriccionHoraria guardada = captor.getValue();
+        TimeRestriction guardada = captor.getValue();
 
-        assertEquals(studentId, guardada.getAlumnoId());
-        assertEquals(timeSlotId, guardada.getFranjaHoraria().getId());
-        assertNull(guardada.getCategoria());
-        assertNull(guardada.getClasificacion());
+        assertEquals(studentId, guardada.getStudentId());
+        assertEquals(timeSlotId, guardada.getTimeBadge().getId());
+        assertNull(guardada.getCategory());
+        assertNull(guardada.getClassification());
         assertNotNull(result);
     }
 
@@ -56,15 +56,15 @@ class CreateTimeRestrictionTest {
 
         TimeRestrictionCommand command = new TimeRestrictionCommand(studentId, timeSlotId, categoryId, classificationId);
 
-        when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(repository.save(any(TimeRestriction.class))).thenAnswer(i -> i.getArguments()[0]);
 
         createTimeRestriction.execute(command);
 
-        ArgumentCaptor<RestriccionHoraria> captor = ArgumentCaptor.forClass(RestriccionHoraria.class);
+        ArgumentCaptor<TimeRestriction> captor = ArgumentCaptor.forClass(TimeRestriction.class);
         verify(repository).save(captor.capture());
-        RestriccionHoraria guardada = captor.getValue();
+        TimeRestriction guardada = captor.getValue();
 
-        assertEquals(categoryId, guardada.getCategoria().getId());
-        assertEquals(classificationId, guardada.getClasificacion().getId());
+        assertEquals(categoryId, guardada.getCategory().getId());
+        assertEquals(classificationId, guardada.getClassification().getId());
     }
 }

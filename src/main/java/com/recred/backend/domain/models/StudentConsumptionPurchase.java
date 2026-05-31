@@ -8,8 +8,8 @@ import java.util.UUID;
 public record StudentConsumptionPurchase(
         UUID purchaseId,
         LocalDateTime dateTime,
-        EstadoCompra status,
-        MedioPago paymentMethod,
+        PurchaseState status,
+        PaymentMethod paymentMethod,
         BigDecimal totalAmount,
         UUID buffetId,
         String buffetName,

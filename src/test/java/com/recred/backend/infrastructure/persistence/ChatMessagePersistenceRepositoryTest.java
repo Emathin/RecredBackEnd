@@ -1,9 +1,9 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.ChatMessage;
-import com.recred.backend.domain.models.RolChatMensaje;
-import com.recred.backend.infrastructure.entities.ChatMensajeEntity;
-import com.recred.backend.infrastructure.entities.ChatSesionEntity;
+import com.recred.backend.domain.models.ChatMessageRole;
+import com.recred.backend.infrastructure.entities.ChatMessageEntity;
+import com.recred.backend.infrastructure.entities.ChatSessionEntity;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,43 +34,43 @@ class ChatMessagePersistenceRepositoryTest {
     void saveMapsMessageToEntity() {
         UUID sessionId = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.of(2026, 5, 27, 12, 0);
-        ChatSesionEntity session = new ChatSesionEntity();
+        ChatSessionEntity session = new ChatSessionEntity();
         ChatMessagePersistenceRepository repository = new ChatMessagePersistenceRepository(
                 chatMessageRepository,
                 entityManager
         );
 
-        when(entityManager.getReference(ChatSesionEntity.class, sessionId)).thenReturn(session);
+        when(entityManager.getReference(ChatSessionEntity.class, sessionId)).thenReturn(session);
 
         repository.save(new ChatMessage(
                 sessionId,
-                RolChatMensaje.USUARIO,
+                ChatMessageRole.USUARIO,
                 "saldo",
                 Map.of("capacidades", List.of("SALDO")),
                 now
         ));
 
-        ArgumentCaptor<ChatMensajeEntity> captor = ArgumentCaptor
-                .forClass(ChatMensajeEntity.class);
+        ArgumentCaptor<ChatMessageEntity> captor = ArgumentCaptor
+                .forClass(ChatMessageEntity.class);
         verify(chatMessageRepository).save(captor.capture());
-        ChatMensajeEntity saved = captor.getValue();
-        assertSame(session, saved.getSesion());
-        assertEquals(RolChatMensaje.USUARIO, saved.getRol());
-        assertEquals("saldo", saved.getContenido());
-        assertEquals(now, saved.getFechaHora());
+        ChatMessageEntity saved = captor.getValue();
+        assertSame(session, saved.getSession());
+        assertEquals(ChatMessageRole.USUARIO, saved.getRole());
+        assertEquals("saldo", saved.getContent());
+        assertEquals(now, saved.getDateAndTime());
     }
 
     @Test
     void findRecentBySessionIdMapsMessagesToDomain() {
         UUID sessionId = UUID.randomUUID();
-        ChatSesionEntity session = new ChatSesionEntity();
+        ChatSessionEntity session = new ChatSessionEntity();
         session.setId(sessionId);
-        ChatMensajeEntity entity = new ChatMensajeEntity();
-        entity.setSesion(session);
-        entity.setRol(RolChatMensaje.ASISTENTE_IA);
-        entity.setContenido("Respuesta");
+        ChatMessageEntity entity = new ChatMessageEntity();
+        entity.setSession(session);
+        entity.setRole(ChatMessageRole.ASISTENTE_IA);
+        entity.setContent("Respuesta");
         entity.setMetadata(Map.of("generadoPorIa", true));
-        entity.setFechaHora(LocalDateTime.of(2026, 5, 27, 12, 0));
+        entity.setDateAndTime(LocalDateTime.of(2026, 5, 27, 12, 0));
         ChatMessagePersistenceRepository repository = new ChatMessagePersistenceRepository(
                 chatMessageRepository,
                 entityManager
@@ -83,7 +83,7 @@ class ChatMessagePersistenceRepositoryTest {
 
         assertEquals(1, messages.size());
         assertEquals(sessionId, messages.get(0).sessionId());
-        assertEquals(RolChatMensaje.ASISTENTE_IA, messages.get(0).role());
+        assertEquals(ChatMessageRole.ASISTENTE_IA, messages.get(0).role());
         assertEquals("Respuesta", messages.get(0).content());
     }
 }

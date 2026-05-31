@@ -1,9 +1,9 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.StudentEntity;
 import com.recred.backend.infrastructure.entities.TutorEntity;
-import com.recred.backend.infrastructure.entities.UsuarioEntity;
+import com.recred.backend.infrastructure.entities.UserEntity;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -20,23 +20,23 @@ class ConsumptionAlertStudentPersistenceRepositoryTest {
                 ConsumptionAlertStudentJpaRepository.class);
         ConsumptionAlertStudentPersistenceRepository repository =
                 new ConsumptionAlertStudentPersistenceRepository(jpaRepository);
-        AlumnoEntity student = student("Juan", "Perez");
+        StudentEntity student = student("Juan", "Perez");
         TutorEntity activeTutor = tutor("Ana", "Perez", true, true);
         TutorEntity inactiveTutor = tutor("Luis", "Perez", false, true);
         TutorEntity inactiveUserTutor = tutor("Maria", "Perez", true, false);
         TutorEntity tutorWithoutUser = new TutorEntity();
-        tutorWithoutUser.setActiva(true);
-        student.getTutores().add(activeTutor);
-        student.getTutores().add(inactiveTutor);
-        student.getTutores().add(inactiveUserTutor);
-        student.getTutores().add(tutorWithoutUser);
+        tutorWithoutUser.setActive(true);
+        student.getTutors().add(activeTutor);
+        student.getTutors().add(inactiveTutor);
+        student.getTutors().add(inactiveUserTutor);
+        student.getTutors().add(tutorWithoutUser);
         when(jpaRepository.findActiveStudentsWithUsersAndTutors()).thenReturn(List.of(student));
 
         List<ConsumptionAlertCandidate> candidates = repository.findActiveCandidates();
 
         assertEquals(1, candidates.size());
         assertEquals(student.getId(), candidates.get(0).studentId());
-        assertEquals(student.getUsuario().getId(), candidates.get(0).studentUserId());
+        assertEquals(student.getUser().getId(), candidates.get(0).studentUserId());
         assertEquals("Juan Perez", candidates.get(0).studentName());
         assertEquals(1, candidates.get(0).tutors().size());
         assertEquals("Ana Perez", candidates.get(0).tutors().get(0).name());
@@ -48,7 +48,7 @@ class ConsumptionAlertStudentPersistenceRepositoryTest {
                 ConsumptionAlertStudentJpaRepository.class);
         ConsumptionAlertStudentPersistenceRepository repository =
                 new ConsumptionAlertStudentPersistenceRepository(jpaRepository);
-        AlumnoEntity student = student(null, " ");
+        StudentEntity student = student(null, " ");
         when(jpaRepository.findActiveStudentsWithUsersAndTutors()).thenReturn(List.of(student));
 
         List<ConsumptionAlertCandidate> candidates = repository.findActiveCandidates();
@@ -56,10 +56,10 @@ class ConsumptionAlertStudentPersistenceRepositoryTest {
         assertEquals("el alumno", candidates.get(0).studentName());
     }
 
-    private AlumnoEntity student(String firstName, String lastName) {
-        AlumnoEntity student = new AlumnoEntity();
+    private StudentEntity student(String firstName, String lastName) {
+        StudentEntity student = new StudentEntity();
         student.setId(UUID.randomUUID());
-        student.setUsuario(user(firstName, lastName, true));
+        student.setUser(user(firstName, lastName, true));
         return student;
     }
 
@@ -71,17 +71,17 @@ class ConsumptionAlertStudentPersistenceRepositoryTest {
     ) {
         TutorEntity tutor = new TutorEntity();
         tutor.setId(UUID.randomUUID());
-        tutor.setActiva(activeTutor);
-        tutor.setUsuario(user(firstName, lastName, activeUser));
+        tutor.setActive(activeTutor);
+        tutor.setUser(user(firstName, lastName, activeUser));
         return tutor;
     }
 
-    private UsuarioEntity user(String firstName, String lastName, boolean active) {
-        UsuarioEntity user = new UsuarioEntity();
+    private UserEntity user(String firstName, String lastName, boolean active) {
+        UserEntity user = new UserEntity();
         user.setId(UUID.randomUUID());
-        user.setNombre(firstName);
-        user.setApellido(lastName);
-        user.setActivo(active);
+        user.setName(firstName);
+        user.setSurname(lastName);
+        user.setActive(active);
         return user;
     }
 }

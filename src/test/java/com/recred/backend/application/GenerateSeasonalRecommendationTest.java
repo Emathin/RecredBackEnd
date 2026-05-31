@@ -3,7 +3,7 @@ package com.recred.backend.application;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
 import com.recred.backend.infrastructure.web.RecommendationResponseDTO;
-import com.recred.backend.infrastructure.web.SugerenciaDTO;
+import com.recred.backend.infrastructure.web.SuggestionDTO;
 import com.recred.backend.infrastructure.web.WeatherDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +37,7 @@ class GenerateSeasonalRecommendationTest {
 
         RecommendationResponseDTO recomendacionSimulada = new RecommendationResponseDTO();
         recomendacionSimulada.setSugerences(List.of(
-                new SugerenciaDTO("Helados y Congelados", "AUMENTAR", "Clima caluroso favorece ventas.")));
+                new SuggestionDTO("Helados y Congelados", "AUMENTAR", "Clima caluroso favorece ventas.")));
         recomendacionSimulada.setPromocionalTip("Promo 2x1 en helados.");
         when(geminiSuggesterMock.getSeasonalRecommendations(anyString(), anyDouble(), anyString()))
                 .thenReturn(recomendacionSimulada);
@@ -47,7 +47,7 @@ class GenerateSeasonalRecommendationTest {
         assertNotNull(resultado);
         assertEquals("Promo 2x1 en helados.", resultado.getPromocionalTip());
         assertEquals(1, resultado.getSugerences().size());
-        assertEquals("Helados y Congelados", resultado.getSugerences().get(0).getCategoria());
+        assertEquals("Helados y Congelados", resultado.getSugerences().get(0).getCategory());
     }
 
     @Test

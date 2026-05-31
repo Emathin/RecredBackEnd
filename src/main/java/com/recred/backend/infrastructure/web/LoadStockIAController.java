@@ -3,7 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.LoadStockIA;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.domain.exceptions.ImageValidationException;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Product;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,8 +38,8 @@ public class LoadStockIAController {
     }
 
     @PostMapping("/save-product")
-    public ResponseEntity<Producto> saveProduct(@RequestBody SaveProductDTO saveProductDTO) {
-        Producto createdProduct = saveProduct.execute(saveProductDTO.toCommand());
+    public ResponseEntity<Product> saveProduct(@RequestBody SaveProductDTO saveProductDTO) {
+        Product createdProduct = saveProduct.execute(saveProductDTO.toCommand());
         return ResponseEntity.status(HttpStatus.CREATED).body(createdProduct);
     }
 

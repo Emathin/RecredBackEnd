@@ -1,16 +1,17 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.MedioPago;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Product;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.PaymentMethod;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
-import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
-import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
-import com.recred.backend.infrastructure.entities.CompraEntity;
-import com.recred.backend.infrastructure.entities.CompraPresencialEntity;
+import com.recred.backend.infrastructure.entities.StudentEntity;
+import com.recred.backend.infrastructure.entities.ProductCategoryEntity;
+import com.recred.backend.infrastructure.entities.ProductEntity;
+import com.recred.backend.infrastructure.entities.PurchaseDetailEntity;
+import com.recred.backend.infrastructure.entities.PurchaseEntity;
+import com.recred.backend.infrastructure.entities.PresentialPurchaseEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,30 +58,30 @@ class PurchaseRepositoryImplTest {
     @Test
     void save_WhenPurchaseDoesNotHaveId_ShouldCreatePresentialPurchase() {
         UUID savedPurchaseId = UUID.randomUUID();
-        when(springDataRepository.save(any(CompraEntity.class)))
+        when(springDataRepository.save(any(PurchaseEntity.class)))
                 .thenAnswer(invocation -> {
-                    CompraEntity entity = invocation.getArgument(0);
+                    PurchaseEntity entity = invocation.getArgument(0);
                     entity.setId(savedPurchaseId);
                     return entity;
                 });
 
         Purchase savedPurchase = repository.save(purchase);
 
-        ArgumentCaptor<CompraEntity> entityCaptor = ArgumentCaptor.forClass(CompraEntity.class);
+        ArgumentCaptor<PurchaseEntity> entityCaptor = ArgumentCaptor.forClass(PurchaseEntity.class);
         verify(springDataRepository).save(entityCaptor.capture());
-        CompraEntity savedEntity = entityCaptor.getValue();
-        assertTrue(savedEntity instanceof CompraPresencialEntity);
-        assertEquals(studentId, savedEntity.getAlumnoEntity().getId());
-        assertEquals(EstadoCompra.PENDIENTE, savedEntity.getEstado());
-        assertEquals(productId, savedEntity.getDetalles().get(0).getProductoEntity().getId());
+        PurchaseEntity savedEntity = entityCaptor.getValue();
+        assertTrue(savedEntity instanceof PresentialPurchaseEntity);
+        assertEquals(studentId, savedEntity.getStudentEntity().getId());
+        assertEquals(PurchaseState.PENDIENTE, savedEntity.getPurchaseState());
+        assertEquals(productId, savedEntity.getDetails().get(0).getProductEntity().getId());
         assertEquals(savedPurchaseId, savedPurchase.getId());
     }
 
     @Test
     void save_WhenPurchaseHasId_ShouldUpdateExistingPurchase() {
-        CompraPresencialEntity existingEntity = new CompraPresencialEntity();
+        PresentialPurchaseEntity existingEntity = new PresentialPurchaseEntity();
         existingEntity.setId(purchaseId);
-        existingEntity.addDetalle(new CompraDetalleEntity());
+        existingEntity.addDetalle(new PurchaseDetailEntity());
         purchase.setId(purchaseId);
 
         when(springDataRepository.findById(purchaseId)).thenReturn(Optional.of(existingEntity));
@@ -89,15 +90,15 @@ class PurchaseRepositoryImplTest {
         Purchase savedPurchase = repository.save(purchase);
 
         assertEquals(purchaseId, savedPurchase.getId());
-        assertEquals(1, existingEntity.getDetalles().size());
-        assertEquals(productId, existingEntity.getDetalles().get(0).getProductoEntity().getId());
+        assertEquals(1, existingEntity.getDetails().size());
+        assertEquals(productId, existingEntity.getDetails().get(0).getProductEntity().getId());
         verify(springDataRepository).findById(purchaseId);
         verify(springDataRepository).save(existingEntity);
     }
 
     @Test
     void findById_WhenPurchaseExists_ShouldReturnMappedPurchase() {
-        CompraPresencialEntity entity = compraEntity();
+        PresentialPurchaseEntity entity = compraEntity();
         when(springDataRepository.findById(purchaseId)).thenReturn(Optional.of(entity));
 
         Optional<Purchase> result = repository.findById(purchaseId);
@@ -117,35 +118,35 @@ class PurchaseRepositoryImplTest {
     }
 
     @Test
-    void sumarGastosPorAlumnoEnRango_ShouldDelegateToSpringDataRepository() {
+    void sumExpensesByStudentInRange_ShouldDelegateToSpringDataRepository() {
         LocalDateTime start = LocalDateTime.now().minusDays(1);
         LocalDateTime end = LocalDateTime.now();
         when(springDataRepository.sumarGastosGeneralesEnRango(
                 studentId,
-                EstadoCompra.ENTREGADO,
+                PurchaseState.ENTREGADO,
                 start,
                 end
         )).thenReturn(new BigDecimal("20.00"));
 
-        BigDecimal result = repository.sumarGastosPorAlumnoEnRango(studentId, start, end);
+        BigDecimal result = repository.sumExpensesByStudentInRange(studentId, start, end);
 
         assertEquals(new BigDecimal("20.00"), result);
     }
 
     @Test
-    void sumarGastosPorCategoriaEnRango_ShouldDelegateToSpringDataRepository() {
+    void sumExpensesByCategoryInRange_ShouldDelegateToSpringDataRepository() {
         UUID categoryId = UUID.randomUUID();
         LocalDateTime start = LocalDateTime.now().minusDays(1);
         LocalDateTime end = LocalDateTime.now();
         when(springDataRepository.sumarGastosPorCategoriaEnRango(
                 studentId,
-                EstadoCompra.ENTREGADO,
+                PurchaseState.ENTREGADO,
                 categoryId,
                 start,
                 end
         )).thenReturn(new BigDecimal("10.00"));
 
-        BigDecimal result = repository.sumarGastosPorCategoriaEnRango(
+        BigDecimal result = repository.sumExpensesByCategoryInRange(
                 studentId,
                 categoryId,
                 start,
@@ -156,95 +157,95 @@ class PurchaseRepositoryImplTest {
     }
 
     @Test
-    void findLastPurchasesByAlumno_ShouldMapToDomainSummary() {
-        com.recred.backend.infrastructure.entities.ProductoEntity productoEntity =
-                new com.recred.backend.infrastructure.entities.ProductoEntity();
-        productoEntity.setNombre("Alfajor");
-        CategoriaProductoEntity categoria = new CategoriaProductoEntity();
-        categoria.setDescripcion("Snacks");
-        productoEntity.setCategoria(categoria);
+    void findLastPurchasesByStudent_ShouldMapToDomainSummary() {
+        ProductEntity productEntity =
+                new ProductEntity();
+        productEntity.setName("Alfajor");
+        ProductCategoryEntity categoria = new ProductCategoryEntity();
+        categoria.setDescription("Snacks");
+        productEntity.setCategory(categoria);
 
-        CompraEntity compra = new CompraPresencialEntity();
-        compra.setFechaHora(LocalDateTime.now());
+        PurchaseEntity compra = new PresentialPurchaseEntity();
+        compra.setDateAndTime(LocalDateTime.now());
 
-        CompraDetalleEntity detalle = new CompraDetalleEntity();
-        detalle.setProductoEntity(productoEntity);
-        detalle.setCompra(compra);
-        compra.setDetalles(List.of(detalle));
+        PurchaseDetailEntity detalle = new PurchaseDetailEntity();
+        detalle.setProductEntity(productEntity);
+        detalle.setPurchase(compra);
+        compra.setDetails(List.of(detalle));
 
         when(springDataRepository.findLastByAlumno(eq(studentId), any(PageRequest.class)))
                 .thenReturn(List.of(compra));
 
-        List<PreferenceAIRepository.CompraResumen> result =
-                repository.findLastPurchasesByAlumno(studentId, 5);
+        List<PreferenceAIRepository.PurchaseSummary> result =
+                repository.findLastPurchasesByStudent(studentId, 5);
 
         assertEquals(1, result.size());
-        assertEquals("Alfajor", result.get(0).productoNombre());
-        assertEquals("Snacks", result.get(0).categoria());
+        assertEquals("Alfajor", result.get(0).productName());
+        assertEquals("Snacks", result.get(0).category());
     }
 
     @Test
-    void findLastPurchasesByAlumno_ShouldHandleNullProductCategory() {
-        com.recred.backend.infrastructure.entities.ProductoEntity productoEntity =
-                new com.recred.backend.infrastructure.entities.ProductoEntity();
-        productoEntity.setNombre("Agua");
-        productoEntity.setCategoria(null);
+    void findLastPurchasesByStudent_ShouldHandleNullProductCategory() {
+        ProductEntity productEntity =
+                new ProductEntity();
+        productEntity.setName("Agua");
+        productEntity.setCategory(null);
 
-        CompraEntity compra = new CompraPresencialEntity();
-        compra.setFechaHora(LocalDateTime.now());
+        PurchaseEntity compra = new PresentialPurchaseEntity();
+        compra.setDateAndTime(LocalDateTime.now());
 
-        CompraDetalleEntity detalle = new CompraDetalleEntity();
-        detalle.setProductoEntity(productoEntity);
-        detalle.setCompra(compra);
-        compra.setDetalles(List.of(detalle));
+        PurchaseDetailEntity detalle = new PurchaseDetailEntity();
+        detalle.setProductEntity(productEntity);
+        detalle.setPurchase(compra);
+        compra.setDetails(List.of(detalle));
 
         when(springDataRepository.findLastByAlumno(eq(studentId), any(PageRequest.class)))
                 .thenReturn(List.of(compra));
 
-        List<PreferenceAIRepository.CompraResumen> result =
-                repository.findLastPurchasesByAlumno(studentId, 5);
+        List<PreferenceAIRepository.PurchaseSummary> result =
+                repository.findLastPurchasesByStudent(studentId, 5);
 
-        assertEquals("Sin Categoria", result.get(0).categoria());
+        assertEquals("Sin Categoria", result.get(0).category());
     }
 
     private Purchase purchase(UUID id) {
         Purchase purchase = new Purchase();
         purchase.setId(id);
         purchase.setStudent(student());
-        purchase.setPaymentMethod(MedioPago.CREDITOS);
-        purchase.setStatus(EstadoCompra.PENDIENTE);
+        purchase.setPaymentMethod(PaymentMethod.CREDITOS);
+        purchase.setStatus(PurchaseState.PENDIENTE);
         purchase.setTotalAmount(new BigDecimal("12.00"));
         purchase.setDate(LocalDateTime.now());
         purchase.setItems(Map.of(product(), 2));
         return purchase;
     }
 
-    private Alumno student() {
-        Alumno student = new Alumno();
+    private Student student() {
+        Student student = new Student();
         student.setId(studentId);
         return student;
     }
 
-    private Producto product() {
-        Producto product = new Producto();
+    private Product product() {
+        Product product = new Product();
         product.setId(productId);
-        product.setPrecio(new BigDecimal("6.00"));
+        product.setPrice(new BigDecimal("6.00"));
         return product;
     }
 
-    private CompraPresencialEntity compraEntity() {
-        CompraPresencialEntity entity = new CompraPresencialEntity();
+    private PresentialPurchaseEntity compraEntity() {
+        PresentialPurchaseEntity entity = new PresentialPurchaseEntity();
         entity.setId(purchaseId);
-        entity.setAlumnoEntity(alumnoEntity());
-        entity.setMedioPago(MedioPago.CREDITOS);
-        entity.setEstado(EstadoCompra.PENDIENTE);
-        entity.setMontoTotal(new BigDecimal("12.00"));
-        entity.setFechaHora(LocalDateTime.now());
+        entity.setStudentEntity(alumnoEntity());
+        entity.setPaymentMethod(PaymentMethod.CREDITOS);
+        entity.setPurchaseState(PurchaseState.PENDIENTE);
+        entity.setTotalAmount(new BigDecimal("12.00"));
+        entity.setDateAndTime(LocalDateTime.now());
         return entity;
     }
 
-    private AlumnoEntity alumnoEntity() {
-        AlumnoEntity entity = new AlumnoEntity();
+    private StudentEntity alumnoEntity() {
+        StudentEntity entity = new StudentEntity();
         entity.setId(studentId);
         return entity;
     }

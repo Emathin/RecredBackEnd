@@ -1,23 +1,23 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.RestriccionHoraria;
-import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.models.TimeRestriction;
+import com.recred.backend.domain.repositories.TimeRestrictionRepository;
 
 import java.util.UUID;
 
 public class DisableTimeRestriction {
 
-    private final RestriccionHorariaRepository repository;
+    private final TimeRestrictionRepository repository;
 
-    public DisableTimeRestriction(RestriccionHorariaRepository repository) {
+    public DisableTimeRestriction(TimeRestrictionRepository repository) {
         this.repository = repository;
     }
 
     public void execute(UUID restrictionId) {
-        RestriccionHoraria restriction = repository.findById(restrictionId)
+        TimeRestriction restriction = repository.findById(restrictionId)
                 .orElseThrow(() -> new RuntimeException("Time restriction not found"));
 
-        restriction.setActiva(false);
+        restriction.setActive(false);
         repository.save(restriction);
     }
 }

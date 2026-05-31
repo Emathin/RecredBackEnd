@@ -17,15 +17,15 @@ import java.util.UUID;
 public class Purchase {
 
     private UUID id;
-    private Alumno student;
+    private Student student;
     private BigDecimal totalAmount;
-    private EstadoCompra status;
-    private MedioPago paymentMethod;
+    private PurchaseState status;
+    private PaymentMethod paymentMethod;
     private LocalDateTime date;
 
-    private Map<Producto, Integer> items = new HashMap<>();
+    private Map<Product, Integer> items = new HashMap<>();
 
-    public Purchase(Alumno student, Map<Producto, Integer> cart, MedioPago paymentMethod) {
+    public Purchase(Student student, Map<Product, Integer> cart, PaymentMethod paymentMethod) {
         this.student = student;
         this.items = cart;
         this.paymentMethod = paymentMethod;
@@ -34,7 +34,7 @@ public class Purchase {
         this.totalAmount = calculateTotal(cart);
     }
 
-    public void changeStatusTo(EstadoCompra nextStatus) {
+    public void changeStatusTo(PurchaseState nextStatus) {
         if (isInvalidTransition(nextStatus)) {
             InvalidPurchaseStatusTransitionException exception =
                     new InvalidPurchaseStatusTransitionException(this.status, nextStatus);
@@ -45,47 +45,47 @@ public class Purchase {
     }
 
     public void cancel() {
-        if (this.status == EstadoCompra.CANCELADO) {
+        if (this.status == PurchaseState.CANCELADO) {
             throw new IllegalStateException("Purchase is already cancelled.");
         }
-        this.status = EstadoCompra.CANCELADO;
+        this.status = PurchaseState.CANCELADO;
     }
 
-    private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
+    private BigDecimal calculateTotal(Map<Product, Integer> cart) {
         return cart.entrySet().stream()
                 .map(entry -> productPrice(entry.getKey())
                         .multiply(new BigDecimal(entry.getValue())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private BigDecimal productPrice(Producto product) {
-        return product.getPrecio() != null ? product.getPrecio() : BigDecimal.ZERO;
+    private BigDecimal productPrice(Product product) {
+        return product.getPrice() != null ? product.getPrice() : BigDecimal.ZERO;
     }
 
-    private EstadoCompra initialStatus(Map<Producto, Integer> cart) {
-        return requiresPreparation(cart) ? EstadoCompra.PENDIENTE : EstadoCompra.ENTREGADO;
+    private PurchaseState initialStatus(Map<Product, Integer> cart) {
+        return requiresPreparation(cart) ? PurchaseState.PENDIENTE : PurchaseState.ENTREGADO;
     }
 
-    private boolean requiresPreparation(Map<Producto, Integer> cart) {
+    private boolean requiresPreparation(Map<Product, Integer> cart) {
         return cart.keySet().stream().anyMatch(this::requiresPreparation);
     }
 
-    private boolean requiresPreparation(Producto product) {
-        return Boolean.TRUE.equals(product.getRequierePreparacion());
+    private boolean requiresPreparation(Product product) {
+        return Boolean.TRUE.equals(product.getRequiresPreparation());
     }
 
-    private boolean isInvalidTransition(EstadoCompra nextStatus) {
+    private boolean isInvalidTransition(PurchaseState nextStatus) {
         return this.status == null || nextStatus == null || !isAllowedTransition(nextStatus);
     }
 
-    private boolean isAllowedTransition(EstadoCompra nextStatus) {
+    private boolean isAllowedTransition(PurchaseState nextStatus) {
         return switch (this.status) {
-            case PENDIENTE -> nextStatus == EstadoCompra.EN_PREPARACION
-                    || nextStatus == EstadoCompra.CANCELADO;
-            case EN_PREPARACION -> nextStatus == EstadoCompra.LISTO
-                    || nextStatus == EstadoCompra.CANCELADO;
-            case LISTO -> nextStatus == EstadoCompra.ENTREGADO
-                    || nextStatus == EstadoCompra.CANCELADO;
+            case PENDIENTE -> nextStatus == PurchaseState.EN_PREPARACION
+                    || nextStatus == PurchaseState.CANCELADO;
+            case EN_PREPARACION -> nextStatus == PurchaseState.LISTO
+                    || nextStatus == PurchaseState.CANCELADO;
+            case LISTO -> nextStatus == PurchaseState.ENTREGADO
+                    || nextStatus == PurchaseState.CANCELADO;
             case ENTREGADO, CANCELADO -> false;
         };
     }

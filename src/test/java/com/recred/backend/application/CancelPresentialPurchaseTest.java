@@ -1,8 +1,8 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.Billetera;
-import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.models.Wallet;
+import com.recred.backend.domain.models.PurchaseState;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
@@ -35,25 +35,25 @@ class CancelPresentialPurchaseTest {
 
     private UUID purchaseId;
     private Purchase purchase;
-    private Billetera wallet;
+    private Wallet wallet;
 
     @BeforeEach
     void setUp() {
         purchaseId = UUID.randomUUID();
         UUID studentId = UUID.randomUUID();
 
-        Alumno student = new Alumno();
+        Student student = new Student();
         student.setId(studentId);
 
         purchase = new Purchase();
         purchase.setId(purchaseId);
         purchase.setStudent(student);
         purchase.setTotalAmount(new BigDecimal("50.00"));
-        purchase.setStatus(EstadoCompra.ENTREGADO);
+        purchase.setStatus(PurchaseState.ENTREGADO);
 
-        wallet = new Billetera();
+        wallet = new Wallet();
         wallet.setId(UUID.randomUUID());
-        wallet.setSaldoCreditos(new BigDecimal("100.00"));
+        wallet.setCreditBalance(new BigDecimal("100.00"));
     }
 
     @Test
@@ -63,8 +63,8 @@ class CancelPresentialPurchaseTest {
 
         useCase.execute(purchaseId);
 
-        assertEquals(EstadoCompra.CANCELADO, purchase.getStatus());
-        assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
+        assertEquals(PurchaseState.CANCELADO, purchase.getStatus());
+        assertEquals(new BigDecimal("150.00"), wallet.getCreditBalance());
         verify(purchaseRepository).save(purchase);
         verify(walletRepository).save(wallet);
     }

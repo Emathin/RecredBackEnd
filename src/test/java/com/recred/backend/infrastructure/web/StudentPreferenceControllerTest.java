@@ -3,7 +3,9 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.RespondToAISuggestion;
-import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
+import com.recred.backend.domain.models.IaSuggestionType;
+import com.recred.backend.domain.repositories.PreferenceAIRepository.DetectedPreference;
+import com.recred.backend.infrastructure.entities.AISuggestionEntity;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +30,7 @@ class StudentPreferenceControllerTest {
         
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        PreferenciaDetectada detected = new PreferenciaDetectada(
+        DetectedPreference detected = new DetectedPreference(
                 "Yogur con Cereales",
                 "He notado que te gusta...",
                 UUID.randomUUID().toString(),
@@ -39,7 +41,7 @@ class StudentPreferenceControllerTest {
         ResponseEntity<StudentPreferenceResponse> response = controller.detect(studentId, buffetId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(detected.titulo(), response.getBody().titulo());
+        assertEquals(detected.tittle(), response.getBody().tittle());
     }
 
     @Test
@@ -84,11 +86,11 @@ class StudentPreferenceControllerTest {
                 detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
         
         UUID studentId = UUID.randomUUID();
-        com.recred.backend.infrastructure.entities.SugerenciaIAEntity entity = 
-                new com.recred.backend.infrastructure.entities.SugerenciaIAEntity();
-        entity.setTitulo("Test");
-        entity.setMensaje("Msg");
-        entity.setTipo(com.recred.backend.domain.models.TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+        AISuggestionEntity entity =
+                new AISuggestionEntity();
+        entity.setTittle("Test");
+        entity.setMessage("Msg");
+        entity.setType(IaSuggestionType.PREFERENCIA_DETECTADA);
         
         when(getStudentPreferences.execute(studentId, false, null)).thenReturn(List.of(entity));
 

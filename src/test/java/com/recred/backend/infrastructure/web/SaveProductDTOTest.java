@@ -25,16 +25,16 @@ class SaveProductDTOTest {
 
         SaveProductCommand command = dto.toCommand();
 
-        assertEquals(dto.nombre(), command.nombre());
-        assertEquals(dto.descripcion(), command.descripcion());
-        assertEquals(dto.precio(), command.precio());
-        assertEquals(dto.peso(), command.peso());
-        assertEquals(dto.requierePreparacion(), command.requierePreparacion());
-        assertEquals(dto.categoriaId(), command.categoriaId());
-        assertEquals(dto.nuevaCategoriaNombre(), command.nuevaCategoriaNombre());
+        assertEquals(dto.name(), command.nombre());
+        assertEquals(dto.description(), command.descripcion());
+        assertEquals(dto.price(), command.precio());
+        assertEquals(dto.weight(), command.peso());
+        assertEquals(dto.requiresPreparation(), command.requierePreparacion());
+        assertEquals(dto.categoryID(), command.categoriaId());
+        assertEquals(dto.newCategoryName(), command.nuevaCategoriaNombre());
         assertEquals(dto.buffetId(), command.buffetId());
-        assertEquals(dto.stockActual(), command.stockActual());
-        assertEquals(dto.clasificacionesSaludIds(), command.clasificacionesSaludIds());
-        assertEquals(dto.tiposIds(), command.tiposIds());
+        assertEquals(dto.currentStock(), command.stockActual());
+        assertEquals(dto.healthClassificationIds(), command.clasificacionesSaludIds());
+        assertEquals(dto.idsTypes(), command.tiposIds());
     }
 }

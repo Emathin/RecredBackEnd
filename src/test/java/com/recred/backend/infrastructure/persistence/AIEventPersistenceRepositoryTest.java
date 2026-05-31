@@ -7,7 +7,7 @@ import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.models.AIEventType;
 import com.recred.backend.infrastructure.entities.AIEventEntity;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.StudentEntity;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -38,8 +38,8 @@ class AIEventPersistenceRepositoryTest {
     @Test
     void registerPredictionEventWithInputAndResult() {
         UUID studentId = UUID.randomUUID();
-        AlumnoEntity studentEntity = new AlumnoEntity();
-        when(entityManager.getReference(AlumnoEntity.class, studentId)).thenReturn(studentEntity);
+        StudentEntity studentEntity = new StudentEntity();
+        when(entityManager.getReference(StudentEntity.class, studentId)).thenReturn(studentEntity);
         AIEventPersistenceRepository repository = new AIEventPersistenceRepository(
                 aiEventJpaRepository,
                 entityManager
@@ -51,7 +51,7 @@ class AIEventPersistenceRepositoryTest {
         verify(aiEventJpaRepository).save(captor.capture());
         AIEventEntity event = captor.getValue();
         assertEquals(AIEventType.PREDICCION_GASTO, event.getType());
-        assertSame(studentEntity, event.getAlumnoEntity());
+        assertSame(studentEntity, event.getStudentEntity());
         assertEquals("BACKEND_PREDICCION_GASTO", event.getInputOrigin());
         assertEquals(new BigDecimal("0.8000"), event.getConfidence());
         assertEquals("MENSUAL", event.getInputData().get("periodo"));
@@ -62,7 +62,7 @@ class AIEventPersistenceRepositoryTest {
         );
 
         List<Map<String, Object>> categories = categories(event);
-        assertEquals("Bebidas", categories.get(0).get("descripcion"));
+        assertEquals("Bebidas", categories.get(0).get("description"));
         assertEquals(new BigDecimal("40.00"), categories.get(0).get("montoTotal"));
 
         Map<String, Object> aiAnalysis = aiAnalysis(event);

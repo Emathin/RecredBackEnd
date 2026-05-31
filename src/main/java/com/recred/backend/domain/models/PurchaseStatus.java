@@ -6,7 +6,7 @@ import java.util.UUID;
 public record PurchaseStatus(
         UUID purchaseId,
         UUID studentId,
-        EstadoCompra status,
+        PurchaseState status,
         String statusLabel,
         LocalDateTime date
 ) {

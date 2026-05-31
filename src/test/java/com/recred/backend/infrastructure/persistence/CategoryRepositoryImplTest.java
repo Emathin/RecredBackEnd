@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.CategoriaProducto;
-import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
+import com.recred.backend.domain.models.ProductCategory;
+import com.recred.backend.infrastructure.entities.ProductCategoryEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,34 +44,34 @@ class CategoryRepositoryImplTest {
 
     @Test
     void save_DeberiaCrearNuevaEntidad_CuandoNoTieneId() {
-        CategoriaProducto category = new CategoriaProducto();
-        category.setDescripcion("Nueva");
+        ProductCategory category = new ProductCategory();
+        category.setDescription("Nueva");
         
-        CategoriaProductoEntity savedEntity = new CategoriaProductoEntity();
+        ProductCategoryEntity savedEntity = new ProductCategoryEntity();
         savedEntity.setId(UUID.randomUUID());
-        savedEntity.setDescripcion("Nueva");
-        when(springDataRepository.save(any(CategoriaProductoEntity.class))).thenReturn(savedEntity);
+        savedEntity.setDescription("Nueva");
+        when(springDataRepository.save(any(ProductCategoryEntity.class))).thenReturn(savedEntity);
 
         categoryRepository.save(category);
 
-        verify(springDataRepository).save(any(CategoriaProductoEntity.class));
+        verify(springDataRepository).save(any(ProductCategoryEntity.class));
     }
 
     @Test
     void save_DeberiaActualizarEntidad_CuandoYaExiste() {
         UUID id = UUID.randomUUID();
-        CategoriaProducto category = new CategoriaProducto();
+        ProductCategory category = new ProductCategory();
         category.setId(id);
-        category.setDescripcion("Actualizada");
+        category.setDescription("Actualizada");
 
-        CategoriaProductoEntity existingEntity = new CategoriaProductoEntity();
-        existingEntity.setDescripcion("Vieja");
+        ProductCategoryEntity existingEntity = new ProductCategoryEntity();
+        existingEntity.setDescription("Vieja");
 
         when(springDataRepository.findById(id)).thenReturn(Optional.of(existingEntity));
-        when(springDataRepository.save(any(CategoriaProductoEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(springDataRepository.save(any(ProductCategoryEntity.class))).thenAnswer(i -> i.getArgument(0));
 
         categoryRepository.save(category);
 
-        assertEquals("Actualizada", existingEntity.getDescripcion());
+        assertEquals("Actualizada", existingEntity.getDescription());
     }
 }

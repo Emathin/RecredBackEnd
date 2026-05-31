@@ -26,16 +26,16 @@ public class GeminiConsumptionAlertAnalyzer implements ConsumptionAlertAnalyzer 
             Genera mensajes breves, claros y accionables para una app de recreo escolar.
             No recalcules estadisticas ni inventes importes.
             No uses tono alarmista, culpabilizador ni medico.
-            El mensaje del alumno debe hablarle directamente al alumno.
-            El mensaje del tutor debe invitarlo a acompaniar al alumno.
+            El mensaje del student debe hablarle directamente al student.
+            El mensaje del tutor debe invitarlo a acompaniar al student.
             Si el tipo es HEALTHY_RECOMMENDATION, sugeri una opcion saludable general.
-            Si el tipo es STATISTICAL_PATTERN, basate en la categoria principal.
+            Si el tipo es STATISTICAL_PATTERN, basate en la category principal.
             Cada mensaje debe tener menos de 150 caracteres.
             Responde solo JSON valido con esta forma:
             {
-              "titulo": "texto breve",
+              "tittle": "texto breve",
               "tituloTutor": "texto breve",
-              "mensajeAlumno": "texto para alumno",
+              "mensajeAlumno": "texto para student",
               "mensajeTutor": "texto para tutor",
               "accionSugerida": "texto breve",
               "confianza": 0.80
@@ -43,9 +43,9 @@ public class GeminiConsumptionAlertAnalyzer implements ConsumptionAlertAnalyzer 
 
             Datos:
             tipo=%s
-            alumno=%s
+            student=%s
             fechaCalculo=%s
-            fechaInicio=%s
+            startDate=%s
             fechaFin=%s
             cantidadCompras=%s
             montoTotal=%s
@@ -128,7 +128,7 @@ public class GeminiConsumptionAlertAnalyzer implements ConsumptionAlertAnalyzer 
     }
 
     private record GeminiAlertResponse(
-            @JsonProperty("titulo")
+            @JsonProperty("tittle")
             String title,
             @JsonProperty("tituloTutor")
             String tutorTitle,

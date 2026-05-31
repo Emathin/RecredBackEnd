@@ -26,18 +26,18 @@ public class GeminiHealthyRecommendationAnalyzer implements HealthyRecommendatio
     private static final String PROMPT_TEMPLATE = """
             Sos un asistente de consumo escolar.
             Analiza el historial reciente y las opciones disponibles del buffet.
-            Si corresponde, elegi una opcion mas saludable para recomendarle al alumno.
+            Si corresponde, elegi una opcion mas saludable para recomendarle al student.
             Si no hay una recomendacion clara, responde recomendar=false.
-            No inventes productos ni uses un producto fuera de opcionesDisponibles.
+            No inventes products ni uses un product fuera de opcionesDisponibles.
             No uses tono alarmista, culpabilizador ni medico.
-            El mensaje debe hablarle directamente al alumno.
+            El mensaje debe hablarle directamente al student.
             El mensaje debe tener menos de 150 caracteres.
             Responde solo JSON valido con esta forma:
             {
               "recomendar": true,
               "productoIdSugerido": "uuid de opcionesDisponibles",
-              "titulo": "texto breve",
-              "mensajeAlumno": "texto para alumno nombrando el producto elegido",
+              "tittle": "texto breve",
+              "mensajeAlumno": "texto para student nombrando el product elegido",
               "accionSugerida": "texto breve",
               "confianza": 0.80
             }
@@ -111,7 +111,7 @@ public class GeminiHealthyRecommendationAnalyzer implements HealthyRecommendatio
             Boolean recommend,
             @JsonProperty("productoIdSugerido")
             UUID suggestedProductId,
-            @JsonProperty("titulo")
+            @JsonProperty("tittle")
             String title,
             @JsonProperty("mensajeAlumno")
             String studentMessage,
@@ -166,7 +166,7 @@ public class GeminiHealthyRecommendationAnalyzer implements HealthyRecommendatio
     }
 
     private record PromptPayload(
-            String alumno,
+            String student,
             String fechaCalculo,
             String fechaInicio,
             String fechaFin,

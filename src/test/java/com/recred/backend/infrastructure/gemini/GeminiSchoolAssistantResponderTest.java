@@ -1,16 +1,16 @@
 package com.recred.backend.infrastructure.gemini;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.EstadoPagoExterno;
-import com.recred.backend.domain.models.MedioPago;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.ExternalPaymentStatus;
+import com.recred.backend.domain.models.PaymentMethod;
 import com.recred.backend.domain.models.SchoolAssistantContext;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
 import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
-import com.recred.backend.domain.models.TipoDiaEscolar;
+import com.recred.backend.domain.models.DayType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -87,19 +87,19 @@ class GeminiSchoolAssistantResponderTest {
                         Optional.of(new BigDecimal("500.00")),
                         List.of(new SchoolAssistantPayment(
                                 new BigDecimal("1000.00"),
-                                EstadoPagoExterno.APROBADO,
+                                ExternalPaymentStatus.APROBADO,
                                 LocalDateTime.of(2026, 5, 26, 10, 0),
                                 LocalDateTime.of(2026, 5, 26, 10, 5)
                         )),
                         List.of(new SchoolAssistantPurchase(
                                 new BigDecimal("320.00"),
-                                EstadoCompra.ENTREGADO,
-                                MedioPago.CREDITOS,
+                                PurchaseState.ENTREGADO,
+                                PaymentMethod.CREDITOS,
                                 LocalDateTime.of(2026, 5, 27, 9, 0)
                         )),
                         List.of(new SchoolCalendarEvent(
                                 LocalDate.of(2026, 5, 30),
-                                TipoDiaEscolar.CLASE,
+                                DayType.CLASE,
                                 "Clase normal"
                         ))
                 ),

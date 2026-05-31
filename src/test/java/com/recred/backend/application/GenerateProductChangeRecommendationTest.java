@@ -1,11 +1,11 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
+import com.recred.backend.domain.exceptions.MerchantNotFoundException;
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.ProductRecommendationResult;
 import com.recred.backend.domain.repositories.AIEventRepository;
-import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.domain.repositories.MerchantRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import org.junit.jupiter.api.Test;
@@ -38,7 +38,7 @@ public class GenerateProductChangeRecommendationTest {
     private AIEventRepository aiEventRepository;
 
     @Mock
-    private KiosqueroRepository kiosqueroRepository;
+    private MerchantRepository merchantRepository;
 
     @InjectMocks
     private GenerateProductChangeRecommendation useCase;
@@ -52,8 +52,8 @@ public class GenerateProductChangeRecommendationTest {
         ProductChangeRecommendation leastSold = new ProductChangeRecommendation();
         leastSold.setId(productId);
         leastSold.setIdBuffet(buffetId);
-        leastSold.setNombre("Alfajor de Maicena");
-        leastSold.setPrecio(new BigDecimal("1500.00"));
+        leastSold.setName("Alfajor de Maicena");
+        leastSold.setPrice(new BigDecimal("1500.00"));
 
         ProductChangeAnalysis analysis = new ProductChangeAnalysis(
                 "Resumen de prueba",
@@ -62,7 +62,7 @@ public class GenerateProductChangeRecommendationTest {
                 "gemini-1.5-flash"
         );
 
-        when(kiosqueroRepository.findBuffetById(sellerId)).thenReturn(buffetId);
+        when(merchantRepository.findBuffetById(sellerId)).thenReturn(buffetId);
         when(productRepository.findBuffetLeastSoldProducts(buffetId)).thenReturn(leastSold);
         when(productChangeAnalyzer.analyze(leastSold)).thenReturn(Optional.of(analysis));
 
@@ -75,9 +75,9 @@ public class GenerateProductChangeRecommendationTest {
     @Test
     void executeShouldThrowExceptionWhenKiosqueroNotFound() {
         UUID sellerId = UUID.randomUUID();
-        when(kiosqueroRepository.findBuffetById(sellerId)).thenReturn(null);
+        when(merchantRepository.findBuffetById(sellerId)).thenReturn(null);
 
-        assertThrows(KiosqueroNotFoundException.class, () -> useCase.execute(sellerId));
+        assertThrows(MerchantNotFoundException.class, () -> useCase.execute(sellerId));
         verify(productRepository, never()).findBuffetLeastSoldProducts(any());
     }
 

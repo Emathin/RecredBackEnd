@@ -33,7 +33,7 @@ class SeasonalRecommendationControllerTest {
     void dadoQueElCasoDeUsoRespondeCorrectamente_cuandoSeLlamaAlEndpoint_entoncesRetorna200ConJson() throws Exception {
         RecommendationResponseDTO respuesta = new RecommendationResponseDTO();
         respuesta.setSugerences(List.of(
-                new SugerenciaDTO("Helados y Congelados", "AUMENTAR", "Clima caluroso.")));
+                new SuggestionDTO("Helados y Congelados", "AUMENTAR", "Clima caluroso.")));
         respuesta.setPromocionalTip("Promo 2x1 en helados.");
         when(useCase.execute(anyDouble(), anyDouble())).thenReturn(respuesta);
 

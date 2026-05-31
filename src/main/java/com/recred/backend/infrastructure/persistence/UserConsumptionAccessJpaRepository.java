@@ -2,7 +2,7 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.ConsumptionRequester;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
-import com.recred.backend.infrastructure.entities.UsuarioEntity;
+import com.recred.backend.infrastructure.entities.UserEntity;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface UserConsumptionAccessJpaRepository
-        extends JpaRepository<UsuarioEntity, UUID>, ConsumptionAccessRepository {
+        extends JpaRepository<UserEntity, UUID>, ConsumptionAccessRepository {
 
     @Override
     @Query("""
@@ -19,10 +19,10 @@ public interface UserConsumptionAccessJpaRepository
                 user.rol,
                 student.id
             )
-            from UsuarioEntity user
-            left join user.alumnoEntity student
+            from UserEntity user
+            left join user.studentEntity student
             where user.idCognito = :cognitoSubject
-            and user.activo = true
+            and user.active = true
             """)
     Optional<ConsumptionRequester> findRequesterByCognitoSubject(
             @Param("cognitoSubject") String cognitoSubject
@@ -36,11 +36,11 @@ public interface UserConsumptionAccessJpaRepository
     @Query("""
             select count(student.id)
             from TutorEntity tutor
-            join tutor.hijos student
-            where tutor.usuario.id = :userId
-            and tutor.activa = true
+            join tutor.children student
+            where tutor.user.id = :userId
+            and tutor.active = true
             and student.id = :studentId
-            and student.activo = true
+            and student.active = true
             """)
     long countTutorStudents(
             @Param("userId") UUID userId,

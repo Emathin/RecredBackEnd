@@ -1,7 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.RestriccionHoraria;
-import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.models.TimeRestriction;
+import com.recred.backend.domain.repositories.TimeRestrictionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 class UpdateTimeRestrictionTest {
 
     @Mock
-    private RestriccionHorariaRepository repository;
+    private TimeRestrictionRepository repository;
 
     @InjectMocks
     private UpdateTimeRestriction updateTimeRestriction;
@@ -33,22 +33,22 @@ class UpdateTimeRestrictionTest {
         UUID nuevaCategoriaId = UUID.randomUUID();
         UUID nuevaClasificacionId = UUID.randomUUID();
 
-        RestriccionHoraria restriccionExistente = new RestriccionHoraria();
+        TimeRestriction restriccionExistente = new TimeRestriction();
         when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
-        when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(repository.save(any(TimeRestriction.class))).thenAnswer(i -> i.getArguments()[0]);
 
         TimeRestrictionCommand command = new TimeRestrictionCommand(
                 UUID.randomUUID(), nuevoTimeSlotId, nuevaCategoriaId, nuevaClasificacionId);
 
         updateTimeRestriction.execute(restrictionId, command);
 
-        ArgumentCaptor<RestriccionHoraria> captor = ArgumentCaptor.forClass(RestriccionHoraria.class);
+        ArgumentCaptor<TimeRestriction> captor = ArgumentCaptor.forClass(TimeRestriction.class);
         verify(repository).save(captor.capture());
-        RestriccionHoraria guardada = captor.getValue();
+        TimeRestriction guardada = captor.getValue();
 
-        assertEquals(nuevoTimeSlotId, guardada.getFranjaHoraria().getId());
-        assertEquals(nuevaCategoriaId, guardada.getCategoria().getId());
-        assertEquals(nuevaClasificacionId, guardada.getClasificacion().getId());
+        assertEquals(nuevoTimeSlotId, guardada.getTimeBadge().getId());
+        assertEquals(nuevaCategoriaId, guardada.getCategory().getId());
+        assertEquals(nuevaClasificacionId, guardada.getClassification().getId());
     }
 
     @Test
@@ -56,23 +56,23 @@ class UpdateTimeRestrictionTest {
         UUID restrictionId = UUID.randomUUID();
         UUID nuevoTimeSlotId = UUID.randomUUID();
 
-        RestriccionHoraria restriccionExistente = new RestriccionHoraria();
+        TimeRestriction restriccionExistente = new TimeRestriction();
 
         when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
-        when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(repository.save(any(TimeRestriction.class))).thenAnswer(i -> i.getArguments()[0]);
 
         TimeRestrictionCommand command = new TimeRestrictionCommand(
                 UUID.randomUUID(), nuevoTimeSlotId, null, null);
 
         updateTimeRestriction.execute(restrictionId, command);
 
-        ArgumentCaptor<RestriccionHoraria> captor = ArgumentCaptor.forClass(RestriccionHoraria.class);
+        ArgumentCaptor<TimeRestriction> captor = ArgumentCaptor.forClass(TimeRestriction.class);
         verify(repository).save(captor.capture());
-        RestriccionHoraria guardada = captor.getValue();
+        TimeRestriction guardada = captor.getValue();
 
-        assertEquals(nuevoTimeSlotId, guardada.getFranjaHoraria().getId());
-        assertNull(guardada.getCategoria());
-        assertNull(guardada.getClasificacion());
+        assertEquals(nuevoTimeSlotId, guardada.getTimeBadge().getId());
+        assertNull(guardada.getCategory());
+        assertNull(guardada.getClassification());
     }
 
     @Test

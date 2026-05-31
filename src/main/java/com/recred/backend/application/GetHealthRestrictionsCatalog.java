@@ -1,19 +1,19 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.ClasificacionSalud;
-import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
+import com.recred.backend.domain.models.HealthClassification;
+import com.recred.backend.domain.repositories.HealthClassificationRepository;
 
 import java.util.List;
 
 public class GetHealthRestrictionsCatalog {
 
-    private final ClasificacionSaludRepository repository;
+    private final HealthClassificationRepository repository;
 
-    public GetHealthRestrictionsCatalog(ClasificacionSaludRepository repository) {
+    public GetHealthRestrictionsCatalog(HealthClassificationRepository repository) {
         this.repository = repository;
     }
 
-    public List<ClasificacionSalud> ejecutar() {
+    public List<HealthClassification> ejecutar() {
         return repository.findAll();
     }
 }

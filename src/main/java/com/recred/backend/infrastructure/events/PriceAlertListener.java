@@ -25,12 +25,12 @@ public class PriceAlertListener {
     public void handleProductPriceChanged(ProductPriceChangedEvent event) {
         LOGGER.info(
                 "price_alert_event_received productId={} oldPrice={} newPrice={}",
-                event.producto().getId(),
+                event.product().getId(),
                 event.oldPrice(),
                 event.newPrice()
         );
         generatePriceAlert.execute(
-                event.producto(),
+                event.product(),
                 event.oldPrice(),
                 event.newPrice(),
                 event.buffetId()

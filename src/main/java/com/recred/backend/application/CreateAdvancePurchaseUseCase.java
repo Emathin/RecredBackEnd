@@ -1,10 +1,10 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Student;
+import com.recred.backend.domain.models.Product;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.StudentRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.PurchaseValidator;
@@ -19,20 +19,20 @@ import java.util.UUID;
 public class CreateAdvancePurchaseUseCase {
 
     private final PurchaseValidator purchaseValidator;
-    private final AlumnoRepository alumnoRepository;
+    private final StudentRepository studentRepository;
     private final ProductRepository productRepository;
     private final PurchaseRepository purchaseRepository;
     private final WithdrawalCodeService withdrawalCodeService;
 
     public CreateAdvancePurchaseUseCase(
             PurchaseValidator purchaseValidator,
-            AlumnoRepository alumnoRepository,
+            StudentRepository studentRepository,
             ProductRepository productRepository,
             PurchaseRepository purchaseRepository,
             WithdrawalCodeService withdrawalCodeService
     ) {
         this.purchaseValidator = purchaseValidator;
-        this.alumnoRepository = alumnoRepository;
+        this.studentRepository = studentRepository;
         this.productRepository = productRepository;
         this.purchaseRepository = purchaseRepository;
         this.withdrawalCodeService = withdrawalCodeService;
@@ -41,12 +41,12 @@ public class CreateAdvancePurchaseUseCase {
     public AdvancePurchaseResponse execute(AdvancePurchaseRequest request) {
         AdvancePurchaseRequest.OrderRequest orderRequest = request.orders().get(0);
 
-        Alumno student = alumnoRepository.findById(orderRequest.studentId())
+        Student student = studentRepository.findById(orderRequest.studentId())
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        Map<Producto, Integer> items = new HashMap<>();
+        Map<Product, Integer> items = new HashMap<>();
         for (AdvancePurchaseRequest.ItemRequest itemRequest : orderRequest.items()) {
-            Producto product = productRepository.findById(itemRequest.productId())
+            Product product = productRepository.findById(itemRequest.productId())
                     .orElseThrow(() -> new RuntimeException("Product not found"));
             items.put(product, itemRequest.quantity());
         }

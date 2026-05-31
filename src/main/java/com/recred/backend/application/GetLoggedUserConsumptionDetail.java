@@ -1,12 +1,12 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.exceptions.AlumnoRequeridoParaConsumoException;
-import com.recred.backend.domain.exceptions.ConsumoAlumnoNoAutorizadoException;
-import com.recred.backend.domain.exceptions.RangoFechasConsumoInvalidoException;
-import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
+import com.recred.backend.domain.exceptions.RequiredStudentForConsumptionException;
+import com.recred.backend.domain.exceptions.NotAuthorizedStudentConsumptionException;
+import com.recred.backend.domain.exceptions.InvalidConsumptionDateRangeException;
+import com.recred.backend.domain.exceptions.AuthenticatedUserNotFoundException;
 import com.recred.backend.domain.models.ConsumptionRequester;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.UserRole;
 import com.recred.backend.domain.models.StudentConsumptionDetail;
 import com.recred.backend.domain.models.StudentConsumptionPurchase;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
@@ -25,8 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class GetLoggedUserConsumptionDetail {
 
     private static final int DEFAULT_LOOKBACK_DAYS = 30;
-    private static final Set<EstadoCompra> CONSUMPTION_STATUSES = Set.of(
-            EstadoCompra.ENTREGADO
+    private static final Set<PurchaseState> CONSUMPTION_STATUSES = Set.of(
+            PurchaseState.ENTREGADO
     );
 
     private final ConsumptionAccessRepository accessRepository;
@@ -50,7 +50,7 @@ public class GetLoggedUserConsumptionDetail {
     ) {
         ConsumptionRequester requester = accessRepository
                 .findRequesterByCognitoSubject(cognitoSubject)
-                .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(cognitoSubject));
+                .orElseThrow(() -> new AuthenticatedUserNotFoundException(cognitoSubject));
         UUID studentId = resolveStudentId(requester, command.studentId());
         LocalDate to = command.to().orElse(LocalDate.now(clock));
         LocalDate from = command.from().orElse(to.minusDays(DEFAULT_LOOKBACK_DAYS));
@@ -77,16 +77,16 @@ public class GetLoggedUserConsumptionDetail {
             ConsumptionRequester requester,
             Optional<UUID> requestedStudentId
     ) {
-        if (requester.role() == RolUsuario.ALUMNO) {
+        if (requester.role() == UserRole.ALUMNO) {
             return resolveStudentForStudentUser(requester, requestedStudentId);
         }
 
-        if (requester.role() == RolUsuario.PADRE) {
+        if (requester.role() == UserRole.PADRE) {
             return resolveStudentForTutorUser(requester, requestedStudentId);
         }
 
         UUID studentId = requestedStudentId.orElse(null);
-        throw new ConsumoAlumnoNoAutorizadoException(studentId);
+        throw new NotAuthorizedStudentConsumptionException(studentId);
     }
 
     private UUID resolveStudentForStudentUser(
@@ -96,11 +96,11 @@ public class GetLoggedUserConsumptionDetail {
         UUID studentId = requester.studentId();
 
         if (studentId == null) {
-            throw new ConsumoAlumnoNoAutorizadoException(null);
+            throw new NotAuthorizedStudentConsumptionException(null);
         }
 
         if (requestedStudentId.isPresent() && !studentId.equals(requestedStudentId.get())) {
-            throw new ConsumoAlumnoNoAutorizadoException(requestedStudentId.get());
+            throw new NotAuthorizedStudentConsumptionException(requestedStudentId.get());
         }
 
         return studentId;
@@ -111,10 +111,10 @@ public class GetLoggedUserConsumptionDetail {
             Optional<UUID> requestedStudentId
     ) {
         UUID studentId = requestedStudentId
-                .orElseThrow(AlumnoRequeridoParaConsumoException::new);
+                .orElseThrow(RequiredStudentForConsumptionException::new);
 
         if (!accessRepository.tutorCanAccessStudent(requester.userId(), studentId)) {
-            throw new ConsumoAlumnoNoAutorizadoException(studentId);
+            throw new NotAuthorizedStudentConsumptionException(studentId);
         }
 
         return studentId;
@@ -122,7 +122,7 @@ public class GetLoggedUserConsumptionDetail {
 
     private void validateDateRange(LocalDate from, LocalDate to) {
         if (from.isAfter(to)) {
-            throw new RangoFechasConsumoInvalidoException(from, to);
+            throw new InvalidConsumptionDateRangeException(from, to);
         }
     }
 

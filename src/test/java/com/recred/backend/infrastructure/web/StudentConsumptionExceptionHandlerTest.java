@@ -1,9 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.domain.exceptions.AlumnoRequeridoParaConsumoException;
-import com.recred.backend.domain.exceptions.ConsumoAlumnoNoAutorizadoException;
-import com.recred.backend.domain.exceptions.RangoFechasConsumoInvalidoException;
-import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
+import com.recred.backend.domain.exceptions.RequiredStudentForConsumptionException;
+import com.recred.backend.domain.exceptions.NotAuthorizedStudentConsumptionException;
+import com.recred.backend.domain.exceptions.InvalidConsumptionDateRangeException;
+import com.recred.backend.domain.exceptions.AuthenticatedUserNotFoundException;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
@@ -20,7 +20,7 @@ class StudentConsumptionExceptionHandlerTest {
     @Test
     void mapRequiredStudentError() {
         Map<String, String> response = handler.handleRequiredStudent(
-                new AlumnoRequeridoParaConsumoException()
+                new RequiredStudentForConsumptionException()
         );
 
         assertEquals("Debe indicar el alumno para consultar el consumo.", response.get("error"));
@@ -29,7 +29,7 @@ class StudentConsumptionExceptionHandlerTest {
     @Test
     void mapInvalidDateRangeError() {
         Map<String, String> response = handler.handleInvalidDateRange(
-                new RangoFechasConsumoInvalidoException(
+                new InvalidConsumptionDateRangeException(
                         LocalDate.of(2026, 5, 20),
                         LocalDate.of(2026, 5, 1)
                 )
@@ -46,7 +46,7 @@ class StudentConsumptionExceptionHandlerTest {
         UUID studentId = UUID.randomUUID();
 
         Map<String, String> response = handler.handleForbiddenStudent(
-                new ConsumoAlumnoNoAutorizadoException(studentId)
+                new NotAuthorizedStudentConsumptionException(studentId)
         );
 
         assertEquals(
@@ -58,7 +58,7 @@ class StudentConsumptionExceptionHandlerTest {
     @Test
     void mapAuthenticatedUserNotFoundError() {
         Map<String, String> response = handler.handleAuthenticatedUserNotFound(
-                new UsuarioAutenticadoNoEncontradoException("cognito-sub")
+                new AuthenticatedUserNotFoundException("cognito-sub")
         );
 
         assertEquals(

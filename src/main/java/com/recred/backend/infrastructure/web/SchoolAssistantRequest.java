@@ -7,7 +7,7 @@ import java.util.UUID;
 public record SchoolAssistantRequest(
         @JsonProperty("sesionId")
         UUID sessionId,
-        @JsonProperty("mensaje")
+        @JsonProperty("message")
         String message
 ) {
 

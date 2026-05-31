@@ -20,10 +20,10 @@ public class GeminiproductChangeAnalyzer implements ProductChangeAnalyzer {
             GeminiSpendingPredictionAnalyzer.class);
     private static final String PROMPT_TEMPLATE = """
             Sos un asistente para quioskeros de una app escolar.
-            Se te brindara un producto y su precio.
-            Devolveras una sugerencia para cambiar el producto por uno del mismo rubro
+            Se te brindara un product y su precio.
+            Devolveras una sugerencia para cambiar el product por uno del mismo rubro
              existente en argentina.
-            Usa lenguaje simple, claro y accionable para usuario final.
+            Usa lenguaje simple, claro y accionable para user final.
             No menciones modelo, confianza, calidad predictiva ni cantidad
              de datos historicos.
             Genera alertas solo si hay riesgo real o un punto concreto para revisar.
@@ -63,8 +63,8 @@ public class GeminiproductChangeAnalyzer implements ProductChangeAnalyzer {
             ProductChangeRecommendation productChangeRecommendation) {
         return PROMPT_TEMPLATE.formatted(
 
-                productChangeRecommendation.getNombre(),
-                productChangeRecommendation.getPrecio()
+                productChangeRecommendation.getName(),
+                productChangeRecommendation.getPrice()
         );
     }
 

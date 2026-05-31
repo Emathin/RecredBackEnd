@@ -6,18 +6,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class RecommendationResponseDTO {
     @JsonProperty("sugerencias")
-    private List<SugerenciaDTO> sugerences;
+    private List<SuggestionDTO> sugerences;
     @JsonProperty("tip_promocional")
     private String promocionalTip;
 
     public RecommendationResponseDTO() {
     }
 
-    public List<SugerenciaDTO> getSugerences() {
+    public List<SuggestionDTO> getSugerences() {
         return sugerences;
     }
 
-    public void setSugerences(List<SugerenciaDTO> sugerences) {
+    public void setSugerences(List<SuggestionDTO> sugerences) {
         this.sugerences = sugerences;
     }
 

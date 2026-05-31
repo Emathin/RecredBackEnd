@@ -5,7 +5,7 @@ import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.UpdatePurchaseStatus;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Product;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.springframework.http.ResponseEntity;
@@ -54,7 +54,7 @@ public class PurchaseController {
     public ResponseEntity<PurchaseResponseDTO> processPurchase(
             @RequestBody ProcessPurchaseRequestDTO request
     ) {
-        Map<Producto, Integer> cart = request.getItems().stream()
+        Map<Product, Integer> cart = request.getItems().stream()
                 .collect(Collectors.toMap(
                         item -> productRepository.findById(item.getProductId())
                                 .orElseThrow(() ->

@@ -1,5 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.domain.models.Product;
+import com.recred.backend.domain.models.Student;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.ObjectMapper;
@@ -8,11 +10,9 @@ import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.UpdatePurchaseStatus;
-import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.StudentNotFoundException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.PurchaseState;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -85,17 +85,17 @@ class PurchaseControllerTest {
         PurchaseItemDTO itemDTO = new PurchaseItemDTO(productId, 1);
         requestDTO = new ProcessPurchaseRequestDTO(studentId, Collections.singletonList(itemDTO));
 
-        Producto product = new Producto();
+        Product product = new Product();
         product.setId(productId);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
-        Alumno student = new Alumno();
+        Student student = new Student();
         student.setId(studentId);
 
         purchase = new Purchase();
         purchase.setId(purchaseId);
         purchase.setStudent(student);
-        purchase.setStatus(EstadoCompra.ENTREGADO);
+        purchase.setStatus(PurchaseState.ENTREGADO);
         purchase.setDate(LocalDateTime.now());
 
         when(processPresentialPurchase.execute(eq(studentId), anyMap())).thenReturn(purchase);
@@ -108,14 +108,14 @@ class PurchaseControllerTest {
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(purchaseId.toString()))
-                .andExpect(jsonPath("$.status").value(EstadoCompra.ENTREGADO.name()));
+                .andExpect(jsonPath("$.status").value(PurchaseState.ENTREGADO.name()));
 
         verify(processPresentialPurchase).execute(eq(studentId), anyMap());
     }
 
     @Test
     void processPurchase_WhenStudentNotFound_ShouldReturnNotFound() throws Exception {
-        doThrow(new AlumnoNoEncontradoException(studentId))
+        doThrow(new StudentNotFoundException(studentId))
                 .when(processPresentialPurchase).execute(eq(studentId), anyMap());
 
         mockMvc.perform(post("/api/v1/purchases/presential")
@@ -177,7 +177,7 @@ class PurchaseControllerTest {
         PurchaseStatus purchaseStatus = new PurchaseStatus(
                 purchaseId,
                 studentId,
-                EstadoCompra.PENDIENTE,
+                PurchaseState.PENDIENTE,
                 "A preparar",
                 LocalDateTime.now()
         );
@@ -189,7 +189,7 @@ class PurchaseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.purchaseId").value(purchaseId.toString()))
                 .andExpect(jsonPath("$.studentId").value(studentId.toString()))
-                .andExpect(jsonPath("$.status").value(EstadoCompra.PENDIENTE.name()))
+                .andExpect(jsonPath("$.status").value(PurchaseState.PENDIENTE.name()))
                 .andExpect(jsonPath("$.statusLabel").value("A preparar"));
     }
 
@@ -213,22 +213,22 @@ class PurchaseControllerTest {
         PurchaseStatus purchaseStatus = new PurchaseStatus(
                 purchaseId,
                 studentId,
-                EstadoCompra.EN_PREPARACION,
+                PurchaseState.EN_PREPARACION,
                 "En preparacion",
                 LocalDateTime.now()
         );
-        when(updatePurchaseStatus.execute(purchaseId, EstadoCompra.EN_PREPARACION))
+        when(updatePurchaseStatus.execute(purchaseId, PurchaseState.EN_PREPARACION))
                 .thenReturn(purchaseStatus);
 
         mockMvc.perform(patch("/api/v1/purchases/{id}/status", purchaseId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 new UpdatePurchaseStatusRequestDTO(
-                                        EstadoCompra.EN_PREPARACION
+                                        PurchaseState.EN_PREPARACION
                                 )
                         )))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value(EstadoCompra.EN_PREPARACION.name()))
+                .andExpect(jsonPath("$.status").value(PurchaseState.EN_PREPARACION.name()))
                 .andExpect(jsonPath("$.statusLabel").value("En preparacion"));
     }
 

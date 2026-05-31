@@ -1,8 +1,8 @@
 package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.MedioPago;
+import com.recred.backend.domain.models.PurchaseState;
+import com.recred.backend.domain.models.PaymentMethod;
 import com.recred.backend.domain.models.StudentConsumptionPurchase;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,10 +14,10 @@ public record StudentConsumptionPurchaseResponse(
         UUID purchaseId,
         @JsonProperty("fechaHora")
         LocalDateTime dateTime,
-        @JsonProperty("estado")
-        EstadoCompra status,
+        @JsonProperty("stock")
+        PurchaseState status,
         @JsonProperty("medioPago")
-        MedioPago paymentMethod,
+        PaymentMethod paymentMethod,
         @JsonProperty("montoTotal")
         BigDecimal totalAmount,
         @JsonProperty("buffetId")

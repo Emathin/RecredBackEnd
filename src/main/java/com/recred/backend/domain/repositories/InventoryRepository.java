@@ -1,15 +1,15 @@
 package com.recred.backend.domain.repositories;
 
-import com.recred.backend.domain.models.Inventario;
-import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Inventory;
+import com.recred.backend.domain.models.Product;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface InventoryRepository {
-    Inventario save(Inventario inventario);
-    Optional<Inventario> findByBuffetAndProduct(UUID buffetId, UUID productoId);
+    Inventory save(Inventory inventory);
+    Optional<Inventory> findByBuffetAndProduct(UUID buffetId, UUID productoId);
     boolean checkIfProductIsInStock(UUID productId, UUID buffetId);
-    List<Producto> findAvailableProductsByBuffet(UUID buffetId);
+    List<Product> findAvailableProductsByBuffet(UUID buffetId);
 }

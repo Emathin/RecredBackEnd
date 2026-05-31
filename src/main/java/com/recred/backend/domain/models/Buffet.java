@@ -15,12 +15,12 @@ public class Buffet {
 
     private UUID id;
 
-    private Colegio colegio;
-    private Kiosquero vendedor;
+    private School school;
+    private Merchant merchant;
 
-    private String nombre;
-    private LocalDate fechaVencimientoHabilitacion;
-    private Boolean activo = true;
-    private LocalDateTime creadoEn;
-    private LocalDateTime actualizadoEn;
+    private String name;
+    private LocalDate contractExpirationDate;
+    private Boolean active = true;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

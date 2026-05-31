@@ -1,16 +1,16 @@
 package com.recred.backend.infrastructure.persistence;
 
-import com.recred.backend.domain.models.ClasificacionSalud;
-import com.recred.backend.domain.models.ClasificacionTipo;
+import com.recred.backend.domain.models.Product;
+import com.recred.backend.domain.models.TypeClassification;
+import com.recred.backend.domain.models.HealthClassification;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
-import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.ProductoMedida;
+import com.recred.backend.domain.models.ProductMeasure;
 import com.recred.backend.domain.repositories.ProductRepository;
-import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
-import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
-import com.recred.backend.infrastructure.entities.ClasificacionTipoEntity;
-import com.recred.backend.infrastructure.entities.ProductoEntity;
-import com.recred.backend.infrastructure.entities.ProductoMedidaEntity;
+import com.recred.backend.infrastructure.entities.ProductCategoryEntity;
+import com.recred.backend.infrastructure.entities.HealthClassificationEntity;
+import com.recred.backend.infrastructure.entities.ProductEntity;
+import com.recred.backend.infrastructure.entities.TypeClassificationEntity;
+import com.recred.backend.infrastructure.entities.ProductMeasureEntity;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -31,35 +31,35 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
-    public Optional<Producto> findById(UUID id) {
-        return springDataRepository.findById(id).map(ProductoEntity::toDomain);
+    public Optional<Product> findById(UUID id) {
+        return springDataRepository.findById(id).map(ProductEntity::toDomain);
     }
     @Override
     public ProductChangeRecommendation findBuffetLeastSoldProducts(UUID buffetId) {
-        ProductoEntity producto = springDataRepository.findBuffetLeastSoldProducts(buffetId);
+        ProductEntity producto = springDataRepository.findBuffetLeastSoldProducts(buffetId);
 
         return producto.toProductRecommendation(buffetId);
     }
 
     @Override
-    public List<Producto> findBestSoldProducts() {
-        List<ProductoEntity> productos = springDataRepository.findBestSoldProducts();
-        return productos.stream().map(ProductoEntity::toDomain).toList();
+    public List<Product> findBestSoldProducts() {
+        List<ProductEntity> productos = springDataRepository.findBestSoldProducts();
+        return productos.stream().map(ProductEntity::toDomain).toList();
     }
 
     @Override
-    public Producto save(Producto producto) {
-        ProductoEntity entityExistente;
+    public Product save(Product product) {
+        ProductEntity entityExistente;
 
-        if (producto.getId() != null) {
-            entityExistente = springDataRepository.findById(producto.getId())
-                    .orElseGet(ProductoEntity::new);
+        if (product.getId() != null) {
+            entityExistente = springDataRepository.findById(product.getId())
+                    .orElseGet(ProductEntity::new);
         } else {
-            entityExistente = new ProductoEntity();
+            entityExistente = new ProductEntity();
         }
 
-        ProductoEntity entityLista = toEntity(producto, entityExistente);
-        ProductoEntity entityGuardada = springDataRepository.save(entityLista);
+        ProductEntity entityLista = toEntity(product, entityExistente);
+        ProductEntity entityGuardada = springDataRepository.save(entityLista);
         return entityGuardada.toDomain();
     }
 
@@ -68,17 +68,17 @@ public class ProductRepositoryImpl implements ProductRepository {
         springDataRepository.updatePrice(productId, newPrice);
     }
 
-    private ProductoEntity toEntity(Producto modelo, ProductoEntity entity) {
+    private ProductEntity toEntity(Product modelo, ProductEntity entity) {
         if (entity.getId() == null) {
             entity.setId(modelo.getId());
         }
 
-        entity.setNombre(modelo.getNombre());
-        entity.setDescripcion(modelo.getDescripcion());
-        entity.setPrecio(modelo.getPrecio());
-        entity.setPeso(modelo.getPeso());
-        entity.setRequierePreparacion(modelo.getRequierePreparacion());
-        entity.setActivo(modelo.getActivo());
+        entity.setName(modelo.getName());
+        entity.setDescription(modelo.getDescription());
+        entity.setPrice(modelo.getPrice());
+        entity.setWeight(modelo.getWeight());
+        entity.setRequiresPreparation(modelo.getRequiresPreparation());
+        entity.setActive(modelo.getActive());
 
         mapearCategoria(modelo, entity);
 
@@ -103,34 +103,34 @@ public class ProductRepositoryImpl implements ProductRepository {
         return entity;
     }
 
-    private boolean tieneMedias(Producto modelo) {
-        if (modelo.getMedidas() == null) {
+    private boolean tieneMedias(Product modelo) {
+        if (modelo.getMeasures() == null) {
             return false;
         }
-        return !modelo.getMedidas().isEmpty();
+        return !modelo.getMeasures().isEmpty();
     }
 
-    private boolean tieneTipos(Producto modelo) {
-        if (modelo.getTipos() == null) {
+    private boolean tieneTipos(Product modelo) {
+        if (modelo.getTypes() == null) {
             return false;
         }
-        return !modelo.getTipos().isEmpty();
+        return !modelo.getTypes().isEmpty();
     }
 
-    private boolean tieneClasificacionesSalud(Producto modelo) {
-        if (modelo.getClasificacionesSalud() == null) {
+    private boolean tieneClasificacionesSalud(Product modelo) {
+        if (modelo.getHealthClassifications() == null) {
             return false;
         }
-        return !modelo.getClasificacionesSalud().isEmpty();
+        return !modelo.getHealthClassifications().isEmpty();
     }
 
-    private void mapearCategoria(Producto modelo, ProductoEntity entity) {
-        if (modelo.getCategoria() != null) {
-            if (entity.getCategoria() == null
-                    || !entity.getCategoria().getId().equals(modelo.getCategoria().getId())) {
-                CategoriaProductoEntity categoriaEntity = new CategoriaProductoEntity();
-                categoriaEntity.setId(modelo.getCategoria().getId());
-                entity.setCategoria(categoriaEntity);
+    private void mapearCategoria(Product modelo, ProductEntity entity) {
+        if (modelo.getCategory() != null) {
+            if (entity.getCategory() == null
+                    || !entity.getCategory().getId().equals(modelo.getCategory().getId())) {
+                ProductCategoryEntity categoriaEntity = new ProductCategoryEntity();
+                categoriaEntity.setId(modelo.getCategory().getId());
+                entity.setCategory(categoriaEntity);
             }
         } else {
 
@@ -140,76 +140,76 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
 
-    private void mapearMedidas(Producto modelo, ProductoEntity entity) {
+    private void mapearMedidas(Product modelo, ProductEntity entity) {
 
-        entity.getMedidas().clear();
+        entity.getMeasures().clear();
 
-        modelo.getMedidas().forEach(medidaDominio -> {
-            ProductoMedidaEntity medidaEntity = convertirMedida(medidaDominio);
+        modelo.getMeasures().forEach(medidaDominio -> {
+            ProductMeasureEntity medidaEntity = convertirMedida(medidaDominio);
             entity.addMedida(medidaEntity);
         });
     }
 
-    private ProductoMedidaEntity convertirMedida(ProductoMedida medidaDominio) {
-        ProductoMedidaEntity medidaEntity = new ProductoMedidaEntity();
+    private ProductMeasureEntity convertirMedida(ProductMeasure medidaDominio) {
+        ProductMeasureEntity medidaEntity = new ProductMeasureEntity();
         medidaEntity.setId(medidaDominio.getId());
-        medidaEntity.setCantidadUnidad(medidaDominio.getCantidadUnidad());
-        medidaEntity.setUnidad(medidaDominio.getUnidad());
+        medidaEntity.setUnitQuantity(medidaDominio.getUnitAmount());
+        medidaEntity.setUnit(medidaDominio.getUnit());
         return medidaEntity;
     }
 
-    private void limpiarMedidas(ProductoEntity entity) {
-        if (entity.getMedidas() != null) {
-            entity.getMedidas().clear();
+    private void limpiarMedidas(ProductEntity entity) {
+        if (entity.getMeasures() != null) {
+            entity.getMeasures().clear();
         }
     }
 
-    private void mapearTipos(Producto modelo, ProductoEntity entity) {
+    private void mapearTipos(Product modelo, ProductEntity entity) {
 
-        entity.getTipos().clear();
+        entity.getTypes().clear();
 
-        Set<ClasificacionTipoEntity> tiposEntities = modelo.getTipos().stream()
+        Set<TypeClassificationEntity> tiposEntities = modelo.getTypes().stream()
                 .map(this::convertirTipo)
                 .collect(Collectors.toSet());
-        entity.getTipos().addAll(tiposEntities);
+        entity.getTypes().addAll(tiposEntities);
     }
 
-    private ClasificacionTipoEntity convertirTipo(ClasificacionTipo tipoDominio) {
-        ClasificacionTipoEntity tipoEntity = new ClasificacionTipoEntity();
+    private TypeClassificationEntity convertirTipo(TypeClassification tipoDominio) {
+        TypeClassificationEntity tipoEntity = new TypeClassificationEntity();
         tipoEntity.setId(tipoDominio.getId());
-        tipoEntity.setDescripcion(tipoDominio.getDescripcion());
+        tipoEntity.setDescription(tipoDominio.getDescription());
         return tipoEntity;
     }
 
-    private void limpiarTipos(ProductoEntity entity) {
-        if (entity.getTipos() != null) {
-            entity.getTipos().clear();
+    private void limpiarTipos(ProductEntity entity) {
+        if (entity.getTypes() != null) {
+            entity.getTypes().clear();
         }
     }
 
-    private void mapearClasificacionesSalud(Producto modelo, ProductoEntity entity) {
+    private void mapearClasificacionesSalud(Product modelo, ProductEntity entity) {
 
-        entity.getClasificacionesSalud().clear();
+        entity.getHealthClassifications().clear();
 
-        Set<ClasificacionSaludEntity> clasificacionesEntities = modelo
-                .getClasificacionesSalud().stream()
+        Set<HealthClassificationEntity> clasificacionesEntities = modelo
+                .getHealthClassifications().stream()
                 .map(this::convertirClasificacionSalud)
                 .collect(Collectors.toSet());
-        entity.getClasificacionesSalud().addAll(clasificacionesEntities);
+        entity.getHealthClassifications().addAll(clasificacionesEntities);
     }
 
-    private ClasificacionSaludEntity convertirClasificacionSalud(
-            ClasificacionSalud clasificacionDominio) {
-        ClasificacionSaludEntity clasificacionEntity = new ClasificacionSaludEntity();
+    private HealthClassificationEntity convertirClasificacionSalud(
+            HealthClassification clasificacionDominio) {
+        HealthClassificationEntity clasificacionEntity = new HealthClassificationEntity();
         clasificacionEntity.setId(clasificacionDominio.getId());
-        clasificacionEntity.setDescripcion(clasificacionDominio.getDescripcion());
-        clasificacionEntity.setActivo(clasificacionDominio.getActivo());
+        clasificacionEntity.setDescription(clasificacionDominio.getDescription());
+        clasificacionEntity.setActive(clasificacionDominio.getActive());
         return clasificacionEntity;
     }
 
-    private void limpiarClasificacionesSalud(ProductoEntity entity) {
-        if (entity.getClasificacionesSalud() != null) {
-            entity.getClasificacionesSalud().clear();
+    private void limpiarClasificacionesSalud(ProductEntity entity) {
+        if (entity.getHealthClassifications() != null) {
+            entity.getHealthClassifications().clear();
         }
     }
 

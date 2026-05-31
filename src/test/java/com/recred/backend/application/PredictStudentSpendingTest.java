@@ -2,15 +2,14 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.BudgetPeriod;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.StudentRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
 import com.recred.backend.domain.repositories.AIEventRepository;
-import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.StudentNotFoundException;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.ConsumptionCategory;
 import com.recred.backend.domain.models.PurchaseSpending;
-import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.models.SpendingPeriodPreference;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
@@ -49,7 +48,7 @@ class PredictStudentSpendingTest {
     );
 
     @Mock
-    private AlumnoRepository alumnoRepository;
+    private StudentRepository studentRepository;
 
     @Mock
     private SpendingPreferenceRepository spendingPreferenceRepository;
@@ -68,7 +67,7 @@ class PredictStudentSpendingTest {
     @BeforeEach
     void setUp() {
         predictStudentSpending = new PredictStudentSpending(
-                alumnoRepository,
+                studentRepository,
                 spendingPreferenceRepository,
                 purchaseSpendingRepository,
                 spendingPredictionAnalyzer,
@@ -82,7 +81,7 @@ class PredictStudentSpendingTest {
     @Test
     void useActivePreferenceWhenPeriodIsNotRequested() {
         UUID studentId = UUID.randomUUID();
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+        when(studentRepository.existsById(studentId)).thenReturn(true);
         when(spendingPreferenceRepository.findActivePreferences(
                 studentId,
                 LocalDate.of(2026, 5, 21)
@@ -131,7 +130,7 @@ class PredictStudentSpendingTest {
     @Test
     void requestedPeriodOverridesPreference() {
         UUID studentId = UUID.randomUUID();
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+        when(studentRepository.existsById(studentId)).thenReturn(true);
         when(spendingPreferenceRepository.findActivePreferences(any(), any()))
                 .thenReturn(List.of(new SpendingPeriodPreference(
                         BudgetPeriod.QUINCENAL,
@@ -160,7 +159,7 @@ class PredictStudentSpendingTest {
     @Test
     void useMonthlyPeriodWhenNoPreferenceAndNoRequestedPeriod() {
         UUID studentId = UUID.randomUUID();
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+        when(studentRepository.existsById(studentId)).thenReturn(true);
         when(spendingPreferenceRepository.findActivePreferences(any(), any()))
                 .thenReturn(List.of());
         when(purchaseSpendingRepository.findSpending(any(), anyCollection(), any(), any()))
@@ -182,9 +181,9 @@ class PredictStudentSpendingTest {
     @Test
     void throwExceptionWhenStudentDoesNotExist() {
         UUID studentId = UUID.randomUUID();
-        when(alumnoRepository.existsById(studentId)).thenReturn(false);
+        when(studentRepository.existsById(studentId)).thenReturn(false);
 
-        assertThrows(AlumnoNoEncontradoException.class, () -> predictStudentSpending.execute(
+        assertThrows(StudentNotFoundException.class, () -> predictStudentSpending.execute(
                 studentId,
                 BudgetPeriod.MENSUAL
         ));
@@ -202,7 +201,7 @@ class PredictStudentSpendingTest {
     @Test
     void querySpendingWithCurrentAndHistoricalRanges() {
         UUID studentId = UUID.randomUUID();
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+        when(studentRepository.existsById(studentId)).thenReturn(true);
         when(spendingPreferenceRepository.findActivePreferences(any(), any()))
                 .thenReturn(List.of());
         when(purchaseSpendingRepository.findSpending(any(), anyCollection(), any(), any()))

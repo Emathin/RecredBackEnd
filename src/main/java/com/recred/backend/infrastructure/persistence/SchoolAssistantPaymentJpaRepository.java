@@ -2,7 +2,7 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
-import com.recred.backend.infrastructure.entities.PagoMercadoPagoEntity;
+import com.recred.backend.infrastructure.entities.MercadoPagoPaymentEntity;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -13,7 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SchoolAssistantPaymentJpaRepository
-        extends JpaRepository<PagoMercadoPagoEntity, UUID>, SchoolAssistantPaymentRepository {
+        extends JpaRepository<MercadoPagoPaymentEntity, UUID>, SchoolAssistantPaymentRepository {
 
     @Override
     default List<SchoolAssistantPayment> findRecentByStudentId(UUID studentId, int limit) {
@@ -37,14 +37,14 @@ public interface SchoolAssistantPaymentJpaRepository
 
     @Query("""
             select new com.recred.backend.domain.models.SchoolAssistantPayment(
-                payment.monto,
-                payment.estado,
-                payment.creadoEn,
-                payment.aprobadoEn
+                payment.amount,
+                payment.state,
+                payment.createdAt,
+                payment.approvedAt
             )
-            from PagoMercadoPagoEntity payment
-            where payment.billeteraEntity.alumnoEntity.id = :studentId
-            order by payment.creadoEn desc
+            from MercadoPagoPaymentEntity payment
+            where payment.walletEntity.studentEntity.id = :studentId
+            order by payment.createdAt desc
             """)
     List<SchoolAssistantPayment> findRecentByStudentId(
             @Param("studentId") UUID studentId,
@@ -53,15 +53,15 @@ public interface SchoolAssistantPaymentJpaRepository
 
     @Query("""
             select new com.recred.backend.domain.models.SchoolAssistantPayment(
-                payment.monto,
-                payment.estado,
-                payment.creadoEn,
-                payment.aprobadoEn
+                payment.amount,
+                payment.state,
+                payment.createdAt,
+                payment.approvedAt
             )
-            from PagoMercadoPagoEntity payment
-            where payment.billeteraEntity.alumnoEntity.id = :studentId
-            and payment.creadoEn between :startDateTime and :endDateTime
-            order by payment.creadoEn desc
+            from MercadoPagoPaymentEntity payment
+            where payment.walletEntity.studentEntity.id = :studentId
+            and payment.createdAt between :startDateTime and :endDateTime
+            order by payment.createdAt desc
             """)
     List<SchoolAssistantPayment> findByStudentIdAndDateRange(
             @Param("studentId") UUID studentId,
