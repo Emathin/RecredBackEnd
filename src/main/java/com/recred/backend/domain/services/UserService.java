@@ -16,7 +16,7 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public User SynchronizeCognitoUser(Jwt jwt) {
+    public User synchronizeCognitoUser(Jwt jwt) {
         String sub = jwt.getSubject();
         String email = jwt.getClaimAsString("email");
 

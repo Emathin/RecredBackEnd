@@ -8,10 +8,10 @@ import java.util.UUID;
 
 public class GetStudentPreferences {
 
-    private final AISuggestionRepository AISuggestionRepository;
+    private final AISuggestionRepository aiSuggestionRepository;
 
     public GetStudentPreferences(AISuggestionRepository AISuggestionRepository) {
-        this.AISuggestionRepository = AISuggestionRepository;
+        this.aiSuggestionRepository = AISuggestionRepository;
     }
 
     public List<AISuggestionEntity> execute(
@@ -19,9 +19,9 @@ public class GetStudentPreferences {
         List<AISuggestionEntity> preferences;
 
         if (tipo != null) {
-            preferences = AISuggestionRepository.findByAlumnoIdAndTipo(alumnoId, tipo);
+            preferences = aiSuggestionRepository.findByAlumnoIdAndTipo(alumnoId, tipo);
         } else {
-            preferences = AISuggestionRepository.findByAlumnoId(alumnoId);
+            preferences = aiSuggestionRepository.findByAlumnoId(alumnoId);
         }
         
         if (onlyLast && !preferences.isEmpty()) {

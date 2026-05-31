@@ -36,7 +36,7 @@ public class UserController {
     @PostMapping("/sync")
     public ResponseEntity<Map<String, Object>> synchronizeUser(@AuthenticationPrincipal Jwt jwt) {
 
-        User user = userService.SynchronizeCognitoUser(jwt);
+        User user = userService.synchronizeCognitoUser(jwt);
 
         Map<String, Object> response = new HashMap<>();
         response.put("id", user.getId());

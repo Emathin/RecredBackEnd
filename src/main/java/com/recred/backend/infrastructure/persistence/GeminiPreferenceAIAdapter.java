@@ -62,8 +62,8 @@ public class GeminiPreferenceAIAdapter implements PreferenceAIRepository {
 
         return String.format("""
                 Eres un experto en nutrición infantil y análisis de consumo para el proyecto Recred.
-                Tu tarea es analizar el historial de compras de un student y detectar una preferencia
-                que coincida con el stock actual del kiosco.
+                Tu tarea es analizar el historial de compras de un student y detectar una
+                preferencia que coincida con el stock actual del kiosco.
                 
                 DATOS DEL ALUMNO:
                 - Grado: %s

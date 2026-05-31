@@ -25,17 +25,17 @@ public class GeneratePriceAlert {
 
     private final StudentAIProfileRepository studentAIProfileRepository;
     private final PriceAlertAIRepository priceAlertAIRepository;
-    private final AISuggestionRepository AISuggestionRepository;
+    private final AISuggestionRepository aiSuggestionRepository;
     private final Clock clock;
 
     public GeneratePriceAlert(
             StudentAIProfileRepository studentAIProfileRepository,
             PriceAlertAIRepository priceAlertAIRepository,
-            AISuggestionRepository AISuggestionRepository,
+            AISuggestionRepository aiSuggestionRepository,
             Clock clock) {
         this.studentAIProfileRepository = studentAIProfileRepository;
         this.priceAlertAIRepository = priceAlertAIRepository;
-        this.AISuggestionRepository = AISuggestionRepository;
+        this.aiSuggestionRepository = aiSuggestionRepository;
         this.clock = clock;
     }
 
@@ -74,7 +74,7 @@ public class GeneratePriceAlert {
                             result.razonIA()
                     ))
                     .ifPresentOrElse(
-                            AISuggestionRepository::savePriceAlert,
+                            aiSuggestionRepository::savePriceAlert,
                             () -> LOGGER.warn(
                                     "price_alert_ai_empty studentId={} productId={}",
                                     student.getId(),
@@ -86,7 +86,7 @@ public class GeneratePriceAlert {
 
     private boolean hasRecentAlert(UUID studentId, UUID productId) {
         LocalDateTime since = LocalDateTime.now(clock).minusHours(COOLDOWN_HOURS);
-        return AISuggestionRepository.hasRecentPriceAlert(studentId, productId, since);
+        return aiSuggestionRepository.hasRecentPriceAlert(studentId, productId, since);
     }
 
     private Set<UUID> tutorUserIds(Student student) {

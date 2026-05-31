@@ -10,8 +10,8 @@ public class RespondToAISuggestion {
 
     private final AISuggestionRepository AISuggestionRepository;
 
-    public RespondToAISuggestion(AISuggestionRepository AISuggestionRepository) {
-        this.AISuggestionRepository = AISuggestionRepository;
+    public RespondToAISuggestion(AISuggestionRepository aiSuggestionRepository) {
+        this.AISuggestionRepository = aiSuggestionRepository;
     }
 
     @Transactional

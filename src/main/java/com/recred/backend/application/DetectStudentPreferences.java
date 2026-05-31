@@ -26,19 +26,19 @@ public class DetectStudentPreferences {
     private static final int MIN_PURCHASES_FOR_ANALYSIS = 3;
     private final StudentRepository studentRepository;
     private final PreferenceAIRepository preferenceAIRepository;
-    private final AISuggestionRepository AISuggestionRepository;
+    private final AISuggestionRepository aiSuggestionRepository;
     private final PurchaseRepository purchaseRepository;
     private final InventoryRepository inventoryRepository;
 
     public DetectStudentPreferences(
             StudentRepository studentRepository,
             PreferenceAIRepository preferenceAIRepository,
-            AISuggestionRepository AISuggestionRepository,
+            AISuggestionRepository aiSuggestionRepository,
             PurchaseRepository purchaseRepository,
             InventoryRepository inventoryRepository) {
         this.studentRepository = studentRepository;
         this.preferenceAIRepository = preferenceAIRepository;
-        this.AISuggestionRepository = AISuggestionRepository;
+        this.aiSuggestionRepository = aiSuggestionRepository;
         this.purchaseRepository = purchaseRepository;
         this.inventoryRepository = inventoryRepository;
     }
@@ -64,7 +64,8 @@ public class DetectStudentPreferences {
             }
 
             Optional<DetectedPreference> resultado =
-                    preferenceAIRepository.analizarPreferencias(student, historial, stockDisponible);
+                    preferenceAIRepository.analizarPreferencias(student, historial,
+                            stockDisponible);
 
             resultado = resultado.filter(preferencia -> 
                 stockDisponible.stream()
@@ -95,7 +96,7 @@ public class DetectStudentPreferences {
                 productEntity.setId(UUID.fromString(preferencia.productoId()));
                 sugerencia.setProductEntity(productEntity);
 
-                AISuggestionRepository.save(sugerencia);
+                aiSuggestionRepository.save(sugerencia);
             });
 
             return resultado;
