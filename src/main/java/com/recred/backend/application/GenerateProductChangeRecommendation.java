@@ -8,13 +8,18 @@ import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public class GenerateProductChangeRecommendation {
 
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(GenerateProductChangeRecommendation.class);
     private final ProductRepository productRepository;
     private final ProductChangeAnalyzer productChangeAnalyzer;
     private final AIEventRepository aiEventRepository;
@@ -30,8 +35,22 @@ public class GenerateProductChangeRecommendation {
         this.aiEventRepository = aiEventRepository;
         this.kiosqueroRepository = kiosqueroRepository;
     }
+
     @Transactional
-    public ProductChangeAnalysis execute(UUID sellerId) {
+    public void execute() {
+        List<UUID> kiosqueroIds = kiosqueroRepository.findAllIds();
+        kiosqueroIds.forEach(id -> {
+            try {
+                this.execute(id);
+            } catch (Exception e) {
+                LOGGER.error("Error generating product change recommendation for kiosquero {}: {}",
+                        id, e.getMessage());
+            }
+        });
+    }
+
+    @Transactional
+    public ProductRecommendationResult execute(UUID sellerId) {
         UUID buffetId = kiosqueroRepository.findBuffetById(sellerId);
         if (buffetId == null) {
             throw new KiosqueroNotFoundException(sellerId);
@@ -46,7 +65,16 @@ public class GenerateProductChangeRecommendation {
         );
         aiEventRepository.registerProductChangeRecommendation(result);
 
-        return aiAnalysis.get();
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ProductRecommendationResult> findLatestResult(UUID sellerId) {
+        UUID buffetId = kiosqueroRepository.findBuffetById(sellerId);
+        if (buffetId == null) {
+            throw new KiosqueroNotFoundException(sellerId);
+        }
+        return aiEventRepository.findLatestProductChangeRecommendation(buffetId);
     }
 
 }

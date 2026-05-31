@@ -10,6 +10,10 @@ import java.util.UUID;
 
 public interface ProductRepository {
     Optional<Producto> findById(UUID id);
+    List<Producto> findAllActive();
+    Optional<Producto> findActiveById(UUID id);
+    List<Producto> findAllActiveWithStock(UUID buffetId);
+    Optional<Producto> findActiveByIdWithStock(UUID id, UUID buffetId);
     Producto save(Producto producto);
     void updatePrice(UUID productId, BigDecimal newPrice);
     ProductChangeRecommendation findBuffetLeastSoldProducts(UUID buffetId);

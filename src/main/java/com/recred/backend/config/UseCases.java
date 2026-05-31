@@ -5,10 +5,18 @@ import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CreateBudget;
+import com.recred.backend.application.DeleteProduct;
+import com.recred.backend.application.GetAllProducts;
+import com.recred.backend.application.GetProductById;
+import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.GeneratePurchaseRecommendation;
+import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.GetHealthRestrictionsCatalog;
+import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
 import com.recred.backend.application.GeneratePriceAlert;
 import com.recred.backend.application.GenerateProductChangeRecommendation;
@@ -31,6 +39,7 @@ import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.UpdateBudget;
+import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdatePurchaseStatus;
@@ -52,6 +61,9 @@ import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepos
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
+import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.PurchaseRecommendationNotificationRepository;
+import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -65,12 +77,18 @@ import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
 import com.recred.backend.domain.repositories.StudentAIProfileRepository;
 import com.recred.backend.domain.repositories.StudentConsumptionRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
+import com.recred.backend.domain.repositories.SuggestionAiRepository;
+import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
+import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
+
+import java.time.Clock;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
+import com.recred.backend.domain.services.PurchaseAnalyzer;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
@@ -394,7 +412,28 @@ public class UseCases {
         return new SaveProduct(productRepository, inventoryRepository, categoryRepository);
     }
 
+    @Bean
+    public GetAllProducts getAllProducts(ProductRepository productRepository) {
+        return new GetAllProducts(productRepository);
+    }
 
+    @Bean
+    public GetProductById getProductById(ProductRepository productRepository) {
+        return new GetProductById(productRepository);
+    }
+
+    @Bean
+    public UpdateProduct updateProduct(
+            ProductRepository productRepository,
+            InventoryRepository inventoryRepository,
+            CategoryRepository categoryRepository) {
+        return new UpdateProduct(productRepository, inventoryRepository, categoryRepository);
+    }
+
+    @Bean
+    public DeleteProduct deleteProduct(ProductRepository productRepository) {
+        return new DeleteProduct(productRepository);
+    }
 
     @Bean
     public GenerateProductChangeRecommendation generateProductChangeRecommendation(
@@ -422,6 +461,18 @@ public class UseCases {
                 kiosqueroRepository,
                 inventoryRepository,
                 aiEventRepository);
+    }
+
+    @Bean
+    public GeneratePurchaseRecommendation generatePurchaseRecommendation(
+            AlumnoRepository alumnoRepository,PurchaseRepository purchaseRepository,
+            PurchaseAnalyzer purchaseAnalyzer,AIEventRepository aiEventRepository,
+            PurchaseRecommendationNotificationRepository notificationRepository,
+            ConsumptionAlertStudentRepository studentRepository,
+            SuggestionAiRepository suggestionAiRepository) {
+        return new GeneratePurchaseRecommendation(alumnoRepository,
+                purchaseRepository,purchaseAnalyzer,aiEventRepository, notificationRepository,
+                studentRepository,suggestionAiRepository);
     }
 
 }

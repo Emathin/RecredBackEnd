@@ -50,6 +50,11 @@ public class Producto {
         return clasificacionesSalud;
     }
 
+    public boolean isActive() {
+        return Boolean.TRUE.equals(activo);
+    }
 
-
+    public void deactivate() {
+        this.activo = false;
+    }
 }

@@ -66,9 +66,10 @@ public class GenerateProductChangeRecommendationTest {
         when(productRepository.findBuffetLeastSoldProducts(buffetId)).thenReturn(leastSold);
         when(productChangeAnalyzer.analyze(leastSold)).thenReturn(Optional.of(analysis));
 
-        ProductChangeAnalysis result = useCase.execute(sellerId);
+        ProductRecommendationResult result = useCase.execute(sellerId);
 
-        assertEquals(analysis, result);
+        assertEquals(leastSold, result.getProductChangeRecommendation());
+        assertEquals(analysis, result.getAiAnalysis().get());
         verify(aiEventRepository).registerProductChangeRecommendation(any(ProductRecommendationResult.class));
     }
 
@@ -81,4 +82,35 @@ public class GenerateProductChangeRecommendationTest {
         verify(productRepository, never()).findBuffetLeastSoldProducts(any());
     }
 
+    @Test
+    void executeAllShouldGenerateRecommendationsForAllKiosqueros() {
+        UUID sellerId1 = UUID.randomUUID();
+        UUID sellerId2 = UUID.randomUUID();
+        UUID buffetId1 = UUID.randomUUID();
+        UUID buffetId2 = UUID.randomUUID();
+
+        when(kiosqueroRepository.findAllIds()).thenReturn(List.of(sellerId1, sellerId2));
+        when(kiosqueroRepository.findBuffetById(sellerId1)).thenReturn(buffetId1);
+        when(kiosqueroRepository.findBuffetById(sellerId2)).thenReturn(buffetId2);
+
+        ProductChangeRecommendation leastSold1 = new ProductChangeRecommendation();
+        leastSold1.setIdBuffet(buffetId1);
+        ProductChangeRecommendation leastSold2 = new ProductChangeRecommendation();
+        leastSold2.setIdBuffet(buffetId2);
+
+        when(productRepository.findBuffetLeastSoldProducts(buffetId1)).thenReturn(leastSold1);
+        when(productRepository.findBuffetLeastSoldProducts(buffetId2)).thenReturn(leastSold2);
+
+        ProductChangeAnalysis analysis = new ProductChangeAnalysis(
+                "Resumen", List.of(), List.of(), "model"
+        );
+        when(productChangeAnalyzer.analyze(any())).thenReturn(Optional.of(analysis));
+
+        useCase.execute();
+
+        verify(kiosqueroRepository).findAllIds();
+        verify(kiosqueroRepository).findBuffetById(sellerId1);
+        verify(kiosqueroRepository).findBuffetById(sellerId2);
+        verify(aiEventRepository, org.mockito.Mockito.times(2)).registerProductChangeRecommendation(any());
+    }
 }
