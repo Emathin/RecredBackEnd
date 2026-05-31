@@ -35,8 +35,11 @@ public class UsuarioService {
         nuevoUsuario.setId(UUID.randomUUID());
         nuevoUsuario.setIdCognito(sub);
         nuevoUsuario.setEmail(email);
-        nuevoUsuario.setNombre(nombre);
-        nuevoUsuario.setApellido(apellido);
+        nuevoUsuario.setNombre(nombre != null ? nombre : "Sin Nombre");
+        nuevoUsuario.setApellido(apellido != null ? apellido : "Sin Apellido");
+
+        nuevoUsuario.setRol(RolUsuario.PADRE);
+
 
         nuevoUsuario.setAutenticadoConCognito(true);
         nuevoUsuario.setActivo(true);
