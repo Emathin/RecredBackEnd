@@ -7,6 +7,7 @@ import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.DeleteProduct;
 import com.recred.backend.application.GetAllProducts;
+import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetProductById;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.CreateTimeRestriction;
@@ -403,6 +404,11 @@ public class UseCases {
             InventoryRepository inventoryRepository,
             CategoryRepository categoryRepository) {
         return new SaveProduct(productRepository, inventoryRepository, categoryRepository);
+    }
+
+    @Bean
+    public GetAllCategories getAllCategories(CategoryRepository categoryRepository) {
+        return new GetAllCategories(categoryRepository);
     }
 
     @Bean
