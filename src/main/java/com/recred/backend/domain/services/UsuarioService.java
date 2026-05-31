@@ -7,7 +7,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.UUID;
 
 public class UsuarioService {
 
@@ -32,7 +31,6 @@ public class UsuarioService {
 
         Usuario nuevoUsuario = new Usuario();
 
-        nuevoUsuario.setId(UUID.randomUUID());
         nuevoUsuario.setIdCognito(sub);
         nuevoUsuario.setEmail(email);
         nuevoUsuario.setNombre(nombre != null ? nombre : "Sin Nombre");
