@@ -78,6 +78,9 @@ jobs:
             cd /home/ubuntu/recred-app
 
             mkdir -p secrets
+            if [ -d secrets/firebase-service-account.json ]; then
+              rm -rf secrets/firebase-service-account.json
+            fi
             printf '%s' '${{ secrets.PROD_FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 }}' | base64 -d > secrets/firebase-service-account.json
             chmod 600 secrets/firebase-service-account.json
 
@@ -97,7 +100,7 @@ jobs:
             GEMINI_ENABLED=${{ secrets.PROD_GEMINI_ENABLED }}
             GEMINI_API_KEY=${{ secrets.PROD_GEMINI_API_KEY }}
 
-            FIREBASE_ENABLED=false
+            FIREBASE_ENABLED=${{ secrets.PROD_FIREBASE_ENABLED }}
             FIREBASE_SERVICE_ACCOUNT_PATH=/app/secrets/firebase-service-account.json
             EOF
 
