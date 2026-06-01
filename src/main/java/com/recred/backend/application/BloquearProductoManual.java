@@ -13,7 +13,8 @@ public class BloquearProductoManual {
     private final AlumnoRepository alumnoRepository;
     private final ProductRepository productRepository;
 
-    public BloquearProductoManual(AlumnoRepository alumnoRepository, ProductRepository productRepository) {
+    public BloquearProductoManual(AlumnoRepository alumnoRepository,
+                                  ProductRepository productRepository) {
         this.alumnoRepository = alumnoRepository;
         this.productRepository = productRepository;
     }
