@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.entities;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.RestriccionHoraria;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -75,6 +76,14 @@ public class AlumnoEntity {
             cascade = CascadeType.ALL, orphanRemoval = true, fetch = LAZY)
     private Set<RestriccionHorariaEntity> restriccionesHorarias = new HashSet<>();
 
+    @ManyToMany(fetch = LAZY)
+    @JoinTable(
+            name = "alumno_productos_bloqueados",
+            joinColumns = @JoinColumn(name = "alumno_id"),
+            inverseJoinColumns = @JoinColumn(name = "producto_id")
+    )
+    private Set<ProductoEntity> productosBloqueados = new HashSet<>();
+
     public Alumno toDomain() {
         Alumno alumnoDominio = new Alumno();
 
@@ -83,6 +92,15 @@ public class AlumnoEntity {
 
         if (this.usuario != null) {
             alumnoDominio.setUsuarioId(this.usuario.getId());
+            alumnoDominio.setUsuario(this.usuario.toDomain());
+        }
+
+        if (this.gradoEntity != null) {
+            alumnoDominio.setGrado(this.gradoEntity.toDomain());
+        }
+
+        if (this.billeteraEntity != null) {
+            alumnoDominio.setBilletera(this.billeteraEntity.toDomain());
         }
 
         if (this.restriccionesSalud != null && !this.restriccionesSalud.isEmpty()) {
@@ -101,7 +119,24 @@ public class AlumnoEntity {
             alumnoDominio.setRestriccionesSalud(new HashSet<>());
         }
 
-        if (this.restriccionesHorarias != null) {
+        if (this.productosFavoritos != null && !this.productosFavoritos.isEmpty()) {
+            Set<Producto> favoritosDominio = this.productosFavoritos.stream()
+                    .map(entidadProducto -> {
+                        Producto producto = new Producto();
+                        producto.setId(entidadProducto.getId());
+                        producto.setNombre(entidadProducto.getNombre());
+                        producto.setPrecio(entidadProducto.getPrecio());
+                        producto.setActivo(entidadProducto.getActivo());
+                        return producto;
+                    })
+                    .collect(Collectors.toSet());
+
+            alumnoDominio.setProductosFavoritos(favoritosDominio);
+        } else {
+            alumnoDominio.setProductosFavoritos(new HashSet<>());
+        }
+
+        if (this.restriccionesHorarias != null && !this.restriccionesHorarias.isEmpty()) {
             Set<RestriccionHoraria> horariasDominio = this.restriccionesHorarias.stream()
                     .map(entity -> {
                         RestriccionHoraria rh = new RestriccionHoraria();
@@ -110,6 +145,26 @@ public class AlumnoEntity {
                     })
                     .collect(Collectors.toSet());
             alumnoDominio.setRestriccionesHorarias(horariasDominio);
+        } else {
+            alumnoDominio.setRestriccionesHorarias(new HashSet<>());
+        }
+
+        alumnoDominio.setTutores(new HashSet<>());
+
+        if (this.productosBloqueados != null && !this.productosBloqueados.isEmpty()) {
+            Set<Producto> bloqueadosDominio = this.productosBloqueados.stream()
+                    .map(entidadProducto -> {
+                        Producto producto = new Producto();
+                        producto.setId(entidadProducto.getId());
+                        producto.setNombre(entidadProducto.getNombre());
+                        producto.setPrecio(entidadProducto.getPrecio());
+                        producto.setActivo(entidadProducto.getActivo());
+                        return producto;
+                    })
+                    .collect(Collectors.toSet());
+            alumnoDominio.setProductosBloqueados(bloqueadosDominio);
+        } else {
+            alumnoDominio.setProductosBloqueados(new HashSet<>());
         }
 
         return alumnoDominio;
@@ -177,6 +232,18 @@ public class AlumnoEntity {
                     })
                     .collect(Collectors.toSet());
             entity.setRestriccionesHorarias(horariasEntities);
+        }
+
+        if (alumno.getProductosBloqueados() != null && !alumno.getProductosBloqueados().isEmpty()) {
+            Set<ProductoEntity> bloqueadosProxies = alumno.getProductosBloqueados().stream()
+                    .filter(p -> p.getId() != null)
+                    .map(p -> {
+                        ProductoEntity proxy = new ProductoEntity();
+                        proxy.setId(p.getId());
+                        return proxy;
+                    })
+                    .collect(Collectors.toSet());
+            entity.setProductosBloqueados(bloqueadosProxies);
         }
 
         return entity;

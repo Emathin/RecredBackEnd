@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class CategoryRepositoryImpl implements CategoryRepository {
@@ -38,5 +40,12 @@ public class CategoryRepositoryImpl implements CategoryRepository {
         entity.setDescripcion(category.getDescripcion());
         entity.setActivo(category.getActivo());
         return springDataRepository.save(entity).toDomain();
+    }
+
+    @Override
+    public List<CategoriaProducto> getAllCategories() {
+        return springDataRepository.findAll().stream()
+                .map(CategoriaProductoEntity::toDomain)
+                .collect(Collectors.toList());
     }
 }
