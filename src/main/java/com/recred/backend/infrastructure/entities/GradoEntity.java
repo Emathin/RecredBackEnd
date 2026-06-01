@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 
+import com.recred.backend.domain.models.Grado;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -39,4 +40,19 @@ public class GradoEntity {
 
     @Column(nullable = false)
     private Boolean activo = true;
+
+    public Grado toDomain() {
+        Grado gradoDominio = new Grado();
+
+        gradoDominio.setId(this.id);
+        gradoDominio.setAnio(this.anio);
+        gradoDominio.setDivision(this.division);
+        gradoDominio.setActivo(this.activo);
+
+        if (this.colegioEntity != null) {
+            gradoDominio.setColegio(this.colegioEntity.toDomain());
+        }
+
+        return gradoDominio;
+    }
 }
