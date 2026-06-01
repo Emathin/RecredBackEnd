@@ -1,0 +1,13 @@
+name: recred
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    container_name: recred-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./secrets/firebase-service-account.json:/app/secrets/firebase-service-account.json:ro
