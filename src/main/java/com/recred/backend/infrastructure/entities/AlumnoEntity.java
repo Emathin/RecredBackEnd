@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.entities;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.RestriccionHoraria;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -83,6 +84,15 @@ public class AlumnoEntity {
 
         if (this.usuario != null) {
             alumnoDominio.setUsuarioId(this.usuario.getId());
+            alumnoDominio.setUsuario(this.usuario.toDomain());
+        }
+
+        if (this.gradoEntity != null) {
+            alumnoDominio.setGrado(this.gradoEntity.toDomain());
+        }
+
+        if (this.billeteraEntity != null) {
+            alumnoDominio.setBilletera(this.billeteraEntity.toDomain());
         }
 
         if (this.restriccionesSalud != null && !this.restriccionesSalud.isEmpty()) {
@@ -101,7 +111,24 @@ public class AlumnoEntity {
             alumnoDominio.setRestriccionesSalud(new HashSet<>());
         }
 
-        if (this.restriccionesHorarias != null) {
+        if (this.productosFavoritos != null && !this.productosFavoritos.isEmpty()) {
+            Set<Producto> favoritosDominio = this.productosFavoritos.stream()
+                    .map(entidadProducto -> {
+                        Producto producto = new Producto();
+                        producto.setId(entidadProducto.getId());
+                        producto.setNombre(entidadProducto.getNombre());
+                        producto.setPrecio(entidadProducto.getPrecio());
+                        producto.setActivo(entidadProducto.getActivo());
+                        return producto;
+                    })
+                    .collect(Collectors.toSet());
+
+            alumnoDominio.setProductosFavoritos(favoritosDominio);
+        } else {
+            alumnoDominio.setProductosFavoritos(new HashSet<>());
+        }
+
+        if (this.restriccionesHorarias != null && !this.restriccionesHorarias.isEmpty()) {
             Set<RestriccionHoraria> horariasDominio = this.restriccionesHorarias.stream()
                     .map(entity -> {
                         RestriccionHoraria rh = new RestriccionHoraria();
@@ -110,7 +137,11 @@ public class AlumnoEntity {
                     })
                     .collect(Collectors.toSet());
             alumnoDominio.setRestriccionesHorarias(horariasDominio);
+        } else {
+            alumnoDominio.setRestriccionesHorarias(new HashSet<>());
         }
+
+        alumnoDominio.setTutores(new HashSet<>());
 
         return alumnoDominio;
     }
