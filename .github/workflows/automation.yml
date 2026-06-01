@@ -64,7 +64,7 @@ jobs:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USERNAME }}
           key: ${{ secrets.AWS_SSH_KEY }}
-          source: "recred-backend.tar.gz,docker-compose.yml"
+          source: "recred-backend.tar.gz,docker-compose.prod.yml"
           target: "/home/ubuntu/recred-app"
 
       - name: Levantar contenedores en AWS
@@ -77,12 +77,11 @@ jobs:
             set -e
             cd /home/ubuntu/recred-app
 
-            mkdir -p secrets
-            if [ -d secrets/firebase-service-account.json ]; then
-              rm -rf secrets/firebase-service-account.json
-            fi
-            printf '%s' '${{ secrets.PROD_FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 }}' | base64 -d > secrets/firebase-service-account.json
-            chmod 600 secrets/firebase-service-account.json
+            sudo mkdir -p secrets
+            sudo rm -rf secrets/firebase-service-account.json
+            printf '%s' '${{ secrets.PROD_FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 }}' | base64 -d > firebase-service-account.json.tmp
+            sudo install -m 600 firebase-service-account.json.tmp secrets/firebase-service-account.json
+            rm -f firebase-service-account.json.tmp
 
             cat > .env <<'EOF'
             POSTGRES_DB=${{ secrets.PROD_POSTGRES_DB }}
@@ -109,5 +108,5 @@ jobs:
             sudo systemctl stop recred.service || true
             sudo docker rm -f recred-backend || true
             sudo docker load -i recred-backend.tar.gz
-            sudo env BACKEND_IMAGE=recred-backend:${{ github.sha }} docker compose up -d --no-build
+            sudo env BACKEND_IMAGE=recred-backend:${{ github.sha }} docker compose -f docker-compose.prod.yml up -d --no-build --remove-orphans
             sudo docker image prune -f
