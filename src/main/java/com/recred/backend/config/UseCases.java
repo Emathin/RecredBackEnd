@@ -3,13 +3,14 @@ package com.recred.backend.config;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AskSchoolAssistant;
+import com.recred.backend.application.BloquearProductoManual;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.DeleteProduct;
+import com.recred.backend.application.DesbloquearProductoManual;
 import com.recred.backend.application.GetAllProducts;
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetProductById;
-import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableBudget;
@@ -24,12 +25,9 @@ import com.recred.backend.application.GenerateProductChangeRecommendation;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GetActiveBudgetByStudent;
-import com.recred.backend.application.GetHealthRestrictions;
-import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetPurchaseStatus;
-import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.LoadStockIA;
@@ -68,9 +66,7 @@ import com.recred.backend.domain.repositories.PurchaseRecommendationNotification
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
-import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
-import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
@@ -87,9 +83,7 @@ import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 import java.time.Clock;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
-import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import com.recred.backend.domain.services.PurchaseAnalyzer;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
@@ -135,6 +129,17 @@ public class UseCases {
     @Bean
     public ValidacionRestriccionesService validacionRestriccionesService() {
         return new ValidacionRestriccionesService();
+    }
+
+    @Bean
+    public BloquearProductoManual bloquearProductoManual(AlumnoRepository alumnoRepository,
+                                                         ProductRepository productRepository) {
+        return new BloquearProductoManual(alumnoRepository, productRepository);
+    }
+
+    @Bean
+    public DesbloquearProductoManual desbloquearProductoManual(AlumnoRepository alumnoRepository) {
+        return new DesbloquearProductoManual(alumnoRepository);
     }
 
     @Bean

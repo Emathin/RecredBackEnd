@@ -76,6 +76,14 @@ public class AlumnoEntity {
             cascade = CascadeType.ALL, orphanRemoval = true, fetch = LAZY)
     private Set<RestriccionHorariaEntity> restriccionesHorarias = new HashSet<>();
 
+    @ManyToMany(fetch = LAZY)
+    @JoinTable(
+            name = "alumno_productos_bloqueados",
+            joinColumns = @JoinColumn(name = "alumno_id"),
+            inverseJoinColumns = @JoinColumn(name = "producto_id")
+    )
+    private Set<ProductoEntity> productosBloqueados = new HashSet<>();
+
     public Alumno toDomain() {
         Alumno alumnoDominio = new Alumno();
 
@@ -143,6 +151,22 @@ public class AlumnoEntity {
 
         alumnoDominio.setTutores(new HashSet<>());
 
+        if (this.productosBloqueados != null && !this.productosBloqueados.isEmpty()) {
+            Set<Producto> bloqueadosDominio = this.productosBloqueados.stream()
+                    .map(entidadProducto -> {
+                        Producto producto = new Producto();
+                        producto.setId(entidadProducto.getId());
+                        producto.setNombre(entidadProducto.getNombre());
+                        producto.setPrecio(entidadProducto.getPrecio());
+                        producto.setActivo(entidadProducto.getActivo());
+                        return producto;
+                    })
+                    .collect(Collectors.toSet());
+            alumnoDominio.setProductosBloqueados(bloqueadosDominio);
+        } else {
+            alumnoDominio.setProductosBloqueados(new HashSet<>());
+        }
+
         return alumnoDominio;
     }
 
@@ -208,6 +232,18 @@ public class AlumnoEntity {
                     })
                     .collect(Collectors.toSet());
             entity.setRestriccionesHorarias(horariasEntities);
+        }
+
+        if (alumno.getProductosBloqueados() != null && !alumno.getProductosBloqueados().isEmpty()) {
+            Set<ProductoEntity> bloqueadosProxies = alumno.getProductosBloqueados().stream()
+                    .filter(p -> p.getId() != null)
+                    .map(p -> {
+                        ProductoEntity proxy = new ProductoEntity();
+                        proxy.setId(p.getId());
+                        return proxy;
+                    })
+                    .collect(Collectors.toSet());
+            entity.setProductosBloqueados(bloqueadosProxies);
         }
 
         return entity;

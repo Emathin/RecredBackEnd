@@ -1,6 +1,8 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AddHealthRestriction;
+import com.recred.backend.application.BloquearProductoManual;
+import com.recred.backend.application.DesbloquearProductoManual;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.ManageRestrictions;
@@ -29,17 +31,23 @@ public class ControlParentalController {
     private final AddHealthRestriction addHealthRestriction;
     private final RemoveHealthRestrictions removeHealthRestrictions;
     private final DetectStudentPreferences detectarPreferenciasUseCase;
+    private final BloquearProductoManual bloquearProductoManual;
+    private final DesbloquearProductoManual desbloquearProductoManual;
 
     public ControlParentalController(ManageRestrictions useCase,
                                      GetHealthRestrictions obtenerRestriccionesUseCase,
                                      AddHealthRestriction addHealthRestriction,
                                      RemoveHealthRestrictions removeHealthRestrictions,
-                                     DetectStudentPreferences detectarPreferenciasUseCase) {
+                                     DetectStudentPreferences detectarPreferenciasUseCase,
+                                     BloquearProductoManual bloquearProductoManual,
+                                     DesbloquearProductoManual desbloquearProductoManual) {
         this.useCase = useCase;
         this.obtenerRestriccionesUseCase = obtenerRestriccionesUseCase;
         this.addHealthRestriction = addHealthRestriction;
         this.removeHealthRestrictions = removeHealthRestrictions;
         this.detectarPreferenciasUseCase = detectarPreferenciasUseCase;
+        this.bloquearProductoManual = bloquearProductoManual;
+        this.desbloquearProductoManual = desbloquearProductoManual;
     }
 
     @PutMapping("/alumnos/{alumnoId}/actualizar-restricciones-salud")
@@ -86,5 +94,23 @@ public class ControlParentalController {
             @RequestParam UUID buffetId) {
         detectarPreferenciasUseCase.execute(alumnoId, buffetId);
         return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/alumnos/{alumnoId}/productos-bloqueados/{productoId}")
+    public ResponseEntity<Void> bloquearProducto(
+            @PathVariable UUID alumnoId,
+            @PathVariable UUID productoId) {
+
+        bloquearProductoManual.execute(alumnoId, productoId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/alumnos/{alumnoId}/productos-bloqueados/{productoId}")
+    public ResponseEntity<Void> desbloquearProducto(
+            @PathVariable UUID alumnoId,
+            @PathVariable UUID productoId) {
+
+        desbloquearProductoManual.execute(alumnoId, productoId);
+        return ResponseEntity.ok().build();
     }
 }
