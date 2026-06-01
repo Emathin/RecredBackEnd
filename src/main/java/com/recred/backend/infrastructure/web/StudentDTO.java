@@ -10,8 +10,10 @@ public record StudentDTO(
         Boolean activo
 ) {
     public static StudentDTO fromDomain(Alumno alumno) {
-        String nombre = alumno.getUsuario() != null ? alumno.getUsuario().getNombre() : "Sin nombre";
-        String apellido = alumno.getUsuario() != null ? alumno.getUsuario().getApellido() : "Sin apellido";
+        String nombre = alumno.getUsuario() != null ?
+                alumno.getUsuario().getNombre() : "Sin nombre";
+        String apellido = alumno.getUsuario() != null ?
+                alumno.getUsuario().getApellido() : "Sin apellido";
 
         return new StudentDTO(
                 alumno.getId(),
