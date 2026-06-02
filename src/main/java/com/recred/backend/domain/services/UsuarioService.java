@@ -1,5 +1,6 @@
 package com.recred.backend.domain.services;
 
+import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.UsuarioRepository;
@@ -49,8 +50,34 @@ public class UsuarioService {
 
     public Usuario obtenerUsuarioActual(String cognitoId) {
         return usuarioRepository.findByIdCognito(cognitoId)
-                .orElseThrow(() -> new RuntimeException
-                        ("Usuario no encontrado en la base de datos"));
+                .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(cognitoId));
+    }
+
+    public Usuario actualizarPerfil(String cognitoId, String nombre, String apellido,
+                                    String telefono, String dni) {
+        validarPerfilEditable(nombre, apellido, telefono, dni);
+
+        Usuario usuario = obtenerUsuarioActual(cognitoId);
+
+        if (nombre != null) {
+            usuario.setNombre(normalizarCampo("nombre", nombre));
+        }
+
+        if (apellido != null) {
+            usuario.setApellido(normalizarCampo("apellido", apellido));
+        }
+
+        if (telefono != null) {
+            usuario.setTelefono(normalizarCampo("telefono", telefono));
+        }
+
+        if (dni != null) {
+            usuario.setDni(normalizarCampo("dni", dni));
+        }
+
+        usuario.setActualizadoEn(LocalDateTime.now());
+
+        return usuarioRepository.save(usuario);
     }
 
     public Usuario actualizarRol(String cognitoId, String nuevoRol) {
@@ -60,5 +87,22 @@ public class UsuarioService {
         usuario.setActualizadoEn(LocalDateTime.now());
 
         return usuarioRepository.save(usuario);
+    }
+
+    private void validarPerfilEditable(String nombre, String apellido, String telefono,
+                                       String dni) {
+        if (nombre == null && apellido == null && telefono == null && dni == null) {
+            throw new IllegalArgumentException("Debe informar al menos un campo para actualizar");
+        }
+    }
+
+    private String normalizarCampo(String campo, String valor) {
+        String valorNormalizado = valor.trim();
+
+        if (valorNormalizado.isEmpty()) {
+            throw new IllegalArgumentException("El campo " + campo + " no puede estar vacio");
+        }
+
+        return valorNormalizado;
     }
 }
