@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-class UsuarioControllerTest {
+class UserProfileControllerTest {
 
     private UsuarioService usuarioService;
     private MockMvc mockMvc;
@@ -35,55 +35,55 @@ class UsuarioControllerTest {
     void setUp() {
         usuarioService = mock(UsuarioService.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new UsuarioController(usuarioService))
+                .standaloneSetup(new UserProfileController(usuarioService))
                 .build();
     }
 
     @Test
-    void obtenerMiUsuarioRetornaDatosMinimosParaSesion() throws Exception {
-        UUID usuarioId = UUID.randomUUID();
-        Usuario usuario = usuario(usuarioId);
+    void getMyUserReturnsMinimalSessionData() throws Exception {
+        UUID userId = UUID.randomUUID();
+        Usuario usuario = usuario(userId);
         when(usuarioService.obtenerUsuarioActual("cognito-sub")).thenReturn(usuario);
 
-        mockMvc.perform(get("/api/v1/usuarios/me")
+        mockMvc.perform(get("/api/v1/users/me")
                         .principal(authentication()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(usuarioId.toString()))
+                .andExpect(jsonPath("$.id").value(userId.toString()))
                 .andExpect(jsonPath("$.email").value("mateo@example.com"))
-                .andExpect(jsonPath("$.nombre").value("Mateo"))
-                .andExpect(jsonPath("$.apellido").value("Fortuna"))
-                .andExpect(jsonPath("$.rol").value("PADRE"))
-                .andExpect(jsonPath("$.telefono").doesNotExist())
-                .andExpect(jsonPath("$.dni").doesNotExist());
+                .andExpect(jsonPath("$.firstName").value("Mateo"))
+                .andExpect(jsonPath("$.lastName").value("Fortuna"))
+                .andExpect(jsonPath("$.role").value("PADRE"))
+                .andExpect(jsonPath("$.phone").doesNotExist())
+                .andExpect(jsonPath("$.documentNumber").doesNotExist());
 
         verify(usuarioService).obtenerUsuarioActual("cognito-sub");
     }
 
     @Test
-    void obtenerMiPerfilRetornaDatosCompletos() throws Exception {
-        UUID usuarioId = UUID.randomUUID();
-        Usuario usuario = usuario(usuarioId);
+    void getMyProfileReturnsFullProfileData() throws Exception {
+        UUID userId = UUID.randomUUID();
+        Usuario usuario = usuario(userId);
         when(usuarioService.obtenerUsuarioActual("cognito-sub")).thenReturn(usuario);
 
-        mockMvc.perform(get("/api/v1/usuarios/me/perfil")
+        mockMvc.perform(get("/api/v1/users/me/profile")
                         .principal(authentication()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(usuarioId.toString()))
+                .andExpect(jsonPath("$.id").value(userId.toString()))
                 .andExpect(jsonPath("$.email").value("mateo@example.com"))
-                .andExpect(jsonPath("$.nombre").value("Mateo"))
-                .andExpect(jsonPath("$.apellido").value("Fortuna"))
-                .andExpect(jsonPath("$.telefono").value("112233"))
-                .andExpect(jsonPath("$.dni").value("45238796"))
-                .andExpect(jsonPath("$.rol").value("PADRE"));
+                .andExpect(jsonPath("$.firstName").value("Mateo"))
+                .andExpect(jsonPath("$.lastName").value("Fortuna"))
+                .andExpect(jsonPath("$.phone").value("112233"))
+                .andExpect(jsonPath("$.documentNumber").value("45238796"))
+                .andExpect(jsonPath("$.role").value("PADRE"));
 
         verify(usuarioService).obtenerUsuarioActual("cognito-sub");
     }
 
     @Test
-    void actualizarMiPerfilDelegaAlServiceYRetornaUsuarioActualizado() throws Exception {
-        UUID usuarioId = UUID.randomUUID();
-        Usuario usuario = usuario(usuarioId);
-        when(usuarioService.actualizarPerfil(
+    void updateMyProfileDelegatesToServiceAndReturnsUpdatedUser() throws Exception {
+        UUID userId = UUID.randomUUID();
+        Usuario usuario = usuario(userId);
+        when(usuarioService.updateProfile(
                 eq("cognito-sub"),
                 eq("Mateo"),
                 eq("Fortuna"),
@@ -91,26 +91,26 @@ class UsuarioControllerTest {
                 eq("45238796")
         )).thenReturn(usuario);
 
-        mockMvc.perform(patch("/api/v1/usuarios/me/perfil")
+        mockMvc.perform(patch("/api/v1/users/me/profile")
                         .principal(authentication())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "nombre": "Mateo",
-                                  "apellido": "Fortuna",
-                                  "telefono": "112233",
-                                  "dni": "45238796"
+                                  "firstName": "Mateo",
+                                  "lastName": "Fortuna",
+                                  "phone": "112233",
+                                  "documentNumber": "45238796"
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(usuarioId.toString()))
-                .andExpect(jsonPath("$.nombre").value("Mateo"))
-                .andExpect(jsonPath("$.apellido").value("Fortuna"))
-                .andExpect(jsonPath("$.telefono").value("112233"))
-                .andExpect(jsonPath("$.dni").value("45238796"));
+                .andExpect(jsonPath("$.id").value(userId.toString()))
+                .andExpect(jsonPath("$.firstName").value("Mateo"))
+                .andExpect(jsonPath("$.lastName").value("Fortuna"))
+                .andExpect(jsonPath("$.phone").value("112233"))
+                .andExpect(jsonPath("$.documentNumber").value("45238796"));
 
         ArgumentCaptor<String> subjectCaptor = ArgumentCaptor.forClass(String.class);
-        verify(usuarioService).actualizarPerfil(
+        verify(usuarioService).updateProfile(
                 subjectCaptor.capture(),
                 eq("Mateo"),
                 eq("Fortuna"),
@@ -120,9 +120,9 @@ class UsuarioControllerTest {
         assertEquals("cognito-sub", subjectCaptor.getValue());
     }
 
-    private Usuario usuario(UUID usuarioId) {
+    private Usuario usuario(UUID userId) {
         Usuario usuario = new Usuario();
-        usuario.setId(usuarioId);
+        usuario.setId(userId);
         usuario.setEmail("mateo@example.com");
         usuario.setNombre("Mateo");
         usuario.setApellido("Fortuna");
