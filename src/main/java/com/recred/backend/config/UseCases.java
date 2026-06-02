@@ -25,6 +25,7 @@ import com.recred.backend.application.GenerateProductChangeRecommendation;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GetActiveBudgetByStudent;
+import com.recred.backend.application.GetLoggedUserNotifications;
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetPurchaseStatus;
@@ -60,6 +61,7 @@ import com.recred.backend.domain.repositories.HealthyRecommendationNotificationR
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.domain.repositories.NotificationRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRecommendationNotificationRepository;
@@ -210,6 +212,13 @@ public class UseCases {
                 consumptionAccessRepository,
                 studentConsumptionRepository,
                 clock);
+    }
+
+    @Bean
+    public GetLoggedUserNotifications getLoggedUserNotifications(
+            UsuarioRepository usuarioRepository,
+            NotificationRepository notificationRepository) {
+        return new GetLoggedUserNotifications(usuarioRepository, notificationRepository);
     }
 
     @Bean

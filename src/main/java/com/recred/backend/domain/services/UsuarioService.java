@@ -53,26 +53,26 @@ public class UsuarioService {
                 .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(cognitoId));
     }
 
-    public Usuario actualizarPerfil(String cognitoId, String nombre, String apellido,
-                                    String telefono, String dni) {
-        validarPerfilEditable(nombre, apellido, telefono, dni);
+    public Usuario updateProfile(String cognitoId, String firstName, String lastName,
+                                 String phone, String documentNumber) {
+        validateEditableProfile(firstName, lastName, phone, documentNumber);
 
         Usuario usuario = obtenerUsuarioActual(cognitoId);
 
-        if (nombre != null) {
-            usuario.setNombre(normalizarCampo("nombre", nombre));
+        if (firstName != null) {
+            usuario.setNombre(normalizeField("firstName", firstName));
         }
 
-        if (apellido != null) {
-            usuario.setApellido(normalizarCampo("apellido", apellido));
+        if (lastName != null) {
+            usuario.setApellido(normalizeField("lastName", lastName));
         }
 
-        if (telefono != null) {
-            usuario.setTelefono(normalizarCampo("telefono", telefono));
+        if (phone != null) {
+            usuario.setTelefono(normalizeField("phone", phone));
         }
 
-        if (dni != null) {
-            usuario.setDni(normalizarCampo("dni", dni));
+        if (documentNumber != null) {
+            usuario.setDni(normalizeField("documentNumber", documentNumber));
         }
 
         usuario.setActualizadoEn(LocalDateTime.now());
@@ -89,20 +89,20 @@ public class UsuarioService {
         return usuarioRepository.save(usuario);
     }
 
-    private void validarPerfilEditable(String nombre, String apellido, String telefono,
-                                       String dni) {
-        if (nombre == null && apellido == null && telefono == null && dni == null) {
-            throw new IllegalArgumentException("Debe informar al menos un campo para actualizar");
+    private void validateEditableProfile(String firstName, String lastName, String phone,
+                                         String documentNumber) {
+        if (firstName == null && lastName == null && phone == null && documentNumber == null) {
+            throw new IllegalArgumentException("At least one field must be provided");
         }
     }
 
-    private String normalizarCampo(String campo, String valor) {
-        String valorNormalizado = valor.trim();
+    private String normalizeField(String field, String value) {
+        String normalizedValue = value.trim();
 
-        if (valorNormalizado.isEmpty()) {
-            throw new IllegalArgumentException("El campo " + campo + " no puede estar vacio");
+        if (normalizedValue.isEmpty()) {
+            throw new IllegalArgumentException("Field " + field + " cannot be empty");
         }
 
-        return valorNormalizado;
+        return normalizedValue;
     }
 }

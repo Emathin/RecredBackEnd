@@ -36,13 +36,13 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void actualizarPerfilNormalizaCamposYConservaLosNoInformados() {
+    void updateProfileNormalizesFieldsAndKeepsNotProvidedFields() {
         Usuario usuario = usuario();
         when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
         when(usuarioRepository.save(any(Usuario.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Usuario actualizado = usuarioService.actualizarPerfil(
+        Usuario actualizado = usuarioService.updateProfile(
                 COGNITO_SUBJECT,
                 " Mateo ",
                 null,
@@ -60,23 +60,23 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void actualizarPerfilRechazaRequestSinCampos() {
+    void updateProfileRejectsRequestWithoutFields() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> usuarioService.actualizarPerfil(COGNITO_SUBJECT, null, null, null, null)
+                () -> usuarioService.updateProfile(COGNITO_SUBJECT, null, null, null, null)
         );
 
         verify(usuarioRepository, never()).save(any(Usuario.class));
     }
 
     @Test
-    void actualizarPerfilRechazaCamposVacios() {
+    void updateProfileRejectsBlankFields() {
         Usuario usuario = usuario();
         when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> usuarioService.actualizarPerfil(COGNITO_SUBJECT, " ", null, null, null)
+                () -> usuarioService.updateProfile(COGNITO_SUBJECT, " ", null, null, null)
         );
 
         verify(usuarioRepository, never()).save(any(Usuario.class));
