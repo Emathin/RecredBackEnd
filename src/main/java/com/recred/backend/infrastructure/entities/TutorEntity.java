@@ -76,6 +76,10 @@ public class TutorEntity {
         tutor.setCreadoEn(this.creadoEn);
         tutor.setActualizadoEn(this.actualizadoEn);
 
+        if (this.usuario != null) {
+            tutor.setUsuario(this.usuario.toDomain());
+        }
+
         if (this.hijos != null && !this.hijos.isEmpty()) {
             this.hijos.forEach(hijoEntity -> {
                 tutor.getHijos().add(hijoEntity.toDomain());

@@ -12,6 +12,13 @@ import java.util.UUID;
 public interface SpringDataTutorRepository extends
         JpaRepository<TutorEntity, UUID> {
 
-    @EntityGraph(attributePaths = {"hijos", "usuario", "hijos.usuario"})
+    @EntityGraph(attributePaths = {
+            "hijos",
+            "usuario",
+            "hijos.usuario",
+            "hijos.gradoEntity",
+            "hijos.gradoEntity.colegioEntity",
+            "hijos.billeteraEntity"
+    })
     Optional<TutorEntity> findById(UUID id);
 }
