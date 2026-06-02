@@ -55,6 +55,19 @@ public class GenerateProductChangeRecommendation {
         if (buffetId == null) {
             throw new KiosqueroNotFoundException(sellerId);
         }
+        return generateForBuffet(buffetId);
+    }
+
+    @Transactional
+    public ProductRecommendationResult executeByUsuarioId(UUID usuarioId) {
+        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(usuarioId);
+        if (buffetId == null) {
+            throw new KiosqueroNotFoundException(usuarioId);
+        }
+        return generateForBuffet(buffetId);
+    }
+
+    private ProductRecommendationResult generateForBuffet(UUID buffetId) {
         ProductChangeRecommendation leastSoldProduct =
                 productRepository.findBuffetLeastSoldProducts(buffetId);
         Optional<ProductChangeAnalysis> aiAnalysis = productChangeAnalyzer
@@ -73,6 +86,15 @@ public class GenerateProductChangeRecommendation {
         UUID buffetId = kiosqueroRepository.findBuffetById(sellerId);
         if (buffetId == null) {
             throw new KiosqueroNotFoundException(sellerId);
+        }
+        return aiEventRepository.findLatestProductChangeRecommendation(buffetId);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ProductRecommendationResult> findLatestResultByUsuarioId(UUID usuarioId) {
+        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(usuarioId);
+        if (buffetId == null) {
+            throw new KiosqueroNotFoundException(usuarioId);
         }
         return aiEventRepository.findLatestProductChangeRecommendation(buffetId);
     }

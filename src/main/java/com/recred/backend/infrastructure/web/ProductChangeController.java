@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/ia/kiosqueros/{IDKiosquero}/sugerencia-cambio-producto")
+@RequestMapping("/ia/usuarios/{idUsuario}/sugerencia-cambio-producto")
 public class ProductChangeController {
 
     private final GenerateProductChangeRecommendation generateProductChangeRecommendation;
@@ -23,10 +23,10 @@ public class ProductChangeController {
 
     @GetMapping
     public ResponseEntity<ProductChangeRecommendationResponse> generateProductChangeRecommendation(
-            @PathVariable("IDKiosquero") UUID kiosqueroId
+            @PathVariable("idUsuario") UUID usuarioId
     ) {
 
-        return generateProductChangeRecommendation.findLatestResult(kiosqueroId)
+        return generateProductChangeRecommendation.findLatestResultByUsuarioId(usuarioId)
                 .map(ProductChangeRecommendationResponse::fromDomain)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
@@ -35,11 +35,11 @@ public class ProductChangeController {
 
     @PostMapping
     public ProductChangeRecommendationResponse generateProductChangeRecommendationPost(
-            @PathVariable("IDKiosquero") UUID kiosqueroId
+            @PathVariable("idUsuario") UUID usuarioId
     ) {
 
         return ProductChangeRecommendationResponse.fromDomain(
-                generateProductChangeRecommendation.execute(kiosqueroId)
+                generateProductChangeRecommendation.executeByUsuarioId(usuarioId)
         );
 
     }
