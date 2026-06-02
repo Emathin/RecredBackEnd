@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public interface KiosqueroRepository {
     UUID findBuffetById(UUID kiosqueroId);
+    UUID findBuffetByUsuarioId(UUID usuarioId);
 
     List<Kiosquero> findAll();
     List<UUID> findAllIds();
