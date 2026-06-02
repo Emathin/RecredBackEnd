@@ -3,6 +3,8 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.UsuarioService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/usuarios")
@@ -29,16 +32,40 @@ public class UsuarioController {
     public ResponseEntity<Map<String, Object>> sincronizarUsuario
             (@AuthenticationPrincipal Jwt jwt) {
         Usuario usuario = usuarioService.sincronizarUsuarioCognito(jwt);
-        return ResponseEntity.ok(construirRespuestaUsuario(usuario));
+        return ResponseEntity.ok(construirRespuestaSesionUsuario(usuario));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> obtenerMiPerfil(@AuthenticationPrincipal Jwt jwt) {
-        String sub = jwt.getSubject();
-
+    public ResponseEntity<Map<String, Object>> obtenerMiUsuario(Authentication authentication) {
+        String sub = cognitoSubject(authentication);
         Usuario usuario = usuarioService.obtenerUsuarioActual(sub);
 
-        return ResponseEntity.ok(construirRespuestaUsuario(usuario));
+        return ResponseEntity.ok(construirRespuestaSesionUsuario(usuario));
+    }
+
+    @GetMapping("/me/perfil")
+    public ResponseEntity<Map<String, Object>> obtenerMiPerfil(Authentication authentication) {
+        String sub = cognitoSubject(authentication);
+        Usuario usuario = usuarioService.obtenerUsuarioActual(sub);
+
+        return ResponseEntity.ok(construirRespuestaPerfilUsuario(usuario));
+    }
+
+    @PatchMapping("/me/perfil")
+    public ResponseEntity<Map<String, Object>> actualizarMiPerfil(
+            Authentication authentication,
+            @RequestBody ActualizarPerfilUsuarioRequest request) {
+        String sub = cognitoSubject(authentication);
+
+        Usuario usuario = usuarioService.actualizarPerfil(
+                sub,
+                request.nombre(),
+                request.apellido(),
+                request.telefono(),
+                request.dni()
+        );
+
+        return ResponseEntity.ok(construirRespuestaPerfilUsuario(usuario));
     }
 
     @PatchMapping("/rol")
@@ -51,17 +78,31 @@ public class UsuarioController {
 
         Usuario usuarioActualizado = usuarioService.actualizarRol(sub, nuevoRol);
 
-        return ResponseEntity.ok(construirRespuestaUsuario(usuarioActualizado));
+        return ResponseEntity.ok(construirRespuestaSesionUsuario(usuarioActualizado));
     }
 
-    private Map<String, Object> construirRespuestaUsuario(Usuario usuario) {
+    private String cognitoSubject(Authentication authentication) {
+        return Optional.ofNullable(authentication)
+                .map(Authentication::getName)
+                .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
+                        "Usuario no autenticado"));
+    }
+
+    private Map<String, Object> construirRespuestaSesionUsuario(Usuario usuario) {
         Map<String, Object> response = new HashMap<>();
         response.put("id", usuario.getId());
         response.put("email", usuario.getEmail());
         response.put("nombre", usuario.getNombre());
         response.put("apellido", usuario.getApellido());
-
         response.put("rol", usuario.getRol() != null ? usuario.getRol().name() : "PENDIENTE");
+
+        return response;
+    }
+
+    private Map<String, Object> construirRespuestaPerfilUsuario(Usuario usuario) {
+        Map<String, Object> response = construirRespuestaSesionUsuario(usuario);
+        response.put("telefono", usuario.getTelefono());
+        response.put("dni", usuario.getDni());
 
         return response;
     }
