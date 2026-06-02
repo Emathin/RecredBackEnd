@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.infrastructure.entities.DispositivoUsuarioEntity;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -17,4 +18,6 @@ public interface UserDeviceTokenJpaRepository
             and d.activo = true
             """)
     List<String> findActiveTokensByUserId(@Param("userId") UUID userId);
+
+    Optional<DispositivoUsuarioEntity> findByFcmToken(String fcmToken);
 }
