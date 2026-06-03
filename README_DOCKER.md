@@ -186,7 +186,7 @@ El archivo `.env` no debería subirse al repositorio porque puede contener crede
 
 Sí se recomienda subir un `.env.example` para que el equipo sepa qué variables necesita.
 
-Ejemplo recomendado:
+Ejemplo recomendado:a
 
 ```env
 POSTGRES_DB=recred_local
