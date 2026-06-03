@@ -27,7 +27,8 @@ public class MenuBuffetController {
             @PathVariable UUID alumnoId,
             @RequestParam(required = false) LocalDateTime fechaHoraConsulta) {
 
-        LocalDateTime momentoEvaluacion = (fechaHoraConsulta != null) ? fechaHoraConsulta : LocalDateTime.now();
+        LocalDateTime momentoEvaluacion = (fechaHoraConsulta != null) ?
+                fechaHoraConsulta : LocalDateTime.now();
 
         List<MenuProductoDTO> menu = generarMenuBuffet.execute(alumnoId, momentoEvaluacion);
 

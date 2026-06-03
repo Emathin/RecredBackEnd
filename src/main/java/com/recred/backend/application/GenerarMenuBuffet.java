@@ -1,6 +1,11 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.*;
+import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.models.PresupuestoAlumno;
+import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.RangoFechas;
+import com.recred.backend.domain.models.ReglaPresupuestoCategoria;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
