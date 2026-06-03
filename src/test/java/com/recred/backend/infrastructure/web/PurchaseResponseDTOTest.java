@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class PurchaseResponseDTOTest {
@@ -60,6 +61,39 @@ class PurchaseResponseDTOTest {
         assertNull(response.getStatusLabel());
         assertNull(response.getPaymentMethod());
         assertNull(response.getItems());
+    }
+
+    @Test
+    void dadoPurchaseCompleto_cuandoMapeaADTO_entoncesMapeaCorrectamenteLosItems() {
+        // Arrange
+        Producto alfajor = new Producto();
+        alfajor.setId(UUID.randomUUID());
+        alfajor.setNombre("Alfajor Jorgito");
+        alfajor.setPrecio(new BigDecimal("500.00"));
+
+        Purchase compra = new Purchase();
+        compra.setId(UUID.randomUUID());
+        compra.setTotalAmount(new BigDecimal("1000.00"));
+        compra.setStatus(EstadoCompra.ENTREGADO);
+        compra.setPaymentMethod(MedioPago.CREDITOS);
+        compra.setDate(LocalDateTime.now());
+        compra.setItems(Map.of(alfajor, 2)); // 2 alfajores
+
+        // Act
+        PurchaseResponseDTO dto = new PurchaseResponseDTO(compra);
+
+        // Assert
+        assertEquals(compra.getId(), dto.getId());
+        assertEquals(new BigDecimal("1000.00"), dto.getTotalAmount());
+        assertEquals("ENTREGADO", dto.getStatus());
+        assertNotNull(dto.getItems());
+        assertEquals(1, dto.getItems().size());
+
+        PurchaseItemDTO itemDto = dto.getItems().get(0);
+        assertEquals(alfajor.getId(), itemDto.getProductId());
+        assertEquals("Alfajor Jorgito", itemDto.getProductName());
+        assertEquals(2, itemDto.getQuantity());
+        assertEquals(new BigDecimal("500.00"), itemDto.getUnitPrice());
     }
 
     private Alumno student(UUID studentId) {

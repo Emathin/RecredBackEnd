@@ -1,0 +1,37 @@
+package com.recred.backend.infrastructure.web;
+
+import com.recred.backend.application.GenerarMenuBuffet;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/alumnos")
+public class MenuBuffetController {
+
+    private final GenerarMenuBuffet generarMenuBuffet;
+
+    public MenuBuffetController(GenerarMenuBuffet generarMenuBuffet) {
+        this.generarMenuBuffet = generarMenuBuffet;
+    }
+
+    @GetMapping("/{alumnoId}/menu-buffet")
+    public ResponseEntity<List<MenuProductoDTO>> obtenerMenu(
+            @PathVariable UUID alumnoId,
+            @RequestParam(required = false) LocalDateTime fechaHoraConsulta) {
+
+        LocalDateTime momentoEvaluacion = (fechaHoraConsulta != null) ?
+                fechaHoraConsulta : LocalDateTime.now();
+
+        List<MenuProductoDTO> menu = generarMenuBuffet.execute(alumnoId, momentoEvaluacion);
+
+        return ResponseEntity.ok(menu);
+    }
+}
