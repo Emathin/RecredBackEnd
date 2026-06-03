@@ -1,10 +1,12 @@
 package com.recred.backend.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
 import com.recred.backend.application.CancelPresentialPurchase;
+import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.DeleteProduct;
 import com.recred.backend.application.DesbloquearProductoManual;
@@ -85,6 +87,12 @@ import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 
+import com.recred.backend.domain.services.PurchaseValidator;
+import com.recred.backend.domain.services.PurchaseValidatorImpl;
+import com.recred.backend.domain.services.ValidadorHorarioService;
+import com.recred.backend.domain.services.WithdrawalCodeService;
+import com.recred.backend.domain.services.WithdrawalCodeServiceImpl;
+import com.recred.backend.infrastructure.gemini.GeminiTextClient;
 import java.time.Clock;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
@@ -98,7 +106,6 @@ import com.recred.backend.domain.services.SpendingPredictionRangeService;
 import com.recred.backend.domain.services.TutorService;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.gemini.LoadStockIAService;
@@ -108,6 +115,26 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class UseCases {
+
+
+    @Bean
+    public WithdrawalCodeServiceImpl withdrawalCodeServiceImpl() {
+        return new WithdrawalCodeServiceImpl();
+    }
+
+    @Bean
+    public PurchaseValidatorImpl purchaseValidatorImpl(
+            ValidadorHorarioService validadorHorarioService,
+            ValidacionRestriccionesService validacionRestriccionesService,
+            ValidadorPresupuestoService validadorPresupuestoService
+    ) {
+        return new PurchaseValidatorImpl(validadorHorarioService,
+                validacionRestriccionesService, validadorPresupuestoService);
+    }
+    @Bean
+    public LoadStockIAService loadStockIAService(GeminiTextClient geminiTextClient, ObjectMapper objectMapper) {
+        return new LoadStockIAService(geminiTextClient, objectMapper);
+    }
 
     @Bean
     public GeneratePriceAlert generatePriceAlert(
@@ -124,6 +151,37 @@ public class UseCases {
             ProductRepository productRepository,
             ProductPriceChangedPublisher eventPublisher) {
         return new UpdateProductPrice(productRepository, eventPublisher);
+    }
+
+    @Bean
+    public PurchaseValidator purchaseValidator(
+            ValidadorHorarioService validadorHorarioService,
+            ValidacionRestriccionesService validacionRestriccionesService,
+            ValidadorPresupuestoService validadorPresupuestoService
+    ){
+        return new PurchaseValidatorImpl(
+                validadorHorarioService,
+                validacionRestriccionesService,
+                validadorPresupuestoService
+        );
+    }
+
+    @Bean
+    public WithdrawalCodeService withdrawalCodeService() {
+        return new WithdrawalCodeServiceImpl();
+    }
+
+    @Bean
+    public CreateAdvancePurchase createAdvancePurchase(PurchaseValidator purchaseValidator,
+                                                       AlumnoRepository alumnoRepository,
+                                                       ProductRepository productRepository,
+                                                       PurchaseRepository purchaseRepository,
+                                                       WithdrawalCodeService withdrawalCodeService){
+        return new CreateAdvancePurchase( purchaseValidator,
+                 alumnoRepository,
+                productRepository,
+               purchaseRepository,
+                withdrawalCodeService);
     }
 
     @Bean

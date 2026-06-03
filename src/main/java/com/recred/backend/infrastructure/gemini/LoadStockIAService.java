@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
-@Service
+
 public class LoadStockIAService implements LoadStockAnalyzer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LoadStockIAService.class);
