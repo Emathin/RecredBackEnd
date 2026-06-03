@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,11 +38,13 @@ class UserDeviceServiceTest {
     private UsuarioEntity user;
     private final String cognitoId = "cognito-123";
     private final String fcmToken = "token-fcm-123";
+    private UUID userId;
 
     @BeforeEach
     void setUp() {
+        userId = UUID.randomUUID();
         user = new UsuarioEntity();
-        user.setId(1L);
+        user.setId(userId);
         user.setIdCognito(cognitoId);
     }
 
@@ -59,8 +62,9 @@ class UserDeviceServiceTest {
 
     @Test
     void dadoQueElTokenExisteActualizaElRegistro() {
+        UUID deviceId = UUID.randomUUID();
         DispositivoUsuarioEntity existingDevice = new DispositivoUsuarioEntity();
-        existingDevice.setId(1L);
+        existingDevice.setId(deviceId);
         existingDevice.setFcmToken(fcmToken);
         existingDevice.setActivo(false);
 
@@ -75,7 +79,7 @@ class UserDeviceServiceTest {
         assertEquals(user, savedDevice.getUsuarioEntity());
         assertTrue(savedDevice.getActivo());
         assertNotNull(savedDevice.getUltimoAccesoEn());
-        assertEquals(1L, savedDevice.getId()); 
+        assertEquals(deviceId, savedDevice.getId()); 
     }
 
     @Test
