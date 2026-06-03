@@ -29,6 +29,7 @@ import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Optional;
@@ -93,12 +94,15 @@ class PurchaseControllerTest {
         productId = UUID.randomUUID();
         purchaseId = UUID.randomUUID();
 
-        PurchaseItemDTO itemDTO = new PurchaseItemDTO(productId, 1);
-        requestDTO = new ProcessPurchaseRequestDTO(studentId, Collections.singletonList(itemDTO));
-
         Producto product = new Producto();
         product.setId(productId);
+        product.setNombre("Producto Test");
+        product.setPrecio(new BigDecimal("500.00"));
+
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        PurchaseItemDTO itemDTO = new PurchaseItemDTO(product.getId(), product.getNombre(), 1, product.getPrecio());
+        requestDTO = new ProcessPurchaseRequestDTO(studentId, Collections.singletonList(itemDTO));
 
         Alumno student = new Alumno();
         student.setId(studentId);

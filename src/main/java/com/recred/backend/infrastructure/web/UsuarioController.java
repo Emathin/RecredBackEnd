@@ -5,7 +5,6 @@ import com.recred.backend.domain.services.UsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,23 +25,14 @@ public class UsuarioController {
     }
 
     @PostMapping("/sync")
-    public ResponseEntity<Map<String, Object>> sincronizarUsuario
+    public ResponseEntity<Map<String, Object>> syncUser
             (@AuthenticationPrincipal Jwt jwt) {
         Usuario usuario = usuarioService.sincronizarUsuarioCognito(jwt);
-        return ResponseEntity.ok(construirRespuestaUsuario(usuario));
-    }
-
-    @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> obtenerMiPerfil(@AuthenticationPrincipal Jwt jwt) {
-        String sub = jwt.getSubject();
-
-        Usuario usuario = usuarioService.obtenerUsuarioActual(sub);
-
-        return ResponseEntity.ok(construirRespuestaUsuario(usuario));
+        return ResponseEntity.ok(buildUserResponse(usuario));
     }
 
     @PatchMapping("/rol")
-    public ResponseEntity<Map<String, Object>> asignarRol(
+    public ResponseEntity<Map<String, Object>> assignRole(
             @AuthenticationPrincipal Jwt jwt,
             @RequestBody Map<String, String> requestBody) {
 
@@ -51,16 +41,15 @@ public class UsuarioController {
 
         Usuario usuarioActualizado = usuarioService.actualizarRol(sub, nuevoRol);
 
-        return ResponseEntity.ok(construirRespuestaUsuario(usuarioActualizado));
+        return ResponseEntity.ok(buildUserResponse(usuarioActualizado));
     }
 
-    private Map<String, Object> construirRespuestaUsuario(Usuario usuario) {
+    private Map<String, Object> buildUserResponse(Usuario usuario) {
         Map<String, Object> response = new HashMap<>();
         response.put("id", usuario.getId());
         response.put("email", usuario.getEmail());
         response.put("nombre", usuario.getNombre());
         response.put("apellido", usuario.getApellido());
-
         response.put("rol", usuario.getRol() != null ? usuario.getRol().name() : "PENDIENTE");
 
         return response;

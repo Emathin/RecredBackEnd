@@ -30,6 +30,22 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
+    public List<Purchase> findHistorialByAlumno(UUID alumnoId) {
+        return springDataRepository.findAllByAlumnoIdOrderByFechaHoraDesc(alumnoId)
+                .stream()
+                .map(CompraEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Purchase> findHistorialByTutor(UUID tutorId) {
+        return springDataRepository.findAllByTutorIdOrderByFechaHoraDesc(tutorId)
+                .stream()
+                .map(CompraEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public Purchase save(Purchase purchase) {
         CompraEntity entity = findEntityToSave(purchase);
 

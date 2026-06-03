@@ -12,6 +12,9 @@ import java.util.UUID;
 
 public interface PurchaseRepository {
 
+    List<Purchase> findHistorialByAlumno(UUID alumnoId);
+    List<Purchase> findHistorialByTutor(UUID tutorId);
+
     Purchase save(Purchase purchase);
 
     Optional<Purchase> findById(UUID id);

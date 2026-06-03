@@ -1,5 +1,6 @@
 package com.recred.backend.domain.services;
 
+import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.UsuarioRepository;
@@ -49,8 +50,34 @@ public class UsuarioService {
 
     public Usuario obtenerUsuarioActual(String cognitoId) {
         return usuarioRepository.findByIdCognito(cognitoId)
-                .orElseThrow(() -> new RuntimeException
-                        ("Usuario no encontrado en la base de datos"));
+                .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(cognitoId));
+    }
+
+    public Usuario updateProfile(String cognitoId, String firstName, String lastName,
+                                 String phone, String documentNumber) {
+        validateEditableProfile(firstName, lastName, phone, documentNumber);
+
+        Usuario usuario = obtenerUsuarioActual(cognitoId);
+
+        if (firstName != null) {
+            usuario.setNombre(normalizeField("firstName", firstName));
+        }
+
+        if (lastName != null) {
+            usuario.setApellido(normalizeField("lastName", lastName));
+        }
+
+        if (phone != null) {
+            usuario.setTelefono(normalizeField("phone", phone));
+        }
+
+        if (documentNumber != null) {
+            usuario.setDni(normalizeField("documentNumber", documentNumber));
+        }
+
+        usuario.setActualizadoEn(LocalDateTime.now());
+
+        return usuarioRepository.save(usuario);
     }
 
     public Usuario actualizarRol(String cognitoId, String nuevoRol) {
@@ -60,5 +87,22 @@ public class UsuarioService {
         usuario.setActualizadoEn(LocalDateTime.now());
 
         return usuarioRepository.save(usuario);
+    }
+
+    private void validateEditableProfile(String firstName, String lastName, String phone,
+                                         String documentNumber) {
+        if (firstName == null && lastName == null && phone == null && documentNumber == null) {
+            throw new IllegalArgumentException("At least one field must be provided");
+        }
+    }
+
+    private String normalizeField(String field, String value) {
+        String normalizedValue = value.trim();
+
+        if (normalizedValue.isEmpty()) {
+            throw new IllegalArgumentException("Field " + field + " cannot be empty");
+        }
+
+        return normalizedValue;
     }
 }
