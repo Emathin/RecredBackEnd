@@ -8,6 +8,7 @@ import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.DeleteProduct;
 import com.recred.backend.application.DesbloquearProductoManual;
+import com.recred.backend.application.GenerarMenuBuffet;
 import com.recred.backend.application.GetAllProducts;
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetProductById;
@@ -34,6 +35,8 @@ import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.LoadStockIA;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.ObtenerHijosPorPadre;
+import com.recred.backend.application.ObtenerHistorialAlumno;
+import com.recred.backend.application.ObtenerHistorialTutor;
 import com.recred.backend.application.PredictStudentSpending;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.RemoveHealthRestrictions;
@@ -320,6 +323,29 @@ public class UseCases {
     public DisableTimeRestriction disableTimeRestriction(
             RestriccionHorariaRepository restriccionHorariaRepository) {
         return new DisableTimeRestriction(restriccionHorariaRepository);
+    }
+
+    @Bean
+    public ObtenerHistorialAlumno obtenerHistorialAlumno(PurchaseRepository purchaseRepository) {
+        return new ObtenerHistorialAlumno(purchaseRepository);
+    }
+
+    @Bean
+    public ObtenerHistorialTutor obtenerHistorialTutor(PurchaseRepository purchaseRepository) {
+        return new ObtenerHistorialTutor(purchaseRepository);
+    }
+
+    @Bean
+    public GenerarMenuBuffet generarMenuBuffet(AlumnoRepository alumnoRepository,
+                                               ProductRepository productRepository,
+                                               PresupuestoRepository presupuestoRepository,
+                                               PurchaseRepository purchaseRepository,
+                                               CalculadorPeriodoPresupuesto calculadorPeriodo){
+        return new GenerarMenuBuffet(alumnoRepository,
+                productRepository,
+                presupuestoRepository,
+                purchaseRepository,
+                calculadorPeriodo);
     }
 
     @Bean
