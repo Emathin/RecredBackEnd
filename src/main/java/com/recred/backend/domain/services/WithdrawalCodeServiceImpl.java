@@ -1,8 +1,6 @@
 package com.recred.backend.domain.services;
 
 import com.recred.backend.domain.models.Purchase;
-import org.springframework.stereotype.Service;
-
 import java.util.UUID;
 
 

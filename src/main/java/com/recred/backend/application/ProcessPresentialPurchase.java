@@ -91,7 +91,8 @@ public class ProcessPresentialPurchase {
 
         wallet.debit(montoTotalCarrito);
 
-        Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS, student.getId(), BuyerType.STUDENT);
+        Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS, student.getId(),
+                BuyerType.STUDENT);
 
         walletRepository.save(wallet);
         return purchaseRepository.save(purchase);

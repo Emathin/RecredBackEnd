@@ -27,7 +27,8 @@ public class Purchase {
 
     private Map<Producto, Integer> items = new HashMap<>();
 
-    public Purchase(Alumno student, Map<Producto, Integer> cart, MedioPago paymentMethod, UUID buyerId, BuyerType buyerType) {
+    public Purchase(Alumno student, Map<Producto, Integer> cart, MedioPago paymentMethod,
+                    UUID buyerId, BuyerType buyerType) {
         this.student = student;
         this.items = cart;
         this.paymentMethod = paymentMethod;

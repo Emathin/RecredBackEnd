@@ -132,7 +132,8 @@ public class UseCases {
                 validacionRestriccionesService, validadorPresupuestoService);
     }
     @Bean
-    public LoadStockIAService loadStockIAService(GeminiTextClient geminiTextClient, ObjectMapper objectMapper) {
+    public LoadStockIAService loadStockIAService(GeminiTextClient geminiTextClient,
+                                                 ObjectMapper objectMapper) {
         return new LoadStockIAService(geminiTextClient, objectMapper);
     }
 
@@ -560,7 +561,7 @@ public class UseCases {
 
     @Bean
     public GenerateSeasonalRecommendation generateSeasonalRecommendation(
-            GeminiSeasonalSuggester seasonalSuggester, OpenMeteoWeatherClient weatherClient) {
+            GeminiSeasonalSuggester seasonalSuggester, OpenMeteoWeatherClient weatherClient){
         return new GenerateSeasonalRecommendation(
                 weatherClient, seasonalSuggester);
     }

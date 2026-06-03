@@ -1,8 +1,6 @@
 package com.recred.backend.domain.services;
 
 import com.recred.backend.domain.models.Purchase;
-import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -43,7 +41,8 @@ public class PurchaseValidatorImpl implements PurchaseValidator {
                 .collect(Collectors.groupingBy(
                         entry -> entry.getKey().getCategoria().getId(),
                         Collectors.mapping(
-                                entry -> entry.getKey().getPrecio().multiply(BigDecimal.valueOf(entry.getValue())),
+                                entry -> entry.getKey().getPrecio()
+                                        .multiply(BigDecimal.valueOf(entry.getValue())),
                                 Collectors.reducing(BigDecimal.ZERO, BigDecimal::add)
                         )
                 ));
