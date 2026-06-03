@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -16,7 +17,9 @@ class PurchaseTest {
         Purchase purchase = new Purchase(
                 new Alumno(),
                 Map.of(product(true), 1),
-                MedioPago.CREDITOS
+                MedioPago.CREDITOS,
+                UUID.randomUUID(),
+                BuyerType.STUDENT
         );
 
         assertEquals(EstadoCompra.PENDIENTE, purchase.getStatus());
@@ -27,7 +30,9 @@ class PurchaseTest {
         Purchase purchase = new Purchase(
                 new Alumno(),
                 Map.of(product(false), 1),
-                MedioPago.CREDITOS
+                MedioPago.CREDITOS,
+                UUID.randomUUID(),
+                BuyerType.STUDENT
         );
 
         assertEquals(EstadoCompra.ENTREGADO, purchase.getStatus());
@@ -41,7 +46,9 @@ class PurchaseTest {
         Purchase purchase = new Purchase(
                 new Alumno(),
                 Map.of(product, 2),
-                MedioPago.CREDITOS
+                MedioPago.CREDITOS,
+                UUID.randomUUID(),
+                BuyerType.STUDENT
         );
 
         assertEquals(BigDecimal.ZERO, purchase.getTotalAmount());
