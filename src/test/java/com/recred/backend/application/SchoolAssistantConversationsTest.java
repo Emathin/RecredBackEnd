@@ -110,6 +110,29 @@ class SchoolAssistantConversationsTest {
     }
 
     @Test
+    void findStudentSessionsResolvesStudentIdFromUserId() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID sessionId = UUID.randomUUID();
+        ChatSession session = new ChatSession(
+                sessionId,
+                EstadoChatSesion.ABIERTA,
+                NOW.minusMinutes(5),
+                NOW
+        );
+        when(alumnoRepository.existsById(userId)).thenReturn(false);
+        when(alumnoRepository.findIdByUsuarioId(userId)).thenReturn(Optional.of(studentId));
+        when(chatSessionRepository.findByStudentId(studentId, 0, 20))
+                .thenReturn(List.of(session));
+
+        List<ChatSession> sessions = conversations.findStudentSessions(userId, 0, 20);
+
+        assertEquals(1, sessions.size());
+        assertEquals(sessionId, sessions.get(0).id());
+        verify(chatSessionRepository).findByStudentId(studentId, 0, 20);
+    }
+
+    @Test
     void deleteTutorSessionDeletesMessagesThenSession() {
         String cognitoSubject = "tutor-sub";
         UUID userId = UUID.randomUUID();

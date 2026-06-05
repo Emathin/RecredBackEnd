@@ -141,8 +141,8 @@ public class AskSchoolAssistant {
         this.clock = clock;
     }
 
-    public SchoolAssistantAnswer execute(UUID studentId, SchoolAssistantCommand command) {
-        validateStudent(studentId);
+    public SchoolAssistantAnswer execute(UUID studentIdOrUserId, SchoolAssistantCommand command) {
+        UUID studentId = resolvedStudentId(studentIdOrUserId);
         String message = message(command);
         LocalDateTime now = LocalDateTime.now(clock);
         ChatSession session = session(studentId, command, now);
@@ -199,11 +199,11 @@ public class AskSchoolAssistant {
         return answer;
     }
 
-    private void validateStudent(UUID studentId) {
-        if (!alumnoRepository.existsById(studentId)) {
-            AlumnoNoEncontradoException exception = new AlumnoNoEncontradoException(studentId);
-            throw exception;
-        }
+    private UUID resolvedStudentId(UUID studentIdOrUserId) {
+        return alumnoRepository.existsById(studentIdOrUserId)
+                ? studentIdOrUserId
+                : alumnoRepository.findIdByUsuarioId(studentIdOrUserId)
+                        .orElseThrow(() -> new AlumnoNoEncontradoException(studentIdOrUserId));
     }
 
     private Usuario authenticatedUser(String cognitoSubject) {
