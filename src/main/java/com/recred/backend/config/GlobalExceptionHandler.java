@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
@@ -122,6 +123,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleProductNotFound(ProductNotFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Producto no encontrado",
                 ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String message = String.format("El parámetro '%s' recibió un valor inválido: '%s'",
+                ex.getName(), ex.getValue());
+        return buildResponse(HttpStatus.BAD_REQUEST, "Parámetro inválido", message);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
