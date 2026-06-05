@@ -390,8 +390,9 @@ public class UseCases {
     }
 
     @Bean
-    public ObtenerHistorialTutor obtenerHistorialTutor(PurchaseRepository purchaseRepository) {
-        return new ObtenerHistorialTutor(purchaseRepository);
+    public ObtenerHistorialTutor obtenerHistorialTutor(PurchaseRepository purchaseRepository,
+                                                        TutorRepository tutorRepository) {
+        return new ObtenerHistorialTutor(purchaseRepository, tutorRepository);
     }
 
     @Bean
