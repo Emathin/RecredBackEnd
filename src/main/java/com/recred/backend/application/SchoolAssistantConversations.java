@@ -48,8 +48,8 @@ public class SchoolAssistantConversations {
         this.clock = clock;
     }
 
-    public List<ChatSession> findStudentSessions(UUID studentId, int page, int size) {
-        validateStudent(studentId);
+    public List<ChatSession> findStudentSessions(UUID studentIdOrUserId, int page, int size) {
+        UUID studentId = resolvedStudentId(studentIdOrUserId);
         return chatSessionRepository.findByStudentId(studentId, page, size);
     }
 
@@ -61,9 +61,9 @@ public class SchoolAssistantConversations {
         return chatSessionRepository.findByUserId(kiosqueroUserId(cognitoSubject), page, size);
     }
 
-    public List<ChatMessage> findStudentMessages(UUID studentId, UUID sessionId,
+    public List<ChatMessage> findStudentMessages(UUID studentIdOrUserId, UUID sessionId,
                                                  int page, int size) {
-        requireStudentSession(studentId, sessionId);
+        requireStudentSession(studentIdOrUserId, sessionId);
         return chatMessageRepository.findBySessionId(sessionId, page, size);
     }
 
@@ -79,8 +79,8 @@ public class SchoolAssistantConversations {
         return chatMessageRepository.findBySessionId(sessionId, page, size);
     }
 
-    public void closeStudentSession(UUID studentId, UUID sessionId) {
-        requireStudentSession(studentId, sessionId);
+    public void closeStudentSession(UUID studentIdOrUserId, UUID sessionId) {
+        requireStudentSession(studentIdOrUserId, sessionId);
         chatSessionRepository.close(sessionId, LocalDateTime.now(clock));
     }
 
@@ -95,8 +95,8 @@ public class SchoolAssistantConversations {
     }
 
     @Transactional
-    public void deleteStudentSession(UUID studentId, UUID sessionId) {
-        requireStudentSession(studentId, sessionId);
+    public void deleteStudentSession(UUID studentIdOrUserId, UUID sessionId) {
+        requireStudentSession(studentIdOrUserId, sessionId);
         deleteSession(sessionId);
     }
 
@@ -117,17 +117,17 @@ public class SchoolAssistantConversations {
         chatSessionRepository.deleteById(sessionId);
     }
 
-    private void validateStudent(UUID studentId) {
-        if (!alumnoRepository.existsById(studentId)) {
-            AlumnoNoEncontradoException exception = new AlumnoNoEncontradoException(studentId);
-            throw exception;
-        }
-    }
-
-    private void requireStudentSession(UUID studentId, UUID sessionId) {
-        validateStudent(studentId);
+    private void requireStudentSession(UUID studentIdOrUserId, UUID sessionId) {
+        UUID studentId = resolvedStudentId(studentIdOrUserId);
         chatSessionRepository.findByIdAndStudentId(sessionId, studentId)
                 .orElseThrow(() -> new ChatSessionNotFoundException(sessionId));
+    }
+
+    private UUID resolvedStudentId(UUID studentIdOrUserId) {
+        return alumnoRepository.existsById(studentIdOrUserId)
+                ? studentIdOrUserId
+                : alumnoRepository.findIdByUsuarioId(studentIdOrUserId)
+                        .orElseThrow(() -> new AlumnoNoEncontradoException(studentIdOrUserId));
     }
 
     private void requireUserSession(UUID userId, UUID sessionId) {

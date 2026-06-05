@@ -101,4 +101,16 @@ class AlumnoRepositoryImplTest {
         assertTrue(resultado.isEmpty());
         verify(springDataRepository).findById(alumnoId);
     }
+
+    @Test
+    void findIdByUsuarioId_CuandoExiste_DeberiaRetornarIdAlumno() {
+        UUID usuarioId = UUID.randomUUID();
+        when(springDataRepository.findStudentIdByUserId(usuarioId))
+                .thenReturn(Optional.of(alumnoId));
+
+        Optional<UUID> resultado = alumnoRepositoryImpl.findIdByUsuarioId(usuarioId);
+
+        assertEquals(Optional.of(alumnoId), resultado);
+        verify(springDataRepository).findStudentIdByUserId(usuarioId);
+    }
 }

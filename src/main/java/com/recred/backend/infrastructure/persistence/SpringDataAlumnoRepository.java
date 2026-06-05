@@ -20,6 +20,13 @@ public interface SpringDataAlumnoRepository extends JpaRepository<AlumnoEntity, 
     Optional<UUID> findUserIdByStudentId(@Param("studentId") UUID studentId);
 
     @Query("""
+            select student.id
+            from AlumnoEntity student
+            where student.usuario.id = :userId
+            """)
+    Optional<UUID> findStudentIdByUserId(@Param("userId") UUID userId);
+
+    @Query("""
                 select s.usuario.id
                 from AlumnoEntity s
                 where s.id = :alumnoId
