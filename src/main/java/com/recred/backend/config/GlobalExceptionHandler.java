@@ -126,7 +126,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(
+        MethodArgumentTypeMismatchException ex) {
         String message = String.format("El parámetro '%s' recibió un valor inválido: '%s'",
                 ex.getName(), ex.getValue());
         return buildResponse(HttpStatus.BAD_REQUEST, "Parámetro inválido", message);
