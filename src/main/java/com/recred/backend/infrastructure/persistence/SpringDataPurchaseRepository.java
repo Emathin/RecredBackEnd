@@ -26,6 +26,15 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
         return findRecentByStudentId(studentId, PageRequest.of(0, limit));
     }
 
+    @Query("SELECT c FROM CompraEntity c WHERE c.alumnoEntity.id = :alumnoId " +
+            "ORDER BY c.fechaHora DESC")
+    List<CompraEntity> findAllByAlumnoIdOrderByFechaHoraDesc(@Param("alumnoId") UUID alumnoId);
+
+    // Para el historial global del tutor (trae las compras de TODOS sus hijos cruzando tablas)
+    @Query("SELECT c FROM CompraEntity c JOIN c.alumnoEntity a " +
+            "JOIN a.tutores t WHERE t.id = :tutorId ORDER BY c.fechaHora DESC")
+    List<CompraEntity> findAllByTutorIdOrderByFechaHoraDesc(@Param("tutorId") UUID tutorId);
+
     @Query("""
             select new com.recred.backend.domain.models.SchoolAssistantPurchase(
                 purchase.montoTotal,
@@ -47,6 +56,30 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             "WHERE c.alumnoEntity.id = :alumnoId " +
             "ORDER BY c.fechaHora DESC")
     List<CompraEntity> findLastByAlumno(@Param("alumnoId") UUID alumnoId, Pageable pageable);
+
+    @Query("""
+            select purchase
+            from CompraEntity purchase
+            where purchase.buffetEntity.id = :buffetId
+            order by purchase.fechaHora desc
+            """)
+    List<CompraEntity> findRecentByBuffetId(
+            @Param("buffetId") UUID buffetId,
+            Pageable pageable
+    );
+
+    @Query("""
+            select purchase
+            from CompraEntity purchase
+            where purchase.buffetEntity.id = :buffetId
+            and purchase.estado in :statuses
+            order by purchase.fechaHora desc
+            """)
+    List<CompraEntity> findByBuffetIdAndStatuses(
+            @Param("buffetId") UUID buffetId,
+            @Param("statuses") List<EstadoCompra> statuses,
+            Pageable pageable
+    );
 
     @Query("SELECT COALESCE(SUM(c.montoTotal), 0) FROM CompraEntity c " +
             "WHERE c.alumnoEntity.id = :alumnoId " +

@@ -75,6 +75,13 @@ public class KiosqueroEntity {
     public Kiosquero toDomain() {
         Kiosquero kiosquero = new Kiosquero();
         kiosquero.setId(this.getId());
+        kiosquero.setCuit(this.getCuit());
+        kiosquero.setCreadoEn(this.creadoEn);
+        kiosquero.setActualizadoEn(this.actualizadoEn);
+
+        if (this.usuario != null) {
+            kiosquero.setUsuario(this.usuario.toDomain());
+        }
 
         if (this.getBuffetEntity() != null) {
             kiosquero.setBuffet(this.getBuffetEntity().toDomain());

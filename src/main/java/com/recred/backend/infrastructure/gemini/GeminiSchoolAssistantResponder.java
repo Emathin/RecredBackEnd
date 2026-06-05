@@ -23,10 +23,11 @@ public class GeminiSchoolAssistantResponder implements SchoolAssistantResponder 
             GeminiSchoolAssistantResponder.class);
     private static final String PROMPT_TEMPLATE = """
             Sos un asistente virtual escolar de Recred.
-            Solo podes responder sobre estos temas: saldos, pagos, compras y eventos escolares.
+            Atendes a un usuario con rol %s.
+            Solo podes responder sobre estas capacidades: %s.
             Usa solamente los datos provistos en la seccion Datos.
             Si un dato no esta presente, deci que no hay informacion registrada.
-            No inventes saldos, pagos, compras, fechas ni eventos.
+            No inventes saldos, pagos, compras, fechas, eventos, stock ni pedidos.
             Si el usuario pregunta otra cosa, responde exactamente:
             "No puedo ayudarte con ese tema ahora mismo."
             No ofrezcas hacer pagos, cancelar compras ni modificar datos.
@@ -41,11 +42,15 @@ public class GeminiSchoolAssistantResponder implements SchoolAssistantResponder 
             %s
 
             Datos:
+            rol=%s
+            usuarioId=%s
             alumnoId=%s
+            buffetId=%s
             saldo=%s
             pagosRecientes=%s
             comprasRecientes=%s
             eventosProximos=%s
+            datosAdicionales=%s
             historial=%s
             """;
 
@@ -86,12 +91,18 @@ public class GeminiSchoolAssistantResponder implements SchoolAssistantResponder 
 
     private String prompt(SchoolAssistantPrompt prompt) {
         return PROMPT_TEMPLATE.formatted(
+                prompt.context().role(),
+                prompt.context().capabilities(),
                 prompt.question(),
+                prompt.context().role(),
+                prompt.context().userId(),
                 prompt.context().studentId(),
+                prompt.context().buffetId(),
                 prompt.context().balance().map(Object::toString).orElse("sin_datos"),
                 payments(prompt.context().recentPayments()),
                 purchases(prompt.context().recentPurchases()),
                 events(prompt.context().upcomingEvents()),
+                prompt.context().facts(),
                 history(prompt.recentMessages())
         );
     }

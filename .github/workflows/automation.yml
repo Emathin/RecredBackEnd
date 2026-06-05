@@ -64,7 +64,7 @@ jobs:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USERNAME }}
           key: ${{ secrets.AWS_SSH_KEY }}
-          source: "recred-backend.tar.gz,docker-compose.yml"
+          source: "recred-backend.tar.gz,docker-compose.prod.yml"
           target: "/home/ubuntu/recred-app"
 
       - name: Levantar contenedores en AWS
@@ -77,23 +77,30 @@ jobs:
             set -e
             cd /home/ubuntu/recred-app
 
+            sudo mkdir -p secrets
+            sudo rm -rf secrets/firebase-service-account.json
+            printf '%s' '${{ secrets.PROD_FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 }}' | base64 -d > firebase-service-account.json.tmp
+            sudo install -m 600 firebase-service-account.json.tmp secrets/firebase-service-account.json
+            rm -f firebase-service-account.json.tmp
+
             cat > .env <<'EOF'
             POSTGRES_DB=${{ secrets.PROD_POSTGRES_DB }}
             POSTGRES_USER=${{ secrets.PROD_POSTGRES_USER }}
             POSTGRES_PASSWORD=${{ secrets.PROD_POSTGRES_PASSWORD }}
 
-            DB_URL=jdbc:postgresql://${{ secrets.PROD_DB_HOST }}:${{ secrets.PROD_DB_PORT }}/${{ secrets.PROD_POSTGRES_DB }}
+            DB_URL=jdbc:postgresql://${{ secrets.PROD_DB_HOST }}:${{ secrets.PROD_DB_PORT }}/${{ secrets.PROD_POSTGRES_DB }}?prepareThreshold=0&sslmode=require
             DB_USERNAME=${{ secrets.PROD_POSTGRES_USER }}
             DB_PASSWORD=${{ secrets.PROD_POSTGRES_PASSWORD }}
 
             COGNITO_ISSUER_URI=${{ secrets.COGNITO_ISSUER_URI }}
+            CORS_ALLOWED_ORIGIN_PATTERNS=${{ secrets.PROD_CORS_ALLOWED_ORIGIN_PATTERNS }}
 
             GEMINI_MODEL=${{ secrets.PROD_GEMINI_MODEL }}
             GEMINI_ENABLED=${{ secrets.PROD_GEMINI_ENABLED }}
             GEMINI_API_KEY=${{ secrets.PROD_GEMINI_API_KEY }}
 
             FIREBASE_ENABLED=${{ secrets.PROD_FIREBASE_ENABLED }}
-            FIREBASE_SERVICE_ACCOUNT_PATH=${{ secrets.PROD_FIREBASE_SERVICE_ACCOUNT_PATH }}
+            FIREBASE_SERVICE_ACCOUNT_PATH=/app/secrets/firebase-service-account.json
             EOF
 
             chmod 600 .env
@@ -101,5 +108,5 @@ jobs:
             sudo systemctl stop recred.service || true
             sudo docker rm -f recred-backend || true
             sudo docker load -i recred-backend.tar.gz
-            sudo env BACKEND_IMAGE=recred-backend:${{ github.sha }} docker compose up -d --no-build
+            sudo env BACKEND_IMAGE=recred-backend:${{ github.sha }} docker compose -f docker-compose.prod.yml up -d --no-build --remove-orphans
             sudo docker image prune -f
