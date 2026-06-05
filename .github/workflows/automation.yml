@@ -88,7 +88,7 @@ jobs:
             POSTGRES_USER=${{ secrets.PROD_POSTGRES_USER }}
             POSTGRES_PASSWORD=${{ secrets.PROD_POSTGRES_PASSWORD }}
 
-            DB_URL=jdbc:postgresql://${{ secrets.PROD_DB_HOST }}:${{ secrets.PROD_DB_PORT }}/${{ secrets.PROD_POSTGRES_DB }}
+            DB_URL=jdbc:postgresql://${{ secrets.PROD_DB_HOST }}:${{ secrets.PROD_DB_PORT }}/${{ secrets.PROD_POSTGRES_DB }}?prepareThreshold=0&sslmode=require
             DB_USERNAME=${{ secrets.PROD_POSTGRES_USER }}
             DB_PASSWORD=${{ secrets.PROD_POSTGRES_PASSWORD }}
 
