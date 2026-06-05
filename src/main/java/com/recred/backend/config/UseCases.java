@@ -36,6 +36,7 @@ import com.recred.backend.application.LoadStockIA;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.PredictStudentSpending;
 import com.recred.backend.application.ProcessPresentialPurchase;
+import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveProduct;
@@ -479,6 +480,16 @@ public class UseCases {
         return new GeneratePurchaseRecommendation(alumnoRepository,
                 purchaseRepository,purchaseAnalyzer,aiEventRepository, notificationRepository,
                 studentRepository,suggestionAiRepository);
+    }
+
+    @Bean
+    public PurchaseSuggestIA purchaseSuggestIA(
+            UsuarioService usuarioService,
+            SugerenciaIARepository sugerenciaIARepository,
+            FranjaHorariaRepository franjaHorariaRepository,
+            Clock clock) {
+        return new PurchaseSuggestIA(usuarioService, sugerenciaIARepository,
+                franjaHorariaRepository, clock);
     }
 
 }
