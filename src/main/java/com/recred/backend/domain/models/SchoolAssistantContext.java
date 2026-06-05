@@ -10,6 +10,36 @@ public record SchoolAssistantContext(
         Optional<BigDecimal> balance,
         List<SchoolAssistantPayment> recentPayments,
         List<SchoolAssistantPurchase> recentPurchases,
-        List<SchoolCalendarEvent> upcomingEvents
+        List<SchoolCalendarEvent> upcomingEvents,
+        SchoolAssistantRole role,
+        UUID userId,
+        UUID buffetId,
+        List<String> facts,
+        List<SchoolAssistantCapability> capabilities
 ) {
+    public SchoolAssistantContext(
+            UUID studentId,
+            Optional<BigDecimal> balance,
+            List<SchoolAssistantPayment> recentPayments,
+            List<SchoolAssistantPurchase> recentPurchases,
+            List<SchoolCalendarEvent> upcomingEvents
+    ) {
+        this(
+                studentId,
+                balance,
+                recentPayments,
+                recentPurchases,
+                upcomingEvents,
+                SchoolAssistantRole.ALUMNO,
+                null,
+                null,
+                List.of(),
+                List.of(
+                        SchoolAssistantCapability.SALDO,
+                        SchoolAssistantCapability.PAGOS,
+                        SchoolAssistantCapability.COMPRAS,
+                        SchoolAssistantCapability.EVENTOS
+                )
+        );
+    }
 }

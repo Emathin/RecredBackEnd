@@ -44,6 +44,7 @@ import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveProduct;
+import com.recred.backend.application.SchoolAssistantConversations;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateBudgetRules;
@@ -247,21 +248,52 @@ public class UseCases {
             AlumnoRepository alumnoRepository,
             WalletRepository walletRepository,
             SchoolAssistantPaymentRepository paymentRepository,
-            SchoolAssistantPurchaseRepository purchaseRepository,
+            SchoolAssistantPurchaseRepository schoolAssistantPurchaseRepository,
             SchoolCalendarRepository schoolCalendarRepository,
             ChatSessionRepository chatSessionRepository,
             ChatMessageRepository chatMessageRepository,
             SchoolAssistantResponder schoolAssistantResponder,
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            KiosqueroRepository kiosqueroRepository,
+            ProductRepository productRepository,
+            PurchaseRepository purchaseRepository,
+            PresupuestoRepository presupuestoRepository,
             Clock clock) {
         return new AskSchoolAssistant(
                 alumnoRepository,
                 walletRepository,
                 paymentRepository,
-                purchaseRepository,
+                schoolAssistantPurchaseRepository,
                 schoolCalendarRepository,
                 chatSessionRepository,
                 chatMessageRepository,
                 schoolAssistantResponder,
+                usuarioRepository,
+                tutorRepository,
+                kiosqueroRepository,
+                productRepository,
+                purchaseRepository,
+                presupuestoRepository,
+                clock);
+    }
+
+    @Bean
+    public SchoolAssistantConversations schoolAssistantConversations(
+            ChatSessionRepository chatSessionRepository,
+            ChatMessageRepository chatMessageRepository,
+            AlumnoRepository alumnoRepository,
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            KiosqueroRepository kiosqueroRepository,
+            Clock clock) {
+        return new SchoolAssistantConversations(
+                chatSessionRepository,
+                chatMessageRepository,
+                alumnoRepository,
+                usuarioRepository,
+                tutorRepository,
+                kiosqueroRepository,
                 clock);
     }
 

@@ -57,6 +57,30 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             "ORDER BY c.fechaHora DESC")
     List<CompraEntity> findLastByAlumno(@Param("alumnoId") UUID alumnoId, Pageable pageable);
 
+    @Query("""
+            select purchase
+            from CompraEntity purchase
+            where purchase.buffetEntity.id = :buffetId
+            order by purchase.fechaHora desc
+            """)
+    List<CompraEntity> findRecentByBuffetId(
+            @Param("buffetId") UUID buffetId,
+            Pageable pageable
+    );
+
+    @Query("""
+            select purchase
+            from CompraEntity purchase
+            where purchase.buffetEntity.id = :buffetId
+            and purchase.estado in :statuses
+            order by purchase.fechaHora desc
+            """)
+    List<CompraEntity> findByBuffetIdAndStatuses(
+            @Param("buffetId") UUID buffetId,
+            @Param("statuses") List<EstadoCompra> statuses,
+            Pageable pageable
+    );
+
     @Query("SELECT COALESCE(SUM(c.montoTotal), 0) FROM CompraEntity c " +
             "WHERE c.alumnoEntity.id = :alumnoId " +
             "AND c.estado = :estadoValido " +
