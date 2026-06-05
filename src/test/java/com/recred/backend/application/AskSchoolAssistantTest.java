@@ -231,6 +231,35 @@ class AskSchoolAssistantTest {
     }
 
     @Test
+    void executeResolvesStudentIdFromUserId() {
+        UUID userId = UUID.randomUUID();
+        Billetera wallet = wallet(new BigDecimal("1500.00"));
+
+        when(alumnoRepository.existsById(userId)).thenReturn(false);
+        when(alumnoRepository.findIdByUsuarioId(userId)).thenReturn(Optional.of(studentId));
+        when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
+        when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        when(paymentRepository.findRecentByStudentId(studentId, 5)).thenReturn(List.of());
+        when(purchaseRepository.findRecentByStudentId(studentId, 10)).thenReturn(List.of());
+        when(schoolCalendarRepository.findByStudentIdAndDateRange(
+                studentId,
+                LocalDate.of(2026, 5, 27),
+                LocalDate.of(2026, 6, 26)
+        )).thenReturn(List.of());
+        when(schoolAssistantResponder.respond(any())).thenReturn(Optional.empty());
+
+        SchoolAssistantAnswer answer = askSchoolAssistant.execute(
+                userId,
+                new SchoolAssistantCommand(Optional.empty(), "saldo")
+        );
+
+        assertEquals(sessionId, answer.sessionId());
+        verify(chatSessionRepository).startForStudent(studentId, NOW);
+        verify(walletRepository).findByStudentId(studentId);
+    }
+
+    @Test
     void executeUsesFallbackWhenGeminiDoesNotReturnAnswer() {
         when(alumnoRepository.existsById(studentId)).thenReturn(true);
         when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
