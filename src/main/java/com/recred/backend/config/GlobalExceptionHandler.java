@@ -4,6 +4,7 @@ import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
+import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
@@ -12,6 +13,7 @@ import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
+import com.recred.backend.domain.exceptions.TutorNoEncontradoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -122,6 +124,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ProductNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleProductNotFound(ProductNotFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Producto no encontrado",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(TutorNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handleTutorNoEncontrado(
+            TutorNoEncontradoException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Tutor no encontrado",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(KiosqueroNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleKiosqueroNotFound(
+            KiosqueroNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Kiosquero no encontrado",
                 ex.getMessage());
     }
 

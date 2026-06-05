@@ -44,8 +44,22 @@ public class ChatMessagePersistenceRepository implements ChatMessageRepository {
                 .toList();
     }
 
+    @Override
+    public List<ChatMessage> findBySessionId(UUID sessionId, int page, int size) {
+        return chatMessageRepository.findBySessionId(sessionId, PageRequest.of(page, size))
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public void deleteBySessionId(UUID sessionId) {
+        chatMessageRepository.deleteBySessionId(sessionId);
+    }
+
     private ChatMessage toDomain(ChatMensajeEntity entity) {
         return new ChatMessage(
+                entity.getId(),
                 entity.getSesion().getId(),
                 entity.getRol(),
                 entity.getContenido(),

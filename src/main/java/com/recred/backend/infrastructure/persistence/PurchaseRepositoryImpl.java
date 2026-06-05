@@ -136,4 +136,26 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         return springDataRepository.findByAlumno(alumnoId);
     }
 
+    @Override
+    public List<Purchase> findRecentByBuffet(UUID buffetId, int limit) {
+        return springDataRepository.findRecentByBuffetId(buffetId, PageRequest.of(0, limit))
+                .stream()
+                .map(CompraEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Purchase> findByBuffetAndStatuses(UUID buffetId,
+                                                  List<EstadoCompra> statuses,
+                                                  int limit) {
+        return springDataRepository.findByBuffetIdAndStatuses(
+                        buffetId,
+                        statuses,
+                        PageRequest.of(0, limit)
+                )
+                .stream()
+                .map(CompraEntity::toDomain)
+                .toList();
+    }
+
 }
