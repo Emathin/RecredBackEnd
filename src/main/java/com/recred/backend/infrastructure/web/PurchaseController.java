@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.CancelPresentialPurchase;
+import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.ProcessPresentialPurchase;
@@ -35,19 +36,22 @@ public class PurchaseController {
     private final UpdatePurchaseStatus updatePurchaseStatus;
     private final CancelPresentialPurchase cancelPresentialPurchase;
     private final ProductRepository productRepository;
+    private final CreateAdvancePurchase createAdvancePurchase;
 
     public PurchaseController(ProcessPresentialPurchase processPresentialPurchase,
                               GetPresentialPurchase getPresentialPurchase,
                               GetPurchaseStatus getPurchaseStatus,
                               UpdatePurchaseStatus updatePurchaseStatus,
                               CancelPresentialPurchase cancelPresentialPurchase,
-                              ProductRepository productRepository) {
+                              ProductRepository productRepository,
+                              CreateAdvancePurchase createAdvancePurchase) {
         this.processPresentialPurchase = processPresentialPurchase;
         this.getPresentialPurchase = getPresentialPurchase;
         this.getPurchaseStatus = getPurchaseStatus;
         this.updatePurchaseStatus = updatePurchaseStatus;
         this.cancelPresentialPurchase = cancelPresentialPurchase;
         this.productRepository = productRepository;
+        this.createAdvancePurchase = createAdvancePurchase;
     }
 
     @PostMapping("/presential")
@@ -66,10 +70,17 @@ public class PurchaseController {
         return ResponseEntity.ok(new PurchaseResponseDTO(purchase));
     }
 
+    @PostMapping("/advance")
+    public ResponseEntity<AdvancePurchaseResponse> createAdvancePurchase(
+            @RequestBody AdvancePurchaseRequest request
+    ) {
+        return ResponseEntity.ok(createAdvancePurchase.execute(request));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PurchaseResponseDTO> getPurchaseById(@PathVariable UUID id) {
         return getPresentialPurchase.execute(id)
-                .map(purchase -> new PurchaseResponseDTO(purchase))
+                .map(PurchaseResponseDTO::new)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

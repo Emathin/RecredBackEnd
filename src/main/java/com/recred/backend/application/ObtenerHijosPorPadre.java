@@ -21,4 +21,12 @@ public class ObtenerHijosPorPadre {
                 .orElseThrow(() -> new RuntimeException("Tutor no encontrado con ID: " + tutorId))
                 .getHijos();
     }
+
+    @Transactional(readOnly = true)
+    public Set<Alumno> executeByCognitoSubject(String cognitoSubject) {
+        return tutorRepository.findByUsuarioIdCognito(cognitoSubject)
+                .orElseThrow(() -> new RuntimeException(
+                        "Tutor no encontrado para el usuario autenticado"))
+                .getHijos();
+    }
 }

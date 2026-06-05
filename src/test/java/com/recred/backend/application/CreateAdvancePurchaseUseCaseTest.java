@@ -9,6 +9,7 @@ import com.recred.backend.domain.services.PurchaseValidator;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
 import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -40,18 +41,25 @@ class CreateAdvancePurchaseUseCaseTest {
     private WithdrawalCodeService withdrawalCodeService;
 
     @InjectMocks
-    private CreateAdvancePurchaseUseCase createAdvancePurchaseUseCase;
+    private CreateAdvancePurchase createAdvancePurchase;
+
+    private AutoCloseable closeable;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-        createAdvancePurchaseUseCase = new CreateAdvancePurchaseUseCase(
+        closeable = MockitoAnnotations.openMocks(this);
+        createAdvancePurchase = new CreateAdvancePurchase(
                 purchaseValidator,
                 alumnoRepository,
                 productRepository,
                 purchaseRepository,
                 withdrawalCodeService
         );
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        closeable.close();
     }
 
     @Test
@@ -78,7 +86,7 @@ class CreateAdvancePurchaseUseCaseTest {
         Map<Producto, Integer> items = new HashMap<>();
         items.put(product, 1);
 
-        Purchase purchase = new Purchase(student, items, null);
+        Purchase purchase = new Purchase(student, items, null, studentId, BuyerType.STUDENT);
         purchase.setId(UUID.randomUUID());
 
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
@@ -86,7 +94,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
         when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("test-code");
 
-        AdvancePurchaseResponse response = createAdvancePurchaseUseCase.execute(request);
+        AdvancePurchaseResponse response = createAdvancePurchase.execute(request);
 
         assertNotNull(response);
         assertEquals(EstadoCompra.PENDIENTE, response.status().status());
@@ -120,8 +128,6 @@ class CreateAdvancePurchaseUseCaseTest {
         doThrow(new DietaryRestrictionException("Dietary restriction violated"))
                 .when(purchaseValidator).validate(any(Purchase.class));
 
-        assertThrows(DietaryRestrictionException.class, () -> {
-            createAdvancePurchaseUseCase.execute(request);
-        });
+        assertThrows(DietaryRestrictionException.class, () -> createAdvancePurchase.execute(request));
     }
 }

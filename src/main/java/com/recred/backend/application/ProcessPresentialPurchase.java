@@ -4,6 +4,7 @@ import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
+import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
@@ -90,7 +91,8 @@ public class ProcessPresentialPurchase {
 
         wallet.debit(montoTotalCarrito);
 
-        Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS);
+        Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS, student.getId(),
+                BuyerType.STUDENT);
 
         walletRepository.save(wallet);
         return purchaseRepository.save(purchase);
