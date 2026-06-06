@@ -38,7 +38,7 @@ public class CreateBudget {
         PresupuestoAlumno presupuesto = new PresupuestoAlumno(
                 null,
                 command.studentId(),
-                command.creadorId(), // <- PASAMOS EL DATO AL DOMINIO ACÁ (Modificá tu BudgetCommand para incluirlo)
+                command.creadorId(),
                 command.limitAmount(),
                 command.period(),
                 command.startDate(),

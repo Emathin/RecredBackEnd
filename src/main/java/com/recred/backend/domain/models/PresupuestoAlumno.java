@@ -22,8 +22,8 @@ public class PresupuestoAlumno {
         this.activo = true;
     }
 
-    public PresupuestoAlumno(UUID id, UUID alumnoId, UUID creadoPorUsuarioId, BigDecimal montoLimiteGeneral,
-            PeriodoPresupuesto periodo, LocalDate fechaInicio,
+    public PresupuestoAlumno(UUID id, UUID alumnoId, UUID creadoPorUsuarioId,
+            BigDecimal montoLimiteGeneral, PeriodoPresupuesto periodo, LocalDate fechaInicio,
             boolean activo, List<ReglaPresupuestoCategoria> reglasCategoria) {
         this.id = id;
         this.alumnoId = alumnoId;
@@ -56,7 +56,8 @@ public class PresupuestoAlumno {
     }
 
     public void recalcularMontosReglas() {
-        if (this.reglasCategoria == null || this.reglasCategoria.isEmpty() || this.montoLimiteGeneral == null) {
+        if (this.reglasCategoria == null || this.reglasCategoria.isEmpty() ||
+                this.montoLimiteGeneral == null) {
             return;
         }
 
