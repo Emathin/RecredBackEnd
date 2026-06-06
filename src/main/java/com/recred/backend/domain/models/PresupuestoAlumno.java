@@ -46,7 +46,8 @@ public class PresupuestoAlumno {
 
         BigDecimal sumaPorcentajes = this.reglasCategoria.stream()
                 .filter(ReglaPresupuestoCategoria::isActivo)
-                .map(r -> r.getPorcentajeLimite() != null ? r.getPorcentajeLimite() : BigDecimal.ZERO)
+                .map(r -> r.getPorcentajeLimite() != null ? 
+                     r.getPorcentajeLimite() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (sumaPorcentajes.compareTo(new BigDecimal("100")) > 0) {
