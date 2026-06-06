@@ -1,23 +1,26 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.ProcessPresentialPurchase;
+import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RespondToAISuggestion;
-import com.recred.backend.domain.exceptions.ProductNotFoundException;
-import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.models.BuyerType;
+import com.recred.backend.domain.models.RecessTime;
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
+import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,26 +30,27 @@ public class PurchaseSuggestController {
 
     private final PurchaseSuggestIA purchaseSuggestIA;
     private final RespondToAISuggestion respondToAISuggestion;
-    private final ProcessPresentialPurchase processPresentialPurchase;
+    private final CreateAdvancePurchase createAdvancePurchase;
     private final SugerenciaIARepository sugerenciaIARepository;
-    private final ProductRepository productRepository;
+    private final UsuarioService usuarioService;
 
     public PurchaseSuggestController(PurchaseSuggestIA purchaseSuggestIA,
                                      RespondToAISuggestion respondToAISuggestion,
-                                     ProcessPresentialPurchase processPresentialPurchase,
+                                     CreateAdvancePurchase createAdvancePurchase,
                                      SugerenciaIARepository sugerenciaIARepository,
-                                     ProductRepository productRepository) {
+                                     UsuarioService usuarioService) {
         this.purchaseSuggestIA = purchaseSuggestIA;
         this.respondToAISuggestion = respondToAISuggestion;
-        this.processPresentialPurchase = processPresentialPurchase;
+        this.createAdvancePurchase = createAdvancePurchase;
         this.sugerenciaIARepository = sugerenciaIARepository;
-        this.productRepository = productRepository;
+        this.usuarioService = usuarioService;
     }
 
     @GetMapping("/activa")
     public ResponseEntity<HealthySuggestionResponseDTO> obtenerSugerenciaActiva(
-            @AuthenticationPrincipal Jwt jwt) {
-        Optional<SugerenciaIAEntity> sugerenciaOpt = purchaseSuggestIA.execute(jwt.getSubject());
+            Authentication authentication) {
+        Optional<SugerenciaIAEntity> sugerenciaOpt =
+                purchaseSuggestIA.execute(cognitoSubject(authentication));
 
         return sugerenciaOpt
                 .map(this::toDTO)
@@ -55,26 +59,47 @@ public class PurchaseSuggestController {
     }
 
     @PostMapping("/{sugerenciaId}/comprar")
-    public ResponseEntity<Void> comprarSugerencia(
-            @PathVariable UUID sugerenciaId) {
+    public ResponseEntity<AdvancePurchaseResponse> comprarSugerencia(
+            @PathVariable UUID sugerenciaId,
+            Authentication authentication) {
         SugerenciaIAEntity sugerencia = sugerenciaIARepository.findById(sugerenciaId)
                 .orElseThrow(() -> new RuntimeException("Sugerencia no encontrada"));
+
+        Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoSubject(authentication));
 
         // Marcar como aceptada
         respondToAISuggestion.execute(sugerenciaId, true);
 
-        // Concretar la compra
-        // TODO: ProcessPresentialPurchase es provisorio y en el futuro
-        // se reemplazará por ProcessAnticipatedPurchase
+        // Concretar la compra anticipada
         UUID alumnoId = sugerencia.getAlumnoEntity().getId();
         UUID productoId = sugerencia.getProductoEntity().getId();
 
-        Producto producto = productRepository.findById(productoId)
-                .orElseThrow(() -> new ProductNotFoundException(productoId));
+        BuyerType buyerType = usuario.getRol() == RolUsuario.ALUMNO
+                ? BuyerType.STUDENT
+                : BuyerType.TUTOR;
 
-        processPresentialPurchase.execute(alumnoId, Map.of(producto, 1));
+        AdvancePurchaseRequest.ItemRequest item =
+                new AdvancePurchaseRequest.ItemRequest(productoId, 1);
 
-        return ResponseEntity.ok().build();
+        AdvancePurchaseRequest.OrderRequest order = new AdvancePurchaseRequest.OrderRequest(
+                alumnoId,
+                usuario.getId(),
+                buyerType,
+                LocalDate.now().toString(),
+                RecessTime.AFTER_HOURS,
+                List.of(item)
+        );
+
+        AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
+
+        return ResponseEntity.ok(createAdvancePurchase.execute(request));
+    }
+
+    private String cognitoSubject(Authentication authentication) {
+        return Optional.ofNullable(authentication)
+                .map(Authentication::getName)
+                .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
+                        "Usuario no autenticado"));
     }
 
     private HealthySuggestionResponseDTO toDTO(SugerenciaIAEntity entity) {
