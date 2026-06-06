@@ -26,8 +26,12 @@ public class UsuarioController {
 
     @PostMapping("/sync")
     public ResponseEntity<Map<String, Object>> syncUser
-            (@AuthenticationPrincipal Jwt jwt) {
-        Usuario usuario = usuarioService.sincronizarUsuarioCognito(jwt);
+            (@AuthenticationPrincipal Jwt jwt,
+             @RequestBody(required = false) SyncUserRequest request) {
+        Usuario usuario = usuarioService.sincronizarUsuarioCognito(
+                jwt,
+                request != null ? request.toProfile() : null
+        );
         return ResponseEntity.ok(buildUserResponse(usuario));
     }
 

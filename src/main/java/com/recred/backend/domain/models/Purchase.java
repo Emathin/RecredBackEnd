@@ -22,16 +22,21 @@ public class Purchase {
     private EstadoCompra status;
     private MedioPago paymentMethod;
     private LocalDateTime date;
+    private UUID buyerId;
+    private BuyerType buyerType;
 
     private Map<Producto, Integer> items = new HashMap<>();
 
-    public Purchase(Alumno student, Map<Producto, Integer> cart, MedioPago paymentMethod) {
+    public Purchase(Alumno student, Map<Producto, Integer> cart, MedioPago paymentMethod,
+                    UUID buyerId, BuyerType buyerType) {
         this.student = student;
         this.items = cart;
         this.paymentMethod = paymentMethod;
         this.status = initialStatus(cart);
         this.date = LocalDateTime.now();
         this.totalAmount = calculateTotal(cart);
+        this.buyerId = buyerId;
+        this.buyerType = buyerType;
     }
 
     public void changeStatusTo(EstadoCompra nextStatus) {

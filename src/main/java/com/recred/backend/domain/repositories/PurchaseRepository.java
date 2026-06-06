@@ -1,4 +1,5 @@
 package com.recred.backend.domain.repositories;
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseResume;
 
@@ -7,8 +8,6 @@ import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 public interface PurchaseRepository {
 
@@ -30,4 +29,10 @@ public interface PurchaseRepository {
             UUID alumnoId, int limit);
 
     List<PurchaseResume> findPurchasesByAlumno(UUID alumnoId);
+
+    List<Purchase> findRecentByBuffet(UUID buffetId, int limit);
+
+    List<Purchase> findByBuffetAndStatuses(UUID buffetId,
+                                           List<EstadoCompra> statuses,
+                                           int limit);
 }
