@@ -31,20 +31,19 @@ public class CreateBudget {
                         categoria,
                         rule.porcentajeLimite(),
                         null,
-                        true
-                );
+                        true);
             }).collect(Collectors.toList());
         }
 
         PresupuestoAlumno presupuesto = new PresupuestoAlumno(
                 null,
                 command.studentId(),
+                command.creadorId(), // <- PASAMOS EL DATO AL DOMINIO ACÁ (Modificá tu BudgetCommand para incluirlo)
                 command.limitAmount(),
                 command.period(),
                 command.startDate(),
                 true,
-                reglas
-        );
+                reglas);
 
         presupuesto.validarPorcentajes();
         presupuesto.recalcularMontosReglas();
