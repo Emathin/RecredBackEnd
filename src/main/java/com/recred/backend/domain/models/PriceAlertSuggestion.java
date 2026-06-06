@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record PriceAlertSuggestion(
         UUID studentId,
+        UUID studentUserId,
         UUID productId,
         UUID buffetId,
         Set<UUID> tutorUserIds,
