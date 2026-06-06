@@ -61,29 +61,29 @@ public class GeminiPreferenceAIAdapter implements PreferenceAIRepository {
                 .collect(Collectors.joining("\n"));
 
         return String.format("""
-                Eres un experto en nutrición infantil y análisis de consumo para el proyecto Recred.
+                Eres un experto en nutricion infantil y analisis de consumo.
                 Tu tarea es analizar el historial de compras de un alumno y detectar una preferencia
                 que coincida con el stock actual del kiosco.
-                
+
                 DATOS DEL ALUMNO:
                 - Grado: %s
-                
+
                 HISTORIAL DE COMPRAS:
                 %s
-                
+
                 STOCK DISPONIBLE HOY:
                 %s
-                
+
                 REGLAS:
-                1. Identifica un patrón claro (ej: prefiere snacks salados).
-                2. Busca en el stock un producto que coincida con ese patrón.
-                3. Si el producto es poco saludable, la razónIA debe mencionarlo.
-                4. Responde ÚNICAMENTE en formato JSON con la siguiente estructura:
+                1. Identifica un patron claro (ej: prefiere snacks salados).
+                2. Busca en el stock un producto que coincida con ese patron.
+                3. Si el producto es poco saludable, la razonIA debe mencionarlo.
+                4. Responde UNICAMENTE en formato JSON con la siguiente estructura:
                    {
-                     "titulo": "Título corto de la sugerencia",
+                     "titulo": "Titulo corto de la sugerencia",
                      "mensaje": "Mensaje para el tutor",
                      "productoId": "UUID del producto del stock",
-                     "razonIA": "Explicación técnica"
+                     "razonIA": "Explicacion tecnica"
                    }
                 """, gradoStr, historialStr, stockStr);
     }

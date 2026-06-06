@@ -121,7 +121,7 @@ class SchoolAssistantConversationsTest {
                 NOW
         );
         when(alumnoRepository.existsById(userId)).thenReturn(false);
-        when(alumnoRepository.findIdByUsuarioId(userId)).thenReturn(Optional.of(studentId));
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
         when(chatSessionRepository.findByStudentId(studentId, 0, 20))
                 .thenReturn(List.of(session));
 

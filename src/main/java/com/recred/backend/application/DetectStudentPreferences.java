@@ -66,10 +66,17 @@ public class DetectStudentPreferences {
             Optional<PreferenciaDetectada> resultado = 
                     preferenceAIRepository.analizarPreferencias(alumno, historial, stockDisponible);
 
-            resultado = resultado.filter(preferencia -> 
-                stockDisponible.stream()
-                        .anyMatch(p -> p.getId().toString().equals(preferencia.productoId()))
-            );
+            if (resultado.isEmpty()) {
+                return Optional.empty();
+            }
+
+            PreferenciaDetectada preferenciaDetectada = resultado.get();
+            boolean productoDisponible = stockDisponible.stream()
+                    .anyMatch(p -> p.getId().toString().equals(preferenciaDetectada.productoId()));
+
+            if (!productoDisponible) {
+                return Optional.empty();
+            }
 
             resultado.ifPresent(preferencia -> {
                 SugerenciaIAEntity sugerencia = new SugerenciaIAEntity();
