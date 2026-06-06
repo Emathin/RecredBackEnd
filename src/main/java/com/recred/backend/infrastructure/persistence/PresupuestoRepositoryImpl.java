@@ -83,7 +83,8 @@ public class PresupuestoRepositoryImpl implements PresupuestoRepository {
         if (modelo.getReglasCategoria() != null && !modelo.getReglasCategoria().isEmpty()) {
             List<ReglaPresupuestoCategoriaEntity> subEntities = modelo.getReglasCategoria().stream()
                     .map(reglaDominio -> {
-                        ReglaPresupuestoCategoriaEntity subEntity = new ReglaPresupuestoCategoriaEntity();
+                        ReglaPresupuestoCategoriaEntity subEntity = 
+                            new ReglaPresupuestoCategoriaEntity();
                         subEntity.setId(reglaDominio.getId());
                         subEntity.setPorcentajeLimite(reglaDominio.getPorcentajeLimite());
                         subEntity.setMontoLimiteCalculado(reglaDominio.getMontoLimiteCalculado());
