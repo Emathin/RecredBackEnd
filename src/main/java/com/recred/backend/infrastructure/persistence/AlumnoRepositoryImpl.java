@@ -29,7 +29,7 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
 
     @Override
     public List<Alumno> findAll() {
-        return springDataRepository.findAll().stream()
+        return springDataRepository.findAllWithDomainRelations().stream()
                 .map(AlumnoEntity::toDomain)
                 .toList();
     }
@@ -37,6 +37,11 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
     @Override
     public boolean existsById(UUID alumnoId) {
         return springDataRepository.existsById(alumnoId);
+    }
+
+    @Override
+    public Optional<UUID> findStudentIdByUserId(UUID userId) {
+        return springDataRepository.findStudentIdByUserId(userId);
     }
 
     @Override

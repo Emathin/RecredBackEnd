@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.RespondToAISuggestion;
+import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class StudentPreferenceControllerTest {
@@ -23,8 +25,9 @@ class StudentPreferenceControllerTest {
         DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
         GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
         RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
+        AlumnoRepository alumnoRepository = mock(AlumnoRepository.class);
         StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
+                detectStudentPreferences, getStudentPreferences, respondToAISuggestion, alumnoRepository);
         
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -36,7 +39,7 @@ class StudentPreferenceControllerTest {
         );
         when(detectStudentPreferences.execute(studentId, buffetId)).thenReturn(Optional.of(detected));
 
-        ResponseEntity<StudentPreferenceResponse> response = controller.detect(studentId, buffetId);
+        ResponseEntity<StudentPreferenceResponse> response = controller.detect(studentId, null, buffetId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(detected.titulo(), response.getBody().titulo());
@@ -47,16 +50,38 @@ class StudentPreferenceControllerTest {
         DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
         GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
         RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
+        AlumnoRepository alumnoRepository = mock(AlumnoRepository.class);
         StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
+                detectStudentPreferences, getStudentPreferences, respondToAISuggestion, alumnoRepository);
         
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         when(detectStudentPreferences.execute(studentId, buffetId)).thenReturn(Optional.empty());
 
-        ResponseEntity<StudentPreferenceResponse> response = controller.detect(studentId, buffetId);
+        ResponseEntity<StudentPreferenceResponse> response = controller.detect(studentId, null, buffetId);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    }
+
+    @Test
+    void detectPreferenceUsingUserId() {
+        DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
+        GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
+        RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
+        AlumnoRepository alumnoRepository = mock(AlumnoRepository.class);
+        StudentPreferenceController controller = new StudentPreferenceController(
+                detectStudentPreferences, getStudentPreferences, respondToAISuggestion, alumnoRepository);
+
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        when(detectStudentPreferences.execute(studentId, buffetId)).thenReturn(Optional.empty());
+
+        ResponseEntity<StudentPreferenceResponse> response = controller.detect(null, userId, buffetId);
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(detectStudentPreferences).execute(studentId, buffetId);
     }
 
     @Test
@@ -64,13 +89,15 @@ class StudentPreferenceControllerTest {
         DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
         GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
         RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
+        AlumnoRepository alumnoRepository = mock(AlumnoRepository.class);
         StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
+                detectStudentPreferences, getStudentPreferences, respondToAISuggestion, alumnoRepository);
         
         UUID studentId = UUID.randomUUID();
         when(getStudentPreferences.execute(studentId, false, null)).thenReturn(List.of());
 
-        ResponseEntity<List<StudentPreferenceResponse>> response = controller.getPreferences(studentId, false, null);
+        ResponseEntity<List<StudentPreferenceResponse>> response =
+                controller.getPreferences(studentId, null, false, null);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
     }
@@ -80,8 +107,9 @@ class StudentPreferenceControllerTest {
         DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
         GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
         RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
+        AlumnoRepository alumnoRepository = mock(AlumnoRepository.class);
         StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
+                detectStudentPreferences, getStudentPreferences, respondToAISuggestion, alumnoRepository);
         
         UUID studentId = UUID.randomUUID();
         com.recred.backend.infrastructure.entities.SugerenciaIAEntity entity = 
@@ -92,7 +120,8 @@ class StudentPreferenceControllerTest {
         
         when(getStudentPreferences.execute(studentId, false, null)).thenReturn(List.of(entity));
 
-        ResponseEntity<List<StudentPreferenceResponse>> response = controller.getPreferences(studentId, false, null);
+        ResponseEntity<List<StudentPreferenceResponse>> response =
+                controller.getPreferences(studentId, null, false, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
@@ -103,14 +132,15 @@ class StudentPreferenceControllerTest {
         DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
         GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
         RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
+        AlumnoRepository alumnoRepository = mock(AlumnoRepository.class);
         StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
+                detectStudentPreferences, getStudentPreferences, respondToAISuggestion, alumnoRepository);
         
         UUID sugerenciaId = UUID.randomUUID();
         
         ResponseEntity<Void> response = controller.respond(sugerenciaId, true);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        org.mockito.Mockito.verify(respondToAISuggestion).execute(sugerenciaId, true);
+        verify(respondToAISuggestion).execute(sugerenciaId, true);
     }
 }

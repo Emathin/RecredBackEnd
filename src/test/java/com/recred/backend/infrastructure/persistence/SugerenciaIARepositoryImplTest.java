@@ -114,6 +114,7 @@ class SugerenciaIARepositoryImplTest {
         assertEquals(AIEventType.ALERTA_PRECIO, saved.getEventoIaEntity().getType());
         assertEquals(Boolean.FALSE, saved.getAceptada());
         assertEquals("120.00", saved.getMetadata().get("precioNuevo"));
+        assertEquals(context.studentUserId().toString(), saved.getMetadata().get("alumnoUsuarioId"));
     }
 
     @Test
@@ -139,6 +140,10 @@ class SugerenciaIARepositoryImplTest {
                 ArgumentCaptor.forClass(PushNotificationRequestedEvent.class);
         verify(eventPublisher).publishEvent(pushCaptor.capture());
         assertEquals(context.tutorUserId(), pushCaptor.getValue().notification().userId());
+        assertEquals(
+                context.studentUserId().toString(),
+                pushCaptor.getValue().notification().data().get("alumnoUsuarioId")
+        );
     }
 
     @Test
@@ -177,6 +182,7 @@ class SugerenciaIARepositoryImplTest {
         UUID productId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         UUID tutorUserId = UUID.randomUUID();
+        UUID studentUserId = UUID.randomUUID();
         AlumnoEntity student = new AlumnoEntity();
         ProductoEntity product = new ProductoEntity();
         BuffetEntity buffet = new BuffetEntity();
@@ -188,19 +194,26 @@ class SugerenciaIARepositoryImplTest {
         when(entityManager.getReference(BuffetEntity.class, buffetId)).thenReturn(buffet);
         when(entityManager.getReference(UsuarioEntity.class, tutorUserId)).thenReturn(tutorUser);
 
-        repository.savePriceAlert(suggestion(studentId, productId, buffetId, tutorUserId));
+        repository.savePriceAlert(suggestion(
+                studentId,
+                studentUserId,
+                productId,
+                buffetId,
+                tutorUserId));
 
-        return new PriceAlertContext(student, product, buffet, tutorUser, tutorUserId);
+        return new PriceAlertContext(student, product, buffet, tutorUser, studentUserId, tutorUserId);
     }
 
     private PriceAlertSuggestion suggestion(
             UUID studentId,
+            UUID studentUserId,
             UUID productId,
             UUID buffetId,
             UUID tutorUserId
     ) {
         return new PriceAlertSuggestion(
                 studentId,
+                studentUserId,
                 productId,
                 buffetId,
                 Set.of(tutorUserId),
@@ -218,6 +231,7 @@ class SugerenciaIARepositoryImplTest {
             ProductoEntity product,
             BuffetEntity buffet,
             UsuarioEntity tutorUser,
+            UUID studentUserId,
             UUID tutorUserId
     ) {
     }

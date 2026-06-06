@@ -16,6 +16,8 @@ public interface AlumnoRepository {
 
     boolean existsById(UUID alumnoId);
 
+    Optional<UUID> findStudentIdByUserId(UUID userId);
+
     UUID findUserID(UUID alumnoId);
 
 }
