@@ -48,8 +48,7 @@ class GeminiSchoolAssistantResponderTest {
         assertEquals("Tenes $500.00 disponibles.", draft.orElseThrow().answer());
         assertEquals("gemini-test", draft.orElseThrow().model());
         verify(geminiTextClient).generate(contains(
-                "Solo podes responder sobre estos temas: saldos, pagos, compras y eventos "
-                        + "escolares."
+                "Solo podes responder sobre estas capacidades: [SALDO, PAGOS, COMPRAS, EVENTOS]."
         ));
         verify(geminiTextClient).generate(contains(
                 "Si el usuario pregunta otra cosa, responde exactamente:"

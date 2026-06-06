@@ -126,18 +126,6 @@ public class UsuarioEntity {
             usuario.setColegio(this.colegioEntity.toDomain());
         }
 
-        if (this.alumnoEntity != null) {
-            usuario.setAlumno(this.alumnoEntity.toDomain());
-        }
-
-        if (this.tutor != null) {
-            usuario.setTutor(this.tutor.toDomain());
-        }
-
-        if (this.kiosquero != null) {
-            usuario.setKiosquero(this.kiosquero.toDomain());
-        }
-
         return usuario;
     }
 

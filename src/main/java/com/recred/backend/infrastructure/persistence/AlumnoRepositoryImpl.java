@@ -29,7 +29,7 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
 
     @Override
     public List<Alumno> findAll() {
-        return springDataRepository.findAllWithDomainRelations().stream()
+        return springDataRepository.findAll().stream()
                 .map(AlumnoEntity::toDomain)
                 .toList();
     }

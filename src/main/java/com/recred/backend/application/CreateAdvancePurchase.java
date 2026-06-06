@@ -1,6 +1,7 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
@@ -16,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class CreateAdvancePurchaseUseCase {
+public class CreateAdvancePurchase {
 
     private final PurchaseValidator purchaseValidator;
     private final AlumnoRepository alumnoRepository;
@@ -24,7 +25,7 @@ public class CreateAdvancePurchaseUseCase {
     private final PurchaseRepository purchaseRepository;
     private final WithdrawalCodeService withdrawalCodeService;
 
-    public CreateAdvancePurchaseUseCase(
+    public CreateAdvancePurchase(
             PurchaseValidator purchaseValidator,
             AlumnoRepository alumnoRepository,
             ProductRepository productRepository,
@@ -51,7 +52,13 @@ public class CreateAdvancePurchaseUseCase {
             items.put(product, itemRequest.quantity());
         }
 
-        Purchase purchase = new Purchase(student, items, null);
+        Purchase purchase = new Purchase(
+                student,
+                items,
+                MedioPago.CREDITOS,
+                orderRequest.buyerId(),
+                orderRequest.buyerType()
+        );
 
         purchaseValidator.validate(purchase);
 

@@ -23,6 +23,7 @@ public class Alumno {
     private Set<ClasificacionSalud> restriccionesSalud = new HashSet<>();
     private Set<Producto> productosFavoritos = new HashSet<>();
     private Set<RestriccionHoraria> restriccionesHorarias = new HashSet<>();
+    private Set<Producto> productosBloqueados = new HashSet<>();
 
     public Alumno(UUID id, Usuario usuario, Boolean activo, Grado grado,
                   Set<ClasificacionSalud> restriccionesSalud) {
@@ -58,5 +59,19 @@ public class Alumno {
 
     public void darDeBaja() {
         this.activo = false;
+    }
+
+    public void bloquearProducto(Producto producto) {
+        if (producto != null) {
+            boolean yaExiste = this.productosBloqueados.stream()
+                    .anyMatch(p -> p.getId().equals(producto.getId()));
+            if (!yaExiste) {
+                this.productosBloqueados.add(producto);
+            }
+        }
+    }
+
+    public void desbloquearProducto(UUID productoId) {
+        this.productosBloqueados.removeIf(p -> p.getId().equals(productoId));
     }
 }

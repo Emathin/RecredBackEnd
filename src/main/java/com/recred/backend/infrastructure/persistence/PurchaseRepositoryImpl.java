@@ -30,6 +30,22 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
+    public List<Purchase> findHistorialByAlumno(UUID alumnoId) {
+        return springDataRepository.findAllByAlumnoIdOrderByFechaHoraDesc(alumnoId)
+                .stream()
+                .map(CompraEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Purchase> findHistorialByTutor(UUID tutorId) {
+        return springDataRepository.findAllByTutorIdOrderByFechaHoraDesc(tutorId)
+                .stream()
+                .map(CompraEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public Purchase save(Purchase purchase) {
         CompraEntity entity = findEntityToSave(purchase);
 
@@ -118,6 +134,28 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     @Override
     public List<PurchaseResume> findPurchasesByAlumno(UUID alumnoId) {
         return springDataRepository.findByAlumno(alumnoId);
+    }
+
+    @Override
+    public List<Purchase> findRecentByBuffet(UUID buffetId, int limit) {
+        return springDataRepository.findRecentByBuffetId(buffetId, PageRequest.of(0, limit))
+                .stream()
+                .map(CompraEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Purchase> findByBuffetAndStatuses(UUID buffetId,
+                                                  List<EstadoCompra> statuses,
+                                                  int limit) {
+        return springDataRepository.findByBuffetIdAndStatuses(
+                        buffetId,
+                        statuses,
+                        PageRequest.of(0, limit)
+                )
+                .stream()
+                .map(CompraEntity::toDomain)
+                .toList();
     }
 
 }

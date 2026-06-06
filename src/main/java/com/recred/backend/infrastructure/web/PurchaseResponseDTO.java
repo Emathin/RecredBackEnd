@@ -41,7 +41,12 @@ public class PurchaseResponseDTO {
 
         if (purchase.getItems() != null) {
             this.items = purchase.getItems().entrySet().stream()
-                    .map(entry -> new PurchaseItemDTO(entry.getKey().getId(), entry.getValue()))
+                    .map(entry -> new PurchaseItemDTO(
+                            entry.getKey().getId(),
+                            entry.getKey().getNombre(),
+                            entry.getValue(),
+                            entry.getKey().getPrecio()
+                    ))
                     .collect(Collectors.toList());
         }
     }

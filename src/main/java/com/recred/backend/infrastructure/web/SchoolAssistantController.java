@@ -2,35 +2,223 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.SchoolAssistantCommand;
+import com.recred.backend.application.SchoolAssistantConversations;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/ia/alumnos/{alumnoId}/asistente")
 public class SchoolAssistantController {
 
-    private final AskSchoolAssistant askSchoolAssistant;
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
 
-    public SchoolAssistantController(AskSchoolAssistant askSchoolAssistant) {
+    private final AskSchoolAssistant askSchoolAssistant;
+    private final SchoolAssistantConversations conversations;
+
+    public SchoolAssistantController(
+            AskSchoolAssistant askSchoolAssistant,
+            SchoolAssistantConversations conversations
+    ) {
         this.askSchoolAssistant = askSchoolAssistant;
+        this.conversations = conversations;
     }
 
-    @PostMapping("/mensajes")
-    public SchoolAssistantResponse ask(
+    @PostMapping("/ia/alumnos/{alumnoId}/asistente/mensajes")
+    public SchoolAssistantResponse askStudent(
             @PathVariable("alumnoId") UUID studentId,
             @RequestBody SchoolAssistantRequest request
     ) {
-        SchoolAssistantCommand command = new SchoolAssistantCommand(
-                request.optionalSessionId(),
-                request.message()
-        );
+        SchoolAssistantCommand command = command(request);
         return SchoolAssistantResponse.fromDomain(askSchoolAssistant.execute(
                 studentId,
                 command
         ));
+    }
+
+    @GetMapping("/ia/alumnos/{alumnoId}/asistente/sesiones")
+    public List<SchoolAssistantSessionResponse> studentSessions(
+            @PathVariable("alumnoId") UUID studentId,
+            @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
+            @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
+    ) {
+        return conversations.findStudentSessions(studentId, page, size)
+                .stream()
+                .map(SchoolAssistantSessionResponse::fromDomain)
+                .toList();
+    }
+
+    @GetMapping("/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}/mensajes")
+    public List<SchoolAssistantMessageResponse> studentMessages(
+            @PathVariable("alumnoId") UUID studentId,
+            @PathVariable("sesionId") UUID sessionId,
+            @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
+            @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
+    ) {
+        return conversations.findStudentMessages(studentId, sessionId, page, size)
+                .stream()
+                .map(SchoolAssistantMessageResponse::fromDomain)
+                .toList();
+    }
+
+    @PatchMapping("/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}/cerrar")
+    public ResponseEntity<Void> closeStudentSession(
+            @PathVariable("alumnoId") UUID studentId,
+            @PathVariable("sesionId") UUID sessionId
+    ) {
+        conversations.closeStudentSession(studentId, sessionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}")
+    public ResponseEntity<Void> deleteStudentSession(
+            @PathVariable("alumnoId") UUID studentId,
+            @PathVariable("sesionId") UUID sessionId
+    ) {
+        conversations.deleteStudentSession(studentId, sessionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/ia/tutores/me/asistente/mensajes")
+    public SchoolAssistantResponse askTutor(
+            Authentication authentication,
+            @RequestBody SchoolAssistantRequest request
+    ) {
+        return SchoolAssistantResponse.fromDomain(askSchoolAssistant.executeForTutor(
+                cognitoSubject(authentication),
+                command(request)
+        ));
+    }
+
+    @GetMapping("/ia/tutores/me/asistente/sesiones")
+    public List<SchoolAssistantSessionResponse> tutorSessions(
+            Authentication authentication,
+            @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
+            @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
+    ) {
+        return conversations.findTutorSessions(cognitoSubject(authentication), page, size)
+                .stream()
+                .map(SchoolAssistantSessionResponse::fromDomain)
+                .toList();
+    }
+
+    @GetMapping("/ia/tutores/me/asistente/sesiones/{sesionId}/mensajes")
+    public List<SchoolAssistantMessageResponse> tutorMessages(
+            Authentication authentication,
+            @PathVariable("sesionId") UUID sessionId,
+            @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
+            @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
+    ) {
+        return conversations.findTutorMessages(
+                        cognitoSubject(authentication),
+                        sessionId,
+                        page,
+                        size
+                )
+                .stream()
+                .map(SchoolAssistantMessageResponse::fromDomain)
+                .toList();
+    }
+
+    @PatchMapping("/ia/tutores/me/asistente/sesiones/{sesionId}/cerrar")
+    public ResponseEntity<Void> closeTutorSession(
+            Authentication authentication,
+            @PathVariable("sesionId") UUID sessionId
+    ) {
+        conversations.closeTutorSession(cognitoSubject(authentication), sessionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/ia/tutores/me/asistente/sesiones/{sesionId}")
+    public ResponseEntity<Void> deleteTutorSession(
+            Authentication authentication,
+            @PathVariable("sesionId") UUID sessionId
+    ) {
+        conversations.deleteTutorSession(cognitoSubject(authentication), sessionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/ia/kiosqueros/me/asistente/mensajes")
+    public SchoolAssistantResponse askKiosquero(
+            Authentication authentication,
+            @RequestBody SchoolAssistantRequest request
+    ) {
+        return SchoolAssistantResponse.fromDomain(askSchoolAssistant.executeForKiosquero(
+                cognitoSubject(authentication),
+                command(request)
+        ));
+    }
+
+    @GetMapping("/ia/kiosqueros/me/asistente/sesiones")
+    public List<SchoolAssistantSessionResponse> kiosqueroSessions(
+            Authentication authentication,
+            @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
+            @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
+    ) {
+        return conversations.findKiosqueroSessions(cognitoSubject(authentication), page, size)
+                .stream()
+                .map(SchoolAssistantSessionResponse::fromDomain)
+                .toList();
+    }
+
+    @GetMapping("/ia/kiosqueros/me/asistente/sesiones/{sesionId}/mensajes")
+    public List<SchoolAssistantMessageResponse> kiosqueroMessages(
+            Authentication authentication,
+            @PathVariable("sesionId") UUID sessionId,
+            @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
+            @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
+    ) {
+        return conversations.findKiosqueroMessages(
+                        cognitoSubject(authentication),
+                        sessionId,
+                        page,
+                        size
+                )
+                .stream()
+                .map(SchoolAssistantMessageResponse::fromDomain)
+                .toList();
+    }
+
+    @PatchMapping("/ia/kiosqueros/me/asistente/sesiones/{sesionId}/cerrar")
+    public ResponseEntity<Void> closeKiosqueroSession(
+            Authentication authentication,
+            @PathVariable("sesionId") UUID sessionId
+    ) {
+        conversations.closeKiosqueroSession(cognitoSubject(authentication), sessionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/ia/kiosqueros/me/asistente/sesiones/{sesionId}")
+    public ResponseEntity<Void> deleteKiosqueroSession(
+            Authentication authentication,
+            @PathVariable("sesionId") UUID sessionId
+    ) {
+        conversations.deleteKiosqueroSession(cognitoSubject(authentication), sessionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    private SchoolAssistantCommand command(SchoolAssistantRequest request) {
+        return new SchoolAssistantCommand(
+                request.optionalSessionId(),
+                request.message()
+        );
+    }
+
+    private String cognitoSubject(Authentication authentication) {
+        return Optional.ofNullable(authentication)
+                .map(Authentication::getName)
+                .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
+                        "Usuario no autenticado"));
     }
 }

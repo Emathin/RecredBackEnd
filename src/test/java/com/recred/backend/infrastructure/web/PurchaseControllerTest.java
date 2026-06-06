@@ -1,8 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import tools.jackson.databind.ObjectMapper;
+import com.recred.backend.application.CreateAdvancePurchase;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetPurchaseStatus;
@@ -13,31 +12,35 @@ import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
+import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
-import java.util.Collections;
+
+
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.anyMap;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.eq;
+import static org.mockito.ArgumentMatchers.eq;
+
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -47,11 +50,26 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyMap;
+import static org.mockito.Mockito.doThrow;
+
 @WebMvcTest(
         controllers = PurchaseController.class,
-        excludeAutoConfiguration = {SecurityAutoConfiguration.class,
-                OAuth2ResourceServerAutoConfiguration.class}
+        excludeAutoConfiguration = {
+                SecurityAutoConfiguration.class,
+                SecurityFilterAutoConfiguration.class,
+                OAuth2ResourceServerAutoConfiguration.class // Esto evita que busque el filtro JWT
+        }
 )
+@AutoConfigureMockMvc(addFilters = false)
+
 class PurchaseControllerTest {
 
     @Autowired
@@ -59,6 +77,8 @@ class PurchaseControllerTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
     @MockitoBean
     private ProcessPresentialPurchase processPresentialPurchase;
     @MockitoBean
@@ -71,6 +91,8 @@ class PurchaseControllerTest {
     private CancelPresentialPurchase cancelPresentialPurchase;
     @MockitoBean
     private ProductRepository productRepository;
+    @MockitoBean
+    private CreateAdvancePurchase createAdvancePurchase;
 
     @MockitoBean
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
@@ -78,14 +100,13 @@ class PurchaseControllerTest {
     @MockitoBean
     private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
-    @MockitoBean
-    private JwtDecoder jwtDecoder;
 
     private UUID studentId;
     private UUID productId;
     private UUID purchaseId;
     private ProcessPurchaseRequestDTO requestDTO;
     private Purchase purchase;
+    private AdvancePurchaseRequest advancePurchaseRequest;
 
     @BeforeEach
     void setUp() {
@@ -93,23 +114,37 @@ class PurchaseControllerTest {
         productId = UUID.randomUUID();
         purchaseId = UUID.randomUUID();
 
-        PurchaseItemDTO itemDTO = new PurchaseItemDTO(productId, 1);
-        requestDTO = new ProcessPurchaseRequestDTO(studentId, Collections.singletonList(itemDTO));
-
         Producto product = new Producto();
         product.setId(productId);
+        product.setNombre("Producto Test");
+        product.setPrecio(new BigDecimal("500.00"));
+
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        PurchaseItemDTO itemDTO = new PurchaseItemDTO(product.getId(), product.getNombre(),
+                1, product.getPrecio());
+        requestDTO = new ProcessPurchaseRequestDTO(studentId, Collections.singletonList(itemDTO));
 
         Alumno student = new Alumno();
         student.setId(studentId);
 
-        purchase = new Purchase();
+        purchase = new Purchase(student, Collections.emptyMap(), null, studentId, BuyerType.STUDENT);
         purchase.setId(purchaseId);
-        purchase.setStudent(student);
         purchase.setStatus(EstadoCompra.ENTREGADO);
         purchase.setDate(LocalDateTime.now());
 
         when(processPresentialPurchase.execute(eq(studentId), anyMap())).thenReturn(purchase);
+
+        AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest(productId, 1);
+        AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
+                studentId,
+                UUID.randomUUID(),
+                BuyerType.TUTOR,
+                "2024-07-30",
+                RecessTime.FIRST_RECESS,
+                List.of(itemRequest)
+        );
+        advancePurchaseRequest = new AdvancePurchaseRequest(List.of(orderRequest));
     }
 
     @Test
@@ -122,6 +157,26 @@ class PurchaseControllerTest {
                 .andExpect(jsonPath("$.status").value(EstadoCompra.ENTREGADO.name()));
 
         verify(processPresentialPurchase).execute(eq(studentId), anyMap());
+    }
+
+    @Test
+    void createAdvancePurchase_WithValidRequest_ShouldReturnOk() throws Exception {
+        AdvancePurchaseResponse advancePurchaseResponse = new AdvancePurchaseResponse(
+                purchaseId.toString(),
+                new PurchaseStatus(purchaseId, studentId, EstadoCompra.PENDIENTE, "A preparar", LocalDateTime.now()),
+                500.00,
+                Collections.singletonMap(studentId, "ABC-123")
+        );
+
+        when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class))).thenReturn(advancePurchaseResponse);
+
+        mockMvc.perform(post("/api/v1/purchases/advance")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(advancePurchaseRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").value(purchaseId.toString()));
+
+        verify(createAdvancePurchase).execute(any(AdvancePurchaseRequest.class));
     }
 
     @Test
@@ -156,7 +211,8 @@ class PurchaseControllerTest {
                 getPurchaseStatus,
                 updatePurchaseStatus,
                 cancelPresentialPurchase,
-                productRepository
+                productRepository,
+                createAdvancePurchase
         );
 
         assertThrows(RuntimeException.class,
@@ -184,7 +240,7 @@ class PurchaseControllerTest {
     @Test
     void getPurchaseStatusById_WhenPurchaseExists_ShouldReturnStatus() throws Exception {
         TestingAuthenticationToken authentication =
-                new TestingAuthenticationToken("cognito-subject", null);
+                new TestingAuthenticationToken("cognito-subject", "");
         PurchaseStatus purchaseStatus = new PurchaseStatus(
                 purchaseId,
                 studentId,
@@ -212,7 +268,8 @@ class PurchaseControllerTest {
                 getPurchaseStatus,
                 updatePurchaseStatus,
                 cancelPresentialPurchase,
-                productRepository
+                productRepository,
+                createAdvancePurchase
         );
 
         assertThrows(AuthenticationCredentialsNotFoundException.class,

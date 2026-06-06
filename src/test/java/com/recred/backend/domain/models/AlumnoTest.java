@@ -72,4 +72,41 @@ class AlumnoTest {
 
         assertEquals(1, alumno.getRestriccionesSalud().size());
     }
+
+    @Test
+    void dadoUnProductoNuevo_cuandoBloquearProducto_entoncesSeAgregaALaLista() {
+        Alumno alumno = new Alumno();
+        Producto producto = new Producto();
+        producto.setId(UUID.randomUUID());
+
+        alumno.bloquearProducto(producto);
+
+        assertEquals(1, alumno.getProductosBloqueados().size());
+        assertTrue(alumno.getProductosBloqueados().contains(producto));
+    }
+
+    @Test
+    void dadoUnProductoYaBloqueado_cuandoBloquearProducto_entoncesNoSeDuplica() {
+        Alumno alumno = new Alumno();
+        Producto producto = new Producto();
+        producto.setId(UUID.randomUUID());
+
+        alumno.bloquearProducto(producto);
+        alumno.bloquearProducto(producto); // Intento de duplicado
+
+        assertEquals(1, alumno.getProductosBloqueados().size());
+    }
+
+    @Test
+    void dadoUnProductoBloqueado_cuandoDesbloquearProducto_entoncesSeEliminaDeLaLista() {
+        Alumno alumno = new Alumno();
+        UUID productoId = UUID.randomUUID();
+        Producto producto = new Producto();
+        producto.setId(productoId);
+
+        alumno.bloquearProducto(producto);
+        alumno.desbloquearProducto(productoId);
+
+        assertTrue(alumno.getProductosBloqueados().isEmpty());
+    }
 }

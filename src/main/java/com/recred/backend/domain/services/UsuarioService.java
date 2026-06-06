@@ -1,5 +1,6 @@
 package com.recred.backend.domain.services;
 
+import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.UsuarioRepository;
@@ -17,11 +18,35 @@ public class UsuarioService {
     }
 
     public Usuario sincronizarUsuarioCognito(Jwt jwt) {
-        String sub = jwt.getSubject();
-        String email = jwt.getClaimAsString("email");
+        return sincronizarUsuarioCognito(jwt, CognitoUserProfile.empty());
+    }
 
-        String nombre = jwt.getClaimAsString("given_name");
-        String apellido = jwt.getClaimAsString("family_name");
+    public Usuario sincronizarUsuarioCognito(Jwt jwt, CognitoUserProfile profile) {
+        CognitoUserProfile userProfile =
+                profile != null ? profile : CognitoUserProfile.empty();
+        String sub = jwt.getSubject();
+        String username = firstNonBlank(
+                jwt.getClaimAsString("username"),
+                jwt.getClaimAsString("cognito:username"),
+                jwt.getClaimAsString("preferred_username")
+        );
+        String email = firstNonBlank(
+                jwt.getClaimAsString("email"),
+                userProfile.email(),
+                emailFallback(username, sub)
+        );
+        String nombre = firstNonBlank(
+                jwt.getClaimAsString("given_name"),
+                userProfile.nombre(),
+                jwt.getClaimAsString("name"),
+                username,
+                "Sin Nombre"
+        );
+        String apellido = firstNonBlank(
+                jwt.getClaimAsString("family_name"),
+                userProfile.apellido(),
+                "Sin Apellido"
+        );
 
         Optional<Usuario> usuarioExistente = usuarioRepository.findByIdCognito(sub);
 
@@ -33,11 +58,10 @@ public class UsuarioService {
 
         nuevoUsuario.setIdCognito(sub);
         nuevoUsuario.setEmail(email);
-        nuevoUsuario.setNombre(nombre != null ? nombre : "Sin Nombre");
-        nuevoUsuario.setApellido(apellido != null ? apellido : "Sin Apellido");
+        nuevoUsuario.setNombre(nombre);
+        nuevoUsuario.setApellido(apellido);
 
         nuevoUsuario.setRol(RolUsuario.PADRE);
-
 
         nuevoUsuario.setAutenticadoConCognito(true);
         nuevoUsuario.setActivo(true);
@@ -49,8 +73,34 @@ public class UsuarioService {
 
     public Usuario obtenerUsuarioActual(String cognitoId) {
         return usuarioRepository.findByIdCognito(cognitoId)
-                .orElseThrow(() -> new RuntimeException
-                        ("Usuario no encontrado en la base de datos"));
+                .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(cognitoId));
+    }
+
+    public Usuario updateProfile(String cognitoId, String firstName, String lastName,
+                                 String phone, String documentNumber) {
+        validateEditableProfile(firstName, lastName, phone, documentNumber);
+
+        Usuario usuario = obtenerUsuarioActual(cognitoId);
+
+        if (firstName != null) {
+            usuario.setNombre(normalizeField("firstName", firstName));
+        }
+
+        if (lastName != null) {
+            usuario.setApellido(normalizeField("lastName", lastName));
+        }
+
+        if (phone != null) {
+            usuario.setTelefono(normalizeField("phone", phone));
+        }
+
+        if (documentNumber != null) {
+            usuario.setDni(normalizeField("documentNumber", documentNumber));
+        }
+
+        usuario.setActualizadoEn(LocalDateTime.now());
+
+        return usuarioRepository.save(usuario);
     }
 
     public Usuario actualizarRol(String cognitoId, String nuevoRol) {
@@ -60,5 +110,42 @@ public class UsuarioService {
         usuario.setActualizadoEn(LocalDateTime.now());
 
         return usuarioRepository.save(usuario);
+    }
+
+    private void validateEditableProfile(String firstName, String lastName, String phone,
+                                         String documentNumber) {
+        if (firstName == null && lastName == null && phone == null && documentNumber == null) {
+            throw new IllegalArgumentException("At least one field must be provided");
+        }
+    }
+
+    private String normalizeField(String field, String value) {
+        String normalizedValue = value.trim();
+
+        if (normalizedValue.isEmpty()) {
+            throw new IllegalArgumentException("Field " + field + " cannot be empty");
+        }
+
+        return normalizedValue;
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    private String emailFallback(String username, String sub) {
+        String candidate = firstNonBlank(username, sub);
+        if (candidate == null) {
+            return "usuario-cognito@recred.local";
+        }
+        if (candidate.contains("@")) {
+            return candidate;
+        }
+        return candidate + "@cognito.local";
     }
 }

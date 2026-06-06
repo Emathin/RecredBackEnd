@@ -4,6 +4,7 @@ import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
+import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
@@ -12,6 +13,7 @@ import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
+import com.recred.backend.domain.exceptions.TutorNoEncontradoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -20,6 +22,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -123,6 +127,28 @@ public class GlobalExceptionHandler {
                 ex.getMessage());
     }
 
+    @ExceptionHandler(TutorNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handleTutorNoEncontrado(
+            TutorNoEncontradoException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Tutor no encontrado",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(KiosqueroNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleKiosqueroNotFound(
+            KiosqueroNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Kiosquero no encontrado",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(
+        MethodArgumentTypeMismatchException ex) {
+        String message = String.format("El parámetro '%s' recibió un valor inválido: '%s'",
+                ex.getName(), ex.getValue());
+        return buildResponse(HttpStatus.BAD_REQUEST, "Parámetro inválido", message);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse>
     handleValidation(MethodArgumentNotValidException ex){
@@ -136,6 +162,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, "Regla de Negocio Inválida",
                 ex.getMessage());
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Recurso no encontrado",
+                "El recurso solicitado no existe: " + ex.getResourcePath());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
