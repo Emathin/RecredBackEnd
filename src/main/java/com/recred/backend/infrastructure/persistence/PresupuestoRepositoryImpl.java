@@ -36,6 +36,13 @@ public class PresupuestoRepositoryImpl implements PresupuestoRepository {
             entityExistente = new PresupuestoAlumnoEntity();
         }
 
+        if (entityExistente.getId() != null
+                && entityExistente.getReglasCategoria() != null
+                && !entityExistente.getReglasCategoria().isEmpty()) {
+            entityExistente.getReglasCategoria().clear();
+            entityExistente = springDataRepository.saveAndFlush(entityExistente);
+        }
+
         PresupuestoAlumnoEntity entityLista = toEntity(presupuesto, entityExistente);
         PresupuestoAlumnoEntity guardada = springDataRepository.save(entityLista);
 

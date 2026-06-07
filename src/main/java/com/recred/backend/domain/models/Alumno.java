@@ -74,4 +74,18 @@ public class Alumno {
     public void desbloquearProducto(UUID productoId) {
         this.productosBloqueados.removeIf(p -> p.getId().equals(productoId));
     }
+
+    public void agregarProductoFavorito(Producto producto) {
+        if (producto != null) {
+            boolean yaExiste = this.productosFavoritos.stream()
+                    .anyMatch(p -> p.getId().equals(producto.getId()));
+            if (!yaExiste) {
+                this.productosFavoritos.add(producto);
+            }
+        }
+    }
+
+    public void removerProductoFavorito(UUID productoId) {
+        this.productosFavoritos.removeIf(p -> p.getId().equals(productoId));
+    }
 }
