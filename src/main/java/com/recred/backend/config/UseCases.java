@@ -45,6 +45,7 @@ import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SchoolAssistantConversations;
+import com.recred.backend.application.SchoolAssistantFixedTopics;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateBudgetRules;
@@ -244,6 +245,17 @@ public class UseCases {
     }
 
     @Bean
+    public SchoolAssistantFixedTopics schoolAssistantFixedTopics(
+            PurchaseRepository purchaseRepository,
+            ProductRepository productRepository,
+            ProcessPresentialPurchase processPresentialPurchase) {
+        return new SchoolAssistantFixedTopics(
+                purchaseRepository,
+                productRepository,
+                processPresentialPurchase);
+    }
+
+    @Bean
     public AskSchoolAssistant askSchoolAssistant(
             AlumnoRepository alumnoRepository,
             WalletRepository walletRepository,
@@ -259,6 +271,7 @@ public class UseCases {
             ProductRepository productRepository,
             PurchaseRepository purchaseRepository,
             PresupuestoRepository presupuestoRepository,
+            SchoolAssistantFixedTopics fixedTopics,
             Clock clock) {
         return new AskSchoolAssistant(
                 alumnoRepository,
@@ -275,6 +288,7 @@ public class UseCases {
                 productRepository,
                 purchaseRepository,
                 presupuestoRepository,
+                fixedTopics,
                 clock);
     }
 

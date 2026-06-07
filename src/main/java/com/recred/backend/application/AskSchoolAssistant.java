@@ -105,6 +105,7 @@ public class AskSchoolAssistant {
     private final ProductRepository productRepository;
     private final PurchaseRepository purchaseRepository;
     private final PresupuestoRepository presupuestoRepository;
+    private final SchoolAssistantFixedTopics fixedTopics;
     private final Clock clock;
 
     public AskSchoolAssistant(
@@ -122,6 +123,7 @@ public class AskSchoolAssistant {
             ProductRepository productRepository,
             PurchaseRepository purchaseRepository,
             PresupuestoRepository presupuestoRepository,
+            SchoolAssistantFixedTopics fixedTopics,
             Clock clock
     ) {
         this.alumnoRepository = alumnoRepository;
@@ -138,6 +140,7 @@ public class AskSchoolAssistant {
         this.productRepository = productRepository;
         this.purchaseRepository = purchaseRepository;
         this.presupuestoRepository = presupuestoRepository;
+        this.fixedTopics = fixedTopics;
         this.clock = clock;
     }
 
@@ -176,14 +179,37 @@ public class AskSchoolAssistant {
                 session.id(),
                 RECENT_HISTORY_LIMIT
         );
-        SchoolAssistantPrompt prompt = new SchoolAssistantPrompt(
+        Optional<SchoolAssistantFixedReply> fixedReply = fixedTopics.respond(
                 message,
                 context,
                 recentMessages
         );
+        SchoolAssistantAnswer answer = fixedReply
+                .map(reply -> fixedAnswer(session, reply, context, now))
+                .orElseGet(() -> aiAnswer(session, message, context, recentMessages, now));
+
+        saveUserMessage(session, message, context.capabilities(), now);
+        saveAssistantMessage(
+                answer,
+                fixedReply.map(SchoolAssistantFixedReply::metadata).orElseGet(Map::of),
+                now
+        );
+        chatSessionRepository.updateLastActivity(session.id(), now);
+
+        return answer;
+    }
+
+    private SchoolAssistantAnswer aiAnswer(
+            ChatSession session,
+            String message,
+            SchoolAssistantContext context,
+            List<ChatMessage> recentMessages,
+            LocalDateTime now
+    ) {
+        SchoolAssistantPrompt prompt = new SchoolAssistantPrompt(message, context, recentMessages);
         Optional<SchoolAssistantDraft> draft = schoolAssistantResponder.respond(prompt)
                 .filter(response -> response.answer() != null && !response.answer().isBlank());
-        SchoolAssistantAnswer answer = new SchoolAssistantAnswer(
+        return new SchoolAssistantAnswer(
                 session.id(),
                 draft.map(SchoolAssistantDraft::answer).orElse(fallbackAnswer(context.role())),
                 context.capabilities(),
@@ -191,12 +217,22 @@ public class AskSchoolAssistant {
                 draft.isPresent(),
                 draft.map(SchoolAssistantDraft::model).orElse(null)
         );
+    }
 
-        saveUserMessage(session, message, context.capabilities(), now);
-        saveAssistantMessage(answer, now);
-        chatSessionRepository.updateLastActivity(session.id(), now);
-
-        return answer;
+    private SchoolAssistantAnswer fixedAnswer(
+            ChatSession session,
+            SchoolAssistantFixedReply reply,
+            SchoolAssistantContext context,
+            LocalDateTime now
+    ) {
+        return new SchoolAssistantAnswer(
+                session.id(),
+                reply.answer(),
+                context.capabilities(),
+                now,
+                false,
+                null
+        );
     }
 
     private UUID resolvedStudentId(UUID studentIdOrUserId) {
@@ -528,12 +564,16 @@ public class AskSchoolAssistant {
         ));
     }
 
-    private void saveAssistantMessage(SchoolAssistantAnswer answer, LocalDateTime now) {
+    private void saveAssistantMessage(
+            SchoolAssistantAnswer answer,
+            Map<String, Object> additionalMetadata,
+            LocalDateTime now
+    ) {
         chatMessageRepository.save(new ChatMessage(
                 answer.sessionId(),
                 RolChatMensaje.ASISTENTE_IA,
                 answer.answer(),
-                answerMetadata(answer),
+                answerMetadata(answer, additionalMetadata),
                 now
         ));
     }
@@ -544,9 +584,13 @@ public class AskSchoolAssistant {
         return metadata;
     }
 
-    private Map<String, Object> answerMetadata(SchoolAssistantAnswer answer) {
+    private Map<String, Object> answerMetadata(
+            SchoolAssistantAnswer answer,
+            Map<String, Object> additionalMetadata
+    ) {
         Map<String, Object> metadata = messageMetadata(answer.capabilities());
         metadata.put("generadoPorIa", answer.generatedByAi());
+        metadata.putAll(additionalMetadata);
 
         if (answer.model() != null) {
             String model = answer.model();
