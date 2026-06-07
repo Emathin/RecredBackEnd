@@ -5,6 +5,7 @@ import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
+import com.recred.backend.infrastructure.entities.ProductoEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -91,6 +92,18 @@ class AlumnoRepositoryImplTest {
         clasificacionEntity.setDescripcion("Diabético");
         entidadFalsa.setRestriccionesSalud(Set.of(clasificacionEntity));
 
+        UUID productoId = UUID.randomUUID();
+        ProductoEntity productoEntity = new ProductoEntity();
+        productoEntity.setId(productoId);
+        productoEntity.setNombre("Galletitas");
+        entidadFalsa.setProductosFavoritos(Set.of(productoEntity));
+
+        UUID productoBloqId = UUID.randomUUID();
+        ProductoEntity productoBloqEntity = new ProductoEntity();
+        productoBloqEntity.setId(productoBloqId);
+        productoBloqEntity.setNombre("Alfajor");
+        entidadFalsa.setProductosBloqueados(Set.of(productoBloqEntity));
+
         when(springDataRepository.findById(alumnoId)).thenReturn(Optional.of(entidadFalsa));
 
         Optional<Alumno> resultado = alumnoRepositoryImpl.findById(alumnoId);
@@ -105,6 +118,14 @@ class AlumnoRepositoryImplTest {
         ClasificacionSalud restriccionMapeada = alumnoMapeado.getRestriccionesSalud().iterator().next();
         assertEquals(clasificacionId, restriccionMapeada.getId());
         assertEquals("Diabético", restriccionMapeada.getDescripcion());
+
+        assertNotNull(alumnoMapeado.getProductosFavoritos());
+        assertEquals(1, alumnoMapeado.getProductosFavoritos().size());
+        assertEquals(productoId, alumnoMapeado.getProductosFavoritos().iterator().next().getId());
+
+        assertNotNull(alumnoMapeado.getProductosBloqueados());
+        assertEquals(1, alumnoMapeado.getProductosBloqueados().size());
+        assertEquals(productoBloqId, alumnoMapeado.getProductosBloqueados().iterator().next().getId());
 
         verify(springDataRepository).findById(alumnoId);
     }
