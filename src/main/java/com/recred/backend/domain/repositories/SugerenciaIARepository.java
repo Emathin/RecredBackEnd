@@ -19,6 +19,8 @@ public interface SugerenciaIARepository {
 
     List<SugerenciaIAEntity> findByAlumnoIdAndTipo(UUID alumnoId, TipoSugerenciaIA tipo);
 
+    List<UUID> findProductIdsByAlumnoIdAndTipo(UUID alumnoId, TipoSugerenciaIA tipo);
+
     java.util.Optional<SugerenciaIAEntity> findById(UUID id);
 
 }
