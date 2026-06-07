@@ -4,6 +4,7 @@ import com.recred.backend.domain.repositories.UserDeviceTokenRepository;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class UserDeviceTokenPersistenceRepository implements UserDeviceTokenRepository {
@@ -22,5 +23,13 @@ public class UserDeviceTokenPersistenceRepository implements UserDeviceTokenRepo
                 .stream()
                 .filter(token -> token != null && !token.isBlank())
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deactivateTokens(List<String> tokens) {
+        if (tokens != null && !tokens.isEmpty()) {
+            userDeviceTokenJpaRepository.deactivateTokens(tokens);
+        }
     }
 }

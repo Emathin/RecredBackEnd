@@ -5,4 +5,5 @@ import java.util.UUID;
 
 public interface UserDeviceTokenRepository {
     List<String> findActiveTokensByUserId(UUID userId);
+    void deactivateTokens(List<String> tokens);
 }

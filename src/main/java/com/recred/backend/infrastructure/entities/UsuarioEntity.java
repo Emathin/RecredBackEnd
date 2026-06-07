@@ -1,6 +1,8 @@
 package com.recred.backend.infrastructure.entities;
 
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
 import jakarta.persistence.CascadeType;
@@ -126,22 +128,18 @@ public class UsuarioEntity {
             usuario.setColegio(this.colegioEntity.toDomain());
         }
 
-        if (this.tutor != null) {
-            com.recred.backend.domain.models.Tutor t = 
-                    new com.recred.backend.domain.models.Tutor();
-            t.setId(this.tutor.getId());
-            usuario.setTutor(t);
-        }
-
         if (this.alumnoEntity != null) {
             Alumno a = new Alumno();
             a.setId(this.alumnoEntity.getId());
             usuario.setAlumno(a);
         }
-
+        if (this.tutor != null) {
+            Tutor t = new Tutor();
+            t.setId(this.tutor.getId());
+            usuario.setTutor(t);
+        }
         if (this.kiosquero != null) {
-            com.recred.backend.domain.models.Kiosquero k = 
-                    new com.recred.backend.domain.models.Kiosquero();
+            Kiosquero k = new Kiosquero();
             k.setId(this.kiosquero.getId());
             usuario.setKiosquero(k);
         }
@@ -188,10 +186,8 @@ public class UsuarioEntity {
             entity.setProductosFavoritos(productosProxies);
         }
 
-        if (alumno.getRestriccionesHorarias() != null && !alumno.
-                getRestriccionesHorarias().isEmpty()) {
-            Set<RestriccionHorariaEntity> horariasEntities = alumno.
-                    getRestriccionesHorarias().stream()
+        if (alumno.getRestriccionesHorarias() != null && !alumno.getRestriccionesHorarias().isEmpty()) {
+            Set<RestriccionHorariaEntity> horariasEntities = alumno.getRestriccionesHorarias().stream()
                     .map(rh -> {
                         RestriccionHorariaEntity rhEntity = new RestriccionHorariaEntity();
                         rhEntity.setId(rh.getId());

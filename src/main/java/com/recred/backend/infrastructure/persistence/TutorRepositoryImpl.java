@@ -22,4 +22,10 @@ public class TutorRepositoryImpl implements TutorRepository {
         return springDataTutorRepository.findById(id)
                 .map(TutorEntity::toDomain);
     }
+
+    @Override
+    public Optional<Tutor> findByUsuarioIdCognito(String cognitoSubject) {
+        return springDataTutorRepository.findByUsuarioIdCognito(cognitoSubject)
+                .map(TutorEntity::toDomain);
+    }
 }

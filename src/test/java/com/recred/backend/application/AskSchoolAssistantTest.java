@@ -2,6 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
+import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.ChatSession;
@@ -9,6 +10,9 @@ import com.recred.backend.domain.models.EstadoChatSesion;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoPagoExterno;
 import com.recred.backend.domain.models.MedioPago;
+import com.recred.backend.domain.models.PresupuestoAlumno;
+import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RolChatMensaje;
 import com.recred.backend.domain.models.SchoolAssistantAnswer;
 import com.recred.backend.domain.models.SchoolAssistantCapability;
@@ -18,12 +22,20 @@ import com.recred.backend.domain.models.SchoolAssistantPrompt;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.models.TipoDiaEscolar;
+import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ChatMessageRepository;
 import com.recred.backend.domain.repositories.ChatSessionRepository;
+import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.domain.repositories.PresupuestoRepository;
+import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCalendarRepository;
+import com.recred.backend.domain.repositories.TutorRepository;
+import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import java.math.BigDecimal;
@@ -34,6 +46,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +61,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -81,6 +95,24 @@ class AskSchoolAssistantTest {
     private SchoolAssistantPurchaseRepository purchaseRepository;
 
     @Mock
+    private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private TutorRepository tutorRepository;
+
+    @Mock
+    private KiosqueroRepository kiosqueroRepository;
+
+    @Mock
+    private ProductRepository productRepository;
+
+    @Mock
+    private PurchaseRepository purchaseHistoryRepository;
+
+    @Mock
+    private PresupuestoRepository presupuestoRepository;
+
+    @Mock
     private SchoolCalendarRepository schoolCalendarRepository;
 
     @Mock
@@ -108,6 +140,12 @@ class AskSchoolAssistantTest {
                 chatSessionRepository,
                 chatMessageRepository,
                 schoolAssistantResponder,
+                usuarioRepository,
+                tutorRepository,
+                kiosqueroRepository,
+                productRepository,
+                purchaseHistoryRepository,
+                presupuestoRepository,
                 CLOCK
         );
         studentId = UUID.randomUUID();
@@ -193,6 +231,35 @@ class AskSchoolAssistantTest {
     }
 
     @Test
+    void executeResolvesStudentIdFromUserId() {
+        UUID userId = UUID.randomUUID();
+        Billetera wallet = wallet(new BigDecimal("1500.00"));
+
+        when(alumnoRepository.existsById(userId)).thenReturn(false);
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
+        when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        when(paymentRepository.findRecentByStudentId(studentId, 5)).thenReturn(List.of());
+        when(purchaseRepository.findRecentByStudentId(studentId, 10)).thenReturn(List.of());
+        when(schoolCalendarRepository.findByStudentIdAndDateRange(
+                studentId,
+                LocalDate.of(2026, 5, 27),
+                LocalDate.of(2026, 6, 26)
+        )).thenReturn(List.of());
+        when(schoolAssistantResponder.respond(any())).thenReturn(Optional.empty());
+
+        SchoolAssistantAnswer answer = askSchoolAssistant.execute(
+                userId,
+                new SchoolAssistantCommand(Optional.empty(), "saldo")
+        );
+
+        assertEquals(sessionId, answer.sessionId());
+        verify(chatSessionRepository).startForStudent(studentId, NOW);
+        verify(walletRepository).findByStudentId(studentId);
+    }
+
+    @Test
     void executeUsesFallbackWhenGeminiDoesNotReturnAnswer() {
         when(alumnoRepository.existsById(studentId)).thenReturn(true);
         when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
@@ -253,6 +320,123 @@ class AskSchoolAssistantTest {
         );
 
         verify(chatMessageRepository, never()).save(any());
+    }
+
+    @Test
+    void executeForTutorBuildsContextFromChildren() {
+        String cognitoSubject = "tutor-sub";
+        UUID userId = UUID.randomUUID();
+        UUID tutorId = UUID.randomUUID();
+        UUID childId = UUID.randomUUID();
+        Usuario user = new Usuario();
+        user.setId(userId);
+        Usuario childUser = new Usuario();
+        childUser.setNombre("Mateo");
+        childUser.setApellido("Perez");
+        Alumno child = new Alumno();
+        child.setId(childId);
+        child.setUsuario(childUser);
+        child.setBilletera(wallet(new BigDecimal("900.00")));
+        Tutor tutor = new Tutor();
+        tutor.setId(tutorId);
+        tutor.setHijos(Set.of(child));
+        PresupuestoAlumno budget = new PresupuestoAlumno();
+        budget.setMontoLimiteGeneral(new BigDecimal("2000.00"));
+        Purchase purchase = new Purchase();
+        purchase.setId(UUID.randomUUID());
+        purchase.setStudent(child);
+        purchase.setTotalAmount(new BigDecimal("350.00"));
+        purchase.setStatus(EstadoCompra.ENTREGADO);
+        purchase.setPaymentMethod(MedioPago.CREDITOS);
+        purchase.setDate(NOW.minusHours(1));
+
+        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(user));
+        when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.of(tutor));
+        when(chatSessionRepository.startForUser(userId, NOW)).thenReturn(session);
+        when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
+        when(presupuestoRepository.findActivoByAlumnoId(childId)).thenReturn(Optional.of(budget));
+        when(purchaseHistoryRepository.findHistorialByTutor(tutorId)).thenReturn(List.of(purchase));
+        when(paymentRepository.findRecentByStudentId(childId, 2)).thenReturn(List.of());
+        when(schoolCalendarRepository.findByStudentIdAndDateRange(
+                childId,
+                LocalDate.of(2026, 5, 27),
+                LocalDate.of(2026, 6, 26)
+        )).thenReturn(List.of());
+        when(schoolAssistantResponder.respond(any())).thenReturn(Optional.of(
+                new SchoolAssistantDraft("Mateo tiene $900.00.", "gemini-test")
+        ));
+
+        SchoolAssistantAnswer answer = askSchoolAssistant.executeForTutor(
+                cognitoSubject,
+                new SchoolAssistantCommand(Optional.empty(), "saldo de mis hijos")
+        );
+
+        assertEquals("Mateo tiene $900.00.", answer.answer());
+        assertTrue(answer.capabilities().contains(SchoolAssistantCapability.HIJOS));
+        assertTrue(answer.capabilities().contains(SchoolAssistantCapability.PRESUPUESTOS));
+        verify(chatSessionRepository).startForUser(userId, NOW);
+
+        ArgumentCaptor<SchoolAssistantPrompt> promptCaptor = ArgumentCaptor
+                .forClass(SchoolAssistantPrompt.class);
+        verify(schoolAssistantResponder).respond(promptCaptor.capture());
+        SchoolAssistantPrompt prompt = promptCaptor.getValue();
+        assertEquals("TUTOR", prompt.context().role().name());
+        assertTrue(prompt.context().facts().stream().anyMatch(fact ->
+                fact.contains("hijo=Mateo Perez") && fact.contains("saldo=900.00")));
+    }
+
+    @Test
+    void executeForKiosqueroBuildsContextFromBuffet() {
+        String cognitoSubject = "kiosquero-sub";
+        UUID userId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        Usuario user = new Usuario();
+        user.setId(userId);
+        Producto product = new Producto();
+        product.setId(UUID.randomUUID());
+        product.setNombre("Sandwich");
+        product.setPrecio(new BigDecimal("1200.00"));
+        product.setStockActual(7);
+        Purchase pending = new Purchase();
+        pending.setId(UUID.randomUUID());
+        pending.setTotalAmount(new BigDecimal("1200.00"));
+        pending.setStatus(EstadoCompra.PENDIENTE);
+        pending.setPaymentMethod(MedioPago.CREDITOS);
+        pending.setDate(NOW.minusMinutes(15));
+
+        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(user));
+        when(kiosqueroRepository.findBuffetByUsuarioId(userId)).thenReturn(buffetId);
+        when(chatSessionRepository.startForUser(userId, NOW)).thenReturn(session);
+        when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
+        when(purchaseHistoryRepository.findByBuffetAndStatuses(
+                eq(buffetId),
+                any(),
+                eq(10)
+        )).thenReturn(List.of(pending));
+        when(purchaseHistoryRepository.findRecentByBuffet(buffetId, 10))
+                .thenReturn(List.of(pending));
+        when(schoolAssistantResponder.respond(any())).thenReturn(Optional.of(
+                new SchoolAssistantDraft("Tenes 7 sandwiches en stock.", "gemini-test")
+        ));
+
+        SchoolAssistantAnswer answer = askSchoolAssistant.executeForKiosquero(
+                cognitoSubject,
+                new SchoolAssistantCommand(Optional.empty(), "stock")
+        );
+
+        assertEquals("Tenes 7 sandwiches en stock.", answer.answer());
+        assertTrue(answer.capabilities().contains(SchoolAssistantCapability.STOCK));
+        assertTrue(answer.capabilities().contains(SchoolAssistantCapability.PEDIDOS));
+
+        ArgumentCaptor<SchoolAssistantPrompt> promptCaptor = ArgumentCaptor
+                .forClass(SchoolAssistantPrompt.class);
+        verify(schoolAssistantResponder).respond(promptCaptor.capture());
+        SchoolAssistantPrompt prompt = promptCaptor.getValue();
+        assertEquals("KIOSQUERO", prompt.context().role().name());
+        assertEquals(buffetId, prompt.context().buffetId());
+        assertTrue(prompt.context().facts().stream().anyMatch(fact ->
+                fact.contains("productoBuffet=") && fact.contains("Sandwich")));
     }
 
     private Billetera wallet(BigDecimal balance) {

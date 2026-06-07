@@ -7,4 +7,6 @@ import java.util.UUID;
 
 public interface TutorRepository {
     Optional<Tutor> findById(UUID id);
+
+    Optional<Tutor> findByUsuarioIdCognito(String cognitoSubject);
 }

@@ -4,5 +4,11 @@ public enum SchoolAssistantCapability {
     SALDO,
     PAGOS,
     COMPRAS,
-    EVENTOS
+    EVENTOS,
+    HIJOS,
+    PRESUPUESTOS,
+    RESTRICCIONES,
+    STOCK,
+    VENTAS,
+    PEDIDOS
 }

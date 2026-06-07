@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/ia/usuarios/{idUsuario}/sugerencia-cambio-producto")
+@RequestMapping("/api/v1/kiosqueros/")
 public class ProductChangeController {
 
     private final GenerateProductChangeRecommendation generateProductChangeRecommendation;
@@ -21,7 +21,7 @@ public class ProductChangeController {
         this.generateProductChangeRecommendation = generateProductChangeRecommendation;
     }
 
-    @GetMapping
+    @GetMapping("/{idUsuario}/sugerencia-cambio-producto")
     public ResponseEntity<ProductChangeRecommendationResponse> generateProductChangeRecommendation(
             @PathVariable("idUsuario") UUID usuarioId
     ) {
@@ -33,7 +33,7 @@ public class ProductChangeController {
 
     }
 
-    @PostMapping
+    @PostMapping("/{idUsuario}/sugerencia-cambio-producto")
     public ProductChangeRecommendationResponse generateProductChangeRecommendationPost(
             @PathVariable("idUsuario") UUID usuarioId
     ) {

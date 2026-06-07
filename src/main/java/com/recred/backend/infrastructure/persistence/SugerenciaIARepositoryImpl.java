@@ -144,8 +144,35 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
     }
 
     @Override
+    public List<UUID> findProductIdsByAlumnoIdAndTipo(UUID alumnoId, TipoSugerenciaIA tipo) {
+        return findByAlumnoIdAndTipo(alumnoId, tipo).stream()
+                .map(this::suggestedProductId)
+                .flatMap(java.util.Optional::stream)
+                .toList();
+    }
+
+    @Override
     public java.util.Optional<SugerenciaIAEntity> findById(UUID id) {
         return springDataRepository.findById(id);
+    }
+
+    private java.util.Optional<UUID> suggestedProductId(SugerenciaIAEntity suggestion) {
+        if (suggestion.getProductoEntity() != null
+                && suggestion.getProductoEntity().getId() != null) {
+            return java.util.Optional.of(suggestion.getProductoEntity().getId());
+        }
+        if (suggestion.getMetadata() == null) {
+            return java.util.Optional.empty();
+        }
+        Object value = suggestion.getMetadata().get("productoId");
+        if (!(value instanceof String text) || text.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        try {
+            return java.util.Optional.of(UUID.fromString(text));
+        } catch (IllegalArgumentException ignored) {
+            return java.util.Optional.empty();
+        }
     }
 
     private BuffetEntity buffetReference(UUID buffetId) {
@@ -164,6 +191,10 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
 
     private Map<String, Object> inputData(PriceAlertSuggestion suggestion) {
         Map<String, Object> data = new LinkedHashMap<>();
+        data.put("alumnoId", suggestion.studentId().toString());
+        data.put("alumnoUsuarioId", suggestion.studentUserId() == null
+                ? null
+                : suggestion.studentUserId().toString());
         data.put("productoId", suggestion.productId().toString());
         data.put("productoNombre", suggestion.productName());
         data.put("precioAnterior", suggestion.oldPrice().toString());
@@ -195,6 +226,7 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
         Map<String, String> data = new LinkedHashMap<>();
         putIfPresent(data, "notificacionId", notification.getId());
         putIfPresent(data, "alumnoId", notification.getAlumnoEntity().getId());
+        putMetadataIfPresent(data, notification, "alumnoUsuarioId");
         putIfPresent(data, "productoId", notification.getProductoEntity().getId());
         putIfPresent(data, "sugerenciaIaId", notification.getSugerenciaIaEntity().getId());
         data.put("tipo", notification.getTipo().name());
@@ -202,6 +234,21 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
     }
 
     private void putIfPresent(Map<String, String> data, String key, UUID value) {
+        if (value != null) {
+            data.put(key, value.toString());
+        }
+    }
+
+    private void putMetadataIfPresent(
+            Map<String, String> data,
+            NotificacionEntity notification,
+            String key
+    ) {
+        if (notification.getSugerenciaIaEntity() == null
+                || notification.getSugerenciaIaEntity().getMetadata() == null) {
+            return;
+        }
+        Object value = notification.getSugerenciaIaEntity().getMetadata().get(key);
         if (value != null) {
             data.put(key, value.toString());
         }
