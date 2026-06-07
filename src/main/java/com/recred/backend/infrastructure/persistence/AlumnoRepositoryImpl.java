@@ -4,6 +4,7 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
+import com.recred.backend.infrastructure.entities.ProductoEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -40,8 +41,8 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
     }
 
     @Override
-    public Optional<UUID> findIdByUsuarioId(UUID usuarioId) {
-        return springDataRepository.findStudentIdByUserId(usuarioId);
+    public Optional<UUID> findStudentIdByUserId(UUID userId) {
+        return springDataRepository.findStudentIdByUserId(userId);
     }
 
     @Override
@@ -83,6 +84,38 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
         } else {
             if (entity.getRestriccionesSalud() != null) {
                 entity.getRestriccionesSalud().clear();
+            }
+        }
+
+        if (modelo.getProductosFavoritos() != null && !modelo.getProductosFavoritos().isEmpty()) {
+            Set<ProductoEntity> productosProxies = modelo.getProductosFavoritos().stream()
+                    .filter(p -> p.getId() != null)
+                    .map(p -> {
+                        ProductoEntity proxy = new ProductoEntity();
+                        proxy.setId(p.getId());
+                        return proxy;
+                    })
+                    .collect(Collectors.toSet());
+            entity.setProductosFavoritos(productosProxies);
+        } else {
+            if (entity.getProductosFavoritos() != null) {
+                entity.getProductosFavoritos().clear();
+            }
+        }
+
+        if (modelo.getProductosBloqueados() != null && !modelo.getProductosBloqueados().isEmpty()) {
+            Set<ProductoEntity> bloqueadosProxies = modelo.getProductosBloqueados().stream()
+                    .filter(p -> p.getId() != null)
+                    .map(p -> {
+                        ProductoEntity proxy = new ProductoEntity();
+                        proxy.setId(p.getId());
+                        return proxy;
+                    })
+                    .collect(Collectors.toSet());
+            entity.setProductosBloqueados(bloqueadosProxies);
+        } else {
+            if (entity.getProductosBloqueados() != null) {
+                entity.getProductosBloqueados().clear();
             }
         }
 

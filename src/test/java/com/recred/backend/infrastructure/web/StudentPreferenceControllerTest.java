@@ -1,10 +1,19 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.AgregarProductoFavorito;
+import com.recred.backend.domain.models.Producto;
+import java.util.Set;
 import com.recred.backend.application.DetectStudentPreferences;
+import com.recred.backend.application.GetFavoritosByAlumno;
 import com.recred.backend.application.GetStudentPreferences;
+import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.RespondToAISuggestion;
+import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -13,19 +22,43 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class StudentPreferenceControllerTest {
+
+    private DetectStudentPreferences detectStudentPreferences;
+    private GetStudentPreferences getStudentPreferences;
+    private RespondToAISuggestion respondToAISuggestion;
+    private AlumnoRepository alumnoRepository;
+    private AgregarProductoFavorito agregarProductoFavorito;
+    private RemoverProductoFavorito removerProductoFavorito;
+    private GetFavoritosByAlumno getFavoritosByAlumno;
+    private StudentPreferenceController controller;
+
+    @BeforeEach
+    void setUp() {
+        detectStudentPreferences = mock(DetectStudentPreferences.class);
+        getStudentPreferences = mock(GetStudentPreferences.class);
+        respondToAISuggestion = mock(RespondToAISuggestion.class);
+        alumnoRepository = mock(AlumnoRepository.class);
+        agregarProductoFavorito = mock(AgregarProductoFavorito.class);
+        removerProductoFavorito = mock(RemoverProductoFavorito.class);
+        getFavoritosByAlumno = mock(GetFavoritosByAlumno.class);
+
+        controller = new StudentPreferenceController(
+                detectStudentPreferences,
+                getStudentPreferences,
+                respondToAISuggestion,
+                alumnoRepository,
+                agregarProductoFavorito,
+                removerProductoFavorito,
+                getFavoritosByAlumno
+        );
+    }
 
     @Test
     void returnPreferenceResponseWhenPreferenceIsDetected() {
-        DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
-        GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
-        RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
-        StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
-        
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         PreferenciaDetectada detected = new PreferenciaDetectada(
@@ -36,7 +69,7 @@ class StudentPreferenceControllerTest {
         );
         when(detectStudentPreferences.execute(studentId, buffetId)).thenReturn(Optional.of(detected));
 
-        ResponseEntity<StudentPreferenceResponse> response = controller.detect(studentId, buffetId);
+        ResponseEntity<StudentPreferenceResponse> response = controller.detect(studentId, null, buffetId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(detected.titulo(), response.getBody().titulo());
@@ -44,55 +77,53 @@ class StudentPreferenceControllerTest {
 
     @Test
     void returnNoContentWhenNoAIPreferenceIsDetected() {
-        DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
-        GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
-        RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
-        StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
-        
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         when(detectStudentPreferences.execute(studentId, buffetId)).thenReturn(Optional.empty());
 
-        ResponseEntity<StudentPreferenceResponse> response = controller.detect(studentId, buffetId);
+        ResponseEntity<StudentPreferenceResponse> response = controller.detect(studentId, null, buffetId);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
     }
 
     @Test
+    void detectPreferenceUsingUserId() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        when(detectStudentPreferences.execute(studentId, buffetId)).thenReturn(Optional.empty());
+
+        ResponseEntity<StudentPreferenceResponse> response = controller.detect(null, userId, buffetId);
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(detectStudentPreferences).execute(studentId, buffetId);
+    }
+
+    @Test
     void returnNoContentWhenPreferenceListIsEmpty() {
-        DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
-        GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
-        RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
-        StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
-        
         UUID studentId = UUID.randomUUID();
         when(getStudentPreferences.execute(studentId, false, null)).thenReturn(List.of());
 
-        ResponseEntity<List<StudentPreferenceResponse>> response = controller.getPreferences(studentId, false, null);
+        ResponseEntity<List<StudentPreferenceResponse>> response =
+                controller.getPreferences(studentId, null, false, null);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
     }
 
     @Test
     void returnOkWithPreferencesListWhenTheyExist() {
-        DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
-        GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
-        RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
-        StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
-        
         UUID studentId = UUID.randomUUID();
-        com.recred.backend.infrastructure.entities.SugerenciaIAEntity entity = 
+        com.recred.backend.infrastructure.entities.SugerenciaIAEntity entity =
                 new com.recred.backend.infrastructure.entities.SugerenciaIAEntity();
         entity.setTitulo("Test");
         entity.setMensaje("Msg");
         entity.setTipo(com.recred.backend.domain.models.TipoSugerenciaIA.PREFERENCIA_DETECTADA);
-        
+
         when(getStudentPreferences.execute(studentId, false, null)).thenReturn(List.of(entity));
 
-        ResponseEntity<List<StudentPreferenceResponse>> response = controller.getPreferences(studentId, false, null);
+        ResponseEntity<List<StudentPreferenceResponse>> response =
+                controller.getPreferences(studentId, null, false, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
@@ -100,17 +131,95 @@ class StudentPreferenceControllerTest {
 
     @Test
     void respondToAISuggestionSuccessfully() {
-        DetectStudentPreferences detectStudentPreferences = mock(DetectStudentPreferences.class);
-        GetStudentPreferences getStudentPreferences = mock(GetStudentPreferences.class);
-        RespondToAISuggestion respondToAISuggestion = mock(RespondToAISuggestion.class);
-        StudentPreferenceController controller = new StudentPreferenceController(
-                detectStudentPreferences, getStudentPreferences, respondToAISuggestion);
-        
         UUID sugerenciaId = UUID.randomUUID();
-        
+
         ResponseEntity<Void> response = controller.respond(sugerenciaId, true);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        org.mockito.Mockito.verify(respondToAISuggestion).execute(sugerenciaId, true);
+        verify(respondToAISuggestion).execute(sugerenciaId, true);
+    }
+
+    @Test
+    void agregarFavoritoSuccessfullyWithStudentId() {
+        UUID studentId = UUID.randomUUID();
+        UUID productoId = UUID.randomUUID();
+
+        ResponseEntity<Void> response = controller.agregarFavorito(studentId, null, productoId);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(agregarProductoFavorito).execute(studentId, productoId);
+    }
+
+    @Test
+    void agregarFavoritoSuccessfullyWithUserId() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID productoId = UUID.randomUUID();
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+
+        ResponseEntity<Void> response = controller.agregarFavorito(null, userId, productoId);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(agregarProductoFavorito).execute(studentId, productoId);
+    }
+
+    @Test
+    void removerFavoritoSuccessfullyWithStudentId() {
+        UUID studentId = UUID.randomUUID();
+        UUID productoId = UUID.randomUUID();
+
+        ResponseEntity<Void> response = controller.removerFavorito(studentId, null, productoId);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(removerProductoFavorito).execute(studentId, productoId);
+    }
+
+    @Test
+    void removerFavoritoSuccessfullyWithUserId() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID productoId = UUID.randomUUID();
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+
+        ResponseEntity<Void> response = controller.removerFavorito(null, userId, productoId);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(removerProductoFavorito).execute(studentId, productoId);
+    }
+
+    @Test
+    void obtenerFavoritosSuccessfullyWithStudentId() {
+        UUID studentId = UUID.randomUUID();
+        Producto producto = new Producto();
+        producto.setId(UUID.randomUUID());
+        producto.setNombre("Test");
+
+        when(getFavoritosByAlumno.execute(studentId)).thenReturn(Set.of(producto));
+
+        ResponseEntity<List<ProductResponseDTO>> response = controller.obtenerFavoritos(studentId, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(1, response.getBody().size());
+        assertEquals(producto.getId(), response.getBody().get(0).id());
+        verify(getFavoritosByAlumno).execute(studentId);
+    }
+
+    @Test
+    void obtenerFavoritosSuccessfullyWithUserId() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        Producto producto = new Producto();
+        producto.setId(UUID.randomUUID());
+        producto.setNombre("Test");
+
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        when(getFavoritosByAlumno.execute(studentId)).thenReturn(Set.of(producto));
+
+        ResponseEntity<List<ProductResponseDTO>> response = controller.obtenerFavoritos(null, userId);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(1, response.getBody().size());
+        assertEquals(producto.getId(), response.getBody().get(0).id());
+        verify(getFavoritosByAlumno).execute(studentId);
     }
 }

@@ -126,7 +126,7 @@ public class SchoolAssistantConversations {
     private UUID resolvedStudentId(UUID studentIdOrUserId) {
         return alumnoRepository.existsById(studentIdOrUserId)
                 ? studentIdOrUserId
-                : alumnoRepository.findIdByUsuarioId(studentIdOrUserId)
+                : alumnoRepository.findStudentIdByUserId(studentIdOrUserId)
                         .orElseThrow(() -> new AlumnoNoEncontradoException(studentIdOrUserId));
     }
 

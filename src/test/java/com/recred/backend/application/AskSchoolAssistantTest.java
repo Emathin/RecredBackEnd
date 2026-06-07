@@ -244,7 +244,7 @@ class AskSchoolAssistantTest {
         Billetera wallet = wallet(new BigDecimal("1500.00"));
 
         when(alumnoRepository.existsById(userId)).thenReturn(false);
-        when(alumnoRepository.findIdByUsuarioId(userId)).thenReturn(Optional.of(studentId));
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
         when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
         when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));

@@ -1,5 +1,6 @@
 package com.recred.backend.infrastructure.persistence;
 
+import com.recred.backend.domain.models.CartProductAffinity;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.PurchaseResume;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
@@ -117,4 +118,46 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             WHERE c.alumnoEntity.id = CAST(:alumnoEntityId AS java.util.UUID)
                         """)
     List<PurchaseResume> findByAlumno(UUID alumnoEntityId);
+
+    @Query("""
+            select new com.recred.backend.domain.models.CartProductAffinity(
+                suggestedDetail.productoEntity.id,
+                count(distinct purchase.id)
+            )
+            from CompraEntity purchase
+            join purchase.detalles cartDetail
+            join purchase.detalles suggestedDetail
+            where purchase.alumnoEntity.id = :alumnoId
+            and purchase.buffetEntity.id = :buffetId
+            and purchase.estado = :status
+            and cartDetail.productoEntity.id in :cartProductIds
+            and suggestedDetail.productoEntity.id not in :cartProductIds
+            group by suggestedDetail.productoEntity.id
+            order by count(distinct purchase.id) desc
+            """)
+    List<CartProductAffinity> findStudentCartAffinities(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("buffetId") UUID buffetId,
+            @Param("status") EstadoCompra status,
+            @Param("cartProductIds") List<UUID> cartProductIds);
+
+    @Query("""
+            select new com.recred.backend.domain.models.CartProductAffinity(
+                suggestedDetail.productoEntity.id,
+                count(distinct purchase.id)
+            )
+            from CompraEntity purchase
+            join purchase.detalles cartDetail
+            join purchase.detalles suggestedDetail
+            where purchase.buffetEntity.id = :buffetId
+            and purchase.estado = :status
+            and cartDetail.productoEntity.id in :cartProductIds
+            and suggestedDetail.productoEntity.id not in :cartProductIds
+            group by suggestedDetail.productoEntity.id
+            order by count(distinct purchase.id) desc
+            """)
+    List<CartProductAffinity> findBuffetCartAffinities(
+            @Param("buffetId") UUID buffetId,
+            @Param("status") EstadoCompra status,
+            @Param("cartProductIds") List<UUID> cartProductIds);
 }

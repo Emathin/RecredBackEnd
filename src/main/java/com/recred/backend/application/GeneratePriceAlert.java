@@ -63,6 +63,7 @@ public class GeneratePriceAlert {
             priceAlertAIRepository.analyzeImpact(alumno, producto, oldPrice, newPrice)
                     .map(result -> new PriceAlertSuggestion(
                             alumno.getId(),
+                            alumno.getUsuarioId(),
                             producto.getId(),
                             buffetId,
                             tutorUserIds(alumno),
