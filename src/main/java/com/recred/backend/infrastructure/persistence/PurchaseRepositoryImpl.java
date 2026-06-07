@@ -40,6 +40,14 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
+    public List<Purchase> findByAlumnoAndDateRange(UUID alumnoId, LocalDateTime start, LocalDateTime end) {
+        return springDataRepository.findAllByAlumnoIdAndFechaHoraBetween(alumnoId, start, end)
+                .stream()
+                .map(CompraEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<Purchase> findHistorialByTutor(UUID tutorId) {
         return springDataRepository.findAllByTutorIdOrderByFechaHoraDesc(tutorId)
                 .stream()

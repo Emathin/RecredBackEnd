@@ -12,6 +12,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -29,15 +31,16 @@ public class SummaryEntity {
     private UUID id;
 
     @Column(name = "fecha_desde", nullable = false)
-    private LocalDateTime start_date;
+    private LocalDateTime startDate;
 
     @Column(name = "fecha_hasta", nullable = false)
-    private LocalDateTime end_date;
+    private LocalDateTime endDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_usuario", nullable = false)
     private UsuarioEntity user;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "resumen", columnDefinition = "jsonb", nullable = false)
     private String summary;
 }
