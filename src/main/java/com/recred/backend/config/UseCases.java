@@ -15,6 +15,7 @@ import com.recred.backend.application.DesbloquearProductoManual;
 import com.recred.backend.application.GenerarMenuBuffet;
 import com.recred.backend.application.GetAllProducts;
 import com.recred.backend.application.GetAllCategories;
+import com.recred.backend.application.GetFavoritosByAlumno;
 import com.recred.backend.application.GetProductById;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DetectStudentPreferences;
@@ -218,6 +219,11 @@ public class UseCases {
     @Bean
     public RemoverProductoFavorito removerProductoFavorito(AlumnoRepository alumnoRepository) {
         return new RemoverProductoFavorito(alumnoRepository);
+    }
+
+    @Bean
+    public GetFavoritosByAlumno getFavoritosByAlumno(AlumnoRepository alumnoRepository) {
+        return new GetFavoritosByAlumno(alumnoRepository);
     }
 
     @Bean

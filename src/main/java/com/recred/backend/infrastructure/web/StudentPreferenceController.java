@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.DetectStudentPreferences;
+import com.recred.backend.application.GetFavoritosByAlumno;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.RespondToAISuggestion;
@@ -33,6 +34,7 @@ public class StudentPreferenceController {
     private final AlumnoRepository alumnoRepository;
     private final AgregarProductoFavorito agregarProductoFavorito;
     private final RemoverProductoFavorito removerProductoFavorito;
+    private final GetFavoritosByAlumno getFavoritosByAlumno;
 
     public StudentPreferenceController(
             DetectStudentPreferences detectStudentPreferences,
@@ -40,13 +42,15 @@ public class StudentPreferenceController {
             RespondToAISuggestion respondToAISuggestion,
             AlumnoRepository alumnoRepository,
             AgregarProductoFavorito agregarProductoFavorito,
-            RemoverProductoFavorito removerProductoFavorito) {
+            RemoverProductoFavorito removerProductoFavorito,
+            GetFavoritosByAlumno getFavoritosByAlumno) {
         this.detectStudentPreferences = detectStudentPreferences;
         this.getStudentPreferences = getStudentPreferences;
         this.respondToAISuggestion = respondToAISuggestion;
         this.alumnoRepository = alumnoRepository;
         this.agregarProductoFavorito = agregarProductoFavorito;
         this.removerProductoFavorito = removerProductoFavorito;
+        this.getFavoritosByAlumno = getFavoritosByAlumno;
     }
 
     @PostMapping("/detectar")
@@ -110,6 +114,19 @@ public class StudentPreferenceController {
         UUID resolvedAlumnoId = resolveAlumnoId(alumnoId, userId);
         removerProductoFavorito.execute(resolvedAlumnoId, productoId);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/favoritos")
+    public ResponseEntity<List<ProductResponseDTO>> obtenerFavoritos(
+            @PathVariable(required = false) UUID alumnoId,
+            @PathVariable(required = false) UUID userId
+    ) {
+        UUID resolvedAlumnoId = resolveAlumnoId(alumnoId, userId);
+        List<ProductResponseDTO> favoritos = getFavoritosByAlumno.execute(resolvedAlumnoId)
+                .stream()
+                .map(ProductResponseDTO::fromDomain)
+                .toList();
+        return ResponseEntity.ok(favoritos);
     }
 
     private UUID resolveAlumnoId(UUID alumnoId, UUID userId) {
