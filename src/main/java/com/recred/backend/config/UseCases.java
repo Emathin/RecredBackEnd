@@ -11,6 +11,8 @@ import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.DeleteProduct;
 import com.recred.backend.application.DesbloquearProductoManual;
 import com.recred.backend.application.GenerarMenuBuffet;
+import com.recred.backend.application.LoadBalanceToChild;
+import com.recred.backend.application.TransferBalanceBetweenChildren;
 import com.recred.backend.application.GetAllProducts;
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetProductById;
@@ -177,12 +179,16 @@ public class UseCases {
                                                        AlumnoRepository alumnoRepository,
                                                        ProductRepository productRepository,
                                                        PurchaseRepository purchaseRepository,
-                                                       WithdrawalCodeService withdrawalCodeService){
+                                                       WithdrawalCodeService withdrawalCodeService,
+                                                       UsuarioRepository usuarioRepository,
+                                                       WalletRepository walletRepository){
         return new CreateAdvancePurchase( purchaseValidator,
                  alumnoRepository,
                 productRepository,
                purchaseRepository,
-                withdrawalCodeService);
+                withdrawalCodeService,
+                usuarioRepository,
+                walletRepository);
     }
 
     @Bean
@@ -589,6 +595,20 @@ public class UseCases {
         return new GeneratePurchaseRecommendation(alumnoRepository,
                 purchaseRepository,purchaseAnalyzer,aiEventRepository, notificationRepository,
                 studentRepository,suggestionAiRepository);
+    }
+
+    @Bean
+    public LoadBalanceToChild loadBalanceToChild(
+            UsuarioRepository usuarioRepository,
+            WalletRepository walletRepository) {
+        return new LoadBalanceToChild(usuarioRepository, walletRepository);
+    }
+
+    @Bean
+    public TransferBalanceBetweenChildren transferBalanceBetweenChildren(
+            UsuarioRepository usuarioRepository,
+            WalletRepository walletRepository) {
+        return new TransferBalanceBetweenChildren(usuarioRepository, walletRepository);
     }
 
 }

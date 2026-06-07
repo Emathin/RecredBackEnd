@@ -26,8 +26,12 @@ public class UsuarioController {
 
     @PostMapping("/sync")
     public ResponseEntity<Map<String, Object>> syncUser
-            (@AuthenticationPrincipal Jwt jwt) {
-        Usuario usuario = usuarioService.sincronizarUsuarioCognito(jwt);
+            (@AuthenticationPrincipal Jwt jwt,
+             @RequestBody(required = false) SyncUserRequest request) {
+        Usuario usuario = usuarioService.sincronizarUsuarioCognito(
+                jwt,
+                request != null ? request.toProfile() : null
+        );
         return ResponseEntity.ok(buildUserResponse(usuario));
     }
 
@@ -51,6 +55,16 @@ public class UsuarioController {
         response.put("nombre", usuario.getNombre());
         response.put("apellido", usuario.getApellido());
         response.put("rol", usuario.getRol() != null ? usuario.getRol().name() : "PENDIENTE");
+
+        if (usuario.getAlumno() != null) {
+            response.put("alumnoId", usuario.getAlumno().getId());
+        }
+        if (usuario.getTutor() != null) {
+            response.put("tutorId", usuario.getTutor().getId());
+        }
+        if (usuario.getKiosquero() != null) {
+            response.put("kiosqueroId", usuario.getKiosquero().getId());
+        }
 
         return response;
     }

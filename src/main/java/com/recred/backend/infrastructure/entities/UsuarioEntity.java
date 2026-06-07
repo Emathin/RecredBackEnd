@@ -126,6 +126,26 @@ public class UsuarioEntity {
             usuario.setColegio(this.colegioEntity.toDomain());
         }
 
+        if (this.tutor != null) {
+            com.recred.backend.domain.models.Tutor t = 
+                    new com.recred.backend.domain.models.Tutor();
+            t.setId(this.tutor.getId());
+            usuario.setTutor(t);
+        }
+
+        if (this.alumnoEntity != null) {
+            Alumno a = new Alumno();
+            a.setId(this.alumnoEntity.getId());
+            usuario.setAlumno(a);
+        }
+
+        if (this.kiosquero != null) {
+            com.recred.backend.domain.models.Kiosquero k = 
+                    new com.recred.backend.domain.models.Kiosquero();
+            k.setId(this.kiosquero.getId());
+            usuario.setKiosquero(k);
+        }
+
         return usuario;
     }
 
