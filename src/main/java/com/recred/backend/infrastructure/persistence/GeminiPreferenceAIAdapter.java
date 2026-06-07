@@ -61,7 +61,7 @@ public class GeminiPreferenceAIAdapter implements PreferenceAIRepository {
                 .collect(Collectors.joining("\n"));
 
         return String.format("""
-                Eres un experto en nutricion infantil y analisis de consumo.
+                Eres un experto en analisis de consumo escolar.
                 Tu tarea es analizar el historial de compras de un alumno y detectar una preferencia
                 que coincida con el stock actual del kiosco.
 
@@ -77,11 +77,14 @@ public class GeminiPreferenceAIAdapter implements PreferenceAIRepository {
                 REGLAS:
                 1. Identifica un patron claro (ej: prefiere snacks salados).
                 2. Busca en el stock un producto que coincida con ese patron.
-                3. Si el producto es poco saludable, la razonIA debe mencionarlo.
-                4. Responde UNICAMENTE en formato JSON con la siguiente estructura:
+                3. No fuerces recomendaciones saludables: si hay una opcion saludable que encaja,
+                   puedes recomendarla, pero tambien puedes recomendar otros productos si reflejan
+                   mejor la preferencia detectada.
+                4. Si el producto es poco saludable, la razonIA debe mencionarlo como contexto.
+                5. Responde UNICAMENTE en formato JSON con la siguiente estructura:
                    {
                      "titulo": "Titulo corto de la sugerencia",
-                     "mensaje": "Mensaje para el tutor",
+                     "mensaje": "Mensaje para el alumno",
                      "productoId": "UUID del producto del stock",
                      "razonIA": "Explicacion tecnica"
                    }

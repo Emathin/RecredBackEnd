@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AgregarProductoFavorito;
-import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
 import com.recred.backend.application.CancelPresentialPurchase;
@@ -13,7 +12,6 @@ import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DeleteProduct;
 import com.recred.backend.application.DesbloquearProductoManual;
-import com.recred.backend.application.GetFavoritosByAlumno;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
@@ -28,6 +26,7 @@ import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetAllProducts;
 import com.recred.backend.application.GetCartSuggestions;
+import com.recred.backend.application.GetFavoritosByAlumno;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
@@ -47,6 +46,7 @@ import com.recred.backend.application.ObtenerHistorialTutor;
 import com.recred.backend.application.PredictStudentSpending;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.RemoveHealthRestrictions;
+import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SchoolAssistantConversations;
@@ -488,8 +488,13 @@ public class UseCases {
 
     @Bean
     public GetStudentPreferences obtenerPreferenciasAlumno(
-            SugerenciaIARepository sugerenciaIARepository) {
-        return new GetStudentPreferences(sugerenciaIARepository);
+            SugerenciaIARepository sugerenciaIARepository,
+            AlumnoRepository alumnoRepository,
+            TutorRepository tutorRepository) {
+        return new GetStudentPreferences(
+                sugerenciaIARepository,
+                alumnoRepository,
+                tutorRepository);
     }
 
     @Bean
