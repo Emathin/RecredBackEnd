@@ -1,6 +1,5 @@
 package com.recred.backend.infrastructure.web;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.recred.backend.domain.models.Summary;
 import lombok.Getter;
 import lombok.Setter;

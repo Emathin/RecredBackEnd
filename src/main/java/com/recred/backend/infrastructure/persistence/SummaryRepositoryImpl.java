@@ -15,8 +15,9 @@ public class SummaryRepositoryImpl implements SummaryRepository {
     private final SpringDataSummaryRepository springDataSummaryRepository;
     private final InfrastructureMapper infrastructureMapper;
 
-    public SummaryRepositoryImpl(SpringDataSummaryRepository springDataSummaryRepository,
-                                 InfrastructureMapper infrastructureMapper) {
+    public SummaryRepositoryImpl(
+            SpringDataSummaryRepository springDataSummaryRepository,
+            InfrastructureMapper infrastructureMapper) {
         this.springDataSummaryRepository = springDataSummaryRepository;
         this.infrastructureMapper = infrastructureMapper;
     }
