@@ -1,9 +1,10 @@
 package com.recred.backend.infrastructure.persistence;
 
+import com.recred.backend.domain.models.CartProductAffinity;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.models.PurchaseResume;
+import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -156,6 +158,34 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
                 .stream()
                 .map(CompraEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public List<CartProductAffinity> findStudentCartAffinities(
+            UUID alumnoId,
+            UUID buffetId,
+            Set<UUID> cartProductIds) {
+        if (cartProductIds == null || cartProductIds.isEmpty()) {
+            return List.of();
+        }
+        return springDataRepository.findStudentCartAffinities(
+                alumnoId,
+                buffetId,
+                EstadoCompra.ENTREGADO,
+                List.copyOf(cartProductIds));
+    }
+
+    @Override
+    public List<CartProductAffinity> findBuffetCartAffinities(
+            UUID buffetId,
+            Set<UUID> cartProductIds) {
+        if (cartProductIds == null || cartProductIds.isEmpty()) {
+            return List.of();
+        }
+        return springDataRepository.findBuffetCartAffinities(
+                buffetId,
+                EstadoCompra.ENTREGADO,
+                List.copyOf(cartProductIds));
     }
 
 }
