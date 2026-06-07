@@ -21,6 +21,7 @@ import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.GeneratePurchaseRecommendation;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
+import com.recred.backend.application.GetProductsByBuffetUser;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
 import com.recred.backend.application.GeneratePriceAlert;
@@ -180,9 +181,9 @@ public class UseCases {
                                                        PurchaseRepository purchaseRepository,
                                                        WithdrawalCodeService withdrawalCodeService){
         return new CreateAdvancePurchase( purchaseValidator,
-                 alumnoRepository,
+                alumnoRepository,
                 productRepository,
-               purchaseRepository,
+                purchaseRepository,
                 withdrawalCodeService);
     }
 
@@ -351,7 +352,7 @@ public class UseCases {
 
     @Bean
     public CancelPresentialPurchase cancelPurchase(PurchaseRepository purchaseRepository,
-            WalletRepository walletRepository) {
+                                                   WalletRepository walletRepository) {
         return new CancelPresentialPurchase(purchaseRepository, walletRepository);
     }
 
@@ -423,7 +424,7 @@ public class UseCases {
 
     @Bean
     public ObtenerHistorialTutor obtenerHistorialTutor(PurchaseRepository purchaseRepository,
-                                                        TutorRepository tutorRepository) {
+                                                       TutorRepository tutorRepository) {
         return new ObtenerHistorialTutor(purchaseRepository, tutorRepository);
     }
 
@@ -622,6 +623,14 @@ public class UseCases {
         return new GeneratePurchaseRecommendation(alumnoRepository,
                 purchaseRepository,purchaseAnalyzer,aiEventRepository, notificationRepository,
                 studentRepository,suggestionAiRepository);
+    }
+
+    @Bean
+    public GetProductsByBuffetUser getProductsByBuffetUser(
+            ProductRepository productRepository,
+            KiosqueroRepository kiosqueroRepository){
+        return new GetProductsByBuffetUser(
+                productRepository, kiosqueroRepository);
     }
 
 }
