@@ -1,11 +1,14 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences;
+import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,16 +31,22 @@ public class StudentPreferenceController {
     private final GetStudentPreferences getStudentPreferences;
     private final RespondToAISuggestion respondToAISuggestion;
     private final AlumnoRepository alumnoRepository;
+    private final AgregarProductoFavorito agregarProductoFavorito;
+    private final RemoverProductoFavorito removerProductoFavorito;
 
     public StudentPreferenceController(
             DetectStudentPreferences detectStudentPreferences,
             GetStudentPreferences getStudentPreferences,
             RespondToAISuggestion respondToAISuggestion,
-            AlumnoRepository alumnoRepository) {
+            AlumnoRepository alumnoRepository,
+            AgregarProductoFavorito agregarProductoFavorito,
+            RemoverProductoFavorito removerProductoFavorito) {
         this.detectStudentPreferences = detectStudentPreferences;
         this.getStudentPreferences = getStudentPreferences;
         this.respondToAISuggestion = respondToAISuggestion;
         this.alumnoRepository = alumnoRepository;
+        this.agregarProductoFavorito = agregarProductoFavorito;
+        this.removerProductoFavorito = removerProductoFavorito;
     }
 
     @PostMapping("/detectar")
@@ -78,6 +87,28 @@ public class StudentPreferenceController {
             @RequestParam("aceptada") boolean aceptada
     ) {
         respondToAISuggestion.execute(sugerenciaId, aceptada);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/favoritos/{productoId}")
+    public ResponseEntity<Void> agregarFavorito(
+            @PathVariable(required = false) UUID alumnoId,
+            @PathVariable(required = false) UUID userId,
+            @PathVariable UUID productoId
+    ) {
+        UUID resolvedAlumnoId = resolveAlumnoId(alumnoId, userId);
+        agregarProductoFavorito.execute(resolvedAlumnoId, productoId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/favoritos/{productoId}")
+    public ResponseEntity<Void> removerFavorito(
+            @PathVariable(required = false) UUID alumnoId,
+            @PathVariable(required = false) UUID userId,
+            @PathVariable UUID productoId
+    ) {
+        UUID resolvedAlumnoId = resolveAlumnoId(alumnoId, userId);
+        removerProductoFavorito.execute(resolvedAlumnoId, productoId);
         return ResponseEntity.ok().build();
     }
 

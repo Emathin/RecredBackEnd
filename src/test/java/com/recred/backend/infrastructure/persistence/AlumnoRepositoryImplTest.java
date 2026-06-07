@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.models.Producto;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +52,14 @@ class AlumnoRepositoryImplTest {
         clasificacion.setDescripcion("Celíaco");
         alumnoDominio.agregarRestriccionSalud(clasificacion);
 
+        Producto productoFav = new Producto();
+        productoFav.setId(UUID.randomUUID());
+        alumnoDominio.agregarProductoFavorito(productoFav);
+
+        Producto productoBloq = new Producto();
+        productoBloq.setId(UUID.randomUUID());
+        alumnoDominio.bloquearProducto(productoBloq);
+
         alumnoRepositoryImpl.save(alumnoDominio);
 
         verify(springDataRepository).save(entityCaptor.capture());
@@ -62,6 +71,14 @@ class AlumnoRepositoryImplTest {
         assertNotNull(entidadAtrapada.getRestriccionesSalud(), "La lista de entidades no debe ser nula");
         assertEquals(1, entidadAtrapada.getRestriccionesSalud().size(), "Debe haber mapeado 1 restricción");
         assertEquals(clasificacionId, entidadAtrapada.getRestriccionesSalud().iterator().next().getId(), "El ID de la restricción debe coincidir");
+
+        assertNotNull(entidadAtrapada.getProductosFavoritos(), "La lista de favoritos no debe ser nula");
+        assertEquals(1, entidadAtrapada.getProductosFavoritos().size(), "Debe haber mapeado 1 favorito");
+        assertEquals(productoFav.getId(), entidadAtrapada.getProductosFavoritos().iterator().next().getId());
+
+        assertNotNull(entidadAtrapada.getProductosBloqueados(), "La lista de bloqueados no debe ser nula");
+        assertEquals(1, entidadAtrapada.getProductosBloqueados().size(), "Debe haber mapeado 1 bloqueado");
+        assertEquals(productoBloq.getId(), entidadAtrapada.getProductosBloqueados().iterator().next().getId());
     }
 
     @Test

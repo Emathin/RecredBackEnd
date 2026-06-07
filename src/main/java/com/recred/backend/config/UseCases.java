@@ -3,6 +3,8 @@ package com.recred.backend.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
+import com.recred.backend.application.AgregarProductoFavorito;
+import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
 import com.recred.backend.application.CancelPresentialPurchase;
@@ -205,6 +207,17 @@ public class UseCases {
     @Bean
     public DesbloquearProductoManual desbloquearProductoManual(AlumnoRepository alumnoRepository) {
         return new DesbloquearProductoManual(alumnoRepository);
+    }
+
+    @Bean
+    public AgregarProductoFavorito agregarProductoFavorito(AlumnoRepository alumnoRepository,
+                                                           ProductRepository productRepository) {
+        return new AgregarProductoFavorito(alumnoRepository, productRepository);
+    }
+
+    @Bean
+    public RemoverProductoFavorito removerProductoFavorito(AlumnoRepository alumnoRepository) {
+        return new RemoverProductoFavorito(alumnoRepository);
     }
 
     @Bean
