@@ -7,6 +7,8 @@ import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.entities.PresupuestoAlumnoEntity;
 import com.recred.backend.infrastructure.entities.ReglaPresupuestoCategoriaEntity;
+import com.recred.backend.infrastructure.entities.UsuarioEntity;
+
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -53,7 +55,7 @@ public class PresupuestoRepositoryImpl implements PresupuestoRepository {
     }
 
     private PresupuestoAlumnoEntity toEntity(PresupuestoAlumno modelo,
-                                             PresupuestoAlumnoEntity entity) {
+            PresupuestoAlumnoEntity entity) {
         if (entity.getId() == null) {
             entity.setId(modelo.getId());
         }
@@ -62,6 +64,12 @@ public class PresupuestoRepositoryImpl implements PresupuestoRepository {
             AlumnoEntity alumno = new AlumnoEntity();
             alumno.setId(modelo.getAlumnoId());
             entity.setAlumnoEntity(alumno);
+        }
+
+        if (modelo.getCreadoPorUsuarioId() != null) {
+            UsuarioEntity creador = new UsuarioEntity();
+            creador.setId(modelo.getCreadoPorUsuarioId());
+            entity.setCreadoPorUsuarioEntity(creador);
         }
 
         entity.setMontoLimite(modelo.getMontoLimiteGeneral());
@@ -73,11 +81,10 @@ public class PresupuestoRepositoryImpl implements PresupuestoRepository {
         }
 
         if (modelo.getReglasCategoria() != null && !modelo.getReglasCategoria().isEmpty()) {
-            List<ReglaPresupuestoCategoriaEntity> subEntities =
-                    modelo.getReglasCategoria().stream()
+            List<ReglaPresupuestoCategoriaEntity> subEntities = modelo.getReglasCategoria().stream()
                     .map(reglaDominio -> {
-                        ReglaPresupuestoCategoriaEntity subEntity = new
-                                ReglaPresupuestoCategoriaEntity();
+                        ReglaPresupuestoCategoriaEntity subEntity = 
+                            new ReglaPresupuestoCategoriaEntity();
                         subEntity.setId(reglaDominio.getId());
                         subEntity.setPorcentajeLimite(reglaDominio.getPorcentajeLimite());
                         subEntity.setMontoLimiteCalculado(reglaDominio.getMontoLimiteCalculado());

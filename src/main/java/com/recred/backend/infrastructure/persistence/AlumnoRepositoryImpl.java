@@ -40,8 +40,8 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
     }
 
     @Override
-    public Optional<UUID> findIdByUsuarioId(UUID usuarioId) {
-        return springDataRepository.findStudentIdByUserId(usuarioId);
+    public Optional<UUID> findStudentIdByUserId(UUID userId) {
+        return springDataRepository.findStudentIdByUserId(userId);
     }
 
     @Override

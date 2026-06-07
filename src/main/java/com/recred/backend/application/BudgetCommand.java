@@ -9,10 +9,11 @@ import java.util.UUID;
 
 public record BudgetCommand(
         UUID studentId,
+        UUID creadorId,
         BigDecimal limitAmount,
         PeriodoPresupuesto period,
         LocalDate startDate,
-        List<CategoryRuleCommand> categoryRules
-) {
-    public record CategoryRuleCommand(UUID categoryId, BigDecimal porcentajeLimite) {}
+        List<CategoryRuleCommand> categoryRules) {
+    public record CategoryRuleCommand(UUID categoryId, BigDecimal porcentajeLimite) {
+    }
 }
