@@ -1,7 +1,6 @@
 package com.recred.backend.infrastructure.entities;
 
 
-import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ReglaPresupuestoCategoria;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -62,10 +61,7 @@ public class ReglaPresupuestoCategoriaEntity {
         domain.setActivo(this.activo != null ? this.activo : false);
 
         if (this.categoria != null) {
-            CategoriaProducto catDomain = new CategoriaProducto();
-            catDomain.setId(this.categoria.getId());
-
-            domain.setCategoria(catDomain);
+            domain.setCategoria(this.categoria.toDomain());
         }
 
         return domain;
