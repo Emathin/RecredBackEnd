@@ -29,7 +29,9 @@ public class Purchase {
     private TipoCompra tipo = TipoCompra.PRESENCIAL;
     private String withdrawalCode;
     private UUID pickupSlotId;
+    private String pickupSlotDescription;
     private LocalDate pickupDate;
+    private EstadoRetiro withdrawalStatus;
 
     private Map<Producto, Integer> items = new HashMap<>();
 
@@ -73,13 +75,30 @@ public class Purchase {
         }
 
         this.status = nextStatus;
+        if (this.tipo == TipoCompra.ANTICIPADA) {
+            this.withdrawalStatus = switch (nextStatus) {
+                case PENDIENTE -> EstadoRetiro.PROGRAMADO;
+                case EN_PREPARACION -> EstadoRetiro.EN_PREPARACION;
+                case LISTO -> EstadoRetiro.LISTO;
+                case ENTREGADO -> EstadoRetiro.RETIRADO;
+                case CANCELADO -> EstadoRetiro.CANCELADO;
+                case NO_RETIRADO -> EstadoRetiro.NO_RETIRADO;
+            };
+        }
     }
 
     public void cancel() {
         if (this.status == EstadoCompra.CANCELADO) {
             throw new IllegalStateException("Purchase is already cancelled.");
         }
+        if (this.status != EstadoCompra.PENDIENTE && this.status != EstadoCompra.EN_PREPARACION) {
+            throw new IllegalStateException(
+                    "Purchase can only be cancelled if it is PENDING or IN PREPARATION.");
+        }
         this.status = EstadoCompra.CANCELADO;
+        if (this.tipo == TipoCompra.ANTICIPADA) {
+            this.withdrawalStatus = EstadoRetiro.CANCELADO;
+        }
     }
 
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
@@ -116,8 +135,8 @@ public class Purchase {
             case EN_PREPARACION -> nextStatus == EstadoCompra.LISTO
                     || nextStatus == EstadoCompra.CANCELADO;
             case LISTO -> nextStatus == EstadoCompra.ENTREGADO
-                    || nextStatus == EstadoCompra.CANCELADO;
-            case ENTREGADO, CANCELADO -> false;
+                    || nextStatus == EstadoCompra.NO_RETIRADO;
+            case ENTREGADO, CANCELADO, NO_RETIRADO -> false;
         };
     }
 }

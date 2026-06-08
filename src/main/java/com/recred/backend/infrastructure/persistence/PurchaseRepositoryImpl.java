@@ -21,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -137,7 +138,11 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         retiro.setCompraEntity(compraAnticipadaEntity);
         retiro.setFranja(franja);
         retiro.setFechaProgramada(purchase.getPickupDate());
-        retiro.setEstado(EstadoRetiro.PROGRAMADO);
+        if (purchase.getWithdrawalStatus() != null) {
+            retiro.setEstado(purchase.getWithdrawalStatus());
+        } else {
+            retiro.setEstado(EstadoRetiro.PROGRAMADO);
+        }
         compraAnticipadaEntity.setRetiroProgramadoEntity(retiro);
     }
 
@@ -237,6 +242,20 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
                 buffetId,
                 EstadoCompra.ENTREGADO,
                 List.copyOf(cartProductIds));
+    }
+
+    @Override
+    public List<Purchase> findScheduledPickups(
+            UUID buffetId,
+            LocalDate fecha,
+            EstadoRetiro estadoRetiro,
+            UUID franjaId,
+            String search) {
+        return springDataRepository.findScheduledPickupsWithFilters(
+                buffetId, fecha, estadoRetiro, franjaId, search)
+                .stream()
+                .map(CompraEntity::toDomain)
+                .toList();
     }
 
 }

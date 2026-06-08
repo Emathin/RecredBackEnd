@@ -16,6 +16,8 @@ public class Alumno {
     private UUID id;
     private UUID usuarioId;
     private Usuario usuario;
+    private String nombre;
+    private String apellido;
     private Boolean activo = true;
     private Grado grado;
     private Set<Tutor> tutores = new HashSet<>();
@@ -26,7 +28,7 @@ public class Alumno {
     private Set<Producto> productosBloqueados = new HashSet<>();
 
     public Alumno(UUID id, Usuario usuario, Boolean activo, Grado grado,
-                  Set<ClasificacionSalud> restriccionesSalud) {
+            Set<ClasificacionSalud> restriccionesSalud) {
         this.id = id;
         this.usuario = usuario;
         this.activo = activo;

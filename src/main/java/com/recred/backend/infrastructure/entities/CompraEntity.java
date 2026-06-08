@@ -113,7 +113,13 @@ public abstract class CompraEntity {
                 domain.setPickupDate(retiroProgramadoEntity.getFechaProgramada());
                 if (retiroProgramadoEntity.getFranja() != null) {
                     domain.setPickupSlotId(retiroProgramadoEntity.getFranja().getId());
+                    domain.setPickupSlotDescription(
+                            retiroProgramadoEntity.getFranja().getDescripcion() + " (" +
+                            retiroProgramadoEntity.getFranja().getHoraInicio() + " - " +
+                            retiroProgramadoEntity.getFranja().getHoraFin() + ")"
+                    );
                 }
+                domain.setWithdrawalStatus(retiroProgramadoEntity.getEstado());
             }
         }
 

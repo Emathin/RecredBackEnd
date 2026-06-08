@@ -5,6 +5,7 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
@@ -296,5 +297,32 @@ class PurchaseRepositoryImplTest {
         BuffetEntity entity = new BuffetEntity();
         entity.setId(buffetId);
         return entity;
+    }
+
+    @Test
+    void findScheduledPickups_ShouldCallSpringDataRepository() {
+        LocalDate fecha = LocalDate.of(2026, 6, 8);
+        CompraAnticipadaEntity compraEntity = new CompraAnticipadaEntity();
+        compraEntity.setId(purchaseId);
+        compraEntity.setAlumnoEntity(alumnoEntity());
+        compraEntity.setMedioPago(MedioPago.CREDITOS);
+        compraEntity.setEstado(EstadoCompra.PENDIENTE);
+        compraEntity.setMontoTotal(new BigDecimal("12.00"));
+        compraEntity.setFechaHora(LocalDateTime.now());
+        compraEntity.setBuffetEntity(buffetEntity());
+
+        when(springDataRepository.findScheduledPickupsWithFilters(
+                buffetId, fecha, EstadoRetiro.PROGRAMADO, null, "search"
+        )).thenReturn(List.of(compraEntity));
+
+        List<Purchase> result = repository.findScheduledPickups(
+                buffetId, fecha, EstadoRetiro.PROGRAMADO, null, "search"
+        );
+
+        assertEquals(1, result.size());
+        assertEquals(purchaseId, result.get(0).getId());
+        verify(springDataRepository).findScheduledPickupsWithFilters(
+                buffetId, fecha, EstadoRetiro.PROGRAMADO, null, "search"
+        );
     }
 }

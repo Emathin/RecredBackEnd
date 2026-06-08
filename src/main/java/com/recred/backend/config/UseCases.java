@@ -35,7 +35,9 @@ import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.GetLoggedUserNotifications;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetProductById;
+import com.recred.backend.application.GetBuffetByAlumno;
 import com.recred.backend.application.GetProductsByBuffetUser;
+import com.recred.backend.application.GetScheduledPickups;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
@@ -62,6 +64,7 @@ import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.domain.events.ProductPriceChangedPublisher;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.BuffetRepository;
 import com.recred.backend.domain.repositories.CategoryRepository;
 import com.recred.backend.domain.repositories.ChatMessageRepository;
 import com.recred.backend.domain.repositories.ChatSessionRepository;
@@ -728,5 +731,17 @@ public class UseCases {
             KiosqueroRepository kiosqueroRepository){
         return new GetProductsByBuffetUser(
                 productRepository, kiosqueroRepository);
+    }
+
+    @Bean
+    public GetScheduledPickups getScheduledPickups(PurchaseRepository purchaseRepository) {
+        return new GetScheduledPickups(purchaseRepository);
+    }
+
+    @Bean
+    public GetBuffetByAlumno getBuffetByAlumno(
+            BuffetRepository buffetRepository,
+            AlumnoRepository alumnoRepository) {
+        return new GetBuffetByAlumno(buffetRepository, alumnoRepository);
     }
 }
