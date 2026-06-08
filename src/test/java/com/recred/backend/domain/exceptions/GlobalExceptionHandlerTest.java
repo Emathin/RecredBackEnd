@@ -237,6 +237,11 @@ class GlobalExceptionHandlerTest {
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertNotNull(body);
         assertEquals("Conflicto de Datos", body.error());
+        assertEquals(
+                "No se pudo guardar la información porque entra en conflicto "
+                        + "con los datos existentes.",
+                body.mensaje()
+        );
     }
 
     @Test

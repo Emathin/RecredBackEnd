@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.RolUsuario;
@@ -141,10 +142,23 @@ public class UsuarioEntity {
         if (this.kiosquero != null) {
             Kiosquero k = new Kiosquero();
             k.setId(this.kiosquero.getId());
+            k.setBuffet(buffet(this.kiosquero));
             usuario.setKiosquero(k);
         }
 
         return usuario;
+    }
+
+    private Buffet buffet(KiosqueroEntity kiosquero) {
+        return kiosquero.getBuffetEntity() == null
+                ? null
+                : buffet(kiosquero.getBuffetEntity());
+    }
+
+    private Buffet buffet(BuffetEntity entity) {
+        Buffet buffet = new Buffet();
+        buffet.setId(entity.getId());
+        return buffet;
     }
 
     public static AlumnoEntity fromDomain(Alumno alumno) {

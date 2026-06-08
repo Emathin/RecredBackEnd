@@ -46,6 +46,10 @@ public class ProcessPresentialPurchase {
     }
 
     public Purchase execute(UUID studentId, Map<Producto, Integer> cart) {
+        return execute(studentId, cart, null);
+    }
+
+    public Purchase execute(UUID studentId, Map<Producto, Integer> cart, UUID buffetId) {
 
         Alumno student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
@@ -92,7 +96,7 @@ public class ProcessPresentialPurchase {
         wallet.debit(montoTotalCarrito);
 
         Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS, student.getId(),
-                BuyerType.STUDENT);
+                BuyerType.STUDENT, buffetId);
 
         walletRepository.save(wallet);
         return purchaseRepository.save(purchase);

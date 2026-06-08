@@ -34,7 +34,7 @@ class StudentDTOTest {
     void dadoUnAlumnoConUsuarioNulo_cuandoMapeaADTO_entoncesAsignaValoresPorDefecto() {
         Alumno alumno = new Alumno();
         alumno.setId(UUID.randomUUID());
-        alumno.setUsuario(null); // Simulamos el caso crítico
+        alumno.setUsuario(null);
         alumno.setActivo(true);
 
         StudentDTO dto = StudentDTO.fromDomain(alumno);

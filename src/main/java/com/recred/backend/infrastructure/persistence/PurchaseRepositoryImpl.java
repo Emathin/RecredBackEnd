@@ -2,15 +2,21 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.CartProductAffinity;
 import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseResume;
+import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.BuffetEntity;
+import com.recred.backend.infrastructure.entities.CompraAnticipadaEntity;
 import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
 import com.recred.backend.infrastructure.entities.CompraEntity;
 import com.recred.backend.infrastructure.entities.CompraPresencialEntity;
+import com.recred.backend.infrastructure.entities.FranjaHorariaEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.RetiroProgramadoEntity;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
@@ -68,10 +74,17 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         alumnoEntity.setId(purchase.getStudent().getId());
         entity.setAlumnoEntity(alumnoEntity);
 
+        if (purchase.getBuffetId() != null) {
+            BuffetEntity buffetEntity = new BuffetEntity();
+            buffetEntity.setId(purchase.getBuffetId());
+            entity.setBuffetEntity(buffetEntity);
+        }
+
         entity.setMedioPago(purchase.getPaymentMethod());
         entity.setEstado(purchase.getStatus());
         entity.setMontoTotal(purchase.getTotalAmount());
         entity.setFechaHora(purchase.getDate());
+        setAdvanceData(entity, purchase);
 
         entity.getDetalles().clear();
         purchase.getItems().forEach((producto, cantidad) -> {
@@ -96,7 +109,36 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     private CompraEntity findEntityToSave(Purchase purchase) {
         return Optional.ofNullable(purchase.getId())
                 .flatMap(springDataRepository::findById)
-                .orElseGet(CompraPresencialEntity::new);
+                .orElseGet(() -> newPurchaseEntity(purchase));
+    }
+
+    private CompraEntity newPurchaseEntity(Purchase purchase) {
+        return purchase.getTipo() == TipoCompra.ANTICIPADA
+                ? new CompraAnticipadaEntity()
+                : new CompraPresencialEntity();
+    }
+
+    private void setAdvanceData(CompraEntity entity, Purchase purchase) {
+        if (!(entity instanceof CompraAnticipadaEntity compraAnticipadaEntity)) {
+            return;
+        }
+
+        compraAnticipadaEntity.setCodigoVerificacion(purchase.getWithdrawalCode());
+
+        if (purchase.getPickupSlotId() == null || purchase.getPickupDate() == null) {
+            return;
+        }
+
+        RetiroProgramadoEntity retiro = Optional.ofNullable(
+                        compraAnticipadaEntity.getRetiroProgramadoEntity())
+                .orElseGet(RetiroProgramadoEntity::new);
+        FranjaHorariaEntity franja = new FranjaHorariaEntity();
+        franja.setId(purchase.getPickupSlotId());
+        retiro.setCompraEntity(compraAnticipadaEntity);
+        retiro.setFranja(franja);
+        retiro.setFechaProgramada(purchase.getPickupDate());
+        retiro.setEstado(EstadoRetiro.PROGRAMADO);
+        compraAnticipadaEntity.setRetiroProgramadoEntity(retiro);
     }
 
     @Override

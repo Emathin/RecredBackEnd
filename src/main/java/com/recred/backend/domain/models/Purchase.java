@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +25,11 @@ public class Purchase {
     private LocalDateTime date;
     private UUID buyerId;
     private BuyerType buyerType;
+    private UUID buffetId;
+    private TipoCompra tipo = TipoCompra.PRESENCIAL;
+    private String withdrawalCode;
+    private UUID pickupSlotId;
+    private LocalDate pickupDate;
 
     private Map<Producto, Integer> items = new HashMap<>();
 
@@ -37,6 +43,26 @@ public class Purchase {
         this.totalAmount = calculateTotal(cart);
         this.buyerId = buyerId;
         this.buyerType = buyerType;
+        this.tipo = TipoCompra.PRESENCIAL;
+    }
+
+    public Purchase(Alumno student, Map<Producto, Integer> cart, MedioPago paymentMethod,
+                    UUID buyerId, BuyerType buyerType, UUID buffetId) {
+        this(student, cart, paymentMethod, buyerId, buyerType);
+        this.buffetId = buffetId;
+    }
+
+    public static Purchase advance(Alumno student, Map<Producto, Integer> cart,
+                                   MedioPago paymentMethod, UUID buyerId,
+                                   BuyerType buyerType, UUID buffetId,
+                                   UUID pickupSlotId, LocalDate pickupDate) {
+        Purchase purchase = new Purchase(student, cart, paymentMethod, buyerId, buyerType,
+                buffetId);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+        purchase.setStatus(EstadoCompra.PENDIENTE);
+        purchase.setPickupSlotId(pickupSlotId);
+        purchase.setPickupDate(pickupDate);
+        return purchase;
     }
 
     public void changeStatusTo(EstadoCompra nextStatus) {

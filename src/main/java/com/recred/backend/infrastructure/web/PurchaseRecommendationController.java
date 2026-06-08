@@ -21,7 +21,7 @@ public class PurchaseRecommendationController {
         this.generatePurchaseRecommendation = generatePurchaseRecommendation;
     }
 
-    @RequestMapping("/ia/alumnos/{idAlumno}/obtenerSugerenciaDelDia")
+    @RequestMapping("/api/v1/ia/alumnos/{idAlumno}/obtenerSugerenciaDelDia")
     @GetMapping
     public NotificacionEntity getTodayPurchaseRecommendation(
             @PathVariable("idAlumno") UUID studentID
@@ -29,7 +29,7 @@ public class PurchaseRecommendationController {
         return generatePurchaseRecommendation.findSuggestionForToday(studentID);
     }
 
-    @RequestMapping("/ia/alumnos/{idAlumno}/obtenerSugerenciaManiana")
+    @RequestMapping("/api/v1/ia/alumnos/{idAlumno}/obtenerSugerenciaManiana")
     @GetMapping
     public NotificacionEntity getTomorrowPurchaseRecommendation(
             @PathVariable("idAlumno") UUID studentID

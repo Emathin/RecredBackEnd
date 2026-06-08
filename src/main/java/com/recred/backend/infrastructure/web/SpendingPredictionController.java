@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/ia/alumnos/{alumnoId}/prediccion-gasto")
+@RequestMapping("/api/v1/ia/alumnos/{alumnoId}/prediccion-gasto")
 public class SpendingPredictionController {
 
     private final PredictStudentSpending predictStudentSpending;

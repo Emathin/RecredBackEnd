@@ -7,6 +7,7 @@ import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
 import com.recred.backend.application.CancelPresentialPurchase;
+import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateTimeRestriction;
@@ -51,6 +52,7 @@ import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SchoolAssistantConversations;
+import com.recred.backend.application.SchoolAssistantFixedTopics;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.application.UpdateProduct;
@@ -284,6 +286,19 @@ public class UseCases {
     }
 
     @Bean
+    public SchoolAssistantFixedTopics schoolAssistantFixedTopics(
+            PurchaseRepository purchaseRepository,
+            ProductRepository productRepository,
+            CreateAssistantAdvancePurchase createAssistantAdvancePurchase,
+            Clock clock) {
+        return new SchoolAssistantFixedTopics(
+                purchaseRepository,
+                productRepository,
+                createAssistantAdvancePurchase,
+                clock);
+    }
+
+    @Bean
     public AskSchoolAssistant askSchoolAssistant(
             AlumnoRepository alumnoRepository,
             WalletRepository walletRepository,
@@ -299,6 +314,7 @@ public class UseCases {
             ProductRepository productRepository,
             PurchaseRepository purchaseRepository,
             PresupuestoRepository presupuestoRepository,
+            SchoolAssistantFixedTopics fixedTopics,
             Clock clock) {
         return new AskSchoolAssistant(
                 alumnoRepository,
@@ -315,6 +331,7 @@ public class UseCases {
                 productRepository,
                 purchaseRepository,
                 presupuestoRepository,
+                fixedTopics,
                 clock);
     }
 
@@ -383,6 +400,29 @@ public class UseCases {
                 timeValidator,
                 healthValidator,
                 budgetValidator);
+    }
+
+    @Bean
+    public CreateAssistantAdvancePurchase createAssistantAdvancePurchase(
+            AlumnoRepository studentRepository,
+            WalletRepository walletRepository,
+            PurchaseRepository purchaseRepository,
+            FranjaHorariaRepository timeSlotRepository,
+            ValidadorHorarioService timeValidator,
+            ValidacionRestriccionesService healthValidator,
+            ValidadorPresupuestoService budgetValidator,
+            WithdrawalCodeService withdrawalCodeService,
+            Clock clock) {
+        return new CreateAssistantAdvancePurchase(
+                studentRepository,
+                walletRepository,
+                purchaseRepository,
+                timeSlotRepository,
+                timeValidator,
+                healthValidator,
+                budgetValidator,
+                withdrawalCodeService,
+                clock);
     }
 
     @Bean

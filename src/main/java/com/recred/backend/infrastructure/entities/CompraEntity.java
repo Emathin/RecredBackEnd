@@ -100,6 +100,22 @@ public abstract class CompraEntity {
         domain.setStatus(this.estado);
         domain.setPaymentMethod(this.medioPago);
         domain.setDate(this.fechaHora);
+        domain.setTipo(this.tipo);
+        if (this.buffetEntity != null) {
+            domain.setBuffetId(this.buffetEntity.getId());
+        }
+
+        if (this instanceof CompraAnticipadaEntity compraAnticipadaEntity) {
+            domain.setWithdrawalCode(compraAnticipadaEntity.getCodigoVerificacion());
+            if (compraAnticipadaEntity.getRetiroProgramadoEntity() != null) {
+                RetiroProgramadoEntity retiroProgramadoEntity =
+                        compraAnticipadaEntity.getRetiroProgramadoEntity();
+                domain.setPickupDate(retiroProgramadoEntity.getFechaProgramada());
+                if (retiroProgramadoEntity.getFranja() != null) {
+                    domain.setPickupSlotId(retiroProgramadoEntity.getFranja().getId());
+                }
+            }
+        }
 
         if (this.alumnoEntity != null) {
             domain.setStudent(this.alumnoEntity.toDomain());
