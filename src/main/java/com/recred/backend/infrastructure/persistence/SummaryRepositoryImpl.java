@@ -6,6 +6,7 @@ import com.recred.backend.infrastructure.entities.SummaryEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -29,6 +30,14 @@ public class SummaryRepositoryImpl implements SummaryRepository {
                 .map(this::toDomain);
     }
 
+    @Override
+    public List<Summary> findAllByUsuarioId(UUID usuarioId) {
+        return springDataSummaryRepository.findByUsuarioIdOrderByEndDateDesc(usuarioId)
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     private Summary toDomain(SummaryEntity entity) {
         Summary summary = new Summary();
         summary.setId(entity.getId());
@@ -45,7 +54,8 @@ public class SummaryRepositoryImpl implements SummaryRepository {
         entity.setEndDate(summary.getFechaHasta());
         entity.setSummary(summary.getResumen());
         
-        entity.setUser(infrastructureMapper.reference(UsuarioEntity.class, summary.getUsuario().getId()));
+        entity.setUser(infrastructureMapper.reference(UsuarioEntity.class,
+                summary.getUsuario().getId()));
         
         SummaryEntity saved = springDataSummaryRepository.save(entity);
         summary.setId(saved.getId());

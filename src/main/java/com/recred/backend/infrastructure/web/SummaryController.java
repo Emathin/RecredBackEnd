@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -34,6 +35,15 @@ public class SummaryController {
                 .map(SummaryResponse::new)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{userId}/all")
+    public ResponseEntity<List<SummaryResponse>> getAllSummaries(@PathVariable UUID userId) {
+        List<SummaryResponse> summaries = summaryRepository.findAllByUsuarioId(userId)
+                .stream()
+                .map(SummaryResponse::new)
+                .toList();
+        return ResponseEntity.ok(summaries);
     }
 
     @PostMapping("/{userId}")
