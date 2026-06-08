@@ -20,7 +20,8 @@ public class MenuBuffetController {
     private final GenerarMenuBuffet generarMenuBuffet;
     private final GetBuffetByAlumno getBuffetByAlumno;
 
-    public MenuBuffetController(GenerarMenuBuffet generarMenuBuffet, GetBuffetByAlumno getBuffetByAlumno) {
+    public MenuBuffetController(GenerarMenuBuffet generarMenuBuffet,
+            GetBuffetByAlumno getBuffetByAlumno) {
         this.generarMenuBuffet = generarMenuBuffet;
         this.getBuffetByAlumno = getBuffetByAlumno;
     }
@@ -30,8 +31,9 @@ public class MenuBuffetController {
             @PathVariable UUID alumnoId,
             @RequestParam(required = false) LocalDateTime fechaHoraConsulta) {
 
-        LocalDateTime momentoEvaluacion = (fechaHoraConsulta != null) ?
-                fechaHoraConsulta : LocalDateTime.now();
+        LocalDateTime momentoEvaluacion = (fechaHoraConsulta != null)
+                ? fechaHoraConsulta
+                : LocalDateTime.now();
 
         List<MenuProductoDTO> menu = generarMenuBuffet.execute(alumnoId, momentoEvaluacion);
 
@@ -39,7 +41,8 @@ public class MenuBuffetController {
     }
 
     @GetMapping("/{alumnoId}/buffet")
-    public ResponseEntity<AlumnoBuffetResponseDTO> obtenerBuffet(@PathVariable UUID alumnoId) {
+    public ResponseEntity<AlumnoBuffetResponseDTO> obtenerBuffet(
+            @PathVariable UUID alumnoId) {
         return getBuffetByAlumno.execute(alumnoId)
                 .map(AlumnoBuffetResponseDTO::fromDomain)
                 .map(ResponseEntity::ok)
