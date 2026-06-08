@@ -181,9 +181,12 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             and (:estadoRetiro is null or retiro.estado = :estadoRetiro)
             and (:franjaId is null or retiro.franja.id = :franjaId)
             and (:search is null or :search = '' 
-                 or lower(purchase.alumnoEntity.nombre) like lower(concat('%', :search, '%'))
-                 or lower(purchase.alumnoEntity.apellido) like lower(concat('%', :search, '%'))
-                 or lower(purchase.codigoVerificacion) like lower(concat('%', :search, '%')))
+                 or lower(purchase.alumnoEntity.usuario.nombre)
+                    like lower(concat('%', :search, '%'))
+                 or lower(purchase.alumnoEntity.usuario.apellido)
+                    like lower(concat('%', :search, '%'))
+                 or lower(purchase.codigoVerificacion)
+                    like lower(concat('%', :search, '%')))
             order by retiro.fechaProgramada asc, retiro.franja.horaInicio asc
             """)
     List<CompraAnticipadaEntity> findScheduledPickupsWithFilters(
