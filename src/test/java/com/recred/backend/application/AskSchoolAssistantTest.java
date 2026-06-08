@@ -20,7 +20,9 @@ import com.recred.backend.domain.models.SchoolAssistantDraft;
 import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
+import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
+import com.recred.backend.domain.models.SchoolAssistantRole;
 import com.recred.backend.domain.models.TipoDiaEscolar;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
@@ -210,6 +212,9 @@ class AskSchoolAssistantTest {
         assertTrue(answer.generatedByAi());
         assertEquals("gemini-test", answer.model());
         assertEquals(ALLOWED_CAPABILITIES, answer.capabilities());
+        assertEquals(SchoolAssistantRole.ALUMNO, answer.role());
+        assertEquals(SchoolAssistantIntent.UNKNOWN, answer.intent());
+        assertFalse(answer.suggestions().isEmpty());
 
         ArgumentCaptor<SchoolAssistantPrompt> promptCaptor = ArgumentCaptor
                 .forClass(SchoolAssistantPrompt.class);
@@ -295,6 +300,7 @@ class AskSchoolAssistantTest {
         assertFalse(answer.generatedByAi());
         assertNull(answer.model());
         assertEquals(ALLOWED_CAPABILITIES, answer.capabilities());
+        assertFalse(answer.suggestions().isEmpty());
         verify(schoolAssistantResponder).respond(any());
     }
 

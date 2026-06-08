@@ -5,9 +5,12 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
+import com.recred.backend.infrastructure.entities.CompraAnticipadaEntity;
 import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
 import com.recred.backend.infrastructure.entities.CompraEntity;
 import com.recred.backend.infrastructure.entities.CompraPresencialEntity;
@@ -20,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +47,7 @@ class PurchaseRepositoryImplTest {
     private UUID purchaseId;
     private UUID studentId;
     private UUID productId;
+    private UUID buffetId;
     private Purchase purchase;
 
     @BeforeEach
@@ -51,6 +56,7 @@ class PurchaseRepositoryImplTest {
         purchaseId = UUID.randomUUID();
         studentId = UUID.randomUUID();
         productId = UUID.randomUUID();
+        buffetId = UUID.randomUUID();
         purchase = purchase(null);
     }
 
@@ -71,6 +77,7 @@ class PurchaseRepositoryImplTest {
         CompraEntity savedEntity = entityCaptor.getValue();
         assertTrue(savedEntity instanceof CompraPresencialEntity);
         assertEquals(studentId, savedEntity.getAlumnoEntity().getId());
+        assertEquals(buffetId, savedEntity.getBuffetEntity().getId());
         assertEquals(EstadoCompra.PENDIENTE, savedEntity.getEstado());
         assertEquals(productId, savedEntity.getDetalles().get(0).getProductoEntity().getId());
         assertEquals(savedPurchaseId, savedPurchase.getId());
@@ -96,6 +103,39 @@ class PurchaseRepositoryImplTest {
     }
 
     @Test
+    void save_WhenPurchaseIsAdvance_ShouldCreateAdvancePurchaseWithScheduledPickup() {
+        UUID savedPurchaseId = UUID.randomUUID();
+        UUID pickupSlotId = UUID.randomUUID();
+        LocalDate pickupDate = LocalDate.of(2026, 6, 8);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+        purchase.setWithdrawalCode("ABC123");
+        purchase.setPickupSlotId(pickupSlotId);
+        purchase.setPickupDate(pickupDate);
+
+        when(springDataRepository.save(any(CompraEntity.class)))
+                .thenAnswer(invocation -> {
+                    CompraEntity entity = invocation.getArgument(0);
+                    entity.setId(savedPurchaseId);
+                    return entity;
+                });
+
+        repository.save(purchase);
+
+        ArgumentCaptor<CompraEntity> entityCaptor = ArgumentCaptor.forClass(CompraEntity.class);
+        verify(springDataRepository).save(entityCaptor.capture());
+        CompraEntity savedEntity = entityCaptor.getValue();
+
+        assertTrue(savedEntity instanceof CompraAnticipadaEntity);
+        CompraAnticipadaEntity advanceEntity = (CompraAnticipadaEntity) savedEntity;
+        assertEquals("ABC123", advanceEntity.getCodigoVerificacion());
+        assertEquals(pickupDate, advanceEntity.getRetiroProgramadoEntity()
+                .getFechaProgramada());
+        assertEquals(pickupSlotId, advanceEntity.getRetiroProgramadoEntity()
+                .getFranja()
+                .getId());
+    }
+
+    @Test
     void findById_WhenPurchaseExists_ShouldReturnMappedPurchase() {
         CompraPresencialEntity entity = compraEntity();
         when(springDataRepository.findById(purchaseId)).thenReturn(Optional.of(entity));
@@ -105,6 +145,7 @@ class PurchaseRepositoryImplTest {
         assertTrue(result.isPresent());
         assertEquals(purchaseId, result.get().getId());
         assertEquals(studentId, result.get().getStudent().getId());
+        assertEquals(buffetId, result.get().getBuffetId());
     }
 
     @Test
@@ -216,6 +257,7 @@ class PurchaseRepositoryImplTest {
         purchase.setTotalAmount(new BigDecimal("12.00"));
         purchase.setDate(LocalDateTime.now());
         purchase.setItems(Map.of(product(), 2));
+        purchase.setBuffetId(buffetId);
         return purchase;
     }
 
@@ -240,12 +282,19 @@ class PurchaseRepositoryImplTest {
         entity.setEstado(EstadoCompra.PENDIENTE);
         entity.setMontoTotal(new BigDecimal("12.00"));
         entity.setFechaHora(LocalDateTime.now());
+        entity.setBuffetEntity(buffetEntity());
         return entity;
     }
 
     private AlumnoEntity alumnoEntity() {
         AlumnoEntity entity = new AlumnoEntity();
         entity.setId(studentId);
+        return entity;
+    }
+
+    private BuffetEntity buffetEntity() {
+        BuffetEntity entity = new BuffetEntity();
+        entity.setId(buffetId);
         return entity;
     }
 }

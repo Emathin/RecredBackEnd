@@ -15,14 +15,18 @@ import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RolChatMensaje;
+import com.recred.backend.domain.models.SchoolAssistantAction;
 import com.recred.backend.domain.models.SchoolAssistantAnswer;
+import com.recred.backend.domain.models.SchoolAssistantActionType;
 import com.recred.backend.domain.models.SchoolAssistantCapability;
 import com.recred.backend.domain.models.SchoolAssistantContext;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
+import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.models.SchoolAssistantRole;
+import com.recred.backend.domain.models.SchoolAssistantSuggestion;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
@@ -215,7 +219,12 @@ public class AskSchoolAssistant {
                 context.capabilities(),
                 now,
                 draft.isPresent(),
-                draft.map(SchoolAssistantDraft::model).orElse(null)
+                draft.map(SchoolAssistantDraft::model).orElse(null),
+                context.role(),
+                SchoolAssistantIntent.UNKNOWN,
+                null,
+                defaultSuggestions(context.role()),
+                Map.of()
         );
     }
 
@@ -231,7 +240,12 @@ public class AskSchoolAssistant {
                 context.capabilities(),
                 now,
                 false,
-                null
+                null,
+                context.role(),
+                reply.intent(),
+                reply.action(),
+                reply.suggestions(),
+                reply.data()
         );
     }
 
@@ -590,6 +604,11 @@ public class AskSchoolAssistant {
     ) {
         Map<String, Object> metadata = messageMetadata(answer.capabilities());
         metadata.put("generadoPorIa", answer.generatedByAi());
+        metadata.put("rol", value(answer.role()));
+        metadata.put("intencion", answer.intent().name());
+        metadata.put("accion", actionMetadata(answer.action()));
+        metadata.put("sugerencias", suggestionsMetadata(answer.suggestions()));
+        metadata.put("datos", answer.data());
         metadata.putAll(additionalMetadata);
 
         if (answer.model() != null) {
@@ -604,6 +623,84 @@ public class AskSchoolAssistant {
         return capabilities.stream()
                 .map(SchoolAssistantCapability::name)
                 .toList();
+    }
+
+    private List<SchoolAssistantSuggestion> defaultSuggestions(SchoolAssistantRole role) {
+        return switch (role) {
+            case ALUMNO -> List.of(
+                    suggestion("Saldo", "cuanto saldo tengo",
+                            SchoolAssistantActionType.CONSULTA_SALDO),
+                    suggestion("Ultimas compras", "mostrame mis ultimas compras",
+                            SchoolAssistantActionType.CONSULTA_COMPRAS),
+                    suggestion("Compra habitual", "comprame lo de siempre",
+                            SchoolAssistantActionType.COMPRA_ANTICIPADA),
+                    suggestion("Eventos", "que eventos escolares tengo",
+                            SchoolAssistantActionType.CONSULTA_EVENTOS)
+            );
+            case TUTOR -> List.of(
+                    suggestion("Mis hijos", "mostrame mis hijos",
+                            SchoolAssistantActionType.CONSULTA_HIJOS),
+                    suggestion("Presupuestos", "ver presupuestos de mis hijos",
+                            SchoolAssistantActionType.CONSULTA_PRESUPUESTOS),
+                    suggestion("Restricciones", "ver restricciones de mis hijos",
+                            SchoolAssistantActionType.CONSULTA_RESTRICCIONES),
+                    suggestion("Eventos", "que eventos escolares tienen mis hijos",
+                            SchoolAssistantActionType.CONSULTA_EVENTOS)
+            );
+            case KIOSQUERO -> List.of(
+                    suggestion("Pedidos", "ver pedidos pendientes",
+                            SchoolAssistantActionType.CONSULTA_PEDIDOS),
+                    suggestion("Stock", "ver stock",
+                            SchoolAssistantActionType.CONSULTA_STOCK),
+                    suggestion("Ventas", "ventas de hoy",
+                            SchoolAssistantActionType.CONSULTA_VENTAS)
+            );
+        };
+    }
+
+    private SchoolAssistantSuggestion suggestion(
+            String label,
+            String message,
+            SchoolAssistantActionType actionType
+    ) {
+        return new SchoolAssistantSuggestion(label, message, actionType);
+    }
+
+    private Map<String, Object> actionMetadata(SchoolAssistantAction action) {
+        if (action == null) {
+            return Map.of();
+        }
+
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("tipo", action.type().name());
+        metadata.put("estado", action.status().name());
+        metadata.put("requiereInput", action.requiresInput());
+        metadata.put("inputsRequeridos", action.requiredInputs().stream()
+                .map(Enum::name)
+                .toList());
+        metadata.put("compraId", value(action.purchaseId()));
+        metadata.put("estadoCompra", value(action.purchaseStatus()));
+        metadata.put("codigoRetiro", value(action.withdrawalCode()));
+        metadata.put("total", value(action.total()));
+        metadata.put("recreo", value(action.recessTime()));
+        metadata.put("datos", action.data());
+        return metadata;
+    }
+
+    private List<Map<String, Object>> suggestionsMetadata(
+            List<SchoolAssistantSuggestion> suggestions
+    ) {
+        return suggestions.stream()
+                .map(this::suggestionMetadata)
+                .toList();
+    }
+
+    private Map<String, Object> suggestionMetadata(SchoolAssistantSuggestion suggestion) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("label", suggestion.label());
+        metadata.put("mensaje", suggestion.message());
+        metadata.put("tipoAccion", suggestion.actionType().name());
+        return metadata;
     }
 
     private String value(Object value) {

@@ -35,7 +35,7 @@ public class SchoolAssistantController {
         this.conversations = conversations;
     }
 
-    @PostMapping("/ia/alumnos/{alumnoId}/asistente/mensajes")
+    @PostMapping("/api/v1/ia/alumnos/{alumnoId}/asistente/mensajes")
     public SchoolAssistantResponse askStudent(
             @PathVariable("alumnoId") UUID studentId,
             @RequestBody SchoolAssistantRequest request
@@ -47,7 +47,7 @@ public class SchoolAssistantController {
         ));
     }
 
-    @GetMapping("/ia/alumnos/{alumnoId}/asistente/sesiones")
+    @GetMapping("/api/v1/ia/alumnos/{alumnoId}/asistente/sesiones")
     public List<SchoolAssistantSessionResponse> studentSessions(
             @PathVariable("alumnoId") UUID studentId,
             @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
@@ -59,7 +59,7 @@ public class SchoolAssistantController {
                 .toList();
     }
 
-    @GetMapping("/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}/mensajes")
+    @GetMapping("/api/v1/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}/mensajes")
     public List<SchoolAssistantMessageResponse> studentMessages(
             @PathVariable("alumnoId") UUID studentId,
             @PathVariable("sesionId") UUID sessionId,
@@ -72,7 +72,7 @@ public class SchoolAssistantController {
                 .toList();
     }
 
-    @PatchMapping("/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}/cerrar")
+    @PatchMapping("/api/v1/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}/cerrar")
     public ResponseEntity<Void> closeStudentSession(
             @PathVariable("alumnoId") UUID studentId,
             @PathVariable("sesionId") UUID sessionId
@@ -81,7 +81,7 @@ public class SchoolAssistantController {
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}")
+    @DeleteMapping("/api/v1/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}")
     public ResponseEntity<Void> deleteStudentSession(
             @PathVariable("alumnoId") UUID studentId,
             @PathVariable("sesionId") UUID sessionId
@@ -90,7 +90,7 @@ public class SchoolAssistantController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/ia/tutores/me/asistente/mensajes")
+    @PostMapping("/api/v1/ia/tutores/me/asistente/mensajes")
     public SchoolAssistantResponse askTutor(
             Authentication authentication,
             @RequestBody SchoolAssistantRequest request
@@ -101,7 +101,7 @@ public class SchoolAssistantController {
         ));
     }
 
-    @GetMapping("/ia/tutores/me/asistente/sesiones")
+    @GetMapping("/api/v1/ia/tutores/me/asistente/sesiones")
     public List<SchoolAssistantSessionResponse> tutorSessions(
             Authentication authentication,
             @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
@@ -113,7 +113,7 @@ public class SchoolAssistantController {
                 .toList();
     }
 
-    @GetMapping("/ia/tutores/me/asistente/sesiones/{sesionId}/mensajes")
+    @GetMapping("/api/v1/ia/tutores/me/asistente/sesiones/{sesionId}/mensajes")
     public List<SchoolAssistantMessageResponse> tutorMessages(
             Authentication authentication,
             @PathVariable("sesionId") UUID sessionId,
@@ -131,7 +131,7 @@ public class SchoolAssistantController {
                 .toList();
     }
 
-    @PatchMapping("/ia/tutores/me/asistente/sesiones/{sesionId}/cerrar")
+    @PatchMapping("/api/v1/ia/tutores/me/asistente/sesiones/{sesionId}/cerrar")
     public ResponseEntity<Void> closeTutorSession(
             Authentication authentication,
             @PathVariable("sesionId") UUID sessionId
@@ -140,7 +140,7 @@ public class SchoolAssistantController {
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/ia/tutores/me/asistente/sesiones/{sesionId}")
+    @DeleteMapping("/api/v1/ia/tutores/me/asistente/sesiones/{sesionId}")
     public ResponseEntity<Void> deleteTutorSession(
             Authentication authentication,
             @PathVariable("sesionId") UUID sessionId
@@ -149,7 +149,7 @@ public class SchoolAssistantController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/ia/kiosqueros/me/asistente/mensajes")
+    @PostMapping("/api/v1/ia/kiosqueros/me/asistente/mensajes")
     public SchoolAssistantResponse askKiosquero(
             Authentication authentication,
             @RequestBody SchoolAssistantRequest request
@@ -160,7 +160,7 @@ public class SchoolAssistantController {
         ));
     }
 
-    @GetMapping("/ia/kiosqueros/me/asistente/sesiones")
+    @GetMapping("/api/v1/ia/kiosqueros/me/asistente/sesiones")
     public List<SchoolAssistantSessionResponse> kiosqueroSessions(
             Authentication authentication,
             @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
@@ -172,7 +172,7 @@ public class SchoolAssistantController {
                 .toList();
     }
 
-    @GetMapping("/ia/kiosqueros/me/asistente/sesiones/{sesionId}/mensajes")
+    @GetMapping("/api/v1/ia/kiosqueros/me/asistente/sesiones/{sesionId}/mensajes")
     public List<SchoolAssistantMessageResponse> kiosqueroMessages(
             Authentication authentication,
             @PathVariable("sesionId") UUID sessionId,
@@ -190,7 +190,7 @@ public class SchoolAssistantController {
                 .toList();
     }
 
-    @PatchMapping("/ia/kiosqueros/me/asistente/sesiones/{sesionId}/cerrar")
+    @PatchMapping("/api/v1/ia/kiosqueros/me/asistente/sesiones/{sesionId}/cerrar")
     public ResponseEntity<Void> closeKiosqueroSession(
             Authentication authentication,
             @PathVariable("sesionId") UUID sessionId
@@ -199,7 +199,7 @@ public class SchoolAssistantController {
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/ia/kiosqueros/me/asistente/sesiones/{sesionId}")
+    @DeleteMapping("/api/v1/ia/kiosqueros/me/asistente/sesiones/{sesionId}")
     public ResponseEntity<Void> deleteKiosqueroSession(
             Authentication authentication,
             @PathVariable("sesionId") UUID sessionId

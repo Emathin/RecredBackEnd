@@ -31,7 +31,6 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             "ORDER BY c.fechaHora DESC")
     List<CompraEntity> findAllByAlumnoIdOrderByFechaHoraDesc(@Param("alumnoId") UUID alumnoId);
 
-    // Para el historial global del tutor (trae las compras de TODOS sus hijos cruzando tablas)
     @Query("SELECT c FROM CompraEntity c JOIN c.alumnoEntity a " +
             "JOIN a.tutores t WHERE t.id = :tutorId ORDER BY c.fechaHora DESC")
     List<CompraEntity> findAllByTutorIdOrderByFechaHoraDesc(@Param("tutorId") UUID tutorId);

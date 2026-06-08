@@ -8,6 +8,7 @@ import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
 import com.recred.backend.application.CancelPresentialPurchase;
+import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateTimeRestriction;
@@ -269,11 +270,13 @@ public class UseCases {
     public SchoolAssistantFixedTopics schoolAssistantFixedTopics(
             PurchaseRepository purchaseRepository,
             ProductRepository productRepository,
-            ProcessPresentialPurchase processPresentialPurchase) {
+            CreateAssistantAdvancePurchase createAssistantAdvancePurchase,
+            Clock clock) {
         return new SchoolAssistantFixedTopics(
                 purchaseRepository,
                 productRepository,
-                processPresentialPurchase);
+                createAssistantAdvancePurchase,
+                clock);
     }
 
     @Bean
@@ -378,6 +381,29 @@ public class UseCases {
                 timeValidator,
                 healthValidator,
                 budgetValidator);
+    }
+
+    @Bean
+    public CreateAssistantAdvancePurchase createAssistantAdvancePurchase(
+            AlumnoRepository studentRepository,
+            WalletRepository walletRepository,
+            PurchaseRepository purchaseRepository,
+            FranjaHorariaRepository timeSlotRepository,
+            ValidadorHorarioService timeValidator,
+            ValidacionRestriccionesService healthValidator,
+            ValidadorPresupuestoService budgetValidator,
+            WithdrawalCodeService withdrawalCodeService,
+            Clock clock) {
+        return new CreateAssistantAdvancePurchase(
+                studentRepository,
+                walletRepository,
+                purchaseRepository,
+                timeSlotRepository,
+                timeValidator,
+                healthValidator,
+                budgetValidator,
+                withdrawalCodeService,
+                clock);
     }
 
     @Bean
