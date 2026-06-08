@@ -29,6 +29,7 @@ public class Purchase {
     private TipoCompra tipo = TipoCompra.PRESENCIAL;
     private String withdrawalCode;
     private UUID pickupSlotId;
+    private String pickupSlotDescription;
     private LocalDate pickupDate;
     private EstadoRetiro withdrawalStatus;
 

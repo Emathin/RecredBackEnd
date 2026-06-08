@@ -27,6 +27,7 @@ public class ScheduledPickupResponseDTO {
     private LocalDateTime date;
     private String withdrawalCode;
     private UUID pickupSlotId;
+    private String pickupSlotDescription;
     private LocalDate pickupDate;
     private List<PurchaseItemDTO> items;
 
@@ -51,6 +52,7 @@ public class ScheduledPickupResponseDTO {
         this.date = purchase.getDate();
         this.withdrawalCode = purchase.getWithdrawalCode();
         this.pickupSlotId = purchase.getPickupSlotId();
+        this.pickupSlotDescription = purchase.getPickupSlotDescription();
         this.pickupDate = purchase.getPickupDate();
 
         if (purchase.getItems() != null) {
