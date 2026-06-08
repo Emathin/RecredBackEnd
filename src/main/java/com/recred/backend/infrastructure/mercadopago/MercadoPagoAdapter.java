@@ -54,17 +54,17 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
 
             // Configura las URLs de retorno (back_urls)
             PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-                    .success("http://localhost:4200/tutor" /* properties.getSuccessUrl() */)
-                    .pending("http://localhost:4200/tutor" /* properties.getPendingUrl() */)
-                    .failure("http://localhost:4200/tutor" /* properties.getFailureUrl() */)
+                    .success("https://5cpbvx-ip-179-37-104-36.tunnelmole.net/tutor" /* properties.getSuccessUrl() */)
+                    .pending("https://5cpbvx-ip-179-37-104-36.tunnelmole.net/tutor" /* properties.getPendingUrl() */)
+                    .failure("https://5cpbvx-ip-179-37-104-36.tunnelmole.net/tutor" /* properties.getFailureUrl() */)
                     .build();
 
             // Crea la solicitud de preferencia con items y back_urls
             PreferenceRequest preferenceRequest = PreferenceRequest.builder()
                     .items(items)
-                    //.autoReturn("approved")
+                    .autoReturn("approved")
                     .backUrls(backUrls)
-                    //.notificationUrl("https://doueet-ip-179-37-104-36.tunnelmole.net/api/v1/payments/webhook") cambiar por url expuesta
+                    .notificationUrl("https://gej7kq-ip-179-37-104-36.tunnelmole.net/api/v1/payments/webhook") // cambiar por url expuesta
                     .externalReference(studentId.toString())
                     .build();
 
