@@ -1,7 +1,5 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.models.Purchase;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -60,8 +58,7 @@ public class ScheduledPickupResponseDTO {
                             entry.getKey().getId(),
                             entry.getKey().getNombre(),
                             entry.getValue(),
-                            entry.getKey().getPrecio()
-                    ))
+                            entry.getKey().getPrecio()))
                     .collect(Collectors.toList());
         }
     }
