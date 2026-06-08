@@ -251,7 +251,8 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
             EstadoRetiro estadoRetiro,
             UUID franjaId,
             String search) {
-        return springDataRepository.findScheduledPickupsWithFilters(buffetId, fecha, estadoRetiro, franjaId, search)
+        return springDataRepository.findScheduledPickupsWithFilters(
+                buffetId, fecha, estadoRetiro, franjaId, search)
                 .stream()
                 .map(CompraEntity::toDomain)
                 .toList();

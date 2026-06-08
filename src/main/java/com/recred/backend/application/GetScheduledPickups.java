@@ -23,6 +23,7 @@ public class GetScheduledPickups {
             UUID franjaId,
             String search
     ) {
-        return purchaseRepository.findScheduledPickups(buffetId, fecha, estadoRetiro, franjaId, search);
+        return purchaseRepository.findScheduledPickups(
+                buffetId, fecha, estadoRetiro, franjaId, search);
     }
 }

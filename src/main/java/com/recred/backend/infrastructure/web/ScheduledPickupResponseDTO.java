@@ -34,7 +34,8 @@ public class ScheduledPickupResponseDTO {
         this.id = purchase.getId();
         if (purchase.getStudent() != null) {
             this.studentId = purchase.getStudent().getId();
-            this.studentName = purchase.getStudent().getNombre() + " " + purchase.getStudent().getApellido();
+            this.studentName = purchase.getStudent().getNombre() + " "
+                    + purchase.getStudent().getApellido();
         }
         this.totalAmount = purchase.getTotalAmount();
         if (purchase.getStatus() != null) {

@@ -91,7 +91,8 @@ public class Purchase {
             throw new IllegalStateException("Purchase is already cancelled.");
         }
         if (this.status != EstadoCompra.PENDIENTE && this.status != EstadoCompra.EN_PREPARACION) {
-            throw new IllegalStateException("Purchase can only be cancelled if it is PENDING or IN PREPARATION.");
+            throw new IllegalStateException(
+                    "Purchase can only be cancelled if it is PENDING or IN PREPARATION.");
         }
         this.status = EstadoCompra.CANCELADO;
         if (this.tipo == TipoCompra.ANTICIPADA) {
