@@ -11,7 +11,9 @@ import java.util.UUID;
 
 @Repository
 public interface SpringDataSummaryRepository extends JpaRepository<SummaryEntity, UUID> {
-    @Query("SELECT s FROM SummaryEntity s WHERE s.user.id = :userId ORDER BY s.endDate DESC LIMIT 1")
+    @Query(
+            "SELECT s FROM SummaryEntity s " +
+                    "WHERE s.user.id = :userId ORDER BY s.endDate DESC LIMIT 1")
     Optional<SummaryEntity> findTopByUsuarioIdOrderByFechaHastaDesc(UUID userId);
 
     @Query("SELECT s FROM SummaryEntity s WHERE s.user.id = :userId ORDER BY s.endDate DESC")

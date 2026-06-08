@@ -136,7 +136,8 @@ public class UseCases {
     }
 
     @Bean
-    public GeminiParentSummaryAnalyzer geminiParentSummaryAnalyzer(GeminiTextClient geminiTextClient) {
+    public GeminiParentSummaryAnalyzer geminiParentSummaryAnalyzer(
+            GeminiTextClient geminiTextClient) {
         return new GeminiParentSummaryAnalyzer(geminiTextClient);
     }
 
