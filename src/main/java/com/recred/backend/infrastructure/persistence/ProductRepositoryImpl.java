@@ -36,10 +36,14 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
     @Override
     public List<Producto> findAllActive() {
-        return springDataRepository.findAllByActivoTrue()
-                .stream()
-                .map(ProductoEntity::toDomain)
-                .toList();
+        java.util.Map<UUID, Producto> uniqueProducts = new java.util.LinkedHashMap<>();
+        springDataRepository.findAllByActivoTrue()
+                .forEach(entity -> {
+                    if (entity.getId() != null) {
+                        uniqueProducts.putIfAbsent(entity.getId(), entity.toDomain());
+                    }
+                });
+        return new java.util.ArrayList<>(uniqueProducts.values());
     }
 
     @Override
@@ -50,10 +54,15 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     @Override
     public List<Producto> findAllActiveWithStock(UUID buffetId) {
-        return springDataRepository.findAllActiveWithStockParams(buffetId)
-                .stream()
-                .map(this::mapObjectArrayToDomain)
-                .toList();
+        java.util.Map<UUID, Producto> uniqueProducts = new java.util.LinkedHashMap<>();
+        springDataRepository.findAllActiveWithStockParams(buffetId)
+                .forEach(result -> {
+                    Producto domain = mapObjectArrayToDomain(result);
+                    if (domain.getId() != null) {
+                        uniqueProducts.putIfAbsent(domain.getId(), domain);
+                    }
+                });
+        return new java.util.ArrayList<>(uniqueProducts.values());
     }
 
     @Override

@@ -65,28 +65,31 @@ public class ValidadorPresupuestoService {
         if (presupuesto.getReglasCategoria() != null && !presupuesto.
                 getReglasCategoria().isEmpty()) {
             for (ReglaPresupuestoCategoria regla : presupuesto.getReglasCategoria()) {
-                UUID catId = regla.getCategoria().getId();
+                if (regla.isActivo()) {
+                    UUID catId = regla.getCategoria().getId();
 
-                BigDecimal gastoCategoriaEnCarrito = montosPorCategoria.
-                        getOrDefault(catId, BigDecimal.ZERO);
+                    BigDecimal gastoCategoriaEnCarrito = montosPorCategoria.
+                            getOrDefault(catId, BigDecimal.ZERO);
 
-                if (gastoCategoriaEnCarrito.compareTo(BigDecimal.ZERO) > 0) {
+                    if (gastoCategoriaEnCarrito.compareTo(BigDecimal.ZERO) > 0) {
 
-                    BigDecimal gastadoHistoricoCat = purchaseRepository.
-                            sumarGastosPorCategoriaEnRango(
-                            alumnoId, catId, rango.inicio(), rango.fin()
-                    );
-
-                    BigDecimal proyectadoCat = gastadoHistoricoCat.add(gastoCategoriaEnCarrito);
-
-                    if (proyectadoCat.compareTo(regla.getMontoLimiteCalculado()) > 0) {
-                        BigDecimal disponibleCat = regla.getMontoLimiteCalculado().
-                                subtract(gastadoHistoricoCat);
-                        throw new PresupuestoExcedidoException(
-                                String.format("Límite superado para una categoría restringida. " +
-                                                "Disponible en categoría: $%s",
-                                        disponibleCat.max(BigDecimal.ZERO))
+                        BigDecimal gastadoHistoricoCat = purchaseRepository.
+                                sumarGastosPorCategoriaEnRango(
+                                alumnoId, catId, rango.inicio(), rango.fin()
                         );
+
+                        BigDecimal proyectadoCat = gastadoHistoricoCat.add(gastoCategoriaEnCarrito);
+
+                        if (proyectadoCat.compareTo(regla.getMontoLimiteCalculado()) > 0) {
+                            BigDecimal disponibleCat = regla.getMontoLimiteCalculado().
+                                    subtract(gastadoHistoricoCat);
+                            throw new PresupuestoExcedidoException(
+                                    String.format(
+                                            "Límite superado para una categoría restringida. " +
+                                            "Disponible en categoría: $%s",
+                                            disponibleCat.max(BigDecimal.ZERO))
+                            );
+                        }
                     }
                 }
             }

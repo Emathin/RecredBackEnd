@@ -73,11 +73,13 @@ public class GenerarMenuBuffet {
 
             if (p.getReglasCategoria() != null) {
                 for (ReglaPresupuestoCategoria regla : p.getReglasCategoria()) {
-                    UUID catId = regla.getCategoria().getId();
-                    BigDecimal gastadoCat = purchaseRepository.sumarGastosPorCategoriaEnRango
-                            (alumnoId, catId, rango.inicio(), rango.fin());
-                    presupuestoCategoriaDisponible.put(catId, regla.getMontoLimiteCalculado().
-                            subtract(gastadoCat));
+                    if (regla.isActivo()) {
+                        UUID catId = regla.getCategoria().getId();
+                        BigDecimal gastadoCat = purchaseRepository.sumarGastosPorCategoriaEnRango
+                                (alumnoId, catId, rango.inicio(), rango.fin());
+                        presupuestoCategoriaDisponible.put(catId, regla.getMontoLimiteCalculado().
+                                subtract(gastadoCat));
+                    }
                 }
             }
         }
