@@ -1,27 +1,26 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.Summary;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SummaryRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
-import com.recred.backend.infrastructure.entities.SummaryEntity;
-import com.recred.backend.infrastructure.entities.UsuarioEntity;
-import com.recred.backend.infrastructure.persistence.SpringDataUsuarioRepository;
+import com.recred.backend.infrastructure.gemini.GeminiParentSummaryAnalyzer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class GenerateParentSummaryTest {
@@ -33,24 +32,24 @@ public class GenerateParentSummaryTest {
     @Mock
     private SummaryRepository summaryRepository;
     @Mock
-    private SpringDataUsuarioRepository usuarioRepository;
+    private GeminiParentSummaryAnalyzer geminiParentSummaryAnalyzer;
 
     @InjectMocks
     private GenerateParentSummary generateParentSummary;
 
     @Test
     void testExecute() {
-        UUID tutorId = UUID.randomUUID();
+        UUID usuarioId = UUID.randomUUID();
         Tutor tutor = new Tutor();
         Usuario usuario = new Usuario();
-        usuario.setId(UUID.randomUUID());
+        usuario.setId(usuarioId);
         tutor.setUsuario(usuario);
         
-        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(tutor));
-        when(usuarioRepository.findById(usuario.getId())).thenReturn(Optional.of(new UsuarioEntity()));
+        when(tutorRepository.findByUsuarioId(usuarioId)).thenReturn(Optional.of(tutor));
+        when(summaryRepository.save(any(Summary.class))).thenReturn(new Summary());
         
-        generateParentSummary.execute(tutorId);
+        generateParentSummary.execute(usuarioId, LocalDateTime.now().minusDays(7), LocalDateTime.now());
         
-        verify(summaryRepository, times(1)).save(any(SummaryEntity.class));
+        verify(summaryRepository, times(1)).save(any(Summary.class));
     }
 }
