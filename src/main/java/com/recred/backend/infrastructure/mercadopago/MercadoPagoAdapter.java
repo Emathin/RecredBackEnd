@@ -62,6 +62,7 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
             // Crea la solicitud de preferencia con items y back_urls
             PreferenceRequest preferenceRequest = PreferenceRequest.builder()
                     .items(items)
+                    // .autoReturn("approved")
                     .backUrls(backUrls)
                     .externalReference(studentId.toString())
                     .build();
