@@ -17,6 +17,7 @@ import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.GenerarMenuBuffet;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
+import com.recred.backend.application.GenerateParentSummary;
 import com.recred.backend.application.GeneratePriceAlert;
 import com.recred.backend.application.GenerateProductChangeRecommendation;
 import com.recred.backend.application.GeneratePurchaseRecommendation;
@@ -89,12 +90,14 @@ import com.recred.backend.domain.repositories.StudentAIProfileRepository;
 import com.recred.backend.domain.repositories.StudentConsumptionRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.domain.repositories.SuggestionAiRepository;
+import com.recred.backend.domain.repositories.SummaryRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
+import com.recred.backend.domain.services.ParentSummaryAnalyzer;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import com.recred.backend.domain.services.PurchaseAnalyzer;
 import com.recred.backend.domain.services.PurchaseValidator;
@@ -110,6 +113,7 @@ import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.domain.services.WithdrawalCodeServiceImpl;
+import com.recred.backend.infrastructure.gemini.GeminiParentSummaryAnalyzer;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.gemini.GeminiTextClient;
 import com.recred.backend.infrastructure.gemini.LoadStockIAService;
@@ -122,6 +126,20 @@ import java.time.Clock;
 @Configuration
 public class UseCases {
 
+    @Bean
+    public GenerateParentSummary generateParentSummary(
+            TutorRepository tutorRepository,
+            PurchaseRepository purchaseRepository,
+            SummaryRepository summaryRepository,
+            ParentSummaryAnalyzer parentSummaryAnalyzer) {
+        return new GenerateParentSummary(tutorRepository,
+                purchaseRepository, summaryRepository, parentSummaryAnalyzer);
+    }
+
+    @Bean
+    public ParentSummaryAnalyzer parentSummaryAnalyzer(GeminiTextClient geminiTextClient) {
+        return new GeminiParentSummaryAnalyzer(geminiTextClient);
+    }
 
     @Bean
     public WithdrawalCodeServiceImpl withdrawalCodeServiceImpl() {
@@ -137,6 +155,7 @@ public class UseCases {
         return new PurchaseValidatorImpl(validadorHorarioService,
                 validacionRestriccionesService, validadorPresupuestoService);
     }
+
     @Bean
     public LoadStockIAService loadStockIAService(GeminiTextClient geminiTextClient,
                                                  ObjectMapper objectMapper) {
@@ -670,4 +689,4 @@ public class UseCases {
         return new GetProductsByBuffetUser(
                 productRepository, kiosqueroRepository);
     }
-    }
+}
