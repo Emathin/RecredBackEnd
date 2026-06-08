@@ -158,6 +158,43 @@ class PredictStudentSpendingTest {
     }
 
     @Test
+    void resolveStudentIdFromUserIdWhenStudentIdDoesNotExist() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        when(alumnoRepository.existsById(userId)).thenReturn(false);
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        when(spendingPreferenceRepository.findActivePreferences(any(), any()))
+                .thenReturn(List.of());
+        when(purchaseSpendingRepository.findSpending(any(), anyCollection(), any(), any()))
+                .thenReturn(List.of(), List.of());
+        when(purchaseSpendingRepository.findMostConsumedCategories(
+                any(),
+                anyCollection(),
+                any(),
+                any()
+        ))
+                .thenReturn(List.of());
+        when(spendingPredictionAnalyzer.analyze(any())).thenReturn(Optional.empty());
+
+        SpendingPredictionResult response = predictStudentSpending.execute(
+                userId,
+                BudgetPeriod.MENSUAL
+        );
+
+        assertEquals(studentId, response.spendingPrediction().studentId());
+        verify(spendingPreferenceRepository).findActivePreferences(
+                studentId,
+                LocalDate.of(2026, 5, 21)
+        );
+        verify(purchaseSpendingRepository).findSpending(
+                eq(studentId),
+                anyCollection(),
+                eq(LocalDateTime.parse("2026-05-01T00:00:00")),
+                eq(LocalDateTime.parse("2026-05-21T23:59:59.999999999"))
+        );
+    }
+
+    @Test
     void useMonthlyPeriodWhenNoPreferenceAndNoRequestedPeriod() {
         UUID studentId = UUID.randomUUID();
         when(alumnoRepository.existsById(studentId)).thenReturn(true);

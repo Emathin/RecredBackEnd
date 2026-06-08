@@ -108,12 +108,22 @@ class PurchaseTest {
     }
 
     @Test
-    void changeStatusTo_WhenReadyIsCancelled_ShouldUpdateStatus() {
+    void changeStatusTo_WhenReadyIsCancelled_ShouldThrowException() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.LISTO);
 
-        purchase.changeStatusTo(EstadoCompra.CANCELADO);
+        assertThrows(InvalidPurchaseStatusTransitionException.class,
+                () -> purchase.changeStatusTo(EstadoCompra.CANCELADO));
+    }
 
-        assertEquals(EstadoCompra.CANCELADO, purchase.getStatus());
+    @Test
+    void changeStatusTo_WhenReadyIsNoRetirado_ShouldUpdateStatus() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.LISTO);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+
+        purchase.changeStatusTo(EstadoCompra.NO_RETIRADO);
+
+        assertEquals(EstadoCompra.NO_RETIRADO, purchase.getStatus());
+        assertEquals(EstadoRetiro.NO_RETIRADO, purchase.getWithdrawalStatus());
     }
 
     @Test

@@ -49,7 +49,7 @@ class CancelPresentialPurchaseTest {
         purchase.setId(purchaseId);
         purchase.setStudent(student);
         purchase.setTotalAmount(new BigDecimal("50.00"));
-        purchase.setStatus(EstadoCompra.ENTREGADO);
+        purchase.setStatus(EstadoCompra.PENDIENTE);
 
         wallet = new Billetera();
         wallet.setId(UUID.randomUUID());

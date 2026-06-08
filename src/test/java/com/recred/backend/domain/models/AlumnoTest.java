@@ -92,7 +92,7 @@ class AlumnoTest {
         producto.setId(UUID.randomUUID());
 
         alumno.bloquearProducto(producto);
-        alumno.bloquearProducto(producto); // Intento de duplicado
+        alumno.bloquearProducto(producto);
 
         assertEquals(1, alumno.getProductosBloqueados().size());
     }

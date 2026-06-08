@@ -32,7 +32,10 @@ public class GeminiSchoolAssistantResponder implements SchoolAssistantResponder 
             "No puedo ayudarte con ese tema ahora mismo."
             No ofrezcas hacer pagos, cancelar compras ni modificar datos.
             Responde en espanol rioplatense, claro y breve.
-            La respuesta debe tener como maximo 2 oraciones.
+            La respuesta debe tener como maximo 2 oraciones cuando no use vinetas.
+            No devuelvas listas largas en una sola linea.
+            Si enumeras 3 o mas elementos, usa una linea introductoria y vinetas con "- ".
+            No separes elementos con punto y coma.
             Responde solo JSON valido con esta forma:
             {
               "respuesta": "texto para usuario final"

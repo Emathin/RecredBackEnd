@@ -53,6 +53,10 @@ class GeminiSchoolAssistantResponderTest {
         verify(geminiTextClient).generate(contains(
                 "Si el usuario pregunta otra cosa, responde exactamente:"
         ));
+        verify(geminiTextClient).generate(contains(
+                "Si enumeras 3 o mas elementos, usa una linea introductoria y vinetas con \"- \"."
+        ));
+        verify(geminiTextClient).generate(contains("No separes elementos con punto y coma."));
         verify(geminiTextClient).generate(contains("comprasRecientes=[320.00|ENTREGADO|CREDITOS|"));
     }
 
