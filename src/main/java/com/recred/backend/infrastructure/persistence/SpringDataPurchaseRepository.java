@@ -177,7 +177,7 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             from CompraAnticipadaEntity purchase
             left join purchase.retiroProgramadoEntity retiro
             where purchase.buffetEntity.id = :buffetId
-            and (cast(:fecha as date) is null or retiro.fechaProgramada = :fecha)
+            and (:fecha is null or retiro.fechaProgramada = :fecha)
             and (:estadoRetiro is null or retiro.estado = :estadoRetiro)
             and (:franjaId is null or retiro.franja.id = :franjaId)
             and (:search is null or :search = '' 
