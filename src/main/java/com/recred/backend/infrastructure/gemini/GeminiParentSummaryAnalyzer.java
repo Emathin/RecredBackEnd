@@ -1,9 +1,10 @@
 package com.recred.backend.infrastructure.gemini;
 
+import com.recred.backend.domain.services.ParentSummaryAnalyzer;
 import org.springframework.stereotype.Component;
 
 @Component
-public class GeminiParentSummaryAnalyzer {
+public class GeminiParentSummaryAnalyzer implements ParentSummaryAnalyzer {
 
     private final GeminiTextClient geminiTextClient;
 

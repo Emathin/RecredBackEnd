@@ -32,7 +32,6 @@ public interface SpringDataTutorRepository extends
             "hijos.billeteraEntity"
     })
     Optional<TutorEntity> findById(UUID id);
-// ...
 
     @EntityGraph(attributePaths = {
             "hijos",

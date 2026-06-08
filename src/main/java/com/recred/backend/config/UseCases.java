@@ -97,6 +97,7 @@ import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
+import com.recred.backend.domain.services.ParentSummaryAnalyzer;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import com.recred.backend.domain.services.PurchaseAnalyzer;
 import com.recred.backend.domain.services.PurchaseValidator;
@@ -130,14 +131,13 @@ public class UseCases {
             TutorRepository tutorRepository,
             PurchaseRepository purchaseRepository,
             SummaryRepository summaryRepository,
-            GeminiParentSummaryAnalyzer geminiParentSummaryAnalyzer) {
+            ParentSummaryAnalyzer parentSummaryAnalyzer) {
         return new GenerateParentSummary(tutorRepository,
-                purchaseRepository, summaryRepository, geminiParentSummaryAnalyzer);
+                purchaseRepository, summaryRepository, parentSummaryAnalyzer);
     }
 
     @Bean
-    public GeminiParentSummaryAnalyzer geminiParentSummaryAnalyzer(
-            GeminiTextClient geminiTextClient) {
+    public ParentSummaryAnalyzer parentSummaryAnalyzer(GeminiTextClient geminiTextClient) {
         return new GeminiParentSummaryAnalyzer(geminiTextClient);
     }
 
