@@ -15,6 +15,7 @@ import java.util.UUID;
 public interface PurchaseRepository {
 
     List<Purchase> findHistorialByAlumno(UUID alumnoId);
+    List<Purchase> findByAlumnoAndDateRange(UUID alumnoId, LocalDateTime start, LocalDateTime end);
     List<Purchase> findHistorialByTutor(UUID tutorId);
 
     Purchase save(Purchase purchase);

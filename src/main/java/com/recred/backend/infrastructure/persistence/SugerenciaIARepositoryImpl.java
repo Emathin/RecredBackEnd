@@ -144,6 +144,22 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
     }
 
     @Override
+    public List<SugerenciaIAEntity> findPendingParentNotificationsByAlumnoId(
+            UUID alumnoId,
+            TipoSugerenciaIA tipo
+    ) {
+        return springDataRepository.findPendingParentNotificationsByAlumnoId(alumnoId, tipo);
+    }
+
+    @Override
+    public List<SugerenciaIAEntity> findPendingStudentNotificationsByAlumnoId(
+            UUID alumnoId,
+            TipoSugerenciaIA tipo
+    ) {
+        return springDataRepository.findPendingStudentNotificationsByAlumnoId(alumnoId, tipo);
+    }
+
+    @Override
     public List<UUID> findProductIdsByAlumnoIdAndTipo(UUID alumnoId, TipoSugerenciaIA tipo) {
         return findByAlumnoIdAndTipo(alumnoId, tipo).stream()
                 .map(this::suggestedProductId)

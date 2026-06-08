@@ -110,6 +110,7 @@ public class AskSchoolAssistant {
     private final PurchaseRepository purchaseRepository;
     private final PresupuestoRepository presupuestoRepository;
     private final SchoolAssistantFixedTopics fixedTopics;
+    private final SchoolAssistantAnswerFormatter answerFormatter;
     private final Clock clock;
 
     public AskSchoolAssistant(
@@ -145,6 +146,7 @@ public class AskSchoolAssistant {
         this.purchaseRepository = purchaseRepository;
         this.presupuestoRepository = presupuestoRepository;
         this.fixedTopics = fixedTopics;
+        this.answerFormatter = new SchoolAssistantAnswerFormatter();
         this.clock = clock;
     }
 
@@ -188,9 +190,10 @@ public class AskSchoolAssistant {
                 context,
                 recentMessages
         );
-        SchoolAssistantAnswer answer = fixedReply
+        SchoolAssistantAnswer rawAnswer = fixedReply
                 .map(reply -> fixedAnswer(session, reply, context, now))
                 .orElseGet(() -> aiAnswer(session, message, context, recentMessages, now));
+        SchoolAssistantAnswer answer = formattedAnswer(rawAnswer);
 
         saveUserMessage(session, message, context.capabilities(), now);
         saveAssistantMessage(
@@ -201,6 +204,25 @@ public class AskSchoolAssistant {
         chatSessionRepository.updateLastActivity(session.id(), now);
 
         return answer;
+    }
+
+    private SchoolAssistantAnswer formattedAnswer(SchoolAssistantAnswer answer) {
+        String formattedAnswer = answerFormatter.format(answer.answer());
+        return formattedAnswer.equals(answer.answer())
+                ? answer
+                : new SchoolAssistantAnswer(
+                        answer.sessionId(),
+                        formattedAnswer,
+                        answer.capabilities(),
+                        answer.dateTime(),
+                        answer.generatedByAi(),
+                        answer.model(),
+                        answer.role(),
+                        answer.intent(),
+                        answer.action(),
+                        answer.suggestions(),
+                        answer.data()
+                );
     }
 
     private SchoolAssistantAnswer aiAnswer(

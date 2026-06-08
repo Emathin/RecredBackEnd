@@ -29,6 +29,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +45,7 @@ public class SchoolAssistantFixedTopics {
 
     private static final int RECENT_PURCHASES_TO_SHOW = 3;
     private static final int FREQUENT_PURCHASES_TO_SHOW = 3;
+    private static final int TEXT_LIST_ITEMS_TO_SHOW = 8;
     private static final int PURCHASE_PATTERN_LOOKBACK = 30;
     private static final int MIN_FREQUENT_PURCHASE_OCCURRENCES = 2;
     private static final String INTENT_KEY = "intencionChatbot";
@@ -55,6 +57,21 @@ public class SchoolAssistantFixedTopics {
     private static final String ACTION_STATUS_CANCELLED = "CANCELADA";
     private static final String ACTION_STATUS_FAILED = "FALLIDA";
     private static final String PRODUCT_WITHOUT_NAME = "Producto";
+    private static final String GENERIC_PURCHASE_FAILURE_MESSAGE =
+            "No pude realizar la compra. Intentalo de nuevo mas tarde.";
+    private static final Map<Class<? extends RuntimeException>, String> PURCHASE_FAILURE_MESSAGES =
+            Map.of(
+                    InsufficientBalanceException.class,
+                    "No pude realizar la compra porque el alumno no tiene saldo suficiente.",
+                    PickupTimeSlotNotFoundException.class,
+                    "No pude realizar la compra porque no hay una franja horaria disponible.",
+                    PresupuestoExcedidoException.class,
+                    "No pude realizar la compra porque supera el presupuesto configurado.",
+                    RestriccionHorariaException.class,
+                    "No pude realizar la compra porque hay una restriccion horaria activa.",
+                    RestriccionSaludException.class,
+                    "No pude realizar la compra porque incluye un producto restringido."
+            );
     private static final Pattern DIACRITICS = Pattern.compile("\\p{M}+");
     private static final DateTimeFormatter DATE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -144,13 +161,13 @@ public class SchoolAssistantFixedTopics {
                     context,
                     SchoolAssistantIntent.BUDGETS,
                     SchoolAssistantActionType.CONSULTA_PRESUPUESTOS,
-                    "Presupuestos detectados"
+                    "Presupuestos"
             ));
             case RESTRICTIONS -> tutorOnly(context, tutorFactsReply(
                     context,
                     SchoolAssistantIntent.RESTRICTIONS,
                     SchoolAssistantActionType.CONSULTA_RESTRICCIONES,
-                    "Restricciones detectadas"
+                    "Restricciones"
             ));
             default -> Optional.empty();
         };
@@ -192,7 +209,7 @@ public class SchoolAssistantFixedTopics {
         return purchases.isEmpty()
                 ? reply("No hay pedidos pendientes en el buffet.",
                         SchoolAssistantIntent.PENDING_ORDERS, action, context.role())
-                : reply("Pedidos pendientes: " + purchaseList(purchases) + ".",
+                : reply("Pedidos pendientes:\n" + purchaseList(purchases),
                         SchoolAssistantIntent.PENDING_ORDERS, action, context.role());
     }
 
@@ -208,7 +225,8 @@ public class SchoolAssistantFixedTopics {
         return products.isEmpty()
                 ? reply("No encontre productos activos con stock.",
                         SchoolAssistantIntent.STOCK, action, context.role())
-                : reply("Stock actual: " + productsList(products) + ".",
+                : reply("Stock actual (" + countText(products.size(), "producto", "productos")
+                        + "):\n" + productsList(products),
                         SchoolAssistantIntent.STOCK, action, context.role());
     }
 
@@ -221,10 +239,14 @@ public class SchoolAssistantFixedTopics {
                 data
         );
 
+        List<String> visibleChildren = tutorChildren(children).stream()
+                .map(this::childSummary)
+                .toList();
+
         return children.isEmpty()
                 ? reply("No encontre hijos asociados al tutor.",
                         SchoolAssistantIntent.CHILDREN, action, context.role())
-                : reply("Hijos asociados: " + String.join("; ", children) + ".",
+                : reply("Hijos asociados:\n" + formattedItems(visibleChildren),
                         SchoolAssistantIntent.CHILDREN, action, context.role());
     }
 
@@ -239,10 +261,12 @@ public class SchoolAssistantFixedTopics {
         data.put("hijos", children);
         SchoolAssistantAction action = informativeAction(actionType, data);
 
+        List<String> visibleChildren = tutorFacts(intent, children);
+
         return children.isEmpty()
                 ? reply("No encontre datos de hijos asociados al tutor.", intent, action,
                         context.role())
-                : reply(prefix + ": " + String.join("; ", children) + ".", intent, action,
+                : reply(prefix + ":\n" + formattedItems(visibleChildren), intent, action,
                         context.role());
     }
 
@@ -274,7 +298,7 @@ public class SchoolAssistantFixedTopics {
                         informativeAction(SchoolAssistantActionType.CONSULTA_COMPRAS, data)
                 )
                 : reply(
-                        "Tus ultimas compras son: " + purchaseList(purchases) + ".",
+                        "Tus ultimas compras:\n" + purchaseList(purchases),
                         SchoolAssistantIntent.RECENT_PURCHASES,
                         informativeAction(SchoolAssistantActionType.CONSULTA_COMPRAS, data)
                 );
@@ -298,7 +322,7 @@ public class SchoolAssistantFixedTopics {
                         )
                 )
                 : reply(
-                        "Tus compras frecuentes son: " + patternList(patterns) + ".",
+                        "Tus compras frecuentes:\n" + patternList(patterns),
                         SchoolAssistantIntent.FREQUENT_PURCHASES,
                         informativeAction(
                                 SchoolAssistantActionType.CONSULTA_COMPRAS_FRECUENTES,
@@ -319,7 +343,7 @@ public class SchoolAssistantFixedTopics {
         return events.isEmpty()
                 ? reply("No encontre eventos escolares proximos.", SchoolAssistantIntent.EVENTS,
                         action, context.role())
-                : reply("Eventos proximos: " + eventsList(events) + ".",
+                : reply("Eventos proximos:\n" + eventsList(events),
                         SchoolAssistantIntent.EVENTS, action, context.role());
     }
 
@@ -346,7 +370,9 @@ public class SchoolAssistantFixedTopics {
         return products.isEmpty()
                 ? reply("No encontre productos disponibles para ese buffet.",
                         SchoolAssistantIntent.MENU, action)
-                : reply("Productos disponibles: " + productsList(products) + ".",
+                : reply("Productos disponibles ("
+                        + countText(products.size(), "producto", "productos")
+                        + "):\n" + productsList(products),
                         SchoolAssistantIntent.MENU, action);
     }
 
@@ -364,7 +390,7 @@ public class SchoolAssistantFixedTopics {
         return purchases.isEmpty()
                 ? reply("No tenes pedidos pendientes.", SchoolAssistantIntent.PENDING_ORDERS,
                         action)
-                : reply("Tus pedidos pendientes son: " + purchaseList(purchases) + ".",
+                : reply("Tus pedidos pendientes:\n" + purchaseList(purchases),
                         SchoolAssistantIntent.PENDING_ORDERS, action);
     }
 
@@ -517,8 +543,15 @@ public class SchoolAssistantFixedTopics {
                  | PresupuestoExcedidoException
                  | RestriccionHorariaException
                  | RestriccionSaludException exception) {
-            return failedPurchaseReply("No pude realizar la compra: " + exception.getMessage());
+            return failedPurchaseReply(purchaseFailureMessage(exception));
         }
+    }
+
+    private String purchaseFailureMessage(RuntimeException exception) {
+        return PURCHASE_FAILURE_MESSAGES.getOrDefault(
+                exception.getClass(),
+                GENERIC_PURCHASE_FAILURE_MESSAGE
+        );
     }
 
     private SchoolAssistantFixedReply withSelectedRecessReply(
@@ -1643,16 +1676,183 @@ public class SchoolAssistantFixedTopics {
                 .toList();
     }
 
+    private List<TutorChildFact> tutorChildren(List<String> children) {
+        return children.stream()
+                .map(this::tutorChild)
+                .toList();
+    }
+
+    private List<String> tutorFacts(SchoolAssistantIntent intent, List<String> children) {
+        return switch (intent) {
+            case BUDGETS -> tutorChildren(children).stream()
+                    .map(this::budgetSummary)
+                    .toList();
+            case RESTRICTIONS -> tutorChildren(children).stream()
+                    .map(this::restrictionSummary)
+                    .toList();
+            default -> tutorChildren(children).stream()
+                    .map(this::childSummary)
+                    .toList();
+        };
+    }
+
+    private TutorChildFact tutorChild(String fact) {
+        List<String> parts = Arrays.stream(fact.split("\\|"))
+                .map(String::trim)
+                .filter(part -> !part.isBlank())
+                .toList();
+        Map<String, String> values = new LinkedHashMap<>();
+        parts.stream()
+                .skip(1)
+                .map(this::factEntry)
+                .flatMap(Optional::stream)
+                .forEach(entry -> values.put(entry.key(), entry.value()));
+        String name = parts.isEmpty() ? "Alumno" : parts.get(0);
+        return new TutorChildFact(name, values);
+    }
+
+    private Optional<FactEntry> factEntry(String part) {
+        int separator = part.indexOf('=');
+        return separator <= 0
+                ? Optional.empty()
+                : Optional.of(new FactEntry(
+                        part.substring(0, separator),
+                        part.substring(separator + 1)
+                ));
+    }
+
+    private String childSummary(TutorChildFact child) {
+        return child.name()
+                + gradeText(child.value("grado"))
+                + ". Saldo: "
+                + amountText(child.value("saldo"))
+                + ". Presupuesto: "
+                + shortBudgetText(child.value("presupuesto"))
+                + ".";
+    }
+
+    private String budgetSummary(TutorChildFact child) {
+        return child.name()
+                + ": "
+                + budgetText(child.value("presupuesto"))
+                + ". Saldo: "
+                + amountText(child.value("saldo"))
+                + ".";
+    }
+
+    private String restrictionSummary(TutorChildFact child) {
+        List<String> healthRestrictions = listText(child.value("restriccionesSalud"));
+        List<String> blockedProducts = listText(child.value("productosBloqueados"));
+
+        return healthRestrictions.isEmpty() && blockedProducts.isEmpty()
+                ? child.name() + ": sin restricciones registradas."
+                : child.name() + ": " + restrictionDetails(
+                        healthRestrictions,
+                        blockedProducts
+                ) + ".";
+    }
+
+    private String restrictionDetails(
+            List<String> healthRestrictions,
+            List<String> blockedProducts
+    ) {
+        return List.of(
+                        restrictionsDetail("Salud", healthRestrictions),
+                        restrictionsDetail("Productos bloqueados", blockedProducts)
+                )
+                .stream()
+                .filter(detail -> !detail.isBlank())
+                .collect(Collectors.joining(". "));
+    }
+
+    private String restrictionsDetail(String label, List<String> values) {
+        return values.isEmpty() ? "" : label + ": " + String.join(", ", values);
+    }
+
+    private String gradeText(String grade) {
+        return hasValue(grade) ? " - " + grade : "";
+    }
+
+    private String budgetText(String budget) {
+        return hasNoBudget(budget) ? "sin presupuesto activo" : activeBudgetText(budget);
+    }
+
+    private String activeBudgetText(String budget) {
+        Map<String, String> values = commaSeparatedValues(budget);
+        String amount = values.get("monto");
+        String period = values.get("periodo");
+        String date = values.get("fechaInicio");
+
+        return hasValue(amount)
+                ? "Limite" + periodText(period) + ": " + amountText(amount) + dateText(date)
+                : "Limite: " + amountText(budget);
+    }
+
+    private String shortBudgetText(String budget) {
+        return hasNoBudget(budget) ? "sin presupuesto activo" : budgetText(budget);
+    }
+
+    private String periodText(String period) {
+        return hasValue(period) ? " " + period.toLowerCase(Locale.ROOT) : "";
+    }
+
+    private String dateText(String date) {
+        return hasValue(date) ? ". Desde: " + date : "";
+    }
+
+    private boolean hasNoBudget(String budget) {
+        return !hasValue(budget) || "sin_presupuesto".equals(budget);
+    }
+
+    private Map<String, String> commaSeparatedValues(String value) {
+        Map<String, String> values = new LinkedHashMap<>();
+        Arrays.stream(value.split(","))
+                .map(String::trim)
+                .map(this::factEntry)
+                .flatMap(Optional::stream)
+                .forEach(entry -> values.put(entry.key(), entry.value()));
+        return values;
+    }
+
+    private List<String> listText(String value) {
+        return !hasValue(value) || "[]".equals(value)
+                ? List.of()
+                : splitListText(value);
+    }
+
+    private List<String> splitListText(String value) {
+        String cleanValue = value.trim();
+        String withoutBrackets = cleanValue.startsWith("[") && cleanValue.endsWith("]")
+                ? cleanValue.substring(1, cleanValue.length() - 1)
+                : cleanValue;
+        return Arrays.stream(withoutBrackets.split(","))
+                .map(String::trim)
+                .filter(this::hasValue)
+                .toList();
+    }
+
+    private String amountText(String amount) {
+        try {
+            return money(new BigDecimal(amount));
+        } catch (NumberFormatException exception) {
+            return hasValue(amount) ? amount : "sin datos";
+        }
+    }
+
+    private boolean hasValue(String value) {
+        return value != null && !value.isBlank() && !"sin_datos".equals(value);
+    }
+
     private String purchaseList(List<Purchase> purchases) {
-        return purchases.stream()
+        return formattedItems(purchases.stream()
                 .map(this::purchaseSummary)
-                .collect(Collectors.joining("; "));
+                .toList());
     }
 
     private String productsList(List<Producto> products) {
-        return products.stream()
+        return formattedItems(products.stream()
                 .map(this::productSummary)
-                .collect(Collectors.joining("; "));
+                .toList());
     }
 
     private String productSummary(Producto product) {
@@ -1665,9 +1865,9 @@ public class SchoolAssistantFixedTopics {
     }
 
     private String eventsList(List<SchoolCalendarEvent> events) {
-        return events.stream()
+        return formattedItems(events.stream()
                 .map(this::eventSummary)
-                .collect(Collectors.joining("; "));
+                .toList());
     }
 
     private String eventSummary(SchoolCalendarEvent event) {
@@ -1691,9 +1891,29 @@ public class SchoolAssistantFixedTopics {
     }
 
     private String patternList(List<PurchasePattern> patterns) {
-        return patterns.stream()
+        return formattedItems(patterns.stream()
                 .map(this::patternSummary)
-                .collect(Collectors.joining("; "));
+                .toList());
+    }
+
+    private String formattedItems(List<String> items) {
+        List<String> visibleItems = items.stream()
+                .limit(TEXT_LIST_ITEMS_TO_SHOW)
+                .toList();
+        String bullets = visibleItems.stream()
+                .map(item -> "- " + item)
+                .collect(Collectors.joining("\n"));
+        return bullets + remainingItemsText(items.size(), visibleItems.size());
+    }
+
+    private String remainingItemsText(int totalItems, int visibleItems) {
+        return totalItems > visibleItems
+                ? "\nY " + (totalItems - visibleItems) + " mas en el detalle."
+                : "";
+    }
+
+    private String countText(int count, String singular, String plural) {
+        return count + " " + (count == 1 ? singular : plural);
     }
 
     private String patternSummary(PurchasePattern pattern) {
@@ -1800,6 +2020,21 @@ public class SchoolAssistantFixedTopics {
             int quantity,
             UUID buffetId
     ) {
+    }
+
+    private record FactEntry(
+            String key,
+            String value
+    ) {
+    }
+
+    private record TutorChildFact(
+            String name,
+            Map<String, String> values
+    ) {
+        private String value(String key) {
+            return values.getOrDefault(key, "");
+        }
     }
 
     private record PurchasePlanItem(

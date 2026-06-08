@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.MedioPago;
@@ -35,6 +36,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -235,6 +237,42 @@ class SchoolAssistantFixedTopicsTest {
     }
 
     @Test
+    void confirmsPendingAdvancePurchaseWithInsufficientBalanceShowsFriendlyMessage() {
+        Producto product = product("Yogur", new BigDecimal("900.00"));
+        String technicalMessage = "Insufficient balance for student: " + studentId;
+
+        when(productRepository.findActiveById(product.getId())).thenReturn(Optional.of(product));
+        when(createAssistantAdvancePurchase.execute(
+                eq(studentId),
+                eq(buffetId),
+                argThat(cart -> cart.containsValue(1)),
+                eq(RecessTime.FIRST_RECESS),
+                eq(LocalDate.of(2026, 5, 27))
+        )).thenThrow(new InsufficientBalanceException(technicalMessage));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "confirmar",
+                studentContext(new BigDecimal("5000.00")),
+                List.of(assistantMessage(pendingMetadata(
+                        product.getId(),
+                        1,
+                        RecessTime.FIRST_RECESS
+                )))
+        );
+
+        assertTrue(reply.isPresent());
+        SchoolAssistantFixedReply answer = reply.orElseThrow();
+        assertEquals(
+                "No pude realizar la compra porque el alumno no tiene saldo suficiente.",
+                answer.answer()
+        );
+        assertFalse(answer.answer().contains(studentId.toString()));
+        assertFalse(answer.answer().contains("Insufficient balance"));
+        assertEquals("FALLIDA", answer.metadata().get("estadoAccionChatbot"));
+        assertEquals(SchoolAssistantActionStatus.FALLIDA, answer.action().status());
+    }
+
+    @Test
     void createsPendingActionForUsualPurchasePattern() {
         Producto product = product("Barrita", new BigDecimal("650.00"));
         Purchase firstPurchase = purchase(product, 1, NOW.minusDays(1));
@@ -324,6 +362,37 @@ class SchoolAssistantFixedTopicsTest {
     }
 
     @Test
+    void formatsLongStockAnswerAsReadablePreview() {
+        List<Producto> products = List.of(
+                product("Producto 1", new BigDecimal("100.00"), 10),
+                product("Producto 2", new BigDecimal("200.00"), 20),
+                product("Producto 3", new BigDecimal("300.00"), 30),
+                product("Producto 4", new BigDecimal("400.00"), 40),
+                product("Producto 5", new BigDecimal("500.00"), 50),
+                product("Producto 6", new BigDecimal("600.00"), 60),
+                product("Producto 7", new BigDecimal("700.00"), 70),
+                product("Producto 8", new BigDecimal("800.00"), 80),
+                product("Producto 9", new BigDecimal("900.00"), 90)
+        );
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(products);
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "ver stock",
+                kiosqueroContext(),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        SchoolAssistantFixedReply answer = reply.orElseThrow();
+        assertTrue(answer.answer().contains("Stock actual (9 productos):\n- Producto 1"));
+        assertTrue(answer.answer().contains("\n- Producto 8"));
+        assertTrue(answer.answer().contains("Y 1 mas en el detalle."));
+        assertFalse(answer.answer().contains("Producto 9 por"));
+        List<?> dataProducts = (List<?>) answer.action().data().get("productos");
+        assertEquals(9, dataProducts.size());
+    }
+
+    @Test
     void kiosqueroQuickPurchaseForbiddenDoesNotSuggestStudentQuickPurchase() {
         Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
                 "comprame lo de siempre",
@@ -355,6 +424,12 @@ class SchoolAssistantFixedTopicsTest {
         assertEquals(SchoolAssistantIntent.BUDGETS, answer.intent());
         assertEquals(SchoolAssistantActionType.CONSULTA_PRESUPUESTOS,
                 answer.action().type());
+        assertTrue(answer.answer().contains(
+                "Presupuestos:\n- Mateo Perez: Limite mensual: $2000.00. "
+                        + "Desde: 2026-06-07. Saldo: $900.00."
+        ));
+        assertFalse(answer.answer().contains("|id="));
+        assertFalse(answer.answer().contains("presupuesto=monto"));
         assertTrue(answer.suggestions().stream()
                 .noneMatch(suggestion -> suggestion.actionType()
                         == SchoolAssistantActionType.COMPRA_ANTICIPADA));
@@ -373,6 +448,12 @@ class SchoolAssistantFixedTopicsTest {
         assertEquals(SchoolAssistantIntent.RESTRICTIONS, answer.intent());
         assertEquals(SchoolAssistantActionType.CONSULTA_RESTRICCIONES,
                 answer.action().type());
+        assertTrue(answer.answer().contains(
+                "Restricciones:\n- Mateo Perez: Salud: Sin TACC. "
+                        + "Productos bloqueados: Gaseosa."
+        ));
+        assertFalse(answer.answer().contains("|productosBloqueados="));
+        assertFalse(answer.answer().contains("restriccionesSalud="));
         assertTrue(answer.suggestions().stream()
                 .noneMatch(suggestion -> suggestion.actionType()
                         == SchoolAssistantActionType.COMPRA_ANTICIPADA));
@@ -387,10 +468,15 @@ class SchoolAssistantFixedTopicsTest {
         );
 
         assertTrue(reply.isPresent());
-        assertTrue(reply.orElseThrow().answer().contains("Mateo Perez"));
-        assertEquals(SchoolAssistantIntent.CHILDREN, reply.orElseThrow().intent());
+        SchoolAssistantFixedReply answer = reply.orElseThrow();
+        assertTrue(answer.answer().contains(
+                "Hijos asociados:\n- Mateo Perez - 2do B. Saldo: $900.00. "
+                        + "Presupuesto: Limite mensual: $2000.00. Desde: 2026-06-07."
+        ));
+        assertFalse(answer.answer().contains("|saldo="));
+        assertEquals(SchoolAssistantIntent.CHILDREN, answer.intent());
         assertEquals(SchoolAssistantActionType.CONSULTA_HIJOS,
-                reply.orElseThrow().action().type());
+                answer.action().type());
     }
 
     private SchoolAssistantContext studentContext(BigDecimal balance) {
@@ -439,7 +525,12 @@ class SchoolAssistantFixedTopicsTest {
                 SchoolAssistantRole.TUTOR,
                 UUID.randomUUID(),
                 null,
-                List.of("hijo=Mateo Perez|saldo=900.00|presupuesto=2000"),
+                List.of("hijo=Mateo Perez|id=11111111-1111-1111-1111-111111111111"
+                        + "|saldo=900.00|grado=2do B"
+                        + "|presupuesto=monto=2000.00,periodo=MENSUAL,"
+                        + "fechaInicio=2026-06-07"
+                        + "|restriccionesSalud=[Sin TACC]"
+                        + "|productosBloqueados=[Gaseosa]"),
                 List.of()
         );
     }
@@ -450,6 +541,12 @@ class SchoolAssistantFixedTopicsTest {
         product.setNombre(name);
         product.setPrecio(price);
         product.setRequierePreparacion(false);
+        return product;
+    }
+
+    private Producto product(String name, BigDecimal price, int stock) {
+        Producto product = product(name, price);
+        product.setStockActual(stock);
         return product;
     }
 
