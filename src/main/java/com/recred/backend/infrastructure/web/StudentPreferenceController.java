@@ -4,6 +4,7 @@ import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetFavoritosByAlumno;
 import com.recred.backend.application.GetStudentPreferences;
+import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
 import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
@@ -22,10 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping({
-        "/api/v1/alumnos/{alumnoId}/preferencias",
-        "/api/v1/usuarios/{userId}/preferencias"
-})
+@RequestMapping("/api/v1/usuarios/{userId}/preferencias")
 public class StudentPreferenceController {
 
     private final DetectStudentPreferences detectStudentPreferences;
@@ -55,11 +53,10 @@ public class StudentPreferenceController {
 
     @PostMapping("/detectar")
     public ResponseEntity<StudentPreferenceResponse> detect(
-            @PathVariable(required = false) UUID alumnoId,
-            @PathVariable(required = false) UUID userId,
+            @PathVariable UUID userId,
             @RequestParam("buffetId") UUID buffetId
     ) {
-        UUID resolvedAlumnoId = resolveAlumnoId(alumnoId, userId);
+        UUID resolvedAlumnoId = resolveAlumnoId(userId);
         return detectStudentPreferences.execute(resolvedAlumnoId, buffetId)
                 .map(StudentPreferenceResponse::fromDomain)
                 .map(ResponseEntity::ok)
@@ -68,21 +65,30 @@ public class StudentPreferenceController {
 
     @GetMapping
     public ResponseEntity<List<StudentPreferenceResponse>> getPreferences(
-            @PathVariable(required = false) UUID alumnoId,
-            @PathVariable(required = false) UUID userId,
+            @PathVariable UUID userId,
             @RequestParam(name = "ultima", required = false, defaultValue = "false") boolean ultima,
             @RequestParam(name = "tipo", required = false) TipoSugerenciaIA tipo
     ) {
-        UUID resolvedAlumnoId = resolveAlumnoId(alumnoId, userId);
-        List<StudentPreferenceResponse> preferences = getStudentPreferences
-                .execute(resolvedAlumnoId, ultima, tipo)
-                .stream()
-                .map(StudentPreferenceResponse::fromEntity)
-                .toList();
+        List<StudentPreferenceResponse> preferences =
+                getStudentPreferences.executeByUserId(userId, ultima, tipo)
+                        .stream()
+                        .map(this::toResponse)
+                        .toList();
 
         return preferences.isEmpty()
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.ok(preferences);
+    }
+
+    private StudentPreferenceResponse toResponse(StudentPreferenceResult result) {
+        if (result.parentView()) {
+            return StudentPreferenceResponse.fromParentView(
+                    result.suggestion(),
+                    result.child());
+        }
+        return StudentPreferenceResponse.fromStudentView(
+                result.suggestion(),
+                result.child());
     }
 
     @PatchMapping("/{sugerenciaId}/responder")
@@ -96,32 +102,29 @@ public class StudentPreferenceController {
 
     @PostMapping("/favoritos/{productoId}")
     public ResponseEntity<Void> agregarFavorito(
-            @PathVariable(required = false) UUID alumnoId,
-            @PathVariable(required = false) UUID userId,
+            @PathVariable UUID userId,
             @PathVariable UUID productoId
     ) {
-        UUID resolvedAlumnoId = resolveAlumnoId(alumnoId, userId);
+        UUID resolvedAlumnoId = resolveAlumnoId(userId);
         agregarProductoFavorito.execute(resolvedAlumnoId, productoId);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/favoritos/{productoId}")
     public ResponseEntity<Void> removerFavorito(
-            @PathVariable(required = false) UUID alumnoId,
-            @PathVariable(required = false) UUID userId,
+            @PathVariable UUID userId,
             @PathVariable UUID productoId
     ) {
-        UUID resolvedAlumnoId = resolveAlumnoId(alumnoId, userId);
+        UUID resolvedAlumnoId = resolveAlumnoId(userId);
         removerProductoFavorito.execute(resolvedAlumnoId, productoId);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/favoritos")
     public ResponseEntity<List<ProductResponseDTO>> obtenerFavoritos(
-            @PathVariable(required = false) UUID alumnoId,
-            @PathVariable(required = false) UUID userId
+            @PathVariable UUID userId
     ) {
-        UUID resolvedAlumnoId = resolveAlumnoId(alumnoId, userId);
+        UUID resolvedAlumnoId = resolveAlumnoId(userId);
         List<ProductResponseDTO> favoritos = getFavoritosByAlumno.execute(resolvedAlumnoId)
                 .stream()
                 .map(ProductResponseDTO::fromDomain)
@@ -129,15 +132,9 @@ public class StudentPreferenceController {
         return ResponseEntity.ok(favoritos);
     }
 
-    private UUID resolveAlumnoId(UUID alumnoId, UUID userId) {
-        if (alumnoId != null) {
-            return alumnoId;
-        }
-        if (userId != null) {
-            return alumnoRepository.findStudentIdByUserId(userId)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "No existe un alumno asociado al usuario: " + userId));
-        }
-        throw new IllegalArgumentException("Debe indicar alumnoId o userId");
+    private UUID resolveAlumnoId(UUID userId) {
+        return alumnoRepository.findStudentIdByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No existe un alumno asociado al usuario: " + userId));
     }
 }

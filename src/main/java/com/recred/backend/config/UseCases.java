@@ -507,8 +507,13 @@ public class UseCases {
 
     @Bean
     public GetStudentPreferences obtenerPreferenciasAlumno(
-            SugerenciaIARepository sugerenciaIARepository) {
-        return new GetStudentPreferences(sugerenciaIARepository);
+            SugerenciaIARepository sugerenciaIARepository,
+            AlumnoRepository alumnoRepository,
+            TutorRepository tutorRepository) {
+        return new GetStudentPreferences(
+                sugerenciaIARepository,
+                alumnoRepository,
+                tutorRepository);
     }
 
     @Bean

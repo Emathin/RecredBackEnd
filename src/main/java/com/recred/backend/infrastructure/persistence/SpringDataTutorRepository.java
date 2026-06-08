@@ -53,4 +53,5 @@ public interface SpringDataTutorRepository extends
             "hijos.billeteraEntity"
     })
     Optional<TutorEntity> findByUsuarioIdCognito(String idCognito);
+
 }

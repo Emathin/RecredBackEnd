@@ -31,16 +31,16 @@ public class TutorRepositoryImpl implements TutorRepository {
     }
 
     @Override
+    public Optional<Tutor> findByUsuarioId(UUID userId) {
+        return springDataTutorRepository.findByUsuarioId(userId)
+                .map(TutorEntity::toDomain);
+    }
+
+    @Override
     public List<Tutor> findAll() {
         return springDataTutorRepository.findAll()
                 .stream()
                 .map(TutorEntity::toDomain)
                 .toList();
-    }
-
-    @Override
-    public Optional<Tutor> findByUsuarioId(UUID usuarioId) {
-        return springDataTutorRepository.findByUsuarioId(usuarioId)
-                .map(TutorEntity::toDomain);
     }
 }
