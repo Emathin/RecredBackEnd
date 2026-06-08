@@ -10,7 +10,6 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RecessTime;
-import com.recred.backend.domain.models.RolChatMensaje;
 import com.recred.backend.domain.models.SchoolAssistantAction;
 import com.recred.backend.domain.models.SchoolAssistantActionStatus;
 import com.recred.backend.domain.models.SchoolAssistantActionType;
@@ -18,37 +17,27 @@ import com.recred.backend.domain.models.SchoolAssistantContext;
 import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolAssistantRequiredInput;
 import com.recred.backend.domain.models.SchoolAssistantRole;
-import com.recred.backend.domain.models.SchoolAssistantSuggestion;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.text.Normalizer;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class SchoolAssistantFixedTopics {
 
     private static final int RECENT_PURCHASES_TO_SHOW = 3;
     private static final int FREQUENT_PURCHASES_TO_SHOW = 3;
-    private static final int TEXT_LIST_ITEMS_TO_SHOW = 8;
     private static final int PURCHASE_PATTERN_LOOKBACK = 30;
     private static final int MIN_FREQUENT_PURCHASE_OCCURRENCES = 2;
-    private static final String INTENT_KEY = "intencionChatbot";
     private static final String ACTION_STATUS_KEY = "estadoAccionChatbot";
     private static final String PENDING_ACTION_KEY = "accionPendienteChatbot";
     private static final String ACTION_TYPE_QUICK_PURCHASE = "COMPRA_RAPIDA";
@@ -56,30 +45,19 @@ public class SchoolAssistantFixedTopics {
     private static final String ACTION_STATUS_EXECUTED = "EJECUTADA";
     private static final String ACTION_STATUS_CANCELLED = "CANCELADA";
     private static final String ACTION_STATUS_FAILED = "FALLIDA";
-    private static final String PRODUCT_WITHOUT_NAME = "Producto";
-    private static final String GENERIC_PURCHASE_FAILURE_MESSAGE =
-            "No pude realizar la compra. Intentalo de nuevo mas tarde.";
-    private static final Map<Class<? extends RuntimeException>, String> PURCHASE_FAILURE_MESSAGES =
-            Map.of(
-                    InsufficientBalanceException.class,
-                    "No pude realizar la compra porque el alumno no tiene saldo suficiente.",
-                    PickupTimeSlotNotFoundException.class,
-                    "No pude realizar la compra porque no hay una franja horaria disponible.",
-                    PresupuestoExcedidoException.class,
-                    "No pude realizar la compra porque supera el presupuesto configurado.",
-                    RestriccionHorariaException.class,
-                    "No pude realizar la compra porque hay una restriccion horaria activa.",
-                    RestriccionSaludException.class,
-                    "No pude realizar la compra porque incluye un producto restringido."
-            );
-    private static final Pattern DIACRITICS = Pattern.compile("\\p{M}+");
-    private static final DateTimeFormatter DATE_TIME_FORMAT =
-            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final PurchaseRepository purchaseRepository;
     private final ProductRepository productRepository;
     private final CreateAssistantAdvancePurchase createAssistantAdvancePurchase;
     private final Clock clock;
+    private final SchoolAssistantReplyFormatter replyFormatter;
+    private final SchoolAssistantContentFormatter contentFormatter;
+    private final SchoolAssistantTutorFactsFormatter tutorFactsFormatter;
+    private final SchoolAssistantPurchaseFailureMessages purchaseFailureMessages;
+    private final SchoolAssistantIntentDetector intentDetector;
+    private final SchoolAssistantSuggestionFactory suggestionFactory;
+    private final SchoolAssistantPendingPurchaseParser pendingPurchaseParser;
+    private final SchoolAssistantReplyBuilder replyBuilder;
 
     public SchoolAssistantFixedTopics(
             PurchaseRepository purchaseRepository,
@@ -91,6 +69,17 @@ public class SchoolAssistantFixedTopics {
         this.productRepository = productRepository;
         this.createAssistantAdvancePurchase = createAssistantAdvancePurchase;
         this.clock = clock;
+        this.replyFormatter = new SchoolAssistantReplyFormatter();
+        this.contentFormatter = new SchoolAssistantContentFormatter(
+                productRepository,
+                replyFormatter
+        );
+        this.tutorFactsFormatter = new SchoolAssistantTutorFactsFormatter();
+        this.purchaseFailureMessages = new SchoolAssistantPurchaseFailureMessages();
+        this.intentDetector = new SchoolAssistantIntentDetector();
+        this.suggestionFactory = new SchoolAssistantSuggestionFactory();
+        this.pendingPurchaseParser = new SchoolAssistantPendingPurchaseParser(intentDetector);
+        this.replyBuilder = new SchoolAssistantReplyBuilder(suggestionFactory);
     }
 
     public Optional<SchoolAssistantFixedReply> respond(
@@ -98,8 +87,8 @@ public class SchoolAssistantFixedTopics {
             SchoolAssistantContext context,
             List<ChatMessage> recentMessages
     ) {
-        SchoolAssistantIntent intent = detectIntent(message);
-        Optional<RecessTime> selectedRecessTime = recessTime(message);
+        SchoolAssistantIntent intent = intentDetector.detectIntent(message);
+        Optional<RecessTime> selectedRecessTime = intentDetector.recessTime(message);
 
         if (context.role() != SchoolAssistantRole.ALUMNO) {
             Optional<SchoolAssistantFixedReply> reply = nonStudentReply(intent, context);
@@ -200,7 +189,7 @@ public class SchoolAssistantFixedTopics {
                 RECENT_PURCHASES_TO_SHOW
         );
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("pedidos", purchasesData(purchases));
+        data.put("pedidos", contentFormatter.purchasesData(purchases));
         SchoolAssistantAction action = informativeAction(
                 SchoolAssistantActionType.CONSULTA_PEDIDOS,
                 data
@@ -209,14 +198,14 @@ public class SchoolAssistantFixedTopics {
         return purchases.isEmpty()
                 ? reply("No hay pedidos pendientes en el buffet.",
                         SchoolAssistantIntent.PENDING_ORDERS, action, context.role())
-                : reply("Pedidos pendientes:\n" + purchaseList(purchases),
+                : reply("Pedidos pendientes:\n" + contentFormatter.purchaseList(purchases),
                         SchoolAssistantIntent.PENDING_ORDERS, action, context.role());
     }
 
     private SchoolAssistantFixedReply stockReply(SchoolAssistantContext context) {
         List<Producto> products = productRepository.findAllActiveWithStock(context.buffetId());
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("productos", productsData(products));
+        data.put("productos", contentFormatter.productsData(products));
         SchoolAssistantAction action = informativeAction(
                 SchoolAssistantActionType.CONSULTA_STOCK,
                 data
@@ -225,8 +214,12 @@ public class SchoolAssistantFixedTopics {
         return products.isEmpty()
                 ? reply("No encontre productos activos con stock.",
                         SchoolAssistantIntent.STOCK, action, context.role())
-                : reply("Stock actual (" + countText(products.size(), "producto", "productos")
-                        + "):\n" + productsList(products),
+                : reply("Stock actual (" + replyFormatter.countText(
+                        products.size(),
+                        "producto",
+                        "productos"
+                )
+                        + "):\n" + contentFormatter.productsList(products),
                         SchoolAssistantIntent.STOCK, action, context.role());
     }
 
@@ -239,14 +232,12 @@ public class SchoolAssistantFixedTopics {
                 data
         );
 
-        List<String> visibleChildren = tutorChildren(children).stream()
-                .map(this::childSummary)
-                .toList();
+        List<String> visibleChildren = tutorFactsFormatter.children(children);
 
         return children.isEmpty()
                 ? reply("No encontre hijos asociados al tutor.",
                         SchoolAssistantIntent.CHILDREN, action, context.role())
-                : reply("Hijos asociados:\n" + formattedItems(visibleChildren),
+                : reply("Hijos asociados:\n" + replyFormatter.formattedItems(visibleChildren),
                         SchoolAssistantIntent.CHILDREN, action, context.role());
     }
 
@@ -261,18 +252,22 @@ public class SchoolAssistantFixedTopics {
         data.put("hijos", children);
         SchoolAssistantAction action = informativeAction(actionType, data);
 
-        List<String> visibleChildren = tutorFacts(intent, children);
+        List<String> visibleChildren = tutorFactsFormatter.facts(intent, children);
 
         return children.isEmpty()
                 ? reply("No encontre datos de hijos asociados al tutor.", intent, action,
                         context.role())
-                : reply(prefix + ":\n" + formattedItems(visibleChildren), intent, action,
-                        context.role());
+                : reply(
+                        prefix + ":\n" + replyFormatter.formattedItems(visibleChildren),
+                        intent,
+                        action,
+                        context.role()
+                );
     }
 
     private SchoolAssistantFixedReply balanceReply(SchoolAssistantContext context) {
         String answer = context.balance()
-                .map(balance -> "Tenes " + money(balance) + " disponibles.")
+                .map(balance -> "Tenes " + contentFormatter.money(balance) + " disponibles.")
                 .orElse("No encontre saldo registrado para este alumno.");
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("saldo", context.balance().orElse(null));
@@ -289,7 +284,7 @@ public class SchoolAssistantFixedTopics {
                 .toList();
 
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("compras", purchasesData(purchases));
+        data.put("compras", contentFormatter.purchasesData(purchases));
 
         return purchases.isEmpty()
                 ? reply(
@@ -298,7 +293,7 @@ public class SchoolAssistantFixedTopics {
                         informativeAction(SchoolAssistantActionType.CONSULTA_COMPRAS, data)
                 )
                 : reply(
-                        "Tus ultimas compras:\n" + purchaseList(purchases),
+                        "Tus ultimas compras:\n" + contentFormatter.purchaseList(purchases),
                         SchoolAssistantIntent.RECENT_PURCHASES,
                         informativeAction(SchoolAssistantActionType.CONSULTA_COMPRAS, data)
                 );
@@ -310,7 +305,7 @@ public class SchoolAssistantFixedTopics {
                 .toList();
 
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("patrones", patternsData(patterns));
+        data.put("patrones", contentFormatter.patternsData(patterns));
 
         return patterns.isEmpty()
                 ? reply(
@@ -322,7 +317,7 @@ public class SchoolAssistantFixedTopics {
                         )
                 )
                 : reply(
-                        "Tus compras frecuentes:\n" + patternList(patterns),
+                        "Tus compras frecuentes:\n" + contentFormatter.patternList(patterns),
                         SchoolAssistantIntent.FREQUENT_PURCHASES,
                         informativeAction(
                                 SchoolAssistantActionType.CONSULTA_COMPRAS_FRECUENTES,
@@ -334,7 +329,7 @@ public class SchoolAssistantFixedTopics {
     private SchoolAssistantFixedReply eventsReply(SchoolAssistantContext context) {
         List<SchoolCalendarEvent> events = context.upcomingEvents();
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("eventos", eventsData(events));
+        data.put("eventos", contentFormatter.eventsData(events));
         SchoolAssistantAction action = informativeAction(
                 SchoolAssistantActionType.CONSULTA_EVENTOS,
                 data
@@ -343,7 +338,7 @@ public class SchoolAssistantFixedTopics {
         return events.isEmpty()
                 ? reply("No encontre eventos escolares proximos.", SchoolAssistantIntent.EVENTS,
                         action, context.role())
-                : reply("Eventos proximos:\n" + eventsList(events),
+                : reply("Eventos proximos:\n" + contentFormatter.eventsList(events),
                         SchoolAssistantIntent.EVENTS, action, context.role());
     }
 
@@ -361,7 +356,7 @@ public class SchoolAssistantFixedTopics {
         List<Producto> products = productRepository.findAllActiveWithStock(buffetId.orElseThrow());
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("buffetId", buffetId.orElseThrow().toString());
-        data.put("productos", productsData(products));
+        data.put("productos", contentFormatter.productsData(products));
         SchoolAssistantAction action = informativeAction(
                 SchoolAssistantActionType.CONSULTA_MENU,
                 data
@@ -371,8 +366,8 @@ public class SchoolAssistantFixedTopics {
                 ? reply("No encontre productos disponibles para ese buffet.",
                         SchoolAssistantIntent.MENU, action)
                 : reply("Productos disponibles ("
-                        + countText(products.size(), "producto", "productos")
-                        + "):\n" + productsList(products),
+                        + replyFormatter.countText(products.size(), "producto", "productos")
+                        + "):\n" + contentFormatter.productsList(products),
                         SchoolAssistantIntent.MENU, action);
     }
 
@@ -381,7 +376,7 @@ public class SchoolAssistantFixedTopics {
     ) {
         List<Purchase> purchases = pendingStudentPurchases(context.studentId());
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("pedidos", purchasesData(purchases));
+        data.put("pedidos", contentFormatter.purchasesData(purchases));
         SchoolAssistantAction action = informativeAction(
                 SchoolAssistantActionType.CONSULTA_PEDIDOS,
                 data
@@ -390,7 +385,7 @@ public class SchoolAssistantFixedTopics {
         return purchases.isEmpty()
                 ? reply("No tenes pedidos pendientes.", SchoolAssistantIntent.PENDING_ORDERS,
                         action)
-                : reply("Tus pedidos pendientes:\n" + purchaseList(purchases),
+                : reply("Tus pedidos pendientes:\n" + contentFormatter.purchaseList(purchases),
                         SchoolAssistantIntent.PENDING_ORDERS, action);
     }
 
@@ -401,7 +396,7 @@ public class SchoolAssistantFixedTopics {
                 .filter(this::hasWithdrawalCode)
                 .findFirst();
         Map<String, Object> data = new LinkedHashMap<>();
-        purchase.ifPresent(value -> data.put("pedido", purchaseData(value)));
+        purchase.ifPresent(value -> data.put("pedido", contentFormatter.purchaseData(value)));
         SchoolAssistantAction action = informativeAction(
                 SchoolAssistantActionType.CONSULTA_CODIGO_RETIRO,
                 data
@@ -457,7 +452,7 @@ public class SchoolAssistantFixedTopics {
             SchoolAssistantContext context,
             List<ChatMessage> recentMessages
     ) {
-        return pendingPurchase(recentMessages)
+        return pendingPurchaseParser.pendingPurchase(recentMessages)
                 .map(pendingPurchase -> executePendingPurchase(context, pendingPurchase))
                 .orElseGet(() -> reply(
                         "No hay una compra pendiente para confirmar.",
@@ -471,7 +466,7 @@ public class SchoolAssistantFixedTopics {
             List<ChatMessage> recentMessages,
             RecessTime recessTime
     ) {
-        return pendingPurchase(recentMessages)
+        return pendingPurchaseParser.pendingPurchase(recentMessages)
                 .map(pendingPurchase -> withSelectedRecessReply(context, pendingPurchase,
                         recessTime))
                 .orElseGet(() -> reply(
@@ -482,7 +477,8 @@ public class SchoolAssistantFixedTopics {
     }
 
     private SchoolAssistantFixedReply cancelActionReply(List<ChatMessage> recentMessages) {
-        boolean hasPendingPurchase = pendingPurchase(recentMessages).isPresent();
+        boolean hasPendingPurchase = pendingPurchaseParser.pendingPurchase(recentMessages)
+                .isPresent();
         String answer = hasPendingPurchase
                 ? "Listo, descarte la compra pendiente."
                 : "No hay una compra pendiente para cancelar.";
@@ -499,7 +495,7 @@ public class SchoolAssistantFixedTopics {
                         Map.of(),
                         null
                 ),
-                quickPurchaseSuggestions(),
+                suggestionFactory.quickPurchaseSuggestions(),
                 Map.of()
         );
     }
@@ -543,15 +539,8 @@ public class SchoolAssistantFixedTopics {
                  | PresupuestoExcedidoException
                  | RestriccionHorariaException
                  | RestriccionSaludException exception) {
-            return failedPurchaseReply(purchaseFailureMessage(exception));
+            return failedPurchaseReply(purchaseFailureMessages.message(exception));
         }
-    }
-
-    private String purchaseFailureMessage(RuntimeException exception) {
-        return PURCHASE_FAILURE_MESSAGES.getOrDefault(
-                exception.getClass(),
-                GENERIC_PURCHASE_FAILURE_MESSAGE
-        );
     }
 
     private SchoolAssistantFixedReply withSelectedRecessReply(
@@ -573,7 +562,7 @@ public class SchoolAssistantFixedTopics {
                 SchoolAssistantIntent.SELECT_RECESS.name(),
                 updatedPurchase
         );
-        Map<String, Object> data = pendingPurchaseData(updatedPurchase);
+        Map<String, Object> data = contentFormatter.pendingPurchaseData(updatedPurchase);
         SchoolAssistantAction action = advanceAction(
                 SchoolAssistantActionStatus.ESPERANDO_CONFIRMACION,
                 true,
@@ -583,12 +572,12 @@ public class SchoolAssistantFixedTopics {
         );
 
         return new SchoolAssistantFixedReply(
-                "Listo, la dejo para " + recessLabel(recessTime)
+                "Listo, la dejo para " + contentFormatter.recessLabel(recessTime)
                         + ". Escribi confirmar para crear la compra anticipada o cancelar.",
                 metadata,
                 SchoolAssistantIntent.SELECT_RECESS,
                 action,
-                confirmationSuggestions(),
+                suggestionFactory.confirmationSuggestions(),
                 data
         );
     }
@@ -602,7 +591,7 @@ public class SchoolAssistantFixedTopics {
         );
         metadata.put(ACTION_STATUS_KEY, ACTION_STATUS_EXECUTED);
         metadata.put("compraId", purchase.getId().toString());
-        Map<String, Object> data = purchaseData(purchase);
+        Map<String, Object> data = contentFormatter.purchaseData(purchase);
         SchoolAssistantAction action = new SchoolAssistantAction(
                 SchoolAssistantActionType.COMPRA_ANTICIPADA,
                 SchoolAssistantActionStatus.EJECUTADA,
@@ -617,19 +606,21 @@ public class SchoolAssistantFixedTopics {
         );
 
         return new SchoolAssistantFixedReply(
-                "Compra anticipada creada. Total: " + money(purchase.getTotalAmount())
+                "Compra anticipada creada. Total: "
+                        + contentFormatter.money(purchase.getTotalAmount())
                         + ". Estado: " + purchase.getStatus()
-                        + ". Codigo de retiro: " + value(purchase.getWithdrawalCode()) + ".",
+                        + ". Codigo de retiro: "
+                        + contentFormatter.value(purchase.getWithdrawalCode()) + ".",
                 metadata,
                 SchoolAssistantIntent.CONFIRM_PURCHASE,
                 action,
-                quickPurchaseSuggestions(),
+                suggestionFactory.quickPurchaseSuggestions(),
                 data
         );
     }
 
     private SchoolAssistantFixedReply missingRecessReply(PendingPurchase pendingPurchase) {
-        Map<String, Object> data = pendingPurchaseData(pendingPurchase);
+        Map<String, Object> data = contentFormatter.pendingPurchaseData(pendingPurchase);
         return new SchoolAssistantFixedReply(
                 "Elegi el recreo de retiro: primer recreo, segundo recreo, mediodia o salida.",
                 pendingMetadata(
@@ -644,7 +635,7 @@ public class SchoolAssistantFixedTopics {
                         data,
                         null
                 ),
-                recessSuggestions(),
+                suggestionFactory.recessSuggestions(),
                 data
         );
     }
@@ -659,7 +650,7 @@ public class SchoolAssistantFixedTopics {
                 metadata,
                 SchoolAssistantIntent.CONFIRM_PURCHASE,
                 failedAdvanceAction(Map.of()),
-                quickPurchaseSuggestions(),
+                suggestionFactory.quickPurchaseSuggestions(),
                 Map.of()
         );
     }
@@ -672,11 +663,11 @@ public class SchoolAssistantFixedTopics {
         Map<String, Object> metadata = metadata(intent.name());
         metadata.put(ACTION_STATUS_KEY, ACTION_STATUS_PENDING);
         metadata.put(PENDING_ACTION_KEY, pendingAction(plan));
-        Map<String, Object> data = purchasePlanData(plan);
+        Map<String, Object> data = contentFormatter.purchasePlanData(plan);
 
         return new SchoolAssistantFixedReply(
-                prefix + ": " + itemList(plan.items())
-                        + ". Total estimado: " + money(plan.totalAmount())
+                prefix + ": " + contentFormatter.itemList(plan.items())
+                        + ". Total estimado: " + contentFormatter.money(plan.totalAmount())
                         + ". Elegi el recreo de retiro: primer recreo, segundo recreo, "
                         + "mediodia o salida.",
                 metadata,
@@ -688,7 +679,7 @@ public class SchoolAssistantFixedTopics {
                         data,
                         null
                 ),
-                recessSuggestions(),
+                suggestionFactory.recessSuggestions(),
                 data
         );
     }
@@ -762,9 +753,9 @@ public class SchoolAssistantFixedTopics {
         return productRepository.findActiveById(request.productId())
                 .map(product -> new PurchasePlanItem(
                         product.getId(),
-                        productName(product),
+                        contentFormatter.productName(product),
                         request.quantity(),
-                        price(product)
+                        contentFormatter.price(product)
                 ));
     }
 
@@ -823,77 +814,6 @@ public class SchoolAssistantFixedTopics {
         return purchaseRepository.findHistorialByAlumno(studentId);
     }
 
-    private Optional<PendingPurchase> pendingPurchase(List<ChatMessage> recentMessages) {
-        return recentMessages.stream()
-                .filter(this::isAssistantMessage)
-                .map(ChatMessage::metadata)
-                .filter(metadata -> metadata != null && !metadata.isEmpty())
-                .map(this::pendingPurchaseFromMetadata)
-                .filter(PendingActionSearch::shouldStop)
-                .findFirst()
-                .flatMap(PendingActionSearch::pendingPurchase);
-    }
-
-    private PendingActionSearch pendingPurchaseFromMetadata(Map<String, Object> metadata) {
-        String status = value(metadata.get(ACTION_STATUS_KEY));
-
-        if (isTerminalActionStatus(status)) {
-            PendingActionSearch search = PendingActionSearch.terminal();
-            return search;
-        }
-
-        Optional<PendingPurchase> pendingPurchase = pendingAction(metadata)
-                .filter(this::isQuickPurchaseAction)
-                .flatMap(this::pendingPurchaseFromAction);
-        return PendingActionSearch.from(pendingPurchase);
-    }
-
-    private Optional<Map<String, Object>> pendingAction(Map<String, Object> metadata) {
-        Object action = metadata.get(PENDING_ACTION_KEY);
-        return action instanceof Map<?, ?> actionMap
-                ? Optional.of(castMap(actionMap))
-                : Optional.empty();
-    }
-
-    private Optional<PendingPurchase> pendingPurchaseFromAction(Map<String, Object> action) {
-        Optional<UUID> studentId = uuid(action.get("alumnoId"));
-        Optional<UUID> buffetId = uuid(action.get("buffetId"));
-        List<PurchaseItemRequest> items = itemsFromAction(action.get("items"));
-
-        return studentId.isPresent() && buffetId.isPresent() && !items.isEmpty()
-                ? Optional.of(new PendingPurchase(
-                        studentId.orElseThrow(),
-                        buffetId.orElseThrow(),
-                        items,
-                        recessTime(value(action.get("recreo")))
-                ))
-                : Optional.empty();
-    }
-
-    private List<PurchaseItemRequest> itemsFromAction(Object value) {
-        return value instanceof List<?> items
-                ? items.stream()
-                        .filter(item -> item instanceof Map<?, ?>)
-                        .map(item -> castMap((Map<?, ?>) item))
-                        .map(this::itemFromAction)
-                        .flatMap(Optional::stream)
-                        .toList()
-                : List.of();
-    }
-
-    private Optional<PurchaseItemRequest> itemFromAction(Map<String, Object> item) {
-        Optional<UUID> productId = uuid(item.get("productoId"));
-        Optional<Integer> quantity = integer(item.get("cantidad"));
-
-        return productId.isPresent() && quantity.filter(value -> value > 0).isPresent()
-                ? Optional.of(new PurchaseItemRequest(
-                        productId.orElseThrow(),
-                        quantity.orElseThrow(),
-                        null
-                ))
-                : Optional.empty();
-    }
-
     private Map<String, Object> pendingAction(PurchasePlan plan) {
         Map<String, Object> action = new LinkedHashMap<>();
         action.put("tipo", ACTION_TYPE_QUICK_PURCHASE);
@@ -933,9 +853,7 @@ public class SchoolAssistantFixedTopics {
     }
 
     private Map<String, Object> metadata(String intent) {
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put(INTENT_KEY, intent);
-        return metadata;
+        return replyBuilder.metadata(intent);
     }
 
     private Map<String, Object> pendingMetadata(String intent, PendingPurchase pendingPurchase) {
@@ -950,7 +868,7 @@ public class SchoolAssistantFixedTopics {
             SchoolAssistantIntent intent,
             SchoolAssistantAction action
     ) {
-        return reply(answer, intent, action, SchoolAssistantRole.ALUMNO);
+        return replyBuilder.reply(answer, intent, action);
     }
 
     private SchoolAssistantFixedReply reply(
@@ -959,41 +877,22 @@ public class SchoolAssistantFixedTopics {
             SchoolAssistantAction action,
             SchoolAssistantRole role
     ) {
-        return new SchoolAssistantFixedReply(
-                answer,
-                metadata(intent.name()),
-                intent,
-                action,
-                suggestions(role, intent, action),
-                action == null ? Map.of() : action.data()
-        );
+        return replyBuilder.reply(answer, intent, action, role);
     }
 
     private SchoolAssistantAction informativeAction(
             SchoolAssistantActionType type,
             Map<String, Object> data
     ) {
-        return SchoolAssistantAction.informative(type, data);
+        return replyBuilder.informativeAction(type, data);
     }
 
     private SchoolAssistantAction forbiddenQuickPurchaseAction() {
-        return advanceAction(
-                SchoolAssistantActionStatus.NO_PERMITIDA,
-                false,
-                List.of(),
-                Map.of(),
-                null
-        );
+        return replyBuilder.forbiddenQuickPurchaseAction();
     }
 
     private SchoolAssistantAction failedAdvanceAction(Map<String, Object> data) {
-        return advanceAction(
-                SchoolAssistantActionStatus.FALLIDA,
-                false,
-                List.of(),
-                data,
-                null
-        );
+        return replyBuilder.failedAdvanceAction(data);
     }
 
     private SchoolAssistantAction advanceAction(
@@ -1003,445 +902,13 @@ public class SchoolAssistantFixedTopics {
             Map<String, Object> data,
             RecessTime recessTime
     ) {
-        return new SchoolAssistantAction(
-                SchoolAssistantActionType.COMPRA_ANTICIPADA,
+        return replyBuilder.advanceAction(
                 status,
                 requiresInput,
                 requiredInputs,
-                null,
-                null,
-                null,
-                null,
-                recessTime,
-                data
+                data,
+                recessTime
         );
-    }
-
-    private List<SchoolAssistantSuggestion> suggestions(
-            SchoolAssistantRole role,
-            SchoolAssistantIntent intent,
-            SchoolAssistantAction action
-    ) {
-        SchoolAssistantRole safeRole = role == null ? SchoolAssistantRole.ALUMNO : role;
-        List<SchoolAssistantSuggestion> rawSuggestions = rawSuggestions(
-                safeRole,
-                intent,
-                action
-        );
-
-        return rawSuggestions.stream()
-                .filter(suggestion -> isSuggestionAllowed(safeRole, suggestion))
-                .toList();
-    }
-
-    private List<SchoolAssistantSuggestion> rawSuggestions(
-            SchoolAssistantRole role,
-            SchoolAssistantIntent intent,
-            SchoolAssistantAction action
-    ) {
-        return isAdvancePurchaseAction(action)
-                ? purchaseSuggestions(role, action)
-                : switch (role) {
-            case ALUMNO -> studentSuggestions(intent);
-            case TUTOR -> tutorSuggestions(intent);
-            case KIOSQUERO -> kiosqueroSuggestions(intent);
-        };
-    }
-
-    private List<SchoolAssistantSuggestion> studentSuggestions(SchoolAssistantIntent intent) {
-        return switch (intent) {
-            case BALANCE -> List.of(
-                    suggestion("Ultimas compras", "mostrame mis ultimas compras",
-                            SchoolAssistantActionType.CONSULTA_COMPRAS),
-                    suggestion("Compra habitual", "comprame lo de siempre",
-                            SchoolAssistantActionType.COMPRA_ANTICIPADA)
-            );
-            case RECENT_PURCHASES, FREQUENT_PURCHASES -> quickPurchaseSuggestions();
-            case EVENTS -> List.of(
-                    suggestion("Saldo", "cuanto saldo tengo",
-                            SchoolAssistantActionType.CONSULTA_SALDO),
-                    suggestion("Compras", "mostrame mis ultimas compras",
-                            SchoolAssistantActionType.CONSULTA_COMPRAS)
-            );
-            case PENDING_ORDERS, ORDER_STATUS, WITHDRAWAL_CODE -> List.of(
-                    suggestion("Ultimas compras", "mostrame mis ultimas compras",
-                            SchoolAssistantActionType.CONSULTA_COMPRAS),
-                    suggestion("Compra habitual", "comprame lo de siempre",
-                            SchoolAssistantActionType.COMPRA_ANTICIPADA)
-            );
-            default -> List.of();
-        };
-    }
-
-    private List<SchoolAssistantSuggestion> purchaseSuggestions(
-            SchoolAssistantRole role,
-            SchoolAssistantAction action
-    ) {
-        return role == SchoolAssistantRole.ALUMNO
-                ? switch (action.status()) {
-            case ESPERANDO_RECREO -> recessSuggestions();
-            case ESPERANDO_CONFIRMACION -> confirmationSuggestions();
-            default -> quickPurchaseSuggestions();
-        }
-                : defaultSuggestions(role);
-    }
-
-    private boolean isAdvancePurchaseAction(SchoolAssistantAction action) {
-        return action != null && action.type() == SchoolAssistantActionType.COMPRA_ANTICIPADA;
-    }
-
-    private List<SchoolAssistantSuggestion> tutorSuggestions(SchoolAssistantIntent intent) {
-        return switch (intent) {
-            case EVENTS -> List.of(
-                    suggestion("Mis hijos", "mostrame mis hijos",
-                            SchoolAssistantActionType.CONSULTA_HIJOS),
-                    suggestion("Presupuestos", "ver presupuestos de mis hijos",
-                            SchoolAssistantActionType.CONSULTA_PRESUPUESTOS),
-                    suggestion("Restricciones", "ver restricciones de mis hijos",
-                            SchoolAssistantActionType.CONSULTA_RESTRICCIONES)
-            );
-            case CHILDREN -> List.of(
-                    suggestion("Presupuestos", "ver presupuestos de mis hijos",
-                            SchoolAssistantActionType.CONSULTA_PRESUPUESTOS),
-                    suggestion("Restricciones", "ver restricciones de mis hijos",
-                            SchoolAssistantActionType.CONSULTA_RESTRICCIONES),
-                    suggestion("Eventos", "que eventos escolares tienen mis hijos",
-                            SchoolAssistantActionType.CONSULTA_EVENTOS)
-            );
-            case BUDGETS, RESTRICTIONS -> List.of(
-                    suggestion("Mis hijos", "mostrame mis hijos",
-                            SchoolAssistantActionType.CONSULTA_HIJOS),
-                    suggestion("Eventos", "que eventos escolares tienen mis hijos",
-                            SchoolAssistantActionType.CONSULTA_EVENTOS)
-            );
-            default -> defaultSuggestions(SchoolAssistantRole.TUTOR);
-        };
-    }
-
-    private List<SchoolAssistantSuggestion> kiosqueroSuggestions(SchoolAssistantIntent intent) {
-        return switch (intent) {
-            case STOCK -> List.of(
-                    suggestion("Pedidos", "ver pedidos pendientes",
-                            SchoolAssistantActionType.CONSULTA_PEDIDOS),
-                    suggestion("Ventas", "ventas de hoy",
-                            SchoolAssistantActionType.CONSULTA_VENTAS)
-            );
-            case PENDING_ORDERS, ORDER_STATUS, WITHDRAWAL_CODE -> List.of(
-                    suggestion("Stock", "ver stock",
-                            SchoolAssistantActionType.CONSULTA_STOCK),
-                    suggestion("Ventas", "ventas de hoy",
-                            SchoolAssistantActionType.CONSULTA_VENTAS)
-            );
-            default -> defaultSuggestions(SchoolAssistantRole.KIOSQUERO);
-        };
-    }
-
-    private List<SchoolAssistantSuggestion> defaultSuggestions(SchoolAssistantRole role) {
-        return switch (role) {
-            case ALUMNO -> List.of(
-                    suggestion("Saldo", "cuanto saldo tengo",
-                            SchoolAssistantActionType.CONSULTA_SALDO),
-                    suggestion("Ultimas compras", "mostrame mis ultimas compras",
-                            SchoolAssistantActionType.CONSULTA_COMPRAS),
-                    suggestion("Compra habitual", "comprame lo de siempre",
-                            SchoolAssistantActionType.COMPRA_ANTICIPADA),
-                    suggestion("Eventos", "que eventos escolares tengo",
-                            SchoolAssistantActionType.CONSULTA_EVENTOS)
-            );
-            case TUTOR -> List.of(
-                    suggestion("Mis hijos", "mostrame mis hijos",
-                            SchoolAssistantActionType.CONSULTA_HIJOS),
-                    suggestion("Presupuestos", "ver presupuestos de mis hijos",
-                            SchoolAssistantActionType.CONSULTA_PRESUPUESTOS),
-                    suggestion("Restricciones", "ver restricciones de mis hijos",
-                            SchoolAssistantActionType.CONSULTA_RESTRICCIONES),
-                    suggestion("Eventos", "que eventos escolares tienen mis hijos",
-                            SchoolAssistantActionType.CONSULTA_EVENTOS)
-            );
-            case KIOSQUERO -> List.of(
-                    suggestion("Pedidos", "ver pedidos pendientes",
-                            SchoolAssistantActionType.CONSULTA_PEDIDOS),
-                    suggestion("Stock", "ver stock",
-                            SchoolAssistantActionType.CONSULTA_STOCK),
-                    suggestion("Ventas", "ventas de hoy",
-                            SchoolAssistantActionType.CONSULTA_VENTAS)
-            );
-        };
-    }
-
-    private boolean isSuggestionAllowed(
-            SchoolAssistantRole role,
-            SchoolAssistantSuggestion suggestion
-    ) {
-        return switch (role) {
-            case ALUMNO -> isStudentSuggestionAllowed(suggestion);
-            case TUTOR -> isTutorSuggestionAllowed(suggestion);
-            case KIOSQUERO -> isKiosqueroSuggestionAllowed(suggestion);
-        };
-    }
-
-    private boolean isStudentSuggestionAllowed(SchoolAssistantSuggestion suggestion) {
-        return List.of(
-                SchoolAssistantActionType.CONSULTA_SALDO,
-                SchoolAssistantActionType.CONSULTA_COMPRAS,
-                SchoolAssistantActionType.CONSULTA_COMPRAS_FRECUENTES,
-                SchoolAssistantActionType.COMPRA_ANTICIPADA,
-                SchoolAssistantActionType.CONSULTA_EVENTOS,
-                SchoolAssistantActionType.CONSULTA_MENU,
-                SchoolAssistantActionType.CONSULTA_PEDIDOS,
-                SchoolAssistantActionType.CONSULTA_CODIGO_RETIRO
-        ).contains(suggestion.actionType());
-    }
-
-    private boolean isTutorSuggestionAllowed(SchoolAssistantSuggestion suggestion) {
-        return List.of(
-                SchoolAssistantActionType.CONSULTA_HIJOS,
-                SchoolAssistantActionType.CONSULTA_PRESUPUESTOS,
-                SchoolAssistantActionType.CONSULTA_RESTRICCIONES,
-                SchoolAssistantActionType.CONSULTA_EVENTOS,
-                SchoolAssistantActionType.CONSULTA_SALDO,
-                SchoolAssistantActionType.CONSULTA_COMPRAS
-        ).contains(suggestion.actionType());
-    }
-
-    private boolean isKiosqueroSuggestionAllowed(SchoolAssistantSuggestion suggestion) {
-        return List.of(
-                SchoolAssistantActionType.CONSULTA_PEDIDOS,
-                SchoolAssistantActionType.CONSULTA_STOCK,
-                SchoolAssistantActionType.CONSULTA_VENTAS,
-                SchoolAssistantActionType.CONSULTA_COMPRAS
-        ).contains(suggestion.actionType());
-    }
-
-    private List<SchoolAssistantSuggestion> recessSuggestions() {
-        return List.of(
-                suggestion("Primer recreo", "primer recreo",
-                        SchoolAssistantActionType.COMPRA_ANTICIPADA),
-                suggestion("Segundo recreo", "segundo recreo",
-                        SchoolAssistantActionType.COMPRA_ANTICIPADA),
-                suggestion("Mediodia", "mediodia",
-                        SchoolAssistantActionType.COMPRA_ANTICIPADA),
-                suggestion("Salida", "salida",
-                        SchoolAssistantActionType.COMPRA_ANTICIPADA)
-        );
-    }
-
-    private List<SchoolAssistantSuggestion> confirmationSuggestions() {
-        return List.of(
-                suggestion("Confirmar", "confirmar",
-                        SchoolAssistantActionType.COMPRA_ANTICIPADA),
-                suggestion("Cancelar", "cancelar",
-                        SchoolAssistantActionType.COMPRA_ANTICIPADA)
-        );
-    }
-
-    private List<SchoolAssistantSuggestion> quickPurchaseSuggestions() {
-        return List.of(
-                suggestion("Compra habitual", "comprame lo de siempre",
-                        SchoolAssistantActionType.COMPRA_ANTICIPADA),
-                suggestion("Repetir ultima", "repeti mi ultima compra",
-                        SchoolAssistantActionType.COMPRA_ANTICIPADA)
-        );
-    }
-
-    private SchoolAssistantSuggestion suggestion(
-            String label,
-            String message,
-            SchoolAssistantActionType actionType
-    ) {
-        return new SchoolAssistantSuggestion(label, message, actionType);
-    }
-
-    private SchoolAssistantIntent detectIntent(String message) {
-        String normalized = normalize(message);
-
-        return isConfirmation(normalized)
-                ? SchoolAssistantIntent.CONFIRM_PURCHASE
-                : detectNonConfirmationIntent(normalized);
-    }
-
-    private SchoolAssistantIntent detectNonConfirmationIntent(String normalized) {
-        return isCancellation(normalized)
-                ? SchoolAssistantIntent.CANCEL_ACTION
-                : detectRecessOrPurchaseIntent(normalized);
-    }
-
-    private SchoolAssistantIntent detectRecessOrPurchaseIntent(String normalized) {
-        return recessTime(normalized).isPresent()
-                ? SchoolAssistantIntent.SELECT_RECESS
-                : detectPurchaseIntent(normalized);
-    }
-
-    private SchoolAssistantIntent detectPurchaseIntent(String normalized) {
-        return isQuickUsualPurchase(normalized)
-                ? SchoolAssistantIntent.BUY_USUAL
-                : detectRepeatOrTopicIntent(normalized);
-    }
-
-    private SchoolAssistantIntent detectRepeatOrTopicIntent(String normalized) {
-        return isRepeatLastPurchase(normalized)
-                ? SchoolAssistantIntent.REPEAT_LAST_PURCHASE
-                : detectTopicIntent(normalized);
-    }
-
-    private SchoolAssistantIntent detectTopicIntent(String normalized) {
-        return isFrequentPurchasesQuestion(normalized)
-                ? SchoolAssistantIntent.FREQUENT_PURCHASES
-                : detectOperationalIntent(normalized);
-    }
-
-    private SchoolAssistantIntent detectOperationalIntent(String normalized) {
-        if (isWithdrawalCodeQuestion(normalized)) {
-            return SchoolAssistantIntent.WITHDRAWAL_CODE;
-        }
-
-        if (isPendingOrdersQuestion(normalized)) {
-            return SchoolAssistantIntent.PENDING_ORDERS;
-        }
-
-        if (isStockQuestion(normalized)) {
-            return SchoolAssistantIntent.STOCK;
-        }
-
-        if (isBudgetQuestion(normalized)) {
-            return SchoolAssistantIntent.BUDGETS;
-        }
-
-        if (isRestrictionsQuestion(normalized)) {
-            return SchoolAssistantIntent.RESTRICTIONS;
-        }
-
-        if (isEventsQuestion(normalized)) {
-            return SchoolAssistantIntent.EVENTS;
-        }
-
-        if (isChildrenQuestion(normalized)) {
-            return SchoolAssistantIntent.CHILDREN;
-        }
-
-        if (isMenuQuestion(normalized)) {
-            return SchoolAssistantIntent.MENU;
-        }
-
-        return detectRecentOrBalanceIntent(normalized);
-    }
-
-    private SchoolAssistantIntent detectRecentOrBalanceIntent(String normalized) {
-        return isRecentPurchasesQuestion(normalized)
-                ? SchoolAssistantIntent.RECENT_PURCHASES
-                : detectBalanceIntent(normalized);
-    }
-
-    private SchoolAssistantIntent detectBalanceIntent(String normalized) {
-        return isBalanceQuestion(normalized)
-                ? SchoolAssistantIntent.BALANCE
-                : SchoolAssistantIntent.UNKNOWN;
-    }
-
-    private boolean isConfirmation(String message) {
-        return List.of("confirmar", "confirmo", "si", "dale", "aceptar", "comprar")
-                .contains(message);
-    }
-
-    private boolean isCancellation(String message) {
-        return List.of("cancelar", "cancela", "descartar", "no").contains(message);
-    }
-
-    private boolean isQuickUsualPurchase(String message) {
-        return containsPurchaseWord(message)
-                && containsAny(message, "habitual", "siempre", "lo de siempre");
-    }
-
-    private boolean isRepeatLastPurchase(String message) {
-        return containsAny(message, "repeti", "repetir", "repetime", "volver a comprar")
-                && containsAny(message, "ultima compra", "ultimo pedido");
-    }
-
-    private boolean isFrequentPurchasesQuestion(String message) {
-        return containsPurchaseWord(message)
-                && containsAny(message, "frecuente", "habitual", "suelo", "seguido");
-    }
-
-    private boolean isRecentPurchasesQuestion(String message) {
-        return containsAny(message, "ultimas compras", "historial de compras", "que compre")
-                || containsAny(message, "ultima compra", "compra reciente");
-    }
-
-    private boolean isBalanceQuestion(String message) {
-        return containsAny(message, "saldo", "credito", "creditos", "disponible");
-    }
-
-    private boolean isEventsQuestion(String message) {
-        return containsAny(message, "evento", "eventos", "calendario", "acto",
-                "jornada", "feriado", "dia escolar");
-    }
-
-    private boolean isMenuQuestion(String message) {
-        return containsAny(message, "menu", "productos disponibles", "que hay",
-                "que venden", "lista de productos");
-    }
-
-    private boolean isPendingOrdersQuestion(String message) {
-        return containsAny(message, "pedido pendiente", "pedidos pendientes",
-                "estado de pedido", "estado de mi pedido", "orden pendiente");
-    }
-
-    private boolean isWithdrawalCodeQuestion(String message) {
-        return containsAny(message, "codigo de retiro", "codigo retiro",
-                "codigo para retirar", "retirar pedido");
-    }
-
-    private boolean isStockQuestion(String message) {
-        return containsAny(message, "stock", "inventario", "existencias");
-    }
-
-    private boolean isChildrenQuestion(String message) {
-        return containsAny(message, "mis hijos", "hijos asociados", "hijos");
-    }
-
-    private boolean isBudgetQuestion(String message) {
-        return containsAny(message, "presupuesto", "presupuestos", "limite");
-    }
-
-    private boolean isRestrictionsQuestion(String message) {
-        return containsAny(message, "restriccion", "restricciones", "bloqueado",
-                "bloqueados", "salud");
-    }
-
-    private boolean containsPurchaseWord(String message) {
-        return containsAny(message, "compra", "compras", "comprar", "compre", "compro");
-    }
-
-    private boolean containsAny(String message, String... values) {
-        return List.of(values).stream().anyMatch(message::contains);
-    }
-
-    private Optional<RecessTime> recessTime(String message) {
-        String normalized = normalize(message);
-
-        if (containsAll(normalized, "primer", "recreo")
-                || containsAny(normalized, "first_recess", "primero")) {
-            return Optional.of(RecessTime.FIRST_RECESS);
-        }
-
-        if (containsAll(normalized, "segundo", "recreo")
-                || containsAny(normalized, "second_recess")) {
-            return Optional.of(RecessTime.SECOND_RECESS);
-        }
-
-        if (containsAny(normalized, "mediodia", "medio dia", "noon", "almuerzo")) {
-            return Optional.of(RecessTime.NOON);
-        }
-
-        if (containsAny(normalized, "salida", "after_hours", "despues de clase")) {
-            return Optional.of(RecessTime.AFTER_HOURS);
-        }
-
-        return Optional.empty();
-    }
-
-    private boolean containsAll(String message, String... values) {
-        return List.of(values).stream().allMatch(message::contains);
     }
 
     private boolean isRebuyablePurchase(Purchase purchase) {
@@ -1473,20 +940,6 @@ public class SchoolAssistantFixedTopics {
         return Comparator.nullsLast(LocalDateTime::compareTo)
                 .reversed()
                 .compare(first, second);
-    }
-
-    private boolean isAssistantMessage(ChatMessage message) {
-        return message.role() == RolChatMensaje.ASISTENTE_IA;
-    }
-
-    private boolean isTerminalActionStatus(String status) {
-        return ACTION_STATUS_EXECUTED.equals(status)
-                || ACTION_STATUS_CANCELLED.equals(status)
-                || ACTION_STATUS_FAILED.equals(status);
-    }
-
-    private boolean isQuickPurchaseAction(Map<String, Object> action) {
-        return ACTION_TYPE_QUICK_PURCHASE.equals(value(action.get("tipo")));
     }
 
     private boolean studentDoesNotOwnPendingPurchase(
@@ -1526,149 +979,6 @@ public class SchoolAssistantFixedTopics {
                 .findFirst();
     }
 
-    private List<Map<String, Object>> purchasesData(List<Purchase> purchases) {
-        return purchases.stream()
-                .map(this::purchaseData)
-                .toList();
-    }
-
-    private Map<String, Object> purchaseData(Purchase purchase) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("compraId", value(purchase.getId()));
-        data.put("alumnoId", purchase.getStudent() == null
-                ? ""
-                : value(purchase.getStudent().getId()));
-        data.put("buffetId", value(purchase.getBuffetId()));
-        data.put("estado", value(purchase.getStatus()));
-        data.put("medioPago", value(purchase.getPaymentMethod()));
-        data.put("total", purchase.getTotalAmount());
-        data.put("fechaHora", value(purchase.getDate()));
-        data.put("codigoRetiro", value(purchase.getWithdrawalCode()));
-        data.put("fechaRetiro", value(purchase.getPickupDate()));
-        data.put("franjaRetiroId", value(purchase.getPickupSlotId()));
-        data.put("items", purchaseItemsData(purchase));
-        return data;
-    }
-
-    private List<Map<String, Object>> purchaseItemsData(Purchase purchase) {
-        return purchase.getItems() == null
-                ? List.of()
-                : purchase.getItems().entrySet()
-                        .stream()
-                        .filter(entry -> isValidPurchaseItem(entry.getKey(), entry.getValue()))
-                        .map(entry -> purchaseItemData(entry.getKey(), entry.getValue()))
-                        .toList();
-    }
-
-    private Map<String, Object> purchaseItemData(Producto product, Integer quantity) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("productoId", value(product.getId()));
-        data.put("nombre", productName(product));
-        data.put("cantidad", quantity);
-        data.put("precio", price(product));
-        return data;
-    }
-
-    private List<Map<String, Object>> patternsData(List<PurchasePattern> patterns) {
-        return patterns.stream()
-                .map(this::patternData)
-                .toList();
-    }
-
-    private Map<String, Object> patternData(PurchasePattern pattern) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("ocurrencias", pattern.occurrences());
-        data.put("ultimaFecha", value(pattern.lastDate()));
-        data.put("items", purchaseItemRequestsData(pattern.items()));
-        return data;
-    }
-
-    private List<Map<String, Object>> purchaseItemRequestsData(
-            List<PurchaseItemRequest> items
-    ) {
-        return items.stream()
-                .map(this::purchaseItemRequestData)
-                .toList();
-    }
-
-    private Map<String, Object> purchaseItemRequestData(PurchaseItemRequest item) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("productoId", item.productId().toString());
-        data.put("cantidad", item.quantity());
-        data.put("buffetId", value(item.buffetId()));
-        return data;
-    }
-
-    private Map<String, Object> purchasePlanData(PurchasePlan plan) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("alumnoId", plan.studentId().toString());
-        data.put("buffetId", plan.buffetId().toString());
-        data.put("totalEstimado", plan.totalAmount());
-        data.put("ocurrencias", plan.occurrences());
-        data.put("ultimaFecha", value(plan.lastDate()));
-        data.put("items", purchasePlanItemsData(plan.items()));
-        return data;
-    }
-
-    private List<Map<String, Object>> purchasePlanItemsData(
-            List<PurchasePlanItem> items
-    ) {
-        return items.stream()
-                .map(this::purchasePlanItemData)
-                .toList();
-    }
-
-    private Map<String, Object> purchasePlanItemData(PurchasePlanItem item) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("productoId", item.productId().toString());
-        data.put("nombre", item.productName());
-        data.put("cantidad", item.quantity());
-        data.put("precioUnitario", item.unitPrice());
-        data.put("subtotal", item.subtotal());
-        return data;
-    }
-
-    private Map<String, Object> pendingPurchaseData(PendingPurchase pendingPurchase) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("alumnoId", pendingPurchase.studentId().toString());
-        data.put("buffetId", pendingPurchase.buffetId().toString());
-        data.put("recreo", pendingPurchase.recessTime()
-                .map(RecessTime::name)
-                .orElse(""));
-        data.put("items", purchaseItemRequestsData(pendingPurchase.items()));
-        return data;
-    }
-
-    private List<Map<String, Object>> productsData(List<Producto> products) {
-        return products.stream()
-                .map(this::productData)
-                .toList();
-    }
-
-    private Map<String, Object> productData(Producto product) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("productoId", value(product.getId()));
-        data.put("nombre", productName(product));
-        data.put("precio", price(product));
-        data.put("stock", product.getStockActual());
-        data.put("requierePreparacion", product.getRequierePreparacion());
-        return data;
-    }
-
-    private List<Map<String, Object>> eventsData(List<SchoolCalendarEvent> events) {
-        return events.stream()
-                .map(this::eventData)
-                .toList();
-    }
-
-    private Map<String, Object> eventData(SchoolCalendarEvent event) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("fecha", value(event.date()));
-        data.put("tipo", value(event.type()));
-        data.put("descripcion", value(event.description()));
-        return data;
-    }
-
     private List<String> factsByPrefix(SchoolAssistantContext context, String prefix) {
         return context.facts().stream()
                 .filter(fact -> fact.startsWith(prefix))
@@ -1676,464 +986,4 @@ public class SchoolAssistantFixedTopics {
                 .toList();
     }
 
-    private List<TutorChildFact> tutorChildren(List<String> children) {
-        return children.stream()
-                .map(this::tutorChild)
-                .toList();
-    }
-
-    private List<String> tutorFacts(SchoolAssistantIntent intent, List<String> children) {
-        return switch (intent) {
-            case BUDGETS -> tutorChildren(children).stream()
-                    .map(this::budgetSummary)
-                    .toList();
-            case RESTRICTIONS -> tutorChildren(children).stream()
-                    .map(this::restrictionSummary)
-                    .toList();
-            default -> tutorChildren(children).stream()
-                    .map(this::childSummary)
-                    .toList();
-        };
-    }
-
-    private TutorChildFact tutorChild(String fact) {
-        List<String> parts = Arrays.stream(fact.split("\\|"))
-                .map(String::trim)
-                .filter(part -> !part.isBlank())
-                .toList();
-        Map<String, String> values = new LinkedHashMap<>();
-        parts.stream()
-                .skip(1)
-                .map(this::factEntry)
-                .flatMap(Optional::stream)
-                .forEach(entry -> values.put(entry.key(), entry.value()));
-        String name = parts.isEmpty() ? "Alumno" : parts.get(0);
-        return new TutorChildFact(name, values);
-    }
-
-    private Optional<FactEntry> factEntry(String part) {
-        int separator = part.indexOf('=');
-        return separator <= 0
-                ? Optional.empty()
-                : Optional.of(new FactEntry(
-                        part.substring(0, separator),
-                        part.substring(separator + 1)
-                ));
-    }
-
-    private String childSummary(TutorChildFact child) {
-        return child.name()
-                + gradeText(child.value("grado"))
-                + ". Saldo: "
-                + amountText(child.value("saldo"))
-                + ". Presupuesto: "
-                + shortBudgetText(child.value("presupuesto"))
-                + ".";
-    }
-
-    private String budgetSummary(TutorChildFact child) {
-        return child.name()
-                + ": "
-                + budgetText(child.value("presupuesto"))
-                + ". Saldo: "
-                + amountText(child.value("saldo"))
-                + ".";
-    }
-
-    private String restrictionSummary(TutorChildFact child) {
-        List<String> healthRestrictions = listText(child.value("restriccionesSalud"));
-        List<String> blockedProducts = listText(child.value("productosBloqueados"));
-
-        return healthRestrictions.isEmpty() && blockedProducts.isEmpty()
-                ? child.name() + ": sin restricciones registradas."
-                : child.name() + ": " + restrictionDetails(
-                        healthRestrictions,
-                        blockedProducts
-                ) + ".";
-    }
-
-    private String restrictionDetails(
-            List<String> healthRestrictions,
-            List<String> blockedProducts
-    ) {
-        return List.of(
-                        restrictionsDetail("Salud", healthRestrictions),
-                        restrictionsDetail("Productos bloqueados", blockedProducts)
-                )
-                .stream()
-                .filter(detail -> !detail.isBlank())
-                .collect(Collectors.joining(". "));
-    }
-
-    private String restrictionsDetail(String label, List<String> values) {
-        return values.isEmpty() ? "" : label + ": " + String.join(", ", values);
-    }
-
-    private String gradeText(String grade) {
-        return hasValue(grade) ? " - " + grade : "";
-    }
-
-    private String budgetText(String budget) {
-        return hasNoBudget(budget) ? "sin presupuesto activo" : activeBudgetText(budget);
-    }
-
-    private String activeBudgetText(String budget) {
-        Map<String, String> values = commaSeparatedValues(budget);
-        String amount = values.get("monto");
-        String period = values.get("periodo");
-        String date = values.get("fechaInicio");
-
-        return hasValue(amount)
-                ? "Limite" + periodText(period) + ": " + amountText(amount) + dateText(date)
-                : "Limite: " + amountText(budget);
-    }
-
-    private String shortBudgetText(String budget) {
-        return hasNoBudget(budget) ? "sin presupuesto activo" : budgetText(budget);
-    }
-
-    private String periodText(String period) {
-        return hasValue(period) ? " " + period.toLowerCase(Locale.ROOT) : "";
-    }
-
-    private String dateText(String date) {
-        return hasValue(date) ? ". Desde: " + date : "";
-    }
-
-    private boolean hasNoBudget(String budget) {
-        return !hasValue(budget) || "sin_presupuesto".equals(budget);
-    }
-
-    private Map<String, String> commaSeparatedValues(String value) {
-        Map<String, String> values = new LinkedHashMap<>();
-        Arrays.stream(value.split(","))
-                .map(String::trim)
-                .map(this::factEntry)
-                .flatMap(Optional::stream)
-                .forEach(entry -> values.put(entry.key(), entry.value()));
-        return values;
-    }
-
-    private List<String> listText(String value) {
-        return !hasValue(value) || "[]".equals(value)
-                ? List.of()
-                : splitListText(value);
-    }
-
-    private List<String> splitListText(String value) {
-        String cleanValue = value.trim();
-        String withoutBrackets = cleanValue.startsWith("[") && cleanValue.endsWith("]")
-                ? cleanValue.substring(1, cleanValue.length() - 1)
-                : cleanValue;
-        return Arrays.stream(withoutBrackets.split(","))
-                .map(String::trim)
-                .filter(this::hasValue)
-                .toList();
-    }
-
-    private String amountText(String amount) {
-        try {
-            return money(new BigDecimal(amount));
-        } catch (NumberFormatException exception) {
-            return hasValue(amount) ? amount : "sin datos";
-        }
-    }
-
-    private boolean hasValue(String value) {
-        return value != null && !value.isBlank() && !"sin_datos".equals(value);
-    }
-
-    private String purchaseList(List<Purchase> purchases) {
-        return formattedItems(purchases.stream()
-                .map(this::purchaseSummary)
-                .toList());
-    }
-
-    private String productsList(List<Producto> products) {
-        return formattedItems(products.stream()
-                .map(this::productSummary)
-                .toList());
-    }
-
-    private String productSummary(Producto product) {
-        return productName(product)
-                + " por "
-                + money(price(product))
-                + " (stock: "
-                + value(product.getStockActual())
-                + ")";
-    }
-
-    private String eventsList(List<SchoolCalendarEvent> events) {
-        return formattedItems(events.stream()
-                .map(this::eventSummary)
-                .toList());
-    }
-
-    private String eventSummary(SchoolCalendarEvent event) {
-        return value(event.date())
-                + " - "
-                + value(event.description())
-                + " ("
-                + value(event.type())
-                + ")";
-    }
-
-    private String purchaseSummary(Purchase purchase) {
-        return date(purchase.getDate())
-                + " - "
-                + itemListFromPurchase(purchase)
-                + " por "
-                + money(purchase.getTotalAmount())
-                + " ("
-                + purchase.getStatus()
-                + ")";
-    }
-
-    private String patternList(List<PurchasePattern> patterns) {
-        return formattedItems(patterns.stream()
-                .map(this::patternSummary)
-                .toList());
-    }
-
-    private String formattedItems(List<String> items) {
-        List<String> visibleItems = items.stream()
-                .limit(TEXT_LIST_ITEMS_TO_SHOW)
-                .toList();
-        String bullets = visibleItems.stream()
-                .map(item -> "- " + item)
-                .collect(Collectors.joining("\n"));
-        return bullets + remainingItemsText(items.size(), visibleItems.size());
-    }
-
-    private String remainingItemsText(int totalItems, int visibleItems) {
-        return totalItems > visibleItems
-                ? "\nY " + (totalItems - visibleItems) + " mas en el detalle."
-                : "";
-    }
-
-    private String countText(int count, String singular, String plural) {
-        return count + " " + (count == 1 ? singular : plural);
-    }
-
-    private String patternSummary(PurchasePattern pattern) {
-        return itemListFromRequests(pattern.items())
-                + " ("
-                + pattern.occurrences()
-                + " veces)";
-    }
-
-    private String itemListFromPurchase(Purchase purchase) {
-        return purchase.getItems().entrySet()
-                .stream()
-                .filter(entry -> isValidPurchaseItem(entry.getKey(), entry.getValue()))
-                .map(entry -> entry.getValue() + "x " + productName(entry.getKey()))
-                .collect(Collectors.joining(", "));
-    }
-
-    private String itemListFromRequests(List<PurchaseItemRequest> items) {
-        return items.stream()
-                .map(item -> item.quantity() + "x " + productName(item.productId()))
-                .collect(Collectors.joining(", "));
-    }
-
-    private String itemList(List<PurchasePlanItem> items) {
-        return items.stream()
-                .map(item -> item.quantity() + "x " + item.productName())
-                .collect(Collectors.joining(", "));
-    }
-
-    private String productName(UUID productId) {
-        return productRepository.findById(productId)
-                .map(this::productName)
-                .orElse(PRODUCT_WITHOUT_NAME);
-    }
-
-    private String productName(Producto product) {
-        return product.getNombre() == null ? PRODUCT_WITHOUT_NAME : product.getNombre();
-    }
-
-    private BigDecimal price(Producto product) {
-        return product.getPrecio() == null ? BigDecimal.ZERO : product.getPrecio();
-    }
-
-    private String money(BigDecimal amount) {
-        BigDecimal safeAmount = amount == null ? BigDecimal.ZERO : amount;
-        return "$" + safeAmount.setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private String date(LocalDateTime dateTime) {
-        return dateTime == null ? "sin fecha" : DATE_TIME_FORMAT.format(dateTime);
-    }
-
-    private String recessLabel(RecessTime recessTime) {
-        return switch (recessTime) {
-            case FIRST_RECESS -> "primer recreo";
-            case SECOND_RECESS -> "segundo recreo";
-            case NOON -> "mediodia";
-            case AFTER_HOURS -> "salida";
-        };
-    }
-
-    private String normalize(String message) {
-        String lowerCaseMessage = message.toLowerCase(Locale.ROOT).trim();
-        String normalizedMessage = Normalizer.normalize(lowerCaseMessage, Normalizer.Form.NFD);
-        return DIACRITICS.matcher(normalizedMessage).replaceAll("");
-    }
-
-    private Optional<UUID> uuid(Object value) {
-        try {
-            return Optional.of(UUID.fromString(value(value)));
-        } catch (IllegalArgumentException exception) {
-            Optional<UUID> empty = Optional.empty();
-            return empty;
-        }
-    }
-
-    private Optional<Integer> integer(Object value) {
-        return value instanceof Number number
-                ? Optional.of(number.intValue())
-                : integerFromString(value);
-    }
-
-    private Optional<Integer> integerFromString(Object value) {
-        try {
-            return Optional.of(Integer.parseInt(value(value)));
-        } catch (NumberFormatException exception) {
-            Optional<Integer> empty = Optional.empty();
-            return empty;
-        }
-    }
-
-    private String value(Object value) {
-        return value == null ? "" : value.toString();
-    }
-
-    private Map<String, Object> castMap(Map<?, ?> source) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        source.forEach((key, value) -> result.put(key.toString(), value));
-        return result;
-    }
-
-    private record PurchaseItemRequest(
-            UUID productId,
-            int quantity,
-            UUID buffetId
-    ) {
-    }
-
-    private record FactEntry(
-            String key,
-            String value
-    ) {
-    }
-
-    private record TutorChildFact(
-            String name,
-            Map<String, String> values
-    ) {
-        private String value(String key) {
-            return values.getOrDefault(key, "");
-        }
-    }
-
-    private record PurchasePlanItem(
-            UUID productId,
-            String productName,
-            int quantity,
-            BigDecimal unitPrice
-    ) {
-        private BigDecimal subtotal() {
-            return unitPrice.multiply(BigDecimal.valueOf(quantity));
-        }
-    }
-
-    private record PurchasePlan(
-            UUID studentId,
-            UUID buffetId,
-            List<PurchasePlanItem> items,
-            int occurrences,
-            LocalDateTime lastDate
-    ) {
-        private BigDecimal totalAmount() {
-            return items.stream()
-                    .map(PurchasePlanItem::subtotal)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-        }
-    }
-
-    private record PurchasePatternCandidate(
-            String key,
-            List<PurchaseItemRequest> items,
-            LocalDateTime lastDate
-    ) {
-    }
-
-    private record PurchasePattern(
-            List<PurchaseItemRequest> items,
-            int occurrences,
-            LocalDateTime lastDate
-    ) {
-    }
-
-    private record PendingPurchase(
-            UUID studentId,
-            UUID buffetId,
-            List<PurchaseItemRequest> items,
-            Optional<RecessTime> recessTime
-    ) {
-    }
-
-    private record PendingActionSearch(
-            Optional<PendingPurchase> pendingPurchase,
-            boolean shouldStop
-    ) {
-        private static PendingActionSearch terminal() {
-            return new PendingActionSearch(Optional.empty(), true);
-        }
-
-        private static PendingActionSearch from(Optional<PendingPurchase> pendingPurchase) {
-            return new PendingActionSearch(pendingPurchase, pendingPurchase.isPresent());
-        }
-    }
-
-    private static final class PurchasePatternAccumulator {
-
-        private final List<PurchaseItemRequest> items;
-        private final int occurrences;
-        private final LocalDateTime lastDate;
-
-        private PurchasePatternAccumulator(PurchasePatternCandidate candidate) {
-            this(candidate.items(), 1, candidate.lastDate());
-        }
-
-        private PurchasePatternAccumulator(
-                List<PurchaseItemRequest> items,
-                int occurrences,
-                LocalDateTime lastDate
-        ) {
-            this.items = items;
-            this.occurrences = occurrences;
-            this.lastDate = lastDate;
-        }
-
-        private PurchasePatternAccumulator merge(PurchasePatternAccumulator other) {
-            return new PurchasePatternAccumulator(
-                    this.items,
-                    this.occurrences + other.occurrences,
-                    latestDate(this.lastDate, other.lastDate)
-            );
-        }
-
-        private PurchasePattern pattern() {
-            return new PurchasePattern(items, occurrences, lastDate);
-        }
-
-        private LocalDateTime latestDate(LocalDateTime first, LocalDateTime second) {
-            return Comparator.nullsLast(LocalDateTime::compareTo)
-                    .compare(first, second) >= 0
-                    ? first
-                    : second;
-        }
-    }
 }
