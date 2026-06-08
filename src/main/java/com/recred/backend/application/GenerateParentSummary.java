@@ -47,8 +47,10 @@ public class GenerateParentSummary {
         ObjectNode hijosNode = root.putObject("hijos");
 
         for (Alumno hijo : hijos) {
-            List<Purchase> compras = purchaseRepository.findByAlumnoAndDateRange(hijo.getId(), inicio, fin);
-            BigDecimal totalHijo = compras.stream().map(Purchase::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            List<Purchase> compras = purchaseRepository.findByAlumnoAndDateRange(
+                    hijo.getId(), inicio, fin);
+            BigDecimal totalHijo = compras.stream().map(
+                    Purchase::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 
             ObjectNode hijoNode = hijosNode.putObject(hijo.getUsuario().getNombre());
             hijoNode.put("totalGastado", totalHijo);
@@ -72,7 +74,8 @@ public class GenerateParentSummary {
                 catsNode.put(cat, porc);
             });
             Map<Producto, Integer> productos = new HashMap<>();
-            compras.forEach(c -> c.getItems().forEach((p, q) -> productos.merge(p, q, Integer::sum)));
+            compras.forEach(c -> c.getItems().forEach(
+                    (p, q) -> productos.merge(p, q, Integer::sum)));
 
             productos.entrySet().stream()
                     .sorted((e1, e2) -> {

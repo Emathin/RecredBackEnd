@@ -5,6 +5,8 @@ import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.services.PushNotificationSender;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +15,8 @@ import java.util.List;
 
 @Component
 public class GenerateParentSummaryJob {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(GenerateParentSummaryJob.class);
 
     private final TutorRepository tutorRepository;
     private final GenerateParentSummary generateParentSummary;
@@ -37,7 +41,7 @@ public class GenerateParentSummaryJob {
         for (Tutor tutor : tutors) {
             try {
                 generateParentSummary.execute(tutor.getUsuario().getId(), inicio, fin);
-                
+
                 PushNotification notification = new PushNotification(
                         tutor.getUsuario().getId(),
                         "Resumen Semanal",
@@ -45,9 +49,10 @@ public class GenerateParentSummaryJob {
                         null
                 );
                 pushNotificationSender.send(notification);
-                
+
             } catch (Exception e) {
-                // Log error per tutor, don't stop the whole job
+                LOGGER.error("Error al generar resumen o enviar notificación para el tutor {}: {}",
+                        tutor.getUsuario().getId(), e.getMessage(), e);
             }
         }
     }
