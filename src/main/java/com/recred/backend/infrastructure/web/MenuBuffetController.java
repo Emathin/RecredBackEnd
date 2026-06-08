@@ -45,4 +45,4 @@ public class MenuBuffetController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-}
+}
