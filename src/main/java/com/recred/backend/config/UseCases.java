@@ -36,6 +36,7 @@ import com.recred.backend.application.GetLoggedUserNotifications;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetProductById;
 import com.recred.backend.application.GetProductsByBuffetUser;
+import com.recred.backend.application.GetScheduledPickups;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
@@ -728,5 +729,10 @@ public class UseCases {
             KiosqueroRepository kiosqueroRepository){
         return new GetProductsByBuffetUser(
                 productRepository, kiosqueroRepository);
+    }
+
+    @Bean
+    public GetScheduledPickups getScheduledPickups(PurchaseRepository purchaseRepository) {
+        return new GetScheduledPickups(purchaseRepository);
     }
 }

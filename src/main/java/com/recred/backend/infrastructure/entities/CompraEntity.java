@@ -114,6 +114,7 @@ public abstract class CompraEntity {
                 if (retiroProgramadoEntity.getFranja() != null) {
                     domain.setPickupSlotId(retiroProgramadoEntity.getFranja().getId());
                 }
+                domain.setWithdrawalStatus(retiroProgramadoEntity.getEstado());
             }
         }
 
