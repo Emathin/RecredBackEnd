@@ -39,15 +39,18 @@ public class GenerateParentSummary {
     }
 
     public Summary execute(UUID usuarioId, LocalDateTime inicio, LocalDateTime fin) {
-        var tutor = tutorRepository.findByUsuarioId(usuarioId).orElseThrow();
+        var tutor = tutorRepository.findByUsuarioId(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Tutor no encontrado"));
         Set<Alumno> hijos = tutor.getHijos();
 
         ObjectNode root = objectMapper.createObjectNode();
         ObjectNode hijosNode = root.putObject("hijos");
 
         for (Alumno hijo : hijos) {
-            List<Purchase> compras = purchaseRepository.findByAlumnoAndDateRange(hijo.getId(), inicio, fin);
-            BigDecimal totalHijo = compras.stream().map(Purchase::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            List<Purchase> compras = purchaseRepository.
+                    findByAlumnoAndDateRange(hijo.getId(), inicio, fin);
+            BigDecimal totalHijo = compras.stream().map(
+                    Purchase::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 
             ObjectNode hijoNode = hijosNode.putObject(hijo.getUsuario().getNombre());
             hijoNode.put("totalGastado", totalHijo);
@@ -69,7 +72,8 @@ public class GenerateParentSummary {
                 catsNode.put(cat, porcentaje);
             });
             Map<Producto, Integer> productos = new HashMap<>();
-            compras.forEach(c -> c.getItems().forEach((p, q) -> productos.merge(p, q, Integer::sum)));
+            compras.forEach(c -> c.getItems().forEach(
+                    (p, q) -> productos.merge(p, q, Integer::sum)));
 
             productos.entrySet().stream()
                     .sorted((e1, e2) -> {

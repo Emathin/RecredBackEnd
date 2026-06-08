@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -43,4 +44,8 @@ public class SummaryEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "resumen", columnDefinition = "jsonb", nullable = false)
     private String summary;
+
+    @CreationTimestamp
+    @Column(name = "creado_en", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 }

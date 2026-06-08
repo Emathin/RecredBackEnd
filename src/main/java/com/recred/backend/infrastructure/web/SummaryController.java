@@ -22,7 +22,8 @@ public class SummaryController {
     private final GenerateParentSummary generateParentSummary;
     private final SummaryRepository summaryRepository;
 
-    public SummaryController(GenerateParentSummary generateParentSummary, SummaryRepository summaryRepository) {
+    public SummaryController(GenerateParentSummary generateParentSummary,
+                             SummaryRepository summaryRepository) {
         this.generateParentSummary = generateParentSummary;
         this.summaryRepository = summaryRepository;
     }
