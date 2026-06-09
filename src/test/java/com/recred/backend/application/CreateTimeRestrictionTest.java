@@ -82,6 +82,9 @@ class CreateTimeRestrictionTest {
                 mockUsuario.setRol(com.recred.backend.domain.models.RolUsuario.PADRE);
                 when(usuarioRepository.findByIdCognito("test-sub")).thenReturn(Optional.of(mockUsuario));
 
+                Alumno mockAlumno = new Alumno();
+                when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(mockAlumno));
+
                 when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
 
                 createTimeRestriction.execute(command, "test-sub");

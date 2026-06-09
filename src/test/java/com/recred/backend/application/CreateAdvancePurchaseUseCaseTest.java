@@ -113,6 +113,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
                 mockWallet.setAlumno(student);
                 mockWallet.setSaldoCreditos(new BigDecimal("100.0"));
+                when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(mockWallet));
 
                 AdvancePurchaseResponse response = createAdvancePurchase.execute(request, "test-user");
                 assertNotNull(response);

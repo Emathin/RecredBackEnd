@@ -37,12 +37,13 @@ class UpdateTimeRestrictionTest {
         UUID nuevaCategoriaId = UUID.randomUUID();
         UUID nuevaClasificacionId = UUID.randomUUID();
 
-        RestriccionHoraria restriccionExistente = new RestriccionHoraria();
-        when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
-        when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
-
         TimeRestrictionCommand command = new TimeRestrictionCommand(
                 UUID.randomUUID(), nuevoTimeSlotId, nuevaCategoriaId, nuevaClasificacionId);
+
+        RestriccionHoraria restriccionExistente = new RestriccionHoraria();
+        restriccionExistente.setAlumnoId(command.studentId());
+        when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
+        when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
 
         when(alumnoRepository.findById(command.studentId())).thenReturn(Optional.of(new Alumno()));
 
@@ -62,13 +63,14 @@ class UpdateTimeRestrictionTest {
         UUID restrictionId = UUID.randomUUID();
         UUID nuevoTimeSlotId = UUID.randomUUID();
 
+        TimeRestrictionCommand command = new TimeRestrictionCommand(
+                UUID.randomUUID(), nuevoTimeSlotId, null, null);
+
         RestriccionHoraria restriccionExistente = new RestriccionHoraria();
+        restriccionExistente.setAlumnoId(command.studentId());
 
         when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
         when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
-
-        TimeRestrictionCommand command = new TimeRestrictionCommand(
-                UUID.randomUUID(), nuevoTimeSlotId, null, null);
 
         when(alumnoRepository.findById(command.studentId())).thenReturn(Optional.of(new Alumno()));
 

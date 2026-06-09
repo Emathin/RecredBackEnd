@@ -13,9 +13,7 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.PurchaseValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +23,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -34,7 +31,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -51,11 +47,7 @@ class ProcessPresentialPurchaseTest {
     @Mock
     private PurchaseRepository purchaseRepository;
     @Mock
-    private ValidadorHorarioService timeValidator;
-    @Mock
-    private ValidacionRestriccionesService healthValidator;
-    @Mock
-    private ValidadorPresupuestoService budgetValidator;
+    private PurchaseValidator purchaseValidator;
 
     @InjectMocks
     private ProcessPresentialPurchase useCase;
@@ -97,22 +89,7 @@ class ProcessPresentialPurchaseTest {
 
         useCase.execute(studentId, cart);
 
-        verify(timeValidator).validarCompra(
-                eq(student),
-                eq(cart.keySet()),
-                any(LocalDateTime.class)
-        );
-        verify(healthValidator).validarCompra(student, cart.keySet());
-
-        Map<UUID, BigDecimal> expectedCategoryTotals = new HashMap<>();
-        expectedCategoryTotals.put(category.getId(), new BigDecimal("20.00"));
-
-        verify(budgetValidator).validarPresupuesto(
-                eq(studentId),
-                eq(new BigDecimal("20.00")),
-                eq(expectedCategoryTotals),
-                any(LocalDateTime.class)
-        );
+        verify(purchaseValidator).validate(any(Purchase.class));
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(walletRepository).save(any(Billetera.class));
@@ -134,65 +111,13 @@ class ProcessPresentialPurchaseTest {
     }
 
     @Test
-    void execute_WhenProductHasNoCategory_ShouldValidateEmptyCategoryTotals() {
-        product.setCategoria(null);
-        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
-
-        useCase.execute(studentId, cart);
-
-        verify(budgetValidator).validarPresupuesto(
-                eq(studentId),
-                eq(new BigDecimal("20.00")),
-                eq(Map.of()),
-                any(LocalDateTime.class)
-        );
-    }
-
-    @Test
-    void execute_WhenProductCategoryHasNoId_ShouldValidateEmptyCategoryTotals() {
-        category.setId(null);
-        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
-
-        useCase.execute(studentId, cart);
-
-        verify(budgetValidator).validarPresupuesto(
-                eq(studentId),
-                eq(new BigDecimal("20.00")),
-                eq(Map.of()),
-                any(LocalDateTime.class)
-        );
-    }
-
-    @Test
-    void execute_WhenProductPriceIsNull_ShouldUseZeroTotals() {
-        product.setPrecio(null);
-        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
-
-        useCase.execute(studentId, cart);
-
-        Map<UUID, BigDecimal> expectedCategoryTotals = new HashMap<>();
-        expectedCategoryTotals.put(category.getId(), BigDecimal.ZERO);
-        verify(budgetValidator).validarPresupuesto(
-                eq(studentId),
-                eq(BigDecimal.ZERO),
-                eq(expectedCategoryTotals),
-                any(LocalDateTime.class)
-        );
-    }
-
-    @Test
     void execute_WhenStudentNotFound_ShouldThrowException() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
 
         assertThrows(AlumnoNoEncontradoException.class, () -> useCase.execute(studentId, cart));
 
         verifyNoInteractions(
-                timeValidator,
-                healthValidator,
-                budgetValidator,
+                purchaseValidator,
                 walletRepository,
                 purchaseRepository
         );
@@ -207,13 +132,7 @@ class ProcessPresentialPurchaseTest {
         assertThrows(InsufficientBalanceException.class,
                 () -> useCase.execute(studentId, cart));
 
-        verify(timeValidator).validarCompra(
-                eq(student),
-                eq(cart.keySet()),
-                any(LocalDateTime.class)
-        );
-        verify(healthValidator).validarCompra(student, cart.keySet());
-        verify(budgetValidator).validarPresupuesto(any(), any(), any(), any());
+        verify(purchaseValidator).validate(any(Purchase.class));
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
     }
@@ -234,36 +153,25 @@ class ProcessPresentialPurchaseTest {
     void execute_WhenHealthRestrictionFails_ShouldThrowException() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         doThrow(new RestriccionSaludException(""))
-                .when(healthValidator)
-                .validarCompra(student, cart.keySet());
+                .when(purchaseValidator)
+                .validate(any(Purchase.class));
 
         assertThrows(RestriccionSaludException.class, () -> useCase.execute(studentId, cart));
 
-        verify(timeValidator).validarCompra(
-                eq(student),
-                eq(cart.keySet()),
-                any(LocalDateTime.class)
-        );
-        verifyNoInteractions(budgetValidator, walletRepository, purchaseRepository);
+        verifyNoInteractions(walletRepository, purchaseRepository);
     }
 
     @Test
     void execute_WhenTimeRestrictionFails_ShouldThrowException() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         doThrow(new RestriccionHorariaException(""))
-                .when(timeValidator)
-                .validarCompra(
-                        eq(student),
-                        eq(cart.keySet()),
-                        any(LocalDateTime.class)
-                );
+                .when(purchaseValidator)
+                .validate(any(Purchase.class));
 
         assertThrows(RestriccionHorariaException.class,
                 () -> useCase.execute(studentId, cart));
 
         verifyNoInteractions(
-                healthValidator,
-                budgetValidator,
                 walletRepository,
                 purchaseRepository
         );
