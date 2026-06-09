@@ -7,6 +7,7 @@ import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
 import com.recred.backend.application.CancelPresentialPurchase;
+import com.recred.backend.application.ConfirmPaymentAndCredit;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
@@ -24,6 +25,7 @@ import com.recred.backend.application.GenerateProductChangeRecommendation;
 import com.recred.backend.application.GeneratePurchaseRecommendation;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
+import com.recred.backend.application.GenerateTopUpLink;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetAllProducts;
@@ -87,6 +89,8 @@ import com.recred.backend.domain.repositories.PurchaseRecommendationNotification
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.services.ExternalPaymentService;
+import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCalendarRepository;
@@ -723,6 +727,20 @@ public class UseCases {
         return new GeneratePurchaseRecommendation(alumnoRepository,
                 purchaseRepository,purchaseAnalyzer,aiEventRepository, notificationRepository,
                 studentRepository,suggestionAiRepository);
+    }
+
+    @Bean
+    public GenerateTopUpLink generateTopUpLink(
+            AlumnoRepository alumnoRepository,
+            ExternalPaymentService externalPaymentService) {
+        return new GenerateTopUpLink(alumnoRepository, externalPaymentService);
+    }
+
+    @Bean
+    public ConfirmPaymentAndCredit confirmPaymentAndCredit(
+            WalletRepository walletRepository,
+            ExternalPaymentService externalPaymentService) {
+        return new ConfirmPaymentAndCredit(walletRepository, externalPaymentService);
     }
 
     @Bean
