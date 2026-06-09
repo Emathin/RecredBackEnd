@@ -35,4 +35,9 @@ public class WalletRepositoryImpl implements WalletRepository {
 
         springDataRepository.save(entity);
     }
+
+    @Override
+    public java.util.List<UUID> findAlumnoIdsWithLowBalance(java.math.BigDecimal threshold) {
+        return springDataRepository.findAlumnoIdsWithLowBalance(threshold);
+    }
 }
