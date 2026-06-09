@@ -11,6 +11,7 @@ import com.recred.backend.domain.services.PurchaseValidator;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
+import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
 import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -25,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -49,11 +51,13 @@ class CreateAdvancePurchaseUseCaseTest {
     private FranjaHorariaRepository franjaHorariaRepository;
     @Mock
     private SpringDataBuffetRepository springDataBuffetRepository;
+    @Mock
+    private UsuarioRepository usuarioRepository;
 
-    @InjectMocks
-    private CreateAdvancePurchase createAdvancePurchase;
+        @InjectMocks
+        private CreateAdvancePurchase createAdvancePurchase;
 
-    private AutoCloseable closeable;
+        private AutoCloseable closeable;
 
     @BeforeEach
     void setUp() {
@@ -66,27 +70,26 @@ class CreateAdvancePurchaseUseCaseTest {
                 withdrawalCodeService,
                 walletRepository,
                 franjaHorariaRepository,
-                springDataBuffetRepository
+                springDataBuffetRepository,
+                usuarioRepository
         );
     }
 
-    @AfterEach
-    void tearDown() throws Exception {
-        closeable.close();
-    }
+        @AfterEach
+        void tearDown() throws Exception {
+                closeable.close();
+        }
 
-    @Test
-    void execute_shouldReturnPendingStatusAndWithdrawalCodes_whenPurchaseIsSuccessful() {
+        @Test
+        void execute_shouldReturnPendingStatusAndWithdrawalCodes_whenPurchaseIsSuccessful() {
 
-        UUID studentId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest
-                (productId, 1);
-        AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
-                studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23",
-                RecessTime.FIRST_RECESS, List.of(itemRequest)
-        );
-        AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
+                UUID studentId = UUID.randomUUID();
+                UUID productId = UUID.randomUUID();
+                AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest(productId, 1);
+                AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
+                                studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23",
+                                RecessTime.FIRST_RECESS, List.of(itemRequest));
+                AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
         Alumno student = new Alumno();
         student.setId(studentId);
@@ -97,13 +100,13 @@ class CreateAdvancePurchaseUseCaseTest {
         grado.setColegio(colegio);
         student.setGrado(grado);
 
-        Producto product = new Producto();
-        product.setId(productId);
-        product.setPrecio(BigDecimal.TEN);
-        product.setRequierePreparacion(true);
+                Producto product = new Producto();
+                product.setId(productId);
+                product.setPrecio(BigDecimal.TEN);
+                product.setRequierePreparacion(true);
 
-        Map<Producto, Integer> items = new HashMap<>();
-        items.put(product, 1);
+                Map<Producto, Integer> items = new HashMap<>();
+                items.put(product, 1);
 
         Purchase purchase = new Purchase(student, items, null, studentId, BuyerType.STUDENT);
         purchase.setId(UUID.randomUUID());
@@ -117,72 +120,86 @@ class CreateAdvancePurchaseUseCaseTest {
         franja.setDescripcion("Primer Recreo");
         franja.setHoraInicio(java.time.LocalTime.of(9, 30));
 
-        Billetera wallet = new Billetera();
-        wallet.setSaldoCreditos(BigDecimal.valueOf(100.0));
-
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(springDataBuffetRepository.findFirstByColegioEntityIdAndActivoTrue(any(UUID.class)))
                 .thenReturn(Optional.of(buffetEntity));
         when(franjaHorariaRepository.findAllByColegioId(any(UUID.class)))
                 .thenReturn(List.of(franja));
-        when(walletRepository.findByStudentId(any(UUID.class)))
-                .thenReturn(Optional.of(wallet));
         when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
         when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("test-code");
 
-        AdvancePurchaseResponse response = createAdvancePurchase.execute(request);
+                Usuario mockUsuario = new Usuario();
+                mockUsuario.setId(UUID.randomUUID());
+                mockUsuario.setRol(RolUsuario.PADRE);
+                Tutor mockTutor = new Tutor();
+                mockTutor.setHijos(Set.of(student));
+                mockUsuario.setTutor(mockTutor);
+                when(usuarioRepository.findByIdCognito("test-user")).thenReturn(Optional.of(mockUsuario));
 
-        assertNotNull(response);
-        assertEquals(EstadoCompra.PENDIENTE, response.status().status());
-        assertEquals(10.0, response.total());
-        assertTrue(response.codes().containsKey(studentId));
-        assertEquals("test-code", response.codes().get(studentId));
-    }
+                Billetera mockWallet = new Billetera();
+                mockWallet.setId(UUID.randomUUID());
 
-    @Test
-    void execute_shouldThrowDietaryRestrictionException_whenValidationFails() {
+                mockWallet.setAlumno(student);
+                mockWallet.setSaldoCreditos(new BigDecimal("100.0"));
+                when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(mockWallet));
 
-        UUID studentId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest
-                (productId, 1);
-        AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
-                studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23",
-                RecessTime.FIRST_RECESS, List.of(itemRequest)
-        );
-        AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
+                AdvancePurchaseResponse response = createAdvancePurchase.execute(request, "test-user");
+                assertNotNull(response);
+                assertEquals(EstadoCompra.PENDIENTE, response.status().status());
+                assertEquals(10.0, response.total());
+                assertTrue(response.codes().containsKey(studentId));
+                assertEquals("test-code", response.codes().get(studentId));
+        }
 
-        Alumno student = new Alumno();
-        student.setId(studentId);
-        
-        Grado grado = new Grado();
-        Colegio colegio = new Colegio();
-        colegio.setId(UUID.randomUUID());
-        grado.setColegio(colegio);
-        student.setGrado(grado);
+        @Test
+        void execute_shouldThrowDietaryRestrictionException_whenValidationFails() {
+                UUID studentId = UUID.randomUUID();
+                UUID productId = UUID.randomUUID();
+                AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest(productId, 1);
+                AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
+                                studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23",
+                                RecessTime.FIRST_RECESS, List.of(itemRequest));
+                AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
-        Producto product = new Producto();
-        product.setId(productId);
+                Alumno student = new Alumno();
+                student.setId(studentId);
+                
+                Grado grado = new Grado();
+                Colegio colegio = new Colegio();
+                colegio.setId(UUID.randomUUID());
+                grado.setColegio(colegio);
+                student.setGrado(grado);
 
-        BuffetEntity buffetEntity = new BuffetEntity();
-        buffetEntity.setId(UUID.randomUUID());
+                Producto product = new Producto();
+                product.setId(productId);
 
-        FranjaHoraria franja = new FranjaHoraria();
-        franja.setId(UUID.randomUUID());
-        franja.setDescripcion("Primer Recreo");
-        franja.setHoraInicio(java.time.LocalTime.of(9, 30));
+                BuffetEntity buffetEntity = new BuffetEntity();
+                buffetEntity.setId(UUID.randomUUID());
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(springDataBuffetRepository.findFirstByColegioEntityIdAndActivoTrue(any(UUID.class)))
-                .thenReturn(Optional.of(buffetEntity));
-        when(franjaHorariaRepository.findAllByColegioId(any(UUID.class)))
-                .thenReturn(List.of(franja));
+                FranjaHoraria franja = new FranjaHoraria();
+                franja.setId(UUID.randomUUID());
+                franja.setDescripcion("Primer Recreo");
+                franja.setHoraInicio(java.time.LocalTime.of(9, 30));
 
-        doThrow(new DietaryRestrictionException("Dietary restriction violated"))
-                .when(purchaseValidator).validate(any(Purchase.class));
+                when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+                when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+                when(springDataBuffetRepository.findFirstByColegioEntityIdAndActivoTrue(any(UUID.class)))
+                        .thenReturn(Optional.of(buffetEntity));
+                when(franjaHorariaRepository.findAllByColegioId(any(UUID.class)))
+                        .thenReturn(List.of(franja));
 
-        assertThrows(DietaryRestrictionException.class, () -> createAdvancePurchase.execute(request));
-    }
+                Usuario mockUsuario = new Usuario();
+                mockUsuario.setId(UUID.randomUUID());
+                mockUsuario.setRol(RolUsuario.PADRE);
+                Tutor mockTutor = new Tutor();
+                mockTutor.setHijos(Set.of(student));
+                mockUsuario.setTutor(mockTutor);
+                when(usuarioRepository.findByIdCognito("test-user")).thenReturn(Optional.of(mockUsuario));
+
+                doThrow(new DietaryRestrictionException("Dietary restriction violated"))
+                                .when(purchaseValidator).validate(any(Purchase.class));
+                assertThrows(DietaryRestrictionException.class,
+                                () -> createAdvancePurchase.execute(request, "test-user"));
+        }
 }

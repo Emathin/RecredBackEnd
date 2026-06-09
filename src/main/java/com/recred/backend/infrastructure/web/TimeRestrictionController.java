@@ -43,9 +43,10 @@ public class TimeRestrictionController {
     }
 
     @PostMapping
-    public ResponseEntity<RestriccionHoraria> create(@RequestBody
-                                                         TimeRestrictionCommand command) {
-        RestriccionHoraria created = createTimeRestriction.execute(command);
+    public ResponseEntity<RestriccionHoraria> create(
+            @RequestBody TimeRestrictionCommand command,
+            java.security.Principal principal) {
+        RestriccionHoraria created = createTimeRestriction.execute(command, principal.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 

@@ -11,10 +11,14 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.models.RecessTime;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.PurchaseValidator;
 import com.recred.backend.domain.services.WithdrawalCodeService;
@@ -47,6 +51,7 @@ public class CreateAdvancePurchase {
     private final WalletRepository walletRepository;
     private final FranjaHorariaRepository timeSlotRepository;
     private final SpringDataBuffetRepository buffetRepository;
+    private final UsuarioRepository usuarioRepository;
 
     public CreateAdvancePurchase(
             PurchaseValidator purchaseValidator,
@@ -56,7 +61,8 @@ public class CreateAdvancePurchase {
             WithdrawalCodeService withdrawalCodeService,
             WalletRepository walletRepository,
             FranjaHorariaRepository timeSlotRepository,
-            SpringDataBuffetRepository buffetRepository
+            SpringDataBuffetRepository buffetRepository,
+            UsuarioRepository usuarioRepository
     ) {
         this.purchaseValidator = purchaseValidator;
         this.alumnoRepository = alumnoRepository;
@@ -66,13 +72,20 @@ public class CreateAdvancePurchase {
         this.walletRepository = walletRepository;
         this.timeSlotRepository = timeSlotRepository;
         this.buffetRepository = buffetRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @Transactional
-    public AdvancePurchaseResponse execute(AdvancePurchaseRequest request) {
+    public AdvancePurchaseResponse execute(AdvancePurchaseRequest request, String cognitoSub) {
         if (request.orders() == null || request.orders().isEmpty()) {
             throw new IllegalArgumentException("Orders list cannot be empty");
         }
+
+        Usuario usuario = usuarioRepository.findByIdCognito(cognitoSub)
+                .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
+
+        UUID buyerId = usuario.getId();
+        BuyerType buyerType;
 
         double totalSum = 0.0;
         Map<UUID, String> codes = new HashMap<>();
@@ -80,6 +93,25 @@ public class CreateAdvancePurchase {
         PurchaseStatus responseStatus = null;
 
         for (AdvancePurchaseRequest.OrderRequest orderRequest : request.orders()) {
+            if (usuario.getRol() == RolUsuario.ALUMNO) {
+                if (usuario.getAlumno() == null || 
+                    !usuario.getAlumno().getId().equals(orderRequest.studentId())) {
+                    throw new SecurityException(
+                            "No autorizado para comprar a nombre de otro alumno");
+                }
+                buyerType = BuyerType.STUDENT;
+            } else if (usuario.getRol() == RolUsuario.PADRE) {
+                if (usuario.getTutor() == null || 
+                    usuario.getTutor().getHijos().stream()
+                            .noneMatch(h -> h.getId().equals(orderRequest.studentId()))) {
+                    throw new SecurityException(
+                            "No autorizado para comprar a nombre de este alumno");
+                }
+                buyerType = BuyerType.TUTOR;
+            } else {
+                throw new SecurityException("Rol no autorizado para realizar compras");
+            }
+
             Alumno student = alumnoRepository.findById(orderRequest.studentId())
                     .orElseThrow(() -> new AlumnoNoEncontradoException(orderRequest.studentId()));
 
@@ -105,8 +137,8 @@ public class CreateAdvancePurchase {
                     student,
                     items,
                     MedioPago.CREDITOS,
-                    orderRequest.buyerId(),
-                    orderRequest.buyerType(),
+                    buyerId,
+                    buyerType,
                     buffetId,
                     pickupSlot.getId(),
                     pickupDate

@@ -13,6 +13,11 @@ import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DeleteProduct;
 import com.recred.backend.application.DesbloquearProductoManual;
+import com.recred.backend.application.LoadBalanceToChild;
+import com.recred.backend.application.TransferBalanceBetweenChildren;
+import com.recred.backend.application.GetAllProducts;
+import com.recred.backend.application.GetAllCategories;
+import com.recred.backend.application.GetProductById;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
@@ -25,8 +30,6 @@ import com.recred.backend.application.GeneratePurchaseRecommendation;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GetActiveBudgetByStudent;
-import com.recred.backend.application.GetAllCategories;
-import com.recred.backend.application.GetAllProducts;
 import com.recred.backend.application.GetCartSuggestions;
 import com.recred.backend.application.GetFavoritosByAlumno;
 import com.recred.backend.application.GetHealthRestrictions;
@@ -34,7 +37,6 @@ import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.GetLoggedUserNotifications;
 import com.recred.backend.application.GetPresentialPurchase;
-import com.recred.backend.application.GetProductById;
 import com.recred.backend.application.GetProductsByBuffetUser;
 import com.recred.backend.application.GetScheduledPickups;
 import com.recred.backend.application.GetPurchaseStatus;
@@ -144,7 +146,6 @@ public class UseCases {
     public ParentSummaryAnalyzer parentSummaryAnalyzer(GeminiTextClient geminiTextClient) {
         return new GeminiParentSummaryAnalyzer(geminiTextClient);
     }
-
     @Bean
     public WithdrawalCodeServiceImpl withdrawalCodeServiceImpl() {
         return new WithdrawalCodeServiceImpl();
@@ -154,15 +155,14 @@ public class UseCases {
     public PurchaseValidatorImpl purchaseValidatorImpl(
             ValidadorHorarioService validadorHorarioService,
             ValidacionRestriccionesService validacionRestriccionesService,
-            ValidadorPresupuestoService validadorPresupuestoService
-    ) {
+            ValidadorPresupuestoService validadorPresupuestoService) {
         return new PurchaseValidatorImpl(validadorHorarioService,
                 validacionRestriccionesService, validadorPresupuestoService);
     }
 
     @Bean
     public LoadStockIAService loadStockIAService(GeminiTextClient geminiTextClient,
-                                                 ObjectMapper objectMapper) {
+            ObjectMapper objectMapper) {
         return new LoadStockIAService(geminiTextClient, objectMapper);
     }
 
@@ -187,13 +187,11 @@ public class UseCases {
     public PurchaseValidator purchaseValidator(
             ValidadorHorarioService validadorHorarioService,
             ValidacionRestriccionesService validacionRestriccionesService,
-            ValidadorPresupuestoService validadorPresupuestoService
-    ){
+            ValidadorPresupuestoService validadorPresupuestoService) {
         return new PurchaseValidatorImpl(
                 validadorHorarioService,
                 validacionRestriccionesService,
-                validadorPresupuestoService
-        );
+                validadorPresupuestoService);
     }
 
     @Bean
@@ -209,7 +207,8 @@ public class UseCases {
                                                        WithdrawalCodeService withdrawalCodeService,
                                                        WalletRepository walletRepository,
                                                        FranjaHorariaRepository timeSlotRepository,
-                                                       SpringDataBuffetRepository buffetRepository){
+                                                       SpringDataBuffetRepository buffetRepository,
+                                                       UsuarioRepository usuarioRepository) {
         return new CreateAdvancePurchase(
                 purchaseValidator,
                 alumnoRepository,
@@ -218,7 +217,8 @@ public class UseCases {
                 withdrawalCodeService,
                 walletRepository,
                 timeSlotRepository,
-                buffetRepository
+                buffetRepository,
+                usuarioRepository
         );
     }
 
@@ -234,7 +234,7 @@ public class UseCases {
 
     @Bean
     public BloquearProductoManual bloquearProductoManual(AlumnoRepository alumnoRepository,
-                                                         ProductRepository productRepository) {
+            ProductRepository productRepository) {
         return new BloquearProductoManual(alumnoRepository, productRepository);
     }
 
@@ -245,7 +245,7 @@ public class UseCases {
 
     @Bean
     public AgregarProductoFavorito agregarProductoFavorito(AlumnoRepository alumnoRepository,
-                                                           ProductRepository productRepository) {
+            ProductRepository productRepository) {
         return new AgregarProductoFavorito(alumnoRepository, productRepository);
     }
 
@@ -400,16 +400,12 @@ public class UseCases {
             AlumnoRepository studentRepository,
             WalletRepository walletRepository,
             PurchaseRepository purchaseRepository,
-            ValidadorHorarioService timeValidator,
-            ValidacionRestriccionesService healthValidator,
-            ValidadorPresupuestoService budgetValidator) {
+            PurchaseValidator purchaseValidator) {
         return new ProcessPresentialPurchase(
                 studentRepository,
                 walletRepository,
                 purchaseRepository,
-                timeValidator,
-                healthValidator,
-                budgetValidator);
+                purchaseValidator);
     }
 
     @Bean
@@ -509,8 +505,13 @@ public class UseCases {
 
     @Bean
     public CreateTimeRestriction createTimeRestriction(
-            RestriccionHorariaRepository restriccionHorariaRepository) {
-        return new CreateTimeRestriction(restriccionHorariaRepository);
+            RestriccionHorariaRepository restriccionHorariaRepository,
+            UsuarioRepository usuarioRepository,
+            AlumnoRepository alumnoRepository) {
+        return new CreateTimeRestriction(
+                restriccionHorariaRepository,
+                usuarioRepository,
+                alumnoRepository);
     }
 
     @Bean
@@ -526,16 +527,16 @@ public class UseCases {
 
     @Bean
     public ObtenerHistorialTutor obtenerHistorialTutor(PurchaseRepository purchaseRepository,
-                                                        TutorRepository tutorRepository) {
+            TutorRepository tutorRepository) {
         return new ObtenerHistorialTutor(purchaseRepository, tutorRepository);
     }
 
     @Bean
     public GenerarMenuBuffet generarMenuBuffet(AlumnoRepository alumnoRepository,
-                                               ProductRepository productRepository,
-                                               PresupuestoRepository presupuestoRepository,
-                                               PurchaseRepository purchaseRepository,
-                                               CalculadorPeriodoPresupuesto calculadorPeriodo){
+            ProductRepository productRepository,
+            PresupuestoRepository presupuestoRepository,
+            PurchaseRepository purchaseRepository,
+            CalculadorPeriodoPresupuesto calculadorPeriodo) {
         return new GenerarMenuBuffet(alumnoRepository,
                 productRepository,
                 presupuestoRepository,
@@ -551,8 +552,9 @@ public class UseCases {
 
     @Bean
     public UpdateTimeRestriction updateTimeRestriction(
-            RestriccionHorariaRepository restriccionHorariaRepository) {
-        return new UpdateTimeRestriction(restriccionHorariaRepository);
+            RestriccionHorariaRepository restriccionHorariaRepository,
+            AlumnoRepository alumnoRepository) {
+        return new UpdateTimeRestriction(restriccionHorariaRepository, alumnoRepository);
     }
 
     @Bean
@@ -702,7 +704,7 @@ public class UseCases {
 
     @Bean
     public GenerateSeasonalRecommendation generateSeasonalRecommendation(
-            GeminiSeasonalSuggester seasonalSuggester, OpenMeteoWeatherClient weatherClient){
+            GeminiSeasonalSuggester seasonalSuggester, OpenMeteoWeatherClient weatherClient) {
         return new GenerateSeasonalRecommendation(
                 weatherClient, seasonalSuggester);
     }
@@ -722,20 +724,34 @@ public class UseCases {
 
     @Bean
     public GeneratePurchaseRecommendation generatePurchaseRecommendation(
-            AlumnoRepository alumnoRepository,PurchaseRepository purchaseRepository,
-            PurchaseAnalyzer purchaseAnalyzer,AIEventRepository aiEventRepository,
+            AlumnoRepository alumnoRepository, PurchaseRepository purchaseRepository,
+            PurchaseAnalyzer purchaseAnalyzer, AIEventRepository aiEventRepository,
             PurchaseRecommendationNotificationRepository notificationRepository,
             ConsumptionAlertStudentRepository studentRepository,
             SuggestionAiRepository suggestionAiRepository) {
         return new GeneratePurchaseRecommendation(alumnoRepository,
-                purchaseRepository,purchaseAnalyzer,aiEventRepository, notificationRepository,
-                studentRepository,suggestionAiRepository);
+                purchaseRepository, purchaseAnalyzer, aiEventRepository, notificationRepository,
+                studentRepository, suggestionAiRepository);
+    }
+
+    @Bean
+    public LoadBalanceToChild loadBalanceToChild(
+            UsuarioRepository usuarioRepository,
+            WalletRepository walletRepository) {
+        return new LoadBalanceToChild(usuarioRepository, walletRepository);
+    }
+
+    @Bean
+    public TransferBalanceBetweenChildren transferBalanceBetweenChildren(
+            UsuarioRepository usuarioRepository,
+            WalletRepository walletRepository) {
+        return new TransferBalanceBetweenChildren(usuarioRepository, walletRepository);
     }
 
     @Bean
     public GetProductsByBuffetUser getProductsByBuffetUser(
             ProductRepository productRepository,
-            KiosqueroRepository kiosqueroRepository){
+            KiosqueroRepository kiosqueroRepository) {
         return new GetProductsByBuffetUser(
                 productRepository, kiosqueroRepository);
     }

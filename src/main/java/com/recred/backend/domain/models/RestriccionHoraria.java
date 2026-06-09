@@ -16,16 +16,17 @@ public class RestriccionHoraria {
     private UUID alumnoId;
     private FranjaHoraria franjaHoraria;
     private CategoriaProducto categoria;
-    private ClasificacionTipo clasificacion;
+    private ClasificacionSalud clasificacionSalud;
     private boolean activa = true;
+    private UUID creadoPorUsuarioId;
 
     public RestriccionHoraria(UUID id, UUID alumnoId, FranjaHoraria franjaHoraria,
-                              CategoriaProducto categoria, ClasificacionTipo clasificacion) {
+                              CategoriaProducto categoria, ClasificacionSalud clasificacionSalud) {
         this.id = id;
         this.alumnoId = alumnoId;
         this.franjaHoraria = franjaHoraria;
         this.categoria = categoria;
-        this.clasificacion = clasificacion;
+        this.clasificacionSalud = clasificacionSalud;
     }
 
     public boolean bloquea(Producto producto, LocalDateTime momentoCompra) {
@@ -37,7 +38,7 @@ public class RestriccionHoraria {
             return false;
         }
 
-        if (this.categoria == null && this.clasificacion == null) {
+        if (this.categoria == null && this.clasificacionSalud == null) {
             return true;
         }
 
@@ -47,9 +48,9 @@ public class RestriccionHoraria {
         }
 
         boolean coincideClasificacion = false;
-        if (this.clasificacion != null && producto.getTipos() != null) {
-            coincideClasificacion = producto.getTipos().stream()
-                    .anyMatch(tipo -> tipo.getId().equals(this.clasificacion.getId()));
+        if (this.clasificacionSalud != null && producto.getClasificaciones() != null) {
+            coincideClasificacion = producto.getClasificaciones().stream()
+                    .anyMatch(salud -> salud.getId().equals(this.clasificacionSalud.getId()));
         }
 
         return coincideCategoria || coincideClasificacion;

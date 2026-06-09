@@ -29,11 +29,11 @@ class GetTimeRestrictionsByStudentTest {
         UUID studentId = UUID.randomUUID();
         List<RestriccionHoraria> restriccionesEsperadas = List.of(new RestriccionHoraria());
 
-        when(repository.findAllByAlumnoId(studentId)).thenReturn(restriccionesEsperadas);
+        when(repository.findAllByAlumnoEntityId(studentId)).thenReturn(restriccionesEsperadas);
 
         List<RestriccionHoraria> resultado = getTimeRestrictionsByStudent.execute(studentId);
 
         assertEquals(1, resultado.size());
-        verify(repository).findAllByAlumnoId(studentId);
+        verify(repository).findAllByAlumnoEntityId(studentId);
     }
 }

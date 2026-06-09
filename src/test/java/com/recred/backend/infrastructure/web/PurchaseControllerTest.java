@@ -168,15 +168,18 @@ class PurchaseControllerTest {
                 Collections.singletonMap(studentId, "ABC-123")
         );
 
-        when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class))).thenReturn(advancePurchaseResponse);
+        when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class), eq("test-user"))).thenReturn(advancePurchaseResponse);
+
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
 
         mockMvc.perform(post("/api/v1/purchases/advance")
+                        .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(advancePurchaseRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").value(purchaseId.toString()));
 
-        verify(createAdvancePurchase).execute(any(AdvancePurchaseRequest.class));
+        verify(createAdvancePurchase).execute(any(AdvancePurchaseRequest.class), eq("test-user"));
     }
 
     @Test
