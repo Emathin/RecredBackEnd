@@ -64,7 +64,8 @@ class GeneratePriceAlertTest {
         BigDecimal newPrice = new BigDecimal("120.00");
         UUID buffetId = UUID.randomUUID();
         UUID tutorUserId = UUID.randomUUID();
-        Alumno alumno = studentWithTutorUser(tutorUserId);
+        UUID studentUserId = UUID.randomUUID();
+        Alumno alumno = studentWithTutorUser(tutorUserId, studentUserId);
         givenAffectedStudentWithoutRecentAlert(producto, alumno);
         givenAiResult(alumno, producto, oldPrice, newPrice);
 
@@ -77,6 +78,7 @@ class GeneratePriceAlertTest {
         assertEquals(producto.getId(), saved.productId());
         assertEquals("Alfajor", saved.productName());
         assertEquals(alumno.getId(), saved.studentId());
+        assertEquals(studentUserId, saved.studentUserId());
         assertEquals(buffetId, saved.buffetId());
         assertEquals(oldPrice, saved.oldPrice());
         assertEquals(newPrice, saved.newPrice());
@@ -102,7 +104,7 @@ class GeneratePriceAlertTest {
     @Test
     void skipStudentWhenRecentPriceAlertAlreadyExists() {
         Producto producto = product();
-        Alumno alumno = studentWithTutorUser(UUID.randomUUID());
+        Alumno alumno = studentWithTutorUser(UUID.randomUUID(), UUID.randomUUID());
 
         when(studentAIProfileRepository.findStudentsWithFavoriteProduct(producto.getId()))
                 .thenReturn(List.of(alumno));
@@ -168,7 +170,7 @@ class GeneratePriceAlertTest {
         return captor.getValue();
     }
 
-    private Alumno studentWithTutorUser(UUID tutorUserId) {
+    private Alumno studentWithTutorUser(UUID tutorUserId, UUID studentUserId) {
         Usuario usuario = new Usuario();
         usuario.setId(tutorUserId);
 
@@ -177,6 +179,7 @@ class GeneratePriceAlertTest {
 
         Alumno alumno = new Alumno();
         alumno.setId(UUID.randomUUID());
+        alumno.setUsuarioId(studentUserId);
         alumno.getTutores().add(tutor);
         return alumno;
     }

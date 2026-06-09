@@ -20,7 +20,9 @@ import com.recred.backend.domain.models.SchoolAssistantDraft;
 import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
+import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
+import com.recred.backend.domain.models.SchoolAssistantRole;
 import com.recred.backend.domain.models.TipoDiaEscolar;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
@@ -45,6 +47,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -62,6 +65,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -124,6 +128,9 @@ class AskSchoolAssistantTest {
     @Mock
     private SchoolAssistantResponder schoolAssistantResponder;
 
+    @Mock
+    private SchoolAssistantFixedTopics fixedTopics;
+
     private AskSchoolAssistant askSchoolAssistant;
     private UUID studentId;
     private UUID sessionId;
@@ -146,8 +153,11 @@ class AskSchoolAssistantTest {
                 productRepository,
                 purchaseHistoryRepository,
                 presupuestoRepository,
+                fixedTopics,
                 CLOCK
         );
+        lenient().when(fixedTopics.respond(any(), any(), any()))
+                .thenReturn(Optional.empty());
         studentId = UUID.randomUUID();
         sessionId = UUID.randomUUID();
         session = new ChatSession(sessionId, EstadoChatSesion.ABIERTA, NOW, NOW);
@@ -202,6 +212,9 @@ class AskSchoolAssistantTest {
         assertTrue(answer.generatedByAi());
         assertEquals("gemini-test", answer.model());
         assertEquals(ALLOWED_CAPABILITIES, answer.capabilities());
+        assertEquals(SchoolAssistantRole.ALUMNO, answer.role());
+        assertEquals(SchoolAssistantIntent.UNKNOWN, answer.intent());
+        assertFalse(answer.suggestions().isEmpty());
 
         ArgumentCaptor<SchoolAssistantPrompt> promptCaptor = ArgumentCaptor
                 .forClass(SchoolAssistantPrompt.class);
@@ -228,6 +241,76 @@ class AskSchoolAssistantTest {
                 messages.get(0).metadata().get("capacidadesPermitidas")
         );
         verify(chatSessionRepository).updateLastActivity(sessionId, NOW);
+    }
+
+    @Test
+    void executeFormatsAiAnswerBeforeReturningAndSaving() {
+        String rawAnswer = "Stock actual: Coca-Cola 500ml por $1200.00 (stock: 50); "
+                + "Jugo de Naranja 300ml por $950.00 (stock: 35); "
+                + "Papas Chips 50g por $600.00 (stock: 70).";
+        String expectedAnswer = """
+                Stock actual:
+                - Coca-Cola 500ml por $1200.00 (stock: 50)
+                - Jugo de Naranja 300ml por $950.00 (stock: 35)
+                - Papas Chips 50g por $600.00 (stock: 70)
+                """.trim();
+
+        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+        when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
+        when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
+        when(paymentRepository.findRecentByStudentId(studentId, 5)).thenReturn(List.of());
+        when(purchaseRepository.findRecentByStudentId(studentId, 10)).thenReturn(List.of());
+        when(schoolCalendarRepository.findByStudentIdAndDateRange(
+                studentId,
+                LocalDate.of(2026, 5, 27),
+                LocalDate.of(2026, 6, 26)
+        )).thenReturn(List.of());
+        when(schoolAssistantResponder.respond(any())).thenReturn(Optional.of(
+                new SchoolAssistantDraft(rawAnswer, "gemini-test")
+        ));
+
+        SchoolAssistantAnswer answer = askSchoolAssistant.execute(
+                studentId,
+                new SchoolAssistantCommand(Optional.empty(), "stock")
+        );
+
+        assertEquals(expectedAnswer, answer.answer());
+        assertFalse(answer.answer().contains(";"));
+
+        ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
+        verify(chatMessageRepository, times(2)).save(messageCaptor.capture());
+        ChatMessage assistantMessage = messageCaptor.getAllValues().get(1);
+        assertEquals(expectedAnswer, assistantMessage.content());
+    }
+
+    @Test
+    void executeResolvesStudentIdFromUserId() {
+        UUID userId = UUID.randomUUID();
+        Billetera wallet = wallet(new BigDecimal("1500.00"));
+
+        when(alumnoRepository.existsById(userId)).thenReturn(false);
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
+        when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        when(paymentRepository.findRecentByStudentId(studentId, 5)).thenReturn(List.of());
+        when(purchaseRepository.findRecentByStudentId(studentId, 10)).thenReturn(List.of());
+        when(schoolCalendarRepository.findByStudentIdAndDateRange(
+                studentId,
+                LocalDate.of(2026, 5, 27),
+                LocalDate.of(2026, 6, 26)
+        )).thenReturn(List.of());
+        when(schoolAssistantResponder.respond(any())).thenReturn(Optional.empty());
+
+        SchoolAssistantAnswer answer = askSchoolAssistant.execute(
+                userId,
+                new SchoolAssistantCommand(Optional.empty(), "saldo")
+        );
+
+        assertEquals(sessionId, answer.sessionId());
+        verify(chatSessionRepository).startForStudent(studentId, NOW);
+        verify(walletRepository).findByStudentId(studentId);
     }
 
     @Test
@@ -258,7 +341,45 @@ class AskSchoolAssistantTest {
         assertFalse(answer.generatedByAi());
         assertNull(answer.model());
         assertEquals(ALLOWED_CAPABILITIES, answer.capabilities());
+        assertFalse(answer.suggestions().isEmpty());
         verify(schoolAssistantResponder).respond(any());
+    }
+
+    @Test
+    void executeUsesFixedReplyBeforeGemini() {
+        Map<String, Object> metadata = Map.of("intencionChatbot", "BALANCE");
+
+        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+        when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
+        when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
+        when(walletRepository.findByStudentId(studentId))
+                .thenReturn(Optional.of(wallet(new BigDecimal("1500.00"))));
+        when(paymentRepository.findRecentByStudentId(studentId, 5)).thenReturn(List.of());
+        when(purchaseRepository.findRecentByStudentId(studentId, 10)).thenReturn(List.of());
+        when(schoolCalendarRepository.findByStudentIdAndDateRange(
+                studentId,
+                LocalDate.of(2026, 5, 27),
+                LocalDate.of(2026, 6, 26)
+        )).thenReturn(List.of());
+        when(fixedTopics.respond(eq("saldo"), any(), any())).thenReturn(Optional.of(
+                new SchoolAssistantFixedReply("Tenes $1500.00 disponibles.", metadata)
+        ));
+
+        SchoolAssistantAnswer answer = askSchoolAssistant.execute(
+                studentId,
+                new SchoolAssistantCommand(Optional.empty(), "saldo")
+        );
+
+        assertEquals("Tenes $1500.00 disponibles.", answer.answer());
+        assertFalse(answer.generatedByAi());
+        assertNull(answer.model());
+        verify(schoolAssistantResponder, never()).respond(any());
+
+        ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
+        verify(chatMessageRepository, times(2)).save(messageCaptor.capture());
+        ChatMessage assistantMessage = messageCaptor.getAllValues().get(1);
+        assertEquals("BALANCE", assistantMessage.metadata().get("intencionChatbot"));
+        assertEquals(false, assistantMessage.metadata().get("generadoPorIa"));
     }
 
     @Test

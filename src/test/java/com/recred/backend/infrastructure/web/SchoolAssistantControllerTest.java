@@ -7,10 +7,16 @@ import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.ChatSession;
 import com.recred.backend.domain.models.EstadoChatSesion;
 import com.recred.backend.domain.models.RolChatMensaje;
+import com.recred.backend.domain.models.SchoolAssistantAction;
+import com.recred.backend.domain.models.SchoolAssistantActionType;
 import com.recred.backend.domain.models.SchoolAssistantAnswer;
 import com.recred.backend.domain.models.SchoolAssistantCapability;
+import com.recred.backend.domain.models.SchoolAssistantIntent;
+import com.recred.backend.domain.models.SchoolAssistantRole;
+import com.recred.backend.domain.models.SchoolAssistantSuggestion;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,12 +66,24 @@ class SchoolAssistantControllerTest {
                 List.of(SchoolAssistantCapability.SALDO),
                 dateTime,
                 true,
-                "gemini-test"
+                "gemini-test",
+                SchoolAssistantRole.ALUMNO,
+                SchoolAssistantIntent.BALANCE,
+                SchoolAssistantAction.informative(
+                        SchoolAssistantActionType.CONSULTA_SALDO,
+                        Map.of("saldo", "500.00")
+                ),
+                List.of(new SchoolAssistantSuggestion(
+                        "Ultimas compras",
+                        "mostrame mis ultimas compras",
+                        SchoolAssistantActionType.CONSULTA_COMPRAS
+                )),
+                Map.of("saldo", "500.00")
         );
         when(askSchoolAssistant.execute(eq(studentId), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(answer);
 
-        mockMvc.perform(post("/ia/alumnos/{alumnoId}/asistente/mensajes", studentId)
+        mockMvc.perform(post("/api/v1/ia/alumnos/{alumnoId}/asistente/mensajes", studentId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -78,7 +96,15 @@ class SchoolAssistantControllerTest {
                 .andExpect(jsonPath("$.respuesta").value("Tenes $500.00 disponibles."))
                 .andExpect(jsonPath("$.capacidades[0]").value("SALDO"))
                 .andExpect(jsonPath("$.generadoPorIa").value(true))
-                .andExpect(jsonPath("$.modelo").value("gemini-test"));
+                .andExpect(jsonPath("$.modelo").value("gemini-test"))
+                .andExpect(jsonPath("$.rol").value("ALUMNO"))
+                .andExpect(jsonPath("$.intencion").value("BALANCE"))
+                .andExpect(jsonPath("$.accion.tipo").value("CONSULTA_SALDO"))
+                .andExpect(jsonPath("$.accion.estado").value("INFORMATIVA"))
+                .andExpect(jsonPath("$.accion.datos.saldo").value("500.00"))
+                .andExpect(jsonPath("$.sugerencias[0].mensaje")
+                        .value("mostrame mis ultimas compras"))
+                .andExpect(jsonPath("$.datos.saldo").value("500.00"));
 
         ArgumentCaptor<SchoolAssistantCommand> commandCaptor = ArgumentCaptor
                 .forClass(SchoolAssistantCommand.class);
@@ -107,7 +133,7 @@ class SchoolAssistantControllerTest {
                 org.mockito.ArgumentMatchers.any()
         )).thenReturn(answer);
 
-        mockMvc.perform(post("/ia/tutores/me/asistente/mensajes")
+        mockMvc.perform(post("/api/v1/ia/tutores/me/asistente/mensajes")
                         .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -143,7 +169,7 @@ class SchoolAssistantControllerTest {
                 org.mockito.ArgumentMatchers.any()
         )).thenReturn(answer);
 
-        mockMvc.perform(post("/ia/kiosqueros/me/asistente/mensajes")
+        mockMvc.perform(post("/api/v1/ia/kiosqueros/me/asistente/mensajes")
                         .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -175,7 +201,7 @@ class SchoolAssistantControllerTest {
         when(conversations.findStudentSessions(studentId, 0, 20))
                 .thenReturn(List.of(session));
 
-        mockMvc.perform(get("/ia/alumnos/{alumnoId}/asistente/sesiones", studentId))
+        mockMvc.perform(get("/api/v1/ia/alumnos/{alumnoId}/asistente/sesiones", studentId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].sesionId").value(sessionId.toString()))
                 .andExpect(jsonPath("$[0].estado").value("ABIERTA"));
@@ -198,7 +224,7 @@ class SchoolAssistantControllerTest {
                 .thenReturn(List.of(message));
 
         mockMvc.perform(get(
-                        "/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}/mensajes",
+                        "/api/v1/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}/mensajes",
                         studentId,
                         sessionId
                 ))
@@ -213,14 +239,14 @@ class SchoolAssistantControllerTest {
         UUID sessionId = UUID.randomUUID();
 
         mockMvc.perform(patch(
-                        "/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}/cerrar",
+                        "/api/v1/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}/cerrar",
                         studentId,
                         sessionId
                 ))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(delete(
-                        "/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}",
+                        "/api/v1/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}",
                         studentId,
                         sessionId
                 ))

@@ -65,7 +65,7 @@ import static org.mockito.Mockito.doThrow;
         excludeAutoConfiguration = {
                 SecurityAutoConfiguration.class,
                 SecurityFilterAutoConfiguration.class,
-                OAuth2ResourceServerAutoConfiguration.class // Esto evita que busque el filtro JWT
+                OAuth2ResourceServerAutoConfiguration.class
         }
 )
 @AutoConfigureMockMvc(addFilters = false)

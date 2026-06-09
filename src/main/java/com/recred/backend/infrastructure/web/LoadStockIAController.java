@@ -16,7 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/load-stock")
+@RequestMapping("/api/v1/load-stock")
 public class LoadStockIAController {
 
     private static final List<String> ALLOWED_CONTENT_TYPES =

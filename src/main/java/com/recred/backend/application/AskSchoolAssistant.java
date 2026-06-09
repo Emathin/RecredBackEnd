@@ -15,14 +15,18 @@ import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RolChatMensaje;
+import com.recred.backend.domain.models.SchoolAssistantAction;
 import com.recred.backend.domain.models.SchoolAssistantAnswer;
+import com.recred.backend.domain.models.SchoolAssistantActionType;
 import com.recred.backend.domain.models.SchoolAssistantCapability;
 import com.recred.backend.domain.models.SchoolAssistantContext;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
+import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.models.SchoolAssistantRole;
+import com.recred.backend.domain.models.SchoolAssistantSuggestion;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
@@ -105,6 +109,8 @@ public class AskSchoolAssistant {
     private final ProductRepository productRepository;
     private final PurchaseRepository purchaseRepository;
     private final PresupuestoRepository presupuestoRepository;
+    private final SchoolAssistantFixedTopics fixedTopics;
+    private final SchoolAssistantAnswerFormatter answerFormatter;
     private final Clock clock;
 
     public AskSchoolAssistant(
@@ -122,6 +128,7 @@ public class AskSchoolAssistant {
             ProductRepository productRepository,
             PurchaseRepository purchaseRepository,
             PresupuestoRepository presupuestoRepository,
+            SchoolAssistantFixedTopics fixedTopics,
             Clock clock
     ) {
         this.alumnoRepository = alumnoRepository;
@@ -138,11 +145,13 @@ public class AskSchoolAssistant {
         this.productRepository = productRepository;
         this.purchaseRepository = purchaseRepository;
         this.presupuestoRepository = presupuestoRepository;
+        this.fixedTopics = fixedTopics;
+        this.answerFormatter = new SchoolAssistantAnswerFormatter();
         this.clock = clock;
     }
 
-    public SchoolAssistantAnswer execute(UUID studentId, SchoolAssistantCommand command) {
-        validateStudent(studentId);
+    public SchoolAssistantAnswer execute(UUID studentIdOrUserId, SchoolAssistantCommand command) {
+        UUID studentId = resolvedStudentId(studentIdOrUserId);
         String message = message(command);
         LocalDateTime now = LocalDateTime.now(clock);
         ChatSession session = session(studentId, command, now);
@@ -176,34 +185,97 @@ public class AskSchoolAssistant {
                 session.id(),
                 RECENT_HISTORY_LIMIT
         );
-        SchoolAssistantPrompt prompt = new SchoolAssistantPrompt(
+        Optional<SchoolAssistantFixedReply> fixedReply = fixedTopics.respond(
                 message,
                 context,
                 recentMessages
         );
-        Optional<SchoolAssistantDraft> draft = schoolAssistantResponder.respond(prompt)
-                .filter(response -> response.answer() != null && !response.answer().isBlank());
-        SchoolAssistantAnswer answer = new SchoolAssistantAnswer(
-                session.id(),
-                draft.map(SchoolAssistantDraft::answer).orElse(fallbackAnswer(context.role())),
-                context.capabilities(),
-                now,
-                draft.isPresent(),
-                draft.map(SchoolAssistantDraft::model).orElse(null)
-        );
+        SchoolAssistantAnswer rawAnswer = fixedReply
+                .map(reply -> fixedAnswer(session, reply, context, now))
+                .orElseGet(() -> aiAnswer(session, message, context, recentMessages, now));
+        SchoolAssistantAnswer answer = formattedAnswer(rawAnswer);
 
         saveUserMessage(session, message, context.capabilities(), now);
-        saveAssistantMessage(answer, now);
+        saveAssistantMessage(
+                answer,
+                fixedReply.map(SchoolAssistantFixedReply::metadata).orElseGet(Map::of),
+                now
+        );
         chatSessionRepository.updateLastActivity(session.id(), now);
 
         return answer;
     }
 
-    private void validateStudent(UUID studentId) {
-        if (!alumnoRepository.existsById(studentId)) {
-            AlumnoNoEncontradoException exception = new AlumnoNoEncontradoException(studentId);
-            throw exception;
-        }
+    private SchoolAssistantAnswer formattedAnswer(SchoolAssistantAnswer answer) {
+        String formattedAnswer = answerFormatter.format(answer.answer());
+        return formattedAnswer.equals(answer.answer())
+                ? answer
+                : new SchoolAssistantAnswer(
+                        answer.sessionId(),
+                        formattedAnswer,
+                        answer.capabilities(),
+                        answer.dateTime(),
+                        answer.generatedByAi(),
+                        answer.model(),
+                        answer.role(),
+                        answer.intent(),
+                        answer.action(),
+                        answer.suggestions(),
+                        answer.data()
+                );
+    }
+
+    private SchoolAssistantAnswer aiAnswer(
+            ChatSession session,
+            String message,
+            SchoolAssistantContext context,
+            List<ChatMessage> recentMessages,
+            LocalDateTime now
+    ) {
+        SchoolAssistantPrompt prompt = new SchoolAssistantPrompt(message, context, recentMessages);
+        Optional<SchoolAssistantDraft> draft = schoolAssistantResponder.respond(prompt)
+                .filter(response -> response.answer() != null && !response.answer().isBlank());
+        return new SchoolAssistantAnswer(
+                session.id(),
+                draft.map(SchoolAssistantDraft::answer).orElse(fallbackAnswer(context.role())),
+                context.capabilities(),
+                now,
+                draft.isPresent(),
+                draft.map(SchoolAssistantDraft::model).orElse(null),
+                context.role(),
+                SchoolAssistantIntent.UNKNOWN,
+                null,
+                defaultSuggestions(context.role()),
+                Map.of()
+        );
+    }
+
+    private SchoolAssistantAnswer fixedAnswer(
+            ChatSession session,
+            SchoolAssistantFixedReply reply,
+            SchoolAssistantContext context,
+            LocalDateTime now
+    ) {
+        return new SchoolAssistantAnswer(
+                session.id(),
+                reply.answer(),
+                context.capabilities(),
+                now,
+                false,
+                null,
+                context.role(),
+                reply.intent(),
+                reply.action(),
+                reply.suggestions(),
+                reply.data()
+        );
+    }
+
+    private UUID resolvedStudentId(UUID studentIdOrUserId) {
+        return alumnoRepository.existsById(studentIdOrUserId)
+                ? studentIdOrUserId
+                : alumnoRepository.findStudentIdByUserId(studentIdOrUserId)
+                        .orElseThrow(() -> new AlumnoNoEncontradoException(studentIdOrUserId));
     }
 
     private Usuario authenticatedUser(String cognitoSubject) {
@@ -528,12 +600,16 @@ public class AskSchoolAssistant {
         ));
     }
 
-    private void saveAssistantMessage(SchoolAssistantAnswer answer, LocalDateTime now) {
+    private void saveAssistantMessage(
+            SchoolAssistantAnswer answer,
+            Map<String, Object> additionalMetadata,
+            LocalDateTime now
+    ) {
         chatMessageRepository.save(new ChatMessage(
                 answer.sessionId(),
                 RolChatMensaje.ASISTENTE_IA,
                 answer.answer(),
-                answerMetadata(answer),
+                answerMetadata(answer, additionalMetadata),
                 now
         ));
     }
@@ -544,9 +620,18 @@ public class AskSchoolAssistant {
         return metadata;
     }
 
-    private Map<String, Object> answerMetadata(SchoolAssistantAnswer answer) {
+    private Map<String, Object> answerMetadata(
+            SchoolAssistantAnswer answer,
+            Map<String, Object> additionalMetadata
+    ) {
         Map<String, Object> metadata = messageMetadata(answer.capabilities());
         metadata.put("generadoPorIa", answer.generatedByAi());
+        metadata.put("rol", value(answer.role()));
+        metadata.put("intencion", answer.intent().name());
+        metadata.put("accion", actionMetadata(answer.action()));
+        metadata.put("sugerencias", suggestionsMetadata(answer.suggestions()));
+        metadata.put("datos", answer.data());
+        metadata.putAll(additionalMetadata);
 
         if (answer.model() != null) {
             String model = answer.model();
@@ -560,6 +645,84 @@ public class AskSchoolAssistant {
         return capabilities.stream()
                 .map(SchoolAssistantCapability::name)
                 .toList();
+    }
+
+    private List<SchoolAssistantSuggestion> defaultSuggestions(SchoolAssistantRole role) {
+        return switch (role) {
+            case ALUMNO -> List.of(
+                    suggestion("Saldo", "cuanto saldo tengo",
+                            SchoolAssistantActionType.CONSULTA_SALDO),
+                    suggestion("Ultimas compras", "mostrame mis ultimas compras",
+                            SchoolAssistantActionType.CONSULTA_COMPRAS),
+                    suggestion("Compra habitual", "comprame lo de siempre",
+                            SchoolAssistantActionType.COMPRA_ANTICIPADA),
+                    suggestion("Eventos", "que eventos escolares tengo",
+                            SchoolAssistantActionType.CONSULTA_EVENTOS)
+            );
+            case TUTOR -> List.of(
+                    suggestion("Mis hijos", "mostrame mis hijos",
+                            SchoolAssistantActionType.CONSULTA_HIJOS),
+                    suggestion("Presupuestos", "ver presupuestos de mis hijos",
+                            SchoolAssistantActionType.CONSULTA_PRESUPUESTOS),
+                    suggestion("Restricciones", "ver restricciones de mis hijos",
+                            SchoolAssistantActionType.CONSULTA_RESTRICCIONES),
+                    suggestion("Eventos", "que eventos escolares tienen mis hijos",
+                            SchoolAssistantActionType.CONSULTA_EVENTOS)
+            );
+            case KIOSQUERO -> List.of(
+                    suggestion("Pedidos", "ver pedidos pendientes",
+                            SchoolAssistantActionType.CONSULTA_PEDIDOS),
+                    suggestion("Stock", "ver stock",
+                            SchoolAssistantActionType.CONSULTA_STOCK),
+                    suggestion("Ventas", "ventas de hoy",
+                            SchoolAssistantActionType.CONSULTA_VENTAS)
+            );
+        };
+    }
+
+    private SchoolAssistantSuggestion suggestion(
+            String label,
+            String message,
+            SchoolAssistantActionType actionType
+    ) {
+        return new SchoolAssistantSuggestion(label, message, actionType);
+    }
+
+    private Map<String, Object> actionMetadata(SchoolAssistantAction action) {
+        if (action == null) {
+            return Map.of();
+        }
+
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("tipo", action.type().name());
+        metadata.put("estado", action.status().name());
+        metadata.put("requiereInput", action.requiresInput());
+        metadata.put("inputsRequeridos", action.requiredInputs().stream()
+                .map(Enum::name)
+                .toList());
+        metadata.put("compraId", value(action.purchaseId()));
+        metadata.put("estadoCompra", value(action.purchaseStatus()));
+        metadata.put("codigoRetiro", value(action.withdrawalCode()));
+        metadata.put("total", value(action.total()));
+        metadata.put("recreo", value(action.recessTime()));
+        metadata.put("datos", action.data());
+        return metadata;
+    }
+
+    private List<Map<String, Object>> suggestionsMetadata(
+            List<SchoolAssistantSuggestion> suggestions
+    ) {
+        return suggestions.stream()
+                .map(this::suggestionMetadata)
+                .toList();
+    }
+
+    private Map<String, Object> suggestionMetadata(SchoolAssistantSuggestion suggestion) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("label", suggestion.label());
+        metadata.put("mensaje", suggestion.message());
+        metadata.put("tipoAccion", suggestion.actionType().name());
+        return metadata;
     }
 
     private String value(Object value) {
