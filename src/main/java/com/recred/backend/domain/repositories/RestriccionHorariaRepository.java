@@ -10,6 +10,6 @@ public interface RestriccionHorariaRepository {
     RestriccionHoraria save(RestriccionHoraria restriccion);
     Optional<RestriccionHoraria> findById(UUID id);
     List<RestriccionHoraria> findAllByAlumnoIdAndActiva(UUID alumnoId, boolean activa);
-    List<RestriccionHoraria> findAllByAlumnoId(UUID alumnoId);
+    List<RestriccionHoraria> findAllByAlumnoEntityId(UUID alumnoId);
     void deleteById(UUID id);
 }
