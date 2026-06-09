@@ -8,6 +8,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.repositories.AlumnoRepository;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -22,6 +24,8 @@ class UpdateTimeRestrictionTest {
 
     @Mock
     private RestriccionHorariaRepository repository;
+    @Mock
+    private AlumnoRepository alumnoRepository;
 
     @InjectMocks
     private UpdateTimeRestriction updateTimeRestriction;
@@ -40,6 +44,8 @@ class UpdateTimeRestrictionTest {
         TimeRestrictionCommand command = new TimeRestrictionCommand(
                 UUID.randomUUID(), nuevoTimeSlotId, nuevaCategoriaId, nuevaClasificacionId);
 
+        when(alumnoRepository.findById(command.studentId())).thenReturn(Optional.of(new Alumno()));
+
         updateTimeRestriction.execute(restrictionId, command);
 
         ArgumentCaptor<RestriccionHoraria> captor = ArgumentCaptor.forClass(RestriccionHoraria.class);
@@ -48,7 +54,7 @@ class UpdateTimeRestrictionTest {
 
         assertEquals(nuevoTimeSlotId, guardada.getFranjaHoraria().getId());
         assertEquals(nuevaCategoriaId, guardada.getCategoria().getId());
-        assertEquals(nuevaClasificacionId, guardada.getClasificacion().getId());
+        assertEquals(nuevaClasificacionId, guardada.getClasificacionSalud().getId());
     }
 
     @Test
@@ -64,6 +70,8 @@ class UpdateTimeRestrictionTest {
         TimeRestrictionCommand command = new TimeRestrictionCommand(
                 UUID.randomUUID(), nuevoTimeSlotId, null, null);
 
+        when(alumnoRepository.findById(command.studentId())).thenReturn(Optional.of(new Alumno()));
+
         updateTimeRestriction.execute(restrictionId, command);
 
         ArgumentCaptor<RestriccionHoraria> captor = ArgumentCaptor.forClass(RestriccionHoraria.class);
@@ -72,7 +80,7 @@ class UpdateTimeRestrictionTest {
 
         assertEquals(nuevoTimeSlotId, guardada.getFranjaHoraria().getId());
         assertNull(guardada.getCategoria());
-        assertNull(guardada.getClasificacion());
+        assertNull(guardada.getClasificacionSalud());
     }
 
     @Test

@@ -28,9 +28,10 @@ class RestriccionHorariaTest {
         catKiosco.setId(UUID.randomUUID());
         producto.setCategoria(catKiosco);
 
-        ClasificacionTipo tipoGolosina = new ClasificacionTipo();
-        tipoGolosina.setId(UUID.randomUUID());
-        producto.setTipos(Set.of(tipoGolosina));
+        ClasificacionSalud tipoSalud = new ClasificacionSalud();
+        tipoSalud.setId(UUID.randomUUID());
+        tipoSalud.setNombre("Sin TACC");
+        producto.setClasificacionesSalud(Set.of(tipoSalud));
     }
 
     @Test
@@ -65,7 +66,7 @@ class RestriccionHorariaTest {
 
     @Test
     void bloquea_SiCoincideLaClasificacion() {
-        ClasificacionTipo clasificacionRestringida = producto.getTipos().iterator().next();
+        ClasificacionSalud clasificacionRestringida = producto.getClasificacionesSalud().iterator().next();
         RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo, null, clasificacionRestringida);
 
         assertTrue(restriccion.bloquea(producto, momentoCompra));

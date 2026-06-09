@@ -7,6 +7,8 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.PurchaseValidator;
 import com.recred.backend.domain.services.WithdrawalCodeService;
+import com.recred.backend.domain.repositories.UsuarioRepository;
+import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
 import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,6 +42,10 @@ class CreateAdvancePurchaseUseCaseTest {
     private PurchaseRepository purchaseRepository;
     @Mock
     private WithdrawalCodeService withdrawalCodeService;
+    @Mock
+    private UsuarioRepository usuarioRepository;
+    @Mock
+    private WalletRepository walletRepository;
 
     @InjectMocks
     private CreateAdvancePurchase createAdvancePurchase;
@@ -53,7 +60,9 @@ class CreateAdvancePurchaseUseCaseTest {
                 alumnoRepository,
                 productRepository,
                 purchaseRepository,
-                withdrawalCodeService
+                withdrawalCodeService,
+                usuarioRepository,
+                walletRepository
         );
     }
 
@@ -94,7 +103,21 @@ class CreateAdvancePurchaseUseCaseTest {
         when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
         when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("test-code");
 
-        AdvancePurchaseResponse response = createAdvancePurchase.execute(request);
+        Usuario mockUsuario = new Usuario();
+        mockUsuario.setId(UUID.randomUUID());
+        mockUsuario.setRol(RolUsuario.PADRE);
+        Tutor mockTutor = new Tutor();
+        mockTutor.setHijos(Set.of(student));
+        mockUsuario.setTutor(mockTutor);
+        when(usuarioRepository.findByIdCognito("test-user")).thenReturn(Optional.of(mockUsuario));
+
+        Billetera mockWallet = new Billetera();
+        mockWallet.setId(UUID.randomUUID());
+        mockWallet.setAlumno(student);
+        mockWallet.setSaldoCreditos(new BigDecimal("100.0"));
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(mockWallet));
+
+        AdvancePurchaseResponse response = createAdvancePurchase.execute(request, "test-user");
 
         assertNotNull(response);
         assertEquals(EstadoCompra.PENDIENTE, response.status().status());
@@ -125,9 +148,17 @@ class CreateAdvancePurchaseUseCaseTest {
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
+        Usuario mockUsuario = new Usuario();
+        mockUsuario.setId(UUID.randomUUID());
+        mockUsuario.setRol(RolUsuario.PADRE);
+        Tutor mockTutor = new Tutor();
+        mockTutor.setHijos(Set.of(student));
+        mockUsuario.setTutor(mockTutor);
+        when(usuarioRepository.findByIdCognito("test-user")).thenReturn(Optional.of(mockUsuario));
+
         doThrow(new DietaryRestrictionException("Dietary restriction violated"))
                 .when(purchaseValidator).validate(any(Purchase.class));
 
-        assertThrows(DietaryRestrictionException.class, () -> createAdvancePurchase.execute(request));
+        assertThrows(DietaryRestrictionException.class, () -> createAdvancePurchase.execute(request, "test-user"));
     }
 }
