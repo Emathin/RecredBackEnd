@@ -18,7 +18,6 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
 @Component
 public class FirebasePushNotificationSender implements PushNotificationSender {
 
@@ -29,10 +28,10 @@ public class FirebasePushNotificationSender implements PushNotificationSender {
     private final UserDeviceTokenRepository userDeviceTokenRepository;
 
     public FirebasePushNotificationSender(
-            Optional<FirebaseApp> firebaseApp,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) FirebaseApp firebaseApp,
             UserDeviceTokenRepository userDeviceTokenRepository
     ) {
-        this.firebaseApp = firebaseApp;
+        this.firebaseApp = Optional.ofNullable(firebaseApp);
         this.userDeviceTokenRepository = userDeviceTokenRepository;
     }
 
@@ -43,7 +42,6 @@ public class FirebasePushNotificationSender implements PushNotificationSender {
                     + "Se omite el envío de la notificación.");
             return;
         }
-
         List<String> tokens = userDeviceTokenRepository.findActiveTokensByUserId(
                 notification.userId());
 
