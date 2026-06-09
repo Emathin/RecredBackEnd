@@ -82,9 +82,6 @@ class PurchaseResponseDTOTest {
 
         PurchaseResponseDTO dto = new PurchaseResponseDTO(compra);
 
-
-        PurchaseResponseDTO dto = new PurchaseResponseDTO(compra);
-
         assertEquals(compra.getId(), dto.getId());
         assertEquals(new BigDecimal("1000.00"), dto.getTotalAmount());
         assertEquals("ENTREGADO", dto.getStatus());

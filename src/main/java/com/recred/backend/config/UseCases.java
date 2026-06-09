@@ -743,6 +743,7 @@ public class UseCases {
         return new ConfirmPaymentAndCredit(walletRepository, externalPaymentService);
     }
 
+    @Bean
     public GetProductsByBuffetUser getProductsByBuffetUser(
             ProductRepository productRepository,
             KiosqueroRepository kiosqueroRepository){
