@@ -26,10 +26,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(
-        controllers = PurchaseHistoryController.class,
-        excludeAutoConfiguration = {SecurityAutoConfiguration.class, OAuth2ResourceServerAutoConfiguration.class}
-)
+@WebMvcTest(controllers = PurchaseHistoryController.class, excludeAutoConfiguration = { SecurityAutoConfiguration.class,
+        OAuth2ResourceServerAutoConfiguration.class })
 class PurchaseHistoryControllerTest {
 
     @Autowired
@@ -64,7 +62,7 @@ class PurchaseHistoryControllerTest {
         when(obtenerHistorialAlumno.execute(alumnoId)).thenReturn(List.of(compra));
 
         mockMvc.perform(get("/api/v1/purchases/alumno/{alumnoId}", alumnoId)
-                        .contentType(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(compraId.toString()))
                 .andExpect(jsonPath("$[0].totalAmount").value(1500.50))
@@ -85,7 +83,7 @@ class PurchaseHistoryControllerTest {
         when(obtenerHistorialTutor.execute(tutorId)).thenReturn(List.of(compra));
 
         mockMvc.perform(get("/api/v1/purchases/tutor/{tutorId}", tutorId)
-                        .contentType(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(compraId.toString()))
                 .andExpect(jsonPath("$[0].totalAmount").value(3000.00))

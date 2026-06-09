@@ -144,8 +144,51 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
     }
 
     @Override
+    public List<SugerenciaIAEntity> findPendingParentNotificationsByAlumnoId(
+            UUID alumnoId,
+            TipoSugerenciaIA tipo
+    ) {
+        return springDataRepository.findPendingParentNotificationsByAlumnoId(alumnoId, tipo);
+    }
+
+    @Override
+    public List<SugerenciaIAEntity> findPendingStudentNotificationsByAlumnoId(
+            UUID alumnoId,
+            TipoSugerenciaIA tipo
+    ) {
+        return springDataRepository.findPendingStudentNotificationsByAlumnoId(alumnoId, tipo);
+    }
+
+    @Override
+    public List<UUID> findProductIdsByAlumnoIdAndTipo(UUID alumnoId, TipoSugerenciaIA tipo) {
+        return findByAlumnoIdAndTipo(alumnoId, tipo).stream()
+                .map(this::suggestedProductId)
+                .flatMap(java.util.Optional::stream)
+                .toList();
+    }
+
+    @Override
     public java.util.Optional<SugerenciaIAEntity> findById(UUID id) {
         return springDataRepository.findById(id);
+    }
+
+    private java.util.Optional<UUID> suggestedProductId(SugerenciaIAEntity suggestion) {
+        if (suggestion.getProductoEntity() != null
+                && suggestion.getProductoEntity().getId() != null) {
+            return java.util.Optional.of(suggestion.getProductoEntity().getId());
+        }
+        if (suggestion.getMetadata() == null) {
+            return java.util.Optional.empty();
+        }
+        Object value = suggestion.getMetadata().get("productoId");
+        if (!(value instanceof String text) || text.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        try {
+            return java.util.Optional.of(UUID.fromString(text));
+        } catch (IllegalArgumentException ignored) {
+            return java.util.Optional.empty();
+        }
     }
 
     private BuffetEntity buffetReference(UUID buffetId) {

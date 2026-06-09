@@ -23,7 +23,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/control-parental")
+@RequestMapping("/api/v1/control-parental")
 public class ControlParentalController {
 
     private final ManageRestrictions useCase;

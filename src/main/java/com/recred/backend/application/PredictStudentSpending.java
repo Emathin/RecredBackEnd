@@ -65,12 +65,13 @@ public class PredictStudentSpending {
 
     @Transactional
     public SpendingPredictionResult execute(UUID studentId, BudgetPeriod requestedPeriod) {
-        if (!alumnoRepository.existsById(studentId)) {
-            throw new AlumnoNoEncontradoException(studentId);
-        }
+        UUID resolvedStudentId = resolvedStudentId(studentId);
 
         LocalDate calculationDate = LocalDate.now(clock);
-        Optional<SpendingPeriodPreference> preference = getPreference(studentId, calculationDate);
+        Optional<SpendingPeriodPreference> preference = getPreference(
+                resolvedStudentId,
+                calculationDate
+        );
         BudgetPeriod period = resolvePeriod(requestedPeriod, preference);
         DateRange currentRange = spendingPredictionRangeService.calculate(period, calculationDate);
         DateRange historicalRange = new DateRange(
@@ -79,20 +80,20 @@ public class PredictStudentSpending {
         );
 
         List<PurchaseSpending> currentPeriodSpending = purchaseSpendingRepository.findSpending(
-                studentId,
+                resolvedStudentId,
                 ACTUAL_SPENDING_STATUSES,
                 startOfDay(currentRange.startDate()),
                 endOfDay(calculationDate)
         );
         List<PurchaseSpending> historicalSpending = purchaseSpendingRepository.findSpending(
-                studentId,
+                resolvedStudentId,
                 ACTUAL_SPENDING_STATUSES,
                 startOfDay(historicalRange.startDate()),
                 endOfDay(historicalRange.endDate())
         );
         List<ConsumptionCategory> categories = purchaseSpendingRepository
                 .findMostConsumedCategories(
-                        studentId,
+                        resolvedStudentId,
                         ACTUAL_SPENDING_STATUSES,
                         startOfDay(currentRange.startDate()),
                         endOfDay(calculationDate)
@@ -102,7 +103,7 @@ public class PredictStudentSpending {
                 .toList();
 
         SpendingPrediction spendingPrediction = spendingPredictionCalculator.calculate(
-                studentId,
+                resolvedStudentId,
                 period,
                 calculationDate,
                 currentRange,
@@ -120,6 +121,13 @@ public class PredictStudentSpending {
         );
         aiEventRepository.registerPrediction(result);
         return result;
+    }
+
+    private UUID resolvedStudentId(UUID studentIdOrUserId) {
+        return alumnoRepository.existsById(studentIdOrUserId)
+                ? studentIdOrUserId
+                : alumnoRepository.findStudentIdByUserId(studentIdOrUserId)
+                        .orElseThrow(() -> new AlumnoNoEncontradoException(studentIdOrUserId));
     }
 
     private Optional<SpendingPeriodPreference> getPreference(

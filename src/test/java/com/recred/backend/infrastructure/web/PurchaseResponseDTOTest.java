@@ -77,11 +77,13 @@ class PurchaseResponseDTOTest {
         compra.setStatus(EstadoCompra.ENTREGADO);
         compra.setPaymentMethod(MedioPago.CREDITOS);
         compra.setDate(LocalDateTime.now());
-        compra.setItems(Map.of(alfajor, 2)); // 2 alfajores
+        compra.setItems(Map.of(alfajor, 2));
 
 
         PurchaseResponseDTO dto = new PurchaseResponseDTO(compra);
 
+
+        PurchaseResponseDTO dto = new PurchaseResponseDTO(compra);
 
         assertEquals(compra.getId(), dto.getId());
         assertEquals(new BigDecimal("1000.00"), dto.getTotalAmount());

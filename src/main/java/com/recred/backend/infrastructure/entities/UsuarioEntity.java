@@ -1,6 +1,9 @@
 package com.recred.backend.infrastructure.entities;
 
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Buffet;
+import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
 import jakarta.persistence.CascadeType;
@@ -126,7 +129,36 @@ public class UsuarioEntity {
             usuario.setColegio(this.colegioEntity.toDomain());
         }
 
+        if (this.alumnoEntity != null) {
+            Alumno a = new Alumno();
+            a.setId(this.alumnoEntity.getId());
+            usuario.setAlumno(a);
+        }
+        if (this.tutor != null) {
+            Tutor t = new Tutor();
+            t.setId(this.tutor.getId());
+            usuario.setTutor(t);
+        }
+        if (this.kiosquero != null) {
+            Kiosquero k = new Kiosquero();
+            k.setId(this.kiosquero.getId());
+            k.setBuffet(buffet(this.kiosquero));
+            usuario.setKiosquero(k);
+        }
+
         return usuario;
+    }
+
+    private Buffet buffet(KiosqueroEntity kiosquero) {
+        return kiosquero.getBuffetEntity() == null
+                ? null
+                : buffet(kiosquero.getBuffetEntity());
+    }
+
+    private Buffet buffet(BuffetEntity entity) {
+        Buffet buffet = new Buffet();
+        buffet.setId(entity.getId());
+        return buffet;
     }
 
     public static AlumnoEntity fromDomain(Alumno alumno) {

@@ -17,6 +17,32 @@ public interface SugerenciaIAJpaRepository extends JpaRepository<SugerenciaIAEnt
     List<SugerenciaIAEntity> findAllByAlumnoEntityIdAndTipoOrderByCreadoEnDesc(
             UUID alumnoId, TipoSugerenciaIA tipo);
 
+    @Query("""
+            select s
+            from SugerenciaIAEntity s
+            where s.alumnoEntity.id = :alumnoId
+            and (:tipo is null or s.tipo = :tipo)
+            and (s.aceptada is null or s.aceptada = false)
+            order by s.creadoEn desc
+            """)
+    List<SugerenciaIAEntity> findPendingParentNotificationsByAlumnoId(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("tipo") TipoSugerenciaIA tipo
+    );
+
+    @Query("""
+            select s
+            from SugerenciaIAEntity s
+            where s.alumnoEntity.id = :alumnoId
+            and (:tipo is null or s.tipo = :tipo)
+            and s.aceptada is null
+            order by s.creadoEn desc
+            """)
+    List<SugerenciaIAEntity> findPendingStudentNotificationsByAlumnoId(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("tipo") TipoSugerenciaIA tipo
+    );
+
     boolean existsByAlumnoEntityIdAndProductoEntityIdAndTipoAndCreadoEnGreaterThanEqual(
             UUID alumnoId,
             UUID productoId,

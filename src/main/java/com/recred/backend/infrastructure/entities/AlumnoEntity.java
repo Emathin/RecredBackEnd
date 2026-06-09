@@ -93,6 +93,8 @@ public class AlumnoEntity {
         if (this.usuario != null) {
             alumnoDominio.setUsuarioId(this.usuario.getId());
             alumnoDominio.setUsuario(this.usuario.toDomain());
+            alumnoDominio.setNombre(this.usuario.getNombre());
+            alumnoDominio.setApellido(this.usuario.getApellido());
         }
 
         if (this.gradoEntity != null) {

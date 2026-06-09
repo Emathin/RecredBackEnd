@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/usuarios")
@@ -55,6 +56,19 @@ public class UsuarioController {
         response.put("nombre", usuario.getNombre());
         response.put("apellido", usuario.getApellido());
         response.put("rol", usuario.getRol() != null ? usuario.getRol().name() : "PENDIENTE");
+
+        if (usuario.getAlumno() != null) {
+            response.put("alumnoId", usuario.getAlumno().getId());
+        }
+        if (usuario.getTutor() != null) {
+            response.put("tutorId", usuario.getTutor().getId());
+        }
+        if (usuario.getKiosquero() != null) {
+            response.put("kiosqueroId", usuario.getKiosquero().getId());
+            Optional.ofNullable(usuario.getKiosquero().getBuffet())
+                    .map(buffet -> buffet.getId())
+                    .ifPresent(buffetId -> response.put("buffetId", buffetId));
+        }
 
         return response;
     }

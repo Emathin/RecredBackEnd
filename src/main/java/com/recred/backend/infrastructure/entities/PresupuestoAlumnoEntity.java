@@ -85,11 +85,11 @@ public class PresupuestoAlumnoEntity {
         return new PresupuestoAlumno(
                 this.id,
                 this.alumnoEntity != null ? this.alumnoEntity.getId() : null,
+                this.creadoPorUsuarioEntity != null ? this.creadoPorUsuarioEntity.getId() : null,
                 this.montoLimite,
                 this.periodo != null ? PeriodoPresupuesto.valueOf(this.periodo.name()) : null,
                 this.fechaInicio,
                 this.activo != null ? this.activo : false,
-                listaDomain
-        );
+                listaDomain);
     }
 }
