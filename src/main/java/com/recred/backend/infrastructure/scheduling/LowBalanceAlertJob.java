@@ -17,7 +17,7 @@ public class LowBalanceAlertJob {
         this.generateLowBalanceAlerts = generateLowBalanceAlerts;
     }
 
-    @Scheduled(cron = "0 0 10 * * ?")
+    @Scheduled(cron = "0 7 23 * * ?")
     public void executeLowBalanceAlerts() {
         LOGGER.info("Starting LowBalanceAlertJob execution");
         try {
