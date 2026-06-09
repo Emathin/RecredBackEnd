@@ -121,6 +121,7 @@ import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.gemini.GeminiTextClient;
 import com.recred.backend.infrastructure.gemini.LoadStockIAService;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
+import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -205,12 +206,20 @@ public class UseCases {
                                                        AlumnoRepository alumnoRepository,
                                                        ProductRepository productRepository,
                                                        PurchaseRepository purchaseRepository,
-                                                       WithdrawalCodeService withdrawalCodeService){
-        return new CreateAdvancePurchase( purchaseValidator,
+                                                       WithdrawalCodeService withdrawalCodeService,
+                                                       WalletRepository walletRepository,
+                                                       FranjaHorariaRepository timeSlotRepository,
+                                                       SpringDataBuffetRepository buffetRepository){
+        return new CreateAdvancePurchase(
+                purchaseValidator,
                 alumnoRepository,
                 productRepository,
                 purchaseRepository,
-                withdrawalCodeService);
+                withdrawalCodeService,
+                walletRepository,
+                timeSlotRepository,
+                buffetRepository
+        );
     }
 
     @Bean

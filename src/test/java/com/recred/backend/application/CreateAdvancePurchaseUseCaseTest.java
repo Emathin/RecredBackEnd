@@ -3,10 +3,14 @@ package com.recred.backend.application;
 import com.recred.backend.domain.exceptions.DietaryRestrictionException;
 import com.recred.backend.domain.models.*;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.PurchaseValidator;
 import com.recred.backend.domain.services.WithdrawalCodeService;
+import com.recred.backend.infrastructure.entities.BuffetEntity;
+import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
 import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
 import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -39,6 +43,12 @@ class CreateAdvancePurchaseUseCaseTest {
     private PurchaseRepository purchaseRepository;
     @Mock
     private WithdrawalCodeService withdrawalCodeService;
+    @Mock
+    private WalletRepository walletRepository;
+    @Mock
+    private FranjaHorariaRepository franjaHorariaRepository;
+    @Mock
+    private SpringDataBuffetRepository springDataBuffetRepository;
 
     @InjectMocks
     private CreateAdvancePurchase createAdvancePurchase;
@@ -53,7 +63,10 @@ class CreateAdvancePurchaseUseCaseTest {
                 alumnoRepository,
                 productRepository,
                 purchaseRepository,
-                withdrawalCodeService
+                withdrawalCodeService,
+                walletRepository,
+                franjaHorariaRepository,
+                springDataBuffetRepository
         );
     }
 
@@ -77,6 +90,12 @@ class CreateAdvancePurchaseUseCaseTest {
 
         Alumno student = new Alumno();
         student.setId(studentId);
+        
+        Grado grado = new Grado();
+        Colegio colegio = new Colegio();
+        colegio.setId(UUID.randomUUID());
+        grado.setColegio(colegio);
+        student.setGrado(grado);
 
         Producto product = new Producto();
         product.setId(productId);
@@ -88,9 +107,27 @@ class CreateAdvancePurchaseUseCaseTest {
 
         Purchase purchase = new Purchase(student, items, null, studentId, BuyerType.STUDENT);
         purchase.setId(UUID.randomUUID());
+        purchase.setWithdrawalCode("test-code");
+
+        BuffetEntity buffetEntity = new BuffetEntity();
+        buffetEntity.setId(UUID.randomUUID());
+
+        FranjaHoraria franja = new FranjaHoraria();
+        franja.setId(UUID.randomUUID());
+        franja.setDescripcion("Primer Recreo");
+        franja.setHoraInicio(java.time.LocalTime.of(9, 30));
+
+        Billetera wallet = new Billetera();
+        wallet.setSaldoCreditos(BigDecimal.valueOf(100.0));
 
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(springDataBuffetRepository.findFirstByColegioEntityIdAndActivoTrue(any(UUID.class)))
+                .thenReturn(Optional.of(buffetEntity));
+        when(franjaHorariaRepository.findAllByColegioId(any(UUID.class)))
+                .thenReturn(List.of(franja));
+        when(walletRepository.findByStudentId(any(UUID.class)))
+                .thenReturn(Optional.of(wallet));
         when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
         when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("test-code");
 
@@ -118,12 +155,30 @@ class CreateAdvancePurchaseUseCaseTest {
 
         Alumno student = new Alumno();
         student.setId(studentId);
+        
+        Grado grado = new Grado();
+        Colegio colegio = new Colegio();
+        colegio.setId(UUID.randomUUID());
+        grado.setColegio(colegio);
+        student.setGrado(grado);
 
         Producto product = new Producto();
         product.setId(productId);
 
+        BuffetEntity buffetEntity = new BuffetEntity();
+        buffetEntity.setId(UUID.randomUUID());
+
+        FranjaHoraria franja = new FranjaHoraria();
+        franja.setId(UUID.randomUUID());
+        franja.setDescripcion("Primer Recreo");
+        franja.setHoraInicio(java.time.LocalTime.of(9, 30));
+
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(springDataBuffetRepository.findFirstByColegioEntityIdAndActivoTrue(any(UUID.class)))
+                .thenReturn(Optional.of(buffetEntity));
+        when(franjaHorariaRepository.findAllByColegioId(any(UUID.class)))
+                .thenReturn(List.of(franja));
 
         doThrow(new DietaryRestrictionException("Dietary restriction violated"))
                 .when(purchaseValidator).validate(any(Purchase.class));
