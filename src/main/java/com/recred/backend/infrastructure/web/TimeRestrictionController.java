@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/time-restrictions")
+@RequestMapping("/api/v1/time-restrictions")
 public class TimeRestrictionController {
 
     private final CreateTimeRestriction createTimeRestriction;

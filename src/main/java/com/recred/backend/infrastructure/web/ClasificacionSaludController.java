@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/clasificaciones-salud")
+@RequestMapping("/api/v1/clasificaciones-salud")
 public class ClasificacionSaludController {
 
     private final GetHealthRestrictionsCatalog obtenerCatalogo;
