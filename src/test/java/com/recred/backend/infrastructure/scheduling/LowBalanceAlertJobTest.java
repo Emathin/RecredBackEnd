@@ -20,7 +20,7 @@ class LowBalanceAlertJobTest {
 
     @Test
     void execute_DeberiaLlamarAlCasoDeUso() {
-        lowBalanceAlertJob.execute();
+        lowBalanceAlertJob.executeLowBalanceAlerts();
 
         verify(generateLowBalanceAlerts).execute();
     }
