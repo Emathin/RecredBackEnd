@@ -30,16 +30,18 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
 
     public MercadoPagoAdapter(MercadoPagoProperties properties) {
         this.properties = properties;
-        // Inicializa la biblioteca con el Access Token de pruebas o produccion
         MercadoPagoConfig.setAccessToken(properties.getAccessToken());
     }
 
     @Override
     public String createTopUpPreference(UUID studentId, BigDecimal amount) {
         try {
+            String successUrl = properties.getSuccessUrl().trim();
+            String notificationUrl = properties.getNotificationUrl().trim() 
+                    + "?source_news=webhooks";
+
             PreferenceClient client = new PreferenceClient();
 
-            // Configura los detalles del item (carga de saldo)
             PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
                     .id(studentId.toString())
                     .title("Carga de Saldo - RecreoPago")
@@ -52,34 +54,28 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
             List<PreferenceItemRequest> items = new ArrayList<>();
             items.add(itemRequest);
 
-            // Configura las URLs de retorno (back_urls)
             PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-                    .success("https://5cpbvx-ip-179-37-104-36.tunnelmole.net/tutor" /* properties.getSuccessUrl() */)
-                    .pending("https://5cpbvx-ip-179-37-104-36.tunnelmole.net/tutor" /* properties.getPendingUrl() */)
-                    .failure("https://5cpbvx-ip-179-37-104-36.tunnelmole.net/tutor" /* properties.getFailureUrl() */)
+                    .success(successUrl)
+                    .pending(properties.getPendingUrl().trim())
+                    .failure(properties.getFailureUrl().trim())
                     .build();
 
-            // Crea la solicitud de preferencia con items y back_urls
             PreferenceRequest preferenceRequest = PreferenceRequest.builder()
                     .items(items)
                     .autoReturn("approved")
                     .backUrls(backUrls)
-                    .notificationUrl("https://gej7kq-ip-179-37-104-36.tunnelmole.net/api/v1/payments/webhook") // cambiar por url expuesta
+                    .notificationUrl(notificationUrl)
                     .externalReference(studentId.toString())
                     .build();
 
-            // Ejecuta la creacion en Mercado Pago
             Preference preference = client.create(preferenceRequest);
 
-            // Retorna el init_point para redireccion web
             return preference.getInitPoint();
 
         } catch (com.mercadopago.exceptions.MPApiException e) {
             String errorMsg = e.getApiResponse().getContent();
-            System.err.println("Mercado Pago API Error Details: " + errorMsg);
             throw new RuntimeException("Error al crear preferencia: " + errorMsg, e);
         } catch (Exception e) {
-            e.printStackTrace();
             throw new RuntimeException("Error al crear preferencia de Mercado Pago", e);
         }
     }
@@ -91,7 +87,6 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
         }
 
         try {
-            // Extrae timestamp y hash del header x-signature
             String[] parts = signature.split(",");
             String ts = null;
             String hash = null;
@@ -111,22 +106,14 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
                 return false;
             }
 
-            // Construye el manifiesto dinamicamente segun documentacion oficial:
-            // "id:[id];request-id:[request-id];ts:[ts];" (omitiendo campos ausentes)
             StringBuilder manifest = new StringBuilder();
-            if (paymentId != null) {
-                manifest.append("id:").append(paymentId).append(";");
-            }
-            if (requestId != null) {
-                manifest.append("request-id:").append(requestId).append(";");
-            }
-            if (ts != null) {
-                manifest.append("ts:").append(ts).append(";");
-            }
+            manifest.append("id:").append(paymentId).append(";");
+            manifest.append("request-id:").append(requestId).append(";");
+            manifest.append("ts:").append(ts).append(";");
 
-            // Calcula HMAC-SHA256 usando Java nativo
+            String secret = properties.getWebhookSecret().trim();
             SecretKeySpec signingKey = new SecretKeySpec(
-                    properties.getWebhookSecret().getBytes(StandardCharsets.UTF_8),
+                    secret.getBytes(StandardCharsets.UTF_8),
                     "HmacSHA256");
 
             Mac mac = Mac.getInstance("HmacSHA256");
@@ -153,10 +140,8 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
             PaymentClient client = new PaymentClient();
             Payment payment = client.get(Long.parseLong(paymentId));
 
-            // Recupera el ID del alumno desde el externalReference guardado en la preferencia
             UUID studentId = UUID.fromString(payment.getExternalReference());
 
-            // Mapea el estado de Mercado Pago a nuestro dominio
             PaymentStatus status = switch (payment.getStatus()) {
                 case "approved" -> PaymentStatus.APPROVED;
                 case "pending", "in_process" -> PaymentStatus.PENDING;

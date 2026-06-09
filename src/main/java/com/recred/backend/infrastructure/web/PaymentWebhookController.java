@@ -37,12 +37,11 @@ public class PaymentWebhookController {
         String paymentId = null;
         String type = null;
 
-        // 1. Intentamos leer desde el JSON body (Formato oficial de Webhooks v1)
         if (body != null) {
             type = (String) body.get("type");
-            
+
             if (body.containsKey("data")) {
-                Map<String, Object> data = (Map<String, Object>) body.get("data");
+                Map<?, ?> data = (Map<?, ?>) body.get("data");
                 if (data != null && data.get("id") != null) {
                     paymentId = String.valueOf(data.get("id"));
                 }
@@ -51,35 +50,35 @@ public class PaymentWebhookController {
             }
         }
 
-        // 2. Fallback: Intentamos leer desde los Query Parameters (Formato IPN o testeos manuales)
-        if (paymentId == null) {
-            paymentId = queryParams.get("data.id") != null 
+        if (paymentId == null || "null".equals(paymentId)) {
+            paymentId = queryParams.get("data.id") != null
                     ? queryParams.get("data.id") : queryParams.get("id");
         }
-        if (type == null) {
-            type = queryParams.get("type") != null 
+        if (type == null || "null".equals(type)) {
+            type = queryParams.get("type") != null
                     ? queryParams.get("type") : queryParams.get("topic");
         }
 
-        // Solo procesamos eventos de tipo 'payment'
-        if ("payment".equals(type) && paymentId != null) {
+        if ("payment".equals(type) && paymentId != null
+                && !paymentId.isEmpty() && !"null".equals(paymentId)) {
 
-            // 1. Validamos la autenticidad de la notificacion (si viene la firma)
-            if (signature != null && 
-                    !externalPaymentService.isValidSignature(signature, requestId, paymentId)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            if (signature != null) {
+                String notificationId = body != null ? String.valueOf(body.get("id")) : null;
+                if (!externalPaymentService.isValidSignature(signature, requestId, paymentId)) {
+                    if (notificationId != null && !externalPaymentService.isValidSignature(
+                            signature, requestId, notificationId)) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                    }
+                }
             }
 
-            // 2. Procesamos el pago de forma asincrona (transactional)
             try {
                 confirmPaymentAndCredit.execute(paymentId);
             } catch (Exception e) {
-                // En caso de error, devolvemos error para que MP reintente
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }
         }
 
-        // Devolvemos 200 OK inmediatamente (menos de 22 seg) para confirmar recepcion
         return ResponseEntity.ok().build();
     }
 }

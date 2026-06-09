@@ -41,7 +41,6 @@ class PurchaseHistoryControllerTest {
     @MockitoBean
     private ObtenerHistorialTutor obtenerHistorialTutor;
 
-    // --- MOCKS DE SEGURIDAD ---
     @MockitoBean
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
 
@@ -50,7 +49,6 @@ class PurchaseHistoryControllerTest {
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
-    // --------------------------
 
     @Test
     void cuandoPideHistorialAlumno_entoncesRetorna200YListaDeCompras() throws Exception {

@@ -16,12 +16,12 @@ public class GenerateTopUpLink {
     }
 
     public String execute(TopUpCommand command) {
-        // Valida la existencia del alumno antes de generar el cobro
+
         if (!alumnoRepository.existsById(command.studentId())) {
             throw new RuntimeException("Alumno no encontrado");
         }
 
-        // Solicita a la infraestructura la creacion de la preferencia y el link de pago
+
         return externalPaymentService.createTopUpPreference(
                 command.studentId(), command.amount());
     }

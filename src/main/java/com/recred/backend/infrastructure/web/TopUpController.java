@@ -22,13 +22,13 @@ public class TopUpController {
 
     @PostMapping("/topup")
     public ResponseEntity<Map<String, String>> requestTopUpLink(@RequestBody TopUpRequest request) {
-        // Mapea el DTO de infraestructura al comando de aplicacion
+
         TopUpCommand command = new TopUpCommand(request.studentId(), request.amount());
 
-        // Ejecuta el caso de uso para obtener la URL de Mercado Pago
+
         String paymentUrl = generateTopUpLink.execute(command);
 
-        // Retorna la URL (init_point) envuelta en un mapa para el frontend
+
         return ResponseEntity.ok(Map.of("paymentUrl", paymentUrl));
     }
 }
