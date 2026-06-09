@@ -24,76 +24,73 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class CreateTimeRestrictionTest {
 
-    @Mock
-    private RestriccionHorariaRepository repository;
-    @Mock
-    private UsuarioRepository usuarioRepository;
-    @Mock
-    private AlumnoRepository alumnoRepository;
+        @Mock
+        private RestriccionHorariaRepository repository;
+        @Mock
+        private UsuarioRepository usuarioRepository;
+        @Mock
+        private AlumnoRepository alumnoRepository;
 
-    @InjectMocks
-    private CreateTimeRestriction createTimeRestriction;
+        @InjectMocks
+        private CreateTimeRestriction createTimeRestriction;
 
-    @Test
-    void execute_CreaRestriccionGeneral_CuandoNoHayFiltros() {
-        UUID studentId = UUID.randomUUID();
-        UUID timeSlotId = UUID.randomUUID();
+        @Test
+        void execute_CreaRestriccionGeneral_CuandoNoHayFiltros() {
+                UUID studentId = UUID.randomUUID();
+                UUID timeSlotId = UUID.randomUUID();
 
-        TimeRestrictionCommand command = new TimeRestrictionCommand(studentId, timeSlotId, null, null);
+                TimeRestrictionCommand command = new TimeRestrictionCommand(studentId, timeSlotId, null, null);
 
-        Usuario mockUsuario = new Usuario();
-        mockUsuario.setId(UUID.randomUUID());
-        mockUsuario.setNombre("testUser");
-        mockUsuario.setEmail("test@test.com");
-        mockUsuario.setRol(com.recred.backend.domain.models.RolUsuario.PADRE);
-        when(usuarioRepository.findByIdCognito("test-sub")).thenReturn(Optional.of(mockUsuario));
-        
-        Alumno mockAlumno = new Alumno();
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(mockAlumno));
+                Usuario mockUsuario = new Usuario();
+                mockUsuario.setId(UUID.randomUUID());
+                mockUsuario.setNombre("testUser");
+                mockUsuario.setEmail("test@test.com");
+                mockUsuario.setRol(com.recred.backend.domain.models.RolUsuario.PADRE);
+                when(usuarioRepository.findByIdCognito("test-sub")).thenReturn(Optional.of(mockUsuario));
 
-        when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
+                Alumno mockAlumno = new Alumno();
+                when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(mockAlumno));
 
-        RestriccionHoraria result = createTimeRestriction.execute(command, "test-sub");
+                when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        ArgumentCaptor<RestriccionHoraria> captor = ArgumentCaptor.forClass(RestriccionHoraria.class);
-        verify(repository).save(captor.capture());
-        RestriccionHoraria guardada = captor.getValue();
+                RestriccionHoraria result = createTimeRestriction.execute(command, "test-sub");
 
-        assertEquals(studentId, guardada.getAlumnoId());
-        assertEquals(timeSlotId, guardada.getFranjaHoraria().getId());
-        assertNull(guardada.getCategoria());
-        assertNull(guardada.getClasificacionSalud());
-        assertNotNull(result);
-    }
+                ArgumentCaptor<RestriccionHoraria> captor = ArgumentCaptor.forClass(RestriccionHoraria.class);
+                verify(repository).save(captor.capture());
+                RestriccionHoraria guardada = captor.getValue();
 
-    @Test
-    void execute_CreaRestriccionEspecifica_CuandoSeEnvianFiltros() {
-        UUID studentId = UUID.randomUUID();
-        UUID timeSlotId = UUID.randomUUID();
-        UUID categoryId = UUID.randomUUID();
-        UUID classificationId = UUID.randomUUID();
+                assertEquals(studentId, guardada.getAlumnoId());
+                assertEquals(timeSlotId, guardada.getFranjaHoraria().getId());
+                assertNull(guardada.getCategoria());
+                assertNull(guardada.getClasificacionSalud());
+                assertNotNull(result);
+        }
 
-        TimeRestrictionCommand command = new TimeRestrictionCommand(studentId, timeSlotId, categoryId, classificationId);
+        @Test
+        void execute_CreaRestriccionEspecifica_CuandoSeEnvianFiltros() {
+                UUID studentId = UUID.randomUUID();
+                UUID timeSlotId = UUID.randomUUID();
+                UUID categoryId = UUID.randomUUID();
+                UUID classificationId = UUID.randomUUID();
 
-        Usuario mockUsuario = new Usuario();
-        mockUsuario.setId(UUID.randomUUID());
-        mockUsuario.setNombre("testUser");
-        mockUsuario.setEmail("test@test.com");
-        mockUsuario.setRol(com.recred.backend.domain.models.RolUsuario.PADRE);
-        when(usuarioRepository.findByIdCognito("test-sub")).thenReturn(Optional.of(mockUsuario));
-        
-        Alumno mockAlumno = new Alumno();
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(mockAlumno));
+                TimeRestrictionCommand command = new TimeRestrictionCommand(studentId, timeSlotId, categoryId,
+                                classificationId);
 
-        when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
+                Usuario mockUsuario = new Usuario();
+                mockUsuario.setId(UUID.randomUUID());
+                mockUsuario.setNombre("testUser");
+                mockUsuario.setRol(com.recred.backend.domain.models.RolUsuario.PADRE);
+                when(usuarioRepository.findByIdCognito("test-sub")).thenReturn(Optional.of(mockUsuario));
 
-        createTimeRestriction.execute(command, "test-sub");
+                when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        ArgumentCaptor<RestriccionHoraria> captor = ArgumentCaptor.forClass(RestriccionHoraria.class);
-        verify(repository).save(captor.capture());
-        RestriccionHoraria guardada = captor.getValue();
+                createTimeRestriction.execute(command, "test-sub");
 
-        assertEquals(categoryId, guardada.getCategoria().getId());
-        assertEquals(classificationId, guardada.getClasificacionSalud().getId());
-    }
+                ArgumentCaptor<RestriccionHoraria> captor = ArgumentCaptor.forClass(RestriccionHoraria.class);
+                verify(repository).save(captor.capture());
+                RestriccionHoraria guardada = captor.getValue();
+
+                assertEquals(categoryId, guardada.getCategoria().getId());
+                assertEquals(classificationId, guardada.getClasificacionSalud().getId());
+        }
 }

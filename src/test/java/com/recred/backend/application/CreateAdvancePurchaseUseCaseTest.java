@@ -32,133 +32,127 @@ import static org.mockito.Mockito.*;
 
 class CreateAdvancePurchaseUseCaseTest {
 
-    @Mock
-    private PurchaseValidator purchaseValidator;
-    @Mock
-    private AlumnoRepository alumnoRepository;
-    @Mock
-    private ProductRepository productRepository;
-    @Mock
-    private PurchaseRepository purchaseRepository;
-    @Mock
-    private WithdrawalCodeService withdrawalCodeService;
-    @Mock
-    private UsuarioRepository usuarioRepository;
-    @Mock
-    private WalletRepository walletRepository;
+        @Mock
+        private PurchaseValidator purchaseValidator;
+        @Mock
+        private AlumnoRepository alumnoRepository;
+        @Mock
+        private ProductRepository productRepository;
+        @Mock
+        private PurchaseRepository purchaseRepository;
+        @Mock
+        private WithdrawalCodeService withdrawalCodeService;
+        @Mock
+        private UsuarioRepository usuarioRepository;
+        @Mock
+        private WalletRepository walletRepository;
 
-    @InjectMocks
-    private CreateAdvancePurchase createAdvancePurchase;
+        @InjectMocks
+        private CreateAdvancePurchase createAdvancePurchase;
 
-    private AutoCloseable closeable;
+        private AutoCloseable closeable;
 
-    @BeforeEach
-    void setUp() {
-        closeable = MockitoAnnotations.openMocks(this);
-        createAdvancePurchase = new CreateAdvancePurchase(
-                purchaseValidator,
-                alumnoRepository,
-                productRepository,
-                purchaseRepository,
-                withdrawalCodeService,
-                usuarioRepository,
-                walletRepository
-        );
-    }
+        @BeforeEach
+        void setUp() {
+                closeable = MockitoAnnotations.openMocks(this);
+                createAdvancePurchase = new CreateAdvancePurchase(
+                                purchaseValidator,
+                                alumnoRepository,
+                                productRepository,
+                                purchaseRepository,
+                                withdrawalCodeService,
+                                usuarioRepository,
+                                walletRepository);
+        }
 
-    @AfterEach
-    void tearDown() throws Exception {
-        closeable.close();
-    }
+        @AfterEach
+        void tearDown() throws Exception {
+                closeable.close();
+        }
 
-    @Test
-    void execute_shouldReturnPendingStatusAndWithdrawalCodes_whenPurchaseIsSuccessful() {
+        @Test
+        void execute_shouldReturnPendingStatusAndWithdrawalCodes_whenPurchaseIsSuccessful() {
 
-        UUID studentId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest
-                (productId, 1);
-        AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
-                studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23",
-                RecessTime.FIRST_RECESS, List.of(itemRequest)
-        );
-        AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
+                UUID studentId = UUID.randomUUID();
+                UUID productId = UUID.randomUUID();
+                AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest(productId, 1);
+                AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
+                                studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23",
+                                RecessTime.FIRST_RECESS, List.of(itemRequest));
+                AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
-        Alumno student = new Alumno();
-        student.setId(studentId);
+                Alumno student = new Alumno();
+                student.setId(studentId);
 
-        Producto product = new Producto();
-        product.setId(productId);
-        product.setPrecio(BigDecimal.TEN);
-        product.setRequierePreparacion(true);
+                Producto product = new Producto();
+                product.setId(productId);
+                product.setPrecio(BigDecimal.TEN);
+                product.setRequierePreparacion(true);
 
-        Map<Producto, Integer> items = new HashMap<>();
-        items.put(product, 1);
+                Map<Producto, Integer> items = new HashMap<>();
+                items.put(product, 1);
 
-        Purchase purchase = new Purchase(student, items, null, studentId, BuyerType.STUDENT);
-        purchase.setId(UUID.randomUUID());
+                Purchase purchase = new Purchase(student, items, null, studentId, BuyerType.STUDENT);
+                purchase.setId(UUID.randomUUID());
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
-        when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("test-code");
+                when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+                when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+                when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
+                when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("test-code");
 
-        Usuario mockUsuario = new Usuario();
-        mockUsuario.setId(UUID.randomUUID());
-        mockUsuario.setRol(RolUsuario.PADRE);
-        Tutor mockTutor = new Tutor();
-        mockTutor.setHijos(Set.of(student));
-        mockUsuario.setTutor(mockTutor);
-        when(usuarioRepository.findByIdCognito("test-user")).thenReturn(Optional.of(mockUsuario));
+                Usuario mockUsuario = new Usuario();
+                mockUsuario.setId(UUID.randomUUID());
+                mockUsuario.setRol(RolUsuario.PADRE);
+                Tutor mockTutor = new Tutor();
+                mockTutor.setHijos(Set.of(student));
+                mockUsuario.setTutor(mockTutor);
+                when(usuarioRepository.findByIdCognito("test-user")).thenReturn(Optional.of(mockUsuario));
 
-        Billetera mockWallet = new Billetera();
-        mockWallet.setId(UUID.randomUUID());
-        mockWallet.setAlumno(student);
-        mockWallet.setSaldoCreditos(new BigDecimal("100.0"));
-        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(mockWallet));
+                Billetera mockWallet = new Billetera();
+                mockWallet.setId(UUID.randomUUID());
 
-        AdvancePurchaseResponse response = createAdvancePurchase.execute(request, "test-user");
+                mockWallet.setAlumno(student);
+                mockWallet.setSaldoCreditos(new BigDecimal("100.0"));
 
-        assertNotNull(response);
-        assertEquals(EstadoCompra.PENDIENTE, response.status().status());
-        assertEquals(10.0, response.total());
-        assertTrue(response.codes().containsKey(studentId));
-        assertEquals("test-code", response.codes().get(studentId));
-    }
+                AdvancePurchaseResponse response = createAdvancePurchase.execute(request, "test-user");
+                assertNotNull(response);
+                assertEquals(EstadoCompra.PENDIENTE, response.status().status());
+                assertEquals(10.0, response.total());
+                assertTrue(response.codes().containsKey(studentId));
+                assertEquals("test-code", response.codes().get(studentId));
+        }
 
-    @Test
-    void execute_shouldThrowDietaryRestrictionException_whenValidationFails() {
+        @Test
+        void execute_shouldThrowDietaryRestrictionException_whenValidationFails() {
 
-        UUID studentId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest
-                (productId, 1);
-        AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
-                studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23",
-                RecessTime.FIRST_RECESS, List.of(itemRequest)
-        );
-        AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
+                UUID studentId = UUID.randomUUID();
+                UUID productId = UUID.randomUUID();
+                AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest(productId, 1);
+                AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
+                                studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23",
+                                RecessTime.FIRST_RECESS, List.of(itemRequest));
+                AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
-        Alumno student = new Alumno();
-        student.setId(studentId);
+                Alumno student = new Alumno();
+                student.setId(studentId);
 
-        Producto product = new Producto();
-        product.setId(productId);
+                Producto product = new Producto();
+                product.setId(productId);
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+                when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+                when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
-        Usuario mockUsuario = new Usuario();
-        mockUsuario.setId(UUID.randomUUID());
-        mockUsuario.setRol(RolUsuario.PADRE);
-        Tutor mockTutor = new Tutor();
-        mockTutor.setHijos(Set.of(student));
-        mockUsuario.setTutor(mockTutor);
-        when(usuarioRepository.findByIdCognito("test-user")).thenReturn(Optional.of(mockUsuario));
+                Usuario mockUsuario = new Usuario();
+                mockUsuario.setId(UUID.randomUUID());
+                mockUsuario.setRol(RolUsuario.PADRE);
+                Tutor mockTutor = new Tutor();
+                mockTutor.setHijos(Set.of(student));
+                mockUsuario.setTutor(mockTutor);
+                when(usuarioRepository.findByIdCognito("test-user")).thenReturn(Optional.of(mockUsuario));
 
-        doThrow(new DietaryRestrictionException("Dietary restriction violated"))
-                .when(purchaseValidator).validate(any(Purchase.class));
-
-        assertThrows(DietaryRestrictionException.class, () -> createAdvancePurchase.execute(request, "test-user"));
-    }
+                doThrow(new DietaryRestrictionException("Dietary restriction violated"))
+                                .when(purchaseValidator).validate(any(Purchase.class));
+                assertThrows(DietaryRestrictionException.class,
+                                () -> createAdvancePurchase.execute(request, "test-user"));
+        }
 }

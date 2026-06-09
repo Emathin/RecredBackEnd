@@ -30,13 +30,14 @@ class RestriccionHorariaTest {
 
         ClasificacionSalud tipoSalud = new ClasificacionSalud();
         tipoSalud.setId(UUID.randomUUID());
-        tipoSalud.setNombre("Sin TACC");
+        tipoSalud.setDescripcion("Sin TACC");
         producto.setClasificacionesSalud(Set.of(tipoSalud));
     }
 
     @Test
     void noBloquea_SiRestriccionEstaInactiva() {
-        RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo, null, null);
+        RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo,
+                null, null);
         restriccion.setActiva(false);
 
         assertFalse(restriccion.bloquea(producto, momentoCompra));
@@ -44,7 +45,8 @@ class RestriccionHorariaTest {
 
     @Test
     void noBloquea_SiEstaFueraDeLaFranjaHoraria() {
-        RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo, null, null);
+        RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo,
+                null, null);
         LocalDateTime momentoFueraDeHora = LocalDateTime.of(2026, 5, 25, 11, 0);
 
         assertFalse(restriccion.bloquea(producto, momentoFueraDeHora));
@@ -52,14 +54,16 @@ class RestriccionHorariaTest {
 
     @Test
     void bloquea_Totalmente_SiNoHayFiltrosConfigurados() {
-        RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo, null, null);
+        RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo,
+                null, null);
 
         assertTrue(restriccion.bloquea(producto, momentoCompra));
     }
 
     @Test
     void bloquea_SiCoincideLaCategoria() {
-        RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo, producto.getCategoria(), null);
+        RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo,
+                producto.getCategoria(), null);
 
         assertTrue(restriccion.bloquea(producto, momentoCompra));
     }
@@ -67,7 +71,8 @@ class RestriccionHorariaTest {
     @Test
     void bloquea_SiCoincideLaClasificacion() {
         ClasificacionSalud clasificacionRestringida = producto.getClasificacionesSalud().iterator().next();
-        RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo, null, clasificacionRestringida);
+        RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo,
+                null, clasificacionRestringida);
 
         assertTrue(restriccion.bloquea(producto, momentoCompra));
     }
@@ -77,7 +82,8 @@ class RestriccionHorariaTest {
         CategoriaProducto otraCategoria = new CategoriaProducto();
         otraCategoria.setId(UUID.randomUUID());
 
-        RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo, otraCategoria, null);
+        RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo,
+                otraCategoria, null);
 
         assertFalse(restriccion.bloquea(producto, momentoCompra));
     }
