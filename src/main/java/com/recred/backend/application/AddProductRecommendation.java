@@ -59,7 +59,7 @@ public class AddProductRecommendation {
                             kiosquero.getUsuario().getId(),
                             "Nuevo producto recomendado",
                             "Se recomienda agregar " + product.getNombre() + " a tu stock.",
-                            Map.of("type", "SUGERENCIA_PRODUCTO")
+                            Map.of("type", "SUGERENCIA_NUEVO_PRODUCTO")
                     );
                     pushNotificationSender.send(notification);
                 }
