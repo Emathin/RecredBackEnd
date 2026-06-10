@@ -11,4 +11,5 @@ public interface TutorRepository {
     Optional<Tutor> findByUsuarioId(UUID usuarioId);
     Optional<Tutor> findByUsuarioIdCognito(String cognitoSubject);
     List<Tutor> findAll();
+    List<Tutor> findByAlumnoId(UUID alumnoId);
 }

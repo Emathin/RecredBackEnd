@@ -8,12 +8,13 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -24,21 +25,21 @@ class FirebaseConfigTest {
     void returnEmptyWhenFirebaseIsDisabled() {
         FirebaseConfig config = new FirebaseConfig();
 
-        Optional<FirebaseApp> app = config.firebaseApp(new FirebaseProperties(false, ""));
+        FirebaseApp app = config.firebaseApp(new FirebaseProperties(false, ""));
 
-        assertTrue(app.isEmpty());
+        assertNull(app);
     }
 
     @Test
     void returnEmptyWhenFirebaseCannotInitialize() {
         FirebaseConfig config = new FirebaseConfig();
 
-        Optional<FirebaseApp> app = config.firebaseApp(new FirebaseProperties(
+        FirebaseApp app = config.firebaseApp(new FirebaseProperties(
                 true,
                 "missing-service-account.json"
         ));
 
-        assertTrue(app.isEmpty());
+        assertNull(app);
     }
 
     @Test
@@ -50,10 +51,10 @@ class FirebaseConfigTest {
             firebaseApps.when(FirebaseApp::getApps).thenReturn(List.of(firebaseApp));
             firebaseApps.when(FirebaseApp::getInstance).thenReturn(firebaseApp);
 
-            Optional<FirebaseApp> app = config.firebaseApp(new FirebaseProperties(true, ""));
+            FirebaseApp app = config.firebaseApp(new FirebaseProperties(true, ""));
 
-            assertTrue(app.isPresent());
-            assertSame(firebaseApp, app.orElseThrow());
+            assertNotNull(app);
+            assertSame(firebaseApp, app);
         }
     }
 
@@ -74,10 +75,10 @@ class FirebaseConfigTest {
             firebaseApps.when(() -> FirebaseApp.initializeApp(any(FirebaseOptions.class)))
                     .thenReturn(firebaseApp);
 
-            Optional<FirebaseApp> app = config.firebaseApp(new FirebaseProperties(true, ""));
+            FirebaseApp app = config.firebaseApp(new FirebaseProperties(true, ""));
 
-            assertTrue(app.isPresent());
-            assertSame(firebaseApp, app.orElseThrow());
+            assertNotNull(app);
+            assertSame(firebaseApp, app);
         }
     }
 
@@ -101,13 +102,13 @@ class FirebaseConfigTest {
             firebaseApps.when(() -> FirebaseApp.initializeApp(any(FirebaseOptions.class)))
                     .thenReturn(firebaseApp);
 
-            Optional<FirebaseApp> app = config.firebaseApp(new FirebaseProperties(
+            FirebaseApp app = config.firebaseApp(new FirebaseProperties(
                     true,
                     serviceAccount.toString()
             ));
 
-            assertTrue(app.isPresent());
-            assertSame(firebaseApp, app.orElseThrow());
+            assertNotNull(app);
+            assertSame(firebaseApp, app);
         }
     }
 
