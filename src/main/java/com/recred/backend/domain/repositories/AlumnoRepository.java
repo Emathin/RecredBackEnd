@@ -12,7 +12,7 @@ public interface AlumnoRepository {
 
     List<Alumno> findAll();
 
-    void save(Alumno alumno);
+    Alumno save(Alumno alumno);
 
     Optional<UUID> findStudentIdByUserId(UUID userId);
 

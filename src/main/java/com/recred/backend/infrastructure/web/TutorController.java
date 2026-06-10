@@ -1,11 +1,15 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.ObtenerHijosPorPadre;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,9 +22,12 @@ import java.util.UUID;
 public class TutorController {
 
     private final ObtenerHijosPorPadre obtenerHijosPorPadre;
+    private final CreateStudentFromParent createStudentFromParent;
 
-    public TutorController(ObtenerHijosPorPadre obtenerHijosPorPadre) {
+    public TutorController(ObtenerHijosPorPadre obtenerHijosPorPadre,
+                           CreateStudentFromParent createStudentFromParent) {
         this.obtenerHijosPorPadre = obtenerHijosPorPadre;
+        this.createStudentFromParent = createStudentFromParent;
     }
 
     @GetMapping("/me/hijos")
@@ -32,6 +39,22 @@ public class TutorController {
                 .toList();
 
         return ResponseEntity.ok(alumnos);
+    }
+
+    @PostMapping("/me/hijos")
+    public ResponseEntity<StudentDTO> crearHijo(Authentication authentication,
+                                               @RequestBody CreateChildRequest request) {
+        StudentDTO alumno = StudentDTO.fromDomain(createStudentFromParent.execute(
+                cognitoSubject(authentication),
+                request.username(),
+                request.nombre(),
+                request.apellido(),
+                request.email(),
+                request.dni(),
+                request.gradoId()
+        ));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(alumno);
     }
 
     @GetMapping("/{tutorId}/hijos")
