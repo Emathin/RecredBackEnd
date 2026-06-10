@@ -2,6 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
@@ -52,25 +53,46 @@ public class GenerateLowBalanceAlerts {
             UUID studentUserId = alumnoRepository.findUserID(studentId);
             if (studentUserId != null) {
                 LOGGER.info("Sending notification to student user id: {}", studentUserId);
-                sendNotification(studentUserId, ALERT_TITLE, ALERT_MESSAGE_STUDENT);
+                sendNotification(
+                    studentUserId, 
+                    RolUsuario.ALUMNO, 
+                    ALERT_TITLE, 
+                    ALERT_MESSAGE_STUDENT, 
+                    studentId);
             }
 
             List<Tutor> tutors = tutorRepository.findByAlumnoId(studentId);
             LOGGER.info("Found {} tutors for student id: {}", tutors.size(), studentId);
             for (Tutor tutor : tutors) {
                 if (tutor.getUsuario() != null && tutor.getUsuario().getId() != null) {
-                    sendNotification(tutor.getUsuario().getId(), ALERT_TITLE, ALERT_MESSAGE_PARENT);
+                    sendNotification(
+                            tutor.getUsuario().getId(),
+                            RolUsuario.PADRE,
+                            ALERT_TITLE,
+                            ALERT_MESSAGE_PARENT,
+                            studentId
+                    );
                 }
             }
         }
     }
 
-    private void sendNotification(UUID userId, String title, String message) {
+    private void sendNotification(
+        UUID userId, 
+        RolUsuario rol, 
+        String title, 
+        String message, 
+        UUID alumnoId
+    ) {
         PushNotification notification = new PushNotification(
                 userId,
                 title,
                 message,
-                Map.of("type", "LOW_BALANCE_ALERT")
+                Map.of(
+                    "type", "LOW_BALANCE_ALERT",
+                    "alumnoId", alumnoId.toString(),
+                    "rol", rol.toString()
+                )
         );
         pushNotificationSender.send(notification);
     }
