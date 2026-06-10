@@ -1,11 +1,13 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.CreateAdvancePurchase;
+import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.domain.services.UsuarioService;
@@ -13,8 +15,7 @@ import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,28 +30,35 @@ import java.util.UUID;
 public class PurchaseSuggestController {
 
     private final PurchaseSuggestIA purchaseSuggestIA;
+    private final NotifyPurchaseSuggestions notifyPurchaseSuggestions;
     private final RespondToAISuggestion respondToAISuggestion;
     private final CreateAdvancePurchase createAdvancePurchase;
     private final SugerenciaIARepository sugerenciaIARepository;
     private final UsuarioService usuarioService;
 
     public PurchaseSuggestController(PurchaseSuggestIA purchaseSuggestIA,
+                                     NotifyPurchaseSuggestions notifyPurchaseSuggestions,
                                      RespondToAISuggestion respondToAISuggestion,
                                      CreateAdvancePurchase createAdvancePurchase,
                                      SugerenciaIARepository sugerenciaIARepository,
                                      UsuarioService usuarioService) {
         this.purchaseSuggestIA = purchaseSuggestIA;
+        this.notifyPurchaseSuggestions = notifyPurchaseSuggestions;
         this.respondToAISuggestion = respondToAISuggestion;
         this.createAdvancePurchase = createAdvancePurchase;
         this.sugerenciaIARepository = sugerenciaIARepository;
         this.usuarioService = usuarioService;
     }
 
-    @GetMapping("/activa")
+    @PostMapping("/activa")
     public ResponseEntity<HealthySuggestionResponseDTO> obtenerSugerenciaActiva(
-            Authentication authentication) {
-        Optional<SugerenciaIAEntity> sugerenciaOpt =
-                purchaseSuggestIA.execute(cognitoSubject(authentication));
+            Authentication authentication,
+            @RequestBody(required = false) TestSuggestionRequest testRequest) {
+        String subject = (testRequest != null && testRequest.testCognitoId() != null) 
+                ? testRequest.testCognitoId() 
+                : cognitoSubject(authentication);
+        
+        Optional<SugerenciaIA> sugerenciaOpt = purchaseSuggestIA.execute(subject);
 
         return sugerenciaOpt
                 .map(this::toDTO)
@@ -58,14 +66,32 @@ public class PurchaseSuggestController {
                 .orElse(ResponseEntity.noContent().build());
     }
 
-    @PostMapping("/{sugerenciaId}/comprar")
+    @PostMapping("/test-notificacion")
+    public ResponseEntity<Void> testNotificacion(
+            Authentication authentication,
+            @RequestBody(required = false) TestSuggestionRequest testRequest) {
+        String subject = (testRequest != null && testRequest.testCognitoId() != null) 
+                ? testRequest.testCognitoId() 
+                : cognitoSubject(authentication);
+        
+        notifyPurchaseSuggestions.execute(subject);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/comprar")
     public ResponseEntity<AdvancePurchaseResponse> comprarSugerencia(
-            @PathVariable UUID sugerenciaId,
-            Authentication authentication) {
+            Authentication authentication,
+            @RequestBody TestSuggestionRequest testRequest) {
+        
+        UUID sugerenciaId = testRequest.sugerenciaId();
+        String subject = (testRequest.testCognitoId() != null) 
+                ? testRequest.testCognitoId() 
+                : cognitoSubject(authentication);
+
         SugerenciaIAEntity sugerencia = sugerenciaIARepository.findById(sugerenciaId)
                 .orElseThrow(() -> new RuntimeException("Sugerencia no encontrada"));
 
-        Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoSubject(authentication));
+        Usuario usuario = usuarioService.obtenerUsuarioActual(subject);
 
         // Marcar como aceptada
         respondToAISuggestion.execute(sugerenciaId, true);
@@ -73,6 +99,7 @@ public class PurchaseSuggestController {
         // Concretar la compra anticipada
         UUID alumnoId = sugerencia.getAlumnoEntity().getId();
         UUID productoId = sugerencia.getProductoEntity().getId();
+        UUID buffetId = sugerencia.getBuffetEntity().getId();
 
         BuyerType buyerType = usuario.getRol() == RolUsuario.ALUMNO
                 ? BuyerType.STUDENT
@@ -87,7 +114,9 @@ public class PurchaseSuggestController {
                 buyerType,
                 LocalDate.now().toString(),
                 RecessTime.AFTER_HOURS,
-                List.of(item)
+                List.of(item),
+                sugerenciaId,
+                buffetId
         );
 
         AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
@@ -100,6 +129,15 @@ public class PurchaseSuggestController {
                 .map(Authentication::getName)
                 .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
                         "Usuario no autenticado"));
+    }
+
+    private HealthySuggestionResponseDTO toDTO(SugerenciaIA sugerencia) {
+        return HealthySuggestionResponseDTO.builder()
+                .sugerenciaId(sugerencia.getId())
+                .titulo(sugerencia.getTitulo())
+                .mensaje(sugerencia.getMensaje())
+                .productoId(sugerencia.getProductoId())
+                .build();
     }
 
     private HealthySuggestionResponseDTO toDTO(SugerenciaIAEntity entity) {

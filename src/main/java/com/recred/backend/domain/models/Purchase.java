@@ -32,6 +32,7 @@ public class Purchase {
     private String pickupSlotDescription;
     private LocalDate pickupDate;
     private EstadoRetiro withdrawalStatus;
+    private UUID suggestionId;
 
     private Map<Producto, Integer> items = new HashMap<>();
 

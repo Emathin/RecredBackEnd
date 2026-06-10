@@ -59,6 +59,9 @@ public class CreateAdvancePurchase {
                 orderRequest.buyerId(),
                 orderRequest.buyerType()
         );
+        
+        purchase.setSuggestionId(orderRequest.suggestionId());
+        purchase.setBuffetId(orderRequest.buffetId());
 
         purchaseValidator.validate(purchase);
 

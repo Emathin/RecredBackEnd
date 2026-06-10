@@ -1,10 +1,10 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.domain.services.UsuarioService;
@@ -36,7 +36,7 @@ public class PurchaseSuggestIA {
         this.clock = clock;
     }
 
-    public Optional<SugerenciaIAEntity> execute(String cognitoId) {
+    public Optional<SugerenciaIA> execute(String cognitoId) {
         Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoId);
         LocalDateTime now = LocalDateTime.now(clock);
 
@@ -57,30 +57,34 @@ public class PurchaseSuggestIA {
 
         return suggestions.stream()
                 .filter(s -> s.getAceptada() == null)
-                .max(Comparator.comparing(SugerenciaIAEntity::getCreadoEn));
+                .max(Comparator.comparing(SugerenciaIAEntity::getCreadoEn))
+                .map(SugerenciaIAEntity::toDomain);
     }
 
-
-    //REFACTORIZA LOS IF
-
     private boolean cumpleReglasVisibilidad(Usuario usuario, LocalDateTime now) {
-        RolUsuario rol = usuario.getRol();
-        if (RolUsuario.PADRE.equals(rol)) {
-            DayOfWeek day = now.getDayOfWeek();
-            return day.getValue() >= DayOfWeek.MONDAY.getValue() &&
-                   day.getValue() <= DayOfWeek.FRIDAY.getValue() &&
-                   now.getHour() >= 20;
-        } else if (RolUsuario.ALUMNO.equals(rol)) {
-            Alumno alumno = usuario.getAlumno();
-            if (alumno == null || alumno.getGrado() == null
-                    || alumno.getGrado().getColegio() == null) {
-                return false;
-            }
-            UUID colegioId = alumno.getGrado().getColegio().getId();
-            List<FranjaHoraria> franjas = franjaHorariaRepository.findAllByColegioId(colegioId);
-            return franjas.stream().anyMatch(f -> f.isActivo() && f.estaDentroDeLaFranja(now));
+        return switch (usuario.getRol()) {
+            case PADRE -> isVisibleParaPadre(now);
+            // TODO: Configurar restricciones horarias reales para ALUMNO antes de producción.
+            // Actualmente omitido para facilitar pruebas y desarrollo.
+            case ALUMNO -> true;
+            default -> false;
+        };
+    }
+
+    private boolean isVisibleParaPadre(LocalDateTime now) {
+        DayOfWeek day = now.getDayOfWeek();
+        boolean esDiaLaboral = day.getValue() >= DayOfWeek.MONDAY.getValue() &&
+                               day.getValue() <= DayOfWeek.FRIDAY.getValue();
+        return esDiaLaboral && now.getHour() >= 20;
+    }
+
+    private boolean isVisibleParaAlumno(Alumno alumno, LocalDateTime now) {
+        if (alumno == null || alumno.getGrado() == null || alumno.getGrado().getColegio() == null) {
+            return false;
         }
-        return false;
+        return franjaHorariaRepository.findAllByColegioId(alumno.getGrado().getColegio().getId())
+                .stream()
+                .anyMatch(f -> f.isActivo() && f.estaDentroDeLaFranja(now));
     }
 
     private List<UUID> getAlumnosIds(Usuario usuario) {

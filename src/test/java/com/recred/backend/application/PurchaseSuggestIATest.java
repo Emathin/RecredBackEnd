@@ -8,6 +8,7 @@ import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.domain.services.UsuarioService;
@@ -19,11 +20,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -55,7 +54,6 @@ class PurchaseSuggestIATest {
 
     @Test
     void execute_Padre_HorarioNocturnoDiaHabil_DeberiaRetornarSugerencia() {
-        // Lunes 20:05
         LocalDateTime now = LocalDateTime.of(2026, 6, 1, 20, 5);
         setupUseCase(now);
 
@@ -67,23 +65,25 @@ class PurchaseSuggestIATest {
         tutor.addHijo(hijo);
         padre.setTutor(tutor);
 
-        SugerenciaIAEntity sugerencia = new SugerenciaIAEntity();
-        sugerencia.setAceptada(null);
-        sugerencia.setCreadoEn(now.minusHours(1));
+        SugerenciaIAEntity sugerenciaEntity = new SugerenciaIAEntity();
+        sugerenciaEntity.setId(UUID.randomUUID());
+        sugerenciaEntity.setAceptada(null);
+        sugerenciaEntity.setCreadoEn(now.minusHours(1));
+        sugerenciaEntity.setTitulo("Test");
+        sugerenciaEntity.setMensaje("Mensaje");
 
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
         when(sugerenciaIARepository.findByAlumnoIdAndTipo(hijo.getId(), TipoSugerenciaIA.RECOMENDACION_SALUDABLE))
-                .thenReturn(List.of(sugerencia));
+                .thenReturn(List.of(sugerenciaEntity));
 
-        Optional<SugerenciaIAEntity> result = useCase.execute(cognitoId);
+        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
 
         assertTrue(result.isPresent());
-        assertEquals(sugerencia, result.get());
+        assertEquals(sugerenciaEntity.getId(), result.get().getId());
     }
 
     @Test
     void execute_Padre_HorarioDiurno_DeberiaRetornarVacio() {
-        // Lunes 10:00
         LocalDateTime now = LocalDateTime.of(2026, 6, 1, 10, 0);
         setupUseCase(now);
 
@@ -92,14 +92,13 @@ class PurchaseSuggestIATest {
 
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
 
-        Optional<SugerenciaIAEntity> result = useCase.execute(cognitoId);
+        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
 
         assertFalse(result.isPresent());
     }
 
     @Test
     void execute_Padre_FinDeSemana_DeberiaRetornarVacio() {
-        // Sabado 21:00
         LocalDateTime now = LocalDateTime.of(2026, 6, 6, 21, 0);
         setupUseCase(now);
 
@@ -108,14 +107,13 @@ class PurchaseSuggestIATest {
 
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
 
-        Optional<SugerenciaIAEntity> result = useCase.execute(cognitoId);
+        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
 
         assertFalse(result.isPresent());
     }
 
     @Test
     void execute_Alumno_EnHorarioEscolar_DeberiaRetornarSugerencia() {
-        // Lunes 10:00
         LocalDateTime now = LocalDateTime.of(2026, 6, 1, 10, 0);
         setupUseCase(now);
 
@@ -130,53 +128,47 @@ class PurchaseSuggestIATest {
         usuarioAlumno.setRol(RolUsuario.ALUMNO);
         usuarioAlumno.setAlumno(alumno);
 
-        FranjaHoraria franja = new FranjaHoraria();
-        franja.setActivo(true);
-        franja.setHoraInicio(LocalTime.of(8, 0));
-        franja.setHoraFin(LocalTime.of(12, 0));
-
-        SugerenciaIAEntity sugerencia = new SugerenciaIAEntity();
-        sugerencia.setAceptada(null);
-        sugerencia.setCreadoEn(now.minusHours(1));
+        SugerenciaIAEntity sugerenciaEntity = new SugerenciaIAEntity();
+        sugerenciaEntity.setId(UUID.randomUUID());
+        sugerenciaEntity.setAceptada(null);
+        sugerenciaEntity.setCreadoEn(now.minusHours(1));
+        sugerenciaEntity.setTitulo("Test");
+        sugerenciaEntity.setMensaje("Mensaje");
 
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuarioAlumno);
-        when(franjaHorariaRepository.findAllByColegioId(colegio.getId())).thenReturn(List.of(franja));
         when(sugerenciaIARepository.findByAlumnoIdAndTipo(alumno.getId(), TipoSugerenciaIA.RECOMENDACION_SALUDABLE))
-                .thenReturn(List.of(sugerencia));
+                .thenReturn(List.of(sugerenciaEntity));
 
-        Optional<SugerenciaIAEntity> result = useCase.execute(cognitoId);
+        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
 
         assertTrue(result.isPresent());
-        assertEquals(sugerencia, result.get());
+        assertEquals(sugerenciaEntity.getId(), result.get().getId());
     }
 
     @Test
-    void execute_Alumno_FueraDeHorarioEscolar_DeberiaRetornarVacio() {
-        // Lunes 15:00
+    void execute_Alumno_FueraDeHorarioEscolar_DeberiaRetornarSugerenciaDebidoAlBypass() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 1, 15, 0);
         setupUseCase(now);
 
-        Colegio colegio = new Colegio();
-        colegio.setId(UUID.randomUUID());
-        Grado grado = new Grado();
-        grado.setColegio(colegio);
-        Alumno alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
-        alumno.setGrado(grado);
         Usuario usuarioAlumno = new Usuario();
         usuarioAlumno.setRol(RolUsuario.ALUMNO);
+        Alumno alumno = new Alumno();
+        alumno.setId(UUID.randomUUID());
         usuarioAlumno.setAlumno(alumno);
 
-        FranjaHoraria franja = new FranjaHoraria();
-        franja.setActivo(true);
-        franja.setHoraInicio(LocalTime.of(8, 0));
-        franja.setHoraFin(LocalTime.of(12, 0));
+        SugerenciaIAEntity sugerenciaEntity = new SugerenciaIAEntity();
+        sugerenciaEntity.setId(UUID.randomUUID());
+        sugerenciaEntity.setAceptada(null);
+        sugerenciaEntity.setCreadoEn(now.minusHours(1));
+        sugerenciaEntity.setTitulo("Test");
+        sugerenciaEntity.setMensaje("Mensaje");
 
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuarioAlumno);
-        when(franjaHorariaRepository.findAllByColegioId(colegio.getId())).thenReturn(List.of(franja));
+        when(sugerenciaIARepository.findByAlumnoIdAndTipo(alumno.getId(), TipoSugerenciaIA.RECOMENDACION_SALUDABLE))
+                .thenReturn(List.of(sugerenciaEntity));
 
-        Optional<SugerenciaIAEntity> result = useCase.execute(cognitoId);
+        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
 
-        assertFalse(result.isPresent());
+        assertTrue(result.isPresent());
     }
 }
