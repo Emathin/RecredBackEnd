@@ -10,6 +10,9 @@ public class CognitoAdminProperties {
     private String region;
     private String userPoolId;
     private String studentGroup;
+    private String awsAccessKeyId;
+    private String awsSecretAccessKey;
+    private String awsSessionToken;
 
     public String getRegion() {
         return region;
@@ -33,5 +36,29 @@ public class CognitoAdminProperties {
 
     public void setStudentGroup(String studentGroup) {
         this.studentGroup = studentGroup;
+    }
+
+    public String getAwsAccessKeyId() {
+        return awsAccessKeyId;
+    }
+
+    public void setAwsAccessKeyId(String awsAccessKeyId) {
+        this.awsAccessKeyId = awsAccessKeyId;
+    }
+
+    public String getAwsSecretAccessKey() {
+        return awsSecretAccessKey;
+    }
+
+    public void setAwsSecretAccessKey(String awsSecretAccessKey) {
+        this.awsSecretAccessKey = awsSecretAccessKey;
+    }
+
+    public String getAwsSessionToken() {
+        return awsSessionToken;
+    }
+
+    public void setAwsSessionToken(String awsSessionToken) {
+        this.awsSessionToken = awsSessionToken;
     }
 }

@@ -95,7 +95,7 @@ public class CognitoStudentIdentityServiceImpl implements CognitoStudentIdentity
     private Map<String, Object> invoke(String region, String target, Map<String, Object> body) {
         try {
             String payload = objectMapper.writeValueAsString(body);
-            AwsCredentials credentials = credentialsFromEnvironment();
+            AwsCredentials credentials = credentialsFromProperties();
             URI endpoint = URI.create("https://" + SERVICE + "." + region + ".amazonaws.com/");
             ZonedDateTime now = ZonedDateTime.now(clock);
             String amzDate = now.format(DateTimeFormatter.ofPattern(
@@ -205,22 +205,15 @@ public class CognitoStudentIdentityServiceImpl implements CognitoStudentIdentity
                         "Cognito no devolvio el sub del usuario creado"));
     }
 
-    private AwsCredentials credentialsFromEnvironment() {
-        String accessKeyId = requiredEnv("AWS_ACCESS_KEY_ID");
-        String secretAccessKey = requiredEnv("AWS_SECRET_ACCESS_KEY");
-        String sessionToken = System.getenv("AWS_SESSION_TOKEN");
+    private AwsCredentials credentialsFromProperties() {
+        String accessKeyId = required(properties.getAwsAccessKeyId(), "aws-access-key-id");
+        String secretAccessKey = required(properties.getAwsSecretAccessKey(),
+                "aws-secret-access-key");
+        String sessionToken = properties.getAwsSessionToken();
         if (sessionToken != null && sessionToken.isBlank()) {
             sessionToken = null;
         }
         return new AwsCredentials(accessKeyId, secretAccessKey, sessionToken);
-    }
-
-    private String requiredEnv(String name) {
-        String value = System.getenv(name);
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException("Falta configurar " + name);
-        }
-        return value.trim();
     }
 
     private Map<String, String> attribute(String name, String value) {
