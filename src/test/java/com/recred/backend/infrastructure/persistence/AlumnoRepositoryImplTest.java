@@ -61,6 +61,9 @@ class AlumnoRepositoryImplTest {
         productoBloq.setId(UUID.randomUUID());
         alumnoDominio.bloquearProducto(productoBloq);
 
+        when(springDataRepository.save(any(AlumnoEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
         alumnoRepositoryImpl.save(alumnoDominio);
 
         verify(springDataRepository).save(entityCaptor.capture());
