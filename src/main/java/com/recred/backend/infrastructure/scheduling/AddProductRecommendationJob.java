@@ -12,7 +12,7 @@ public class AddProductRecommendationJob {
         this.addProductRecommendation = addProductRecommendation;
     }
 
-    @Scheduled(cron = "${product-recommendation.cron:0 30 12 * * *}")
+    @Scheduled(cron = "0 56 18 * * *")
     public void run() {
         addProductRecommendation.execute();
     }

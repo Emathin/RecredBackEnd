@@ -1,0 +1,93 @@
+package com.recred.backend.infrastructure.persistence;
+
+import com.recred.backend.domain.models.Kiosquero;
+import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.PushNotification;
+import com.recred.backend.domain.models.TipoNotificacion;
+import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
+import com.recred.backend.infrastructure.entities.NotificacionEntity;
+import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.UsuarioEntity;
+import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
+import jakarta.persistence.EntityManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+@Component
+public class ProductAdditionNotificationRepositoryImpl
+        implements ProductAdditionNotificationRepository {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductAdditionNotificationRepositoryImpl.class);
+    private final NotificacionJpaRepository notificationJpaRepository;
+    private final EntityManager entityManager;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public ProductAdditionNotificationRepositoryImpl(
+            NotificacionJpaRepository notificationJpaRepository,
+            EntityManager entityManager,
+            ApplicationEventPublisher eventPublisher
+    ) {
+        this.notificationJpaRepository = notificationJpaRepository;
+        this.entityManager = entityManager;
+        this.eventPublisher = eventPublisher;
+    }
+
+    @Override
+    @Transactional
+    public void save(Producto product, Kiosquero kiosquero) {
+        log.info("Saving product addition notification for product {} and kiosquero {}", product.getId(), kiosquero.getId());
+        NotificacionEntity notification = new NotificacionEntity();
+        notification.setUsuarioEntity(entityManager.getReference(
+                UsuarioEntity.class,
+                kiosquero.getUsuario().getId()
+        ));
+        notification.setProductoEntity(entityManager.getReference(
+                ProductoEntity.class,
+                product.getId()
+        ));
+        notification.setTipo(TipoNotificacion.SUGERENCIA_IA);
+        notification.setTitulo("Sugerencia de producto");
+        notification.setMensaje("El producto " + product.getNombre() +
+                " experimenta una gran cantidad de ventas en contextos similares al tuyo" +
+                ". Te sugerimos " +
+                "que lo agregues a tu stock.");
+        notification.setLeida(false);
+
+        saveAndPublishNotification(notification);
+    }
+
+    private void saveAndPublishNotification(NotificacionEntity notification) {
+        NotificacionEntity savedNotification = notificationJpaRepository.save(notification);
+        if (savedNotification == null) {
+            savedNotification = notification;
+        }
+        log.info("Notification saved with ID {}", savedNotification.getId());
+        publishPushNotification(savedNotification);
+    }
+
+    private void publishPushNotification(NotificacionEntity notification) {
+        log.info("Publishing PushNotificationRequestedEvent for notification {}", notification.getId());
+        eventPublisher.publishEvent(new PushNotificationRequestedEvent(new PushNotification(
+                notification.getUsuarioEntity().getId(),
+                notification.getTitulo(),
+                notification.getMensaje(),
+                pushData(notification)
+        )));
+    }
+
+    private Map<String, String> pushData(NotificacionEntity notification) {
+        Map<String, String> data = new LinkedHashMap<>();
+        data.put("notificacionId", notification.getId().toString());
+        if (notification.getProductoEntity() != null) {
+            data.put("productoId", notification.getProductoEntity().getId().toString());
+        }
+        data.put("tipo", notification.getTipo().name());
+        return data;
+    }
+}

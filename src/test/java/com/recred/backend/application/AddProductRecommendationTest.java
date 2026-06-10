@@ -2,10 +2,14 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.PushNotification;
+import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.services.PushNotificationSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +39,12 @@ public class AddProductRecommendationTest {
     @Mock
     private AIEventRepository aiEventRepository;
 
+    @Mock
+    private ProductAdditionNotificationRepository notificationRepository;
+
+    @Mock
+    private PushNotificationSender pushNotificationSender;
+
     @InjectMocks
     private AddProductRecommendation useCase;
 
@@ -50,12 +60,15 @@ public class AddProductRecommendationTest {
 
         kiosquero = new Kiosquero();
         kiosquero.setId(UUID.randomUUID());
+        Usuario usuario = new Usuario();
+        usuario.setId(UUID.randomUUID());
+        kiosquero.setUsuario(usuario);
 
         buffetId = UUID.randomUUID();
     }
 
     @Test
-    void WhenProductIsNotInStockShouldRegisterRecommendation() {
+    void WhenProductIsNotInStockShouldRegisterRecommendationAndSendNotifications() {
         when(productRepository.findBestSoldProducts()).thenReturn(List.of(producto));
         when(kiosqueroRepository.findAll()).thenReturn(List.of(kiosquero));
         when(kiosqueroRepository.findBuffetById(kiosquero.getId())).thenReturn(buffetId);
@@ -64,6 +77,8 @@ public class AddProductRecommendationTest {
         useCase.execute();
 
         verify(aiEventRepository).registerProductAdditionRecommendation(producto, kiosquero, buffetId);
+        verify(notificationRepository).save(producto, kiosquero);
+        verify(pushNotificationSender).send(any(PushNotification.class));
     }
 
     @Test
@@ -76,9 +91,8 @@ public class AddProductRecommendationTest {
         useCase.execute();
 
         verify(aiEventRepository, never()).registerProductAdditionRecommendation(any(), any(), any());
+        verify(notificationRepository, never()).save(any(), any());
+        verify(pushNotificationSender, never()).send(any());
     }
-
-    @Mock
-    private org.mockito.MockedStatic<UUID> mockedUuid;
 
 }
