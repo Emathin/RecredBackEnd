@@ -85,6 +85,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         entity.setEstado(purchase.getStatus());
         entity.setMontoTotal(purchase.getTotalAmount());
         entity.setFechaHora(purchase.getDate());
+        entity.setSuggestionId(purchase.getSuggestionId());
         setAdvanceData(entity, purchase);
 
         entity.getDetalles().clear();

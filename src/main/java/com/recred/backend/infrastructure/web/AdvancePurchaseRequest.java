@@ -12,7 +12,9 @@ public record AdvancePurchaseRequest(List<OrderRequest> orders) {
             BuyerType buyerType,
             String date,
             RecessTime recessTime,
-            List<ItemRequest> items
+            List<ItemRequest> items,
+            UUID suggestionId,
+            UUID buffetId
     ) {}
 
     public record ItemRequest(

@@ -71,7 +71,7 @@ class CreateAdvancePurchaseUseCaseTest {
                 (productId, 1);
         AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
                 studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23",
-                RecessTime.FIRST_RECESS, List.of(itemRequest)
+                RecessTime.FIRST_RECESS, List.of(itemRequest), null, UUID.randomUUID()
         );
         AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
@@ -112,7 +112,7 @@ class CreateAdvancePurchaseUseCaseTest {
                 (productId, 1);
         AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
                 studentId, UUID.randomUUID(), BuyerType.TUTOR, "2024-05-23",
-                RecessTime.FIRST_RECESS, List.of(itemRequest)
+                RecessTime.FIRST_RECESS, List.of(itemRequest), null, UUID.randomUUID()
         );
         AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
