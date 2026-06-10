@@ -6,6 +6,7 @@ import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.TutorEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,6 +38,22 @@ public class TutorRepositoryImpl implements TutorRepository {
     public Optional<Tutor> findByUsuarioId(UUID userId) {
         return springDataTutorRepository.findByUsuarioId(userId)
                 .map(TutorEntity::toDomain);
+    }
+
+    @Override
+    public List<Tutor> findAll() {
+        return springDataTutorRepository.findAll()
+                .stream()
+                .map(TutorEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Tutor> findByAlumnoId(UUID alumnoId) {
+        return springDataTutorRepository.findByAlumnoId(alumnoId)
+                .stream()
+                .map(TutorEntity::toDomain)
+                .toList();
     }
 
     @Override

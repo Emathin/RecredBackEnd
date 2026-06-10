@@ -5,7 +5,10 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.PurchaseResume;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
+import com.recred.backend.domain.models.EstadoRetiro;
+import com.recred.backend.infrastructure.entities.CompraAnticipadaEntity;
 import com.recred.backend.infrastructure.entities.CompraEntity;
+import java.time.LocalDate;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -31,7 +34,15 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             "ORDER BY c.fechaHora DESC")
     List<CompraEntity> findAllByAlumnoIdOrderByFechaHoraDesc(@Param("alumnoId") UUID alumnoId);
 
-    // Para el historial global del tutor (trae las compras de TODOS sus hijos cruzando tablas)
+    @Query("SELECT c FROM CompraEntity c WHERE c.alumnoEntity.id = :alumnoId " +
+            "AND c.fechaHora BETWEEN :inicio AND :fin " +
+            "ORDER BY c.fechaHora DESC")
+    List<CompraEntity> findAllByAlumnoIdAndFechaHoraBetween(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin
+    );
+
     @Query("SELECT c FROM CompraEntity c JOIN c.alumnoEntity a " +
             "JOIN a.tutores t WHERE t.id = :tutorId ORDER BY c.fechaHora DESC")
     List<CompraEntity> findAllByTutorIdOrderByFechaHoraDesc(@Param("tutorId") UUID tutorId);
@@ -160,4 +171,28 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             @Param("buffetId") UUID buffetId,
             @Param("status") EstadoCompra status,
             @Param("cartProductIds") List<UUID> cartProductIds);
+
+    @Query("""
+            select purchase
+            from CompraAnticipadaEntity purchase
+            left join purchase.retiroProgramadoEntity retiro
+            where purchase.buffetEntity.id = :buffetId
+            and (:fecha is null or retiro.fechaProgramada = :fecha)
+            and (:estadoRetiro is null or retiro.estado = :estadoRetiro)
+            and (:franjaId is null or retiro.franja.id = :franjaId)
+            and (:search is null or :search = '' 
+                 or lower(purchase.alumnoEntity.usuario.nombre)
+                    like lower(concat('%', :search, '%'))
+                 or lower(purchase.alumnoEntity.usuario.apellido)
+                    like lower(concat('%', :search, '%'))
+                 or lower(purchase.codigoVerificacion)
+                    like lower(concat('%', :search, '%')))
+            order by retiro.fechaProgramada asc, retiro.franja.horaInicio asc
+            """)
+    List<CompraAnticipadaEntity> findScheduledPickupsWithFilters(
+            @Param("buffetId") UUID buffetId,
+            @Param("fecha") LocalDate fecha,
+            @Param("estadoRetiro") EstadoRetiro estadoRetiro,
+            @Param("franjaId") UUID franjaId,
+            @Param("search") String search);
 }

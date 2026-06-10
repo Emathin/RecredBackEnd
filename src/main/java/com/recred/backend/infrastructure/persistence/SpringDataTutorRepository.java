@@ -5,12 +5,23 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface SpringDataTutorRepository extends
         JpaRepository<TutorEntity, UUID> {
+
+    @EntityGraph(attributePaths = {
+            "hijos",
+            "usuario",
+            "hijos.usuario",
+            "hijos.gradoEntity",
+            "hijos.gradoEntity.colegioEntity",
+            "hijos.billeteraEntity"
+    })
+    List<TutorEntity> findAll();
 
     @EntityGraph(attributePaths = {
             "hijos",
@@ -30,7 +41,7 @@ public interface SpringDataTutorRepository extends
             "hijos.gradoEntity.colegioEntity",
             "hijos.billeteraEntity"
     })
-    Optional<TutorEntity> findByUsuarioIdCognito(String idCognito);
+    Optional<TutorEntity> findByUsuarioId(UUID usuarioId);
 
     @EntityGraph(attributePaths = {
             "hijos",
@@ -40,5 +51,11 @@ public interface SpringDataTutorRepository extends
             "hijos.gradoEntity.colegioEntity",
             "hijos.billeteraEntity"
     })
-    Optional<TutorEntity> findByUsuarioId(UUID userId);
+    Optional<TutorEntity> findByUsuarioIdCognito(String idCognito);
+
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT t FROM TutorEntity t JOIN t.hijos h WHERE h.id = :alumnoId")
+    List<TutorEntity> findByAlumnoId(
+            @org.springframework.data.repository.query.Param("alumnoId") UUID alumnoId);
+
 }

@@ -96,7 +96,7 @@ class ControlParentalControllerTest {
         ActualizarRestriccionesDTO dto = new ActualizarRestriccionesDTO();
         dto.setClasificacionesIds(List.of(clasificacionId));
 
-        mockMvc.perform(put("/api/control-parental/alumnos/{alumnoId}/actualizar-restricciones-salud", alumnoId)
+        mockMvc.perform(put("/api/v1/control-parental/alumnos/{alumnoId}/actualizar-restricciones-salud", alumnoId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk());
@@ -112,7 +112,7 @@ class ControlParentalControllerTest {
 
         when(getHealthRestrictions.ejecutar(alumnoId)).thenReturn(Set.of(clasificacion));
 
-        mockMvc.perform(get("/api/control-parental/alumnos/{alumnoId}/obtener-restricciones-salud", alumnoId)
+        mockMvc.perform(get("/api/v1/control-parental/alumnos/{alumnoId}/obtener-restricciones-salud", alumnoId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(clasificacionId.toString()))
@@ -123,7 +123,7 @@ class ControlParentalControllerTest {
 
     @Test
     void agregarRestriccionSalud_DeberiaRetornar200Ok() throws Exception {
-        mockMvc.perform(post("/api/control-parental/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}", alumnoId, clasificacionId)
+        mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}", alumnoId, clasificacionId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
@@ -132,7 +132,7 @@ class ControlParentalControllerTest {
 
     @Test
     void removerRestriccionSalud_DeberiaRetornar204NoContent() throws Exception {
-        mockMvc.perform(delete("/api/control-parental/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}", alumnoId, clasificacionId)
+        mockMvc.perform(delete("/api/v1/control-parental/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}", alumnoId, clasificacionId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
 
@@ -142,7 +142,7 @@ class ControlParentalControllerTest {
     void returnAcceptedWhenPreferenceAnalysisIsTriggered() throws Exception {
         UUID buffetId = UUID.randomUUID();
 
-        mockMvc.perform(post("/api/control-parental/alumnos/{alumnoId}/analizar-preferencias", alumnoId)
+        mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/analizar-preferencias", alumnoId)
                         .param("buffetId", buffetId.toString())
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isAccepted());
@@ -155,7 +155,7 @@ class ControlParentalControllerTest {
         UUID buffetId = UUID.randomUUID();
         doThrow(new RuntimeException("Error IA")).when(detectStudentPreferences).execute(alumnoId, buffetId);
 
-        mockMvc.perform(post("/api/control-parental/alumnos/{alumnoId}/analizar-preferencias", alumnoId)
+        mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/analizar-preferencias", alumnoId)
                         .param("buffetId", buffetId.toString())
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError());
@@ -168,7 +168,7 @@ class ControlParentalControllerTest {
 
         doNothing().when(bloquearProductoManual).execute(alumnoId, productoId);
 
-        mockMvc.perform(post("/api/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
+        mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
                 .andExpect(status().isOk());
     }
 
@@ -179,7 +179,7 @@ class ControlParentalControllerTest {
 
         doNothing().when(desbloquearProductoManual).execute(alumnoId, productoId);
 
-        mockMvc.perform(delete("/api/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
+        mockMvc.perform(delete("/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
                 .andExpect(status().isOk());
     }
 }

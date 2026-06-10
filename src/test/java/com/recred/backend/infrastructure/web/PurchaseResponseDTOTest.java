@@ -65,6 +65,7 @@ class PurchaseResponseDTOTest {
 
     @Test
     void dadoPurchaseCompleto_cuandoMapeaADTO_entoncesMapeaCorrectamenteLosItems() {
+
         Producto alfajor = new Producto();
         alfajor.setId(UUID.randomUUID());
         alfajor.setNombre("Alfajor Jorgito");
@@ -76,7 +77,8 @@ class PurchaseResponseDTOTest {
         compra.setStatus(EstadoCompra.ENTREGADO);
         compra.setPaymentMethod(MedioPago.CREDITOS);
         compra.setDate(LocalDateTime.now());
-        compra.setItems(Map.of(alfajor, 2)); // 2 alfajores
+        compra.setItems(Map.of(alfajor, 2));
+
 
         PurchaseResponseDTO dto = new PurchaseResponseDTO(compra);
 
