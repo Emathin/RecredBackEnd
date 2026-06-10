@@ -19,6 +19,7 @@ import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.GenerarMenuBuffet;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
+import com.recred.backend.application.GenerateLowBalanceAlerts;
 import com.recred.backend.application.GenerateParentSummary;
 import com.recred.backend.application.GeneratePriceAlert;
 import com.recred.backend.application.GenerateProductChangeRecommendation;
@@ -111,6 +112,7 @@ import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import com.recred.backend.domain.services.PurchaseAnalyzer;
 import com.recred.backend.domain.services.PurchaseValidator;
 import com.recred.backend.domain.services.PurchaseValidatorImpl;
+import com.recred.backend.domain.services.PushNotificationSender;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
@@ -761,5 +763,18 @@ public class UseCases {
             BuffetRepository buffetRepository,
             AlumnoRepository alumnoRepository) {
         return new GetBuffetByAlumno(buffetRepository, alumnoRepository);
+    }
+
+    @Bean
+    public GenerateLowBalanceAlerts generateLowBalanceAlerts(
+            WalletRepository walletRepository,
+            AlumnoRepository alumnoRepository,
+            TutorRepository tutorRepository,
+            PushNotificationSender pushNotificationSender) {
+        return new GenerateLowBalanceAlerts(
+                walletRepository,
+                alumnoRepository,
+                tutorRepository,
+                pushNotificationSender);
     }
 }

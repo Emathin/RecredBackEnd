@@ -43,4 +43,12 @@ public class TutorRepositoryImpl implements TutorRepository {
                 .map(TutorEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    public List<Tutor> findByAlumnoId(UUID alumnoId) {
+        return springDataTutorRepository.findByAlumnoId(alumnoId)
+                .stream()
+                .map(TutorEntity::toDomain)
+                .toList();
+    }
 }
