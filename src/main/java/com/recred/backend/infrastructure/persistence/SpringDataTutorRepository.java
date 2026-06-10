@@ -53,4 +53,9 @@ public interface SpringDataTutorRepository extends
     })
     Optional<TutorEntity> findByUsuarioIdCognito(String idCognito);
 
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT t FROM TutorEntity t JOIN t.hijos h WHERE h.id = :alumnoId")
+    List<TutorEntity> findByAlumnoId(
+            @org.springframework.data.repository.query.Param("alumnoId") UUID alumnoId);
+
 }
