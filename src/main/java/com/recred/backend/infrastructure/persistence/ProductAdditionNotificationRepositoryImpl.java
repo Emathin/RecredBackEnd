@@ -10,8 +10,6 @@ import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
 import jakarta.persistence.EntityManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +21,6 @@ import java.util.Map;
 public class ProductAdditionNotificationRepositoryImpl
         implements ProductAdditionNotificationRepository {
 
-    private static final Logger log = LoggerFactory.getLogger(ProductAdditionNotificationRepositoryImpl.class);
     private final NotificacionJpaRepository notificationJpaRepository;
     private final EntityManager entityManager;
     private final ApplicationEventPublisher eventPublisher;
@@ -41,7 +38,6 @@ public class ProductAdditionNotificationRepositoryImpl
     @Override
     @Transactional
     public void save(Producto product, Kiosquero kiosquero) {
-        log.info("Saving product addition notification for product {} and kiosquero {}", product.getId(), kiosquero.getId());
         NotificacionEntity notification = new NotificacionEntity();
         notification.setUsuarioEntity(entityManager.getReference(
                 UsuarioEntity.class,
@@ -67,12 +63,10 @@ public class ProductAdditionNotificationRepositoryImpl
         if (savedNotification == null) {
             savedNotification = notification;
         }
-        log.info("Notification saved with ID {}", savedNotification.getId());
         publishPushNotification(savedNotification);
     }
 
     private void publishPushNotification(NotificacionEntity notification) {
-        log.info("Publishing PushNotificationRequestedEvent for notification {}", notification.getId());
         eventPublisher.publishEvent(new PushNotificationRequestedEvent(new PushNotification(
                 notification.getUsuarioEntity().getId(),
                 notification.getTitulo(),

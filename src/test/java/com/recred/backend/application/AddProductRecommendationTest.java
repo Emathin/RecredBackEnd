@@ -2,14 +2,12 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
-import com.recred.backend.domain.services.PushNotificationSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,9 +39,6 @@ public class AddProductRecommendationTest {
 
     @Mock
     private ProductAdditionNotificationRepository notificationRepository;
-
-    @Mock
-    private PushNotificationSender pushNotificationSender;
 
     @InjectMocks
     private AddProductRecommendation useCase;
@@ -78,7 +73,6 @@ public class AddProductRecommendationTest {
 
         verify(aiEventRepository).registerProductAdditionRecommendation(producto, kiosquero, buffetId);
         verify(notificationRepository).save(producto, kiosquero);
-        verify(pushNotificationSender).send(any(PushNotification.class));
     }
 
     @Test
@@ -92,7 +86,6 @@ public class AddProductRecommendationTest {
 
         verify(aiEventRepository, never()).registerProductAdditionRecommendation(any(), any(), any());
         verify(notificationRepository, never()).save(any(), any());
-        verify(pushNotificationSender, never()).send(any());
     }
 
 }

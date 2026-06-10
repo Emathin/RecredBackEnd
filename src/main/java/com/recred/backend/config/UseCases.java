@@ -737,15 +737,13 @@ public class UseCases {
             KiosqueroRepository kiosqueroRepository,
             InventoryRepository inventoryRepository,
             AIEventRepository aiEventRepository,
-            ProductAdditionNotificationRepository notificationRepository,
-            PushNotificationSender pushNotificationSender) {
+            ProductAdditionNotificationRepository notificationRepository) {
         return new AddProductRecommendation(
                 productRepository,
                 kiosqueroRepository,
                 inventoryRepository,
                 aiEventRepository,
-                notificationRepository,
-                pushNotificationSender);
+                notificationRepository);
     }
 
     @Bean
