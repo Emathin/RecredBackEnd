@@ -142,7 +142,9 @@ class PurchaseControllerTest {
                 BuyerType.TUTOR,
                 "2024-07-30",
                 RecessTime.FIRST_RECESS,
-                List.of(itemRequest)
+                List.of(itemRequest),
+                null,
+                UUID.randomUUID()
         );
         advancePurchaseRequest = new AdvancePurchaseRequest(List.of(orderRequest));
     }
