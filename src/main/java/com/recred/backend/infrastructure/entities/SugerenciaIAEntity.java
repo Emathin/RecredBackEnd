@@ -79,6 +79,7 @@ public class SugerenciaIAEntity {
                 .id(this.id)
                 .alumnoId(this.alumnoEntity != null ? this.alumnoEntity.getId() : null)
                 .productoId(this.productoEntity != null ? this.productoEntity.getId() : null)
+                .producto(this.productoEntity != null ? this.productoEntity.toDomain() : null)
                 .titulo(this.titulo)
                 .mensaje(this.mensaje)
                 .build();

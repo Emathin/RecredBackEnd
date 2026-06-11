@@ -17,6 +17,7 @@ public class SugerenciaIA {
     private UUID id;
     private UUID alumnoId;
     private UUID productoId;
+    private Producto producto;
     private String titulo;
     private String mensaje;
 }

@@ -139,7 +139,8 @@ public class PurchaseSuggestController {
                 .sugerenciaId(sugerencia.getId())
                 .titulo(sugerencia.getTitulo())
                 .mensaje(sugerencia.getMensaje())
-                .productoId(sugerencia.getProductoId())
+                .producto(sugerencia.getProducto())
+                .alumnoId(sugerencia.getAlumnoId())
                 .type("PURCHASE_SUGGESTION")
                 .rol(usuario.getRol() != null ? usuario.getRol().name() : "PENDIENTE")
                 .build();
@@ -150,9 +151,12 @@ public class PurchaseSuggestController {
                 .sugerenciaId(entity.getId())
                 .titulo(entity.getTitulo())
                 .mensaje(entity.getMensaje())
-                .productoId(entity.getProductoEntity().getId())
-                .productoNombre(entity.getProductoEntity().getNombre())
-                .productoPrecio(entity.getProductoEntity().getPrecio())
+                .producto(entity.getProductoEntity() != null 
+                        ? entity.getProductoEntity().toDomain() 
+                        : null)
+                .alumnoId(entity.getAlumnoEntity() != null 
+                        ? entity.getAlumnoEntity().getId() 
+                        : null)
                 .type("PURCHASE_SUGGESTION")
                 .rol(usuario.getRol() != null ? usuario.getRol().name() : "PENDIENTE")
                 .build();

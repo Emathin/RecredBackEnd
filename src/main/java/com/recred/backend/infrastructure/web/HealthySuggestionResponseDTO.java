@@ -5,8 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.util.UUID;
+import com.recred.backend.domain.models.Producto;
 
 @Data
 @Builder
@@ -16,9 +16,8 @@ public class HealthySuggestionResponseDTO {
     private UUID sugerenciaId;
     private String titulo;
     private String mensaje;
-    private UUID productoId;
-    private String productoNombre;
-    private BigDecimal productoPrecio;
+    private Producto producto;
+    private UUID alumnoId;
     private String type;
     private String rol;
 }
