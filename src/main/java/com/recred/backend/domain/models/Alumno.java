@@ -98,4 +98,26 @@ public class Alumno {
         }
         this.puntosRecompensa += points;
     }
+
+    public RewardLevel calculateCurrentLevel() {
+        int points = this.puntosRecompensa != null ? this.puntosRecompensa : 0;
+        if (points >= 250) {
+            return RewardLevel.GOLD;
+        }
+        if (points >= 100) {
+            return RewardLevel.SILVER;
+        }
+        return RewardLevel.BRONZE;
+    }
+
+    public Integer getPointsToNextLevel() {
+        int points = this.puntosRecompensa != null ? this.puntosRecompensa : 0;
+        if (points < 100) {
+            return 100 - points;
+        }
+        if (points < 250) {
+            return 250 - points;
+        }
+        return 0;
+    }
 }

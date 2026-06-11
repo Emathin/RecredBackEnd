@@ -46,6 +46,7 @@ import com.recred.backend.application.GetProductsByBuffetUser;
 import com.recred.backend.application.GetScheduledPickups;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.GetScheduledPickups;
+import com.recred.backend.application.GetStudentRewardStatus;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
@@ -828,5 +829,10 @@ public class UseCases {
             PurchaseRepository purchaseRepository,
             AlumnoRepository alumnoRepository) {
         return new PrizeHealthyPurchase(purchaseRepository, alumnoRepository);
+    }
+
+    @Bean
+    public GetStudentRewardStatus getStudentRewardStatus(AlumnoRepository alumnoRepository) {
+        return new GetStudentRewardStatus(alumnoRepository);
     }
 }
