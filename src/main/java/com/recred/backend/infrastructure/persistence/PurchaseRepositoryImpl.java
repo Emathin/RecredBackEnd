@@ -262,4 +262,11 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
                 .toList();
     }
 
+    @Override
+    public long countHealthyPurchasesByAlumno(UUID alumnoId, LocalDateTime since) {
+        return springDataRepository
+                .countByAlumnoEntityIdAndSuggestionIdIsNotNullAndEstadoAndFechaHoraAfter(
+                        alumnoId, EstadoCompra.ENTREGADO, since);
+    }
+
 }

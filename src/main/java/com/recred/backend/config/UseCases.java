@@ -56,6 +56,7 @@ import com.recred.backend.application.ObtenerHijosPorPadre;
 import com.recred.backend.application.ObtenerHistorialAlumno;
 import com.recred.backend.application.ObtenerHistorialTutor;
 import com.recred.backend.application.PredictStudentSpending;
+import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RemoveHealthRestrictions;
@@ -820,5 +821,12 @@ public class UseCases {
                 alumnoRepository,
                 tutorRepository,
                 pushNotificationSender);
+    }
+
+    @Bean
+    public PrizeHealthyPurchase prizeHealthyPurchase(
+            PurchaseRepository purchaseRepository,
+            AlumnoRepository alumnoRepository) {
+        return new PrizeHealthyPurchase(purchaseRepository, alumnoRepository);
     }
 }

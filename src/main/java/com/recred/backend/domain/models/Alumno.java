@@ -26,6 +26,7 @@ public class Alumno {
     private Set<Producto> productosFavoritos = new HashSet<>();
     private Set<RestriccionHoraria> restriccionesHorarias = new HashSet<>();
     private Set<Producto> productosBloqueados = new HashSet<>();
+    private Integer puntosRecompensa = 0;
 
     public Alumno(UUID id, Usuario usuario, Boolean activo, Grado grado,
             Set<ClasificacionSalud> restriccionesSalud) {
@@ -89,5 +90,12 @@ public class Alumno {
 
     public void removerProductoFavorito(UUID productoId) {
         this.productosFavoritos.removeIf(p -> p.getId().equals(productoId));
+    }
+
+    public void addRewardPoints(int points) {
+        if (this.puntosRecompensa == null) {
+            this.puntosRecompensa = 0;
+        }
+        this.puntosRecompensa += points;
     }
 }
