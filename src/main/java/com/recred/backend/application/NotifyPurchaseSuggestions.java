@@ -55,14 +55,14 @@ public class NotifyPurchaseSuggestions {
             
             LOGGER.info("Enviando notificación de sugerencia al usuario id: {}",
                     usuario.getId());
-            sendNotification(usuario.getId(), sugerencia);
+            sendNotification(usuario.getId(), sugerencia, usuario.getRol().name());
         } else {
             LOGGER.info("No se encontró sugerencia activa para notificar al usuario: {}",
                     cognitoId);
         }
     }
 
-    private void sendNotification(UUID userId, SugerenciaIA sugerencia) {
+    private void sendNotification(UUID userId, SugerenciaIA sugerencia, String rol) {
         Random random = new Random();
         String randomMessage = SUGGESTION_MESSAGES[random.nextInt(SUGGESTION_MESSAGES.length)];
 
@@ -72,6 +72,7 @@ public class NotifyPurchaseSuggestions {
                 randomMessage,
                 Map.of(
                         "type", "PURCHASE_SUGGESTION",
+                        "rol", rol,
                         "suggestionId", sugerencia.getId().toString(),
                         "productId", sugerencia.getProductoId().toString()
                 )

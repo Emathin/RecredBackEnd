@@ -111,7 +111,12 @@ class PurchaseSuggestControllerTest {
                 .mensaje("Una manzana al día...")
                 .build();
 
+        Usuario usuario = new Usuario();
+        usuario.setId(usuarioId);
+        usuario.setRol(RolUsuario.ALUMNO);
+
         when(purchaseSuggestIA.execute(anyString())).thenReturn(Optional.of(sugerencia));
+        when(usuarioService.obtenerUsuarioActual(anyString())).thenReturn(usuario);
 
         TestSuggestionRequest request = new TestSuggestionRequest("user-123", null);
 
@@ -121,7 +126,9 @@ class PurchaseSuggestControllerTest {
                 .principal(auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sugerenciaId").value(sugerenciaId.toString()))
-                .andExpect(jsonPath("$.titulo").value("Comé sano"));
+                .andExpect(jsonPath("$.titulo").value("Comé sano"))
+                .andExpect(jsonPath("$.type").value("PURCHASE_SUGGESTION"))
+                .andExpect(jsonPath("$.rol").value("ALUMNO"));
     }
 
     @Test

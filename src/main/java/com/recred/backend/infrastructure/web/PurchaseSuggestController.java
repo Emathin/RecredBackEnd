@@ -61,7 +61,10 @@ public class PurchaseSuggestController {
         Optional<SugerenciaIA> sugerenciaOpt = purchaseSuggestIA.execute(subject);
 
         return sugerenciaOpt
-                .map(this::toDTO)
+                .map(s -> {
+                    Usuario usuario = usuarioService.obtenerUsuarioActual(subject);
+                    return toDTO(s, usuario);
+                })
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
     }
@@ -131,16 +134,18 @@ public class PurchaseSuggestController {
                         "Usuario no autenticado"));
     }
 
-    private HealthySuggestionResponseDTO toDTO(SugerenciaIA sugerencia) {
+    private HealthySuggestionResponseDTO toDTO(SugerenciaIA sugerencia, Usuario usuario) {
         return HealthySuggestionResponseDTO.builder()
                 .sugerenciaId(sugerencia.getId())
                 .titulo(sugerencia.getTitulo())
                 .mensaje(sugerencia.getMensaje())
                 .productoId(sugerencia.getProductoId())
+                .type("PURCHASE_SUGGESTION")
+                .rol(usuario.getRol() != null ? usuario.getRol().name() : "PENDIENTE")
                 .build();
     }
 
-    private HealthySuggestionResponseDTO toDTO(SugerenciaIAEntity entity) {
+    private HealthySuggestionResponseDTO toDTO(SugerenciaIAEntity entity, Usuario usuario) {
         return HealthySuggestionResponseDTO.builder()
                 .sugerenciaId(entity.getId())
                 .titulo(entity.getTitulo())
@@ -148,6 +153,8 @@ public class PurchaseSuggestController {
                 .productoId(entity.getProductoEntity().getId())
                 .productoNombre(entity.getProductoEntity().getNombre())
                 .productoPrecio(entity.getProductoEntity().getPrecio())
+                .type("PURCHASE_SUGGESTION")
+                .rol(usuario.getRol() != null ? usuario.getRol().name() : "PENDIENTE")
                 .build();
     }
 }
