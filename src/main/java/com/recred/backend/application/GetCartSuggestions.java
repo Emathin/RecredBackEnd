@@ -26,7 +26,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-public class GetCartSuggestions {
+public class
+GetCartSuggestions {
 
     private static final int DEFAULT_LIMIT = 3;
     private static final int MAX_LIMIT = 3;

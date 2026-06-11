@@ -9,5 +9,6 @@ public enum TipoNotificacion {
     ALERTA_PRECIO,
     SALDO_BAJO,
     LOGRO_OBTENIDO,
-    SISTEMA
+    SISTEMA,
+    RESUMEN_SEMANAL
 }

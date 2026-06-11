@@ -19,6 +19,7 @@ import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.RetiroProgramadoEntity;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -47,10 +48,12 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Purchase> findByAlumnoAndDateRange(
             UUID alumnoId, LocalDateTime start, LocalDateTime end) {
         return springDataRepository.findAllByAlumnoIdAndFechaHoraBetween(alumnoId, start, end)
                 .stream()
+                .peek(compra -> org.hibernate.Hibernate.initialize(compra.getAlumnoEntity()))
                 .map(CompraEntity::toDomain)
                 .toList();
     }
@@ -85,6 +88,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         entity.setEstado(purchase.getStatus());
         entity.setMontoTotal(purchase.getTotalAmount());
         entity.setFechaHora(purchase.getDate());
+        entity.setSuggestionId(purchase.getSuggestionId());
         setAdvanceData(entity, purchase);
 
         entity.getDetalles().clear();

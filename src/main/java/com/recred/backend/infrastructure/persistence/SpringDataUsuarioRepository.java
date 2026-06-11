@@ -13,4 +13,6 @@ public interface SpringDataUsuarioRepository extends
 
     Optional<UsuarioEntity> findByIdCognito(String idCognito);
 
+    Optional<UsuarioEntity> findByEmail(String email);
+
 }
