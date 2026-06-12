@@ -11,6 +11,7 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.models.RecessTime;
+import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.BuyerType;
@@ -18,6 +19,7 @@ import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.PurchaseValidator;
@@ -52,6 +54,7 @@ public class CreateAdvancePurchase {
     private final FranjaHorariaRepository timeSlotRepository;
     private final SpringDataBuffetRepository buffetRepository;
     private final UsuarioRepository usuarioRepository;
+    private final TutorRepository tutorRepository;
 
     public CreateAdvancePurchase(
             PurchaseValidator purchaseValidator,
@@ -62,7 +65,8 @@ public class CreateAdvancePurchase {
             WalletRepository walletRepository,
             FranjaHorariaRepository timeSlotRepository,
             SpringDataBuffetRepository buffetRepository,
-            UsuarioRepository usuarioRepository
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository
     ) {
         this.purchaseValidator = purchaseValidator;
         this.alumnoRepository = alumnoRepository;
@@ -73,6 +77,7 @@ public class CreateAdvancePurchase {
         this.timeSlotRepository = timeSlotRepository;
         this.buffetRepository = buffetRepository;
         this.usuarioRepository = usuarioRepository;
+        this.tutorRepository = tutorRepository;
     }
 
     @Transactional
@@ -101,9 +106,11 @@ public class CreateAdvancePurchase {
                 }
                 buyerType = BuyerType.STUDENT;
             } else if (usuario.getRol() == RolUsuario.PADRE) {
-                if (usuario.getTutor() == null || 
-                    usuario.getTutor().getHijos().stream()
-                            .noneMatch(h -> h.getId().equals(orderRequest.studentId()))) {
+                Tutor tutor = tutorRepository.findByUsuarioId(usuario.getId())
+                        .orElseThrow(() -> new SecurityException(
+                                "No se encontró un perfil de tutor para este usuario"));
+                if (tutor.getHijos().stream()
+                        .noneMatch(h -> h.getId().equals(orderRequest.studentId()))) {
                     throw new SecurityException(
                             "No autorizado para comprar a nombre de este alumno");
                 }

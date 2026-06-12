@@ -208,7 +208,8 @@ public class UseCases {
                                                        WalletRepository walletRepository,
                                                        FranjaHorariaRepository timeSlotRepository,
                                                        SpringDataBuffetRepository buffetRepository,
-                                                       UsuarioRepository usuarioRepository) {
+                                                       UsuarioRepository usuarioRepository,
+                                                       TutorRepository tutorRepository) {
         return new CreateAdvancePurchase(
                 purchaseValidator,
                 alumnoRepository,
@@ -218,7 +219,8 @@ public class UseCases {
                 walletRepository,
                 timeSlotRepository,
                 buffetRepository,
-                usuarioRepository
+                usuarioRepository,
+                tutorRepository
         );
     }
 
