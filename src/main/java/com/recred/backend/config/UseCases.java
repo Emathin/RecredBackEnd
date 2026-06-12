@@ -2,6 +2,12 @@ package com.recred.backend.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddHealthRestriction;
+import com.recred.backend.application.CreatePromotion;
+import com.recred.backend.application.UpdatePromotion;
+import com.recred.backend.application.DeletePromotion;
+import com.recred.backend.application.GetActivePromotions;
+import com.recred.backend.application.GetPromotionById;
+import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
@@ -838,5 +844,30 @@ public class UseCases {
     @Bean
     public GetStudentRewardStatus getStudentRewardStatus(AlumnoRepository alumnoRepository) {
         return new GetStudentRewardStatus(alumnoRepository);
+    }
+
+    @Bean
+    public CreatePromotion createPromotion(PromotionRepository promotionRepository) {
+        return new CreatePromotion(promotionRepository);
+    }
+
+    @Bean
+    public UpdatePromotion updatePromotion(PromotionRepository promotionRepository) {
+        return new UpdatePromotion(promotionRepository);
+    }
+
+    @Bean
+    public DeletePromotion deletePromotion(PromotionRepository promotionRepository) {
+        return new DeletePromotion(promotionRepository);
+    }
+
+    @Bean
+    public GetActivePromotions getActivePromotions(PromotionRepository promotionRepository) {
+        return new GetActivePromotions(promotionRepository);
+    }
+
+    @Bean
+    public GetPromotionById getPromotionById(PromotionRepository promotionRepository) {
+        return new GetPromotionById(promotionRepository);
     }
 }
