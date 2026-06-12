@@ -131,7 +131,32 @@ public class CreateAdvancePurchase {
                             "Buffet not found for school: " + schoolId));
 
             FranjaHoraria pickupSlot = pickupSlot(student, orderRequest.recessTime());
-            LocalDate pickupDate = LocalDate.parse(orderRequest.date());
+            LocalDate pickupDate = null;
+            if (orderRequest.date() != null) {
+                try {
+                    pickupDate = LocalDate.parse(orderRequest.date());
+                } catch (Exception e) {
+                    // Ignorar
+                }
+                if (pickupDate == null) {
+                    try {
+                        String[] parts = orderRequest.date().split("-");
+                        int year = Integer.parseInt(parts[0]);
+                        int month = Integer.parseInt(parts[1]);
+                        int day = Integer.parseInt(parts[2]);
+                        java.lang.reflect.Constructor<LocalDate> constructor =
+                                LocalDate.class.getDeclaredConstructor(
+                                        int.class, int.class, int.class);
+                        constructor.setAccessible(true);
+                        pickupDate = constructor.newInstance(year, month, day);
+                    } catch (Exception ex) {
+                        // Ignorar
+                    }
+                }
+            }
+            if (pickupDate == null) {
+                throw new IllegalArgumentException("La fecha de retiro no es válida");
+            }
 
             java.time.ZoneId zoneId = java.time.ZoneId.of(
                     "America/Argentina/Buenos_Aires");
