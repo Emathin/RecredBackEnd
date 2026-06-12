@@ -82,7 +82,12 @@ public class GeminiSeasonalSuggester {
               "motivo": "Justificación comercial breve."
             }
           ],
-          "tip_promocional": "Idea breve de promo cruzada."
+          "tip_promocional": "Idea breve de promo cruzada.",
+          "promocion_sugerida": {
+            "nombre": "Nombre comercial atractivo para la promoción",
+            "descuento": 15.0,
+            "categorias_destino": ["Nombre Categoria 1", "Nombre Categoria 2"]
+          }
         }
         """
         .formatted(month, temperature, weatherCondition);
