@@ -31,6 +31,7 @@ public class Purchase {
     private UUID pickupSlotId;
     private String pickupSlotDescription;
     private LocalDate pickupDate;
+    private java.time.LocalTime pickupSlotStartTime;
     private EstadoRetiro withdrawalStatus;
     private UUID suggestionId;
     private UUID tutorId;

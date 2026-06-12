@@ -493,9 +493,9 @@ public class UseCases {
     @Bean
     public CancelPresentialPurchase cancelPurchase(PurchaseRepository purchaseRepository,
             WalletRepository walletRepository,
-            FranjaHorariaRepository timeSlotRepository) {
-        return new CancelPresentialPurchase(
-                purchaseRepository, walletRepository, timeSlotRepository);
+            FranjaHorariaRepository franjaHorariaRepository) {
+        return new CancelPresentialPurchase(purchaseRepository, walletRepository,
+                franjaHorariaRepository);
     }
 
     @Bean

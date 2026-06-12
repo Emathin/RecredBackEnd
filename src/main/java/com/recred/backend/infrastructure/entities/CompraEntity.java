@@ -128,6 +128,9 @@ public abstract class CompraEntity {
                             retiroProgramadoEntity.getFranja().getHoraInicio() + " - " +
                             retiroProgramadoEntity.getFranja().getHoraFin() + ")"
                     );
+                    domain.setPickupSlotStartTime(
+                            retiroProgramadoEntity.getFranja().getHoraInicio()
+                    );
                 }
                 domain.setWithdrawalStatus(retiroProgramadoEntity.getEstado());
             }

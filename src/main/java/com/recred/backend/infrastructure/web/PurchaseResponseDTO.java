@@ -27,6 +27,7 @@ public class PurchaseResponseDTO {
     private String withdrawalCode;
     private String pickupSlotDescription;
     private java.time.LocalDate pickupDate;
+    private String pickupSlotStartTime;
 
     public PurchaseResponseDTO(Purchase purchase) {
         this.id = purchase.getId();
@@ -48,6 +49,10 @@ public class PurchaseResponseDTO {
         this.withdrawalCode = purchase.getWithdrawalCode();
         this.pickupSlotDescription = purchase.getPickupSlotDescription();
         this.pickupDate = purchase.getPickupDate();
+        if (purchase.getPickupSlotStartTime() != null) {
+            this.pickupSlotStartTime = purchase.getPickupSlotStartTime()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+        }
 
         if (purchase.getItems() != null) {
             this.items = purchase.getItems().entrySet().stream()

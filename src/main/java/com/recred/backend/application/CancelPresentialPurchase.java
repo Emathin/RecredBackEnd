@@ -44,7 +44,7 @@ public class CancelPresentialPurchase {
             LocalDateTime startDateTime = LocalDateTime.of(
                     purchase.getPickupDate(), franja.getHoraInicio());
 
-            if (nowInZone.isAfter(startDateTime.minusHours(1))) {
+            if (!nowInZone.isBefore(startDateTime.minusHours(1))) {
                 throw new IllegalArgumentException(
                         "No se puede cancelar el pedido faltando una hora o menos "
                                 + "para que comience el horario de retiro");
