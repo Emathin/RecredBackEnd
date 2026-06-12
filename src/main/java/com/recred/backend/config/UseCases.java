@@ -734,9 +734,15 @@ public class UseCases {
 
     @Bean
     public GenerateSeasonalRecommendation generateSeasonalRecommendation(
-            GeminiSeasonalSuggester seasonalSuggester, OpenMeteoWeatherClient weatherClient){
+            GeminiSeasonalSuggester seasonalSuggester, 
+            OpenMeteoWeatherClient weatherClient,
+            ProductRepository productRepository,
+            CreatePromotion createPromotion){
         return new GenerateSeasonalRecommendation(
-                weatherClient, seasonalSuggester);
+                weatherClient, 
+                seasonalSuggester,
+                productRepository,
+                createPromotion);
     }
 
     @Bean

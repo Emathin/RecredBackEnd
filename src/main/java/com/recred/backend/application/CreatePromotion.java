@@ -24,7 +24,8 @@ public class CreatePromotion {
             BigDecimal discountPercentage, 
             String name, 
             LocalDateTime startDate, 
-            LocalDateTime endDate) {
+            LocalDateTime endDate,
+            boolean forceDraft) {
             
         if (!hasMinimumProducts(productIds)) {
             throw new IllegalArgumentException("A promotion requires at least 2 products.");
@@ -42,7 +43,9 @@ public class CreatePromotion {
         promotion.setStartDate(startDate);
         promotion.setEndDate(endDate);
         
-        if (isPromotionCurrentlyActive(startDate, endDate)) {
+        if (forceDraft) {
+            promotion.setStatus(PromotionStatus.DRAFT);
+        } else if (isPromotionCurrentlyActive(startDate, endDate)) {
             promotion.setStatus(PromotionStatus.ACTIVE);
         } else {
             promotion.setStatus(PromotionStatus.DRAFT);

@@ -65,7 +65,8 @@ public class PromotionController {
                 request.getDiscountPercentage(),
                 request.getName(),
                 request.getStartDate(),
-                request.getEndDate()
+                request.getEndDate(),
+                false
         );
         return ResponseEntity.ok(PromotionResponseDTO.fromDomain(promotion));
     }
