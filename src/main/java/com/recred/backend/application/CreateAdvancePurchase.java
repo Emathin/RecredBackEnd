@@ -126,6 +126,25 @@ public class CreateAdvancePurchase {
             FranjaHoraria pickupSlot = pickupSlot(student, orderRequest.recessTime());
             LocalDate pickupDate = LocalDate.parse(orderRequest.date());
 
+            java.time.ZoneId zoneId = java.time.ZoneId.of(
+                    "America/Argentina/Buenos_Aires");
+            LocalDate today = LocalDate.now(zoneId);
+
+            if (pickupDate.isBefore(today)) {
+                throw new IllegalArgumentException(
+                        "La fecha de retiro no puede ser anterior a la fecha actual");
+            }
+
+            if (pickupDate.isEqual(today)) {
+                java.time.LocalTime nowTime = java.time.LocalTime.now(zoneId);
+                java.time.LocalTime limitTime = pickupSlot.getHoraInicio().minusHours(1);
+                if (!nowTime.isBefore(limitTime)) {
+                    throw new IllegalArgumentException(
+                            "No se puede programar una compra para un recreo "
+                            + "que comienza en una hora o menos");
+                }
+            }
+
             Map<Producto, Integer> items = new HashMap<>();
             for (AdvancePurchaseRequest.ItemRequest itemRequest : orderRequest.items()) {
                 Producto product = productRepository.findById(itemRequest.productId())
