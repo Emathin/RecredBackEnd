@@ -56,7 +56,8 @@ public class PurchaseController {
 
     @PostMapping("/presential")
     public ResponseEntity<PurchaseResponseDTO> processPurchase(
-            @RequestBody ProcessPurchaseRequestDTO request
+            @RequestBody ProcessPurchaseRequestDTO request,
+            Authentication authentication
     ) {
         Map<Producto, Integer> cart = request.getItems().stream()
                 .collect(Collectors.toMap(
@@ -66,7 +67,8 @@ public class PurchaseController {
                         PurchaseItemDTO::getQuantity
                 ));
 
-        Purchase purchase = processPresentialPurchase.execute(request.getStudentId(), cart);
+        Purchase purchase = processPresentialPurchase.execute(
+                request.getStudentId(), cart, cognitoSubject(authentication));
         return ResponseEntity.ok(new PurchaseResponseDTO(purchase));
     }
 

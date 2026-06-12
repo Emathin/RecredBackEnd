@@ -400,12 +400,16 @@ public class UseCases {
             AlumnoRepository studentRepository,
             WalletRepository walletRepository,
             PurchaseRepository purchaseRepository,
-            PurchaseValidator purchaseValidator) {
+            PurchaseValidator purchaseValidator,
+            UsuarioRepository usuarioRepository,
+            KiosqueroRepository kiosqueroRepository) {
         return new ProcessPresentialPurchase(
                 studentRepository,
                 walletRepository,
                 purchaseRepository,
-                purchaseValidator);
+                purchaseValidator,
+                usuarioRepository,
+                kiosqueroRepository);
     }
 
     @Bean
