@@ -14,7 +14,8 @@ public record AdvancePurchaseRequest(List<OrderRequest> orders) {
             RecessTime recessTime,
             List<ItemRequest> items,
             UUID suggestionId,
-            UUID buffetId
+            UUID buffetId,
+            UUID tutorId
     ) {}
 
     public record ItemRequest(

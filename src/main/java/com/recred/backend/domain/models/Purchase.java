@@ -33,6 +33,7 @@ public class Purchase {
     private LocalDate pickupDate;
     private EstadoRetiro withdrawalStatus;
     private UUID suggestionId;
+    private UUID tutorId;
 
     private Map<Producto, Integer> items = new HashMap<>();
 

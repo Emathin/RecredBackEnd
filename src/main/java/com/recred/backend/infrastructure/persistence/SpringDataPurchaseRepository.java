@@ -195,4 +195,7 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             @Param("estadoRetiro") EstadoRetiro estadoRetiro,
             @Param("franjaId") UUID franjaId,
             @Param("search") String search);
+
+    long countByAlumnoEntityIdAndSuggestionIdIsNotNullAndEstadoAndFechaHoraAfter(
+            UUID alumnoId, EstadoCompra estado, LocalDateTime since);
 }

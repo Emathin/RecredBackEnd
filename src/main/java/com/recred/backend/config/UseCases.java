@@ -46,6 +46,7 @@ import com.recred.backend.application.GetProductsByBuffetUser;
 import com.recred.backend.application.GetScheduledPickups;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.GetScheduledPickups;
+import com.recred.backend.application.GetStudentRewardStatus;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
@@ -56,6 +57,7 @@ import com.recred.backend.application.ObtenerHijosPorPadre;
 import com.recred.backend.application.ObtenerHistorialAlumno;
 import com.recred.backend.application.ObtenerHistorialTutor;
 import com.recred.backend.application.PredictStudentSpending;
+import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RemoveHealthRestrictions;
@@ -807,9 +809,10 @@ public class UseCases {
             PurchaseSuggestIA purchaseSuggestIA,
             AlumnoRepository alumnoRepository,
             PushNotificationSender pushNotificationSender,
-            UsuarioService usuarioService) {
+            UsuarioService usuarioService,
+            ObjectMapper objectMapper) {
         return new NotifyPurchaseSuggestions(purchaseSuggestIA, alumnoRepository,
-                pushNotificationSender, usuarioService);
+                pushNotificationSender, usuarioService, objectMapper);
     }
 
     @Bean
@@ -823,5 +826,17 @@ public class UseCases {
                 alumnoRepository,
                 tutorRepository,
                 pushNotificationSender);
+    }
+
+    @Bean
+    public PrizeHealthyPurchase prizeHealthyPurchase(
+            PurchaseRepository purchaseRepository,
+            AlumnoRepository alumnoRepository) {
+        return new PrizeHealthyPurchase(purchaseRepository, alumnoRepository);
+    }
+
+    @Bean
+    public GetStudentRewardStatus getStudentRewardStatus(AlumnoRepository alumnoRepository) {
+        return new GetStudentRewardStatus(alumnoRepository);
     }
 }
