@@ -95,11 +95,14 @@ class ProcessPresentialPurchaseTest {
         usuario = new Usuario();
         usuario.setId(UUID.randomUUID());
         usuario.setRol(RolUsuario.VENDEDOR);
+    }
 
     @Test
     void execute_WithValidData_ShouldProcessPurchaseAndCallValidators() {
-        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
-        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId())).thenReturn(buffetId);
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
@@ -116,8 +119,10 @@ class ProcessPresentialPurchaseTest {
     @Test
     void execute_WhenProductRequiresPreparation_ShouldSavePendingPurchase() {
         product.setRequierePreparacion(true);
-        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
-        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId())).thenReturn(buffetId);
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
@@ -130,8 +135,10 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WhenStudentNotFound_ShouldThrowException() {
-        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
-        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId())).thenReturn(buffetId);
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
 
         assertThrows(AlumnoNoEncontradoException.class, () -> useCase.execute(studentId, cart, cognitoSub));
@@ -139,15 +146,16 @@ class ProcessPresentialPurchaseTest {
         verifyNoInteractions(
                 purchaseValidator,
                 walletRepository,
-                purchaseRepository
-        );
+                purchaseRepository);
     }
 
     @Test
     void execute_WhenInsufficientBalance_ShouldThrowException() {
         wallet.setSaldoCreditos(new BigDecimal("10.00"));
-        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
-        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId())).thenReturn(buffetId);
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
@@ -161,8 +169,10 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WhenWalletNotFound_ShouldThrowException() {
-        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
-        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId())).thenReturn(buffetId);
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
 
@@ -175,8 +185,10 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WhenHealthRestrictionFails_ShouldThrowException() {
-        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
-        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId())).thenReturn(buffetId);
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         doThrow(new RestriccionSaludException(""))
                 .when(purchaseValidator)
@@ -189,8 +201,10 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WhenTimeRestrictionFails_ShouldThrowException() {
-        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
-        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId())).thenReturn(buffetId);
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         doThrow(new RestriccionHorariaException(""))
                 .when(purchaseValidator)
@@ -201,7 +215,6 @@ class ProcessPresentialPurchaseTest {
 
         verifyNoInteractions(
                 walletRepository,
-                purchaseRepository
-        );
+                purchaseRepository);
     }
 }
