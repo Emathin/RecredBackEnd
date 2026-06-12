@@ -92,6 +92,7 @@ import com.recred.backend.domain.repositories.NotificationRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
+import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -735,12 +736,14 @@ public class UseCases {
             ProductRepository productRepository,
             KiosqueroRepository kiosqueroRepository,
             InventoryRepository inventoryRepository,
-            AIEventRepository aiEventRepository) {
+            AIEventRepository aiEventRepository,
+            ProductAdditionNotificationRepository notificationRepository) {
         return new AddProductRecommendation(
                 productRepository,
                 kiosqueroRepository,
                 inventoryRepository,
-                aiEventRepository);
+                aiEventRepository,
+                notificationRepository);
     }
 
     @Bean
