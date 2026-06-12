@@ -806,9 +806,10 @@ public class UseCases {
             PurchaseSuggestIA purchaseSuggestIA,
             AlumnoRepository alumnoRepository,
             PushNotificationSender pushNotificationSender,
-            UsuarioService usuarioService) {
+            UsuarioService usuarioService,
+            ObjectMapper objectMapper) {
         return new NotifyPurchaseSuggestions(purchaseSuggestIA, alumnoRepository,
-                pushNotificationSender, usuarioService);
+                pushNotificationSender, usuarioService, objectMapper);
     }
 
     @Bean

@@ -8,11 +8,14 @@ import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
+import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
@@ -83,6 +86,9 @@ class PurchaseSuggestControllerTest {
     private UsuarioService usuarioService;
 
     @MockitoBean
+    private TutorRepository tutorRepository;
+
+    @MockitoBean
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
 
     private UUID sugerenciaId;
@@ -102,37 +108,35 @@ class PurchaseSuggestControllerTest {
     }
 
     @Test
-    void obtenerSugerenciaActiva_CuandoExiste_DeberiaRetornar200() throws Exception {
+    void testNotificacion_CuandoExiste_DeberiaRetornar200YNotificacion() throws Exception {
         SugerenciaIA sugerencia = SugerenciaIA.builder()
                 .id(sugerenciaId)
                 .alumnoId(alumnoId)
                 .productoId(productoId)
+                .producto(new com.recred.backend.domain.models.Producto())
                 .titulo("Comé sano")
-                .mensaje("Una manzana al día...")
+                .mensaje("Mensaje")
                 .build();
+        sugerencia.getProducto().setId(productoId);
+        sugerencia.getProducto().setNombre("Manzana");
+        sugerencia.getProducto().setPrecio(new BigDecimal("100.00"));
 
-        when(purchaseSuggestIA.execute(anyString())).thenReturn(Optional.of(sugerencia));
+        PushNotification notification = new PushNotification(
+                usuarioId, "Titulo", "Mensaje", 
+                java.util.Map.of("type", "PURCHASE_SUGGESTION", "producto", "{}")
+        );
+
+        when(notifyPurchaseSuggestions.execute(anyString())).thenReturn(notification);
 
         TestSuggestionRequest request = new TestSuggestionRequest("user-123", null);
 
-        mockMvc.perform(post("/api/v1/sugerencias-consumo/activa")
+        mockMvc.perform(post("/api/v1/sugerencias-consumo/test-notificacion")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
                 .principal(auth))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.sugerenciaId").value(sugerenciaId.toString()))
-                .andExpect(jsonPath("$.titulo").value("Comé sano"));
-    }
-
-    @Test
-    void obtenerSugerenciaActiva_CuandoNoExiste_DeberiaRetornar204() throws Exception {
-        when(purchaseSuggestIA.execute(anyString())).thenReturn(Optional.empty());
-
-        mockMvc.perform(post("/api/v1/sugerencias-consumo/activa")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{}")
-                .principal(auth))
-                .andExpect(status().isNoContent());
+                .andExpect(jsonPath("$.userId").value(usuarioId.toString()))
+                .andExpect(jsonPath("$.data.type").value("PURCHASE_SUGGESTION"));
     }
 
     @Test

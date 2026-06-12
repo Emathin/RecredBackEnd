@@ -17,6 +17,7 @@ import com.recred.backend.infrastructure.entities.CompraPresencialEntity;
 import com.recred.backend.infrastructure.entities.FranjaHorariaEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.RetiroProgramadoEntity;
+import com.recred.backend.infrastructure.entities.TutorEntity;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,6 +90,13 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         entity.setMontoTotal(purchase.getTotalAmount());
         entity.setFechaHora(purchase.getDate());
         entity.setSuggestionId(purchase.getSuggestionId());
+
+        if (purchase.getTutorId() != null) {
+            TutorEntity tutorEntity = new TutorEntity();
+            tutorEntity.setId(purchase.getTutorId());
+            entity.setTutorEntity(tutorEntity);
+        }
+
         setAdvanceData(entity, purchase);
 
         entity.getDetalles().clear();

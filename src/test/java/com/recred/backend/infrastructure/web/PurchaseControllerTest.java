@@ -144,7 +144,8 @@ class PurchaseControllerTest {
                 RecessTime.FIRST_RECESS,
                 List.of(itemRequest),
                 null,
-                UUID.randomUUID()
+                UUID.randomUUID(),
+                null
         );
         advancePurchaseRequest = new AdvancePurchaseRequest(List.of(orderRequest));
     }

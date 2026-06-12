@@ -131,6 +131,10 @@ public abstract class CompraEntity {
             domain.setStudent(this.alumnoEntity.toDomain());
         }
 
+        if (this.tutorEntity != null) {
+            domain.setTutorId(this.tutorEntity.getId());
+        }
+
         if (this.detalles != null) {
             domain.setItems(this.detalles.stream()
                     .collect(Collectors.toMap(

@@ -95,7 +95,6 @@ class PrizeHealthyPurchaseTest {
         alumno.setPuntosRecompensa(50);
 
         when(purchaseRepository.findById(compraId)).thenReturn(Optional.of(purchase));
-        // Simulamos que en los últimos 7 días tiene 2, pero en los últimos 15 días tiene 6
         when(purchaseRepository.countHealthyPurchasesByAlumno(eq(alumnoId), any(LocalDateTime.class)))
                 .thenAnswer(invocation -> {
                     LocalDateTime since = invocation.getArgument(1);
