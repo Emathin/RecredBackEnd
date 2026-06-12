@@ -41,11 +41,13 @@ public class CancelPresentialPurchase {
 
             ZoneId zoneId = ZoneId.of("America/Argentina/Buenos_Aires");
             LocalDateTime nowInZone = LocalDateTime.now(zoneId);
-            LocalDateTime startDateTime = LocalDateTime.of(purchase.getPickupDate(), franja.getHoraInicio());
+            LocalDateTime startDateTime = LocalDateTime.of(
+                    purchase.getPickupDate(), franja.getHoraInicio());
 
             if (nowInZone.isAfter(startDateTime.minusHours(1))) {
                 throw new IllegalArgumentException(
-                        "No se puede cancelar el pedido faltando una hora o menos para que comience el horario de retiro");
+                        "No se puede cancelar el pedido faltando una hora o menos "
+                                + "para que comience el horario de retiro");
             }
         }
 
