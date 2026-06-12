@@ -42,19 +42,22 @@ public class GenerateSeasonalRecommendation {
                 .getMonth()
                 .getDisplayName(TextStyle.FULL, Locale.getDefault());
 
-        RecommendationResponseDTO response = geminiSeasonalSuggesterService.getSeasonalRecommendations(
-                monthName,
-                currentWeather.getTemperature(),
-                currentWeather.getCondition());
+        RecommendationResponseDTO response = geminiSeasonalSuggesterService
+                .getSeasonalRecommendations(
+                        monthName,
+                        currentWeather.getTemperature(),
+                        currentWeather.getCondition());
 
         SuggestedPromotionDTO suggested = response.getSuggestedPromotion();
-        if (suggested != null && suggested.getTargetCategories() != null && !suggested.getTargetCategories().isEmpty()) {
+        if (suggested != null && suggested.getTargetCategories() != null 
+                && !suggested.getTargetCategories().isEmpty()) {
             List<Producto> allActiveProducts = productRepository.findAllActive();
             
             List<UUID> matchedProductIds = allActiveProducts.stream()
                     .filter(p -> p.getCategoria() != null)
                     .filter(p -> suggested.getTargetCategories().stream()
-                            .anyMatch(cat -> p.getCategoria().getDescripcion().toLowerCase().contains(cat.toLowerCase())))
+                            .anyMatch(cat -> p.getCategoria().getDescripcion()
+                                    .toLowerCase().contains(cat.toLowerCase())))
                     .map(Producto::getId)
                     .limit(5)
                     .collect(Collectors.toList());
