@@ -130,6 +130,13 @@ public class CreateAdvancePurchase {
                     "America/Argentina/Buenos_Aires");
             LocalDate today = LocalDate.now(zoneId);
 
+            java.time.DayOfWeek dayOfWeek = pickupDate.getDayOfWeek();
+            if (dayOfWeek == java.time.DayOfWeek.SATURDAY 
+                    || dayOfWeek == java.time.DayOfWeek.SUNDAY) {
+                throw new IllegalArgumentException(
+                        "No se pueden programar retiros para fines de semana");
+            }
+
             if (pickupDate.isBefore(today)) {
                 throw new IllegalArgumentException(
                         "La fecha de retiro no puede ser anterior a la fecha actual");
@@ -137,6 +144,20 @@ public class CreateAdvancePurchase {
 
             if (pickupDate.isEqual(today)) {
                 java.time.LocalTime nowTime = java.time.LocalTime.now(zoneId);
+
+                List<FranjaHoraria> slots = timeSlotRepository.findAllByColegioId(schoolId);
+                if (!slots.isEmpty()) {
+                    FranjaHoraria lastSlot = slots.stream()
+                            .max(Comparator.comparing(FranjaHoraria::getHoraFin))
+                            .orElse(null);
+                    if (lastSlot != null && lastSlot.getHoraFin() != null) {
+                        if (!nowTime.isBefore(lastSlot.getHoraFin())) {
+                            throw new IllegalArgumentException(
+                                    "El horario de retiro para el día de hoy ya ha finalizado");
+                        }
+                    }
+                }
+
                 java.time.LocalTime limitTime = pickupSlot.getHoraInicio().minusHours(1);
                 if (!nowTime.isBefore(limitTime)) {
                     throw new IllegalArgumentException(
