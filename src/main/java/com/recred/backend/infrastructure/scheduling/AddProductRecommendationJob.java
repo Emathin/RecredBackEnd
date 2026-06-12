@@ -1,10 +1,13 @@
 package com.recred.backend.infrastructure.scheduling;
 
 import com.recred.backend.application.AddProductRecommendation;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(name = "add-product-recommendation.enabled"
+        , havingValue = "true", matchIfMissing = true)
 public class AddProductRecommendationJob {
     private final AddProductRecommendation addProductRecommendation;
 
@@ -12,7 +15,7 @@ public class AddProductRecommendationJob {
         this.addProductRecommendation = addProductRecommendation;
     }
 
-    @Scheduled(cron = "${product-recommendation.cron:0 30 12 * * *}")
+    @Scheduled(cron = "${add-product-recommendation.cron:0 0 15 * * 6}")
     public void run() {
         addProductRecommendation.execute();
     }

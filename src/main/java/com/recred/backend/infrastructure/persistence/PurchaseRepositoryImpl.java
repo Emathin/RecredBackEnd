@@ -17,8 +17,10 @@ import com.recred.backend.infrastructure.entities.CompraPresencialEntity;
 import com.recred.backend.infrastructure.entities.FranjaHorariaEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.RetiroProgramadoEntity;
+import com.recred.backend.infrastructure.entities.TutorEntity;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -47,10 +49,12 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Purchase> findByAlumnoAndDateRange(
             UUID alumnoId, LocalDateTime start, LocalDateTime end) {
         return springDataRepository.findAllByAlumnoIdAndFechaHoraBetween(alumnoId, start, end)
                 .stream()
+                .peek(compra -> org.hibernate.Hibernate.initialize(compra.getAlumnoEntity()))
                 .map(CompraEntity::toDomain)
                 .toList();
     }
@@ -85,6 +89,14 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         entity.setEstado(purchase.getStatus());
         entity.setMontoTotal(purchase.getTotalAmount());
         entity.setFechaHora(purchase.getDate());
+        entity.setSuggestionId(purchase.getSuggestionId());
+
+        if (purchase.getTutorId() != null) {
+            TutorEntity tutorEntity = new TutorEntity();
+            tutorEntity.setId(purchase.getTutorId());
+            entity.setTutorEntity(tutorEntity);
+        }
+
         setAdvanceData(entity, purchase);
 
         entity.getDetalles().clear();
@@ -256,6 +268,13 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
                 .stream()
                 .map(CompraEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public long countHealthyPurchasesByAlumno(UUID alumnoId, LocalDateTime since) {
+        return springDataRepository
+                .countByAlumnoEntityIdAndSuggestionIdIsNotNullAndEstadoAndFechaHoraAfter(
+                        alumnoId, EstadoCompra.ENTREGADO, since);
     }
 
 }

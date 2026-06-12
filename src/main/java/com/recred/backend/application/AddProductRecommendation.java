@@ -5,6 +5,7 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,16 +19,19 @@ public class AddProductRecommendation {
     private final KiosqueroRepository kiosqueroRepository;
     private final InventoryRepository inventoryRepository;
     private final AIEventRepository aiEventRepository;
+    private final ProductAdditionNotificationRepository notificationRepository;
 
 
-    public  AddProductRecommendation(ProductRepository productRepository,
-                                     KiosqueroRepository kiosqueroRepository,
-            InventoryRepository inventoryRepository,
-                                     AIEventRepository aiEventRepository){
+    public AddProductRecommendation(ProductRepository productRepository,
+                                    KiosqueroRepository kiosqueroRepository,
+                                    InventoryRepository inventoryRepository,
+                                    AIEventRepository aiEventRepository,
+                                    ProductAdditionNotificationRepository notificationRepository) {
         this.productRepository = productRepository;
         this.kiosqueroRepository = kiosqueroRepository;
         this.inventoryRepository = inventoryRepository;
         this.aiEventRepository = aiEventRepository;
+        this.notificationRepository = notificationRepository;
     }
     @Transactional
     public void execute() {
@@ -42,6 +46,9 @@ public class AddProductRecommendation {
 
                     aiEventRepository
                             .registerProductAdditionRecommendation(product, kiosquero,buffetId);
+                    
+                    notificationRepository.save(product, kiosquero);
+
                 }
             }
         }

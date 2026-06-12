@@ -84,6 +84,9 @@ public class AlumnoEntity {
     )
     private Set<ProductoEntity> productosBloqueados = new HashSet<>();
 
+    @Column(name = "puntos_recompensa", nullable = false)
+    private Integer puntosRecompensa = 0;
+
     public Alumno toDomain() {
         Alumno alumnoDominio = new Alumno();
 
@@ -140,11 +143,7 @@ public class AlumnoEntity {
 
         if (this.restriccionesHorarias != null && !this.restriccionesHorarias.isEmpty()) {
             Set<RestriccionHoraria> horariasDominio = this.restriccionesHorarias.stream()
-                    .map(entity -> {
-                        RestriccionHoraria rh = new RestriccionHoraria();
-                        rh.setId(entity.getId());
-                        return rh;
-                    })
+                    .map(RestriccionHorariaEntity::toDomain)
                     .collect(Collectors.toSet());
             alumnoDominio.setRestriccionesHorarias(horariasDominio);
         } else {
@@ -168,6 +167,9 @@ public class AlumnoEntity {
         } else {
             alumnoDominio.setProductosBloqueados(new HashSet<>());
         }
+
+        alumnoDominio.setPuntosRecompensa(this.puntosRecompensa != null
+                ? this.puntosRecompensa : 0);
 
         return alumnoDominio;
     }
@@ -247,6 +249,9 @@ public class AlumnoEntity {
                     .collect(Collectors.toSet());
             entity.setProductosBloqueados(bloqueadosProxies);
         }
+
+        entity.setPuntosRecompensa(alumno.getPuntosRecompensa() != null
+                ? alumno.getPuntosRecompensa() : 0);
 
         return entity;
     }

@@ -19,7 +19,12 @@ public interface SpringDataTutorRepository extends
             "hijos.usuario",
             "hijos.gradoEntity",
             "hijos.gradoEntity.colegioEntity",
-            "hijos.billeteraEntity"
+            "hijos.gradoEntity.colegioEntity.nivelEntity",
+            "hijos.billeteraEntity",
+            "hijos.restriccionesSalud",
+            "hijos.productosFavoritos",
+            "hijos.restriccionesHorarias",
+            "hijos.productosBloqueados"
     })
     List<TutorEntity> findAll();
 
@@ -29,7 +34,12 @@ public interface SpringDataTutorRepository extends
             "hijos.usuario",
             "hijos.gradoEntity",
             "hijos.gradoEntity.colegioEntity",
-            "hijos.billeteraEntity"
+            "hijos.gradoEntity.colegioEntity.nivelEntity",
+            "hijos.billeteraEntity",
+            "hijos.restriccionesSalud",
+            "hijos.productosFavoritos",
+            "hijos.restriccionesHorarias",
+            "hijos.productosBloqueados"
     })
     Optional<TutorEntity> findById(UUID id);
 
@@ -39,7 +49,12 @@ public interface SpringDataTutorRepository extends
             "hijos.usuario",
             "hijos.gradoEntity",
             "hijos.gradoEntity.colegioEntity",
-            "hijos.billeteraEntity"
+            "hijos.gradoEntity.colegioEntity.nivelEntity",
+            "hijos.billeteraEntity",
+            "hijos.restriccionesSalud",
+            "hijos.productosFavoritos",
+            "hijos.restriccionesHorarias",
+            "hijos.productosBloqueados"
     })
     Optional<TutorEntity> findByUsuarioId(UUID usuarioId);
 
@@ -49,8 +64,18 @@ public interface SpringDataTutorRepository extends
             "hijos.usuario",
             "hijos.gradoEntity",
             "hijos.gradoEntity.colegioEntity",
-            "hijos.billeteraEntity"
+            "hijos.gradoEntity.colegioEntity.nivelEntity",
+            "hijos.billeteraEntity",
+            "hijos.restriccionesSalud",
+            "hijos.productosFavoritos",
+            "hijos.restriccionesHorarias",
+            "hijos.productosBloqueados"
     })
     Optional<TutorEntity> findByUsuarioIdCognito(String idCognito);
+
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT t FROM TutorEntity t JOIN t.hijos h WHERE h.id = :alumnoId")
+    List<TutorEntity> findByAlumnoId(
+            @org.springframework.data.repository.query.Param("alumnoId") UUID alumnoId);
 
 }

@@ -59,7 +59,7 @@ replay_pid*
 
 .env
 restart-backend.sh
-AGENTS.md
+GEMINI.md
 
 # Local secrets
 secrets/*

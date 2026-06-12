@@ -23,6 +23,10 @@ public class PurchaseResponseDTO {
     private String paymentMethod;
     private LocalDateTime date;
     private List<PurchaseItemDTO> items;
+    private String tipo;
+    private String withdrawalCode;
+    private String pickupSlotDescription;
+    private java.time.LocalDate pickupDate;
 
     public PurchaseResponseDTO(Purchase purchase) {
         this.id = purchase.getId();
@@ -38,6 +42,12 @@ public class PurchaseResponseDTO {
             this.paymentMethod = purchase.getPaymentMethod().name();
         }
         this.date = purchase.getDate();
+        if (purchase.getTipo() != null) {
+            this.tipo = purchase.getTipo().name();
+        }
+        this.withdrawalCode = purchase.getWithdrawalCode();
+        this.pickupSlotDescription = purchase.getPickupSlotDescription();
+        this.pickupDate = purchase.getPickupDate();
 
         if (purchase.getItems() != null) {
             this.items = purchase.getItems().entrySet().stream()

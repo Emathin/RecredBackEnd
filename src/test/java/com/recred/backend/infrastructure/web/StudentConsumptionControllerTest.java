@@ -1,7 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
+import com.recred.backend.application.GetStudentRewardStatus;
 import com.recred.backend.application.StudentConsumptionCommand;
+import com.recred.backend.application.StudentRewardResponse;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.StudentConsumptionDetail;
@@ -35,15 +37,36 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class StudentConsumptionControllerTest {
 
     private GetLoggedUserConsumptionDetail getLoggedUserConsumptionDetail;
+    private GetStudentRewardStatus getStudentRewardStatus;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         getLoggedUserConsumptionDetail = mock(GetLoggedUserConsumptionDetail.class);
+        getStudentRewardStatus = mock(GetStudentRewardStatus.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new StudentConsumptionController(getLoggedUserConsumptionDetail))
+                .standaloneSetup(new StudentConsumptionController(
+                        getLoggedUserConsumptionDetail, getStudentRewardStatus))
                 .setControllerAdvice(new StudentConsumptionExceptionHandler())
                 .build();
+    }
+
+    @Test
+    void getRewardStatus_DebeRetornarEstadoExitosamente() throws Exception {
+        UUID alumnoId = UUID.randomUUID();
+        StudentRewardResponse response = new StudentRewardResponse(
+                50, "BRONZE", "Mensaje", 50, "SILVER"
+        );
+        when(getStudentRewardStatus.execute(alumnoId)).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/consumos/alumnos/{alumnoId}/recompensas-saludables", alumnoId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalPoints").value(50))
+                .andExpect(jsonPath("$.currentLevel").value("BRONZE"))
+                .andExpect(jsonPath("$.pointsToNextLevel").value(50))
+                .andExpect(jsonPath("$.nextLevelName").value("SILVER"));
+
+        verify(getStudentRewardStatus).execute(alumnoId);
     }
 
     @Test

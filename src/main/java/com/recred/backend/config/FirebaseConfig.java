@@ -5,7 +5,6 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -19,18 +18,18 @@ public class FirebaseConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger(FirebaseConfig.class);
 
     @Bean
-    public Optional<FirebaseApp> firebaseApp(FirebaseProperties firebaseProperties) {
+    public FirebaseApp firebaseApp(FirebaseProperties firebaseProperties) {
         if (!firebaseProperties.enabled()) {
-            return Optional.empty();
+            return null;
         }
         try {
             if (!FirebaseApp.getApps().isEmpty()) {
-                return Optional.of(FirebaseApp.getInstance());
+                return FirebaseApp.getInstance();
             }
-            return Optional.of(FirebaseApp.initializeApp(options(firebaseProperties)));
-        } catch (IOException exception) {
-            LOGGER.warn("Firebase initialization failed: {}", exception.getMessage());
-            return Optional.empty();
+            return FirebaseApp.initializeApp(options(firebaseProperties));
+        } catch (Exception exception) {
+            LOGGER.error("Error crítico al inicializar Firebase", exception);
+            return null;
         }
     }
 

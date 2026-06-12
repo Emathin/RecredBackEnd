@@ -73,4 +73,15 @@ public class SugerenciaIAEntity {
     @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "evento_ia_id")
     private AIEventEntity eventoIaEntity;
+
+    public com.recred.backend.domain.models.SugerenciaIA toDomain() {
+        return com.recred.backend.domain.models.SugerenciaIA.builder()
+                .id(this.id)
+                .alumnoId(this.alumnoEntity != null ? this.alumnoEntity.getId() : null)
+                .productoId(this.productoEntity != null ? this.productoEntity.getId() : null)
+                .producto(this.productoEntity != null ? this.productoEntity.toDomain() : null)
+                .titulo(this.titulo)
+                .mensaje(this.mensaje)
+                .build();
+    }
 }

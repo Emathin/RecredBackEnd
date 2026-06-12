@@ -11,6 +11,7 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.models.RecessTime;
+import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.BuyerType;
@@ -18,6 +19,7 @@ import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.PurchaseValidator;
@@ -52,6 +54,7 @@ public class CreateAdvancePurchase {
     private final FranjaHorariaRepository timeSlotRepository;
     private final SpringDataBuffetRepository buffetRepository;
     private final UsuarioRepository usuarioRepository;
+    private final TutorRepository tutorRepository;
 
     public CreateAdvancePurchase(
             PurchaseValidator purchaseValidator,
@@ -62,7 +65,8 @@ public class CreateAdvancePurchase {
             WalletRepository walletRepository,
             FranjaHorariaRepository timeSlotRepository,
             SpringDataBuffetRepository buffetRepository,
-            UsuarioRepository usuarioRepository
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository
     ) {
         this.purchaseValidator = purchaseValidator;
         this.alumnoRepository = alumnoRepository;
@@ -73,6 +77,7 @@ public class CreateAdvancePurchase {
         this.timeSlotRepository = timeSlotRepository;
         this.buffetRepository = buffetRepository;
         this.usuarioRepository = usuarioRepository;
+        this.tutorRepository = tutorRepository;
     }
 
     @Transactional
@@ -101,9 +106,11 @@ public class CreateAdvancePurchase {
                 }
                 buyerType = BuyerType.STUDENT;
             } else if (usuario.getRol() == RolUsuario.PADRE) {
-                if (usuario.getTutor() == null || 
-                    usuario.getTutor().getHijos().stream()
-                            .noneMatch(h -> h.getId().equals(orderRequest.studentId()))) {
+                Tutor tutor = tutorRepository.findByUsuarioId(usuario.getId())
+                        .orElseThrow(() -> new SecurityException(
+                                "No se encontró un perfil de tutor para este usuario"));
+                if (tutor.getHijos().stream()
+                        .noneMatch(h -> h.getId().equals(orderRequest.studentId()))) {
                     throw new SecurityException(
                             "No autorizado para comprar a nombre de este alumno");
                 }
@@ -124,7 +131,72 @@ public class CreateAdvancePurchase {
                             "Buffet not found for school: " + schoolId));
 
             FranjaHoraria pickupSlot = pickupSlot(student, orderRequest.recessTime());
-            LocalDate pickupDate = LocalDate.parse(orderRequest.date());
+            LocalDate pickupDate = null;
+            if (orderRequest.date() != null) {
+                try {
+                    pickupDate = LocalDate.parse(orderRequest.date());
+                } catch (Exception e) {
+                    // Ignorar
+                }
+                if (pickupDate == null) {
+                    try {
+                        String[] parts = orderRequest.date().split("-");
+                        int year = Integer.parseInt(parts[0]);
+                        int month = Integer.parseInt(parts[1]);
+                        int day = Integer.parseInt(parts[2]);
+                        java.lang.reflect.Constructor<LocalDate> constructor =
+                                LocalDate.class.getDeclaredConstructor(
+                                        int.class, int.class, int.class);
+                        constructor.setAccessible(true);
+                        pickupDate = constructor.newInstance(year, month, day);
+                    } catch (Exception ex) {
+                        // Ignorar
+                    }
+                }
+            }
+            if (pickupDate == null) {
+                throw new IllegalArgumentException("La fecha de retiro no es válida");
+            }
+
+            java.time.ZoneId zoneId = java.time.ZoneId.of(
+                    "America/Argentina/Buenos_Aires");
+            LocalDate today = LocalDate.now(zoneId);
+
+            java.time.DayOfWeek dayOfWeek = pickupDate.getDayOfWeek();
+            if (dayOfWeek == java.time.DayOfWeek.SATURDAY 
+                    || dayOfWeek == java.time.DayOfWeek.SUNDAY) {
+                throw new IllegalArgumentException(
+                        "No se pueden programar retiros para fines de semana");
+            }
+
+            if (pickupDate.isBefore(today)) {
+                throw new IllegalArgumentException(
+                        "La fecha de retiro no puede ser anterior a la fecha actual");
+            }
+
+            if (pickupDate.isEqual(today)) {
+                java.time.LocalTime nowTime = java.time.LocalTime.now(zoneId);
+
+                List<FranjaHoraria> slots = timeSlotRepository.findAllByColegioId(schoolId);
+                if (!slots.isEmpty()) {
+                    FranjaHoraria lastSlot = slots.stream()
+                            .max(Comparator.comparing(FranjaHoraria::getHoraFin))
+                            .orElse(null);
+                    if (lastSlot != null && lastSlot.getHoraFin() != null) {
+                        if (!nowTime.isBefore(lastSlot.getHoraFin())) {
+                            throw new IllegalArgumentException(
+                                    "El horario de retiro para el día de hoy ya ha finalizado");
+                        }
+                    }
+                }
+
+                java.time.LocalTime limitTime = pickupSlot.getHoraInicio().minusHours(1);
+                if (!nowTime.isBefore(limitTime)) {
+                    throw new IllegalArgumentException(
+                            "No se puede programar una compra para un recreo "
+                            + "que comienza en una hora o menos");
+                }
+            }
 
             Map<Producto, Integer> items = new HashMap<>();
             for (AdvancePurchaseRequest.ItemRequest itemRequest : orderRequest.items()) {
@@ -143,6 +215,9 @@ public class CreateAdvancePurchase {
                     pickupSlot.getId(),
                     pickupDate
             );
+
+            purchase.setSuggestionId(orderRequest.suggestionId());
+            purchase.setTutorId(orderRequest.tutorId());
 
             purchaseValidator.validate(purchase);
 

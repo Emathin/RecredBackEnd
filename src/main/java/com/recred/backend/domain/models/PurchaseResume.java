@@ -18,6 +18,7 @@ public class PurchaseResume {
     private String nombreProducto;
     private BigDecimal precio;
     private LocalDateTime date;
+    private UUID suggestionId;
 
     public PurchaseResume(
             UUID idAlumno, UUID idProducto,
@@ -27,6 +28,13 @@ public class PurchaseResume {
         this.nombreProducto = nombreProducto;
         this.precio = precio;
         this.date = date;
+    }
+
+    public PurchaseResume(
+            UUID idAlumno, UUID idProducto,
+            String nombreProducto, BigDecimal precio, LocalDateTime date, UUID suggestionId) {
+        this(idAlumno, idProducto, nombreProducto, precio, date);
+        this.suggestionId = suggestionId;
     }
 
     @Override
