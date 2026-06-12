@@ -4,7 +4,9 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
+import com.recred.backend.infrastructure.entities.GradoEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -17,9 +19,15 @@ import java.util.stream.Collectors;
 public class AlumnoRepositoryImpl implements AlumnoRepository {
 
     private final SpringDataAlumnoRepository springDataRepository;
+    private final SpringDataUsuarioRepository usuarioRepository;
+    private final SpringDataGradoRepository gradoRepository;
 
-    public AlumnoRepositoryImpl(SpringDataAlumnoRepository springDataRepository) {
+    public AlumnoRepositoryImpl(SpringDataAlumnoRepository springDataRepository,
+                                SpringDataUsuarioRepository usuarioRepository,
+                                SpringDataGradoRepository gradoRepository) {
         this.springDataRepository = springDataRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.gradoRepository = gradoRepository;
     }
 
     @Override
@@ -51,13 +59,14 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
     }
 
     @Override
-    public void save(Alumno alumno) {
-        AlumnoEntity entityExistente = springDataRepository.findById(alumno.getId())
-                .orElseGet(AlumnoEntity::new);
+    public Alumno save(Alumno alumno) {
+        AlumnoEntity entityExistente = alumno.getId() != null
+                ? springDataRepository.findById(alumno.getId()).orElseGet(AlumnoEntity::new)
+                : new AlumnoEntity();
 
         AlumnoEntity entityLista = toEntity(alumno, entityExistente);
 
-        springDataRepository.save(entityLista);
+        return springDataRepository.save(entityLista).toDomain();
     }
 
     private AlumnoEntity toEntity(Alumno modelo, AlumnoEntity entity) {
@@ -65,7 +74,19 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
             entity.setId(modelo.getId());
         }
 
-        entity.setActivo(modelo.getActivo());
+        entity.setActivo(modelo.getActivo() != null ? modelo.getActivo() : true);
+
+        if (modelo.getUsuario() != null && modelo.getUsuario().getId() != null) {
+            UsuarioEntity usuarioEntity = usuarioRepository.getReferenceById(
+                    modelo.getUsuario().getId());
+            entity.setUsuario(usuarioEntity);
+        }
+
+        if (modelo.getGrado() != null && modelo.getGrado().getId() != null) {
+            GradoEntity gradoEntity = gradoRepository.getReferenceById(
+                    modelo.getGrado().getId());
+            entity.setGradoEntity(gradoEntity);
+        }
 
         if (modelo.getRestriccionesSalud() != null && !modelo.getRestriccionesSalud().isEmpty()) {
             Set<ClasificacionSaludEntity> restriccionesEntities = modelo

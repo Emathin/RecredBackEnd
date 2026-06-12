@@ -102,7 +102,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
                 AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
                                 studentId, UUID.randomUUID(), BuyerType.TUTOR, testDate,
-                                RecessTime.FIRST_RECESS, List.of(itemRequest));
+                                RecessTime.FIRST_RECESS, List.of(itemRequest), null, UUID.randomUUID(), null);
                 AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
                 Alumno student = new Alumno();
@@ -182,7 +182,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
                 AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
                                 studentId, UUID.randomUUID(), BuyerType.TUTOR, testDate,
-                                RecessTime.FIRST_RECESS, List.of(itemRequest));
+                                RecessTime.FIRST_RECESS, List.of(itemRequest), null, null, null);
                 AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
                 Alumno student = new Alumno();
@@ -241,7 +241,7 @@ class CreateAdvancePurchaseUseCaseTest {
                     UUID.randomUUID(), 1);
             AdvancePurchaseRequest.OrderRequest order = new AdvancePurchaseRequest.OrderRequest(
                     studentId, UUID.randomUUID(), BuyerType.STUDENT, "2026-10-10",
-                    RecessTime.FIRST_RECESS, List.of(item));
+                    RecessTime.FIRST_RECESS, List.of(item), null, null, null);
             AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
 
             when(usuarioRepository.findByIdCognito("test-user")).thenReturn(Optional.empty());
@@ -258,7 +258,7 @@ class CreateAdvancePurchaseUseCaseTest {
                     UUID.randomUUID(), 1);
             AdvancePurchaseRequest.OrderRequest order = new AdvancePurchaseRequest.OrderRequest(
                     anotherStudentId, UUID.randomUUID(), BuyerType.STUDENT, "2026-10-10",
-                    RecessTime.FIRST_RECESS, List.of(item));
+                    RecessTime.FIRST_RECESS, List.of(item), null, null, null);
             AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
 
             Usuario studentUser = new Usuario();
@@ -282,7 +282,7 @@ class CreateAdvancePurchaseUseCaseTest {
                     UUID.randomUUID(), 1);
             AdvancePurchaseRequest.OrderRequest order = new AdvancePurchaseRequest.OrderRequest(
                     nonChildId, UUID.randomUUID(), BuyerType.TUTOR, "2026-10-10",
-                    RecessTime.FIRST_RECESS, List.of(item));
+                    RecessTime.FIRST_RECESS, List.of(item), null, null, null);
             AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
 
             Usuario parentUser = new Usuario();
@@ -308,7 +308,7 @@ class CreateAdvancePurchaseUseCaseTest {
                     UUID.randomUUID(), 1);
             AdvancePurchaseRequest.OrderRequest order = new AdvancePurchaseRequest.OrderRequest(
                     studentId, UUID.randomUUID(), BuyerType.TUTOR, "2026-10-10",
-                    RecessTime.FIRST_RECESS, List.of(item));
+                    RecessTime.FIRST_RECESS, List.of(item), null, null, null);
             AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
 
             Usuario adminUser = new Usuario();
@@ -328,7 +328,7 @@ class CreateAdvancePurchaseUseCaseTest {
                     UUID.randomUUID(), 1);
             AdvancePurchaseRequest.OrderRequest order = new AdvancePurchaseRequest.OrderRequest(
                     studentId, studentId, BuyerType.STUDENT, "2026-10-10",
-                    RecessTime.FIRST_RECESS, List.of(item));
+                    RecessTime.FIRST_RECESS, List.of(item), null, null, null);
             AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
 
             Usuario studentUser = new Usuario();
@@ -352,7 +352,7 @@ class CreateAdvancePurchaseUseCaseTest {
                     UUID.randomUUID(), 1);
             AdvancePurchaseRequest.OrderRequest order = new AdvancePurchaseRequest.OrderRequest(
                     studentId, studentId, BuyerType.STUDENT, "2026-10-10",
-                    RecessTime.FIRST_RECESS, List.of(item));
+                    RecessTime.FIRST_RECESS, List.of(item), null, null, null);
             AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
 
             Usuario studentUser = new Usuario();
@@ -377,7 +377,7 @@ class CreateAdvancePurchaseUseCaseTest {
                     UUID.randomUUID(), 1);
             AdvancePurchaseRequest.OrderRequest order = new AdvancePurchaseRequest.OrderRequest(
                     studentId, studentId, BuyerType.STUDENT, "2026-10-10",
-                    RecessTime.FIRST_RECESS, List.of(item));
+                    RecessTime.FIRST_RECESS, List.of(item), null, null, null);
             AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
 
             Usuario studentUser = new Usuario();
@@ -409,7 +409,7 @@ class CreateAdvancePurchaseUseCaseTest {
                     UUID.randomUUID(), 1);
             AdvancePurchaseRequest.OrderRequest order = new AdvancePurchaseRequest.OrderRequest(
                     studentId, studentId, BuyerType.STUDENT, "2026-06-14",
-                    RecessTime.FIRST_RECESS, List.of(item));
+                    RecessTime.FIRST_RECESS, List.of(item), null, null, null);
             AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
 
             Usuario studentUser = new Usuario();
@@ -451,7 +451,7 @@ class CreateAdvancePurchaseUseCaseTest {
                     UUID.randomUUID(), 1);
             AdvancePurchaseRequest.OrderRequest order = new AdvancePurchaseRequest.OrderRequest(
                     studentId, studentId, BuyerType.STUDENT, "2025-06-11",
-                    RecessTime.FIRST_RECESS, List.of(item));
+                    RecessTime.FIRST_RECESS, List.of(item), null, null, null);
             AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
 
             Usuario studentUser = new Usuario();
@@ -503,7 +503,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
             AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
                     studentId, studentId, BuyerType.STUDENT, testDate,
-                    RecessTime.FIRST_RECESS, List.of(itemRequest));
+                    RecessTime.FIRST_RECESS, List.of(itemRequest), null, null, null);
             AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
             Alumno student = new Alumno();
@@ -562,7 +562,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
             AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
                     studentId, studentId, BuyerType.STUDENT, testDate,
-                    RecessTime.FIRST_RECESS, List.of(itemRequest));
+                    RecessTime.FIRST_RECESS, List.of(itemRequest), null, null, null);
             AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(orderRequest));
 
             Alumno student = new Alumno();

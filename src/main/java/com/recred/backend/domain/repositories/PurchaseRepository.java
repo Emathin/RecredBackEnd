@@ -58,4 +58,6 @@ public interface PurchaseRepository {
             EstadoRetiro estadoRetiro,
             UUID franjaId,
             String search);
+
+    long countHealthyPurchasesByAlumno(UUID alumnoId, LocalDateTime since);
 }

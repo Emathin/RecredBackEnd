@@ -17,8 +17,8 @@ import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
 @Component
 public class FirebasePushNotificationSender implements PushNotificationSender {
 
@@ -29,6 +29,7 @@ public class FirebasePushNotificationSender implements PushNotificationSender {
     private final UserDeviceTokenRepository userDeviceTokenRepository;
 
     public FirebasePushNotificationSender(
+            @Autowired(required = false)
             Optional<FirebaseApp> firebaseApp,
             UserDeviceTokenRepository userDeviceTokenRepository
     ) {
@@ -43,7 +44,6 @@ public class FirebasePushNotificationSender implements PushNotificationSender {
                     + "Se omite el envío de la notificación.");
             return;
         }
-
         List<String> tokens = userDeviceTokenRepository.findActiveTokensByUserId(
                 notification.userId());
 
@@ -52,14 +52,18 @@ public class FirebasePushNotificationSender implements PushNotificationSender {
             return;
         }
 
-        MulticastMessage message = MulticastMessage.builder()
-                .addAllTokens(tokens) 
-                .setNotification(Notification.builder()
-                        .setTitle(notification.title())
-                        .setBody(notification.message())
-                        .build())
-                .putAllData(data(notification))
-                .build();
+        MulticastMessage.Builder builder = MulticastMessage.builder()
+                .addAllTokens(tokens)
+                .putAllData(data(notification));
+
+        if (notification.title() != null || notification.message() != null) {
+            builder.setNotification(Notification.builder()
+                    .setTitle(notification.title())
+                    .setBody(notification.message())
+                    .build());
+        }
+
+        MulticastMessage message = builder.build();
 
         try {
             FirebaseMessaging messaging = FirebaseMessaging.getInstance(firebaseApp.get());

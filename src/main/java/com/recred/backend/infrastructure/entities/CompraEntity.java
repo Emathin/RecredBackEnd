@@ -76,6 +76,9 @@ public abstract class CompraEntity {
     @Column(name = "fecha_hora", nullable = false)
     private LocalDateTime fechaHora;
 
+    @Column(name = "suggestion_id")
+    private UUID suggestionId;
+
     @CreationTimestamp
     @Column(name = "creado_en", updatable = false)
     private LocalDateTime creadoEn;
@@ -100,6 +103,7 @@ public abstract class CompraEntity {
         domain.setStatus(this.estado);
         domain.setPaymentMethod(this.medioPago);
         domain.setDate(this.fechaHora);
+        domain.setSuggestionId(this.suggestionId);
         domain.setTipo(this.tipo);
         if (this.buffetEntity != null) {
             domain.setBuffetId(this.buffetEntity.getId());
@@ -125,6 +129,10 @@ public abstract class CompraEntity {
 
         if (this.alumnoEntity != null) {
             domain.setStudent(this.alumnoEntity.toDomain());
+        }
+
+        if (this.tutorEntity != null) {
+            domain.setTutorId(this.tutorEntity.getId());
         }
 
         if (this.detalles != null) {

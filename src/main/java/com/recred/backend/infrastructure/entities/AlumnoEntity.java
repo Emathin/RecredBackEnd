@@ -84,6 +84,9 @@ public class AlumnoEntity {
     )
     private Set<ProductoEntity> productosBloqueados = new HashSet<>();
 
+    @Column(name = "puntos_recompensa", nullable = false)
+    private Integer puntosRecompensa = 0;
+
     public Alumno toDomain() {
         Alumno alumnoDominio = new Alumno();
 
@@ -165,6 +168,9 @@ public class AlumnoEntity {
             alumnoDominio.setProductosBloqueados(new HashSet<>());
         }
 
+        alumnoDominio.setPuntosRecompensa(this.puntosRecompensa != null
+                ? this.puntosRecompensa : 0);
+
         return alumnoDominio;
     }
 
@@ -243,6 +249,9 @@ public class AlumnoEntity {
                     .collect(Collectors.toSet());
             entity.setProductosBloqueados(bloqueadosProxies);
         }
+
+        entity.setPuntosRecompensa(alumno.getPuntosRecompensa() != null
+                ? alumno.getPuntosRecompensa() : 0);
 
         return entity;
     }

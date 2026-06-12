@@ -216,6 +216,9 @@ public class CreateAdvancePurchase {
                     pickupDate
             );
 
+            purchase.setSuggestionId(orderRequest.suggestionId());
+            purchase.setTutorId(orderRequest.tutorId());
+
             purchaseValidator.validate(purchase);
 
             BigDecimal total = calculateTotal(items);
