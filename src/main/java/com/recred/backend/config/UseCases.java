@@ -79,6 +79,9 @@ import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdatePurchaseStatus;
 import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.application.SaveCarritoFavorito;
+import com.recred.backend.application.GetCarritosFavoritosByTutor;
+import com.recred.backend.application.DeleteCarritoFavorito;
 import com.recred.backend.domain.events.ProductPriceChangedPublisher;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -121,6 +124,7 @@ import com.recred.backend.domain.repositories.SummaryRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.repositories.CarritoFavoritoRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
 import com.recred.backend.domain.services.ExternalPaymentService;
@@ -903,5 +907,45 @@ public class UseCases {
     @Bean
     public GetPromotionById getPromotionById(PromotionRepository promotionRepository) {
         return new GetPromotionById(promotionRepository);
+    }
+
+    @Bean
+    public SaveCarritoFavorito saveCarritoFavorito(
+            CarritoFavoritoRepository carritoFavoritoRepository,
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            AlumnoRepository alumnoRepository,
+            ProductRepository productRepository) {
+        return new SaveCarritoFavorito(
+                carritoFavoritoRepository,
+                usuarioRepository,
+                tutorRepository,
+                alumnoRepository,
+                productRepository
+        );
+    }
+
+    @Bean
+    public GetCarritosFavoritosByTutor getCarritosFavoritosByTutor(
+            CarritoFavoritoRepository carritoFavoritoRepository,
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository) {
+        return new GetCarritosFavoritosByTutor(
+                carritoFavoritoRepository,
+                usuarioRepository,
+                tutorRepository
+        );
+    }
+
+    @Bean
+    public DeleteCarritoFavorito deleteCarritoFavorito(
+            CarritoFavoritoRepository carritoFavoritoRepository,
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository) {
+        return new DeleteCarritoFavorito(
+                carritoFavoritoRepository,
+                usuarioRepository,
+                tutorRepository
+        );
     }
 }
