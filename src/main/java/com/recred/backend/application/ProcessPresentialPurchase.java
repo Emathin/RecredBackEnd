@@ -23,23 +23,40 @@ public class ProcessPresentialPurchase {
     private final WalletRepository walletRepository;
     private final PurchaseRepository purchaseRepository;
     private final PurchaseValidator purchaseValidator;
+    private final com.recred.backend.domain.repositories.UsuarioRepository usuarioRepository;
+    private final com.recred.backend.domain.repositories.KiosqueroRepository kiosqueroRepository;
 
     public ProcessPresentialPurchase(AlumnoRepository studentRepository,
                                      WalletRepository walletRepository,
                                      PurchaseRepository purchaseRepository,
-                                     PurchaseValidator purchaseValidator) {
+                                     PurchaseValidator purchaseValidator,
+                                     com.recred.backend.domain.repositories.UsuarioRepository
+                                             usuarioRepository,
+                                     com.recred.backend.domain.repositories.KiosqueroRepository
+                                             kiosqueroRepository) {
 
         this.studentRepository = studentRepository;
         this.walletRepository = walletRepository;
         this.purchaseRepository = purchaseRepository;
         this.purchaseValidator = purchaseValidator;
+        this.usuarioRepository = usuarioRepository;
+        this.kiosqueroRepository = kiosqueroRepository;
     }
 
-    public Purchase execute(UUID studentId, Map<Producto, Integer> cart) {
-        return execute(studentId, cart, null);
-    }
+    public Purchase execute(UUID studentId, Map<Producto, Integer> cart, String cognitoSub) {
 
-    public Purchase execute(UUID studentId, Map<Producto, Integer> cart, UUID buffetId) {
+        com.recred.backend.domain.models.Usuario usuario = usuarioRepository
+                .findByIdCognito(cognitoSub)
+                .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
+
+        if (usuario.getRol() != com.recred.backend.domain.models.RolUsuario.VENDEDOR) {
+            throw new SecurityException("Sólo un kiosquero puede realizar una venta espontánea");
+        }
+
+        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(usuario.getId());
+        if (buffetId == null) {
+            throw new IllegalStateException("El kiosquero no tiene un buffet asociado");
+        }
 
         Alumno student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
