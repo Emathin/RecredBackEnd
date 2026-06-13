@@ -432,6 +432,10 @@ class CreateAdvancePurchaseUseCaseTest {
             franja.setDescripcion("Primer Recreo");
             franja.setHoraInicio(java.time.LocalTime.of(9, 30));
 
+            Producto mockProduct = new Producto();
+            mockProduct.setId(item.productId());
+
+            when(productRepository.findById(item.productId())).thenReturn(Optional.of(mockProduct));
             when(usuarioRepository.findByIdCognito("test-user")).thenReturn(Optional.of(studentUser));
             when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
             when(springDataBuffetRepository
@@ -439,6 +443,8 @@ class CreateAdvancePurchaseUseCaseTest {
                     .thenReturn(Optional.of(buffet));
             when(franjaHorariaRepository.findAllByColegioId(colegio.getId()))
                     .thenReturn(List.of(franja));
+            doThrow(new IllegalArgumentException("Ventas no permitidas los fines de semana"))
+                    .when(purchaseValidator).validate(any());
 
             assertThrows(IllegalArgumentException.class, () ->
                     createAdvancePurchase.execute(request, "test-user"));

@@ -90,8 +90,8 @@ class ValidadorCalendarioServiceTest {
         buffet.setColegio(colegio);
         buffet.setPermitirVentasFeriados(false);
         
-        LocalDate feriado = LocalDate.of(2026, 6, 20);
-        SchoolCalendarEvent event = new SchoolCalendarEvent(feriado, TipoDiaEscolar.FERIADO, "Dia de la Bandera");
+        LocalDate feriado = LocalDate.of(2026, 6, 17);
+        SchoolCalendarEvent event = new SchoolCalendarEvent(feriado, TipoDiaEscolar.FERIADO, "Dia de Guemes");
         
         when(schoolCalendarRepository.findByColegioIdAndFecha(colegioId, feriado))
                 .thenReturn(Optional.of(event));
@@ -108,8 +108,8 @@ class ValidadorCalendarioServiceTest {
         buffet.setColegio(colegio);
         buffet.setPermitirVentasFeriados(true);
         
-        LocalDate feriado = LocalDate.of(2026, 6, 20);
-        SchoolCalendarEvent event = new SchoolCalendarEvent(feriado, TipoDiaEscolar.FERIADO, "Dia de la Bandera");
+        LocalDate feriado = LocalDate.of(2026, 6, 17);
+        SchoolCalendarEvent event = new SchoolCalendarEvent(feriado, TipoDiaEscolar.FERIADO, "Dia de Guemes");
         
         when(schoolCalendarRepository.findByColegioIdAndFecha(colegioId, feriado))
                 .thenReturn(Optional.of(event));

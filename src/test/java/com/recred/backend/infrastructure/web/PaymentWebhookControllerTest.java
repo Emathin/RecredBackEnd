@@ -24,6 +24,9 @@ class PaymentWebhookControllerTest {
     private ConfirmPaymentAndCredit confirmPaymentAndCredit;
 
     @Mock
+    private com.recred.backend.application.ConfirmPurchasePayment confirmPurchasePayment;
+
+    @Mock
     private ExternalPaymentService externalPaymentService;
 
     @InjectMocks
