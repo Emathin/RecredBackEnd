@@ -106,7 +106,7 @@ class ProcessPresentialPurchaseTest {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        useCase.execute(studentId, cart, cognitoSub);
+        useCase.execute(studentId, cart, cognitoSub, com.recred.backend.domain.models.MedioPago.CREDITOS);
 
         verify(purchaseValidator).validate(any(Purchase.class));
 
@@ -126,7 +126,7 @@ class ProcessPresentialPurchaseTest {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        useCase.execute(studentId, cart, cognitoSub);
+        useCase.execute(studentId, cart, cognitoSub, com.recred.backend.domain.models.MedioPago.CREDITOS);
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
@@ -141,7 +141,7 @@ class ProcessPresentialPurchaseTest {
                 .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
 
-        assertThrows(AlumnoNoEncontradoException.class, () -> useCase.execute(studentId, cart, cognitoSub));
+        assertThrows(AlumnoNoEncontradoException.class, () -> useCase.execute(studentId, cart, cognitoSub, com.recred.backend.domain.models.MedioPago.CREDITOS));
 
         verifyNoInteractions(
                 purchaseValidator,
@@ -160,7 +160,7 @@ class ProcessPresentialPurchaseTest {
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
         assertThrows(InsufficientBalanceException.class,
-                () -> useCase.execute(studentId, cart, cognitoSub));
+                () -> useCase.execute(studentId, cart, cognitoSub, com.recred.backend.domain.models.MedioPago.CREDITOS));
 
         verify(purchaseValidator).validate(any(Purchase.class));
         verify(walletRepository, never()).save(any());
@@ -177,7 +177,7 @@ class ProcessPresentialPurchaseTest {
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
 
         assertThrows(IllegalStateException.class,
-                () -> useCase.execute(studentId, cart, cognitoSub));
+                () -> useCase.execute(studentId, cart, cognitoSub, com.recred.backend.domain.models.MedioPago.CREDITOS));
 
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
@@ -194,7 +194,7 @@ class ProcessPresentialPurchaseTest {
                 .when(purchaseValidator)
                 .validate(any(Purchase.class));
 
-        assertThrows(RestriccionSaludException.class, () -> useCase.execute(studentId, cart, cognitoSub));
+        assertThrows(RestriccionSaludException.class, () -> useCase.execute(studentId, cart, cognitoSub, com.recred.backend.domain.models.MedioPago.CREDITOS));
 
         verifyNoInteractions(walletRepository, purchaseRepository);
     }
@@ -211,7 +211,7 @@ class ProcessPresentialPurchaseTest {
                 .validate(any(Purchase.class));
 
         assertThrows(RestriccionHorariaException.class,
-                () -> useCase.execute(studentId, cart, cognitoSub));
+                () -> useCase.execute(studentId, cart, cognitoSub, com.recred.backend.domain.models.MedioPago.CREDITOS));
 
         verifyNoInteractions(
                 walletRepository,

@@ -123,7 +123,7 @@ class PurchaseControllerTest {
 
         PurchaseItemDTO itemDTO = new PurchaseItemDTO(product.getId(), product.getNombre(),
                 1, product.getPrecio());
-        requestDTO = new ProcessPurchaseRequestDTO(studentId, Collections.singletonList(itemDTO));
+        requestDTO = new ProcessPurchaseRequestDTO(studentId, Collections.singletonList(itemDTO), "CREDITOS");
 
         Alumno student = new Alumno();
         student.setId(studentId);
@@ -133,7 +133,7 @@ class PurchaseControllerTest {
         purchase.setStatus(EstadoCompra.ENTREGADO);
         purchase.setDate(LocalDateTime.now());
 
-        when(processPresentialPurchase.execute(eq(studentId), anyMap(), any())).thenReturn(purchase);
+        when(processPresentialPurchase.execute(eq(studentId), anyMap(), any(), any())).thenReturn(purchase);
 
         AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest(productId, 1);
         AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
@@ -161,7 +161,7 @@ class PurchaseControllerTest {
                 .andExpect(jsonPath("$.id").value(purchaseId.toString()))
                 .andExpect(jsonPath("$.status").value(EstadoCompra.ENTREGADO.name()));
 
-        verify(processPresentialPurchase).execute(eq(studentId), anyMap(), eq("test-user"));
+        verify(processPresentialPurchase).execute(eq(studentId), anyMap(), eq("test-user"), any());
     }
 
     @Test
@@ -190,7 +190,7 @@ class PurchaseControllerTest {
     @Test
     void processPurchase_WhenStudentNotFound_ShouldReturnNotFound() throws Exception {
         doThrow(new AlumnoNoEncontradoException(studentId))
-                .when(processPresentialPurchase).execute(eq(studentId), anyMap(), any());
+                .when(processPresentialPurchase).execute(eq(studentId), anyMap(), any(), any());
 
         TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
         mockMvc.perform(post("/api/v1/purchases/presential")
@@ -204,7 +204,7 @@ class PurchaseControllerTest {
     void processPurchase_WhenInsufficientBalance_ShouldReturnBadRequest() throws Exception {
         doThrow(new InsufficientBalanceException(""))
                 .when(processPresentialPurchase)
-                .execute(eq(studentId), anyMap(), any());
+                .execute(eq(studentId), anyMap(), any(), any());
 
         TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
         mockMvc.perform(post("/api/v1/purchases/presential")

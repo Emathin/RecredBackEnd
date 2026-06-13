@@ -162,13 +162,6 @@ public class CreateAdvancePurchase {
                     "America/Argentina/Buenos_Aires");
             LocalDate today = LocalDate.now(zoneId);
 
-            java.time.DayOfWeek dayOfWeek = pickupDate.getDayOfWeek();
-            if (dayOfWeek == java.time.DayOfWeek.SATURDAY 
-                    || dayOfWeek == java.time.DayOfWeek.SUNDAY) {
-                throw new IllegalArgumentException(
-                        "No se pueden programar retiros para fines de semana");
-            }
-
             if (pickupDate.isBefore(today)) {
                 throw new IllegalArgumentException(
                         "La fecha de retiro no puede ser anterior a la fecha actual");

@@ -6,6 +6,7 @@ import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.UpdatePurchaseStatus;
+import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -67,9 +68,9 @@ public class PurchaseController {
                         PurchaseItemDTO::getQuantity
                 ));
 
-        com.recred.backend.domain.models.MedioPago medioPago = com.recred.backend.domain.models.MedioPago.CREDITOS;
+        MedioPago medioPago = MedioPago.CREDITOS;
         if (request.getPaymentMethod() != null) {
-            medioPago = com.recred.backend.domain.models.MedioPago.valueOf(request.getPaymentMethod());
+            medioPago = MedioPago.valueOf(request.getPaymentMethod());
         }
 
         Purchase purchase = processPresentialPurchase.execute(

@@ -5,12 +5,14 @@ import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.BuyerType;
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.services.ExternalPaymentService;
 import com.recred.backend.domain.services.PurchaseValidator;
 
 import java.math.BigDecimal;
@@ -46,7 +48,11 @@ public class ProcessPresentialPurchase {
         this.externalPaymentService = externalPaymentService;
     }
 
-    public Purchase execute(UUID studentId, Map<Producto, Integer> cart, String cognitoSub, MedioPago paymentMethod) {
+    public Purchase execute(
+            UUID studentId,
+            Map<Producto, Integer> cart,
+            String cognitoSub,
+            MedioPago paymentMethod) {
 
         com.recred.backend.domain.models.Usuario usuario = usuarioRepository
                 .findByIdCognito(cognitoSub)

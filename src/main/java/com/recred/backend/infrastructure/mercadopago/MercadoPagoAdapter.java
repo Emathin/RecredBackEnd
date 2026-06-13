@@ -11,6 +11,7 @@ import com.mercadopago.resources.preference.Preference;
 import com.recred.backend.config.MercadoPagoProperties;
 import com.recred.backend.domain.models.PaymentDetails;
 import com.recred.backend.domain.models.PaymentStatus;
+import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import org.springframework.stereotype.Service;
 
@@ -40,7 +41,10 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
 
     @Override
     public String createPurchasePreference(Purchase purchase) {
-        return createPreference("PURCHASE_" + purchase.getId(), "Compra en Buffet - RecreoPago", purchase.getTotalAmount());
+        return createPreference(
+                "PURCHASE_" + purchase.getId(),
+                "Compra en Buffet - RecreoPago",
+                purchase.getTotalAmount());
     }
 
     private String createPreference(String externalReference, String title, BigDecimal amount) {

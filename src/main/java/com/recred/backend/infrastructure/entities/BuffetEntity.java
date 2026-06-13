@@ -50,6 +50,14 @@ public class BuffetEntity {
     @Column(nullable = false)
     private Boolean activo = true;
 
+    @Column(name = "permitir_ventas_fin_de_semana", nullable = false, 
+            columnDefinition = "boolean default false")
+    private Boolean permitirVentasFinDeSemana = false;
+
+    @Column(name = "permitir_ventas_feriados", nullable = false, 
+            columnDefinition = "boolean default false")
+    private Boolean permitirVentasFeriados = false;
+
     @CreationTimestamp
     @Column(name = "creado_en", updatable = false)
     private LocalDateTime creadoEn;
@@ -65,6 +73,8 @@ public class BuffetEntity {
         buffet.setNombre(this.nombre);
         buffet.setFechaVencimientoHabilitacion(this.fechaVencimientoHabilitacion);
         buffet.setActivo(this.activo);
+        buffet.setPermitirVentasFinDeSemana(this.permitirVentasFinDeSemana);
+        buffet.setPermitirVentasFeriados(this.permitirVentasFeriados);
         buffet.setCreadoEn(this.creadoEn);
         buffet.setActualizadoEn(this.actualizadoEn);
 

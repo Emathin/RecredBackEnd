@@ -22,4 +22,10 @@ public class BuffetRepositoryImpl implements BuffetRepository {
         return springDataBuffetRepository.findByAlumnoId(alumnoId)
                 .map(BuffetEntity::toDomain);
     }
+
+    @Override
+    public Optional<Buffet> findById(UUID id) {
+        return springDataBuffetRepository.findById(id)
+                .map(BuffetEntity::toDomain);
+    }
 }

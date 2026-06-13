@@ -7,6 +7,8 @@ import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 public class ConfirmPaymentAndCredit {
 
     private final WalletRepository walletRepository;

@@ -34,4 +34,20 @@ public interface SchoolCalendarJpaRepository
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    @Override
+    @Query("""
+            select new com.recred.backend.domain.models.SchoolCalendarEvent(
+                calendarEvent.fecha,
+                calendarEvent.tipoDia,
+                calendarEvent.descripcion
+            )
+            from CalendarioEscolarEntity calendarEvent
+            where calendarEvent.colegioEntity.id = :colegioId
+            and calendarEvent.fecha = :fecha
+            """)
+    java.util.Optional<SchoolCalendarEvent> findByColegioIdAndFecha(
+            @Param("colegioId") UUID colegioId,
+            @Param("fecha") LocalDate fecha
+    );
 }

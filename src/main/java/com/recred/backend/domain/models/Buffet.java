@@ -21,6 +21,8 @@ public class Buffet {
     private String nombre;
     private LocalDate fechaVencimientoHabilitacion;
     private Boolean activo = true;
+    private Boolean permitirVentasFinDeSemana = false;
+    private Boolean permitirVentasFeriados = false;
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
 }

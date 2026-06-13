@@ -26,7 +26,8 @@ public class ConfirmPurchasePayment {
     public void execute(String paymentId) {
         PaymentDetails details = externalPaymentService.getPaymentDetails(paymentId);
 
-        if (details.status() == PaymentStatus.APPROVED && details.externalReference() != null) {
+        if (details.status() == PaymentStatus.APPROVED
+                && details.externalReference() != null) {
             if (details.externalReference().startsWith("PURCHASE_")) {
                 UUID purchaseId = UUID.fromString(details.externalReference().substring(9));
                 Purchase purchase = purchaseRepository.findById(purchaseId)
@@ -34,7 +35,7 @@ public class ConfirmPurchasePayment {
                                 "Compra no encontrada: " + purchaseId));
 
                 if (purchase.getStatus() == EstadoCompra.PENDIENTE) {
-                    // Si requiere preparacion, queda en PENDIENTE (ya está) pero marcada como pagada?
+                    // Si requiere preparacion, queda en PENDIENTE pero marcada como pagada?
                     // En este dominio, ENTREGADO significa que ya se le dio al alumno.
                     // Para venta espontanea, si no requiere preparacion, pasamos a ENTREGADO.
                     if (requiresPreparation(purchase)) {
@@ -42,8 +43,10 @@ public class ConfirmPurchasePayment {
                     } else {
                         // En venta espontanea, si ya pagó y no requiere preparación, se entrega.
                         // Pero quién lo entrega? El kiosquero. 
-                        // Tal vez deberíamos pasar a LISTO o simplemente dejar que el kiosquero lo entregue.
-                        // El usuario dijo "concluya", así que ENTREGADO parece bien si es presencial.
+                        // Tal vez deberíamos pasar a LISTO o simplemente dejar que el
+                        // kiosquero lo entregue.
+                        // El usuario dijo "concluya", así que ENTREGADO parece bien
+                        // si es presencial.
                         purchase.setStatus(EstadoCompra.ENTREGADO);
                     }
                     purchaseRepository.save(purchase);

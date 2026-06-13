@@ -14,9 +14,9 @@ import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.ConfirmPaymentAndCredit;
+import com.recred.backend.application.ConfirmPurchasePayment;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateAdvancePurchase;
-import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateTimeRestriction;
@@ -79,10 +79,10 @@ import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdatePurchaseStatus;
 import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.domain.events.ProductPriceChangedPublisher;
 import com.recred.backend.application.SaveCarritoFavorito;
 import com.recred.backend.application.GetCarritosFavoritosByTutor;
 import com.recred.backend.application.DeleteCarritoFavorito;
-import com.recred.backend.domain.events.ProductPriceChangedPublisher;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.BuffetRepository;
@@ -135,6 +135,7 @@ import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import com.recred.backend.domain.services.PurchaseAnalyzer;
 import com.recred.backend.domain.services.PurchaseValidator;
 import com.recred.backend.domain.services.PurchaseValidatorImpl;
+import com.recred.backend.domain.services.ValidadorCalendarioService;
 import com.recred.backend.domain.services.PushNotificationSender;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
@@ -181,28 +182,24 @@ public class UseCases {
     }
 
     @Bean
-    public PurchaseValidatorImpl purchaseValidatorImpl(
+    public ValidadorCalendarioService validadorCalendarioService(
+            SchoolCalendarRepository schoolCalendarRepository) {
+        return new ValidadorCalendarioService(schoolCalendarRepository);
+    }
+
+    @Bean
+    public PurchaseValidator purchaseValidator(
             ValidadorHorarioService validadorHorarioService,
             ValidacionRestriccionesService validacionRestriccionesService,
-            ValidadorPresupuestoService validadorPresupuestoService) {
-        return new PurchaseValidatorImpl(validadorHorarioService,
-                validacionRestriccionesService, validadorPresupuestoService);
-    }
-
-    @Bean
-    public LoadStockIAService loadStockIAService(GeminiTextClient geminiTextClient,
-            ObjectMapper objectMapper) {
-        return new LoadStockIAService(geminiTextClient, objectMapper);
-    }
-
-    @Bean
-    public GeneratePriceAlert generatePriceAlert(
-            StudentAIProfileRepository studentAIProfileRepository,
-            PriceAlertAIRepository priceAlertAIRepository,
-            SugerenciaIARepository sugerenciaIARepository,
-            Clock clock) {
-        return new GeneratePriceAlert(studentAIProfileRepository,
-                priceAlertAIRepository, sugerenciaIARepository, clock);
+            ValidadorPresupuestoService validadorPresupuestoService,
+            ValidadorCalendarioService validadorCalendarioService,
+            BuffetRepository buffetRepository) {
+        return new PurchaseValidatorImpl(
+                validadorHorarioService,
+                validacionRestriccionesService,
+                validadorPresupuestoService,
+                validadorCalendarioService,
+                buffetRepository);
     }
 
     @Bean
@@ -210,17 +207,6 @@ public class UseCases {
             ProductRepository productRepository,
             ProductPriceChangedPublisher eventPublisher) {
         return new UpdateProductPrice(productRepository, eventPublisher);
-    }
-
-    @Bean
-    public PurchaseValidator purchaseValidator(
-            ValidadorHorarioService validadorHorarioService,
-            ValidacionRestriccionesService validacionRestriccionesService,
-            ValidadorPresupuestoService validadorPresupuestoService) {
-        return new PurchaseValidatorImpl(
-                validadorHorarioService,
-                validacionRestriccionesService,
-                validadorPresupuestoService);
     }
 
     @Bean
@@ -715,6 +701,12 @@ public class UseCases {
     }
 
     @Bean
+    public LoadStockIAService loadStockIAService(GeminiTextClient geminiTextClient,
+            ObjectMapper objectMapper) {
+        return new LoadStockIAService(geminiTextClient, objectMapper);
+    }
+
+    @Bean
     public LoadStockIA loadStockIA(LoadStockIAService loadStockIAService) {
         return new LoadStockIA(loadStockIAService);
     }
@@ -753,6 +745,16 @@ public class UseCases {
     @Bean
     public DeleteProduct deleteProduct(ProductRepository productRepository) {
         return new DeleteProduct(productRepository);
+    }
+
+    @Bean
+    public GeneratePriceAlert generatePriceAlert(
+            StudentAIProfileRepository studentAIProfileRepository,
+            PriceAlertAIRepository priceAlertAIRepository,
+            SugerenciaIARepository sugerenciaIARepository,
+            Clock clock) {
+        return new GeneratePriceAlert(studentAIProfileRepository,
+                priceAlertAIRepository, sugerenciaIARepository, clock);
     }
 
     @Bean

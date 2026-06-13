@@ -35,7 +35,8 @@ class ConfirmPaymentAndCreditTest {
         String paymentId = "12345";
         UUID studentId = UUID.randomUUID();
         BigDecimal amount = new BigDecimal("1500.00");
-        PaymentDetails details = new PaymentDetails(paymentId, studentId, amount, PaymentStatus.APPROVED);
+        PaymentDetails details = new PaymentDetails(paymentId, "TOPUP_" + studentId, 
+                amount, PaymentStatus.APPROVED);
         
         Billetera wallet = new Billetera();
         wallet.setSaldoCreditos(BigDecimal.ZERO);
@@ -52,7 +53,7 @@ class ConfirmPaymentAndCreditTest {
     @Test
     void execute_NoHaceNada_CuandoPagoNoEstaAprobado() {
         String paymentId = "12345";
-        PaymentDetails details = new PaymentDetails(paymentId, UUID.randomUUID(), 
+        PaymentDetails details = new PaymentDetails(paymentId, "TOPUP_" + UUID.randomUUID(), 
                 new BigDecimal("1500.00"), PaymentStatus.PENDING);
 
         when(externalPaymentService.getPaymentDetails(paymentId)).thenReturn(details);
