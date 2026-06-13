@@ -41,6 +41,7 @@ import com.recred.backend.application.GeneratePurchaseRecommendation;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GenerateTopUpLink;
+import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetCartSuggestions;
 import com.recred.backend.application.GetFavoritosByAlumno;
@@ -703,6 +704,13 @@ public class UseCases {
     public DisableBudget disableBudget(
             PresupuestoRepository presupuestoRepository) {
         return new DisableBudget(presupuestoRepository);
+    }
+
+    @Bean
+    public CheckBudgetDates checkBudgetDates(
+            ProductRepository productRepository,
+            ValidadorPresupuestoService validadorPresupuestoService) {
+        return new CheckBudgetDates(productRepository, validadorPresupuestoService);
     }
 
     @Bean

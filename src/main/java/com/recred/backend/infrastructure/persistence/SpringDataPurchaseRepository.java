@@ -104,6 +104,29 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             @Param("fin") LocalDateTime fin
     );
 
+    @Query("SELECT COALESCE(SUM(c.montoTotal), 0) FROM CompraPresencialEntity c " +
+            "WHERE c.alumnoEntity.id = :alumnoId " +
+            "AND c.estado = :estado " +
+            "AND c.fechaHora BETWEEN :inicio AND :fin")
+    BigDecimal sumarGastosPresencialesEnRango(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("estado") EstadoCompra estado,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin
+    );
+
+    @Query("SELECT COALESCE(SUM(c.montoTotal), 0) FROM CompraAnticipadaEntity c " +
+            "JOIN c.retiroProgramadoEntity r " +
+            "WHERE c.alumnoEntity.id = :alumnoId " +
+            "AND c.estado IN :estados " +
+            "AND r.fechaProgramada BETWEEN :inicioDate AND :finDate")
+    BigDecimal sumarGastosAnticipadosEnRango(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("estados") List<EstadoCompra> estados,
+            @Param("inicioDate") LocalDate inicioDate,
+            @Param("finDate") LocalDate finDate
+    );
+
     @Query("SELECT COALESCE(SUM(d.subtotal), 0) FROM CompraEntity c " +
             "JOIN c.detalles d " +
             "JOIN d.productoEntity p " +
@@ -117,6 +140,37 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             @Param("categoriaId") UUID categoriaId,
             @Param("inicio") LocalDateTime inicio,
             @Param("fin") LocalDateTime fin
+    );
+
+    @Query("SELECT COALESCE(SUM(d.subtotal), 0) FROM CompraPresencialEntity c " +
+            "JOIN c.detalles d " +
+            "JOIN d.productoEntity p " +
+            "WHERE c.alumnoEntity.id = :alumnoId " +
+            "AND c.estado = :estado " +
+            "AND c.fechaHora BETWEEN :inicio AND :fin " +
+            "AND p.categoria.id = :categoriaId")
+    BigDecimal sumarGastosPresencialesPorCategoriaEnRango(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("estado") EstadoCompra estado,
+            @Param("categoriaId") UUID categoriaId,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin
+    );
+
+    @Query("SELECT COALESCE(SUM(d.subtotal), 0) FROM CompraAnticipadaEntity c " +
+            "JOIN c.retiroProgramadoEntity r " +
+            "JOIN c.detalles d " +
+            "JOIN d.productoEntity p " +
+            "WHERE c.alumnoEntity.id = :alumnoId " +
+            "AND c.estado IN :estados " +
+            "AND r.fechaProgramada BETWEEN :inicioDate AND :finDate " +
+            "AND p.categoria.id = :categoriaId")
+    BigDecimal sumarGastosAnticipadosPorCategoriaEnRango(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("estados") List<EstadoCompra> estados,
+            @Param("categoriaId") UUID categoriaId,
+            @Param("inicioDate") LocalDate inicioDate,
+            @Param("finDate") LocalDate finDate
     );
 
     @Query(""" 

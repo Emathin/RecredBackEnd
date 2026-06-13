@@ -7,6 +7,7 @@ import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.application.UpdateBudgetRulesCommand;
+import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,17 +31,20 @@ public class BudgetController {
     private final DisableBudget disableBudget;
     private final GetActiveBudgetByStudent getActiveBudgetByStudent;
     private final UpdateBudgetRules updateBudgetRules;
+    private final CheckBudgetDates checkBudgetDates;
 
     public BudgetController(CreateBudget createBudget,
                             UpdateBudget updateBudget,
                             DisableBudget disableBudget,
                             GetActiveBudgetByStudent getActiveBudgetByStudent,
-                            UpdateBudgetRules updateBudgetRules) {
+                            UpdateBudgetRules updateBudgetRules,
+                            CheckBudgetDates checkBudgetDates) {
         this.createBudget = createBudget;
         this.updateBudget = updateBudget;
         this.disableBudget = disableBudget;
         this.getActiveBudgetByStudent = getActiveBudgetByStudent;
         this.updateBudgetRules = updateBudgetRules;
+        this.checkBudgetDates = checkBudgetDates;
     }
 
     @PostMapping
@@ -54,6 +58,14 @@ public class BudgetController {
         return getActiveBudgetByStudent.execute(studentId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/student/{studentId}/check-dates")
+    public ResponseEntity<CheckBudgetDatesResponse> checkDates(
+            @PathVariable UUID studentId,
+            @RequestBody CheckBudgetDatesRequest request) {
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{budgetId}")
