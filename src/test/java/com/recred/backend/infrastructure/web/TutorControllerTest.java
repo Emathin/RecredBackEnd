@@ -47,6 +47,9 @@ class TutorControllerTest {
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
 
     @MockitoBean
+    private com.recred.backend.domain.services.UsuarioService usuarioService;
+
+    @MockitoBean
     private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @MockitoBean

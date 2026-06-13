@@ -133,7 +133,7 @@ class PurchaseControllerTest {
         purchase.setStatus(EstadoCompra.ENTREGADO);
         purchase.setDate(LocalDateTime.now());
 
-        when(processPresentialPurchase.execute(eq(studentId), anyMap())).thenReturn(purchase);
+        when(processPresentialPurchase.execute(eq(studentId), anyMap(), any())).thenReturn(purchase);
 
         AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest(productId, 1);
         AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
@@ -152,14 +152,16 @@ class PurchaseControllerTest {
 
     @Test
     void processPurchase_WithValidRequest_ShouldReturnOk() throws Exception {
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
         mockMvc.perform(post("/api/v1/purchases/presential")
+                        .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(purchaseId.toString()))
                 .andExpect(jsonPath("$.status").value(EstadoCompra.ENTREGADO.name()));
 
-        verify(processPresentialPurchase).execute(eq(studentId), anyMap());
+        verify(processPresentialPurchase).execute(eq(studentId), anyMap(), eq("test-user"));
     }
 
     @Test
@@ -171,23 +173,28 @@ class PurchaseControllerTest {
                 Collections.singletonMap(studentId, "ABC-123")
         );
 
-        when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class))).thenReturn(advancePurchaseResponse);
+        when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class), eq("test-user"))).thenReturn(advancePurchaseResponse);
+
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
 
         mockMvc.perform(post("/api/v1/purchases/advance")
+                        .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(advancePurchaseRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").value(purchaseId.toString()));
 
-        verify(createAdvancePurchase).execute(any(AdvancePurchaseRequest.class));
+        verify(createAdvancePurchase).execute(any(AdvancePurchaseRequest.class), eq("test-user"));
     }
 
     @Test
     void processPurchase_WhenStudentNotFound_ShouldReturnNotFound() throws Exception {
         doThrow(new AlumnoNoEncontradoException(studentId))
-                .when(processPresentialPurchase).execute(eq(studentId), anyMap());
+                .when(processPresentialPurchase).execute(eq(studentId), anyMap(), any());
 
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
         mockMvc.perform(post("/api/v1/purchases/presential")
+                        .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isNotFound());
@@ -197,9 +204,11 @@ class PurchaseControllerTest {
     void processPurchase_WhenInsufficientBalance_ShouldReturnBadRequest() throws Exception {
         doThrow(new InsufficientBalanceException(""))
                 .when(processPresentialPurchase)
-                .execute(eq(studentId), anyMap());
+                .execute(eq(studentId), anyMap(), any());
 
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
         mockMvc.perform(post("/api/v1/purchases/presential")
+                        .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isBadRequest());
@@ -218,8 +227,9 @@ class PurchaseControllerTest {
                 createAdvancePurchase
         );
 
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
         assertThrows(RuntimeException.class,
-                () -> controller.processPurchase(requestDTO));
+                () -> controller.processPurchase(requestDTO, authentication));
     }
 
     @Test

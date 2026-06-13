@@ -167,7 +167,7 @@ class PurchaseSuggestControllerTest {
 
         when(sugerenciaIARepository.findById(sugerenciaId)).thenReturn(Optional.of(sugerencia));
         when(usuarioService.obtenerUsuarioActual(anyString())).thenReturn(usuario);
-        when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class))).thenReturn(response);
+        when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class), anyString())).thenReturn(response);
 
         TestSuggestionRequest testRequest = new TestSuggestionRequest("user-123", sugerenciaId);
 

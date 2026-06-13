@@ -118,7 +118,7 @@ public class PurchaseSuggestController {
 
         AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
 
-        return ResponseEntity.ok(createAdvancePurchase.execute(request));
+        return ResponseEntity.ok(createAdvancePurchase.execute(request, subject));
     }
 
     private String cognitoSubject(Authentication authentication) {

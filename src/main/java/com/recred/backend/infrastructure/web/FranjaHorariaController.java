@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/colegios/{colegioId}/franjas-horarias")
+@RequestMapping("/api/v1/colegios/{colegioId}/franjas-horarias")
 public class FranjaHorariaController {
 
     private final GetTimeSlotsBySchool getTimeSlotsBySchool;

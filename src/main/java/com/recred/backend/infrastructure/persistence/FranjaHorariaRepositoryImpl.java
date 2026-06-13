@@ -28,6 +28,11 @@ public class FranjaHorariaRepositoryImpl implements FranjaHorariaRepository {
     }
 
     @Override
+    public java.util.Optional<FranjaHoraria> findById(UUID id) {
+        return springDataRepository.findById(id).map(FranjaHorariaEntity::toDomain);
+    }
+
+    @Override
     public FranjaHoraria save(FranjaHoraria franjaHoraria) {
         FranjaHorariaEntity entityExistente = null;
 

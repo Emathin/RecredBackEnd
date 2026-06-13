@@ -9,17 +9,22 @@ public record MenuProductoDTO(
         String descripcion,
         BigDecimal precio,
         Boolean bloqueado,
-        String motivoBloqueo
+        String motivoBloqueo,
+        CategoryDTO categoria
 ) {
-    public static MenuProductoDTO permitido(UUID id, String nombre,
-                                            String descripcion, BigDecimal precio) {
+    public record CategoryDTO(UUID id, String descripcion) {}
+
+    public static MenuProductoDTO permitido(
+            UUID id, String nombre, String descripcion,
+            BigDecimal precio, CategoryDTO categoria) {
         return new MenuProductoDTO(id, nombre, descripcion,
-                precio, false, null);
+                precio, false, null, categoria);
     }
 
-    public static MenuProductoDTO bloqueado(UUID id, String nombre, String descripcion,
-                                            BigDecimal precio, String motivo) {
+    public static MenuProductoDTO bloqueado(
+            UUID id, String nombre, String descripcion,
+            BigDecimal precio, String motivo, CategoryDTO categoria) {
         return new MenuProductoDTO(id, nombre, descripcion,
-                precio, true, motivo);
+                precio, true, motivo, categoria);
     }
 }

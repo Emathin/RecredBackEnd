@@ -85,6 +85,11 @@ public class GenerarMenuBuffet {
         final BigDecimal presupuestoFinalParaLambda = presupuestoGeneralDisponible;
 
         return catalogo.stream().map(producto -> {
+            MenuProductoDTO.CategoryDTO catDTO = producto.getCategoria() != null ?
+                    new MenuProductoDTO.CategoryDTO(
+                            producto.getCategoria().getId(),
+                            producto.getCategoria().getDescripcion())
+                    : null;
 
             boolean bloqueoManual = alumno.getProductosBloqueados() != null &&
                     alumno.getProductosBloqueados().stream().anyMatch(pb ->
@@ -92,20 +97,47 @@ public class GenerarMenuBuffet {
             if (bloqueoManual) {
                 return MenuProductoDTO.bloqueado(producto.getId(), producto.getNombre(),
                         producto.getDescripcion(), producto.getPrecio(),
-                        "Bloqueado por el tutor");
+                        "Bloqueado por el tutor", catDTO);
             }
 
-            if (alumno.getRestriccionesSalud() != null) {
-                String saludConflictos = alumno.getRestriccionesSalud().stream()
-                        .filter(restriccion -> producto.getClasificaciones().
-                                stream().anyMatch(c -> c.getId().equals(restriccion.getId())))
+            if (alumno.getRestriccionesSalud() != null
+                    && !alumno.getRestriccionesSalud().isEmpty()) {
+                List<String> saludConflictos = alumno.getRestriccionesSalud().stream()
+                        .filter(restriccion -> {
+                            String desc = restriccion.getDescripcion();
+                            boolean tieneClasif = producto.getClasificaciones().stream()
+                                    .anyMatch(c -> c.getId().equals(restriccion.getId()));
+                            
+                            if (desc.startsWith("Sin") || desc.contains("Vegano")) {
+                                return !tieneClasif; // Conflicto si no tiene la etiqueta apta
+                            } else {
+                                return tieneClasif; // Conflicto si contiene el ingrediente
+                            }
+                        })
                         .map(ClasificacionSalud::getDescripcion)
-                        .collect(Collectors.joining(", "));
+                        .toList();
 
                 if (!saludConflictos.isEmpty()) {
+                    String motivo = saludConflictos.stream()
+                            .map(conflict -> {
+                                if (conflict.equalsIgnoreCase("Sin TACC")) {
+                                    return "Gluten (TACC)";
+                                } else if (conflict.equalsIgnoreCase("Sin Sodio")) {
+                                    return "Alto Sodio";
+                                } else if (conflict.equalsIgnoreCase("Sin Azúcar")) {
+                                    return "Azúcar";
+                                } else if (conflict.equalsIgnoreCase("Apto Vegano")) {
+                                    return "Ingredientes de origen animal";
+                                } else if (conflict.equalsIgnoreCase("Contiene Lácteos")) {
+                                    return "Lácteos";
+                                } else {
+                                    return conflict;
+                                }
+                            })
+                            .collect(Collectors.joining(", "));
                     return MenuProductoDTO.bloqueado(producto.getId(), producto.getNombre(),
-                            producto.getDescripcion(), producto.getPrecio(), "Contiene: " +
-                                    saludConflictos);
+                            producto.getDescripcion(), producto.getPrecio(),
+                            "Contiene: " + motivo, catDTO);
                 }
             }
 
@@ -115,7 +147,7 @@ public class GenerarMenuBuffet {
                 if (fueraDeHorario) {
                     return MenuProductoDTO.bloqueado(producto.getId(), producto.getNombre(),
                             producto.getDescripcion(), producto.getPrecio(),
-                            "No permitido en este horario");
+                            "No permitido en este horario", catDTO);
                 }
             }
 
@@ -123,7 +155,7 @@ public class GenerarMenuBuffet {
                 if (producto.getPrecio().compareTo(presupuestoFinalParaLambda) > 0) {
                     return MenuProductoDTO.bloqueado(producto.getId(), producto.getNombre(),
                             producto.getDescripcion(), producto.getPrecio(),
-                            "Supera el límite de gasto");
+                            "Supera el límite de gasto", catDTO);
                 }
 
                 if (producto.getCategoria() != null && presupuestoCategoriaDisponible
@@ -133,13 +165,13 @@ public class GenerarMenuBuffet {
                     if (producto.getPrecio().compareTo(dispCat) > 0) {
                         return MenuProductoDTO.bloqueado(producto.getId(), producto.getNombre(),
                                 producto.getDescripcion(), producto.getPrecio(),
-                                "Supera límite de su categoría");
+                                "Supera límite de su categoría", catDTO);
                     }
                 }
             }
 
             return MenuProductoDTO.permitido(producto.getId(), producto.getNombre(),
-                    producto.getDescripcion(), producto.getPrecio());
+                    producto.getDescripcion(), producto.getPrecio(), catDTO);
 
         }).toList();
     }

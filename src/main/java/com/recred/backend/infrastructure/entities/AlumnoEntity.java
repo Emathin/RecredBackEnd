@@ -143,11 +143,7 @@ public class AlumnoEntity {
 
         if (this.restriccionesHorarias != null && !this.restriccionesHorarias.isEmpty()) {
             Set<RestriccionHoraria> horariasDominio = this.restriccionesHorarias.stream()
-                    .map(entity -> {
-                        RestriccionHoraria rh = new RestriccionHoraria();
-                        rh.setId(entity.getId());
-                        return rh;
-                    })
+                    .map(RestriccionHorariaEntity::toDomain)
                     .collect(Collectors.toSet());
             alumnoDominio.setRestriccionesHorarias(horariasDominio);
         } else {

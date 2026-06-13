@@ -15,6 +15,6 @@ public class GetTimeRestrictionsByStudent {
     }
 
     public List<RestriccionHoraria> execute(UUID studentId) {
-        return repository.findAllByAlumnoId(studentId);
+        return repository.findAllByAlumnoEntityId(studentId);
     }
 }

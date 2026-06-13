@@ -104,7 +104,13 @@ public abstract class CompraEntity {
         domain.setPaymentMethod(this.medioPago);
         domain.setDate(this.fechaHora);
         domain.setSuggestionId(this.suggestionId);
-        domain.setTipo(this.tipo);
+        if (this instanceof CompraAnticipadaEntity) {
+            domain.setTipo(TipoCompra.ANTICIPADA);
+        } else if (this instanceof CompraPresencialEntity) {
+            domain.setTipo(TipoCompra.PRESENCIAL);
+        } else {
+            domain.setTipo(this.tipo);
+        }
         if (this.buffetEntity != null) {
             domain.setBuffetId(this.buffetEntity.getId());
         }
@@ -121,6 +127,9 @@ public abstract class CompraEntity {
                             retiroProgramadoEntity.getFranja().getDescripcion() + " (" +
                             retiroProgramadoEntity.getFranja().getHoraInicio() + " - " +
                             retiroProgramadoEntity.getFranja().getHoraFin() + ")"
+                    );
+                    domain.setPickupSlotStartTime(
+                            retiroProgramadoEntity.getFranja().getHoraInicio()
                     );
                 }
                 domain.setWithdrawalStatus(retiroProgramadoEntity.getEstado());

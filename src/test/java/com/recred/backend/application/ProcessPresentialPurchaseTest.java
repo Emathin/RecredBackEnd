@@ -13,9 +13,11 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.repositories.UsuarioRepository;
+import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.services.PurchaseValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +27,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -34,7 +35,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -51,11 +51,11 @@ class ProcessPresentialPurchaseTest {
     @Mock
     private PurchaseRepository purchaseRepository;
     @Mock
-    private ValidadorHorarioService timeValidator;
+    private PurchaseValidator purchaseValidator;
     @Mock
-    private ValidacionRestriccionesService healthValidator;
+    private UsuarioRepository usuarioRepository;
     @Mock
-    private ValidadorPresupuestoService budgetValidator;
+    private KiosqueroRepository kiosqueroRepository;
 
     @InjectMocks
     private ProcessPresentialPurchase useCase;
@@ -66,6 +66,9 @@ class ProcessPresentialPurchaseTest {
     private Map<Producto, Integer> cart;
     private Producto product;
     private CategoriaProducto category;
+    private Usuario usuario;
+    private String cognitoSub = "mock-sub";
+    private UUID buffetId = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
@@ -88,31 +91,24 @@ class ProcessPresentialPurchaseTest {
 
         cart = new HashMap<>();
         cart.put(product, 2);
+
+        usuario = new Usuario();
+        usuario.setId(UUID.randomUUID());
+        usuario.setRol(RolUsuario.VENDEDOR);
     }
 
     @Test
     void execute_WithValidData_ShouldProcessPurchaseAndCallValidators() {
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        useCase.execute(studentId, cart);
+        useCase.execute(studentId, cart, cognitoSub);
 
-        verify(timeValidator).validarCompra(
-                eq(student),
-                eq(cart.keySet()),
-                any(LocalDateTime.class)
-        );
-        verify(healthValidator).validarCompra(student, cart.keySet());
-
-        Map<UUID, BigDecimal> expectedCategoryTotals = new HashMap<>();
-        expectedCategoryTotals.put(category.getId(), new BigDecimal("20.00"));
-
-        verify(budgetValidator).validarPresupuesto(
-                eq(studentId),
-                eq(new BigDecimal("20.00")),
-                eq(expectedCategoryTotals),
-                any(LocalDateTime.class)
-        );
+        verify(purchaseValidator).validate(any(Purchase.class));
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(walletRepository).save(any(Billetera.class));
@@ -123,10 +119,14 @@ class ProcessPresentialPurchaseTest {
     @Test
     void execute_WhenProductRequiresPreparation_ShouldSavePendingPurchase() {
         product.setRequierePreparacion(true);
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        useCase.execute(studentId, cart);
+        useCase.execute(studentId, cart, cognitoSub);
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
@@ -134,97 +134,50 @@ class ProcessPresentialPurchaseTest {
     }
 
     @Test
-    void execute_WhenProductHasNoCategory_ShouldValidateEmptyCategoryTotals() {
-        product.setCategoria(null);
-        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
-
-        useCase.execute(studentId, cart);
-
-        verify(budgetValidator).validarPresupuesto(
-                eq(studentId),
-                eq(new BigDecimal("20.00")),
-                eq(Map.of()),
-                any(LocalDateTime.class)
-        );
-    }
-
-    @Test
-    void execute_WhenProductCategoryHasNoId_ShouldValidateEmptyCategoryTotals() {
-        category.setId(null);
-        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
-
-        useCase.execute(studentId, cart);
-
-        verify(budgetValidator).validarPresupuesto(
-                eq(studentId),
-                eq(new BigDecimal("20.00")),
-                eq(Map.of()),
-                any(LocalDateTime.class)
-        );
-    }
-
-    @Test
-    void execute_WhenProductPriceIsNull_ShouldUseZeroTotals() {
-        product.setPrecio(null);
-        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
-
-        useCase.execute(studentId, cart);
-
-        Map<UUID, BigDecimal> expectedCategoryTotals = new HashMap<>();
-        expectedCategoryTotals.put(category.getId(), BigDecimal.ZERO);
-        verify(budgetValidator).validarPresupuesto(
-                eq(studentId),
-                eq(BigDecimal.ZERO),
-                eq(expectedCategoryTotals),
-                any(LocalDateTime.class)
-        );
-    }
-
-    @Test
     void execute_WhenStudentNotFound_ShouldThrowException() {
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
 
-        assertThrows(AlumnoNoEncontradoException.class, () -> useCase.execute(studentId, cart));
+        assertThrows(AlumnoNoEncontradoException.class, () -> useCase.execute(studentId, cart, cognitoSub));
 
         verifyNoInteractions(
-                timeValidator,
-                healthValidator,
-                budgetValidator,
+                purchaseValidator,
                 walletRepository,
-                purchaseRepository
-        );
+                purchaseRepository);
     }
 
     @Test
     void execute_WhenInsufficientBalance_ShouldThrowException() {
         wallet.setSaldoCreditos(new BigDecimal("10.00"));
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
         assertThrows(InsufficientBalanceException.class,
-                () -> useCase.execute(studentId, cart));
+                () -> useCase.execute(studentId, cart, cognitoSub));
 
-        verify(timeValidator).validarCompra(
-                eq(student),
-                eq(cart.keySet()),
-                any(LocalDateTime.class)
-        );
-        verify(healthValidator).validarCompra(student, cart.keySet());
-        verify(budgetValidator).validarPresupuesto(any(), any(), any(), any());
+        verify(purchaseValidator).validate(any(Purchase.class));
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
     }
 
     @Test
     void execute_WhenWalletNotFound_ShouldThrowException() {
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
 
         assertThrows(IllegalStateException.class,
-                () -> useCase.execute(studentId, cart));
+                () -> useCase.execute(studentId, cart, cognitoSub));
 
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
@@ -232,40 +185,36 @@ class ProcessPresentialPurchaseTest {
 
     @Test
     void execute_WhenHealthRestrictionFails_ShouldThrowException() {
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         doThrow(new RestriccionSaludException(""))
-                .when(healthValidator)
-                .validarCompra(student, cart.keySet());
+                .when(purchaseValidator)
+                .validate(any(Purchase.class));
 
-        assertThrows(RestriccionSaludException.class, () -> useCase.execute(studentId, cart));
+        assertThrows(RestriccionSaludException.class, () -> useCase.execute(studentId, cart, cognitoSub));
 
-        verify(timeValidator).validarCompra(
-                eq(student),
-                eq(cart.keySet()),
-                any(LocalDateTime.class)
-        );
-        verifyNoInteractions(budgetValidator, walletRepository, purchaseRepository);
+        verifyNoInteractions(walletRepository, purchaseRepository);
     }
 
     @Test
     void execute_WhenTimeRestrictionFails_ShouldThrowException() {
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByIdCognito(cognitoSub))
+                .thenReturn(Optional.of(usuario));
+        org.mockito.Mockito.lenient().when(kiosqueroRepository.findBuffetByUsuarioId(usuario.getId()))
+                .thenReturn(buffetId);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         doThrow(new RestriccionHorariaException(""))
-                .when(timeValidator)
-                .validarCompra(
-                        eq(student),
-                        eq(cart.keySet()),
-                        any(LocalDateTime.class)
-                );
+                .when(purchaseValidator)
+                .validate(any(Purchase.class));
 
         assertThrows(RestriccionHorariaException.class,
-                () -> useCase.execute(studentId, cart));
+                () -> useCase.execute(studentId, cart, cognitoSub));
 
         verifyNoInteractions(
-                healthValidator,
-                budgetValidator,
                 walletRepository,
-                purchaseRepository
-        );
+                purchaseRepository);
     }
 }

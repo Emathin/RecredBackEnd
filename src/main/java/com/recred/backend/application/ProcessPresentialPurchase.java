@@ -11,78 +11,62 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.PurchaseValidator;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public class ProcessPresentialPurchase {
 
     private final AlumnoRepository studentRepository;
     private final WalletRepository walletRepository;
     private final PurchaseRepository purchaseRepository;
-    private final ValidadorHorarioService timeValidator;
-    private final ValidacionRestriccionesService healthValidator;
-    private final ValidadorPresupuestoService budgetValidator;
+    private final PurchaseValidator purchaseValidator;
+    private final com.recred.backend.domain.repositories.UsuarioRepository usuarioRepository;
+    private final com.recred.backend.domain.repositories.KiosqueroRepository kiosqueroRepository;
 
     public ProcessPresentialPurchase(AlumnoRepository studentRepository,
                                      WalletRepository walletRepository,
                                      PurchaseRepository purchaseRepository,
-                                     ValidadorHorarioService timeValidator,
-                                     ValidacionRestriccionesService healthValidator,
-                                     ValidadorPresupuestoService budgetValidator) {
+                                     PurchaseValidator purchaseValidator,
+                                     com.recred.backend.domain.repositories.UsuarioRepository
+                                             usuarioRepository,
+                                     com.recred.backend.domain.repositories.KiosqueroRepository
+                                             kiosqueroRepository) {
 
         this.studentRepository = studentRepository;
         this.walletRepository = walletRepository;
         this.purchaseRepository = purchaseRepository;
-        this.timeValidator = timeValidator;
-        this.healthValidator = healthValidator;
-        this.budgetValidator = budgetValidator;
+        this.purchaseValidator = purchaseValidator;
+        this.usuarioRepository = usuarioRepository;
+        this.kiosqueroRepository = kiosqueroRepository;
     }
 
-    public Purchase execute(UUID studentId, Map<Producto, Integer> cart) {
-        return execute(studentId, cart, null);
-    }
+    public Purchase execute(UUID studentId, Map<Producto, Integer> cart, String cognitoSub) {
 
-    public Purchase execute(UUID studentId, Map<Producto, Integer> cart, UUID buffetId) {
+        com.recred.backend.domain.models.Usuario usuario = usuarioRepository
+                .findByIdCognito(cognitoSub)
+                .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
+
+        if (usuario.getRol() != com.recred.backend.domain.models.RolUsuario.VENDEDOR) {
+            throw new SecurityException("Sólo un kiosquero puede realizar una venta espontánea");
+        }
+
+        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(usuario.getId());
+        if (buffetId == null) {
+            throw new IllegalStateException("El kiosquero no tiene un buffet asociado");
+        }
 
         Alumno student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
 
-        LocalDateTime momentoCompra = LocalDateTime.now();
+        Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS, student.getId(),
+                BuyerType.STUDENT, buffetId);
 
-        timeValidator.validarCompra(student, cart.keySet(), momentoCompra);
-        healthValidator.validarCompra(student, cart.keySet());
+        purchaseValidator.validate(purchase);
 
-        BigDecimal montoTotalCarrito = calculateTotal(cart);
-
-        Map<UUID, BigDecimal> montosPorCategoria = cart.entrySet().stream()
-                .filter(entry -> entry.getKey().getCategoria() != null &&
-                        entry.getKey().getCategoria().getId() != null)
-                .collect(Collectors.groupingBy(
-                        entry -> entry.getKey().getCategoria().getId(),
-                        Collectors.reducing(
-                                BigDecimal.ZERO,
-                                entry -> {
-                                    BigDecimal precio = entry.getKey().getPrecio() != null ?
-                                            entry.getKey().getPrecio() : BigDecimal.ZERO;
-                                    return precio.multiply(new BigDecimal(entry.getValue()));
-                                },
-                                BigDecimal::add
-                        )
-                ));
-
-        budgetValidator.validarPresupuesto(
-                studentId,
-                montoTotalCarrito,
-                montosPorCategoria,
-                momentoCompra
-        );
+        BigDecimal montoTotalCarrito = purchase.getTotalAmount();
 
         Billetera wallet = walletRepository.findByStudentId(studentId)
                 .orElseThrow(() ->
@@ -95,20 +79,8 @@ public class ProcessPresentialPurchase {
 
         wallet.debit(montoTotalCarrito);
 
-        Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS, student.getId(),
-                BuyerType.STUDENT, buffetId);
 
         walletRepository.save(wallet);
         return purchaseRepository.save(purchase);
-    }
-
-    private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
-        return cart.entrySet().stream()
-                .map(entry -> {
-                    BigDecimal precio = entry.getKey().getPrecio() != null ?
-                            entry.getKey().getPrecio() : BigDecimal.ZERO;
-                    return precio.multiply(new BigDecimal(entry.getValue()));
-                })
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

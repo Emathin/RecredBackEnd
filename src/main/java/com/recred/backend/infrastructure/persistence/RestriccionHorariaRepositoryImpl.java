@@ -4,7 +4,7 @@ import com.recred.backend.domain.models.RestriccionHoraria;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
-import com.recred.backend.infrastructure.entities.ClasificacionTipoEntity;
+import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import com.recred.backend.infrastructure.entities.FranjaHorariaEntity;
 import com.recred.backend.infrastructure.entities.RestriccionHorariaEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
@@ -55,7 +55,7 @@ public class RestriccionHorariaRepositoryImpl implements
     }
 
     @Override
-    public List<RestriccionHoraria> findAllByAlumnoId(UUID alumnoId) {
+    public List<RestriccionHoraria> findAllByAlumnoEntityId(UUID alumnoId) {
         return springDataRepository.findAllByAlumnoEntityId(alumnoId).stream()
                 .map(RestriccionHorariaEntity::toDomain)
                 .collect(Collectors.toList());
@@ -93,15 +93,19 @@ public class RestriccionHorariaRepositoryImpl implements
             entity.setCategoria(null);
         }
 
-        if (domain.getClasificacion() != null) {
-            ClasificacionTipoEntity tipoEntity = new ClasificacionTipoEntity();
-            tipoEntity.setId(domain.getClasificacion().getId());
-            entity.setClasificacionTipoEntity(tipoEntity);
+        if (domain.getClasificacionSalud() != null) {
+            ClasificacionSaludEntity saludEntity = new ClasificacionSaludEntity();
+            saludEntity.setId(domain.getClasificacionSalud().getId());
+            entity.setClasificacionSaludEntity(saludEntity);
         } else {
-            entity.setClasificacionTipoEntity(null);
+            entity.setClasificacionSaludEntity(null);
         }
 
-        if (entity.getCreadoPorUsuarioEntity() == null) {
+        if (domain.getCreadoPorUsuarioId() != null) {
+            UsuarioEntity usuarioEntity = new UsuarioEntity();
+            usuarioEntity.setId(domain.getCreadoPorUsuarioId());
+            entity.setCreadoPorUsuarioEntity(usuarioEntity);
+        } else if (entity.getCreadoPorUsuarioEntity() == null) {
             UsuarioEntity usuarioDummy = new UsuarioEntity();
             usuarioDummy.setId(UUID.randomUUID());
             entity.setCreadoPorUsuarioEntity(usuarioDummy);
