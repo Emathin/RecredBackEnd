@@ -1,6 +1,7 @@
 package com.recred.backend.domain.services;
 
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.repositories.BuffetRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -38,7 +39,7 @@ public class PurchaseValidatorImpl implements PurchaseValidator {
                 ? purchase.getPickupDate()
                 : LocalDate.now();
 
-        if (purchase.getBuffetId() != null) {
+        if (purchase.getBuffetId() != null && purchase.getTipo() == TipoCompra.ANTICIPADA) {
             buffetRepository.findById(purchase.getBuffetId())
                     .ifPresent(buffet -> validadorCalendarioService
                             .validarVenta(buffet, fechaValidacion));
