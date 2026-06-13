@@ -99,4 +99,13 @@ public class GenerateProductChangeRecommendation {
         return aiEventRepository.findLatestProductChangeRecommendation(buffetId);
     }
 
+    @Transactional(readOnly = true)
+    public List<ProductRecommendationResult> findAllResultsByUsuarioId(UUID usuarioId) {
+        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(usuarioId);
+        if (buffetId == null) {
+            throw new KiosqueroNotFoundException(usuarioId);
+        }
+        return aiEventRepository.findAllProductChangeRecommendations(buffetId);
+    }
+
 }

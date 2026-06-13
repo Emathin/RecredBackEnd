@@ -55,6 +55,16 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         ).map(this::mapToResult);
     }
 
+    @Override
+    public List<ProductRecommendationResult> findAllProductChangeRecommendations(
+            UUID buffetId
+    ) {
+        return aiEventJpaRepository.findAllByTypeAndBuffetEntityIdOrderByCreatedAtDesc(
+                AIEventType.PRODUCTO_CAMBIO,
+                buffetId
+        ).stream().map(this::mapToResult).toList();
+    }
+
     private ProductRecommendationResult mapToResult(AIEventEntity entity) {
         ProductChangeRecommendation recommendation = new ProductChangeRecommendation();
         recommendation.setId(entity.getProductoEntity().getId());

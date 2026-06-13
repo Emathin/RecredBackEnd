@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -31,6 +32,19 @@ public class ProductChangeController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
 
+    }
+
+    @GetMapping("/{idUsuario}/lista-sugerencia-cambio-producto")
+    public ResponseEntity<List<ProductChangeRecommendationResponse>> findAllProductChangeRecommendations(
+            @PathVariable("idUsuario") UUID usuarioId
+    ) {
+        List<ProductChangeRecommendationResponse> responses = generateProductChangeRecommendation
+                .findAllResultsByUsuarioId(usuarioId)
+                .stream()
+                .map(ProductChangeRecommendationResponse::fromDomain)
+                .toList();
+
+        return ResponseEntity.ok(responses);
     }
 
     @PostMapping("/{idUsuario}/sugerencia-cambio-producto")

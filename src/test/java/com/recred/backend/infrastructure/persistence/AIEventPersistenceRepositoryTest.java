@@ -70,6 +70,33 @@ class AIEventPersistenceRepositoryTest {
         assertEquals("gemini-test", aiAnalysis.get("modelo"));
     }
 
+    @Test
+    void findAllProductChangeRecommendations() {
+        UUID buffetId = UUID.randomUUID();
+        AIEventPersistenceRepository repository = new AIEventPersistenceRepository(
+                aiEventJpaRepository,
+                entityManager
+        );
+
+        AIEventEntity event1 = new AIEventEntity();
+        event1.setResultData(Map.of());
+        event1.setInputData(Map.of("nombre", "Producto 1", "precio", 10.0));
+        ProductoEntity p1 = new ProductoEntity();
+        p1.setId(UUID.randomUUID());
+        event1.setProductoEntity(p1);
+        BuffetEntity b1 = new BuffetEntity();
+        b1.setId(buffetId);
+        event1.setBuffetEntity(b1);
+
+        when(aiEventJpaRepository.findAllByTypeAndBuffetEntityIdOrderByCreatedAtDesc(
+                AIEventType.PRODUCTO_CAMBIO, buffetId))
+                .thenReturn(List.of(event1));
+
+        List<ProductRecommendationResult> results = repository.findAllProductChangeRecommendations(buffetId);
+        assertEquals(1, results.size());
+        assertEquals("Producto 1", results.get(0).getProductChangeRecommendation().getNombre());
+    }
+
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> categories(AIEventEntity event) {
         return (List<Map<String, Object>>) event.getResultData()
