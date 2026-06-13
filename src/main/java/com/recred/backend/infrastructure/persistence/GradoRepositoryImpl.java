@@ -5,6 +5,7 @@ import com.recred.backend.domain.repositories.GradoRepository;
 import com.recred.backend.infrastructure.entities.GradoEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,5 +22,14 @@ public class GradoRepositoryImpl implements GradoRepository {
     public Optional<Grado> findById(UUID id) {
         return springDataGradoRepository.findById(id)
                 .map(GradoEntity::toDomain);
+    }
+
+    @Override
+    public List<Grado> findAllActiveByColegioId(UUID colegioId) {
+        return springDataGradoRepository
+                .findByColegioEntityIdAndActivoTrueOrderByAnioAscDivisionAsc(colegioId)
+                .stream()
+                .map(GradoEntity::toDomain)
+                .toList();
     }
 }

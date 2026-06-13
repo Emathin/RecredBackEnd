@@ -84,7 +84,7 @@ public class AlumnoEntity {
     )
     private Set<ProductoEntity> productosBloqueados = new HashSet<>();
 
-    @Column(name = "puntos_recompensa", nullable = false)
+    @Column(name = "puntos_recompensa", nullable = true)
     private Integer puntosRecompensa = 0;
 
     public Alumno toDomain() {
