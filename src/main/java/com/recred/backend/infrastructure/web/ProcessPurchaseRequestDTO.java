@@ -15,4 +15,5 @@ import java.util.UUID;
 public class ProcessPurchaseRequestDTO {
     private UUID studentId;
     private List<PurchaseItemDTO> items;
+    private String paymentMethod;
 }

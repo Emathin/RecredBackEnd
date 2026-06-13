@@ -35,17 +35,26 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
 
     @Override
     public String createTopUpPreference(UUID studentId, BigDecimal amount) {
+        return createPreference("TOPUP_" + studentId, "Carga de Saldo - RecreoPago", amount);
+    }
+
+    @Override
+    public String createPurchasePreference(Purchase purchase) {
+        return createPreference("PURCHASE_" + purchase.getId(), "Compra en Buffet - RecreoPago", purchase.getTotalAmount());
+    }
+
+    private String createPreference(String externalReference, String title, BigDecimal amount) {
         try {
             String successUrl = properties.getSuccessUrl().trim();
-            String notificationUrl = properties.getNotificationUrl().trim() 
+            String notificationUrl = properties.getNotificationUrl().trim()
                     + "?source_news=webhooks";
 
             PreferenceClient client = new PreferenceClient();
 
             PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
-                    .id(studentId.toString())
-                    .title("Carga de Saldo - RecreoPago")
-                    .description("Acreditacion de saldo para consumo escolar")
+                    .id(externalReference)
+                    .title(title)
+                    .description("Transaccion procesada por RecreoPago")
                     .quantity(1)
                     .currencyId("ARS")
                     .unitPrice(amount)
@@ -65,7 +74,7 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
                     .autoReturn("approved")
                     .backUrls(backUrls)
                     .notificationUrl(notificationUrl)
-                    .externalReference(studentId.toString())
+                    .externalReference(externalReference)
                     .build();
 
             Preference preference = client.create(preferenceRequest);
@@ -82,6 +91,7 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
 
     @Override
     public boolean isValidSignature(String signature, String requestId, String paymentId) {
+        // ... (existing code remains same)
         if (signature == null || requestId == null || paymentId == null) {
             return false;
         }
@@ -140,7 +150,7 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
             PaymentClient client = new PaymentClient();
             Payment payment = client.get(Long.parseLong(paymentId));
 
-            UUID studentId = UUID.fromString(payment.getExternalReference());
+            String externalReference = payment.getExternalReference();
 
             PaymentStatus status = switch (payment.getStatus()) {
                 case "approved" -> PaymentStatus.APPROVED;
@@ -154,7 +164,7 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
 
             return new PaymentDetails(
                     paymentId,
-                    studentId,
+                    externalReference,
                     payment.getTransactionAmount(),
                     status
             );

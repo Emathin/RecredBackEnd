@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public record PaymentDetails(
     String paymentId,
-    UUID studentId,
+    String externalReference,
     BigDecimal amount,
     PaymentStatus status
 ) {

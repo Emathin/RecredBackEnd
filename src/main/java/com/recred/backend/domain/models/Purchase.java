@@ -35,6 +35,7 @@ public class Purchase {
     private EstadoRetiro withdrawalStatus;
     private UUID suggestionId;
     private UUID tutorId;
+    private String paymentUrl;
 
     private Map<Producto, Integer> items = new HashMap<>();
 

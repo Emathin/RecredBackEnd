@@ -1,5 +1,6 @@
 package com.recred.backend.domain.models;
 
 public enum MedioPago {
-    CREDITOS
+    CREDITOS,
+    MERCADO_PAGO
 }

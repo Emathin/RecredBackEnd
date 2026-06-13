@@ -448,14 +448,23 @@ public class UseCases {
             PurchaseRepository purchaseRepository,
             PurchaseValidator purchaseValidator,
             UsuarioRepository usuarioRepository,
-            KiosqueroRepository kiosqueroRepository) {
+            KiosqueroRepository kiosqueroRepository,
+            ExternalPaymentService externalPaymentService) {
         return new ProcessPresentialPurchase(
                 studentRepository,
                 walletRepository,
                 purchaseRepository,
                 purchaseValidator,
                 usuarioRepository,
-                kiosqueroRepository);
+                kiosqueroRepository,
+                externalPaymentService);
+    }
+
+    @Bean
+    public ConfirmPurchasePayment confirmPurchasePayment(
+            PurchaseRepository purchaseRepository,
+            ExternalPaymentService externalPaymentService) {
+        return new ConfirmPurchasePayment(purchaseRepository, externalPaymentService);
     }
 
     @Bean

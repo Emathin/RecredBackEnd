@@ -25,6 +25,7 @@ public class ProcessPresentialPurchase {
     private final PurchaseValidator purchaseValidator;
     private final com.recred.backend.domain.repositories.UsuarioRepository usuarioRepository;
     private final com.recred.backend.domain.repositories.KiosqueroRepository kiosqueroRepository;
+    private final ExternalPaymentService externalPaymentService;
 
     public ProcessPresentialPurchase(AlumnoRepository studentRepository,
                                      WalletRepository walletRepository,
@@ -33,7 +34,8 @@ public class ProcessPresentialPurchase {
                                      com.recred.backend.domain.repositories.UsuarioRepository
                                              usuarioRepository,
                                      com.recred.backend.domain.repositories.KiosqueroRepository
-                                             kiosqueroRepository) {
+                                             kiosqueroRepository,
+                                     ExternalPaymentService externalPaymentService) {
 
         this.studentRepository = studentRepository;
         this.walletRepository = walletRepository;
@@ -41,9 +43,10 @@ public class ProcessPresentialPurchase {
         this.purchaseValidator = purchaseValidator;
         this.usuarioRepository = usuarioRepository;
         this.kiosqueroRepository = kiosqueroRepository;
+        this.externalPaymentService = externalPaymentService;
     }
 
-    public Purchase execute(UUID studentId, Map<Producto, Integer> cart, String cognitoSub) {
+    public Purchase execute(UUID studentId, Map<Producto, Integer> cart, String cognitoSub, MedioPago paymentMethod) {
 
         com.recred.backend.domain.models.Usuario usuario = usuarioRepository
                 .findByIdCognito(cognitoSub)
@@ -61,26 +64,34 @@ public class ProcessPresentialPurchase {
         Alumno student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
 
-        Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS, student.getId(),
+        Purchase purchase = new Purchase(student, cart, paymentMethod, student.getId(),
                 BuyerType.STUDENT, buffetId);
 
         purchaseValidator.validate(purchase);
 
         BigDecimal montoTotalCarrito = purchase.getTotalAmount();
 
-        Billetera wallet = walletRepository.findByStudentId(studentId)
-                .orElseThrow(() ->
-                        new IllegalStateException("Student wallet not found: " + studentId));
+        if (paymentMethod == MedioPago.CREDITOS) {
+            Billetera wallet = walletRepository.findByStudentId(studentId)
+                    .orElseThrow(() ->
+                            new IllegalStateException("Student wallet not found: " + studentId));
 
-        if (!wallet.hasSufficientBalance(montoTotalCarrito)) {
-            throw new InsufficientBalanceException
-                    ("Insufficient balance for student: " + studentId);
+            if (!wallet.hasSufficientBalance(montoTotalCarrito)) {
+                throw new InsufficientBalanceException
+                        ("Insufficient balance for student: " + studentId);
+            }
+
+            wallet.debit(montoTotalCarrito);
+            walletRepository.save(wallet);
+            return purchaseRepository.save(purchase);
+        } else if (paymentMethod == MedioPago.MERCADO_PAGO) {
+            purchase.setStatus(EstadoCompra.PENDIENTE);
+            purchase = purchaseRepository.save(purchase);
+            String paymentUrl = externalPaymentService.createPurchasePreference(purchase);
+            purchase.setPaymentUrl(paymentUrl);
+            return purchase;
         }
 
-        wallet.debit(montoTotalCarrito);
-
-
-        walletRepository.save(wallet);
         return purchaseRepository.save(purchase);
     }
 }

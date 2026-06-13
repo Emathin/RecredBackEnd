@@ -18,12 +18,15 @@ import java.util.Map;
 public class PaymentWebhookController {
 
     private final ConfirmPaymentAndCredit confirmPaymentAndCredit;
+    private final com.recred.backend.application.ConfirmPurchasePayment confirmPurchasePayment;
     private final ExternalPaymentService externalPaymentService;
 
     public PaymentWebhookController(
             ConfirmPaymentAndCredit confirmPaymentAndCredit,
+            com.recred.backend.application.ConfirmPurchasePayment confirmPurchasePayment,
             ExternalPaymentService externalPaymentService) {
         this.confirmPaymentAndCredit = confirmPaymentAndCredit;
+        this.confirmPurchasePayment = confirmPurchasePayment;
         this.externalPaymentService = externalPaymentService;
     }
 
@@ -74,6 +77,7 @@ public class PaymentWebhookController {
 
             try {
                 confirmPaymentAndCredit.execute(paymentId);
+                confirmPurchasePayment.execute(paymentId);
             } catch (Exception e) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }

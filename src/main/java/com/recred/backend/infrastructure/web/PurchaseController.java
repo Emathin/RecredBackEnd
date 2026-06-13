@@ -67,8 +67,13 @@ public class PurchaseController {
                         PurchaseItemDTO::getQuantity
                 ));
 
+        com.recred.backend.domain.models.MedioPago medioPago = com.recred.backend.domain.models.MedioPago.CREDITOS;
+        if (request.getPaymentMethod() != null) {
+            medioPago = com.recred.backend.domain.models.MedioPago.valueOf(request.getPaymentMethod());
+        }
+
         Purchase purchase = processPresentialPurchase.execute(
-                request.getStudentId(), cart, cognitoSubject(authentication));
+                request.getStudentId(), cart, cognitoSubject(authentication), medioPago);
         return ResponseEntity.ok(new PurchaseResponseDTO(purchase));
     }
 

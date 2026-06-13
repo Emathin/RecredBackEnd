@@ -28,6 +28,7 @@ public class PurchaseResponseDTO {
     private String pickupSlotDescription;
     private java.time.LocalDate pickupDate;
     private String pickupSlotStartTime;
+    private String paymentUrl;
 
     public PurchaseResponseDTO(Purchase purchase) {
         this.id = purchase.getId();
@@ -53,6 +54,7 @@ public class PurchaseResponseDTO {
             this.pickupSlotStartTime = purchase.getPickupSlotStartTime()
                     .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
         }
+        this.paymentUrl = purchase.getPaymentUrl();
 
         if (purchase.getItems() != null) {
             this.items = purchase.getItems().entrySet().stream()

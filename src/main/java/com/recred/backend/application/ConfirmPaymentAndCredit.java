@@ -24,17 +24,16 @@ public class ConfirmPaymentAndCredit {
 
         PaymentDetails details = externalPaymentService.getPaymentDetails(paymentId);
 
+        if (details.status() == PaymentStatus.APPROVED && details.externalReference() != null) {
+            if (details.externalReference().startsWith("TOPUP_")) {
+                UUID studentId = UUID.fromString(details.externalReference().substring(6));
+                Billetera wallet = walletRepository.findByStudentId(studentId)
+                        .orElseThrow(() -> new RuntimeException(
+                                "Billetera no encontrada para alumno: " + studentId));
 
-        if (details.status() == PaymentStatus.APPROVED) {
-            Billetera wallet = walletRepository.findByStudentId(details.studentId())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Billetera no encontrada para alumno: " + details.studentId()));
-
-
-            wallet.credit(details.amount());
-
-
-            walletRepository.save(wallet);
+                wallet.credit(details.amount());
+                walletRepository.save(wallet);
+            }
         }
     }
 }
