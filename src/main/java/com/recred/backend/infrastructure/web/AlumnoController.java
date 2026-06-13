@@ -1,8 +1,11 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.services.UsuarioService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,9 +18,11 @@ import java.util.stream.Collectors;
 public class AlumnoController {
 
     private final AlumnoRepository alumnoRepository;
+    private final UsuarioService usuarioService;
 
-    public AlumnoController(AlumnoRepository alumnoRepository) {
+    public AlumnoController(AlumnoRepository alumnoRepository, UsuarioService usuarioService) {
         this.alumnoRepository = alumnoRepository;
+        this.usuarioService = usuarioService;
     }
 
     @GetMapping
@@ -26,6 +31,19 @@ public class AlumnoController {
                 .map(this::toDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(alumnos);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<StudentDTO> getMiPerfil(Authentication authentication) {
+        String cognitoSub = authentication.getName();
+        Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoSub);
+        if (usuario.getAlumno() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        return alumnoRepository.findById(usuario.getAlumno().getId())
+                .map(alumno -> ResponseEntity.ok(StudentDTO.fromDomain(alumno)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     private AlumnoDTO toDto(Alumno alumno) {
