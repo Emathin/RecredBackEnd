@@ -1,6 +1,7 @@
 package com.recred.backend.domain.services;
 
 import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
+import com.recred.backend.domain.models.PeriodoPresupuesto;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.models.RangoFechas;
 import com.recred.backend.domain.models.ReglaPresupuestoCategoria;
@@ -8,6 +9,7 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
@@ -32,16 +34,29 @@ public class ValidadorPresupuestoService {
                                    Map<UUID, BigDecimal> montosPorCategoria,
                                    LocalDateTime momentoCompra) {
 
+        Optional<String> motivoBloqueo = obtenerMotivoBloqueoPresupuesto(
+                alumnoId, montoTotalCarrito, montosPorCategoria, momentoCompra);
+
+        if (motivoBloqueo.isPresent()) {
+            throw new PresupuestoExcedidoException(motivoBloqueo.get());
+        }
+    }
+
+    public Optional<String> obtenerMotivoBloqueoPresupuesto(UUID alumnoId,
+                                                           BigDecimal montoTotalCarrito,
+                                                           Map<UUID, BigDecimal> montosPorCategoria,
+                                                           LocalDateTime momentoCompra) {
+
         Optional<PresupuestoAlumno> presupuestoOpt =
                 presupuestoRepository.findActivoByAlumnoId(alumnoId);
         if (presupuestoOpt.isEmpty()) {
-            return;
+            return Optional.empty();
         }
 
         PresupuestoAlumno presupuesto = presupuestoOpt.get();
 
         if (!presupuesto.esVigente(momentoCompra.toLocalDate())) {
-            return;
+            return Optional.empty();
         }
 
         RangoFechas rango = calculadorPeriodo.calcularRango(
@@ -55,10 +70,10 @@ public class ValidadorPresupuestoService {
 
         if (totalProyectado.compareTo(presupuesto.getMontoLimiteGeneral()) > 0) {
             BigDecimal disponible = presupuesto.getMontoLimiteGeneral().subtract(gastadoHistorico);
-            throw new PresupuestoExcedidoException(
-                    String.format("Presupuesto %s excedido. Disponible: $%s",
-                            presupuesto.getPeriodo().name().toLowerCase(),
-                            disponible.max(BigDecimal.ZERO))
+            return Optional.of(
+                    String.format("Supera el presupuesto %s: disponible $%s",
+                            obtenerPeriodoEspanol(presupuesto.getPeriodo()),
+                            disponible.max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP))
             );
         }
 
@@ -82,14 +97,30 @@ public class ValidadorPresupuestoService {
                     if (proyectadoCat.compareTo(regla.getMontoLimiteCalculado()) > 0) {
                         BigDecimal disponibleCat = regla.getMontoLimiteCalculado().
                                 subtract(gastadoHistoricoCat);
-                        throw new PresupuestoExcedidoException(
-                                String.format("Límite superado para una categoría restringida. " +
-                                                "Disponible en categoría: $%s",
-                                        disponibleCat.max(BigDecimal.ZERO))
+                        return Optional.of(
+                                String.format("Supera el límite %s de %s: disponible $%s",
+                                        obtenerPeriodoEspanol(presupuesto.getPeriodo()),
+                                        regla.getCategoria().getDescripcion(),
+                                        disponibleCat.max(BigDecimal.ZERO)
+                                                .setScale(2, RoundingMode.HALF_UP))
                         );
                     }
                 }
             }
         }
+
+        return Optional.empty();
+    }
+
+    private String obtenerPeriodoEspanol(PeriodoPresupuesto periodo) {
+        if (periodo == null) {
+            return "diario";
+        }
+        return switch (periodo) {
+            case DIARIO -> "diario";
+            case SEMANAL -> "semanal";
+            case QUINCENAL -> "quincenal";
+            case MENSUAL -> "mensual";
+        };
     }
 }
