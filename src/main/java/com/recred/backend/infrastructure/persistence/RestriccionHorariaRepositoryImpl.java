@@ -9,6 +9,7 @@ import com.recred.backend.infrastructure.entities.FranjaHorariaEntity;
 import com.recred.backend.infrastructure.entities.RestriccionHorariaEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,7 @@ public class RestriccionHorariaRepositoryImpl implements
     }
 
     @Override
+    @Transactional
     public RestriccionHoraria save(RestriccionHoraria restriccion) {
         RestriccionHorariaEntity entity = restriccion.getId() != null
                 ? springDataRepository.findById(restriccion.getId())
@@ -40,12 +42,14 @@ public class RestriccionHorariaRepositoryImpl implements
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<RestriccionHoraria> findById(UUID id) {
         return springDataRepository.findById(id)
                 .map(RestriccionHorariaEntity::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RestriccionHoraria> findAllByAlumnoIdAndActiva
             (UUID alumnoId, boolean activa) {
         return springDataRepository.findAllByAlumnoEntityIdAndActiva(alumnoId, activa)
@@ -55,6 +59,7 @@ public class RestriccionHorariaRepositoryImpl implements
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RestriccionHoraria> findAllByAlumnoEntityId(UUID alumnoId) {
         return springDataRepository.findAllByAlumnoEntityId(alumnoId).stream()
                 .map(RestriccionHorariaEntity::toDomain)
@@ -62,6 +67,7 @@ public class RestriccionHorariaRepositoryImpl implements
     }
 
     @Override
+    @Transactional
     public void deleteById(UUID id) {
         springDataRepository.deleteById(id);
     }

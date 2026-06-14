@@ -3,10 +3,15 @@ package com.recred.backend.application;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
+import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.services.InventoryAvailabilityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +19,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,6 +35,10 @@ class UpdatePurchaseStatusTest {
 
     @Mock
     private PurchaseRepository purchaseRepository;
+    @Mock
+    private InventoryAvailabilityService inventoryAvailabilityService;
+    @Mock
+    private WalletRepository walletRepository;
 
     @InjectMocks
     private UpdatePurchaseStatus useCase;
@@ -78,6 +89,71 @@ class UpdatePurchaseStatusTest {
                 () -> useCase.execute(purchaseId, EstadoCompra.CANCELADO));
 
         verify(purchaseRepository, never()).save(purchase);
+    }
+
+    @Test
+    void execute_WhenAdvancePurchaseIsDelivered_ShouldConsumeReservation() {
+        UUID buffetId = UUID.randomUUID();
+        Producto product = new Producto();
+        product.setId(UUID.randomUUID());
+        purchase.setStatus(EstadoCompra.LISTO);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+        purchase.setBuffetId(buffetId);
+        purchase.setItems(Map.of(product, 1));
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        when(purchaseRepository.save(purchase)).thenReturn(purchase);
+
+        useCase.execute(purchaseId, EstadoCompra.ENTREGADO);
+
+        verify(inventoryAvailabilityService).consumeReservation(
+                buffetId,
+                purchase.getItems(),
+                purchaseId);
+    }
+
+    @Test
+    void execute_WhenAdvancePurchaseAlreadyDelivered_ShouldNotConsumeReservationAgain() {
+        UUID buffetId = UUID.randomUUID();
+        Producto product = new Producto();
+        product.setId(UUID.randomUUID());
+        purchase.setStatus(EstadoCompra.ENTREGADO);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+        purchase.setBuffetId(buffetId);
+        purchase.setItems(Map.of(product, 1));
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+
+        assertThrows(InvalidPurchaseStatusTransitionException.class,
+                () -> useCase.execute(purchaseId, EstadoCompra.ENTREGADO));
+
+        verify(inventoryAvailabilityService, never())
+                .consumeReservation(buffetId, purchase.getItems());
+        verify(purchaseRepository, never()).save(purchase);
+    }
+
+    @Test
+    void execute_WhenAdvancePurchaseIsRejected_ShouldReleaseReservation() {
+        UUID buffetId = UUID.randomUUID();
+        Producto product = new Producto();
+        product.setId(UUID.randomUUID());
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+        purchase.setBuffetId(buffetId);
+        purchase.setItems(Map.of(product, 1));
+        purchase.setTotalAmount(new BigDecimal("25.00"));
+        Billetera wallet = new Billetera();
+        wallet.setSaldoCreditos(BigDecimal.ZERO);
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        when(purchaseRepository.save(purchase)).thenReturn(purchase);
+        when(walletRepository.findByStudentId(purchase.getStudent().getId()))
+                .thenReturn(Optional.of(wallet));
+
+        useCase.execute(purchaseId, EstadoCompra.RECHAZADO);
+
+        verify(inventoryAvailabilityService).releaseReservation(
+                buffetId,
+                purchase.getItems(),
+                purchaseId);
+        verify(walletRepository).save(wallet);
+        assertEquals(new BigDecimal("25.00"), wallet.getSaldoCreditos());
     }
 
     @Test

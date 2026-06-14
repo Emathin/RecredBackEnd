@@ -19,6 +19,8 @@ public class FranjaHoraria {
     private LocalTime horaInicio;
     private LocalTime horaFin;
     private boolean activo = true;
+    private Integer cupoMaximo;
+    private Integer minutosCorte;
 
     public FranjaHoraria(UUID id, UUID colegioId, String descripcion,
                          LocalTime horaInicio, LocalTime horaFin, boolean activo) {
@@ -28,6 +30,14 @@ public class FranjaHoraria {
         this.horaInicio = horaInicio;
         this.horaFin = horaFin;
         this.activo = activo;
+    }
+
+    public int minutosCorteSeguro() {
+        return minutosCorte == null ? 0 : Math.max(0, minutosCorte);
+    }
+
+    public boolean tieneCupoLimitado() {
+        return cupoMaximo != null && cupoMaximo > 0;
     }
 
     public boolean estaDentroDeLaFranja(LocalDateTime momento) {

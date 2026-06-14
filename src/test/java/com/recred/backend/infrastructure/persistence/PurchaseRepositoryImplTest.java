@@ -1,5 +1,8 @@
 package com.recred.backend.infrastructure.persistence;
 
+import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
+import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
+import com.recred.backend.domain.events.KiosqueroRealtimeEventType;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.MedioPago;
@@ -35,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +47,8 @@ class PurchaseRepositoryImplTest {
 
     @Mock
     private SpringDataPurchaseRepository springDataRepository;
+    @Mock
+    private KiosqueroRealtimeEventPublisher realtimeEventPublisher;
 
     private PurchaseRepositoryImpl repository;
     private UUID purchaseId;
@@ -53,7 +59,7 @@ class PurchaseRepositoryImplTest {
 
     @BeforeEach
     void setUp() {
-        repository = new PurchaseRepositoryImpl(springDataRepository);
+        repository = new PurchaseRepositoryImpl(springDataRepository, realtimeEventPublisher);
         purchaseId = UUID.randomUUID();
         studentId = UUID.randomUUID();
         productId = UUID.randomUUID();
@@ -82,6 +88,7 @@ class PurchaseRepositoryImplTest {
         assertEquals(EstadoCompra.PENDIENTE, savedEntity.getEstado());
         assertEquals(productId, savedEntity.getDetalles().get(0).getProductoEntity().getId());
         assertEquals(savedPurchaseId, savedPurchase.getId());
+        assertRealtimeEvent(KiosqueroRealtimeEventType.PURCHASE_CREATED, savedPurchaseId);
     }
 
     @Test
@@ -101,6 +108,27 @@ class PurchaseRepositoryImplTest {
         assertEquals(productId, existingEntity.getDetalles().get(0).getProductoEntity().getId());
         verify(springDataRepository).findById(purchaseId);
         verify(springDataRepository).save(existingEntity);
+        assertRealtimeEvent(KiosqueroRealtimeEventType.ORDER_UPDATED, purchaseId);
+    }
+
+    private void assertRealtimeEvent(KiosqueroRealtimeEventType type, UUID expectedPurchaseId) {
+        ArgumentCaptor<KiosqueroRealtimeEvent> eventCaptor =
+                ArgumentCaptor.forClass(KiosqueroRealtimeEvent.class);
+        verify(realtimeEventPublisher, atLeastOnce()).publish(eventCaptor.capture());
+        KiosqueroRealtimeEvent purchaseEvent = eventCaptor.getAllValues()
+                .stream()
+                .filter(event -> event.type() == type)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(expectedPurchaseId, purchaseEvent.purchaseId());
+        assertEquals(buffetId, purchaseEvent.buffetId());
+        assertEquals(new BigDecimal("12.00"), purchaseEvent.purchaseTotal());
+
+        boolean dashboardEventFound = eventCaptor.getAllValues()
+                .stream()
+                .anyMatch(event -> event.type() == KiosqueroRealtimeEventType.DASHBOARD_CHANGED
+                        && event.buffetId().equals(buffetId));
+        assertTrue(dashboardEventFound);
     }
 
     @Test

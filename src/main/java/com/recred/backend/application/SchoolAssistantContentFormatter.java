@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RecessTime;
@@ -7,6 +8,7 @@ import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.repositories.ProductRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -18,6 +20,8 @@ import java.util.stream.Collectors;
 class SchoolAssistantContentFormatter {
 
     private static final String PRODUCT_WITHOUT_NAME = "Producto";
+    private static final DateTimeFormatter DATE_FORMAT =
+            DateTimeFormatter.ofPattern("d/M/yyyy");
     private static final DateTimeFormatter DATE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -120,10 +124,10 @@ class SchoolAssistantContentFormatter {
                 .toList());
     }
 
-    String itemList(List<PurchasePlanItem> items) {
-        return items.stream()
-                .map(item -> item.quantity() + "x " + item.productName())
-                .collect(Collectors.joining(", "));
+    String purchasePlanItemList(List<PurchasePlanItem> items) {
+        return replyFormatter.formattedItems(items.stream()
+                .map(this::purchasePlanItemSummary)
+                .toList());
     }
 
     String productName(UUID productId) {
@@ -156,6 +160,10 @@ class SchoolAssistantContentFormatter {
 
     String value(Object value) {
         return value == null ? "" : value.toString();
+    }
+
+    String purchaseStatusLabel(EstadoCompra status) {
+        return status == null ? "sin estado" : status.getLabel();
     }
 
     private List<Map<String, Object>> purchaseItemsData(Purchase purchase) {
@@ -224,7 +232,11 @@ class SchoolAssistantContentFormatter {
         data.put("productoId", value(product.getId()));
         data.put("nombre", productName(product));
         data.put("precio", price(product));
-        data.put("stock", product.getStockActual());
+        data.put("stockActual", product.getStockActual());
+        data.put("stockReservado", product.getStockReservado());
+        data.put("stockDisponible", product.getStockDisponible());
+        data.put("estadoInventario", value(product.getEstadoInventario()));
+        data.put("tipoManejoInventario", value(product.getTipoManejoInventario()));
         data.put("requierePreparacion", product.getRequierePreparacion());
         return data;
     }
@@ -241,13 +253,13 @@ class SchoolAssistantContentFormatter {
         return productName(product)
                 + " por "
                 + money(price(product))
-                + " (stock: "
-                + value(product.getStockActual())
+                + " (disponible: "
+                + value(product.getStockDisponible())
                 + ")";
     }
 
     private String eventSummary(SchoolCalendarEvent event) {
-        return value(event.date())
+        return date(event.date())
                 + " - "
                 + value(event.description())
                 + " ("
@@ -259,18 +271,21 @@ class SchoolAssistantContentFormatter {
         return date(purchase.getDate())
                 + " - "
                 + itemListFromPurchase(purchase)
-                + " por "
+                + ". Total: "
                 + money(purchase.getTotalAmount())
-                + " ("
-                + purchase.getStatus()
-                + ")";
+                + ". Estado: "
+                + purchaseStatusLabel(purchase.getStatus());
     }
 
     private String patternSummary(PurchasePattern pattern) {
         return itemListFromRequests(pattern.items())
-                + " ("
+                + " - "
                 + pattern.occurrences()
-                + " veces)";
+                + " veces";
+    }
+
+    private String purchasePlanItemSummary(PurchasePlanItem item) {
+        return item.quantity() + "x " + item.productName();
     }
 
     private String itemListFromPurchase(Purchase purchase) {
@@ -289,6 +304,10 @@ class SchoolAssistantContentFormatter {
 
     private String date(LocalDateTime dateTime) {
         return dateTime == null ? "sin fecha" : DATE_TIME_FORMAT.format(dateTime);
+    }
+
+    private String date(LocalDate date) {
+        return date == null ? "sin fecha" : DATE_FORMAT.format(date);
     }
 
     private boolean isValidPurchaseItem(Producto product, Integer quantity) {

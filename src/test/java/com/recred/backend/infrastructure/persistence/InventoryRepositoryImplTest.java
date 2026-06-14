@@ -10,6 +10,7 @@ import com.recred.backend.infrastructure.entities.ProductoEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -77,6 +78,33 @@ class InventoryRepositoryImplTest {
         inventoryRepository.save(inventario);
 
         assertEquals(50, existingEntity.getStockActual());
+    }
+
+    @Test
+    void save_CuandoEstadoGuardadoNoCoincideConStock_DeberiaPersistirEstadoEfectivo() {
+        UUID buffetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Inventario inventario = new Inventario();
+        inventario.setBuffetId(buffetId);
+        inventario.setProductoId(productId);
+        inventario.setStockActual(4);
+        inventario.setStockReservado(0);
+        inventario.setStockMinimo(null);
+        inventario.setEstado(EstadoInventario.DISPONIBLE);
+
+        when(springDataInventoryRepository.findByBuffetEntityIdAndProductoEntityId(buffetId, productId))
+                .thenReturn(Optional.empty());
+        when(springDataInventoryRepository.save(any(InventarioBuffetEntity.class)))
+                .thenAnswer(i -> i.getArgument(0));
+
+        inventoryRepository.save(inventario);
+
+        ArgumentCaptor<InventarioBuffetEntity> captor =
+                ArgumentCaptor.forClass(InventarioBuffetEntity.class);
+        verify(springDataInventoryRepository).save(captor.capture());
+        assertEquals(EstadoInventario.BAJO_STOCK, captor.getValue().getEstado());
+        assertEquals(Inventario.STOCK_MINIMO_PREDETERMINADO,
+                captor.getValue().getStockMinimo());
     }
 
     @Test

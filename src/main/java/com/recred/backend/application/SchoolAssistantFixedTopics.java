@@ -41,6 +41,12 @@ public class SchoolAssistantFixedTopics {
     private static final String ACTION_STATUS_KEY = "estadoAccionChatbot";
     private static final String PENDING_ACTION_KEY = "accionPendienteChatbot";
     private static final String ACTION_TYPE_QUICK_PURCHASE = "COMPRA_RAPIDA";
+    private static final List<String> RECESS_OPTIONS = List.of(
+            "primer recreo",
+            "segundo recreo",
+            "mediodia",
+            "salida"
+    );
     private static final String ACTION_STATUS_PENDING = "PENDIENTE";
     private static final String ACTION_STATUS_EXECUTED = "EJECUTADA";
     private static final String ACTION_STATUS_CANCELLED = "CANCELADA";
@@ -133,8 +139,8 @@ public class SchoolAssistantFixedTopics {
         return switch (intent) {
             case REPEAT_LAST_PURCHASE, BUY_USUAL, CONFIRM_PURCHASE, CANCEL_ACTION ->
                     Optional.of(reply(
-                            "Por ahora las compras rapidas desde el asistente "
-                                    + "estan disponibles para alumnos.",
+                            "Por ahora solo los alumnos pueden hacer compras rapidas "
+                                    + "desde el asistente.",
                             intent,
                             forbiddenQuickPurchaseAction(),
                             context.role()
@@ -196,7 +202,7 @@ public class SchoolAssistantFixedTopics {
         );
 
         return purchases.isEmpty()
-                ? reply("No hay pedidos pendientes en el buffet.",
+                ? reply("No hay pedidos pendientes en el buffet por ahora.",
                         SchoolAssistantIntent.PENDING_ORDERS, action, context.role())
                 : reply("Pedidos pendientes:\n" + contentFormatter.purchaseList(purchases),
                         SchoolAssistantIntent.PENDING_ORDERS, action, context.role());
@@ -212,7 +218,7 @@ public class SchoolAssistantFixedTopics {
         );
 
         return products.isEmpty()
-                ? reply("No encontre productos activos con stock.",
+                ? reply("No veo productos activos con stock por ahora.",
                         SchoolAssistantIntent.STOCK, action, context.role())
                 : reply("Stock actual (" + replyFormatter.countText(
                         products.size(),
@@ -235,7 +241,7 @@ public class SchoolAssistantFixedTopics {
         List<String> visibleChildren = tutorFactsFormatter.children(children);
 
         return children.isEmpty()
-                ? reply("No encontre hijos asociados al tutor.",
+                ? reply("No veo hijos asociados a tu cuenta.",
                         SchoolAssistantIntent.CHILDREN, action, context.role())
                 : reply("Hijos asociados:\n" + replyFormatter.formattedItems(visibleChildren),
                         SchoolAssistantIntent.CHILDREN, action, context.role());
@@ -255,7 +261,7 @@ public class SchoolAssistantFixedTopics {
         List<String> visibleChildren = tutorFactsFormatter.facts(intent, children);
 
         return children.isEmpty()
-                ? reply("No encontre datos de hijos asociados al tutor.", intent, action,
+                ? reply("No veo datos de hijos asociados a tu cuenta.", intent, action,
                         context.role())
                 : reply(
                         prefix + ":\n" + replyFormatter.formattedItems(visibleChildren),
@@ -268,7 +274,7 @@ public class SchoolAssistantFixedTopics {
     private SchoolAssistantFixedReply balanceReply(SchoolAssistantContext context) {
         String answer = context.balance()
                 .map(balance -> "Tenes " + contentFormatter.money(balance) + " disponibles.")
-                .orElse("No encontre saldo registrado para este alumno.");
+                .orElse("Todavia no veo saldo registrado en tu cuenta.");
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("saldo", context.balance().orElse(null));
         return reply(
@@ -288,7 +294,7 @@ public class SchoolAssistantFixedTopics {
 
         return purchases.isEmpty()
                 ? reply(
-                        "No encontre compras registradas para este alumno.",
+                        "Todavia no veo compras registradas en tu historial.",
                         SchoolAssistantIntent.RECENT_PURCHASES,
                         informativeAction(SchoolAssistantActionType.CONSULTA_COMPRAS, data)
                 )
@@ -309,7 +315,8 @@ public class SchoolAssistantFixedTopics {
 
         return patterns.isEmpty()
                 ? reply(
-                        "Todavia no detecte compras frecuentes para este alumno.",
+                        "Todavia no tengo suficientes compras tuyas para detectar "
+                                + "compras frecuentes.",
                         SchoolAssistantIntent.FREQUENT_PURCHASES,
                         informativeAction(
                                 SchoolAssistantActionType.CONSULTA_COMPRAS_FRECUENTES,
@@ -336,7 +343,8 @@ public class SchoolAssistantFixedTopics {
         );
 
         return events.isEmpty()
-                ? reply("No encontre eventos escolares proximos.", SchoolAssistantIntent.EVENTS,
+                ? reply("No veo eventos escolares proximos por ahora.",
+                        SchoolAssistantIntent.EVENTS,
                         action, context.role())
                 : reply("Eventos proximos:\n" + contentFormatter.eventsList(events),
                         SchoolAssistantIntent.EVENTS, action, context.role());
@@ -347,13 +355,16 @@ public class SchoolAssistantFixedTopics {
 
         if (buffetId.isEmpty()) {
             return reply(
-                    "Todavia no tengo un buffet de referencia para mostrar productos.",
+                    "Todavia no se que buffet usar para mostrarte productos.",
                     SchoolAssistantIntent.MENU,
                     informativeAction(SchoolAssistantActionType.CONSULTA_MENU, Map.of())
             );
         }
 
-        List<Producto> products = productRepository.findAllActiveWithStock(buffetId.orElseThrow());
+        List<Producto> products = productRepository.findAllActiveWithStock(buffetId.orElseThrow())
+                .stream()
+                .filter(this::hasAvailability)
+                .toList();
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("buffetId", buffetId.orElseThrow().toString());
         data.put("productos", contentFormatter.productsData(products));
@@ -363,12 +374,16 @@ public class SchoolAssistantFixedTopics {
         );
 
         return products.isEmpty()
-                ? reply("No encontre productos disponibles para ese buffet.",
+                ? reply("No veo productos disponibles para ese buffet por ahora.",
                         SchoolAssistantIntent.MENU, action)
                 : reply("Productos disponibles ("
                         + replyFormatter.countText(products.size(), "producto", "productos")
                         + "):\n" + contentFormatter.productsList(products),
                         SchoolAssistantIntent.MENU, action);
+    }
+
+    private boolean hasAvailability(Producto product) {
+        return product.getStockDisponible() != null && product.getStockDisponible() > 0;
     }
 
     private SchoolAssistantFixedReply studentPendingOrdersReply(
@@ -409,7 +424,7 @@ public class SchoolAssistantFixedTopics {
                         action
                 ))
                 .orElseGet(() -> reply(
-                        "No encontre un pedido pendiente con codigo de retiro.",
+                        "No veo ningun pedido pendiente con codigo de retiro.",
                         SchoolAssistantIntent.WITHDRAWAL_CODE,
                         action
                 ));
@@ -425,10 +440,10 @@ public class SchoolAssistantFixedTopics {
                 .map(plan -> pendingPurchaseReply(
                         plan,
                         SchoolAssistantIntent.REPEAT_LAST_PURCHASE,
-                        "Vas a repetir tu ultima compra"
+                        "Puedo repetir tu ultima compra con estos productos"
                 ))
                 .orElseGet(() -> reply(
-                        "No encontre una compra entregada disponible para repetir.",
+                        "Todavia no encontre una compra tuya que pueda repetir.",
                         SchoolAssistantIntent.REPEAT_LAST_PURCHASE,
                         failedAdvanceAction(Map.of())
                 ));
@@ -439,10 +454,11 @@ public class SchoolAssistantFixedTopics {
                 .map(plan -> pendingPurchaseReply(
                         plan,
                         SchoolAssistantIntent.BUY_USUAL,
-                        "Tu compra habitual detectada"
+                        "Detecte esta compra como habitual"
                 ))
                 .orElseGet(() -> reply(
-                        "Todavia no detecte una compra habitual disponible para repetir.",
+                        "Todavia no tengo suficientes compras tuyas para armar "
+                                + "una compra habitual.",
                         SchoolAssistantIntent.BUY_USUAL,
                         failedAdvanceAction(Map.of())
                 ));
@@ -455,7 +471,7 @@ public class SchoolAssistantFixedTopics {
         return pendingPurchaseParser.pendingPurchase(recentMessages)
                 .map(pendingPurchase -> executePendingPurchase(context, pendingPurchase))
                 .orElseGet(() -> reply(
-                        "No hay una compra pendiente para confirmar.",
+                        "No tengo ninguna compra pendiente para confirmar.",
                         SchoolAssistantIntent.CONFIRM_PURCHASE,
                         failedAdvanceAction(Map.of())
                 ));
@@ -470,7 +486,7 @@ public class SchoolAssistantFixedTopics {
                 .map(pendingPurchase -> withSelectedRecessReply(context, pendingPurchase,
                         recessTime))
                 .orElseGet(() -> reply(
-                        "No hay una compra pendiente para asignarle recreo.",
+                        "No tengo ninguna compra pendiente para elegir recreo.",
                         SchoolAssistantIntent.SELECT_RECESS,
                         failedAdvanceAction(Map.of())
                 ));
@@ -480,8 +496,8 @@ public class SchoolAssistantFixedTopics {
         boolean hasPendingPurchase = pendingPurchaseParser.pendingPurchase(recentMessages)
                 .isPresent();
         String answer = hasPendingPurchase
-                ? "Listo, descarte la compra pendiente."
-                : "No hay una compra pendiente para cancelar.";
+                ? "Listo, descarte esa compra pendiente."
+                : "No tengo ninguna compra pendiente para cancelar.";
         Map<String, Object> metadata = metadata(SchoolAssistantIntent.CANCEL_ACTION.name());
         metadata.put(ACTION_STATUS_KEY, ACTION_STATUS_CANCELLED);
         return new SchoolAssistantFixedReply(
@@ -507,7 +523,7 @@ public class SchoolAssistantFixedTopics {
         UUID studentId = context.studentId();
         if (studentDoesNotOwnPendingPurchase(studentId, pendingPurchase)) {
             SchoolAssistantFixedReply reply = failedPurchaseReply(
-                    "La compra pendiente no corresponde a este alumno."
+                    "Esa compra pendiente no corresponde a tu usuario."
             );
             return reply;
         }
@@ -520,7 +536,8 @@ public class SchoolAssistantFixedTopics {
 
         if (cart.isEmpty()) {
             SchoolAssistantFixedReply reply = failedPurchaseReply(
-                    "No pude realizar la compra porque algun producto ya no esta disponible."
+                    "No pude realizar la compra porque algun producto ya no esta "
+                            + "disponible."
             );
             return reply;
         }
@@ -549,7 +566,7 @@ public class SchoolAssistantFixedTopics {
             RecessTime recessTime
     ) {
         if (studentDoesNotOwnPendingPurchase(context.studentId(), pendingPurchase)) {
-            return failedPurchaseReply("La compra pendiente no corresponde a este alumno.");
+            return failedPurchaseReply("Esa compra pendiente no corresponde a tu usuario.");
         }
 
         PendingPurchase updatedPurchase = new PendingPurchase(
@@ -573,7 +590,7 @@ public class SchoolAssistantFixedTopics {
 
         return new SchoolAssistantFixedReply(
                 "Listo, la dejo para " + contentFormatter.recessLabel(recessTime)
-                        + ". Escribi confirmar para crear la compra anticipada o cancelar.",
+                        + ".\nEscribi confirmar para crear la compra anticipada o cancelar.",
                 metadata,
                 SchoolAssistantIntent.SELECT_RECESS,
                 action,
@@ -606,10 +623,12 @@ public class SchoolAssistantFixedTopics {
         );
 
         return new SchoolAssistantFixedReply(
-                "Compra anticipada creada. Total: "
+                "Listo, tu compra anticipada quedo creada:\n"
+                        + "- Total: "
                         + contentFormatter.money(purchase.getTotalAmount())
-                        + ". Estado: " + purchase.getStatus()
-                        + ". Codigo de retiro: "
+                        + "\n- Estado: "
+                        + contentFormatter.purchaseStatusLabel(purchase.getStatus())
+                        + "\n- Codigo de retiro: "
                         + contentFormatter.value(purchase.getWithdrawalCode()) + ".",
                 metadata,
                 SchoolAssistantIntent.CONFIRM_PURCHASE,
@@ -622,7 +641,7 @@ public class SchoolAssistantFixedTopics {
     private SchoolAssistantFixedReply missingRecessReply(PendingPurchase pendingPurchase) {
         Map<String, Object> data = contentFormatter.pendingPurchaseData(pendingPurchase);
         return new SchoolAssistantFixedReply(
-                "Elegi el recreo de retiro: primer recreo, segundo recreo, mediodia o salida.",
+                recessSelectionText(),
                 pendingMetadata(
                         SchoolAssistantIntent.CONFIRM_PURCHASE.name(),
                         pendingPurchase
@@ -666,10 +685,10 @@ public class SchoolAssistantFixedTopics {
         Map<String, Object> data = contentFormatter.purchasePlanData(plan);
 
         return new SchoolAssistantFixedReply(
-                prefix + ": " + contentFormatter.itemList(plan.items())
-                        + ". Total estimado: " + contentFormatter.money(plan.totalAmount())
-                        + ". Elegi el recreo de retiro: primer recreo, segundo recreo, "
-                        + "mediodia o salida.",
+                prefix + ":\n" + contentFormatter.purchasePlanItemList(plan.items())
+                        + "\n\nTotal estimado: "
+                        + contentFormatter.money(plan.totalAmount())
+                        + "\n" + recessSelectionText(),
                 metadata,
                 intent,
                 advanceAction(
@@ -682,6 +701,11 @@ public class SchoolAssistantFixedTopics {
                 suggestionFactory.recessSuggestions(),
                 data
         );
+    }
+
+    private String recessSelectionText() {
+        return "Para terminar, elegi el recreo de retiro:\n"
+                + replyFormatter.formattedItems(RECESS_OPTIONS);
     }
 
     private Optional<PurchasePlan> mostFrequentPlan(UUID studentId) {
