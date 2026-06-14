@@ -60,4 +60,6 @@ public interface PurchaseRepository {
             String search);
 
     long countHealthyPurchasesByAlumno(UUID alumnoId, LocalDateTime since);
+
+    List<Purchase> findPendientesByAlumno(UUID alumnoId);
 }

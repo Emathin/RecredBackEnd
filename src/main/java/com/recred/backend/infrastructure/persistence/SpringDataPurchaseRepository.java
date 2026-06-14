@@ -250,6 +250,14 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             @Param("franjaId") UUID franjaId,
             @Param("search") String search);
 
+    @Query("SELECT c FROM CompraEntity c WHERE c.alumnoEntity.id = :alumnoId " +
+            "AND c.estado IN :estados " +
+            "ORDER BY c.fechaHora DESC")
+    List<CompraEntity> findAllByAlumnoIdAndEstadoInOrderByFechaHoraDesc(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("estados") List<EstadoCompra> estados
+    );
+
     long countByAlumnoEntityIdAndSuggestionIdIsNotNullAndEstadoAndFechaHoraAfter(
             UUID alumnoId, EstadoCompra estado, LocalDateTime since);
 }
