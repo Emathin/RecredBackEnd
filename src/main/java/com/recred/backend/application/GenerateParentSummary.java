@@ -6,6 +6,7 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.Summary;
+import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SummaryRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
@@ -25,16 +26,19 @@ public class GenerateParentSummary {
     private final TutorRepository tutorRepository;
     private final PurchaseRepository purchaseRepository;
     private final SummaryRepository summaryRepository;
+    private final PresupuestoRepository presupuestoRepository;
     private final ParentSummaryAnalyzer parentSummaryAnalyzer;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public GenerateParentSummary(TutorRepository tutorRepository,
                                  PurchaseRepository purchaseRepository,
                                  SummaryRepository summaryRepository,
+                                 PresupuestoRepository presupuestoRepository,
                                  ParentSummaryAnalyzer parentSummaryAnalyzer) {
         this.tutorRepository = tutorRepository;
         this.purchaseRepository = purchaseRepository;
         this.summaryRepository = summaryRepository;
+        this.presupuestoRepository = presupuestoRepository;
         this.parentSummaryAnalyzer = parentSummaryAnalyzer;
     }
 
@@ -45,6 +49,7 @@ public class GenerateParentSummary {
 
         ObjectNode root = objectMapper.createObjectNode();
         ObjectNode hijosNode = root.putObject("hijos");
+        Map<UUID, BigDecimal> montosLimitesPorAlumno = new HashMap<>();
 
         for (Alumno hijo : hijos) {
             List<Purchase> compras = purchaseRepository.findByAlumnoAndDateRange(
@@ -54,6 +59,11 @@ public class GenerateParentSummary {
 
             ObjectNode hijoNode = hijosNode.putObject(hijo.getUsuario().getNombre());
             hijoNode.put("totalGastado", totalHijo);
+            
+            presupuestoRepository.findActivoByAlumnoId(hijo.getId())
+                    .ifPresent(presupuesto
+                            -> hijoNode.put(
+                                    "LimiteGasto", presupuesto.getMontoLimite()));
 
             Map<String, BigDecimal> categorias = new HashMap<>();
             compras.forEach(c -> c.getItems().forEach((producto, cantidad) -> {
@@ -97,10 +107,8 @@ public class GenerateParentSummary {
         }
 
         String resumenActual = root.toString();
-        var anteriorOpt = summaryRepository.findLastByUsuarioId(usuarioId);
-        String resumenAnterior = anteriorOpt.map(Summary::getResumen).orElse("{}");
-
-        String mensaje = parentSummaryAnalyzer.analyze(resumenAnterior, resumenActual);
+        
+        String mensaje = parentSummaryAnalyzer.analyze(resumenActual);
         
         root.put("mensaje", mensaje);
 
