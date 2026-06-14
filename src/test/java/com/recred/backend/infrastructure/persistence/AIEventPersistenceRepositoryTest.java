@@ -1,5 +1,6 @@
 package com.recred.backend.infrastructure.persistence;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.models.BudgetPeriod;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.ConsumptionCategory;
@@ -38,6 +39,9 @@ class AIEventPersistenceRepositoryTest {
     @Mock
     private EntityManager entityManager;
 
+    @Mock
+    private ObjectMapper objectMapper;
+
     @Test
     void registerPredictionEventWithInputAndResult() {
         UUID studentId = UUID.randomUUID();
@@ -45,7 +49,8 @@ class AIEventPersistenceRepositoryTest {
         when(entityManager.getReference(AlumnoEntity.class, studentId)).thenReturn(studentEntity);
         AIEventPersistenceRepository repository = new AIEventPersistenceRepository(
                 aiEventJpaRepository,
-                entityManager
+                entityManager,
+                objectMapper
         );
 
         repository.registerPrediction(result(studentId));
@@ -78,7 +83,8 @@ class AIEventPersistenceRepositoryTest {
         UUID buffetId = UUID.randomUUID();
         AIEventPersistenceRepository repository = new AIEventPersistenceRepository(
                 aiEventJpaRepository,
-                entityManager
+                entityManager,
+                objectMapper
         );
 
         AIEventEntity event1 = new AIEventEntity();

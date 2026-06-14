@@ -47,6 +47,7 @@ import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.GetLoggedUserNotifications;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetProductById;
+import com.recred.backend.application.GetProductStatistics;
 import com.recred.backend.application.GetProductsByBuffetUser;
 import com.recred.backend.application.GetPromotionById;
 import com.recred.backend.application.GetPurchaseStatus;
@@ -760,9 +761,11 @@ public class UseCases {
     @Bean
     public GenerateProductChangeRecommendation generateProductChangeRecommendation(
             ProductRepository productRepository, ProductChangeAnalyzer productChangeAnalyzer,
-            AIEventRepository aiEventRepository, KiosqueroRepository kiosqueroRepository) {
+            AIEventRepository aiEventRepository, KiosqueroRepository kiosqueroRepository,
+            GetProductStatistics getProductStatistics) {
         return new GenerateProductChangeRecommendation(
-                productRepository, productChangeAnalyzer, aiEventRepository, kiosqueroRepository);
+                productRepository, productChangeAnalyzer, aiEventRepository, kiosqueroRepository,
+                getProductStatistics);
     }
 
     @Bean

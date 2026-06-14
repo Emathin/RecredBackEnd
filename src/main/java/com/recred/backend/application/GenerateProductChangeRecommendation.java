@@ -24,16 +24,20 @@ public class GenerateProductChangeRecommendation {
     private final ProductChangeAnalyzer productChangeAnalyzer;
     private final AIEventRepository aiEventRepository;
     private final KiosqueroRepository kiosqueroRepository;
+    private final GetProductStatistics getProductStatistics;
+
     public GenerateProductChangeRecommendation(
             ProductRepository productRepository,
             ProductChangeAnalyzer productChangeAnalyzer,
             AIEventRepository aiEventRepository,
-            KiosqueroRepository kiosqueroRepository
+            KiosqueroRepository kiosqueroRepository,
+            GetProductStatistics getProductStatistics
     ) {
         this.productRepository = productRepository;
         this.productChangeAnalyzer = productChangeAnalyzer;
         this.aiEventRepository = aiEventRepository;
         this.kiosqueroRepository = kiosqueroRepository;
+        this.getProductStatistics = getProductStatistics;
     }
 
     @Transactional
@@ -55,7 +59,7 @@ public class GenerateProductChangeRecommendation {
         if (buffetId == null) {
             throw new KiosqueroNotFoundException(sellerId);
         }
-        return generateForBuffet(buffetId);
+        return generateForBuffet(buffetId, sellerId);
     }
 
     @Transactional
@@ -64,15 +68,17 @@ public class GenerateProductChangeRecommendation {
         if (buffetId == null) {
             throw new KiosqueroNotFoundException(usuarioId);
         }
-        return generateForBuffet(buffetId);
+        return generateForBuffet(buffetId, usuarioId);
     }
 
-    private List<ProductRecommendationResult> generateForBuffet(UUID buffetId) {
+    private List<ProductRecommendationResult> generateForBuffet(UUID buffetId, UUID actorId) {
         List<ProductChangeRecommendation> leastSoldProducts =
                 productRepository.findBuffetTop5LeastSoldProducts(buffetId);
         
         return leastSoldProducts.stream()
                 .map(product -> {
+                    product.setSaleStatistics(
+                            getProductStatistics.execute(product.getId(), actorId));
                     Optional<ProductChangeAnalysis> aiAnalysis = productChangeAnalyzer
                             .analyze(product);
                     ProductRecommendationResult result = new ProductRecommendationResult(

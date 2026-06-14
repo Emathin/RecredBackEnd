@@ -40,6 +40,9 @@ public class GenerateProductChangeRecommendationTest {
     @Mock
     private KiosqueroRepository kiosqueroRepository;
 
+    @Mock
+    private GetProductStatistics getProductStatistics;
+
     @InjectMocks
     private GenerateProductChangeRecommendation useCase;
 

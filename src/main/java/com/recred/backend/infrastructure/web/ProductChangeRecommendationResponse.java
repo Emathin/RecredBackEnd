@@ -29,7 +29,7 @@ public record ProductChangeRecommendationResponse(
                 analysis != null ? analysis.summary() : null,
                 analysis != null ? analysis.alerts() : List.of(),
                 analysis != null ? analysis.recommendations() : List.of(),
-                "Este producto es el menos vendido de su inventario",
+                "Producto dentro del top 5 menos vendidos",
                 analysis != null ? analysis.model() : null
         );
     }
