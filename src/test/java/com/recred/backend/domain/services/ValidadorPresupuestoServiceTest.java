@@ -97,7 +97,7 @@ class ValidadorPresupuestoServiceTest {
             validador.validarPresupuesto(alumnoId, BigDecimal.valueOf(600), Collections.emptyMap(), momentoCompra);
         });
 
-        assertTrue(ex.getMessage().contains("Presupuesto diario excedido"));
+        assertTrue(ex.getMessage().contains("Supera el presupuesto diario"));
     }
 
     @Test
@@ -108,6 +108,7 @@ class ValidadorPresupuestoServiceTest {
         UUID golosinasId = UUID.randomUUID();
         CategoriaProducto golosinas = new CategoriaProducto();
         golosinas.setId(golosinasId);
+        golosinas.setDescripcion("Golosinas");
 
         ReglaPresupuestoCategoria reglaGolosinas = new ReglaPresupuestoCategoria(
                 UUID.randomUUID(), golosinas, BigDecimal.valueOf(20), BigDecimal.valueOf(1000), true
@@ -129,7 +130,7 @@ class ValidadorPresupuestoServiceTest {
             validador.validarPresupuesto(alumnoId, BigDecimal.valueOf(500), gastosPorCategoria, momentoCompra);
         });
 
-        assertTrue(ex.getMessage().contains("Límite superado para una categoría"));
+        assertTrue(ex.getMessage().contains("Supera el límite diario de Golosinas"));
     }
 
     @Test

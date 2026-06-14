@@ -12,18 +12,17 @@ public class GeminiParentSummaryAnalyzer implements ParentSummaryAnalyzer {
         this.geminiTextClient = geminiTextClient;
     }
 
-    public String analyze(String resumenAnterior, String resumenActual) {
-        String prompt = "Analiza los siguientes dos resúmenes de gastos semanales " +
-                "de hijos de un padre. El primero es de la semana pasada, " +
-                "el segundo de esta semana. Genera un breve mensaje comparativo " +
-                "explicando si hubo ahorro o incremento de gastos, enfocándote en " +
-                "cambios notables. Siempre que haya ahorro o incremento de " +
-                "gastos mencionar el porcentaje correspondiente" +
-                " Resumen anterior: " + resumenAnterior +
-                ". Resumen actual: " + resumenActual;
+    public String analyze(String resumenActual) {
+        String prompt = "Analiza el siguiente resumen de gastos semanales " +
+                "de los hijos de un padre, " +
+                "considerando sus límites de presupuesto asignados: " +
+                "Resumen actual: " + resumenActual +
+                ". Límites de presupuesto por alumno: " +
+                ". Genera un breve mensaje indicando indicando con porcentaje cuanto " +
+                "de presupuesto ha ahorrado o no segun corresponda." ;
 
         return geminiTextClient.generate(prompt)
                 .map(GeminiTextResponse::text)
-                .orElse("No se pudo generar el análisis comparativo.");
+                .orElse("No se pudo generar el análisis.");
     }
 }

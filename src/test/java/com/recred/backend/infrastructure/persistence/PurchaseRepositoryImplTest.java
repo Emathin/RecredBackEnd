@@ -162,12 +162,26 @@ class PurchaseRepositoryImplTest {
     void sumarGastosPorAlumnoEnRango_ShouldDelegateToSpringDataRepository() {
         LocalDateTime start = LocalDateTime.now().minusDays(1);
         LocalDateTime end = LocalDateTime.now();
-        when(springDataRepository.sumarGastosGeneralesEnRango(
+
+        when(springDataRepository.sumarGastosPresencialesEnRango(
                 studentId,
                 EstadoCompra.ENTREGADO,
                 start,
                 end
-        )).thenReturn(new BigDecimal("20.00"));
+        )).thenReturn(new BigDecimal("15.00"));
+
+        List<EstadoCompra> estadosAnticipados = List.of(
+                EstadoCompra.ENTREGADO,
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.EN_PREPARACION,
+                EstadoCompra.LISTO
+        );
+        when(springDataRepository.sumarGastosAnticipadosEnRango(
+                studentId,
+                estadosAnticipados,
+                start.toLocalDate(),
+                end.toLocalDate()
+        )).thenReturn(new BigDecimal("5.00"));
 
         BigDecimal result = repository.sumarGastosPorAlumnoEnRango(studentId, start, end);
 
@@ -179,13 +193,28 @@ class PurchaseRepositoryImplTest {
         UUID categoryId = UUID.randomUUID();
         LocalDateTime start = LocalDateTime.now().minusDays(1);
         LocalDateTime end = LocalDateTime.now();
-        when(springDataRepository.sumarGastosPorCategoriaEnRango(
+
+        when(springDataRepository.sumarGastosPresencialesPorCategoriaEnRango(
                 studentId,
                 EstadoCompra.ENTREGADO,
                 categoryId,
                 start,
                 end
-        )).thenReturn(new BigDecimal("10.00"));
+        )).thenReturn(new BigDecimal("8.00"));
+
+        List<EstadoCompra> estadosAnticipados = List.of(
+                EstadoCompra.ENTREGADO,
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.EN_PREPARACION,
+                EstadoCompra.LISTO
+        );
+        when(springDataRepository.sumarGastosAnticipadosPorCategoriaEnRango(
+                studentId,
+                estadosAnticipados,
+                categoryId,
+                start.toLocalDate(),
+                end.toLocalDate()
+        )).thenReturn(new BigDecimal("2.00"));
 
         BigDecimal result = repository.sumarGastosPorCategoriaEnRango(
                 studentId,

@@ -3,6 +3,7 @@ package com.recred.backend.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
+import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
@@ -31,6 +32,7 @@ import com.recred.backend.application.GeneratePurchaseRecommendation;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GenerateTopUpLink;
+import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetActivePromotions;
 import com.recred.backend.application.GetActiveSchools;
@@ -125,6 +127,7 @@ import com.recred.backend.domain.repositories.SummaryRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.CognitoStudentIdentityService;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
@@ -166,9 +169,11 @@ public class UseCases {
             TutorRepository tutorRepository,
             PurchaseRepository purchaseRepository,
             SummaryRepository summaryRepository,
+            PresupuestoRepository presupuestoRepository,
             ParentSummaryAnalyzer parentSummaryAnalyzer) {
         return new GenerateParentSummary(tutorRepository,
-                purchaseRepository, summaryRepository, parentSummaryAnalyzer);
+                purchaseRepository, summaryRepository,
+                presupuestoRepository, parentSummaryAnalyzer);
     }
 
     @Bean
@@ -718,6 +723,13 @@ public class UseCases {
     }
 
     @Bean
+    public CheckBudgetDates checkBudgetDates(
+            ProductRepository productRepository,
+            ValidadorPresupuestoService validadorPresupuestoService) {
+        return new CheckBudgetDates(productRepository, validadorPresupuestoService);
+    }
+
+    @Bean
     public LoadStockIA loadStockIA(LoadStockIAService loadStockIAService) {
         return new LoadStockIA(loadStockIAService);
     }
@@ -811,15 +823,29 @@ public class UseCases {
     @Bean
     public LoadBalanceToChild loadBalanceToChild(
             UsuarioRepository usuarioRepository,
-            WalletRepository walletRepository) {
-        return new LoadBalanceToChild(usuarioRepository, walletRepository);
+            TutorRepository tutorRepository,
+            WalletRepository walletRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        return new LoadBalanceToChild(
+                usuarioRepository, 
+                tutorRepository, 
+                walletRepository, 
+                movimientoBilleteraRepository
+        );
     }
 
     @Bean
     public TransferBalanceBetweenChildren transferBalanceBetweenChildren(
             UsuarioRepository usuarioRepository,
-            WalletRepository walletRepository) {
-        return new TransferBalanceBetweenChildren(usuarioRepository, walletRepository);
+            TutorRepository tutorRepository,
+            WalletRepository walletRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        return new TransferBalanceBetweenChildren(
+                usuarioRepository, 
+                tutorRepository, 
+                walletRepository, 
+                movimientoBilleteraRepository
+        );
     }
 
     @Bean
@@ -964,6 +990,21 @@ public class UseCases {
                 carritoFavoritoRepository,
                 usuarioRepository,
                 tutorRepository
+        );
+    }
+    @Bean
+    public GetTutorGlobalDashboard getTutorGlobalDashboard(
+            ObtenerHijosPorPadre obtenerHijosPorPadre,
+            GetActiveBudgetByStudent getActiveBudgetByStudent,
+            GetStudentRewardStatus getStudentRewardStatus,
+            PredictStudentSpending predictStudentSpending,
+            ObtenerHistorialAlumno obtenerHistorialAlumno) {
+        return new GetTutorGlobalDashboard(
+                obtenerHijosPorPadre,
+                getActiveBudgetByStudent,
+                getStudentRewardStatus,
+                predictStudentSpending,
+                obtenerHistorialAlumno
         );
     }
 }

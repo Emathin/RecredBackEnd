@@ -33,7 +33,13 @@ class LoadBalanceToChildTest {
     private UsuarioRepository usuarioRepository;
 
     @Mock
+    private com.recred.backend.domain.repositories.TutorRepository tutorRepository;
+
+    @Mock
     private WalletRepository walletRepository;
+
+    @Mock
+    private com.recred.backend.domain.repositories.MovimientoBilleteraRepository movimientoBilleteraRepository;
 
     @InjectMocks
     private LoadBalanceToChild loadBalanceToChild;
@@ -41,6 +47,7 @@ class LoadBalanceToChildTest {
     private String cognitoSub;
     private UUID studentId;
     private Usuario parentUser;
+    private Tutor tutor;
     private Alumno student;
     private Billetera wallet;
 
@@ -51,8 +58,11 @@ class LoadBalanceToChildTest {
 
         student = new Alumno();
         student.setId(studentId);
+        student.setNombre("NombreHijo");
+        student.setApellido("ApellidoHijo");
 
-        Tutor tutor = new Tutor();
+        tutor = new Tutor();
+        tutor.setId(UUID.randomUUID());
         tutor.setHijos(Set.of(student));
 
         parentUser = new Usuario();
@@ -70,12 +80,20 @@ class LoadBalanceToChildTest {
         BigDecimal amount = new BigDecimal("50.00");
 
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
+        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
         loadBalanceToChild.execute(cognitoSub, studentId, amount);
 
         assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
         verify(walletRepository).save(wallet);
+        verify(movimientoBilleteraRepository).registrarMovimiento(
+                org.mockito.ArgumentMatchers.eq(wallet.getId()),
+                org.mockito.ArgumentMatchers.eq(com.recred.backend.domain.models.TipoMovimientoBilletera.CARGA),
+                org.mockito.ArgumentMatchers.eq(amount),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(parentUser.getId())
+        );
     }
 
     @Test
@@ -111,8 +129,9 @@ class LoadBalanceToChildTest {
 
     @Test
     void execute_shouldThrowException_whenStudentIsNotChildOfTutor() {
-        parentUser.getTutor().setHijos(Set.of()); // Empty children
+        tutor.setHijos(Set.of()); // Empty children
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
+        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
 
         assertThrows(SecurityException.class, () ->
                 loadBalanceToChild.execute(cognitoSub, studentId, new BigDecimal("50.00")));
@@ -123,6 +142,7 @@ class LoadBalanceToChildTest {
     @Test
     void execute_shouldThrowException_whenWalletNotFound() {
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
+        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->

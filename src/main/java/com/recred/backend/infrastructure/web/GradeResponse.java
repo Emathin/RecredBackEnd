@@ -6,15 +6,11 @@ import java.util.UUID;
 
 public record GradeResponse(
         UUID id,
-        String year,
-        String division,
-        String description
+        String nombre
 ) {
     public static GradeResponse fromDomain(Grado grade) {
         return new GradeResponse(
                 grade.getId(),
-                grade.getAnio(),
-                grade.getDivision(),
                 grade.getAnio() + " " + grade.getDivision()
         );
     }

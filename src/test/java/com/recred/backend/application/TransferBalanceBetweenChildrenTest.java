@@ -33,7 +33,13 @@ class TransferBalanceBetweenChildrenTest {
     private UsuarioRepository usuarioRepository;
 
     @Mock
+    private com.recred.backend.domain.repositories.TutorRepository tutorRepository;
+
+    @Mock
     private WalletRepository walletRepository;
+
+    @Mock
+    private com.recred.backend.domain.repositories.MovimientoBilleteraRepository movimientoBilleteraRepository;
 
     @InjectMocks
     private TransferBalanceBetweenChildren transferUseCase;
@@ -42,6 +48,7 @@ class TransferBalanceBetweenChildrenTest {
     private UUID fromId;
     private UUID toId;
     private Usuario parentUser;
+    private Tutor tutor;
     private Billetera fromWallet;
     private Billetera toWallet;
 
@@ -53,10 +60,16 @@ class TransferBalanceBetweenChildrenTest {
 
         Alumno child1 = new Alumno();
         child1.setId(fromId);
+        child1.setNombre("Hijo");
+        child1.setApellido("Uno");
+
         Alumno child2 = new Alumno();
         child2.setId(toId);
+        child2.setNombre("Hijo");
+        child2.setApellido("Dos");
 
-        Tutor tutor = new Tutor();
+        tutor = new Tutor();
+        tutor.setId(UUID.randomUUID());
         tutor.setHijos(Set.of(child1, child2));
 
         parentUser = new Usuario();
@@ -78,6 +91,7 @@ class TransferBalanceBetweenChildrenTest {
         BigDecimal amount = new BigDecimal("30.00");
 
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
+        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
         when(walletRepository.findByStudentId(fromId)).thenReturn(Optional.of(fromWallet));
         when(walletRepository.findByStudentId(toId)).thenReturn(Optional.of(toWallet));
 
@@ -87,6 +101,20 @@ class TransferBalanceBetweenChildrenTest {
         assertEquals(new BigDecimal("80.00"), toWallet.getSaldoCreditos());
         verify(walletRepository).save(fromWallet);
         verify(walletRepository).save(toWallet);
+        verify(movimientoBilleteraRepository).registrarMovimiento(
+                org.mockito.ArgumentMatchers.eq(fromWallet.getId()),
+                org.mockito.ArgumentMatchers.eq(com.recred.backend.domain.models.TipoMovimientoBilletera.AJUSTE),
+                org.mockito.ArgumentMatchers.eq(amount.negate()),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(parentUser.getId())
+        );
+        verify(movimientoBilleteraRepository).registrarMovimiento(
+                org.mockito.ArgumentMatchers.eq(toWallet.getId()),
+                org.mockito.ArgumentMatchers.eq(com.recred.backend.domain.models.TipoMovimientoBilletera.AJUSTE),
+                org.mockito.ArgumentMatchers.eq(amount),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(parentUser.getId())
+        );
     }
 
     @Test
@@ -130,8 +158,8 @@ class TransferBalanceBetweenChildrenTest {
 
     @Test
     void execute_shouldThrowException_whenUserHasNoTutor() {
-        parentUser.setTutor(null);
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
+        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.empty());
 
         assertThrows(SecurityException.class, () ->
                 transferUseCase.execute(cognitoSub, fromId, toId, new BigDecimal("30.00")));
@@ -144,9 +172,12 @@ class TransferBalanceBetweenChildrenTest {
         // Child 1 is owned but Child 2 is not
         Alumno child1 = new Alumno();
         child1.setId(fromId);
-        parentUser.getTutor().setHijos(Set.of(child1));
+        child1.setNombre("Hijo");
+        child1.setApellido("Uno");
+        tutor.setHijos(Set.of(child1));
 
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
+        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
 
         assertThrows(SecurityException.class, () ->
                 transferUseCase.execute(cognitoSub, fromId, toId, new BigDecimal("30.00")));
@@ -157,6 +188,7 @@ class TransferBalanceBetweenChildrenTest {
     @Test
     void execute_shouldThrowException_whenSourceWalletNotFound() {
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
+        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
         when(walletRepository.findByStudentId(fromId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
@@ -168,6 +200,7 @@ class TransferBalanceBetweenChildrenTest {
     @Test
     void execute_shouldThrowException_whenDestinationWalletNotFound() {
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
+        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
         when(walletRepository.findByStudentId(fromId)).thenReturn(Optional.of(fromWallet));
         when(walletRepository.findByStudentId(toId)).thenReturn(Optional.empty());
 

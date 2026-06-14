@@ -164,18 +164,39 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
-    public BigDecimal sumarGastosPorAlumnoEnRango
-            (UUID alumnoId, LocalDateTime inicio, LocalDateTime fin) {
-        return springDataRepository.sumarGastosGeneralesEnRango
-                (alumnoId, EstadoCompra.ENTREGADO, inicio, fin);
+    public BigDecimal sumarGastosPorAlumnoEnRango(
+            UUID alumnoId, LocalDateTime inicio, LocalDateTime fin) {
+        BigDecimal presenciales = springDataRepository.sumarGastosPresencialesEnRango(
+                alumnoId, EstadoCompra.ENTREGADO, inicio, fin);
 
+        List<EstadoCompra> estadosAnticipados = List.of(
+                EstadoCompra.ENTREGADO,
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.EN_PREPARACION,
+                EstadoCompra.LISTO
+        );
+        BigDecimal anticipadas = springDataRepository.sumarGastosAnticipadosEnRango(
+                alumnoId, estadosAnticipados, inicio.toLocalDate(), fin.toLocalDate());
+
+        return presenciales.add(anticipadas);
     }
 
     @Override
-    public BigDecimal sumarGastosPorCategoriaEnRango
-            (UUID alumnoId, UUID categoriaId, LocalDateTime inicio, LocalDateTime fin) {
-        return springDataRepository.sumarGastosPorCategoriaEnRango
-                (alumnoId, EstadoCompra.ENTREGADO, categoriaId, inicio, fin);
+    public BigDecimal sumarGastosPorCategoriaEnRango(
+            UUID alumnoId, UUID categoriaId, LocalDateTime inicio, LocalDateTime fin) {
+        BigDecimal presenciales = springDataRepository.sumarGastosPresencialesPorCategoriaEnRango(
+                alumnoId, EstadoCompra.ENTREGADO, categoriaId, inicio, fin);
+
+        List<EstadoCompra> estadosAnticipados = List.of(
+                EstadoCompra.ENTREGADO,
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.EN_PREPARACION,
+                EstadoCompra.LISTO
+        );
+        BigDecimal anticipadas = springDataRepository.sumarGastosAnticipadosPorCategoriaEnRango(
+                alumnoId, estadosAnticipados, categoriaId, inicio.toLocalDate(), fin.toLocalDate());
+
+        return presenciales.add(anticipadas);
     }
 
     @Override
