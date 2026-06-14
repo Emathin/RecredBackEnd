@@ -20,7 +20,23 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
         Optional<ProductoEntity> findByIdAndActivoTrue(UUID id);
 
         @Query("""
-                        SELECT p, i.stockActual
+                        SELECT p,
+                            i.stockActual,
+                            COALESCE(i.stockReservado, 0),
+                            i.stockMinimo,
+                            i.estado,
+                            i.tipoManejo,
+                            i.cupoMaximoDiario,
+                            CASE
+                                WHEN i.id IS NULL THEN null
+                                WHEN i.tipoManejo = 'DISPONIBLE_NO_DISPONIBLE'
+                                    THEN CASE
+                                        WHEN i.estado IN ('DISPONIBLE', 'BAJO_STOCK')
+                                            THEN 1
+                                        ELSE 0
+                                    END
+                                ELSE i.stockActual - COALESCE(i.stockReservado, 0)
+                            END
                         FROM ProductoEntity p
                         LEFT JOIN InventarioBuffetEntity i
                             ON i.productoEntity = p
@@ -30,7 +46,23 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
         List<Object[]> findAllActiveWithStockParams(@Param("buffetId") UUID buffetId);
 
         @Query("""
-                        SELECT p, i.stockActual
+                        SELECT p,
+                            i.stockActual,
+                            COALESCE(i.stockReservado, 0),
+                            i.stockMinimo,
+                            i.estado,
+                            i.tipoManejo,
+                            i.cupoMaximoDiario,
+                            CASE
+                                WHEN i.id IS NULL THEN null
+                                WHEN i.tipoManejo = 'DISPONIBLE_NO_DISPONIBLE'
+                                    THEN CASE
+                                        WHEN i.estado IN ('DISPONIBLE', 'BAJO_STOCK')
+                                            THEN 1
+                                        ELSE 0
+                                    END
+                                ELSE i.stockActual - COALESCE(i.stockReservado, 0)
+                            END
                         FROM ProductoEntity p
                         LEFT JOIN InventarioBuffetEntity i
                             ON i.productoEntity = p

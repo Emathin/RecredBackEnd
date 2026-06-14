@@ -26,6 +26,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
 
         Map<String, Object> body = new HashMap<>();
         body.put("status", HttpStatus.UNAUTHORIZED.value());
+        body.put("code", "UNAUTHORIZED");
         body.put("error", "No autorizado");
         body.put("mensaje", "Token inválido, expirado o ausente");
         body.put("path", request.getServletPath());

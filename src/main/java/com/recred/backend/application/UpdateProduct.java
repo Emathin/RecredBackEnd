@@ -7,6 +7,7 @@ import com.recred.backend.domain.models.ClasificacionTipo;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.repositories.CategoryRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -113,7 +114,10 @@ public class UpdateProduct {
     }
 
     private boolean hasInventoryData(UpdateProductCommand command) {
-        return command.buffetId() != null && command.stockActual() != null;
+        return command.buffetId() != null
+                && (command.stockActual() != null
+                || command.tipoManejoInventario() != null
+                || command.cupoMaximoDiario() != null);
     }
 
     private void updateInventory(UpdateProductCommand command, UUID productId) {
@@ -121,7 +125,11 @@ public class UpdateProduct {
                 .findByBuffetAndProduct(command.buffetId(), productId)
                 .orElseGet(() -> createNewInventory(command, productId));
 
-        inventario.setStockActual(command.stockActual());
+        if (command.stockActual() != null) {
+            inventario.setStockActual(command.stockActual());
+        }
+        inventario.setTipoManejo(tipoManejo(command));
+        inventario.setCupoMaximoDiario(command.cupoMaximoDiario());
         inventoryRepository.save(inventario);
     }
 
@@ -129,8 +137,16 @@ public class UpdateProduct {
         Inventario inventario = new Inventario();
         inventario.setBuffetId(command.buffetId());
         inventario.setProductoId(productId);
-        inventario.setStockMinimo(0);
+        inventario.setStockMinimo(Inventario.STOCK_MINIMO_PREDETERMINADO);
         inventario.setEstado(EstadoInventario.DISPONIBLE);
+        inventario.setStockReservado(0);
+        inventario.setTipoManejo(tipoManejo(command));
         return inventario;
+    }
+
+    private TipoManejoInventario tipoManejo(UpdateProductCommand command) {
+        return command.tipoManejoInventario() == null
+                ? TipoManejoInventario.STOCK_EXACTO
+                : command.tipoManejoInventario();
     }
 }

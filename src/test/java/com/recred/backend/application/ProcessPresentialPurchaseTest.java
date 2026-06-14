@@ -13,6 +13,7 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.services.InventoryAvailabilityService;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
 import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
@@ -56,6 +57,8 @@ class ProcessPresentialPurchaseTest {
     private ValidacionRestriccionesService healthValidator;
     @Mock
     private ValidadorPresupuestoService budgetValidator;
+    @Mock
+    private InventoryAvailabilityService inventoryAvailabilityService;
 
     @InjectMocks
     private ProcessPresentialPurchase useCase;
@@ -66,10 +69,12 @@ class ProcessPresentialPurchaseTest {
     private Map<Producto, Integer> cart;
     private Producto product;
     private CategoriaProducto category;
+    private UUID buffetId;
 
     @BeforeEach
     void setUp() {
         studentId = UUID.randomUUID();
+        buffetId = UUID.randomUUID();
         student = new Alumno();
         student.setId(studentId);
 
@@ -95,7 +100,7 @@ class ProcessPresentialPurchaseTest {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        useCase.execute(studentId, cart);
+        useCase.execute(studentId, cart, buffetId);
 
         verify(timeValidator).validarCompra(
                 eq(student),
@@ -117,6 +122,7 @@ class ProcessPresentialPurchaseTest {
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(walletRepository).save(any(Billetera.class));
         verify(purchaseRepository).save(purchaseCaptor.capture());
+        verify(inventoryAvailabilityService).consumeDirectly(buffetId, cart);
         assertEquals(EstadoCompra.ENTREGADO, purchaseCaptor.getValue().getStatus());
     }
 
@@ -126,11 +132,30 @@ class ProcessPresentialPurchaseTest {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        useCase.execute(studentId, cart);
+        useCase.execute(studentId, cart, buffetId);
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
         assertEquals(EstadoCompra.PENDIENTE, purchaseCaptor.getValue().getStatus());
+    }
+
+    @Test
+    void execute_WithBuffetId_ShouldConsumeInventoryDirectly() {
+        UUID buffetId = UUID.randomUUID();
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+
+        useCase.execute(studentId, cart, buffetId);
+
+        verify(inventoryAvailabilityService).consumeDirectly(buffetId, cart);
+    }
+
+    @Test
+    void execute_WhenBuffetIdIsNull_ShouldThrowException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(studentId, cart, null));
+
+        verifyNoInteractions(studentRepository, walletRepository, purchaseRepository);
     }
 
     @Test
@@ -139,7 +164,7 @@ class ProcessPresentialPurchaseTest {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        useCase.execute(studentId, cart);
+        useCase.execute(studentId, cart, buffetId);
 
         verify(budgetValidator).validarPresupuesto(
                 eq(studentId),
@@ -155,7 +180,7 @@ class ProcessPresentialPurchaseTest {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        useCase.execute(studentId, cart);
+        useCase.execute(studentId, cart, buffetId);
 
         verify(budgetValidator).validarPresupuesto(
                 eq(studentId),
@@ -171,7 +196,7 @@ class ProcessPresentialPurchaseTest {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        useCase.execute(studentId, cart);
+        useCase.execute(studentId, cart, buffetId);
 
         Map<UUID, BigDecimal> expectedCategoryTotals = new HashMap<>();
         expectedCategoryTotals.put(category.getId(), BigDecimal.ZERO);
@@ -187,7 +212,8 @@ class ProcessPresentialPurchaseTest {
     void execute_WhenStudentNotFound_ShouldThrowException() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
 
-        assertThrows(AlumnoNoEncontradoException.class, () -> useCase.execute(studentId, cart));
+        assertThrows(AlumnoNoEncontradoException.class,
+                () -> useCase.execute(studentId, cart, buffetId));
 
         verifyNoInteractions(
                 timeValidator,
@@ -205,7 +231,7 @@ class ProcessPresentialPurchaseTest {
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
         assertThrows(InsufficientBalanceException.class,
-                () -> useCase.execute(studentId, cart));
+                () -> useCase.execute(studentId, cart, buffetId));
 
         verify(timeValidator).validarCompra(
                 eq(student),
@@ -224,7 +250,7 @@ class ProcessPresentialPurchaseTest {
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
 
         assertThrows(IllegalStateException.class,
-                () -> useCase.execute(studentId, cart));
+                () -> useCase.execute(studentId, cart, buffetId));
 
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
@@ -237,7 +263,8 @@ class ProcessPresentialPurchaseTest {
                 .when(healthValidator)
                 .validarCompra(student, cart.keySet());
 
-        assertThrows(RestriccionSaludException.class, () -> useCase.execute(studentId, cart));
+        assertThrows(RestriccionSaludException.class,
+                () -> useCase.execute(studentId, cart, buffetId));
 
         verify(timeValidator).validarCompra(
                 eq(student),
@@ -259,7 +286,7 @@ class ProcessPresentialPurchaseTest {
                 );
 
         assertThrows(RestriccionHorariaException.class,
-                () -> useCase.execute(studentId, cart));
+                () -> useCase.execute(studentId, cart, buffetId));
 
         verifyNoInteractions(
                 healthValidator,

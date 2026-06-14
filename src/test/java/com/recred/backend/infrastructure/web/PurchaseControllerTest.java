@@ -59,6 +59,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyMap;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @WebMvcTest(
         controllers = PurchaseController.class,
@@ -93,6 +94,10 @@ class PurchaseControllerTest {
     private ProductRepository productRepository;
     @MockitoBean
     private CreateAdvancePurchase createAdvancePurchase;
+    @MockitoBean
+    private KiosqueroAccessGuard kiosqueroAccessGuard;
+    @MockitoBean
+    private PurchaseAccessGuard purchaseAccessGuard;
 
     @MockitoBean
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
@@ -103,6 +108,7 @@ class PurchaseControllerTest {
 
     private UUID studentId;
     private UUID productId;
+    private UUID buffetId;
     private UUID purchaseId;
     private ProcessPurchaseRequestDTO requestDTO;
     private Purchase purchase;
@@ -112,6 +118,7 @@ class PurchaseControllerTest {
     void setUp() {
         studentId = UUID.randomUUID();
         productId = UUID.randomUUID();
+        buffetId = UUID.randomUUID();
         purchaseId = UUID.randomUUID();
 
         Producto product = new Producto();
@@ -123,7 +130,11 @@ class PurchaseControllerTest {
 
         PurchaseItemDTO itemDTO = new PurchaseItemDTO(product.getId(), product.getNombre(),
                 1, product.getPrecio());
-        requestDTO = new ProcessPurchaseRequestDTO(studentId, Collections.singletonList(itemDTO));
+        requestDTO = new ProcessPurchaseRequestDTO(
+                studentId,
+                buffetId,
+                Collections.singletonList(itemDTO)
+        );
 
         Alumno student = new Alumno();
         student.setId(studentId);
@@ -133,13 +144,15 @@ class PurchaseControllerTest {
         purchase.setStatus(EstadoCompra.ENTREGADO);
         purchase.setDate(LocalDateTime.now());
 
-        when(processPresentialPurchase.execute(eq(studentId), anyMap())).thenReturn(purchase);
+        when(processPresentialPurchase.execute(eq(studentId), anyMap(), eq(buffetId)))
+                .thenReturn(purchase);
 
         AdvancePurchaseRequest.ItemRequest itemRequest = new AdvancePurchaseRequest.ItemRequest(productId, 1);
         AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
                 studentId,
                 UUID.randomUUID(),
                 BuyerType.TUTOR,
+                buffetId,
                 "2024-07-30",
                 RecessTime.FIRST_RECESS,
                 List.of(itemRequest)
@@ -156,7 +169,19 @@ class PurchaseControllerTest {
                 .andExpect(jsonPath("$.id").value(purchaseId.toString()))
                 .andExpect(jsonPath("$.status").value(EstadoCompra.ENTREGADO.name()));
 
-        verify(processPresentialPurchase).execute(eq(studentId), anyMap());
+        verify(processPresentialPurchase).execute(eq(studentId), anyMap(), eq(buffetId));
+    }
+
+    @Test
+    void processPurchase_WhenBuffetIdIsMissing_ShouldReturnBadRequest() throws Exception {
+        ProcessPurchaseRequestDTO invalidRequest = new ProcessPurchaseRequestDTO();
+        invalidRequest.setStudentId(studentId);
+        invalidRequest.setItems(requestDTO.getItems());
+
+        mockMvc.perform(post("/api/v1/purchases/presential")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -180,9 +205,31 @@ class PurchaseControllerTest {
     }
 
     @Test
+    void createAdvancePurchase_WhenBuffetIdIsMissing_ShouldReturnBadRequest() throws Exception {
+        AdvancePurchaseRequest invalidRequest = new AdvancePurchaseRequest(List.of(
+                new AdvancePurchaseRequest.OrderRequest(
+                        studentId,
+                        UUID.randomUUID(),
+                        BuyerType.TUTOR,
+                        null,
+                        "2024-07-30",
+                        RecessTime.FIRST_RECESS,
+                        List.of(new AdvancePurchaseRequest.ItemRequest(productId, 1))
+                )
+        ));
+
+        mockMvc.perform(post("/api/v1/purchases/advance")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(createAdvancePurchase);
+    }
+
+    @Test
     void processPurchase_WhenStudentNotFound_ShouldReturnNotFound() throws Exception {
         doThrow(new AlumnoNoEncontradoException(studentId))
-                .when(processPresentialPurchase).execute(eq(studentId), anyMap());
+                .when(processPresentialPurchase).execute(eq(studentId), anyMap(), eq(buffetId));
 
         mockMvc.perform(post("/api/v1/purchases/presential")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -194,7 +241,7 @@ class PurchaseControllerTest {
     void processPurchase_WhenInsufficientBalance_ShouldReturnBadRequest() throws Exception {
         doThrow(new InsufficientBalanceException(""))
                 .when(processPresentialPurchase)
-                .execute(eq(studentId), anyMap());
+                .execute(eq(studentId), anyMap(), eq(buffetId));
 
         mockMvc.perform(post("/api/v1/purchases/presential")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -212,16 +259,19 @@ class PurchaseControllerTest {
                 updatePurchaseStatus,
                 cancelPresentialPurchase,
                 productRepository,
-                createAdvancePurchase
+                createAdvancePurchase,
+                kiosqueroAccessGuard,
+                purchaseAccessGuard
         );
 
         assertThrows(RuntimeException.class,
-                () -> controller.processPurchase(requestDTO));
+                () -> controller.processPurchase(requestDTO, null));
     }
 
     @Test
     void getPurchaseById_WhenPurchaseExists_ShouldReturnPurchase() throws Exception {
-        when(getPresentialPurchase.execute(purchaseId)).thenReturn(Optional.of(purchase));
+        when(purchaseAccessGuard.requirePurchaseAccess(any(), eq(purchaseId)))
+                .thenReturn(purchase);
 
         mockMvc.perform(get("/api/v1/purchases/{id}", purchaseId))
                 .andExpect(status().isOk())
@@ -231,7 +281,9 @@ class PurchaseControllerTest {
     @Test
     void getPurchaseById_WhenPurchaseDoesNotExist_ShouldReturnNotFound() throws Exception {
         UUID purchaseId = UUID.randomUUID();
-        when(getPresentialPurchase.execute(purchaseId)).thenReturn(Optional.empty());
+        when(purchaseAccessGuard.requirePurchaseAccess(any(), eq(purchaseId)))
+                .thenThrow(new com.recred.backend.domain.exceptions.PurchaseNotFoundException(
+                        purchaseId));
 
         mockMvc.perform(get("/api/v1/purchases/{id}", purchaseId))
                 .andExpect(status().isNotFound());
@@ -269,7 +321,9 @@ class PurchaseControllerTest {
                 updatePurchaseStatus,
                 cancelPresentialPurchase,
                 productRepository,
-                createAdvancePurchase
+                createAdvancePurchase,
+                kiosqueroAccessGuard,
+                purchaseAccessGuard
         );
 
         assertThrows(AuthenticationCredentialsNotFoundException.class,
@@ -287,6 +341,8 @@ class PurchaseControllerTest {
         );
         when(updatePurchaseStatus.execute(purchaseId, EstadoCompra.EN_PREPARACION))
                 .thenReturn(purchaseStatus);
+        when(purchaseAccessGuard.requirePurchaseAccess(any(), eq(purchaseId)))
+                .thenReturn(purchase);
 
         mockMvc.perform(patch("/api/v1/purchases/{id}/status", purchaseId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -303,6 +359,8 @@ class PurchaseControllerTest {
     @Test
     void cancelPurchase_WithValidId_ShouldReturnOk() throws Exception {
         UUID purchaseId = UUID.randomUUID();
+        when(purchaseAccessGuard.requirePurchaseAccess(any(), eq(purchaseId)))
+                .thenReturn(purchase);
 
         mockMvc.perform(put("/api/v1/purchases/{id}/cancel", purchaseId))
                 .andExpect(status().isOk());

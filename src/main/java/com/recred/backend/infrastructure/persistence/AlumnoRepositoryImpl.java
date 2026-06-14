@@ -6,6 +6,7 @@ import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,12 +24,14 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Alumno> findById(UUID id) {
         return springDataRepository.findById(id)
                 .map(AlumnoEntity::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Alumno> findAll() {
         return springDataRepository.findAll().stream()
                 .map(AlumnoEntity::toDomain)
@@ -51,6 +54,7 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
     }
 
     @Override
+    @Transactional
     public void save(Alumno alumno) {
         AlumnoEntity entityExistente = springDataRepository.findById(alumno.getId())
                 .orElseGet(AlumnoEntity::new);

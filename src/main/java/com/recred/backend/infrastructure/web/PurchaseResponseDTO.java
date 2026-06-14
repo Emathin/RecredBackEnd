@@ -41,13 +41,23 @@ public class PurchaseResponseDTO {
 
         if (purchase.getItems() != null) {
             this.items = purchase.getItems().entrySet().stream()
-                    .map(entry -> new PurchaseItemDTO(
-                            entry.getKey().getId(),
-                            entry.getKey().getNombre(),
-                            entry.getValue(),
-                            entry.getKey().getPrecio()
-                    ))
+                    .map(entry -> purchaseItem(entry.getKey(), entry.getValue()))
                     .collect(Collectors.toList());
         }
+    }
+
+    private PurchaseItemDTO purchaseItem(
+            com.recred.backend.domain.models.Producto product,
+            Integer quantity
+    ) {
+        PurchaseItemDTO item = new PurchaseItemDTO(
+                product.getId(),
+                product.getNombre(),
+                quantity,
+                product.getPrecio()
+        );
+        item.setRequierePreparacion(product.getRequierePreparacion());
+        item.setCupoMaximoDiario(product.getCupoMaximoDiario());
+        return item;
     }
 }

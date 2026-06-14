@@ -25,12 +25,17 @@ public class MenuBuffetController {
     @GetMapping("/{alumnoId}/menu-buffet")
     public ResponseEntity<List<MenuProductoDTO>> obtenerMenu(
             @PathVariable UUID alumnoId,
+            @RequestParam UUID buffetId,
             @RequestParam(required = false) LocalDateTime fechaHoraConsulta) {
 
         LocalDateTime momentoEvaluacion = (fechaHoraConsulta != null) ?
                 fechaHoraConsulta : LocalDateTime.now();
 
-        List<MenuProductoDTO> menu = generarMenuBuffet.execute(alumnoId, momentoEvaluacion);
+        List<MenuProductoDTO> menu = generarMenuBuffet.execute(
+                alumnoId,
+                buffetId,
+                momentoEvaluacion
+        );
 
         return ResponseEntity.ok(menu);
     }

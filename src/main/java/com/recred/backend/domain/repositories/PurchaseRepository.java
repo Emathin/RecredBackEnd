@@ -6,7 +6,9 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseResume;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -39,6 +41,35 @@ public interface PurchaseRepository {
     List<Purchase> findByBuffetAndStatuses(UUID buffetId,
                                            List<EstadoCompra> statuses,
                                            int limit);
+
+    List<Purchase> findKiosqueroOrders(UUID buffetId,
+                                       List<EstadoCompra> statuses,
+                                       LocalDate date,
+                                       UUID pickupSlotId,
+                                       int limit);
+
+    List<Purchase> findByBuffetAndDateRange(UUID buffetId,
+                                            LocalDateTime start,
+                                            LocalDateTime end);
+
+    List<Purchase> findExpiredAdvancePurchases(LocalDate date,
+                                               LocalTime time,
+                                               List<EstadoCompra> statuses);
+
+    List<Purchase> findExpiredAdvancePurchases(UUID buffetId,
+                                               LocalDate date,
+                                               LocalTime time,
+                                               List<EstadoCompra> statuses);
+
+    long countScheduledAdvancePurchases(UUID buffetId,
+                                        UUID pickupSlotId,
+                                        LocalDate pickupDate,
+                                        List<EstadoCompra> statuses);
+
+    long sumScheduledProductQuantity(UUID buffetId,
+                                     UUID productId,
+                                     LocalDate pickupDate,
+                                     List<EstadoCompra> statuses);
 
     List<CartProductAffinity> findStudentCartAffinities(
             UUID alumnoId,

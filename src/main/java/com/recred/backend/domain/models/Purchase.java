@@ -8,6 +8,7 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -29,6 +30,9 @@ public class Purchase {
     private TipoCompra tipo = TipoCompra.PRESENCIAL;
     private String withdrawalCode;
     private UUID pickupSlotId;
+    private String pickupSlotDescription;
+    private LocalTime pickupSlotStart;
+    private LocalTime pickupSlotEnd;
     private LocalDate pickupDate;
 
     private Map<Producto, Integer> items = new HashMap<>();
@@ -112,12 +116,18 @@ public class Purchase {
     private boolean isAllowedTransition(EstadoCompra nextStatus) {
         return switch (this.status) {
             case PENDIENTE -> nextStatus == EstadoCompra.EN_PREPARACION
-                    || nextStatus == EstadoCompra.CANCELADO;
+                    || nextStatus == EstadoCompra.CANCELADO
+                    || nextStatus == EstadoCompra.RECHAZADO
+                    || nextStatus == EstadoCompra.VENCIDO;
             case EN_PREPARACION -> nextStatus == EstadoCompra.LISTO
-                    || nextStatus == EstadoCompra.CANCELADO;
+                    || nextStatus == EstadoCompra.CANCELADO
+                    || nextStatus == EstadoCompra.RECHAZADO
+                    || nextStatus == EstadoCompra.VENCIDO;
             case LISTO -> nextStatus == EstadoCompra.ENTREGADO
-                    || nextStatus == EstadoCompra.CANCELADO;
-            case ENTREGADO, CANCELADO -> false;
+                    || nextStatus == EstadoCompra.CANCELADO
+                    || nextStatus == EstadoCompra.RECHAZADO
+                    || nextStatus == EstadoCompra.VENCIDO;
+            case ENTREGADO, CANCELADO, RECHAZADO, VENCIDO -> false;
         };
     }
 }

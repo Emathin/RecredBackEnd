@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoCompra;
@@ -113,12 +114,24 @@ public abstract class CompraEntity {
                 domain.setPickupDate(retiroProgramadoEntity.getFechaProgramada());
                 if (retiroProgramadoEntity.getFranja() != null) {
                     domain.setPickupSlotId(retiroProgramadoEntity.getFranja().getId());
+                    domain.setPickupSlotDescription(
+                            retiroProgramadoEntity.getFranja().getDescripcion());
+                    domain.setPickupSlotStart(retiroProgramadoEntity.getFranja().getHoraInicio());
+                    domain.setPickupSlotEnd(retiroProgramadoEntity.getFranja().getHoraFin());
                 }
             }
         }
 
         if (this.alumnoEntity != null) {
             domain.setStudent(this.alumnoEntity.toDomain());
+        }
+
+        if (this.tutorEntity != null) {
+            domain.setBuyerId(this.tutorEntity.getId());
+            domain.setBuyerType(BuyerType.TUTOR);
+        } else if (this.alumnoEntity != null) {
+            domain.setBuyerId(this.alumnoEntity.getId());
+            domain.setBuyerType(BuyerType.STUDENT);
         }
 
         if (this.detalles != null) {

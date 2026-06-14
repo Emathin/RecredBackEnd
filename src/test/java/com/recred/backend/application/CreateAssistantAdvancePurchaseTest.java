@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.exceptions.InsufficientStockException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.Colegio;
@@ -11,9 +12,11 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.repositories.AlumnoRepository;
-import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.services.AdvancePurchaseRulesService;
+import com.recred.backend.domain.services.InventoryAvailabilityService;
+import com.recred.backend.domain.services.RecessTimeSlotResolver;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
 import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
@@ -32,14 +35,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -56,7 +61,7 @@ class CreateAssistantAdvancePurchaseTest {
     private PurchaseRepository purchaseRepository;
 
     @Mock
-    private FranjaHorariaRepository timeSlotRepository;
+    private RecessTimeSlotResolver recessTimeSlotResolver;
 
     @Mock
     private ValidadorHorarioService timeValidator;
@@ -69,6 +74,10 @@ class CreateAssistantAdvancePurchaseTest {
 
     @Mock
     private WithdrawalCodeService withdrawalCodeService;
+    @Mock
+    private InventoryAvailabilityService inventoryAvailabilityService;
+    @Mock
+    private AdvancePurchaseRulesService advancePurchaseRulesService;
 
     private CreateAssistantAdvancePurchase useCase;
     private UUID studentId;
@@ -84,13 +93,15 @@ class CreateAssistantAdvancePurchaseTest {
                 studentRepository,
                 walletRepository,
                 purchaseRepository,
-                timeSlotRepository,
+                recessTimeSlotResolver,
                 timeValidator,
                 healthValidator,
                 budgetValidator,
                 withdrawalCodeService,
                 Clock.fixed(Instant.parse("2026-05-27T12:00:00Z"),
-                        ZoneId.of("America/Argentina/Buenos_Aires"))
+                        ZoneId.of("America/Argentina/Buenos_Aires")),
+                inventoryAvailabilityService,
+                advancePurchaseRulesService
         );
         studentId = UUID.randomUUID();
         schoolId = UUID.randomUUID();
@@ -105,9 +116,11 @@ class CreateAssistantAdvancePurchaseTest {
         LocalDate pickupDate = LocalDate.of(2026, 5, 27);
         Alumno student = student();
         Map<Producto, Integer> cart = Map.of(product, 2);
+        FranjaHoraria slot = timeSlot();
 
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(timeSlotRepository.findAllByColegioId(schoolId)).thenReturn(List.of(timeSlot()));
+        when(recessTimeSlotResolver.resolve(student, RecessTime.FIRST_RECESS))
+                .thenReturn(slot);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
         when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("ABC123");
         when(purchaseRepository.save(any(Purchase.class))).thenAnswer(invocation ->
@@ -147,7 +160,38 @@ class CreateAssistantAdvancePurchaseTest {
                 eq(Map.of()),
                 eq(LocalDateTime.of(2026, 5, 27, 10, 0))
         );
+        verify(advancePurchaseRulesService).validate(buffetId, slot, pickupDate, cart);
+        verify(inventoryAvailabilityService).reserve(buffetId, cart);
         verify(walletRepository).save(wallet);
+    }
+
+    @Test
+    void execute_WhenStockIsInsufficient_ShouldNotDebitWalletOrSavePurchase() {
+        LocalDate pickupDate = LocalDate.of(2026, 5, 27);
+        Alumno student = student();
+        Map<Producto, Integer> cart = Map.of(product, 2);
+        FranjaHoraria slot = timeSlot();
+
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(recessTimeSlotResolver.resolve(student, RecessTime.FIRST_RECESS))
+                .thenReturn(slot);
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        doThrow(new InsufficientStockException(product.getId(), 2, 1))
+                .when(inventoryAvailabilityService)
+                .reserve(buffetId, cart);
+
+        assertThrows(InsufficientStockException.class, () -> useCase.execute(
+                studentId,
+                buffetId,
+                cart,
+                RecessTime.FIRST_RECESS,
+                pickupDate
+        ));
+
+        assertEquals(new BigDecimal("100.00"), wallet.getSaldoCreditos());
+        verify(walletRepository, never()).save(wallet);
+        verify(purchaseRepository, never()).save(any(Purchase.class));
+        verify(withdrawalCodeService, never()).generateCode(any(Purchase.class));
     }
 
     private Alumno student() {

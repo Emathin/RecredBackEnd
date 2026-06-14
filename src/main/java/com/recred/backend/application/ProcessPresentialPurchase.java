@@ -11,9 +11,11 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.services.InventoryAvailabilityService;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
 import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -29,13 +31,15 @@ public class ProcessPresentialPurchase {
     private final ValidadorHorarioService timeValidator;
     private final ValidacionRestriccionesService healthValidator;
     private final ValidadorPresupuestoService budgetValidator;
+    private final InventoryAvailabilityService inventoryAvailabilityService;
 
     public ProcessPresentialPurchase(AlumnoRepository studentRepository,
                                      WalletRepository walletRepository,
                                      PurchaseRepository purchaseRepository,
                                      ValidadorHorarioService timeValidator,
                                      ValidacionRestriccionesService healthValidator,
-                                     ValidadorPresupuestoService budgetValidator) {
+                                     ValidadorPresupuestoService budgetValidator,
+                                     InventoryAvailabilityService inventoryAvailabilityService) {
 
         this.studentRepository = studentRepository;
         this.walletRepository = walletRepository;
@@ -43,13 +47,14 @@ public class ProcessPresentialPurchase {
         this.timeValidator = timeValidator;
         this.healthValidator = healthValidator;
         this.budgetValidator = budgetValidator;
+        this.inventoryAvailabilityService = inventoryAvailabilityService;
     }
 
-    public Purchase execute(UUID studentId, Map<Producto, Integer> cart) {
-        return execute(studentId, cart, null);
-    }
-
+    @Transactional
     public Purchase execute(UUID studentId, Map<Producto, Integer> cart, UUID buffetId) {
+        if (buffetId == null) {
+            throw new IllegalArgumentException("buffetId is required");
+        }
 
         Alumno student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
@@ -92,6 +97,8 @@ public class ProcessPresentialPurchase {
             throw new InsufficientBalanceException
                     ("Insufficient balance for student: " + studentId);
         }
+
+        inventoryAvailabilityService.consumeDirectly(buffetId, cart);
 
         wallet.debit(montoTotalCarrito);
 

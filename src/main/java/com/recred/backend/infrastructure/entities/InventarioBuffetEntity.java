@@ -1,6 +1,8 @@
 package com.recred.backend.infrastructure.entities;
 
 import com.recred.backend.domain.models.EstadoInventario;
+import com.recred.backend.domain.models.Inventario;
+import com.recred.backend.domain.models.TipoManejoInventario;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -44,12 +46,22 @@ public class InventarioBuffetEntity {
     @Column(name = "stock_actual", nullable = false)
     private Integer stockActual = 0;
 
+    @Column(name = "stock_reservado", nullable = false)
+    private Integer stockReservado = 0;
+
     @Column(name = "stock_minimo")
-    private Integer stockMinimo = 0;
+    private Integer stockMinimo = Inventario.STOCK_MINIMO_PREDETERMINADO;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EstadoInventario estado = EstadoInventario.DISPONIBLE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_manejo", nullable = false)
+    private TipoManejoInventario tipoManejo = TipoManejoInventario.STOCK_EXACTO;
+
+    @Column(name = "cupo_maximo_diario")
+    private Integer cupoMaximoDiario;
 
     @OneToMany(mappedBy = "inventario", cascade = CascadeType.ALL, orphanRemoval = true)
     private java.util.List<MovimientoStockEntity> movimientos = new java.util.ArrayList<>();
@@ -64,9 +76,12 @@ public class InventarioBuffetEntity {
                 this.buffetEntity != null ? this.buffetEntity.getId() : null,
                 this.productoEntity != null ? this.productoEntity.getId() : null,
                 this.stockActual,
+                this.stockReservado,
                 this.stockMinimo,
                 this.estado,
+                this.tipoManejo,
+                this.cupoMaximoDiario,
                 this.actualizadoEn
         );
     }
-    }
+}

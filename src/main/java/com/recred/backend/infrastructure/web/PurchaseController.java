@@ -9,6 +9,7 @@ import com.recred.backend.application.UpdatePurchaseStatus;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.ProductRepository;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
@@ -37,6 +38,8 @@ public class PurchaseController {
     private final CancelPresentialPurchase cancelPresentialPurchase;
     private final ProductRepository productRepository;
     private final CreateAdvancePurchase createAdvancePurchase;
+    private final KiosqueroAccessGuard kiosqueroAccessGuard;
+    private final PurchaseAccessGuard purchaseAccessGuard;
 
     public PurchaseController(ProcessPresentialPurchase processPresentialPurchase,
                               GetPresentialPurchase getPresentialPurchase,
@@ -44,7 +47,9 @@ public class PurchaseController {
                               UpdatePurchaseStatus updatePurchaseStatus,
                               CancelPresentialPurchase cancelPresentialPurchase,
                               ProductRepository productRepository,
-                              CreateAdvancePurchase createAdvancePurchase) {
+                              CreateAdvancePurchase createAdvancePurchase,
+                              KiosqueroAccessGuard kiosqueroAccessGuard,
+                              PurchaseAccessGuard purchaseAccessGuard) {
         this.processPresentialPurchase = processPresentialPurchase;
         this.getPresentialPurchase = getPresentialPurchase;
         this.getPurchaseStatus = getPurchaseStatus;
@@ -52,12 +57,16 @@ public class PurchaseController {
         this.cancelPresentialPurchase = cancelPresentialPurchase;
         this.productRepository = productRepository;
         this.createAdvancePurchase = createAdvancePurchase;
+        this.kiosqueroAccessGuard = kiosqueroAccessGuard;
+        this.purchaseAccessGuard = purchaseAccessGuard;
     }
 
     @PostMapping("/presential")
     public ResponseEntity<PurchaseResponseDTO> processPurchase(
-            @RequestBody ProcessPurchaseRequestDTO request
+            @Valid @RequestBody ProcessPurchaseRequestDTO request,
+            Authentication authentication
     ) {
+        kiosqueroAccessGuard.requireBuffetAccess(authentication, request.getBuffetId());
         Map<Producto, Integer> cart = request.getItems().stream()
                 .collect(Collectors.toMap(
                         item -> productRepository.findById(item.getProductId())
@@ -66,23 +75,28 @@ public class PurchaseController {
                         PurchaseItemDTO::getQuantity
                 ));
 
-        Purchase purchase = processPresentialPurchase.execute(request.getStudentId(), cart);
+        Purchase purchase = processPresentialPurchase.execute(
+                request.getStudentId(),
+                cart,
+                request.getBuffetId()
+        );
         return ResponseEntity.ok(new PurchaseResponseDTO(purchase));
     }
 
     @PostMapping("/advance")
     public ResponseEntity<AdvancePurchaseResponse> createAdvancePurchase(
-            @RequestBody AdvancePurchaseRequest request
+            @Valid @RequestBody AdvancePurchaseRequest request
     ) {
         return ResponseEntity.ok(createAdvancePurchase.execute(request));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PurchaseResponseDTO> getPurchaseById(@PathVariable UUID id) {
-        return getPresentialPurchase.execute(id)
-                .map(PurchaseResponseDTO::new)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<PurchaseResponseDTO> getPurchaseById(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        Purchase purchase = purchaseAccessGuard.requirePurchaseAccess(authentication, id);
+        return ResponseEntity.ok(new PurchaseResponseDTO(purchase));
     }
 
     @GetMapping("/{id}/status")
@@ -98,15 +112,22 @@ public class PurchaseController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<PurchaseStatusResponseDTO> updatePurchaseStatus(
             @PathVariable UUID id,
-            @RequestBody UpdatePurchaseStatusRequestDTO request
+            @RequestBody UpdatePurchaseStatusRequestDTO request,
+            Authentication authentication
     ) {
+        Purchase purchase = purchaseAccessGuard.requirePurchaseAccess(authentication, id);
+        kiosqueroAccessGuard.requireBuffetAccess(authentication, purchase.getBuffetId());
         return ResponseEntity.ok(PurchaseStatusResponseDTO.fromDomain(
                 updatePurchaseStatus.execute(id, request.status())
         ));
     }
 
     @PutMapping("/{id}/cancel")
-    public ResponseEntity<Void> cancelPurchase(@PathVariable UUID id) {
+    public ResponseEntity<Void> cancelPurchase(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        purchaseAccessGuard.requirePurchaseAccess(authentication, id);
         cancelPresentialPurchase.execute(id);
         return ResponseEntity.ok().build();
     }
