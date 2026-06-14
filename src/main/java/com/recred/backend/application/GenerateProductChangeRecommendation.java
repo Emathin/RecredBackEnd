@@ -50,7 +50,7 @@ public class GenerateProductChangeRecommendation {
     }
 
     @Transactional
-    public ProductRecommendationResult execute(UUID sellerId) {
+    public List<ProductRecommendationResult> execute(UUID sellerId) {
         UUID buffetId = kiosqueroRepository.findBuffetById(sellerId);
         if (buffetId == null) {
             throw new KiosqueroNotFoundException(sellerId);
@@ -59,7 +59,7 @@ public class GenerateProductChangeRecommendation {
     }
 
     @Transactional
-    public ProductRecommendationResult executeByUsuarioId(UUID usuarioId) {
+    public List<ProductRecommendationResult> executeByUsuarioId(UUID usuarioId) {
         UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(usuarioId);
         if (buffetId == null) {
             throw new KiosqueroNotFoundException(usuarioId);
@@ -67,18 +67,22 @@ public class GenerateProductChangeRecommendation {
         return generateForBuffet(buffetId);
     }
 
-    private ProductRecommendationResult generateForBuffet(UUID buffetId) {
-        ProductChangeRecommendation leastSoldProduct =
-                productRepository.findBuffetLeastSoldProducts(buffetId);
-        Optional<ProductChangeAnalysis> aiAnalysis = productChangeAnalyzer
-                .analyze(leastSoldProduct);
-        ProductRecommendationResult result = new ProductRecommendationResult(
-                leastSoldProduct,
-                aiAnalysis
-        );
-        aiEventRepository.registerProductChangeRecommendation(result);
-
-        return result;
+    private List<ProductRecommendationResult> generateForBuffet(UUID buffetId) {
+        List<ProductChangeRecommendation> leastSoldProducts =
+                productRepository.findBuffetTop5LeastSoldProducts(buffetId);
+        
+        return leastSoldProducts.stream()
+                .map(product -> {
+                    Optional<ProductChangeAnalysis> aiAnalysis = productChangeAnalyzer
+                            .analyze(product);
+                    ProductRecommendationResult result = new ProductRecommendationResult(
+                            product,
+                            aiAnalysis
+                    );
+                    aiEventRepository.registerProductChangeRecommendation(result);
+                    return result;
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)

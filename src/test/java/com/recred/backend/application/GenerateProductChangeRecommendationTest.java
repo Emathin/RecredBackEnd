@@ -63,10 +63,11 @@ public class GenerateProductChangeRecommendationTest {
         );
 
         when(kiosqueroRepository.findBuffetById(sellerId)).thenReturn(buffetId);
-        when(productRepository.findBuffetLeastSoldProducts(buffetId)).thenReturn(leastSold);
+        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId)).thenReturn(List.of(leastSold));
         when(productChangeAnalyzer.analyze(leastSold)).thenReturn(Optional.of(analysis));
 
-        ProductRecommendationResult result = useCase.execute(sellerId);
+        List<ProductRecommendationResult> results = useCase.execute(sellerId);
+        ProductRecommendationResult result = results.get(0);
 
         assertEquals(leastSold, result.getProductChangeRecommendation());
         assertEquals(analysis, result.getAiAnalysis().get());
@@ -79,7 +80,7 @@ public class GenerateProductChangeRecommendationTest {
         when(kiosqueroRepository.findBuffetById(sellerId)).thenReturn(null);
 
         assertThrows(KiosqueroNotFoundException.class, () -> useCase.execute(sellerId));
-        verify(productRepository, never()).findBuffetLeastSoldProducts(any());
+        verify(productRepository, never()).findBuffetTop5LeastSoldProducts(any());
     }
 
     @Test
@@ -102,10 +103,11 @@ public class GenerateProductChangeRecommendationTest {
         );
 
         when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(buffetId);
-        when(productRepository.findBuffetLeastSoldProducts(buffetId)).thenReturn(leastSold);
+        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId)).thenReturn(List.of(leastSold));
         when(productChangeAnalyzer.analyze(leastSold)).thenReturn(Optional.of(analysis));
 
-        ProductRecommendationResult result = useCase.executeByUsuarioId(usuarioId);
+        List<ProductRecommendationResult> results = useCase.executeByUsuarioId(usuarioId);
+        ProductRecommendationResult result = results.get(0);
 
         assertEquals(leastSold, result.getProductChangeRecommendation());
         assertEquals(analysis, result.getAiAnalysis().get());
@@ -118,7 +120,7 @@ public class GenerateProductChangeRecommendationTest {
         when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(null);
 
         assertThrows(KiosqueroNotFoundException.class, () -> useCase.executeByUsuarioId(usuarioId));
-        verify(productRepository, never()).findBuffetLeastSoldProducts(any());
+        verify(productRepository, never()).findBuffetTop5LeastSoldProducts(any());
     }
 
     @Test
@@ -154,8 +156,8 @@ public class GenerateProductChangeRecommendationTest {
         ProductChangeRecommendation leastSold2 = new ProductChangeRecommendation();
         leastSold2.setIdBuffet(buffetId2);
 
-        when(productRepository.findBuffetLeastSoldProducts(buffetId1)).thenReturn(leastSold1);
-        when(productRepository.findBuffetLeastSoldProducts(buffetId2)).thenReturn(leastSold2);
+        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId1)).thenReturn(List.of(leastSold1));
+        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId2)).thenReturn(List.of(leastSold2));
 
         ProductChangeAnalysis analysis = new ProductChangeAnalysis(
                 "Resumen", List.of(), List.of(), "model"

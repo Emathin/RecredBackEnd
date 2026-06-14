@@ -78,6 +78,16 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
+    public List<ProductChangeRecommendation> findBuffetTop5LeastSoldProducts(UUID buffetId) {
+        List<ProductoEntity> productos =
+                springDataRepository.findBuffetTop5LeastSoldProducts(buffetId);
+
+        return productos.stream()
+                .map(p -> p.toProductRecommendation(buffetId))
+                .toList();
+    }
+
+    @Override
     public List<Producto> findBestSoldProducts() {
         List<ProductoEntity> productos = springDataRepository.findBestSoldProducts();
         return productos.stream().map(ProductoEntity::toDomain).toList();

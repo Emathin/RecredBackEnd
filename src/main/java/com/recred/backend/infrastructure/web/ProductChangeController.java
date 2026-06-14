@@ -35,9 +35,8 @@ public class ProductChangeController {
     }
 
     @GetMapping("/{idUsuario}/lista-sugerencia-cambio-producto")
-    public ResponseEntity<List<ProductChangeRecommendationResponse>> findAllProductChangeRecommendations(
-            @PathVariable("idUsuario") UUID usuarioId
-    ) {
+    public ResponseEntity<List<ProductChangeRecommendationResponse>>
+    findAllProductChangeRecommendations(@PathVariable("idUsuario") UUID usuarioId) {
         List<ProductChangeRecommendationResponse> responses = generateProductChangeRecommendation
                 .findAllResultsByUsuarioId(usuarioId)
                 .stream()
@@ -48,13 +47,14 @@ public class ProductChangeController {
     }
 
     @PostMapping("/{idUsuario}/sugerencia-cambio-producto")
-    public ProductChangeRecommendationResponse generateProductChangeRecommendationPost(
+    public List<ProductChangeRecommendationResponse> generateProductChangeRecommendationPost(
             @PathVariable("idUsuario") UUID usuarioId
     ) {
 
-        return ProductChangeRecommendationResponse.fromDomain(
-                generateProductChangeRecommendation.executeByUsuarioId(usuarioId)
-        );
+        return generateProductChangeRecommendation.executeByUsuarioId(usuarioId)
+                .stream()
+                .map(ProductChangeRecommendationResponse::fromDomain)
+                .toList();
 
     }
 }

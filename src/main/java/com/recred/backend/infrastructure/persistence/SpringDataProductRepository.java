@@ -63,6 +63,23 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                                     WHERE AI.productoEntity.id IS NOT NULL
                                     )
                         GROUP BY p.id
+                        ORDER BY SUM(COALESCE(cd.cantidad, 0)) ASC LIMIT 5
+                        """)
+        List<ProductoEntity> findBuffetTop5LeastSoldProducts(
+                        @Param("buffetId") UUID buffetId);
+
+        @Query("""
+                        select p
+                        FROM ProductoEntity p
+                        LEFT JOIN CompraDetalleEntity cd ON cd.productoEntity.id = p.id
+                        LEFT JOIN CompraEntity c ON cd.compra.id = c.id
+                        WHERE c.buffetEntity.id = CAST(:buffetId AS java.util.UUID)
+                        AND  p.id NOT IN(
+                                    SELECT AI.productoEntity.id
+                                    FROM AIEventEntity AI
+                                    WHERE AI.productoEntity.id IS NOT NULL
+                                    )
+                        GROUP BY p.id
                         ORDER BY SUM(COALESCE(cd.cantidad, 0)) ASC LIMIT 1
                         """)
         ProductoEntity findBuffetLeastSoldProducts(
