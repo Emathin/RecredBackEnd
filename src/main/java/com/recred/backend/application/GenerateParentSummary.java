@@ -61,7 +61,9 @@ public class GenerateParentSummary {
             hijoNode.put("totalGastado", totalHijo);
             
             presupuestoRepository.findActivoByAlumnoId(hijo.getId())
-                    .ifPresent(presupuesto -> hijoNode.put("LimiteGasto", presupuesto.getMontoLimite()));
+                    .ifPresent(presupuesto
+                            -> hijoNode.put(
+                                    "LimiteGasto", presupuesto.getMontoLimite()));
 
             Map<String, BigDecimal> categorias = new HashMap<>();
             compras.forEach(c -> c.getItems().forEach((producto, cantidad) -> {

@@ -169,7 +169,8 @@ public class UseCases {
             PresupuestoRepository presupuestoRepository,
             ParentSummaryAnalyzer parentSummaryAnalyzer) {
         return new GenerateParentSummary(tutorRepository,
-                purchaseRepository, summaryRepository, presupuestoRepository, parentSummaryAnalyzer);
+                purchaseRepository, summaryRepository,
+                presupuestoRepository, parentSummaryAnalyzer);
     }
 
     @Bean

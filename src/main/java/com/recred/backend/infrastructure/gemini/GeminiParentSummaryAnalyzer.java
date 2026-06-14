@@ -13,7 +13,8 @@ public class GeminiParentSummaryAnalyzer implements ParentSummaryAnalyzer {
     }
 
     public String analyze(String resumenActual) {
-        String prompt = "Analiza el siguiente resumen de gastos semanales de los hijos de un padre, " +
+        String prompt = "Analiza el siguiente resumen de gastos semanales " +
+                "de los hijos de un padre, " +
                 "considerando sus límites de presupuesto asignados: " +
                 "Resumen actual: " + resumenActual +
                 ". Límites de presupuesto por alumno: " +
