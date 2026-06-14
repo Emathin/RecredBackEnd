@@ -3,6 +3,7 @@ package com.recred.backend.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
+import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
@@ -969,6 +970,21 @@ public class UseCases {
                 carritoFavoritoRepository,
                 usuarioRepository,
                 tutorRepository
+        );
+    }
+    @Bean
+    public GetTutorGlobalDashboard getTutorGlobalDashboard(
+            ObtenerHijosPorPadre obtenerHijosPorPadre,
+            GetActiveBudgetByStudent getActiveBudgetByStudent,
+            GetStudentRewardStatus getStudentRewardStatus,
+            PredictStudentSpending predictStudentSpending,
+            ObtenerHistorialAlumno obtenerHistorialAlumno) {
+        return new GetTutorGlobalDashboard(
+                obtenerHijosPorPadre,
+                getActiveBudgetByStudent,
+                getStudentRewardStatus,
+                predictStudentSpending,
+                obtenerHistorialAlumno
         );
     }
 }
