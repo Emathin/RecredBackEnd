@@ -17,6 +17,7 @@ public interface ProductRepository {
     Producto save(Producto producto);
     void updatePrice(UUID productId, BigDecimal newPrice);
     ProductChangeRecommendation findBuffetLeastSoldProducts(UUID buffetId);
+    List<ProductChangeRecommendation> findBuffetTop5LeastSoldProducts(UUID buffetId);
     List<Producto> findBestSoldProducts();
 
 }

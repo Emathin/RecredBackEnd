@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -33,14 +36,31 @@ public class ProductChangeController {
 
     }
 
+    @GetMapping("/{idUsuario}/lista-sugerencia-cambio-producto")
+    public ResponseEntity<List<ProductChangeRecommendationResponse>>
+    findAllProductChangeRecommendations(@PathVariable("idUsuario") UUID usuarioId) {
+        Set<UUID> seenProducts = new HashSet<>();
+        List<ProductChangeRecommendationResponse> responses = generateProductChangeRecommendation
+                .findAllResultsByUsuarioId(usuarioId)
+                .stream()
+                .filter(result -> seenProducts.add(
+                        result.getProductChangeRecommendation().getId()))
+                .limit(5)
+                .map(ProductChangeRecommendationResponse::fromDomain)
+                .toList();
+
+        return ResponseEntity.ok(responses);
+    }
+
     @PostMapping("/{idUsuario}/sugerencia-cambio-producto")
-    public ProductChangeRecommendationResponse generateProductChangeRecommendationPost(
+    public List<ProductChangeRecommendationResponse> generateProductChangeRecommendationPost(
             @PathVariable("idUsuario") UUID usuarioId
     ) {
 
-        return ProductChangeRecommendationResponse.fromDomain(
-                generateProductChangeRecommendation.executeByUsuarioId(usuarioId)
-        );
+        return generateProductChangeRecommendation.executeByUsuarioId(usuarioId)
+                .stream()
+                .map(ProductChangeRecommendationResponse::fromDomain)
+                .toList();
 
     }
 }
