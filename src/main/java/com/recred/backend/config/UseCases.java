@@ -76,6 +76,7 @@ import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.ObtenerHijosPorPadre;
 import com.recred.backend.application.ObtenerHistorialAlumno;
+import com.recred.backend.application.ObtenerHistorialPendienteAlumno;
 import com.recred.backend.application.ObtenerHistorialTutor;
 import com.recred.backend.application.PredictStudentSpending;
 import com.recred.backend.application.PrizeHealthyPurchase;
@@ -647,6 +648,12 @@ public class UseCases {
     @Bean
     public ObtenerHistorialAlumno obtenerHistorialAlumno(PurchaseRepository purchaseRepository) {
         return new ObtenerHistorialAlumno(purchaseRepository);
+    }
+
+    @Bean
+    public ObtenerHistorialPendienteAlumno obtenerHistorialPendienteAlumno(
+            PurchaseRepository purchaseRepository) {
+        return new ObtenerHistorialPendienteAlumno(purchaseRepository);
     }
 
     @Bean
