@@ -15,12 +15,14 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.infrastructure.web.MenuProductoDTO;
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -182,7 +184,7 @@ public class GenerarMenuBuffet {
         }
 
         return alumno.getProductosBloqueados().stream()
-                .anyMatch(bloqueado -> bloqueado.getId().equals(producto.getId()));
+                .anyMatch(bloqueado -> Objects.equals(bloqueado.getId(), producto.getId()));
     }
 
     private boolean tieneDisponibilidad(Producto producto) {
@@ -220,17 +222,69 @@ public class GenerarMenuBuffet {
     }
 
     private Optional<String> conflictosSalud(Alumno alumno, Producto producto) {
-        if (alumno.getRestriccionesSalud() == null) {
+        if (alumno.getRestriccionesSalud() == null || alumno.getRestriccionesSalud().isEmpty()) {
             return Optional.empty();
         }
 
         String conflictos = alumno.getRestriccionesSalud().stream()
-                .filter(restriccion -> producto.getClasificaciones().stream()
-                        .anyMatch(c -> c.getId().equals(restriccion.getId())))
+                .filter(restriccion -> conflictoSalud(restriccion, producto))
                 .map(ClasificacionSalud::getDescripcion)
+                .map(this::motivoConflictoSalud)
                 .collect(Collectors.joining(", "));
 
         return conflictos.isEmpty() ? Optional.empty() : Optional.of(conflictos);
+    }
+
+    private boolean conflictoSalud(ClasificacionSalud restriccion, Producto producto) {
+        boolean tieneClasificacion = producto.getClasificaciones() != null
+                && producto.getClasificaciones().stream()
+                .anyMatch(clasificacion -> Objects.equals(
+                        clasificacion.getId(),
+                        restriccion.getId()
+                ));
+
+        if (requiereEtiquetaApta(restriccion.getDescripcion())) {
+            return !tieneClasificacion;
+        }
+
+        return tieneClasificacion;
+    }
+
+    private boolean requiereEtiquetaApta(String descripcion) {
+        return descripcion != null
+                && (descripcion.startsWith("Sin") || descripcion.contains("Vegano"));
+    }
+
+    private String motivoConflictoSalud(String descripcion) {
+        String normalizada = normalizarDescripcion(descripcion);
+
+        if ("sin tacc".equals(normalizada)) {
+            return "Gluten (TACC)";
+        }
+        if ("sin sodio".equals(normalizada)) {
+            return "Alto sodio";
+        }
+        if ("sin azucar".equals(normalizada)) {
+            return "Azucar";
+        }
+        if ("apto vegano".equals(normalizada)) {
+            return "Ingredientes de origen animal";
+        }
+        if ("contiene lacteos".equals(normalizada)) {
+            return "Lacteos";
+        }
+
+        return descripcion;
+    }
+
+    private String normalizarDescripcion(String descripcion) {
+        if (descripcion == null) {
+            return "";
+        }
+
+        return Normalizer.normalize(descripcion, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase();
     }
 
     private boolean fueraDeHorario(

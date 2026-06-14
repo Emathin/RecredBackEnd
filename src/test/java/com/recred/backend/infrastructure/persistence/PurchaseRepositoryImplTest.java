@@ -8,6 +8,7 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
@@ -189,12 +190,26 @@ class PurchaseRepositoryImplTest {
     void sumarGastosPorAlumnoEnRango_ShouldDelegateToSpringDataRepository() {
         LocalDateTime start = LocalDateTime.now().minusDays(1);
         LocalDateTime end = LocalDateTime.now();
-        when(springDataRepository.sumarGastosGeneralesEnRango(
+
+        when(springDataRepository.sumarGastosPresencialesEnRango(
                 studentId,
                 EstadoCompra.ENTREGADO,
                 start,
                 end
-        )).thenReturn(new BigDecimal("20.00"));
+        )).thenReturn(new BigDecimal("15.00"));
+
+        List<EstadoCompra> estadosAnticipados = List.of(
+                EstadoCompra.ENTREGADO,
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.EN_PREPARACION,
+                EstadoCompra.LISTO
+        );
+        when(springDataRepository.sumarGastosAnticipadosEnRango(
+                studentId,
+                estadosAnticipados,
+                start.toLocalDate(),
+                end.toLocalDate()
+        )).thenReturn(new BigDecimal("5.00"));
 
         BigDecimal result = repository.sumarGastosPorAlumnoEnRango(studentId, start, end);
 
@@ -206,13 +221,28 @@ class PurchaseRepositoryImplTest {
         UUID categoryId = UUID.randomUUID();
         LocalDateTime start = LocalDateTime.now().minusDays(1);
         LocalDateTime end = LocalDateTime.now();
-        when(springDataRepository.sumarGastosPorCategoriaEnRango(
+
+        when(springDataRepository.sumarGastosPresencialesPorCategoriaEnRango(
                 studentId,
                 EstadoCompra.ENTREGADO,
                 categoryId,
                 start,
                 end
-        )).thenReturn(new BigDecimal("10.00"));
+        )).thenReturn(new BigDecimal("8.00"));
+
+        List<EstadoCompra> estadosAnticipados = List.of(
+                EstadoCompra.ENTREGADO,
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.EN_PREPARACION,
+                EstadoCompra.LISTO
+        );
+        when(springDataRepository.sumarGastosAnticipadosPorCategoriaEnRango(
+                studentId,
+                estadosAnticipados,
+                categoryId,
+                start.toLocalDate(),
+                end.toLocalDate()
+        )).thenReturn(new BigDecimal("2.00"));
 
         BigDecimal result = repository.sumarGastosPorCategoriaEnRango(
                 studentId,
@@ -324,5 +354,32 @@ class PurchaseRepositoryImplTest {
         BuffetEntity entity = new BuffetEntity();
         entity.setId(buffetId);
         return entity;
+    }
+
+    @Test
+    void findScheduledPickups_ShouldCallSpringDataRepository() {
+        LocalDate fecha = LocalDate.of(2026, 6, 8);
+        CompraAnticipadaEntity compraEntity = new CompraAnticipadaEntity();
+        compraEntity.setId(purchaseId);
+        compraEntity.setAlumnoEntity(alumnoEntity());
+        compraEntity.setMedioPago(MedioPago.CREDITOS);
+        compraEntity.setEstado(EstadoCompra.PENDIENTE);
+        compraEntity.setMontoTotal(new BigDecimal("12.00"));
+        compraEntity.setFechaHora(LocalDateTime.now());
+        compraEntity.setBuffetEntity(buffetEntity());
+
+        when(springDataRepository.findScheduledPickupsWithFilters(
+                buffetId, fecha, EstadoRetiro.PROGRAMADO, null, "search"
+        )).thenReturn(List.of(compraEntity));
+
+        List<Purchase> result = repository.findScheduledPickups(
+                buffetId, fecha, EstadoRetiro.PROGRAMADO, null, "search"
+        );
+
+        assertEquals(1, result.size());
+        assertEquals(purchaseId, result.get(0).getId());
+        verify(springDataRepository).findScheduledPickupsWithFilters(
+                buffetId, fecha, EstadoRetiro.PROGRAMADO, null, "search"
+        );
     }
 }

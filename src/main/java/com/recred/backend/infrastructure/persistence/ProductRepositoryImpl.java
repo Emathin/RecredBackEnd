@@ -155,6 +155,17 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ProductChangeRecommendation> findBuffetTop5LeastSoldProducts(UUID buffetId) {
+        List<ProductoEntity> productos =
+                springDataRepository.findBuffetTop5LeastSoldProducts(buffetId);
+
+        return productos.stream()
+                .map(p -> p.toProductRecommendation(buffetId))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Producto> findBestSoldProducts() {
         List<ProductoEntity> productos = springDataRepository.findBestSoldProducts();
         return productos.stream().map(ProductoEntity::toDomain).toList();

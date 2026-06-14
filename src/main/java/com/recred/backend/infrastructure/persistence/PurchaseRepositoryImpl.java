@@ -73,6 +73,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
             UUID alumnoId, LocalDateTime start, LocalDateTime end) {
         return springDataRepository.findAllByAlumnoIdAndFechaHoraBetween(alumnoId, start, end)
                 .stream()
+                .peek(compra -> org.hibernate.Hibernate.initialize(compra.getAlumnoEntity()))
                 .map(CompraEntity::toDomain)
                 .toList();
     }
@@ -111,6 +112,14 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         entity.setEstado(purchase.getStatus());
         entity.setMontoTotal(purchase.getTotalAmount());
         entity.setFechaHora(purchase.getDate());
+        entity.setSuggestionId(purchase.getSuggestionId());
+
+        if (purchase.getTutorId() != null) {
+            TutorEntity tutorEntity = new TutorEntity();
+            tutorEntity.setId(purchase.getTutorId());
+            entity.setTutorEntity(tutorEntity);
+        }
+
         setAdvanceData(entity, purchase);
 
         entity.getDetalles().clear();
@@ -194,7 +203,11 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         retiro.setCompraEntity(compraAnticipadaEntity);
         retiro.setFranja(franja);
         retiro.setFechaProgramada(purchase.getPickupDate());
-        retiro.setEstado(EstadoRetiro.PROGRAMADO);
+        if (purchase.getWithdrawalStatus() != null) {
+            retiro.setEstado(purchase.getWithdrawalStatus());
+        } else {
+            retiro.setEstado(EstadoRetiro.PROGRAMADO);
+        }
         compraAnticipadaEntity.setRetiroProgramadoEntity(retiro);
     }
 
@@ -215,18 +228,39 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
-    public BigDecimal sumarGastosPorAlumnoEnRango
-            (UUID alumnoId, LocalDateTime inicio, LocalDateTime fin) {
-        return springDataRepository.sumarGastosGeneralesEnRango
-                (alumnoId, EstadoCompra.ENTREGADO, inicio, fin);
+    public BigDecimal sumarGastosPorAlumnoEnRango(
+            UUID alumnoId, LocalDateTime inicio, LocalDateTime fin) {
+        BigDecimal presenciales = springDataRepository.sumarGastosPresencialesEnRango(
+                alumnoId, EstadoCompra.ENTREGADO, inicio, fin);
 
+        List<EstadoCompra> estadosAnticipados = List.of(
+                EstadoCompra.ENTREGADO,
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.EN_PREPARACION,
+                EstadoCompra.LISTO
+        );
+        BigDecimal anticipadas = springDataRepository.sumarGastosAnticipadosEnRango(
+                alumnoId, estadosAnticipados, inicio.toLocalDate(), fin.toLocalDate());
+
+        return presenciales.add(anticipadas);
     }
 
     @Override
-    public BigDecimal sumarGastosPorCategoriaEnRango
-            (UUID alumnoId, UUID categoriaId, LocalDateTime inicio, LocalDateTime fin) {
-        return springDataRepository.sumarGastosPorCategoriaEnRango
-                (alumnoId, EstadoCompra.ENTREGADO, categoriaId, inicio, fin);
+    public BigDecimal sumarGastosPorCategoriaEnRango(
+            UUID alumnoId, UUID categoriaId, LocalDateTime inicio, LocalDateTime fin) {
+        BigDecimal presenciales = springDataRepository.sumarGastosPresencialesPorCategoriaEnRango(
+                alumnoId, EstadoCompra.ENTREGADO, categoriaId, inicio, fin);
+
+        List<EstadoCompra> estadosAnticipados = List.of(
+                EstadoCompra.ENTREGADO,
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.EN_PREPARACION,
+                EstadoCompra.LISTO
+        );
+        BigDecimal anticipadas = springDataRepository.sumarGastosAnticipadosPorCategoriaEnRango(
+                alumnoId, estadosAnticipados, categoriaId, inicio.toLocalDate(), fin.toLocalDate());
+
+        return presenciales.add(anticipadas);
     }
 
     @Override
@@ -397,6 +431,27 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
                 buffetId,
                 EstadoCompra.ENTREGADO,
                 List.copyOf(cartProductIds));
+    }
+
+    @Override
+    public List<Purchase> findScheduledPickups(
+            UUID buffetId,
+            LocalDate fecha,
+            EstadoRetiro estadoRetiro,
+            UUID franjaId,
+            String search) {
+        return springDataRepository.findScheduledPickupsWithFilters(
+                buffetId, fecha, estadoRetiro, franjaId, search)
+                .stream()
+                .map(CompraEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public long countHealthyPurchasesByAlumno(UUID alumnoId, LocalDateTime since) {
+        return springDataRepository
+                .countByAlumnoEntityIdAndSuggestionIdIsNotNullAndEstadoAndFechaHoraAfter(
+                        alumnoId, EstadoCompra.ENTREGADO, since);
     }
 
 }

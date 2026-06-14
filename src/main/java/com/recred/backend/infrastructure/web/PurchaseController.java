@@ -85,9 +85,12 @@ public class PurchaseController {
 
     @PostMapping("/advance")
     public ResponseEntity<AdvancePurchaseResponse> createAdvancePurchase(
-            @Valid @RequestBody AdvancePurchaseRequest request
+            @Valid @RequestBody AdvancePurchaseRequest request,
+            Authentication authentication
     ) {
-        return ResponseEntity.ok(createAdvancePurchase.execute(request));
+        return ResponseEntity.ok(
+                createAdvancePurchase.execute(request, cognitoSubject(authentication))
+        );
     }
 
     @GetMapping("/{id}")

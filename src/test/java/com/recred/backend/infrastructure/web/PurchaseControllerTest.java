@@ -155,14 +155,18 @@ class PurchaseControllerTest {
                 buffetId,
                 "2024-07-30",
                 RecessTime.FIRST_RECESS,
-                List.of(itemRequest)
+                List.of(itemRequest),
+                null,
+                UUID.randomUUID()
         );
         advancePurchaseRequest = new AdvancePurchaseRequest(List.of(orderRequest));
     }
 
     @Test
     void processPurchase_WithValidRequest_ShouldReturnOk() throws Exception {
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
         mockMvc.perform(post("/api/v1/purchases/presential")
+                        .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isOk())
@@ -193,15 +197,18 @@ class PurchaseControllerTest {
                 Collections.singletonMap(studentId, "ABC-123")
         );
 
-        when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class))).thenReturn(advancePurchaseResponse);
+        when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class), eq("test-user"))).thenReturn(advancePurchaseResponse);
+
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
 
         mockMvc.perform(post("/api/v1/purchases/advance")
+                        .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(advancePurchaseRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").value(purchaseId.toString()));
 
-        verify(createAdvancePurchase).execute(any(AdvancePurchaseRequest.class));
+        verify(createAdvancePurchase).execute(any(AdvancePurchaseRequest.class), eq("test-user"));
     }
 
     @Test
@@ -214,7 +221,9 @@ class PurchaseControllerTest {
                         null,
                         "2024-07-30",
                         RecessTime.FIRST_RECESS,
-                        List.of(new AdvancePurchaseRequest.ItemRequest(productId, 1))
+                        List.of(new AdvancePurchaseRequest.ItemRequest(productId, 1)),
+                        null,
+                        UUID.randomUUID()
                 )
         ));
 
@@ -231,7 +240,9 @@ class PurchaseControllerTest {
         doThrow(new AlumnoNoEncontradoException(studentId))
                 .when(processPresentialPurchase).execute(eq(studentId), anyMap(), eq(buffetId));
 
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
         mockMvc.perform(post("/api/v1/purchases/presential")
+                        .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isNotFound());
@@ -243,7 +254,9 @@ class PurchaseControllerTest {
                 .when(processPresentialPurchase)
                 .execute(eq(studentId), anyMap(), eq(buffetId));
 
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
         mockMvc.perform(post("/api/v1/purchases/presential")
+                        .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isBadRequest());
@@ -264,8 +277,9 @@ class PurchaseControllerTest {
                 purchaseAccessGuard
         );
 
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
         assertThrows(RuntimeException.class,
-                () -> controller.processPurchase(requestDTO, null));
+                () -> controller.processPurchase(requestDTO, authentication));
     }
 
     @Test

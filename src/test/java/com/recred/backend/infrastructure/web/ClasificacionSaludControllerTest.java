@@ -51,7 +51,7 @@ class ClasificacionSaludControllerTest {
         item.setDescripcion("Vegano");
         when(obtenerCatalogo.ejecutar()).thenReturn(List.of(item));
 
-        mockMvc.perform(get("/api/clasificaciones-salud")
+        mockMvc.perform(get("/api/v1/clasificaciones-salud")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].descripcion").value("Vegano"));

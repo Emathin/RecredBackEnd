@@ -13,9 +13,7 @@ public record AdvancePurchaseRequest(@Valid @NotEmpty List<OrderRequest> orders)
     public record OrderRequest(
             @NotNull
             UUID studentId,
-            @NotNull
             UUID buyerId,
-            @NotNull
             BuyerType buyerType,
             @NotNull
             UUID buffetId,
@@ -24,7 +22,9 @@ public record AdvancePurchaseRequest(@Valid @NotEmpty List<OrderRequest> orders)
             @NotNull
             RecessTime recessTime,
             @Valid @NotEmpty
-            List<ItemRequest> items
+            List<ItemRequest> items,
+            UUID suggestionId,
+            UUID tutorId
     ) {
     }
 
@@ -33,5 +33,6 @@ public record AdvancePurchaseRequest(@Valid @NotEmpty List<OrderRequest> orders)
             UUID productId,
             @Positive
             int quantity
-    ) {}
+    ) {
+    }
 }

@@ -135,4 +135,8 @@ public class PresupuestoAlumno {
     public void setCreadoPorUsuarioId(UUID creadoPorUsuarioId) {
         this.creadoPorUsuarioId = creadoPorUsuarioId;
     }
+
+    public BigDecimal getMontoLimite() {
+        return this.montoLimiteGeneral;
+    }
 }

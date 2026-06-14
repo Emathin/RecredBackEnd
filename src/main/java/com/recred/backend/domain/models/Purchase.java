@@ -34,6 +34,10 @@ public class Purchase {
     private LocalTime pickupSlotStart;
     private LocalTime pickupSlotEnd;
     private LocalDate pickupDate;
+    private java.time.LocalTime pickupSlotStartTime;
+    private EstadoRetiro withdrawalStatus;
+    private UUID suggestionId;
+    private UUID tutorId;
 
     private Map<Producto, Integer> items = new HashMap<>();
 
@@ -77,13 +81,30 @@ public class Purchase {
         }
 
         this.status = nextStatus;
+        if (this.tipo == TipoCompra.ANTICIPADA) {
+            this.withdrawalStatus = switch (nextStatus) {
+                case PENDIENTE -> EstadoRetiro.PROGRAMADO;
+                case EN_PREPARACION -> EstadoRetiro.EN_PREPARACION;
+                case LISTO -> EstadoRetiro.LISTO;
+                case ENTREGADO -> EstadoRetiro.RETIRADO;
+                case CANCELADO, RECHAZADO, VENCIDO -> EstadoRetiro.CANCELADO;
+                case NO_RETIRADO -> EstadoRetiro.NO_RETIRADO;
+            };
+        }
     }
 
     public void cancel() {
         if (this.status == EstadoCompra.CANCELADO) {
             throw new IllegalStateException("Purchase is already cancelled.");
         }
+        if (this.status != EstadoCompra.PENDIENTE && this.status != EstadoCompra.EN_PREPARACION) {
+            throw new IllegalStateException(
+                    "Purchase can only be cancelled if it is PENDING or IN PREPARATION.");
+        }
         this.status = EstadoCompra.CANCELADO;
+        if (this.tipo == TipoCompra.ANTICIPADA) {
+            this.withdrawalStatus = EstadoRetiro.CANCELADO;
+        }
     }
 
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
@@ -124,10 +145,10 @@ public class Purchase {
                     || nextStatus == EstadoCompra.RECHAZADO
                     || nextStatus == EstadoCompra.VENCIDO;
             case LISTO -> nextStatus == EstadoCompra.ENTREGADO
-                    || nextStatus == EstadoCompra.CANCELADO
                     || nextStatus == EstadoCompra.RECHAZADO
-                    || nextStatus == EstadoCompra.VENCIDO;
-            case ENTREGADO, CANCELADO, RECHAZADO, VENCIDO -> false;
+                    || nextStatus == EstadoCompra.VENCIDO
+                    || nextStatus == EstadoCompra.NO_RETIRADO;
+            case ENTREGADO, CANCELADO, RECHAZADO, VENCIDO, NO_RETIRADO -> false;
         };
     }
 }

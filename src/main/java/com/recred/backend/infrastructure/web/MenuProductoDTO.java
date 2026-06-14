@@ -18,18 +18,23 @@ public record MenuProductoDTO(
         Integer cupoMaximoDiario,
         Integer cupoDisponibleDia,
         Boolean bloqueado,
-        String motivoBloqueo
+        String motivoBloqueo,
+        CategoryDTO categoria
 ) {
-    public static MenuProductoDTO permitido(UUID id, String nombre,
-                                            String descripcion, BigDecimal precio) {
+    public record CategoryDTO(UUID id, String descripcion) {}
+
+    public static MenuProductoDTO permitido(
+            UUID id, String nombre, String descripcion,
+            BigDecimal precio, CategoryDTO categoria) {
         return new MenuProductoDTO(id, nombre, descripcion,
-                precio, null, null, null, null, null, null, null, null, false, null);
+                precio, null, null, null, null, null, null, null, null, false, null, categoria);
     }
 
-    public static MenuProductoDTO bloqueado(UUID id, String nombre, String descripcion,
-                                            BigDecimal precio, String motivo) {
+    public static MenuProductoDTO bloqueado(
+            UUID id, String nombre, String descripcion,
+            BigDecimal precio, String motivo, CategoryDTO categoria) {
         return new MenuProductoDTO(id, nombre, descripcion,
-                precio, null, null, null, null, null, null, null, null, true, motivo);
+                precio, null, null, null, null, null, null, null, null, true, motivo, categoria);
     }
 
     public static MenuProductoDTO permitido(Producto producto) {
@@ -63,7 +68,19 @@ public record MenuProductoDTO(
                 producto.getCupoMaximoDiario(),
                 producto.getCupoDisponibleDia(),
                 bloqueado,
-                motivo
+                motivo,
+                category(producto)
+        );
+    }
+
+    private static CategoryDTO category(Producto producto) {
+        if (producto.getCategoria() == null) {
+            return null;
+        }
+
+        return new CategoryDTO(
+                producto.getCategoria().getId(),
+                producto.getCategoria().getDescripcion()
         );
     }
 }

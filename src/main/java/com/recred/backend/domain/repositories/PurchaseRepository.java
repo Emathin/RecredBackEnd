@@ -5,6 +5,8 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseResume;
 
+import com.recred.backend.domain.models.EstadoRetiro;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -79,4 +81,13 @@ public interface PurchaseRepository {
     List<CartProductAffinity> findBuffetCartAffinities(
             UUID buffetId,
             Set<UUID> cartProductIds);
+
+    List<Purchase> findScheduledPickups(
+            UUID buffetId,
+            LocalDate fecha,
+            EstadoRetiro estadoRetiro,
+            UUID franjaId,
+            String search);
+
+    long countHealthyPurchasesByAlumno(UUID alumnoId, LocalDateTime since);
 }

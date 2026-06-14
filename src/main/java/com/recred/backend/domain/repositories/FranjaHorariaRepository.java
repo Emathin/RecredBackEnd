@@ -8,6 +8,8 @@ import java.util.UUID;
 
 public interface FranjaHorariaRepository {
     List<FranjaHoraria> findAllByColegioId(UUID colegioID);
+
     Optional<FranjaHoraria> findById(UUID id);
+
     FranjaHoraria save(FranjaHoraria franjaHoraria);
 }

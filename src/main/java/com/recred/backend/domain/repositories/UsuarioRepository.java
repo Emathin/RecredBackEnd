@@ -11,4 +11,6 @@ public interface UsuarioRepository {
     Usuario save(Usuario nuevoUsuario);
 
     Optional<Usuario> findByIdCognito(String sub);
+
+    Optional<Usuario> findByEmail(String email);
 }

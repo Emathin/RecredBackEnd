@@ -6,6 +6,7 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.PurchaseRecommendationResult;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,4 +19,5 @@ public interface AIEventRepository {
     UUID registerPurchaseRecommendation(PurchaseRecommendationResult result);
 
     Optional<ProductRecommendationResult> findLatestProductChangeRecommendation(UUID buffetId);
+    List<ProductRecommendationResult> findAllProductChangeRecommendations(UUID buffetId);
 }

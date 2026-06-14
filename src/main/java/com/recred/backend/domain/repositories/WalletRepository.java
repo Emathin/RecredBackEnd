@@ -8,4 +8,5 @@ import java.util.UUID;
 public interface WalletRepository {
     Optional<Billetera> findByStudentId(UUID studentId);
     void save(Billetera wallet);
+    java.util.List<UUID> findAlumnoIdsWithLowBalance(java.math.BigDecimal threshold);
 }

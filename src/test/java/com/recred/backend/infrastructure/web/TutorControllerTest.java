@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.ObtenerHijosPorPadre;
+import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.Alumno;
@@ -40,7 +41,13 @@ class TutorControllerTest {
     private ObtenerHijosPorPadre obtenerHijosPorPadre;
 
     @MockitoBean
+    private CreateStudentFromParent createStudentFromParent;
+
+    @MockitoBean
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
+
+    @MockitoBean
+    private com.recred.backend.domain.services.UsuarioService usuarioService;
 
     @MockitoBean
     private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;

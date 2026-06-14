@@ -4,9 +4,11 @@ import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionExcep
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoCompra;
+import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
@@ -18,24 +20,30 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CancelPresentialPurchaseTest {
 
     @Mock
     private PurchaseRepository purchaseRepository;
-
     @Mock
     private WalletRepository walletRepository;
     @Mock
     private InventoryAvailabilityService inventoryAvailabilityService;
+    @Mock
+    private FranjaHorariaRepository timeSlotRepository;
 
     @InjectMocks
     private CancelPresentialPurchase useCase;
@@ -66,7 +74,8 @@ class CancelPresentialPurchaseTest {
     @Test
     void execute_WhenPurchaseExists_ShouldCancelAndRefund() {
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(walletRepository.findByStudentId(purchase.getStudent().getId())).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByStudentId(purchase.getStudent().getId()))
+                .thenReturn(Optional.of(wallet));
 
         useCase.execute(purchaseId);
 
@@ -127,9 +136,83 @@ class CancelPresentialPurchaseTest {
     @Test
     void execute_WhenWalletNotFound_ShouldThrowException() {
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(walletRepository.findByStudentId(purchase.getStudent().getId())).thenReturn(Optional.empty());
+        when(walletRepository.findByStudentId(purchase.getStudent().getId()))
+                .thenReturn(Optional.empty());
 
         assertThrows(IllegalStateException.class, () -> useCase.execute(purchaseId));
+
+        verify(walletRepository, never()).save(any());
+        verify(purchaseRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_WhenAdvancePurchaseIsMoreThanOneHourBeforePickup_ShouldCancelAndRefund() {
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+        UUID slotId = UUID.randomUUID();
+        purchase.setPickupSlotId(slotId);
+
+        LocalDateTime allowedPickupTime = LocalDateTime.now(
+                ZoneId.of("America/Argentina/Buenos_Aires")).plusMinutes(61);
+        purchase.setPickupDate(allowedPickupTime.toLocalDate());
+
+        FranjaHoraria franja = new FranjaHoraria();
+        franja.setId(slotId);
+        franja.setHoraInicio(allowedPickupTime.toLocalTime());
+
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        when(timeSlotRepository.findById(slotId)).thenReturn(Optional.of(franja));
+        when(walletRepository.findByStudentId(purchase.getStudent().getId()))
+                .thenReturn(Optional.of(wallet));
+
+        useCase.execute(purchaseId);
+
+        assertEquals(EstadoCompra.CANCELADO, purchase.getStatus());
+        assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
+        verify(purchaseRepository).save(purchase);
+        verify(walletRepository).save(wallet);
+    }
+
+    @Test
+    void execute_WhenAdvancePurchaseIsExactlyOneHourBeforePickup_ShouldThrowException() {
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+        UUID slotId = UUID.randomUUID();
+        purchase.setPickupSlotId(slotId);
+
+        LocalDateTime blockedPickupTime = LocalDateTime.now(
+                ZoneId.of("America/Argentina/Buenos_Aires")).plusHours(1);
+        purchase.setPickupDate(blockedPickupTime.toLocalDate());
+
+        FranjaHoraria franja = new FranjaHoraria();
+        franja.setId(slotId);
+        franja.setHoraInicio(blockedPickupTime.toLocalTime());
+
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        when(timeSlotRepository.findById(slotId)).thenReturn(Optional.of(franja));
+
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(purchaseId));
+
+        verify(walletRepository, never()).save(any());
+        verify(purchaseRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_WhenAdvancePurchaseIsLessThanOneHourBeforePickup_ShouldThrowException() {
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+        UUID slotId = UUID.randomUUID();
+        purchase.setPickupSlotId(slotId);
+
+        LocalDateTime blockedPickupTime = LocalDateTime.now(
+                ZoneId.of("America/Argentina/Buenos_Aires")).plusMinutes(59);
+        purchase.setPickupDate(blockedPickupTime.toLocalDate());
+
+        FranjaHoraria franja = new FranjaHoraria();
+        franja.setId(slotId);
+        franja.setHoraInicio(blockedPickupTime.toLocalTime());
+
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        when(timeSlotRepository.findById(slotId)).thenReturn(Optional.of(franja));
+
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(purchaseId));
 
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());

@@ -16,5 +16,6 @@ public class ProductChangeRecommendation {
     private UUID idBuffet;
     private String nombre;
     private BigDecimal precio;
+    private ProductSaleStatistics saleStatistics;
 
 }

@@ -1,13 +1,17 @@
 package com.recred.backend.infrastructure.persistence;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.models.BudgetPeriod;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.ConsumptionCategory;
 import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.models.AIEventType;
+import com.recred.backend.domain.models.ProductRecommendationResult;
 import com.recred.backend.infrastructure.entities.AIEventEntity;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.BuffetEntity;
+import com.recred.backend.infrastructure.entities.ProductoEntity;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -35,6 +39,9 @@ class AIEventPersistenceRepositoryTest {
     @Mock
     private EntityManager entityManager;
 
+    @Mock
+    private ObjectMapper objectMapper;
+
     @Test
     void registerPredictionEventWithInputAndResult() {
         UUID studentId = UUID.randomUUID();
@@ -42,7 +49,8 @@ class AIEventPersistenceRepositoryTest {
         when(entityManager.getReference(AlumnoEntity.class, studentId)).thenReturn(studentEntity);
         AIEventPersistenceRepository repository = new AIEventPersistenceRepository(
                 aiEventJpaRepository,
-                entityManager
+                entityManager,
+                objectMapper
         );
 
         repository.registerPrediction(result(studentId));
@@ -68,6 +76,34 @@ class AIEventPersistenceRepositoryTest {
         Map<String, Object> aiAnalysis = aiAnalysis(event);
         assertEquals("Sube el gasto.", aiAnalysis.get("resumen"));
         assertEquals("gemini-test", aiAnalysis.get("modelo"));
+    }
+
+    @Test
+    void findAllProductChangeRecommendations() {
+        UUID buffetId = UUID.randomUUID();
+        AIEventPersistenceRepository repository = new AIEventPersistenceRepository(
+                aiEventJpaRepository,
+                entityManager,
+                objectMapper
+        );
+
+        AIEventEntity event1 = new AIEventEntity();
+        event1.setResultData(Map.of());
+        event1.setInputData(Map.of("nombre", "Producto 1", "precio", 10.0));
+        ProductoEntity p1 = new ProductoEntity();
+        p1.setId(UUID.randomUUID());
+        event1.setProductoEntity(p1);
+        BuffetEntity b1 = new BuffetEntity();
+        b1.setId(buffetId);
+        event1.setBuffetEntity(b1);
+
+        when(aiEventJpaRepository.findAllByTypeAndBuffetEntityIdOrderByCreatedAtDesc(
+                AIEventType.PRODUCTO_CAMBIO, buffetId))
+                .thenReturn(List.of(event1));
+
+        List<ProductRecommendationResult> results = repository.findAllProductChangeRecommendations(buffetId);
+        assertEquals(1, results.size());
+        assertEquals("Producto 1", results.get(0).getProductChangeRecommendation().getNombre());
     }
 
     @SuppressWarnings("unchecked")

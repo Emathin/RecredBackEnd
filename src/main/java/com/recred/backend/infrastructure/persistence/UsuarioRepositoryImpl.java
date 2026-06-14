@@ -44,6 +44,12 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
                 .map(UsuarioEntity::toDomain);
     }
 
+    @Override
+    public Optional<Usuario> findByEmail(String email) {
+        return springDataUsuarioRepository.findByEmail(email)
+                .map(UsuarioEntity::toDomain);
+    }
+
     private UsuarioEntity toEntity(Usuario usuario) {
         UsuarioEntity entity = new UsuarioEntity();
 
