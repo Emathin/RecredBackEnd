@@ -44,7 +44,7 @@ public class GenerateParentSummaryJob {
         this.usuarioRepository = usuarioRepository;
     }
 
-    @Scheduled(cron = "00 30 12 * * SAT")
+    @Scheduled(cron = "00 34 18 * * SUN")
     public void run() {
         List<Tutor> tutors = tutorRepository.findAll();
         LocalDateTime fin = LocalDateTime.now();
