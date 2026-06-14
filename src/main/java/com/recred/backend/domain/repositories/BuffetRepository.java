@@ -5,5 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface BuffetRepository {
+    Optional<Buffet> findById(UUID id);
+
     Optional<Buffet> findByAlumnoId(UUID alumnoId);
 }

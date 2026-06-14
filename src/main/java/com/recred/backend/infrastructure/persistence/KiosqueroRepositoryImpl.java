@@ -4,6 +4,7 @@ import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.infrastructure.entities.KiosqueroEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -35,6 +36,7 @@ public class KiosqueroRepositoryImpl implements KiosqueroRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Kiosquero> findAll() {
         List<Kiosquero> kiosqueros = springDataKiosqueroRepository.findAll()
                 .stream().map(KiosqueroEntity::toDomain).collect(toList());

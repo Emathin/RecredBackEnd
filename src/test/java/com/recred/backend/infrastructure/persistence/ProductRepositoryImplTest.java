@@ -301,7 +301,16 @@ public class ProductRepositoryImplTest {
         UUID buffetId = UUID.randomUUID();
         ProductoEntity entity = new ProductoEntity();
         entity.setId(UUID.randomUUID());
-        Object[] resultObj = new Object[]{entity, 50};
+        Object[] resultObj = new Object[]{
+                entity,
+                50,
+                5,
+                3,
+                EstadoInventario.DISPONIBLE,
+                TipoManejoInventario.STOCK_EXACTO,
+                20,
+                45
+        };
 
         when(springDataRepository.findAllActiveWithStockParams(buffetId)).thenReturn(java.util.Collections.singletonList(resultObj));
 
@@ -309,6 +318,59 @@ public class ProductRepositoryImplTest {
 
         assertFalse(result.isEmpty());
         assertEquals(50, result.get(0).getStockActual());
+        assertEquals(5, result.get(0).getStockReservado());
+        assertEquals(3, result.get(0).getStockMinimo());
+        assertEquals(20, result.get(0).getCupoMaximoDiario());
+        assertEquals(45, result.get(0).getStockDisponible());
+    }
+
+    @Test
+    void findAllActiveWithStock_CuandoNoTieneMinimoYQuedanCuatro_DeberiaMapearBajoStock() {
+        UUID buffetId = UUID.randomUUID();
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(UUID.randomUUID());
+        Object[] resultObj = new Object[]{
+                entity,
+                4,
+                0,
+                null,
+                EstadoInventario.DISPONIBLE,
+                TipoManejoInventario.STOCK_EXACTO,
+                null,
+                4
+        };
+
+        when(springDataRepository.findAllActiveWithStockParams(buffetId))
+                .thenReturn(java.util.Collections.singletonList(resultObj));
+
+        java.util.List<Producto> result = productRepository.findAllActiveWithStock(buffetId);
+
+        assertEquals(EstadoInventario.BAJO_STOCK, result.get(0).getEstadoInventario());
+        assertEquals(Inventario.STOCK_MINIMO_PREDETERMINADO, result.get(0).getStockMinimo());
+    }
+
+    @Test
+    void findAllActiveWithStock_CuandoNoTieneStock_DeberiaMapearSinStock() {
+        UUID buffetId = UUID.randomUUID();
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(UUID.randomUUID());
+        Object[] resultObj = new Object[]{
+                entity,
+                0,
+                0,
+                null,
+                EstadoInventario.DISPONIBLE,
+                TipoManejoInventario.STOCK_EXACTO,
+                null,
+                0
+        };
+
+        when(springDataRepository.findAllActiveWithStockParams(buffetId))
+                .thenReturn(java.util.Collections.singletonList(resultObj));
+
+        java.util.List<Producto> result = productRepository.findAllActiveWithStock(buffetId);
+
+        assertEquals(EstadoInventario.SIN_STOCK, result.get(0).getEstadoInventario());
     }
 
     @Test
@@ -317,7 +379,16 @@ public class ProductRepositoryImplTest {
         UUID buffetId = UUID.randomUUID();
         ProductoEntity entity = new ProductoEntity();
         entity.setId(id);
-        Object[] resultObj = new Object[]{entity, 10};
+        Object[] resultObj = new Object[]{
+                entity,
+                10,
+                2,
+                1,
+                EstadoInventario.DISPONIBLE,
+                TipoManejoInventario.STOCK_EXACTO,
+                null,
+                8
+        };
 
         when(springDataRepository.findActiveByIdWithStockParams(id, buffetId)).thenReturn(Optional.of(resultObj));
 
@@ -325,5 +396,6 @@ public class ProductRepositoryImplTest {
 
         assertTrue(result.isPresent());
         assertEquals(10, result.get().getStockActual());
+        assertEquals(8, result.get().getStockDisponible());
     }
 }

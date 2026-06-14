@@ -8,6 +8,7 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -30,6 +31,8 @@ public class Purchase {
     private String withdrawalCode;
     private UUID pickupSlotId;
     private String pickupSlotDescription;
+    private LocalTime pickupSlotStart;
+    private LocalTime pickupSlotEnd;
     private LocalDate pickupDate;
     private java.time.LocalTime pickupSlotStartTime;
     private EstadoRetiro withdrawalStatus;
@@ -84,7 +87,7 @@ public class Purchase {
                 case EN_PREPARACION -> EstadoRetiro.EN_PREPARACION;
                 case LISTO -> EstadoRetiro.LISTO;
                 case ENTREGADO -> EstadoRetiro.RETIRADO;
-                case CANCELADO -> EstadoRetiro.CANCELADO;
+                case CANCELADO, RECHAZADO, VENCIDO -> EstadoRetiro.CANCELADO;
                 case NO_RETIRADO -> EstadoRetiro.NO_RETIRADO;
             };
         }
@@ -134,12 +137,18 @@ public class Purchase {
     private boolean isAllowedTransition(EstadoCompra nextStatus) {
         return switch (this.status) {
             case PENDIENTE -> nextStatus == EstadoCompra.EN_PREPARACION
-                    || nextStatus == EstadoCompra.CANCELADO;
+                    || nextStatus == EstadoCompra.CANCELADO
+                    || nextStatus == EstadoCompra.RECHAZADO
+                    || nextStatus == EstadoCompra.VENCIDO;
             case EN_PREPARACION -> nextStatus == EstadoCompra.LISTO
-                    || nextStatus == EstadoCompra.CANCELADO;
+                    || nextStatus == EstadoCompra.CANCELADO
+                    || nextStatus == EstadoCompra.RECHAZADO
+                    || nextStatus == EstadoCompra.VENCIDO;
             case LISTO -> nextStatus == EstadoCompra.ENTREGADO
+                    || nextStatus == EstadoCompra.RECHAZADO
+                    || nextStatus == EstadoCompra.VENCIDO
                     || nextStatus == EstadoCompra.NO_RETIRADO;
-            case ENTREGADO, CANCELADO, NO_RETIRADO -> false;
+            case ENTREGADO, CANCELADO, RECHAZADO, VENCIDO, NO_RETIRADO -> false;
         };
     }
 }

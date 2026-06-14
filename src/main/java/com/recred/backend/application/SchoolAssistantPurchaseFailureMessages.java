@@ -10,20 +10,20 @@ import java.util.Map;
 class SchoolAssistantPurchaseFailureMessages {
 
     private static final String GENERIC_PURCHASE_FAILURE_MESSAGE =
-            "No pude realizar la compra. Intentalo de nuevo mas tarde.";
+            "No pude realizar la compra ahora. Intentalo de nuevo mas tarde.";
 
     private static final Map<Class<? extends RuntimeException>, String> PURCHASE_FAILURE_MESSAGES =
             Map.of(
                     InsufficientBalanceException.class,
-                    "No pude realizar la compra porque el alumno no tiene saldo suficiente.",
+                    "No pude realizar la compra porque no tenes saldo suficiente.",
                     PickupTimeSlotNotFoundException.class,
-                    "No pude realizar la compra porque no hay una franja horaria disponible.",
+                    "No pude realizar la compra porque ese recreo ya no esta disponible.",
                     PresupuestoExcedidoException.class,
-                    "No pude realizar la compra porque supera el presupuesto configurado.",
+                    "No pude realizar la compra porque supera tu presupuesto configurado.",
                     RestriccionHorariaException.class,
-                    "No pude realizar la compra porque hay una restriccion horaria activa.",
+                    "No pude realizar la compra porque tenes una restriccion horaria activa.",
                     RestriccionSaludException.class,
-                    "No pude realizar la compra porque incluye un producto restringido."
+                    "No pude realizar la compra porque incluye un producto que tenes restringido."
             );
 
     String message(RuntimeException exception) {

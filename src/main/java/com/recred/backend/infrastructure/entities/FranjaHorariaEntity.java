@@ -45,6 +45,12 @@ public class FranjaHorariaEntity {
     @Column(nullable = false)
     private Boolean activo = true;
 
+    @Column(name = "cupo_maximo")
+    private Integer cupoMaximo;
+
+    @Column(name = "minutos_corte")
+    private Integer minutosCorte = 0;
+
     public FranjaHoraria toDomain() {
         FranjaHoraria dominio = new FranjaHoraria();
 
@@ -52,6 +58,8 @@ public class FranjaHorariaEntity {
         dominio.setDescripcion(this.descripcion);
         dominio.setHoraInicio(this.horaInicio);
         dominio.setHoraFin(this.horaFin);
+        dominio.setCupoMaximo(this.cupoMaximo);
+        dominio.setMinutosCorte(this.minutosCorte);
 
         dominio.setActivo(this.activo != null ? this.activo : false);
 

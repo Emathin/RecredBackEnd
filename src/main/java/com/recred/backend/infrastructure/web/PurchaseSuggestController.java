@@ -105,11 +105,11 @@ public class PurchaseSuggestController {
                 alumnoId,
                 usuario.getId(),
                 buyerType,
+                buffetId,
                 LocalDate.now().toString(),
                 RecessTime.AFTER_HOURS,
                 List.of(item),
                 sugerenciaId,
-                buffetId,
                 tutorId
         );
 

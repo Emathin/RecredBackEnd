@@ -1,28 +1,49 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.*;
+import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.CategoriaProducto;
+import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.models.EstadoInventario;
+import com.recred.backend.domain.models.PeriodoPresupuesto;
+import com.recred.backend.domain.models.PresupuestoAlumno;
+import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.RangoFechas;
+import com.recred.backend.domain.models.ReglaPresupuestoCategoria;
+import com.recred.backend.domain.models.RestriccionHoraria;
+import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.infrastructure.web.MenuProductoDTO;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.time.LocalDate;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class GenerarMenuBuffetTest {
 
     @Mock
@@ -36,248 +57,268 @@ class GenerarMenuBuffetTest {
     @Mock
     private CalculadorPeriodoPresupuesto calculadorPeriodo;
 
-    @InjectMocks
-    private GenerarMenuBuffet generarMenuBuffet;
-
-    private AutoCloseable closeable;
+    private GenerarMenuBuffet useCase;
+    private UUID alumnoId;
+    private UUID buffetId;
+    private Alumno alumno;
 
     @BeforeEach
     void setUp() {
-        closeable = MockitoAnnotations.openMocks(this);
-    }
-
-    @AfterEach
-    void tearDown() throws Exception {
-        closeable.close();
+        useCase = new GenerarMenuBuffet(
+                alumnoRepository,
+                productRepository,
+                presupuestoRepository,
+                purchaseRepository,
+                calculadorPeriodo
+        );
+        alumnoId = UUID.randomUUID();
+        buffetId = UUID.randomUUID();
+        alumno = new Alumno();
+        alumno.setId(alumnoId);
     }
 
     @Test
-    void execute_shouldThrowException_whenAlumnoNotFound() {
-        UUID alumnoId = UUID.randomUUID();
+    void execute_ShouldUseBuffetAvailabilityInMenu() {
+        Producto available = product("Jugo", new BigDecimal("10.00"), 5);
+        Producto unavailable = product("Alfajor", new BigDecimal("15.00"), 0);
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId))
+                .thenReturn(List.of(available, unavailable));
+        when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
+
+        List<MenuProductoDTO> result = useCase.execute(
+                alumnoId,
+                buffetId,
+                LocalDateTime.now()
+        );
+
+        assertFalse(result.get(0).bloqueado());
+        assertEquals(5, result.get(0).stockDisponible());
+        assertEquals("DISPONIBLE", result.get(0).estadoInventario());
+        assertNotNull(result.get(0).categoria());
+        assertTrue(result.get(1).bloqueado());
+        assertEquals("Sin disponibilidad", result.get(1).motivoBloqueo());
+        verify(productRepository).findAllActiveWithStock(buffetId);
+    }
+
+    @Test
+    void execute_WhenBuffetIdIsNull_ShouldThrowException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(UUID.randomUUID(), null, LocalDateTime.now()));
+    }
+
+    @Test
+    void execute_WhenAlumnoNotFound_ShouldThrowException() {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () ->
-                generarMenuBuffet.execute(alumnoId, LocalDateTime.now()));
+        assertThrows(RuntimeException.class,
+                () -> useCase.execute(alumnoId, buffetId, LocalDateTime.now()));
     }
 
     @Test
-    void execute_shouldReturnAllowedProducts_whenNoRestrictionsOrBudget() {
-        UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
+    void execute_ShouldBlockProduct_WhenProductIsManuallyBlockedByTutor() {
+        Producto product = product("Alfajor", BigDecimal.TEN, 10);
+        alumno.setProductosBloqueados(Set.of(product));
+
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-
-        Producto prod = new Producto();
-        prod.setId(UUID.randomUUID());
-        prod.setNombre("Galletitas");
-        prod.setPrecio(BigDecimal.TEN);
-        
-        CategoriaProducto cat = new CategoriaProducto();
-        cat.setId(UUID.randomUUID());
-        cat.setDescripcion("Snacks");
-        prod.setCategoria(cat);
-
-        when(productRepository.findAllActive()).thenReturn(List.of(prod));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
 
-        List<MenuProductoDTO> result = generarMenuBuffet.execute(alumnoId, LocalDateTime.now());
+        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
 
         assertEquals(1, result.size());
-        MenuProductoDTO dto = result.get(0);
-        assertFalse(dto.bloqueado());
-        assertEquals(prod.getId(), dto.id());
-        assertNull(dto.motivoBloqueo());
+        assertTrue(result.get(0).bloqueado());
+        assertEquals("Bloqueado por el tutor", result.get(0).motivoBloqueo());
     }
 
     @Test
-    void execute_shouldReturnBlockedProduct_whenProductIsManuallyBlockedByTutor() {
-        UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        
-        Producto prod = new Producto();
-        prod.setId(UUID.randomUUID());
-        prod.setNombre("Alfajor");
-        prod.setPrecio(BigDecimal.TEN);
-        
-        alumno.setProductosBloqueados(Set.of(prod));
+    void execute_ShouldBlockProduct_WhenDailyCapacityIsExhausted() {
+        Producto product = product("Sandwich", BigDecimal.TEN, 10);
+        product.setTipoManejoInventario(TipoManejoInventario.CUPO_DIARIO);
+        product.setCupoMaximoDiario(5);
+
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(productRepository.findAllActive()).thenReturn(List.of(prod));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
+        when(purchaseRepository.sumScheduledProductQuantity(
+                eq(buffetId),
+                eq(product.getId()),
+                any(LocalDate.class),
+                any()
+        )).thenReturn(5L);
 
-        List<MenuProductoDTO> result = generarMenuBuffet.execute(alumnoId, LocalDateTime.now());
+        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
 
-        assertEquals(1, result.size());
-        MenuProductoDTO dto = result.get(0);
-        assertTrue(dto.bloqueado());
-        assertEquals("Bloqueado por el tutor", dto.motivoBloqueo());
+        assertTrue(result.get(0).bloqueado());
+        assertEquals("Cupo diario agotado", result.get(0).motivoBloqueo());
+        assertEquals(0, result.get(0).cupoDisponibleDia());
     }
 
     @Test
-    void execute_shouldBlockProduct_whenHealthRestrictionsViolated() {
-        UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-
-        // Restriction 1: Sin TACC (starts with "Sin")
-        ClasificacionSalud sinTacc = new ClasificacionSalud();
-        sinTacc.setId(UUID.randomUUID());
-        sinTacc.setDescripcion("Sin TACC");
-
-        // Restriction 2: Contiene Lácteos (does not start with "Sin")
-        ClasificacionSalud contieneLacteos = new ClasificacionSalud();
-        contieneLacteos.setId(UUID.randomUUID());
-        contieneLacteos.setDescripcion("Contiene Lácteos");
-
+    void execute_ShouldBlockProduct_WhenHealthRestrictionsAreViolated() {
+        ClasificacionSalud sinTacc = classification("Sin TACC");
+        ClasificacionSalud contieneLacteos = classification("Contiene Lacteos");
         alumno.setRestriccionesSalud(Set.of(sinTacc, contieneLacteos));
+
+        Producto withGluten = product("Pan", BigDecimal.TEN, 10);
+        withGluten.setClasificacionesSalud(Set.of());
+
+        Producto withMilk = product("Queso sin TACC", BigDecimal.TEN, 10);
+        withMilk.setClasificacionesSalud(Set.of(
+                classification(sinTacc.getId(), "Sin TACC"),
+                classification(contieneLacteos.getId(), "Contiene Lacteos")
+        ));
+
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-
-        // Product 1: Has gluten (doesn't have Sin TACC classification), has no lacteos.
-        Producto prodGluten = new Producto();
-        prodGluten.setId(UUID.randomUUID());
-        prodGluten.setNombre("Pan");
-        prodGluten.setPrecio(BigDecimal.TEN);
-        prodGluten.setClasificacionesSalud(Set.of());
-
-        // Product 2: Apto Gluten (has Sin TACC) but has Lacteos (has classification).
-        Producto prodLacteos = new Producto();
-        prodLacteos.setId(UUID.randomUUID());
-        prodLacteos.setNombre("Queso sin TACC");
-        prodLacteos.setPrecio(BigDecimal.TEN);
-        
-        ClasificacionSalud cTacc = new ClasificacionSalud();
-        cTacc.setId(sinTacc.getId());
-        cTacc.setDescripcion("Sin TACC");
-        
-        ClasificacionSalud cLacteos = new ClasificacionSalud();
-        cLacteos.setId(contieneLacteos.getId());
-        cLacteos.setDescripcion("Contiene Lácteos");
-        
-        prodLacteos.setClasificacionesSalud(Set.of(cTacc, cLacteos));
-
-        when(productRepository.findAllActive()).thenReturn(List.of(prodGluten, prodLacteos));
+        when(productRepository.findAllActiveWithStock(buffetId))
+                .thenReturn(List.of(withGluten, withMilk));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
 
-        List<MenuProductoDTO> result = generarMenuBuffet.execute(alumnoId, LocalDateTime.now());
+        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
 
-        assertEquals(2, result.size());
-        
-        MenuProductoDTO dtoGluten = result.stream()
-                .filter(r -> r.id().equals(prodGluten.getId()))
-                .findFirst().orElseThrow();
-        assertTrue(dtoGluten.bloqueado());
-        assertEquals("Contiene: Gluten (TACC)", dtoGluten.motivoBloqueo());
+        MenuProductoDTO glutenDto = find(result, withGluten.getId());
+        MenuProductoDTO milkDto = find(result, withMilk.getId());
 
-        MenuProductoDTO dtoLacteos = result.stream()
-                .filter(r -> r.id().equals(prodLacteos.getId()))
-                .findFirst().orElseThrow();
-        assertTrue(dtoLacteos.bloqueado());
-        assertEquals("Contiene: Lácteos", dtoLacteos.motivoBloqueo());
+        assertTrue(glutenDto.bloqueado());
+        assertEquals("Contiene: Gluten (TACC)", glutenDto.motivoBloqueo());
+        assertTrue(milkDto.bloqueado());
+        assertEquals("Contiene: Lacteos", milkDto.motivoBloqueo());
     }
 
     @Test
-    void execute_shouldBlockProduct_whenTimeRestrictionBlocksIt() {
-        UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
+    void execute_ShouldBlockProduct_WhenTimeRestrictionBlocksIt() {
+        RestriccionHoraria restriction = mock(RestriccionHoraria.class);
+        when(restriction.bloquea(any(Producto.class), any(LocalDateTime.class))).thenReturn(true);
+        alumno.setRestriccionesHorarias(Set.of(restriction));
 
-        RestriccionHoraria rhMock = mock(RestriccionHoraria.class);
-        when(rhMock.bloquea(any(Producto.class), any(LocalDateTime.class))).thenReturn(true);
-        alumno.setRestriccionesHorarias(Set.of(rhMock));
+        Producto product = product("Gaseosa", BigDecimal.TEN, 10);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-
-        Producto prod = new Producto();
-        prod.setId(UUID.randomUUID());
-        prod.setNombre("Coca Cola");
-        prod.setPrecio(BigDecimal.TEN);
-        prod.setClasificacionesSalud(Set.of());
-
-        when(productRepository.findAllActive()).thenReturn(List.of(prod));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
 
-        List<MenuProductoDTO> result = generarMenuBuffet.execute(alumnoId, LocalDateTime.now());
+        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
 
-        assertEquals(1, result.size());
-        MenuProductoDTO dto = result.get(0);
-        assertTrue(dto.bloqueado());
-        assertEquals("No permitido en este horario", dto.motivoBloqueo());
+        assertTrue(result.get(0).bloqueado());
+        assertEquals("No permitido en este horario", result.get(0).motivoBloqueo());
     }
 
     @Test
-    void execute_shouldBlockProduct_whenGeneralBudgetOrCategoryBudgetExceeded() {
-        UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
+    void execute_ShouldBlockProduct_WhenGeneralBudgetOrCategoryBudgetExceeded() {
+        CategoriaProducto category = category("Bebidas");
+        Producto juice = product("Jugo", new BigDecimal("15.00"), 10, category);
+        Producto soda = product("Gaseosa", new BigDecimal("30.00"), 10, category);
+        LocalDateTime moment = LocalDateTime.now();
+        RangoFechas range = new RangoFechas(moment.minusHours(1), moment.plusHours(1));
+        PresupuestoAlumno budget = budget(category, new BigDecimal("50.00"),
+                new BigDecimal("20.00"));
+
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-
-        // Category
-        CategoriaProducto cat = new CategoriaProducto();
-        cat.setId(UUID.randomUUID());
-        cat.setDescripcion("Bebidas");
-
-        // Product 1: Price 15, Category "Bebidas"
-        Producto prod1 = new Producto();
-        prod1.setId(UUID.randomUUID());
-        prod1.setNombre("Jugo");
-        prod1.setPrecio(new BigDecimal("15.0"));
-        prod1.setCategoria(cat);
-        prod1.setClasificacionesSalud(Set.of());
-
-        // Product 2: Price 30, Category "Bebidas" (supera presupuesto general de 20)
-        Producto prod2 = new Producto();
-        prod2.setId(UUID.randomUUID());
-        prod2.setNombre("Gaseosa");
-        prod2.setPrecio(new BigDecimal("30.0"));
-        prod2.setCategoria(cat);
-        prod2.setClasificacionesSalud(Set.of());
-
-        when(productRepository.findAllActive()).thenReturn(List.of(prod1, prod2));
-
-        // Active Budget
-        PresupuestoAlumno presupuesto = new PresupuestoAlumno();
-        presupuesto.setPeriodo(PeriodoPresupuesto.DIARIO);
-        presupuesto.setMontoLimiteGeneral(new BigDecimal("50.0")); // general limit is 50
-        
-        // Category rule
-        ReglaPresupuestoCategoria regla = new ReglaPresupuestoCategoria();
-        regla.setCategoria(cat);
-        regla.setMontoLimiteCalculado(new BigDecimal("20.0")); // category limit is 20
-        presupuesto.setReglasCategoria(List.of(regla));
-
-        // Setup validity date
-        LocalDate today = LocalDate.now();
-        presupuesto.setFechaInicio(today.minusDays(1));
-
-        when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.of(presupuesto));
-
-        // Mock CalculadorPeriodoPresupuesto and historical spending
-        LocalDateTime momento = LocalDateTime.now();
-        RangoFechas rango = new RangoFechas(momento.minusHours(1), momento.plusHours(1));
-        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rango);
-
-        // Sumar gastos
-        when(purchaseRepository.sumarGastosPorAlumnoEnRango(
-                eq(alumnoId), any(), any())).thenReturn(new BigDecimal("30.0"));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(juice, soda));
+        when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.of(budget));
+        when(calculadorPeriodo.calcularRango(any(), eq(moment))).thenReturn(range);
+        when(purchaseRepository.sumarGastosPorAlumnoEnRango(alumnoId, range.inicio(), range.fin()))
+                .thenReturn(new BigDecimal("30.00"));
         when(purchaseRepository.sumarGastosPorCategoriaEnRango(
-                eq(alumnoId), eq(cat.getId()), any(), any())).thenReturn(new BigDecimal("10.0"));
+                alumnoId,
+                category.getId(),
+                range.inicio(),
+                range.fin()
+        )).thenReturn(new BigDecimal("10.00"));
 
-        List<MenuProductoDTO> result = generarMenuBuffet.execute(alumnoId, momento);
+        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, moment);
 
-        assertEquals(2, result.size());
+        MenuProductoDTO juiceDto = find(result, juice.getId());
+        MenuProductoDTO sodaDto = find(result, soda.getId());
 
-        // prod1 (Jugo): price 15. Supera limit de categoria (10 available), general (20 available).
-        MenuProductoDTO dto1 = result.stream()
-                .filter(r -> r.id().equals(prod1.getId()))
-                .findFirst().orElseThrow();
-        assertTrue(dto1.bloqueado());
-        assertEquals("Supera límite de su categoría", dto1.motivoBloqueo());
+        assertTrue(juiceDto.bloqueado());
+        assertEquals("Supera limite de su categoria", juiceDto.motivoBloqueo());
+        assertTrue(sodaDto.bloqueado());
+        assertEquals("Supera el limite de gasto", sodaDto.motivoBloqueo());
+    }
 
-        // prod2 (Gaseosa): price 30. Supera general limit (20 available).
-        MenuProductoDTO dto2 = result.stream()
-                .filter(r -> r.id().equals(prod2.getId()))
-                .findFirst().orElseThrow();
-        assertTrue(dto2.bloqueado());
-        assertEquals("Supera el límite de gasto", dto2.motivoBloqueo());
+    @Test
+    void execute_ShouldReturnAllowedProduct_WhenNoRestrictionApplies() {
+        Producto product = product("Galletitas", BigDecimal.TEN, 10);
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
+        when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
+
+        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
+
+        assertFalse(result.get(0).bloqueado());
+        assertNull(result.get(0).motivoBloqueo());
+        assertEquals(product.getId(), result.get(0).id());
+    }
+
+    private Producto product(String name, BigDecimal price, int stockDisponible) {
+        return product(name, price, stockDisponible, category("Snacks"));
+    }
+
+    private Producto product(
+            String name,
+            BigDecimal price,
+            int stockDisponible,
+            CategoriaProducto category
+    ) {
+        Producto product = new Producto();
+        product.setId(UUID.randomUUID());
+        product.setNombre(name);
+        product.setDescripcion("Descripcion");
+        product.setPrecio(price);
+        product.setCategoria(category);
+        product.setStockActual(stockDisponible);
+        product.setStockReservado(0);
+        product.setStockDisponible(stockDisponible);
+        product.setEstadoInventario(
+                stockDisponible > 0 ? EstadoInventario.DISPONIBLE : EstadoInventario.SIN_STOCK
+        );
+        product.setTipoManejoInventario(TipoManejoInventario.STOCK_EXACTO);
+        product.setClasificacionesSalud(Set.of());
+        return product;
+    }
+
+    private CategoriaProducto category(String description) {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(UUID.randomUUID());
+        category.setDescripcion(description);
+        return category;
+    }
+
+    private ClasificacionSalud classification(String description) {
+        return classification(UUID.randomUUID(), description);
+    }
+
+    private ClasificacionSalud classification(UUID id, String description) {
+        ClasificacionSalud classification = new ClasificacionSalud();
+        classification.setId(id);
+        classification.setDescripcion(description);
+        return classification;
+    }
+
+    private PresupuestoAlumno budget(
+            CategoriaProducto category,
+            BigDecimal generalLimit,
+            BigDecimal categoryLimit
+    ) {
+        ReglaPresupuestoCategoria rule = new ReglaPresupuestoCategoria();
+        rule.setCategoria(category);
+        rule.setMontoLimiteCalculado(categoryLimit);
+
+        PresupuestoAlumno budget = new PresupuestoAlumno();
+        budget.setPeriodo(PeriodoPresupuesto.DIARIO);
+        budget.setMontoLimiteGeneral(generalLimit);
+        budget.setFechaInicio(LocalDate.now().minusDays(1));
+        budget.setReglasCategoria(List.of(rule));
+        return budget;
+    }
+
+    private MenuProductoDTO find(List<MenuProductoDTO> result, UUID productId) {
+        return result.stream()
+                .filter(item -> item.id().equals(productId))
+                .findFirst()
+                .orElseThrow();
     }
 }

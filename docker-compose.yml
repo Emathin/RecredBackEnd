@@ -35,6 +35,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     ports:
       - "8080:8080"
     volumes:
