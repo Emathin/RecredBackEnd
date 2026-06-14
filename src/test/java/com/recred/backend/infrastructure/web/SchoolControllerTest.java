@@ -54,8 +54,7 @@ class SchoolControllerTest {
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
         assertEquals(schoolId, response.getBody().get(0).id());
-        assertEquals("North School", response.getBody().get(0).name());
-        assertEquals("Primary", response.getBody().get(0).level());
+        assertEquals("North School", response.getBody().get(0).nombre());
         verify(getActiveSchools).execute();
     }
 
@@ -77,9 +76,7 @@ class SchoolControllerTest {
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
         assertEquals(gradeId, response.getBody().get(0).id());
-        assertEquals("1", response.getBody().get(0).year());
-        assertEquals("A", response.getBody().get(0).division());
-        assertEquals("1 A", response.getBody().get(0).description());
+        assertEquals("1 A", response.getBody().get(0).nombre());
         verify(getGradesBySchool).execute(schoolId);
     }
 
