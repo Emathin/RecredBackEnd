@@ -78,6 +78,12 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         if (precio instanceof Number) {
             recommendation.setPrecio(BigDecimal.valueOf(((Number) precio).doubleValue()));
         }
+        
+        Object statsObj = entity.getInputData().get("saleStatistics");
+        if (statsObj instanceof Map) {
+            recommendation.setSaleStatistics(objectMapper.convertValue(statsObj,
+                    com.recred.backend.domain.models.ProductSaleStatistics.class));
+        }
 
         Map<String, Object> analysisMap = (Map<String, Object>) entity.getResultData()
                 .get("analisisIa");
