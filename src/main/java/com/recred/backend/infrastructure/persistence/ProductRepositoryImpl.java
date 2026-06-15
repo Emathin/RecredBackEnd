@@ -14,6 +14,7 @@ import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionTipoEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.ProductoMedidaEntity;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,7 +77,7 @@ public class ProductRepositoryImpl implements ProductRepository {
         ProductoEntity entity = (ProductoEntity) result[0];
         Integer stockActual = integerValue(result[1]);
         Integer stockReservado = integerValue(result[2]);
-        Integer stockMinimo = integerValue(result[3]);
+        Integer stockMinimo = integerValue(result[3]);;
         EstadoInventario estado = (EstadoInventario) result[4];
         TipoManejoInventario tipoManejo = (TipoManejoInventario) result[5];
         Integer cupoMaximoDiario = integerValue(result[6]);
@@ -169,6 +170,16 @@ public class ProductRepositoryImpl implements ProductRepository {
     public List<Producto> findBestSoldProducts() {
         List<ProductoEntity> productos = springDataRepository.findBestSoldProducts();
         return productos.stream().map(ProductoEntity::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Producto> findBuffetTop3MostSold(UUID buffetId, UUID categoriaId) {
+        return springDataRepository.findBuffetTop3MostSold(
+                buffetId, categoriaId, PageRequest.of(0, 3))
+                .stream()
+                .map(ProductoEntity::toDomain)
+                .toList();
     }
 
     @Override
