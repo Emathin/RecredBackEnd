@@ -4,17 +4,19 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.StudentConsumptionProduct;
 import com.recred.backend.domain.models.StudentConsumptionPurchase;
 import com.recred.backend.domain.repositories.StudentConsumptionRepository;
+import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
 import com.recred.backend.infrastructure.entities.CompraEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface StudentConsumptionJpaRepository
         extends JpaRepository<CompraEntity, UUID>, StudentConsumptionRepository {
@@ -43,6 +45,7 @@ public interface StudentConsumptionJpaRepository
             left join fetch purchase.detalles detail
             left join fetch detail.productoEntity product
             left join fetch product.categoria category
+            left join fetch product.clasificacionesSalud health
             where purchase.alumnoEntity.id = :studentId
             and purchase.estado in :statuses
             and purchase.fechaHora between :startDateTime and :endDateTime
@@ -84,7 +87,11 @@ public interface StudentConsumptionJpaRepository
                 product.getCategoria().getDescripcion(),
                 detail.getCantidad(),
                 detail.getPrecioUnitario(),
-                detail.getSubtotal()
+                detail.getSubtotal(),
+                product.getClasificacionesSalud().stream()
+                        .map(ClasificacionSaludEntity::getDescripcion)
+                        .sorted()
+                        .toList()
         );
     }
 }

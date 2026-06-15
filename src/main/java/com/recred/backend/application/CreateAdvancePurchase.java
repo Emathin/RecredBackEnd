@@ -11,9 +11,11 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
@@ -50,6 +52,7 @@ public class CreateAdvancePurchase {
     private final SpringDataBuffetRepository buffetRepository;
     private final UsuarioRepository usuarioRepository;
     private final TutorRepository tutorRepository;
+    private final MovimientoBilleteraRepository movimientoBilleteraRepository;
 
     public CreateAdvancePurchase(
             PurchaseValidator purchaseValidator,
@@ -65,6 +68,27 @@ public class CreateAdvancePurchase {
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository
     ) {
+        this(purchaseValidator, alumnoRepository, productRepository, purchaseRepository,
+                withdrawalCodeService, inventoryAvailabilityService, recessTimeSlotResolver,
+                advancePurchaseRulesService, walletRepository, buffetRepository,
+                usuarioRepository, tutorRepository, null);
+    }
+
+    public CreateAdvancePurchase(
+            PurchaseValidator purchaseValidator,
+            AlumnoRepository alumnoRepository,
+            ProductRepository productRepository,
+            PurchaseRepository purchaseRepository,
+            WithdrawalCodeService withdrawalCodeService,
+            InventoryAvailabilityService inventoryAvailabilityService,
+            RecessTimeSlotResolver recessTimeSlotResolver,
+            AdvancePurchaseRulesService advancePurchaseRulesService,
+            WalletRepository walletRepository,
+            SpringDataBuffetRepository buffetRepository,
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository
+    ) {
         this.purchaseValidator = purchaseValidator;
         this.alumnoRepository = alumnoRepository;
         this.productRepository = productRepository;
@@ -77,6 +101,7 @@ public class CreateAdvancePurchase {
         this.buffetRepository = buffetRepository;
         this.usuarioRepository = usuarioRepository;
         this.tutorRepository = tutorRepository;
+        this.movimientoBilleteraRepository = movimientoBilleteraRepository;
     }
 
     @Transactional
@@ -150,7 +175,9 @@ public class CreateAdvancePurchase {
         walletRepository.save(wallet);
 
         purchase.setWithdrawalCode(withdrawalCodeService.generateCode(purchase));
-        return purchaseRepository.save(purchase);
+        Purchase savedPurchase = purchaseRepository.save(purchase);
+        registerPurchaseMovement(wallet, total, buyer.id());
+        return savedPurchase;
     }
 
     private void validateRequest(AdvancePurchaseRequest request) {
@@ -267,6 +294,19 @@ public class CreateAdvancePurchase {
 
     private BigDecimal price(Producto product) {
         return product.getPrecio() == null ? BigDecimal.ZERO : product.getPrecio();
+    }
+
+    private void registerPurchaseMovement(Billetera wallet, BigDecimal amount, UUID userId) {
+        if (movimientoBilleteraRepository == null) {
+            return;
+        }
+        movimientoBilleteraRepository.registrarMovimiento(
+                wallet.getId(),
+                TipoMovimientoBilletera.COMPRA,
+                amount.negate(),
+                "Compra anticipada en buffet",
+                userId
+        );
     }
 
     private record Buyer(UUID id, BuyerType type, UUID tutorId) {
