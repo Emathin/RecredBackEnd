@@ -2,6 +2,8 @@ package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.EnableSchoolCredit;
+import com.recred.backend.application.GetActiveSchoolCredit;
+import com.recred.backend.application.GetLastRecharge;
 import com.recred.backend.domain.exceptions.ActiveCreditExistsException;
 import com.recred.backend.domain.models.CreditStatus;
 import com.recred.backend.domain.models.SchoolCredit;
@@ -14,6 +16,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.http.MediaType;
@@ -29,13 +32,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(
-    controllers = SchoolCreditController.class,
-    excludeAutoConfiguration = {
+@WebMvcTest(controllers = SchoolCreditController.class, excludeAutoConfiguration = {
         SecurityAutoConfiguration.class,
         OAuth2ResourceServerAutoConfiguration.class
-    }
-)
+})
 public class SchoolCreditControllerTest {
 
     @Autowired
@@ -45,22 +45,32 @@ public class SchoolCreditControllerTest {
     private EnableSchoolCredit enableSchoolCredit;
 
     @MockitoBean
+    private GetLastRecharge getLastRecharge;
+
+    @MockitoBean
+    private GetActiveSchoolCredit getActiveSchoolCredit;
+
+    @MockitoBean
     private UsuarioService usuarioService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @MockitoBean
+    private UsuarioRepository usuarioRepository;
+
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void enableCredit_success() throws Exception {
         EnableSchoolCreditRequest request = new EnableSchoolCreditRequest();
-        request.setParentId(UUID.randomUUID());
         request.setStudentId(UUID.randomUUID());
+        request.setAmount(new BigDecimal("2000.00"));
+        request.setInstallments(3);
 
         SchoolCredit credit = new SchoolCredit();
         credit.setId(UUID.randomUUID());
         credit.setStudentId(request.getStudentId());
-        credit.setAmount(BigDecimal.valueOf(55.0));
+        credit.setAmount(new BigDecimal("2000.00"));
         credit.setStatus(CreditStatus.ACTIVE);
+        credit.setInstallments(3);
         credit.setCreatedAt(LocalDateTime.now());
 
         Usuario mockUsuario = new Usuario();
@@ -69,7 +79,8 @@ public class SchoolCreditControllerTest {
         mockUsuario.setTutor(mockTutor);
 
         when(usuarioService.obtenerUsuarioActual("test-user")).thenReturn(mockUsuario);
-        when(enableSchoolCredit.execute(any(UUID.class), any(UUID.class))).thenReturn(credit);
+        when(enableSchoolCredit.execute(any(UUID.class), any(UUID.class), any(BigDecimal.class), any(Integer.class)))
+                .thenReturn(credit);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken("test-user", "password");
 
@@ -78,8 +89,9 @@ public class SchoolCreditControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.amount").value(55.0))
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
+                .andExpect(jsonPath("$.amount").value(2000.0))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.installments").value(3));
     }
 
     @Test
@@ -94,7 +106,7 @@ public class SchoolCreditControllerTest {
         mockUsuario.setTutor(mockTutor);
 
         when(usuarioService.obtenerUsuarioActual("test-user")).thenReturn(mockUsuario);
-        when(enableSchoolCredit.execute(any(UUID.class), any(UUID.class)))
+        when(enableSchoolCredit.execute(any(UUID.class), any(UUID.class), any(), any()))
                 .thenThrow(new ActiveCreditExistsException("Already has active credit"));
 
         Authentication authentication = new UsernamePasswordAuthenticationToken("test-user", "password");

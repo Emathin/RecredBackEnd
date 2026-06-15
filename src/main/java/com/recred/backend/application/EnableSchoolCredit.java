@@ -5,6 +5,7 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.CreditStatus;
 import com.recred.backend.domain.models.SchoolCredit;
+import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCreditRepository;
@@ -15,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 public class EnableSchoolCredit {
 
@@ -40,8 +42,10 @@ public class EnableSchoolCredit {
         this.clock = clock;
     }
 
-    public SchoolCredit execute(UUID tutorId, UUID studentId) {
-        tutorRepository.findById(tutorId)
+    @Transactional
+    public SchoolCredit execute(
+            UUID tutorId, UUID studentId, BigDecimal amount, Integer installments) {
+        Tutor tutor = tutorRepository.findById(tutorId)
                 .orElseThrow(() -> new IllegalArgumentException("Tutor not found"));
         Alumno alumno = alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
@@ -66,30 +70,24 @@ public class EnableSchoolCredit {
                     );
                 });
 
-        LocalDateTime now = LocalDateTime.now(clock);
-        LocalDateTime startOfLastMonth = now.minusMonths(1)
-                .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
-        LocalDateTime endOfLastMonth = startOfLastMonth.plusMonths(1).minusNanos(1);
-
-        BigDecimal lastMonthExpense = purchaseRepository
-                .sumarGastosPorAlumnoEnRango(studentId, startOfLastMonth, endOfLastMonth);
-
-        BigDecimal calculatedAmount;
-        if (lastMonthExpense == null || lastMonthExpense.compareTo(BigDecimal.ZERO) <= 0) {
-            calculatedAmount = BigDecimal.valueOf(50.0).multiply(BigDecimal.valueOf(1.10));
-        } else {
-            calculatedAmount = lastMonthExpense.multiply(BigDecimal.valueOf(1.10));
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Credit amount must be greater than zero");
         }
 
-        SchoolCredit credit = new SchoolCredit();
-        credit.setStudentId(studentId);
-        credit.setAmount(calculatedAmount);
-        credit.setStatus(CreditStatus.ACTIVE);
-        credit.setCreatedAt(now);
+        if (installments == null || installments < 1) {
+            installments = 1;
+        }
 
-        SchoolCredit savedCredit = schoolCreditRepository.save(credit);
+        SchoolCredit newCredit = new SchoolCredit();
+        newCredit.setStudentId(studentId);
+        newCredit.setAmount(amount);
+        newCredit.setStatus(CreditStatus.ACTIVE);
+        newCredit.setInstallments(installments);
+        newCredit.setCreatedAt(LocalDateTime.now(clock));
+
+        SchoolCredit savedCredit = schoolCreditRepository.save(newCredit);
         
-        wallet.credit(calculatedAmount);
+        wallet.credit(amount);
         wallet.setCreditoHabilitado(true);
         walletRepository.save(wallet);
 

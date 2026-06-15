@@ -6,6 +6,9 @@ import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.EnableSchoolCredit;
+import com.recred.backend.application.GetActiveSchoolCredit;
+import com.recred.backend.application.GetLastRecharge;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
@@ -1197,11 +1200,20 @@ public class UseCases {
             WalletRepository walletRepository,
             Clock clock) {
         return new EnableSchoolCredit(
-                tutorRepository,
-                alumnoRepository,
-                schoolCreditRepository,
-                purchaseRepository,
-                walletRepository,
-                clock);
+                tutorRepository, alumnoRepository, schoolCreditRepository,
+                purchaseRepository, walletRepository, clock);
+    }
+
+    @Bean
+    public GetLastRecharge getLastRecharge(
+            AlumnoRepository alumnoRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        return new GetLastRecharge(alumnoRepository, movimientoBilleteraRepository);
+    }
+
+    @Bean
+    public GetActiveSchoolCredit getActiveSchoolCredit(
+            SchoolCreditRepository schoolCreditRepository) {
+        return new GetActiveSchoolCredit(schoolCreditRepository);
     }
 }

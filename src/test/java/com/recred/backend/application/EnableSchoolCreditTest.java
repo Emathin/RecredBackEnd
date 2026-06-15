@@ -10,7 +10,7 @@ import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
-import com.recred.backend.domain.repositories.TutorRepository;
+import com.recred.backend.domain.repositories.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -42,6 +42,8 @@ public class EnableSchoolCreditTest {
     private SchoolCreditRepository schoolCreditRepository;
     @Mock
     private PurchaseRepository purchaseRepository;
+    @Mock
+    private WalletRepository walletRepository;
     @Mock
     private Clock clock;
 
@@ -75,18 +77,24 @@ public class EnableSchoolCreditTest {
                 .thenReturn(Optional.empty());
         when(purchaseRepository.sumarGastosPorAlumnoEnRango(eq(studentId), any(), any()))
                 .thenReturn(BigDecimal.ZERO);
-        
+
         SchoolCredit saved = new SchoolCredit();
         saved.setId(UUID.randomUUID());
-        saved.setAmount(BigDecimal.valueOf(55.0));
+        saved.setStudentId(studentId);
+        saved.setAmount(new BigDecimal("2000.00"));
+        saved.setStatus(CreditStatus.ACTIVE);
+        saved.setInstallments(3);
         when(schoolCreditRepository.save(any(SchoolCredit.class))).thenReturn(saved);
 
-        SchoolCredit result = enableSchoolCredit.execute(tutorId, studentId);
+        SchoolCredit result = enableSchoolCredit.execute(tutorId, studentId, new BigDecimal("2000.00"), 3);
 
         assertNotNull(result);
-        assertEquals(0, wallet.getSaldoCreditos().compareTo(BigDecimal.valueOf(55.0)));
+        assertEquals(studentId, result.getStudentId());
+        assertEquals(new BigDecimal("2000.00"), result.getAmount());
+        assertEquals(CreditStatus.ACTIVE, result.getStatus());
+        assertEquals(3, result.getInstallments());
         assertEquals(true, wallet.getCreditoHabilitado());
-        verify(alumnoRepository).save(alumnoMock);
+        verify(walletRepository).save(wallet);
     }
 
     @Test
@@ -105,12 +113,12 @@ public class EnableSchoolCreditTest {
         saved.setAmount(BigDecimal.valueOf(110.0));
         when(schoolCreditRepository.save(any(SchoolCredit.class))).thenReturn(saved);
 
-        SchoolCredit result = enableSchoolCredit.execute(tutorId, studentId);
+        SchoolCredit result = enableSchoolCredit.execute(tutorId, studentId, BigDecimal.valueOf(110.0), 1);
 
         assertNotNull(result);
         assertEquals(0, wallet.getSaldoCreditos().compareTo(BigDecimal.valueOf(110.0)));
         assertEquals(true, wallet.getCreditoHabilitado());
-        verify(alumnoRepository).save(alumnoMock);
+        verify(walletRepository).save(wallet);
     }
 
     @Test
@@ -120,8 +128,8 @@ public class EnableSchoolCreditTest {
         when(schoolCreditRepository.findByStudentIdAndStatus(studentId, CreditStatus.ACTIVE))
                 .thenReturn(Optional.of(new SchoolCredit()));
 
-        assertThrows(ActiveCreditExistsException.class, () ->
-                enableSchoolCredit.execute(tutorId, studentId)
-        );
+        assertThrows(ActiveCreditExistsException.class, () -> {
+            enableSchoolCredit.execute(tutorId, studentId, new BigDecimal("1000.00"), 1);
+        });
     }
 }

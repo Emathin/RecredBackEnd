@@ -46,4 +46,13 @@ public class MovimientoBilleteraRepositoryImpl implements MovimientoBilleteraRep
 
         springDataMovimientoBilleteraRepository.save(movimiento);
     }
+
+    @Override
+    public BigDecimal obtenerUltimoMontoCarga(UUID billeteraId) {
+        return springDataMovimientoBilleteraRepository
+                .findFirstByBilleteraEntityIdAndTipoOrderByCreadoEnDesc(
+                        billeteraId, TipoMovimientoBilletera.CARGA)
+                .map(MovimientoBilleteraEntity::getMonto)
+                .orElse(BigDecimal.ZERO);
+    }
 }

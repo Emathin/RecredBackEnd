@@ -44,6 +44,9 @@ public class SchoolCreditEntity {
     @Column(nullable = false)
     private CreditStatus status;
 
+    @Column(nullable = false)
+    private Integer installments = 1;
+
     @CreationTimestamp
     @Column(name = "creado_en")
     private LocalDateTime createdAt;
@@ -54,6 +57,7 @@ public class SchoolCreditEntity {
                 this.alumno != null ? this.alumno.getId() : null,
                 this.amount,
                 this.status,
+                this.installments,
                 this.createdAt
         );
     }

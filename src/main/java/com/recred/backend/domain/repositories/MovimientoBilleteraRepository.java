@@ -13,4 +13,6 @@ public interface MovimientoBilleteraRepository {
             String descripcion, 
             UUID usuarioId
     );
+
+    BigDecimal obtenerUltimoMontoCarga(UUID billeteraId);
 }

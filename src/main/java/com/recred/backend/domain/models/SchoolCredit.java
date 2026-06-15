@@ -18,5 +18,6 @@ public class SchoolCredit {
     private UUID studentId;
     private BigDecimal amount;
     private CreditStatus status;
+    private Integer installments;
     private LocalDateTime createdAt;
 }
