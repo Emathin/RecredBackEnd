@@ -5,6 +5,7 @@ import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.GetTutorGlobalDashboard;
+import com.recred.backend.application.EnableSchoolCredit;
 import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
@@ -131,6 +132,7 @@ import com.recred.backend.domain.repositories.PurchaseRecommendationNotification
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCalendarRepository;
@@ -1184,5 +1186,22 @@ public class UseCases {
                 predictStudentSpending,
                 obtenerHistorialAlumno
         );
+    }
+
+    @Bean
+    public EnableSchoolCredit enableSchoolCredit(
+            TutorRepository tutorRepository,
+            AlumnoRepository alumnoRepository,
+            SchoolCreditRepository schoolCreditRepository,
+            PurchaseRepository purchaseRepository,
+            WalletRepository walletRepository,
+            Clock clock) {
+        return new EnableSchoolCredit(
+                tutorRepository,
+                alumnoRepository,
+                schoolCreditRepository,
+                purchaseRepository,
+                walletRepository,
+                clock);
     }
 }
