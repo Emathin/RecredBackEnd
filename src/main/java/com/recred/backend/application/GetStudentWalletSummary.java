@@ -11,6 +11,7 @@ import com.recred.backend.domain.models.StudentConsumptionProduct;
 import com.recred.backend.domain.models.StudentConsumptionPurchase;
 import com.recred.backend.domain.models.StudentWalletSummary;
 import com.recred.backend.domain.models.WalletCategorySpending;
+import com.recred.backend.domain.models.WalletHealthSpending;
 import com.recred.backend.domain.models.WalletMovement;
 import com.recred.backend.domain.models.WalletMovementDirection;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
@@ -26,6 +27,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -103,7 +105,7 @@ public class GetStudentWalletSummary {
                 incomeAmount.subtract(spentAmount),
                 purchases.size(),
                 categorySpending(purchases, spentAmount),
-                List.of(),
+                healthSpending(purchases, spentAmount),
                 movements
         );
     }
@@ -170,6 +172,37 @@ public class GetStudentWalletSummary {
 
     private String categoryName(StudentConsumptionProduct product) {
         return product.categoryName() == null ? "Sin categoria" : product.categoryName();
+    }
+
+    private List<WalletHealthSpending> healthSpending(
+            List<StudentConsumptionPurchase> purchases,
+            BigDecimal totalSpent) {
+        Map<String, BigDecimal> amountByClassification = new LinkedHashMap<>();
+        purchases.stream()
+                .flatMap(purchase -> purchase.products().stream())
+                .forEach(product -> amountByClassification.merge(
+                        healthClassification(product),
+                        product.subtotal(),
+                        BigDecimal::add
+                ));
+
+        return amountByClassification.entrySet()
+                .stream()
+                .map(entry -> new WalletHealthSpending(
+                        entry.getKey(),
+                        entry.getValue(),
+                        percentage(entry.getValue(), totalSpent)
+                ))
+                .sorted(Comparator.comparing(WalletHealthSpending::amount).reversed())
+                .toList();
+    }
+
+    private String healthClassification(StudentConsumptionProduct product) {
+        if (product.healthClassifications() == null
+                || product.healthClassifications().isEmpty()) {
+            return "Sin clasificar";
+        }
+        return product.healthClassifications().get(0);
     }
 
     private BigDecimal percentage(BigDecimal amount, BigDecimal total) {

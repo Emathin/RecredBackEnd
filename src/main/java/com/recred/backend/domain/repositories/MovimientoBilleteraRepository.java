@@ -22,4 +22,11 @@ public interface MovimientoBilleteraRepository {
             String descripcion, 
             UUID usuarioId
     );
+
+    void registrarMovimientoSistema(
+            UUID billeteraId,
+            TipoMovimientoBilletera tipo,
+            BigDecimal monto,
+            String descripcion
+    );
 }

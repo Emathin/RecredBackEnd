@@ -88,9 +88,10 @@ class GetStudentWalletSummaryTest {
                 movement("150.00", WalletMovementDirection.SALIDA)
         );
         List<StudentConsumptionPurchase> purchases = List.of(
-                purchase("1000.00", product("Golosinas", "600.00")),
+                purchase("1000.00", product("Golosinas", "600.00", "No saludable"),
+                        product("Golosinas", "400.00", "Poco saludable")),
                 purchase("750.00", product("Bebidas", "450.00"),
-                        product("Comida saludable", "300.00"))
+                        product("Comida saludable", "300.00", "Saludable"))
         );
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.of(new ConsumptionRequester(
@@ -127,9 +128,17 @@ class GetStudentWalletSummaryTest {
         assertEquals(2, summary.purchaseCount());
         assertEquals(3, summary.movements().size());
         assertEquals("Golosinas", summary.categorySpending().get(0).category());
-        assertEquals(new BigDecimal("600.00"), summary.categorySpending().get(0).amount());
-        assertEquals(new BigDecimal("34.29"), summary.categorySpending().get(0).percentage());
-        assertEquals(List.of(), summary.healthSpending());
+        assertEquals(new BigDecimal("1000.00"), summary.categorySpending().get(0).amount());
+        assertEquals(new BigDecimal("57.14"), summary.categorySpending().get(0).percentage());
+        assertEquals("No saludable", summary.healthSpending().get(0).classification());
+        assertEquals(new BigDecimal("600.00"), summary.healthSpending().get(0).amount());
+        assertEquals(new BigDecimal("34.29"), summary.healthSpending().get(0).percentage());
+        assertEquals("Sin clasificar", summary.healthSpending().get(1).classification());
+        assertEquals(new BigDecimal("450.00"), summary.healthSpending().get(1).amount());
+        assertEquals("Poco saludable", summary.healthSpending().get(2).classification());
+        assertEquals(new BigDecimal("400.00"), summary.healthSpending().get(2).amount());
+        assertEquals("Saludable", summary.healthSpending().get(3).classification());
+        assertEquals(new BigDecimal("300.00"), summary.healthSpending().get(3).amount());
 
         verify(consumptionRepository).findPurchasesByStudentIdAndDateRange(
                 eq(studentId),
@@ -262,6 +271,21 @@ class GetStudentWalletSummaryTest {
                 1,
                 new BigDecimal(subtotal),
                 new BigDecimal(subtotal)
+        );
+    }
+
+    private StudentConsumptionProduct product(
+            String category,
+            String subtotal,
+            String healthClassification) {
+        return new StudentConsumptionProduct(
+                UUID.randomUUID(),
+                "Producto",
+                category,
+                1,
+                new BigDecimal(subtotal),
+                new BigDecimal(subtotal),
+                List.of(healthClassification)
         );
     }
 }

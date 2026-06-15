@@ -267,7 +267,8 @@ public class UseCases {
             WalletRepository walletRepository,
             SpringDataBuffetRepository buffetRepository,
             UsuarioRepository usuarioRepository,
-            TutorRepository tutorRepository) {
+            TutorRepository tutorRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
         return new CreateAdvancePurchase(
                 purchaseValidator,
                 alumnoRepository,
@@ -280,7 +281,8 @@ public class UseCases {
                 walletRepository,
                 buffetRepository,
                 usuarioRepository,
-                tutorRepository
+                tutorRepository,
+                movimientoBilleteraRepository
         );
     }
 
@@ -510,13 +512,15 @@ public class UseCases {
             WalletRepository walletRepository,
             PurchaseRepository purchaseRepository,
             PurchaseValidator purchaseValidator,
-            InventoryAvailabilityService inventoryAvailabilityService) {
+            InventoryAvailabilityService inventoryAvailabilityService,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
         return new ProcessPresentialPurchase(
                 studentRepository,
                 walletRepository,
                 purchaseRepository,
                 purchaseValidator,
-                inventoryAvailabilityService);
+                inventoryAvailabilityService,
+                movimientoBilleteraRepository);
     }
 
     @Bean
@@ -531,7 +535,8 @@ public class UseCases {
             WithdrawalCodeService withdrawalCodeService,
             Clock clock,
             InventoryAvailabilityService inventoryAvailabilityService,
-            AdvancePurchaseRulesService advancePurchaseRulesService) {
+            AdvancePurchaseRulesService advancePurchaseRulesService,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
         return new CreateAssistantAdvancePurchase(
                 studentRepository,
                 walletRepository,
@@ -543,7 +548,8 @@ public class UseCases {
                 withdrawalCodeService,
                 clock,
                 inventoryAvailabilityService,
-                advancePurchaseRulesService);
+                advancePurchaseRulesService,
+                movimientoBilleteraRepository);
     }
 
     @Bean
@@ -563,24 +569,28 @@ public class UseCases {
             PurchaseRepository purchaseRepository,
             InventoryAvailabilityService inventoryAvailabilityService,
             WalletRepository walletRepository,
-            KiosqueroRealtimeEventPublisher realtimeEventPublisher) {
+            KiosqueroRealtimeEventPublisher realtimeEventPublisher,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
         return new UpdatePurchaseStatus(
                 purchaseRepository,
                 inventoryAvailabilityService,
                 walletRepository,
-                realtimeEventPublisher);
+                realtimeEventPublisher,
+                movimientoBilleteraRepository);
     }
 
     @Bean
     public CancelPresentialPurchase cancelPurchase(PurchaseRepository purchaseRepository,
             WalletRepository walletRepository,
             InventoryAvailabilityService inventoryAvailabilityService,
-            FranjaHorariaRepository franjaHorariaRepository) {
+            FranjaHorariaRepository franjaHorariaRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
         return new CancelPresentialPurchase(
                 purchaseRepository,
                 walletRepository,
                 inventoryAvailabilityService,
-                franjaHorariaRepository);
+                franjaHorariaRepository,
+                movimientoBilleteraRepository);
     }
 
     @Bean
@@ -1052,8 +1062,12 @@ public class UseCases {
     @Bean
     public ConfirmPaymentAndCredit confirmPaymentAndCredit(
             WalletRepository walletRepository,
-            ExternalPaymentService externalPaymentService) {
-        return new ConfirmPaymentAndCredit(walletRepository, externalPaymentService);
+            ExternalPaymentService externalPaymentService,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        return new ConfirmPaymentAndCredit(
+                walletRepository,
+                externalPaymentService,
+                movimientoBilleteraRepository);
     }
 
     @Bean
