@@ -454,4 +454,17 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
                         alumnoId, EstadoCompra.ENTREGADO, since);
     }
 
+    @Override
+    public List<Purchase> findPendientesByAlumno(UUID alumnoId) {
+        List<EstadoCompra> estadosPendientes = List.of(
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.EN_PREPARACION,
+                EstadoCompra.LISTO
+        );
+        return springDataRepository
+                .findAllByAlumnoIdAndEstadoInOrderByFechaHoraDesc(alumnoId, estadosPendientes)
+                .stream()
+                .map(CompraEntity::toDomain)
+                .toList();
+    }
 }

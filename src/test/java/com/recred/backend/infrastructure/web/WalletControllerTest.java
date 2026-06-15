@@ -1,7 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.GetStudentWalletSummary;
 import com.recred.backend.application.LoadBalanceToChild;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
+import com.recred.backend.domain.models.StudentWalletSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,10 +19,16 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,6 +41,9 @@ class WalletControllerTest {
 
     @Mock
     private TransferBalanceBetweenChildren transferBalanceBetweenChildren;
+
+    @Mock
+    private GetStudentWalletSummary getStudentWalletSummary;
 
     @InjectMocks
     private WalletController walletController;
@@ -81,6 +92,40 @@ class WalletControllerTest {
                 .andExpect(status().isOk());
 
         verify(transferBalanceBetweenChildren).execute("cognito-sub", fromId, toId, amount);
+    }
+
+    @Test
+    void getStudentWalletSummaryReturns200AndDelegatesToUseCase() throws Exception {
+        UUID studentId = UUID.randomUUID();
+        when(getStudentWalletSummary.execute(
+                eq("cognito-sub"),
+                eq(studentId),
+                eq(java.util.Optional.of(LocalDate.of(2026, 6, 1))),
+                eq(java.util.Optional.of(LocalDate.of(2026, 6, 14)))
+        )).thenReturn(new StudentWalletSummary(
+                studentId,
+                new BigDecimal("1250.00"),
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 14),
+                new BigDecimal("3000.00"),
+                new BigDecimal("1750.00"),
+                new BigDecimal("1250.00"),
+                8,
+                List.of(),
+                List.of(),
+                List.of()
+        ));
+
+        mockMvc.perform(get("/api/v1/wallets/students/{studentId}/summary", studentId)
+                        .principal(authentication())
+                        .param("desde", "2026-06-01")
+                        .param("hasta", "2026-06-14"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alumnoId").value(studentId.toString()))
+                .andExpect(jsonPath("$.saldoActual").value(1250.00))
+                .andExpect(jsonPath("$.periodo.desde").value("2026-06-01"))
+                .andExpect(jsonPath("$.periodo.hasta").value("2026-06-14"))
+                .andExpect(jsonPath("$.cantidadCompras").value(8));
     }
 
     private Authentication authentication() {
