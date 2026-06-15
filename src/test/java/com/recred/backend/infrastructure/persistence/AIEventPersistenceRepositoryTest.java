@@ -7,7 +7,14 @@ import com.recred.backend.domain.models.ConsumptionCategory;
 import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.models.AIEventType;
+import com.recred.backend.domain.models.Kiosquero;
+import com.recred.backend.domain.models.ProductChangeAnalysis;
+import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.ProductRecommendationResult;
+import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.PurchasePatternAnalysis;
+import com.recred.backend.domain.models.PurchaseRecommendationResult;
+import com.recred.backend.domain.models.PurchaseResume;
 import com.recred.backend.infrastructure.entities.AIEventEntity;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
@@ -26,6 +33,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -106,6 +114,143 @@ class AIEventPersistenceRepositoryTest {
         assertEquals("Producto 1", results.get(0).getProductChangeRecommendation().getNombre());
     }
 
+    @Test
+    void findLatestProductChangeRecommendation_ShouldMapAnalysis() {
+        UUID buffetId = UUID.randomUUID();
+        AIEventPersistenceRepository repository = new AIEventPersistenceRepository(
+                aiEventJpaRepository,
+                entityManager,
+                objectMapper
+        );
+        AIEventEntity event = productChangeEvent(buffetId);
+        event.setResultData(Map.of("analisisIa", Map.of(
+                "resumen", "Conviene ajustar stock.",
+                "alertas", List.of("Baja rotacion"),
+                "recomendaciones", List.of("Promocionar"),
+                "modelo", "gemini-test"
+        )));
+        when(aiEventJpaRepository.findFirstByTypeAndBuffetEntityIdOrderByCreatedAtDesc(
+                AIEventType.PRODUCTO_CAMBIO,
+                buffetId
+        )).thenReturn(Optional.of(event));
+
+        Optional<ProductRecommendationResult> result =
+                repository.findLatestProductChangeRecommendation(buffetId);
+
+        assertTrue(result.isPresent());
+        assertTrue(result.orElseThrow().getAiAnalysis().isPresent());
+        assertEquals("Conviene ajustar stock.",
+                result.orElseThrow().getAiAnalysis().orElseThrow().summary());
+    }
+
+    @Test
+    void registerProductChangeRecommendation_ShouldPersistInputAndAnalysis() {
+        UUID buffetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        BuffetEntity buffetEntity = new BuffetEntity();
+        ProductoEntity productEntity = new ProductoEntity();
+        when(entityManager.getReference(BuffetEntity.class, buffetId)).thenReturn(buffetEntity);
+        when(entityManager.getReference(ProductoEntity.class, productId))
+                .thenReturn(productEntity);
+        AIEventPersistenceRepository repository = new AIEventPersistenceRepository(
+                aiEventJpaRepository,
+                entityManager,
+                objectMapper
+        );
+
+        repository.registerProductChangeRecommendation(productChangeResult(
+                buffetId,
+                productId,
+                Optional.of(new ProductChangeAnalysis(
+                        "Subio la demanda.",
+                        List.of("Poco stock"),
+                        List.of("Reponer"),
+                        "gemini-test"
+                ))
+        ));
+
+        ArgumentCaptor<AIEventEntity> captor = ArgumentCaptor.forClass(AIEventEntity.class);
+        verify(aiEventJpaRepository).save(captor.capture());
+        AIEventEntity event = captor.getValue();
+        assertEquals(AIEventType.PRODUCTO_CAMBIO, event.getType());
+        assertSame(buffetEntity, event.getBuffetEntity());
+        assertSame(productEntity, event.getProductoEntity());
+        assertEquals("Alfajor", event.getInputData().get("nombre"));
+        assertEquals("Subio la demanda.",
+                aiAnalysis(event).get("resumen"));
+    }
+
+    @Test
+    void registerProductAdditionRecommendation_ShouldPersistProductSuggestion() {
+        UUID buffetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Producto product = new Producto();
+        product.setId(productId);
+        product.setNombre("Barrita");
+        when(entityManager.getReference(BuffetEntity.class, buffetId))
+                .thenReturn(new BuffetEntity());
+        when(entityManager.getReference(ProductoEntity.class, productId))
+                .thenReturn(new ProductoEntity());
+        AIEventPersistenceRepository repository = new AIEventPersistenceRepository(
+                aiEventJpaRepository,
+                entityManager,
+                objectMapper
+        );
+
+        repository.registerProductAdditionRecommendation(product, new Kiosquero(), buffetId);
+
+        ArgumentCaptor<AIEventEntity> captor = ArgumentCaptor.forClass(AIEventEntity.class);
+        verify(aiEventJpaRepository).save(captor.capture());
+        assertEquals(AIEventType.AGREGAR_PRODUCTO, captor.getValue().getType());
+        assertTrue(captor.getValue().getResultData().get("resumen")
+                .toString()
+                .contains("Barrita"));
+    }
+
+    @Test
+    void registerPurchaseRecommendation_ShouldPersistAnalysisAndReturnSavedId() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        AlumnoEntity studentEntity = new AlumnoEntity();
+        ProductoEntity productEntity = new ProductoEntity();
+        when(entityManager.getReference(AlumnoEntity.class, studentId))
+                .thenReturn(studentEntity);
+        when(entityManager.getReference(ProductoEntity.class, productId))
+                .thenReturn(productEntity);
+        when(aiEventJpaRepository.save(org.mockito.ArgumentMatchers.any(AIEventEntity.class)))
+                .thenAnswer(invocation -> {
+                    AIEventEntity event = invocation.getArgument(0);
+                    event.setId(eventId);
+                    return event;
+                });
+        AIEventPersistenceRepository repository = new AIEventPersistenceRepository(
+                aiEventJpaRepository,
+                entityManager,
+                objectMapper
+        );
+
+        UUID result = repository.registerPurchaseRecommendation(new PurchaseRecommendationResult(
+                studentId,
+                List.of(new PurchaseResume()),
+                Optional.of(new PurchasePatternAnalysis(
+                        "Compra habitual.",
+                        productId,
+                        "Yogur",
+                        "lunes"
+                ))
+        ));
+
+        assertEquals(eventId, result);
+        ArgumentCaptor<AIEventEntity> captor = ArgumentCaptor.forClass(AIEventEntity.class);
+        verify(aiEventJpaRepository).save(captor.capture());
+        AIEventEntity event = captor.getValue();
+        assertEquals(AIEventType.ANALISIS_CONSUMO, event.getType());
+        assertSame(studentEntity, event.getAlumnoEntity());
+        assertSame(productEntity, event.getProductoEntity());
+        assertEquals("Compra habitual.", aiAnalysis(event).get("resumen"));
+    }
+
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> categories(AIEventEntity event) {
         return (List<Map<String, Object>>) event.getResultData()
@@ -146,5 +291,34 @@ class AIEventPersistenceRepositoryTest {
                 7,
                 List.of(new ConsumptionCategory("Bebidas", new BigDecimal("40.00")))
         );
+    }
+
+    private AIEventEntity productChangeEvent(UUID buffetId) {
+        AIEventEntity event = new AIEventEntity();
+        ProductoEntity productEntity = new ProductoEntity();
+        productEntity.setId(UUID.randomUUID());
+        BuffetEntity buffetEntity = new BuffetEntity();
+        buffetEntity.setId(buffetId);
+        event.setProductoEntity(productEntity);
+        event.setBuffetEntity(buffetEntity);
+        event.setInputData(Map.of(
+                "nombre", "Producto 1",
+                "precio", 10.0
+        ));
+        event.setResultData(Map.of());
+        return event;
+    }
+
+    private ProductRecommendationResult productChangeResult(
+            UUID buffetId,
+            UUID productId,
+            Optional<ProductChangeAnalysis> analysis
+    ) {
+        ProductChangeRecommendation recommendation = new ProductChangeRecommendation();
+        recommendation.setId(productId);
+        recommendation.setIdBuffet(buffetId);
+        recommendation.setNombre("Alfajor");
+        recommendation.setPrecio(new BigDecimal("10.00"));
+        return new ProductRecommendationResult(recommendation, analysis);
     }
 }
