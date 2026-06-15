@@ -4,6 +4,7 @@ import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventType;
 import com.recred.backend.domain.exceptions.InventoryNotFoundException;
+import com.recred.backend.domain.exceptions.InventoryOperationException;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.InventoryQuickActionType;
 import com.recred.backend.domain.models.Inventario;
@@ -320,6 +321,142 @@ class InventoryAvailabilityServiceTest {
         assertEquals(20, inventory.getStockActual());
         assertEquals(20, inventory.getCupoMaximoDiario());
         assertMovement(TipoMovimientoStock.AJUSTE, 10);
+    }
+
+    @Test
+    void reserve_WhenCartIsInvalid_ShouldFailBeforeLoadingInventory() {
+        assertThrows(InventoryOperationException.class,
+                () -> service.reserve(null, Map.of(product, 1)));
+        assertThrows(InventoryOperationException.class,
+                () -> service.reserve(buffetId, Map.of()));
+        Producto invalidProduct = new Producto();
+        assertThrows(InventoryOperationException.class,
+                () -> service.reserve(buffetId, Map.of(invalidProduct, 1)));
+        assertThrows(InventoryOperationException.class,
+                () -> service.reserve(buffetId, Map.of(product, 0)));
+        verify(inventoryRepository, never()).findLockedByBuffetAndProduct(
+                any(),
+                any()
+        );
+    }
+
+    @Test
+    void releaseReservation_WithPurchaseId_ShouldRegisterMovementWithPurchaseId() {
+        UUID purchaseId = UUID.randomUUID();
+        when(inventoryRepository.findLockedByBuffetAndProduct(buffetId, productId))
+                .thenReturn(Optional.of(inventory));
+        when(inventoryRepository.save(inventory)).thenReturn(inventory);
+
+        service.releaseReservation(buffetId, Map.of(product, 1), purchaseId);
+
+        ArgumentCaptor<MovimientoStock> captor =
+                ArgumentCaptor.forClass(MovimientoStock.class);
+        verify(stockMovementRepository).save(captor.capture());
+        assertEquals(purchaseId, captor.getValue().compraId());
+    }
+
+    @Test
+    void adjustInventory_ShouldApplyConfigurationFields() {
+        UUID userId = UUID.randomUUID();
+        when(inventoryRepository.findLockedByBuffetAndProduct(buffetId, productId))
+                .thenReturn(Optional.of(inventory));
+        when(inventoryRepository.save(inventory)).thenReturn(inventory);
+
+        Inventario result = service.adjustInventory(
+                buffetId,
+                productId,
+                15,
+                4,
+                EstadoInventario.DISPONIBLE,
+                TipoManejoInventario.CUPO_DIARIO,
+                null,
+                30,
+                "Config",
+                userId
+        );
+
+        assertEquals(result, inventory);
+        assertEquals(15, inventory.getStockActual());
+        assertEquals(4, inventory.getStockMinimo());
+        assertEquals(30, inventory.getCupoMaximoDiario());
+        assertEquals(TipoManejoInventario.CUPO_DIARIO, inventory.getTipoManejo());
+        assertMovement(TipoMovimientoStock.AJUSTE, 5);
+    }
+
+    @Test
+    void adjustInventory_WithAvailabilityFlag_ShouldOverrideStatus() {
+        when(inventoryRepository.findLockedByBuffetAndProduct(buffetId, productId))
+                .thenReturn(Optional.of(inventory));
+        when(inventoryRepository.save(inventory)).thenReturn(inventory);
+
+        service.adjustInventory(
+                buffetId,
+                productId,
+                null,
+                null,
+                EstadoInventario.DISPONIBLE,
+                null,
+                false,
+                null,
+                "Pausa",
+                null
+        );
+
+        assertEquals(EstadoInventario.SIN_STOCK, inventory.getEstado());
+        verify(stockMovementRepository, never()).save(any(MovimientoStock.class));
+    }
+
+    @Test
+    void adjustInventory_WhenMinimumOrDailyCapacityIsNegative_ShouldFail() {
+        when(inventoryRepository.findLockedByBuffetAndProduct(buffetId, productId))
+                .thenReturn(Optional.of(inventory));
+
+        assertThrows(InventoryOperationException.class, () -> service.adjustInventory(
+                buffetId,
+                productId,
+                null,
+                -1,
+                null,
+                null,
+                null,
+                null,
+                "Config",
+                null
+        ));
+        assertThrows(InventoryOperationException.class, () -> service.adjustInventory(
+                buffetId,
+                productId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                -1,
+                "Config",
+                null
+        ));
+    }
+
+    @Test
+    void applyQuickAction_WhenBuffetOrProductIsMissing_ShouldFail() {
+        assertThrows(InventoryOperationException.class, () -> service.applyQuickAction(
+                null,
+                productId,
+                InventoryQuickActionType.SET_STOCK,
+                1,
+                null,
+                null,
+                null
+        ));
+        assertThrows(InventoryOperationException.class, () -> service.applyQuickAction(
+                buffetId,
+                null,
+                InventoryQuickActionType.SET_STOCK,
+                1,
+                null,
+                null,
+                null
+        ));
     }
 
     private void assertMovement(TipoMovimientoStock type, int quantity) {

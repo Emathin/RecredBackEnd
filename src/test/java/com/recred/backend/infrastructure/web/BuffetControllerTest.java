@@ -111,7 +111,7 @@ class BuffetControllerTest {
         Jwt jwt = mock(Jwt.class);
         when(jwt.getSubject()).thenReturn(sub);
 
-        Usuario usuario = new Usuario(); // No tiene kiosquero
+        Usuario usuario = new Usuario();
 
         when(usuarioService.obtenerUsuarioActual(sub)).thenReturn(usuario);
 

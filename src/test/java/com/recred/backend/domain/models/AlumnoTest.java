@@ -109,4 +109,97 @@ class AlumnoTest {
 
         assertTrue(alumno.getProductosBloqueados().isEmpty());
     }
+
+    @Test
+    void dadoProductoNulo_cuandoBloquearProducto_entoncesNoHaceNada() {
+        alumno.bloquearProducto(null);
+
+        assertTrue(alumno.getProductosBloqueados().isEmpty());
+    }
+
+    @Test
+    void dadoProductoFavoritoNuevo_cuandoAgregarProductoFavorito_entoncesLoAgrega() {
+        Producto producto = new Producto();
+        producto.setId(UUID.randomUUID());
+
+        alumno.agregarProductoFavorito(producto);
+
+        assertEquals(1, alumno.getProductosFavoritos().size());
+    }
+
+    @Test
+    void dadoProductoFavoritoDuplicado_cuandoAgregarProductoFavorito_entoncesNoDuplica() {
+        UUID productoId = UUID.randomUUID();
+        Producto producto = new Producto();
+        producto.setId(productoId);
+        Producto duplicado = new Producto();
+        duplicado.setId(productoId);
+
+        alumno.agregarProductoFavorito(producto);
+        alumno.agregarProductoFavorito(duplicado);
+
+        assertEquals(1, alumno.getProductosFavoritos().size());
+    }
+
+    @Test
+    void dadoProductoFavorito_cuandoRemoverProductoFavorito_entoncesLoRemueve() {
+        UUID productoId = UUID.randomUUID();
+        Producto producto = new Producto();
+        producto.setId(productoId);
+        alumno.agregarProductoFavorito(producto);
+
+        alumno.removerProductoFavorito(productoId);
+
+        assertTrue(alumno.getProductosFavoritos().isEmpty());
+    }
+
+    @Test
+    void dadoRestriccionHoraria_cuandoAgregarYRemover_entoncesActualizaColeccion() {
+        RestriccionHoraria restriccion = new RestriccionHoraria();
+
+        alumno.agregarRestriccionHoraria(restriccion);
+        alumno.removerRestriccionHoraria(restriccion);
+
+        assertTrue(alumno.getRestriccionesHorarias().isEmpty());
+    }
+
+    @Test
+    void dadoAlumnoActivo_cuandoDarDeBaja_entoncesQuedaInactivo() {
+        alumno.darDeBaja();
+
+        assertEquals(false, alumno.getActivo());
+    }
+
+    @Test
+    void dadoPuntosNulos_cuandoAddRewardPoints_entoncesInicializaYAcumula() {
+        alumno.setPuntosRecompensa(null);
+
+        alumno.addRewardPoints(20);
+
+        assertEquals(20, alumno.getPuntosRecompensa());
+    }
+
+    @Test
+    void calculateCurrentLevelShouldReturnBronzeSilverAndGold() {
+        alumno.setPuntosRecompensa(99);
+        assertEquals(RewardLevel.BRONZE, alumno.calculateCurrentLevel());
+
+        alumno.setPuntosRecompensa(100);
+        assertEquals(RewardLevel.SILVER, alumno.calculateCurrentLevel());
+
+        alumno.setPuntosRecompensa(250);
+        assertEquals(RewardLevel.GOLD, alumno.calculateCurrentLevel());
+    }
+
+    @Test
+    void getPointsToNextLevelShouldHandleAllLevels() {
+        alumno.setPuntosRecompensa(null);
+        assertEquals(100, alumno.getPointsToNextLevel());
+
+        alumno.setPuntosRecompensa(120);
+        assertEquals(130, alumno.getPointsToNextLevel());
+
+        alumno.setPuntosRecompensa(260);
+        assertEquals(0, alumno.getPointsToNextLevel());
+    }
 }

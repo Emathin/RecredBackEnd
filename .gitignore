@@ -65,4 +65,4 @@ AGENTS.md
 
 # Local secrets
 secrets/*
-!secrets/.gitkeepAGENTS.md
+!secrets/.gitkeep
