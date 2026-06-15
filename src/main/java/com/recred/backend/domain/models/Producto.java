@@ -27,6 +27,13 @@ public class Producto {
     private LocalDateTime actualizadoEn;
 
     private Integer stockActual;
+    private Integer stockReservado;
+    private Integer stockMinimo;
+    private Integer stockDisponible;
+    private EstadoInventario estadoInventario;
+    private TipoManejoInventario tipoManejoInventario;
+    private Integer cupoMaximoDiario;
+    private Integer cupoDisponibleDia;
 
     private Set<ProductoMedida> medidas = new HashSet<>();
     private Set<ClasificacionTipo> tipos = new HashSet<>();
@@ -56,5 +63,18 @@ public class Producto {
 
     public void deactivate() {
         this.activo = false;
+    }
+
+    public Integer getStockDisponible() {
+        if (stockDisponible != null) {
+            return stockDisponible;
+        }
+
+        if (stockActual == null) {
+            return null;
+        }
+
+        int reserved = stockReservado == null ? 0 : stockReservado;
+        return Math.max(0, stockActual - reserved);
     }
 }

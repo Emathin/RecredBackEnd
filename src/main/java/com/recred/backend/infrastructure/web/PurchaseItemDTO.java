@@ -1,5 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -11,10 +13,15 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public class PurchaseItemDTO {
+    @NotNull
     private UUID productId;
     private String productName;
+    @NotNull
+    @Positive
     private Integer quantity;
     private BigDecimal unitPrice;
+    private Boolean requierePreparacion;
+    private Integer cupoMaximoDiario;
 
     public PurchaseItemDTO(UUID productId,
                            String productName,

@@ -112,7 +112,7 @@ class SchoolAssistantFixedTopicsTest {
         assertTrue(reply.isPresent());
         assertTrue(reply.orElseThrow().answer().contains("1x Sandwich"));
         assertTrue(reply.orElseThrow().answer().contains("$1200.00"));
-        assertTrue(reply.orElseThrow().answer().contains("ENTREGADO"));
+        assertTrue(reply.orElseThrow().answer().contains("Entregado"));
     }
 
     @Test
@@ -130,8 +130,12 @@ class SchoolAssistantFixedTopicsTest {
         );
 
         assertTrue(reply.isPresent());
-        assertTrue(reply.orElseThrow().answer().contains("2x Agua"));
-        assertTrue(reply.orElseThrow().answer().contains("Elegi el recreo"));
+        assertTrue(reply.orElseThrow().answer()
+                .contains("Puedo repetir tu ultima compra con estos productos"));
+        assertTrue(reply.orElseThrow().answer().contains("\n- 2x Agua"));
+        assertTrue(reply.orElseThrow().answer().contains("Total estimado: $1400.00"));
+        assertTrue(reply.orElseThrow().answer()
+                .contains("Para terminar, elegi el recreo de retiro:\n- primer recreo"));
         assertEquals("PENDIENTE", reply.orElseThrow().metadata().get("estadoAccionChatbot"));
         assertEquals(SchoolAssistantActionType.COMPRA_ANTICIPADA,
                 reply.orElseThrow().action().type());
@@ -161,7 +165,8 @@ class SchoolAssistantFixedTopicsTest {
         );
 
         assertTrue(reply.isPresent());
-        assertTrue(reply.orElseThrow().answer().contains("Elegi el recreo"));
+        assertTrue(reply.orElseThrow().answer()
+                .contains("Para terminar, elegi el recreo de retiro:\n- primer recreo"));
         assertEquals("PENDIENTE", reply.orElseThrow().metadata().get("estadoAccionChatbot"));
         verifyNoInteractions(createAssistantAdvancePurchase);
     }
@@ -215,7 +220,8 @@ class SchoolAssistantFixedTopicsTest {
         );
 
         assertTrue(reply.isPresent());
-        assertTrue(reply.orElseThrow().answer().contains("Compra anticipada creada"));
+        assertTrue(reply.orElseThrow().answer()
+                .contains("Listo, tu compra anticipada quedo creada"));
         assertTrue(reply.orElseThrow().answer().contains("ABC123"));
         assertEquals("EJECUTADA", reply.orElseThrow().metadata().get("estadoAccionChatbot"));
         assertEquals(SchoolAssistantActionStatus.EJECUTADA,
@@ -263,7 +269,7 @@ class SchoolAssistantFixedTopicsTest {
         assertTrue(reply.isPresent());
         SchoolAssistantFixedReply answer = reply.orElseThrow();
         assertEquals(
-                "No pude realizar la compra porque el alumno no tiene saldo suficiente.",
+                "No pude realizar la compra porque no tenes saldo suficiente.",
                 answer.answer()
         );
         assertFalse(answer.answer().contains(studentId.toString()));
@@ -291,9 +297,28 @@ class SchoolAssistantFixedTopicsTest {
         );
 
         assertTrue(reply.isPresent());
-        assertTrue(reply.orElseThrow().answer().contains("Tu compra habitual detectada"));
+        assertTrue(reply.orElseThrow().answer()
+                .contains("Detecte esta compra como habitual"));
         assertTrue(reply.orElseThrow().answer().contains("1x Barrita"));
         assertEquals("PENDIENTE", reply.orElseThrow().metadata().get("estadoAccionChatbot"));
+    }
+
+    @Test
+    void frequentPurchasesWithoutPatternsUsesSecondPerson() {
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of());
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "que compro seguido",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals(
+                "Todavia no tengo suficientes compras tuyas para detectar compras frecuentes.",
+                reply.orElseThrow().answer()
+        );
+        assertFalse(reply.orElseThrow().answer().contains("este alumno"));
     }
 
     @Test
@@ -312,6 +337,8 @@ class SchoolAssistantFixedTopicsTest {
 
         assertTrue(reply.isPresent());
         assertTrue(reply.orElseThrow().answer().contains("Acto escolar"));
+        assertTrue(reply.orElseThrow().answer().contains("1/6/2026 - Acto escolar"));
+        assertFalse(reply.orElseThrow().answer().contains("2026-06-01 - Acto escolar"));
         assertEquals(SchoolAssistantIntent.EVENTS, reply.orElseThrow().intent());
         assertEquals(SchoolAssistantActionType.CONSULTA_EVENTOS,
                 reply.orElseThrow().action().type());

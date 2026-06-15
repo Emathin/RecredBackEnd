@@ -11,6 +11,7 @@ import com.recred.backend.infrastructure.entities.PerfilConsumoIAEntity;
 import com.recred.backend.infrastructure.entities.TutorEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,6 +29,7 @@ public class StudentAIProfileRepositoryImpl implements StudentAIProfileRepositor
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Alumno> findStudentsWithFavoriteProduct(UUID productId) {
         Map<UUID, AlumnoEntity> studentsById = new LinkedHashMap<>();
         springDataRepository.findByProductoEntityFavoritoId(productId)

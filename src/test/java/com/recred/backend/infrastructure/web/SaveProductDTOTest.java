@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.SaveProductCommand;
+import com.recred.backend.domain.models.TipoManejoInventario;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -8,6 +9,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class SaveProductDTOTest {
 
@@ -34,7 +36,20 @@ class SaveProductDTOTest {
         assertEquals(dto.nuevaCategoriaNombre(), command.nuevaCategoriaNombre());
         assertEquals(dto.buffetId(), command.buffetId());
         assertEquals(dto.stockActual(), command.stockActual());
+        assertEquals(TipoManejoInventario.STOCK_EXACTO, command.tipoManejoInventario());
         assertEquals(dto.clasificacionesSaludIds(), command.clasificacionesSaludIds());
         assertEquals(dto.tiposIds(), command.tiposIds());
+    }
+
+    @Test
+    void toCommand_NoDebeForzarInventario_CuandoNoVieneStock() {
+        SaveProductDTO dto = new SaveProductDTO(
+                "Nombre", "Desc", BigDecimal.TEN, BigDecimal.ONE, true,
+                UUID.randomUUID(), null, UUID.randomUUID(), null, Set.of(), Set.of()
+        );
+
+        SaveProductCommand command = dto.toCommand();
+
+        assertNull(command.tipoManejoInventario());
     }
 }

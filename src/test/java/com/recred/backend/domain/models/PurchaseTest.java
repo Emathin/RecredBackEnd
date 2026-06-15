@@ -82,6 +82,24 @@ class PurchaseTest {
     }
 
     @Test
+    void changeStatusTo_WhenPendingIsRejected_ShouldUpdateStatus() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+
+        purchase.changeStatusTo(EstadoCompra.RECHAZADO);
+
+        assertEquals(EstadoCompra.RECHAZADO, purchase.getStatus());
+    }
+
+    @Test
+    void changeStatusTo_WhenPendingIsExpired_ShouldUpdateStatus() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+
+        purchase.changeStatusTo(EstadoCompra.VENCIDO);
+
+        assertEquals(EstadoCompra.VENCIDO, purchase.getStatus());
+    }
+
+    @Test
     void changeStatusTo_WhenPreparationIsCancelled_ShouldUpdateStatus() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.EN_PREPARACION);
 
@@ -145,6 +163,14 @@ class PurchaseTest {
     @Test
     void changeStatusTo_WhenCancelled_ShouldThrowException() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.CANCELADO);
+
+        assertThrows(InvalidPurchaseStatusTransitionException.class,
+                () -> purchase.changeStatusTo(EstadoCompra.ENTREGADO));
+    }
+
+    @Test
+    void changeStatusTo_WhenRejected_ShouldThrowException() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.RECHAZADO);
 
         assertThrows(InvalidPurchaseStatusTransitionException.class,
                 () -> purchase.changeStatusTo(EstadoCompra.ENTREGADO));

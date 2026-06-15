@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.SaveProductCommand;
 import com.recred.backend.application.UpdateProductCommand;
+import com.recred.backend.domain.models.TipoManejoInventario;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -20,6 +21,8 @@ public record ProductRequestDTO(
         String nuevaCategoriaNombre,
         UUID buffetId,
         Integer stockActual,
+        TipoManejoInventario tipoManejoInventario,
+        Integer cupoMaximoDiario,
         Set<UUID> clasificacionesSaludIds,
         Set<UUID> tiposIds
 ) {
@@ -36,7 +39,9 @@ public record ProductRequestDTO(
                 buffetId,
                 stockActual,
                 clasificacionesSaludIds,
-                tiposIds
+                tiposIds,
+                tipoManejoInventario,
+                cupoMaximoDiario
         );
     }
 
@@ -53,7 +58,9 @@ public record ProductRequestDTO(
                 buffetId,
                 stockActual,
                 clasificacionesSaludIds,
-                tiposIds
+                tiposIds,
+                tipoManejoInventario,
+                cupoMaximoDiario
         );
     }
 }

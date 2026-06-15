@@ -458,7 +458,7 @@ public class AskSchoolAssistant {
         return "id=" + value(product.getId())
                 + "|nombre=" + value(product.getNombre())
                 + "|precio=" + value(product.getPrecio())
-                + "|stock=" + value(product.getStockActual())
+                + "|stock=" + value(product.getStockDisponible())
                 + "|requierePreparacion=" + value(product.getRequierePreparacion());
     }
 

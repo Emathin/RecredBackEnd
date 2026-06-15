@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
 import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoCompra;
@@ -124,10 +125,12 @@ public abstract class CompraEntity {
                 if (retiroProgramadoEntity.getFranja() != null) {
                     domain.setPickupSlotId(retiroProgramadoEntity.getFranja().getId());
                     domain.setPickupSlotDescription(
-                            retiroProgramadoEntity.getFranja().getDescripcion() + " (" +
-                            retiroProgramadoEntity.getFranja().getHoraInicio() + " - " +
-                            retiroProgramadoEntity.getFranja().getHoraFin() + ")"
+                            retiroProgramadoEntity.getFranja().getDescripcion() + " ("
+                                    + retiroProgramadoEntity.getFranja().getHoraInicio() + " - "
+                                    + retiroProgramadoEntity.getFranja().getHoraFin() + ")"
                     );
+                    domain.setPickupSlotStart(retiroProgramadoEntity.getFranja().getHoraInicio());
+                    domain.setPickupSlotEnd(retiroProgramadoEntity.getFranja().getHoraFin());
                     domain.setPickupSlotStartTime(
                             retiroProgramadoEntity.getFranja().getHoraInicio()
                     );
@@ -141,7 +144,12 @@ public abstract class CompraEntity {
         }
 
         if (this.tutorEntity != null) {
+            domain.setBuyerId(this.tutorEntity.getId());
+            domain.setBuyerType(BuyerType.TUTOR);
             domain.setTutorId(this.tutorEntity.getId());
+        } else if (this.alumnoEntity != null) {
+            domain.setBuyerId(this.alumnoEntity.getId());
+            domain.setBuyerType(BuyerType.STUDENT);
         }
 
         if (this.detalles != null) {
