@@ -54,6 +54,7 @@ import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.application.GetKiosqueroDashboard;
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
+import com.recred.backend.application.SetNotificationAsAlreadyRead;
 import com.recred.backend.application.GetLoggedUserNotifications;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetProductById;
@@ -1208,6 +1209,12 @@ public class UseCases {
                 tutorRepository
         );
     }
+    @Bean
+    public SetNotificationAsAlreadyRead setNotificationAsAlreadyRead(
+            NotificationRepository notificationRepository) {
+        return new SetNotificationAsAlreadyRead(notificationRepository);
+    }
+
     @Bean
     public GetTutorGlobalDashboard getTutorGlobalDashboard(
             ObtenerHijosPorPadre obtenerHijosPorPadre,
