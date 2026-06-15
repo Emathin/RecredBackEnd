@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
+import com.recred.backend.application.GenerateComboSuggestion;
+import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
@@ -66,7 +68,6 @@ import com.recred.backend.application.GetStudentRewardStatus;
 import com.recred.backend.application.GetStudentWalletSummary;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
-import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.ListDailyBuffetCloses;
 import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
@@ -184,6 +185,13 @@ import java.time.Clock;
 
 @Configuration
 public class UseCases {
+
+    @Bean
+    public GenerateComboSuggestion generateComboSuggestion(
+            ProductRepository productRepository,
+            KiosqueroRepository kiosqueroRepository) {
+        return new GenerateComboSuggestion(productRepository, kiosqueroRepository);
+    }
 
     @Bean
     public GenerateParentSummary generateParentSummary(
