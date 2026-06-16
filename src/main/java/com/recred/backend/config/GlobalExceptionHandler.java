@@ -1,5 +1,6 @@
 package com.recred.backend.config;
 
+import com.recred.backend.domain.exceptions.NotificationNotFoundException;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.BuffetNotFoundException;
 import com.recred.backend.domain.exceptions.ImageValidationException;
@@ -210,6 +211,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleKiosqueroNotFound(
             KiosqueroNotFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Kiosquero no encontrado",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(NotificationNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotificationNotFound(
+            NotificationNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Notificación no encontrada",
                 ex.getMessage());
     }
 

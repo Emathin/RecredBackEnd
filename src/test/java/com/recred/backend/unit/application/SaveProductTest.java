@@ -5,6 +5,7 @@ import com.recred.backend.application.SaveProductCommand;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.repositories.CategoryRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -130,6 +131,40 @@ class SaveProductTest {
 
         assertEquals(100, existingInventory.getStockActual());
         verify(inventoryRepository).save(existingInventory);
+    }
+
+    @Test
+    void execute_GuardaInventarioSinStockActual_CuandoVieneTipoManejo() {
+        UUID buffetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        SaveProductCommand command = new SaveProductCommand(
+                "Prod",
+                "Desc",
+                BigDecimal.TEN,
+                BigDecimal.ONE,
+                false,
+                null,
+                null,
+                buffetId,
+                null,
+                null,
+                null,
+                TipoManejoInventario.CUPO_DIARIO,
+                20
+        );
+        Producto savedProduct = new Producto();
+        savedProduct.setId(productId);
+        when(productRepository.save(any(Producto.class))).thenReturn(savedProduct);
+        when(inventoryRepository.findByBuffetAndProduct(buffetId, productId))
+                .thenReturn(java.util.Optional.empty());
+
+        Producto result = saveProduct.execute(command);
+
+        assertNull(result.getStockActual());
+        assertNull(result.getStockDisponible());
+        assertEquals(TipoManejoInventario.CUPO_DIARIO, result.getTipoManejoInventario());
+        assertEquals(20, result.getCupoMaximoDiario());
+        verify(inventoryRepository).save(any(Inventario.class));
     }
 
     @Test

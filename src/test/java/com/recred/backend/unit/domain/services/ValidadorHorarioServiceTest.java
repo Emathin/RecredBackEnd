@@ -2,6 +2,7 @@ package com.recred.backend.unit.domain.services;
 
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.RestriccionHoraria;
 import com.recred.backend.domain.services.ValidadorHorarioService;
@@ -12,7 +13,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -64,5 +67,36 @@ class ValidadorHorarioServiceTest {
         LocalDateTime ahora = LocalDateTime.now();
 
         assertDoesNotThrow(() -> validadorService.validarCompra(alumno, carrito, ahora));
+    }
+
+    @Test
+    void validarCompra_ConRestriccionRealGlobal_LanzaExcepcion() {
+        Alumno alumnoReal = new Alumno();
+        FranjaHoraria franjaHoraria = new FranjaHoraria(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "Recreo",
+                LocalTime.MIN,
+                LocalTime.MAX,
+                true
+        );
+        alumnoReal.setRestriccionesHorarias(Set.of(new RestriccionHoraria(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                franjaHoraria,
+                null,
+                null
+        )));
+        Producto producto = new Producto();
+        producto.setNombre("Alfajor");
+
+        assertThrows(
+                RestriccionHorariaException.class,
+                () -> validadorService.validarCompra(
+                        alumnoReal,
+                        Set.of(producto),
+                        LocalDateTime.of(2026, 6, 15, 10, 0)
+                )
+        );
     }
 }

@@ -81,6 +81,64 @@ class PaymentWebhookControllerTest {
     }
 
     @Test
+    void handleWebhook_WithBodyId_ShouldProcessPayment() {
+        Map<String, Object> body = new HashMap<>();
+        body.put("type", "payment");
+        body.put("id", "888");
+        Map<String, String> params = new HashMap<>();
+
+        ResponseEntity<Void> response =
+                paymentWebhookController.handleWebhook(null, null, body, params);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(confirmPaymentAndCredit).execute("888");
+    }
+
+    @Test
+    void handleWebhook_WithQueryDataIdAndTopic_ShouldProcessPayment() {
+        Map<String, String> params = new HashMap<>();
+        params.put("data.id", "777");
+        params.put("topic", "payment");
+
+        ResponseEntity<Void> response =
+                paymentWebhookController.handleWebhook(null, null, null, params);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(confirmPaymentAndCredit).execute("777");
+    }
+
+    @Test
+    void handleWebhook_WithBodyNullAndInvalidSignature_ShouldValidatePaymentIdOnly() {
+        Map<String, String> params = new HashMap<>();
+        params.put("id", "666");
+        params.put("type", "payment");
+        when(externalPaymentService.isValidSignature("sig", "req", "666"))
+                .thenReturn(false);
+
+        ResponseEntity<Void> response =
+                paymentWebhookController.handleWebhook("sig", "req", null, params);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(externalPaymentService).isValidSignature("sig", "req", "666");
+        verify(confirmPaymentAndCredit).execute("666");
+    }
+
+    @Test
+    void handleWebhook_WhenBodyTypeIsNullString_ShouldUseQueryTopic() {
+        Map<String, Object> body = new HashMap<>();
+        body.put("type", "null");
+        body.put("id", "555");
+        Map<String, String> params = new HashMap<>();
+        params.put("topic", "payment");
+
+        ResponseEntity<Void> response =
+                paymentWebhookController.handleWebhook(null, null, body, params);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(confirmPaymentAndCredit).execute("555");
+    }
+
+    @Test
     void handleWebhook_ErrorEnAplicacion_DevuelveInternalError() {
         String signature = "ts=123,v1=hash";
         Map<String, Object> body = new HashMap<>();

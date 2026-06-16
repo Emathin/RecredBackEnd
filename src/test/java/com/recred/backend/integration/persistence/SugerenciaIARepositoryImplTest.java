@@ -28,6 +28,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -35,6 +36,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -179,6 +181,146 @@ class SugerenciaIARepositoryImplTest {
 
         assertTrue(result.isPresent());
         assertEquals(entity, result.get());
+    }
+
+    @Test
+    void savePriceAlert_WhenRepositoriesReturnNull_ShouldUseCreatedEntities() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UUID tutorUserId = UUID.randomUUID();
+        UUID studentUserId = UUID.randomUUID();
+        AlumnoEntity student = new AlumnoEntity();
+        student.setId(studentId);
+        ProductoEntity product = new ProductoEntity();
+        product.setId(productId);
+        UsuarioEntity tutorUser = new UsuarioEntity();
+        tutorUser.setId(tutorUserId);
+        when(entityManager.getReference(AlumnoEntity.class, studentId)).thenReturn(student);
+        when(entityManager.getReference(ProductoEntity.class, productId)).thenReturn(product);
+        when(entityManager.getReference(UsuarioEntity.class, tutorUserId)).thenReturn(tutorUser);
+        when(aiEventJpaRepository.save(any(AIEventEntity.class)))
+                .thenReturn(null);
+        when(springDataRepository.save(any(SugerenciaIAEntity.class)))
+                .thenReturn(null);
+        when(notificationJpaRepository.save(any(NotificacionEntity.class)))
+                .thenReturn(null);
+
+        repository.savePriceAlert(suggestion(
+                studentId,
+                studentUserId,
+                productId,
+                null,
+                tutorUserId
+        ));
+
+        ArgumentCaptor<PushNotificationRequestedEvent> pushCaptor =
+                ArgumentCaptor.forClass(PushNotificationRequestedEvent.class);
+        verify(eventPublisher).publishEvent(pushCaptor.capture());
+        assertEquals(tutorUserId, pushCaptor.getValue().notification().userId());
+        assertEquals(studentId.toString(),
+                pushCaptor.getValue().notification().data().get("alumnoId"));
+    }
+
+    @Test
+    void savePriceAlert_WhenRepositoriesReturnSavedEntities_ShouldUseThem() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UUID tutorUserId = UUID.randomUUID();
+        AlumnoEntity student = new AlumnoEntity();
+        student.setId(studentId);
+        ProductoEntity product = new ProductoEntity();
+        product.setId(productId);
+        UsuarioEntity tutorUser = new UsuarioEntity();
+        tutorUser.setId(tutorUserId);
+        AIEventEntity savedEvent = new AIEventEntity();
+        SugerenciaIAEntity savedSuggestion = new SugerenciaIAEntity();
+        savedSuggestion.setId(UUID.randomUUID());
+        when(entityManager.getReference(AlumnoEntity.class, studentId)).thenReturn(student);
+        when(entityManager.getReference(ProductoEntity.class, productId)).thenReturn(product);
+        when(entityManager.getReference(UsuarioEntity.class, tutorUserId)).thenReturn(tutorUser);
+        when(aiEventJpaRepository.save(any(AIEventEntity.class))).thenReturn(savedEvent);
+        when(springDataRepository.save(any(SugerenciaIAEntity.class))).thenReturn(savedSuggestion);
+        when(notificationJpaRepository.save(any(NotificacionEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        repository.savePriceAlert(suggestion(
+                studentId,
+                null,
+                productId,
+                null,
+                tutorUserId
+        ));
+
+        ArgumentCaptor<NotificacionEntity> notificationCaptor =
+                ArgumentCaptor.forClass(NotificacionEntity.class);
+        verify(notificationJpaRepository).save(notificationCaptor.capture());
+        assertSame(savedSuggestion, notificationCaptor.getValue().getSugerenciaIaEntity());
+    }
+
+    @Test
+    void delegateTypedAndPendingFindersToSpringDataRepository() {
+        UUID studentId = UUID.randomUUID();
+        List<SugerenciaIAEntity> suggestions = List.of(new SugerenciaIAEntity());
+        when(springDataRepository.findAllByAlumnoEntityIdAndTipoOrderByCreadoEnDesc(
+                studentId,
+                TipoSugerenciaIA.ALERTA_PRECIO
+        )).thenReturn(suggestions);
+        when(springDataRepository.findPendingParentNotificationsByAlumnoId(
+                studentId,
+                TipoSugerenciaIA.ALERTA_PRECIO
+        )).thenReturn(suggestions);
+        when(springDataRepository.findPendingStudentNotificationsByAlumnoId(
+                studentId,
+                TipoSugerenciaIA.ALERTA_PRECIO
+        )).thenReturn(suggestions);
+
+        assertEquals(suggestions, repository.findByAlumnoIdAndTipo(
+                studentId,
+                TipoSugerenciaIA.ALERTA_PRECIO
+        ));
+        assertEquals(suggestions, repository.findPendingParentNotificationsByAlumnoId(
+                studentId,
+                TipoSugerenciaIA.ALERTA_PRECIO
+        ));
+        assertEquals(suggestions, repository.findPendingStudentNotificationsByAlumnoId(
+                studentId,
+                TipoSugerenciaIA.ALERTA_PRECIO
+        ));
+    }
+
+    @Test
+    void findProductIdsByAlumnoIdAndTipo_ShouldReadProductEntityAndMetadata() {
+        UUID studentId = UUID.randomUUID();
+        UUID entityProductId = UUID.randomUUID();
+        UUID metadataProductId = UUID.randomUUID();
+        SugerenciaIAEntity withEntity = new SugerenciaIAEntity();
+        ProductoEntity productEntity = new ProductoEntity();
+        productEntity.setId(entityProductId);
+        withEntity.setProductoEntity(productEntity);
+        SugerenciaIAEntity withMetadata = new SugerenciaIAEntity();
+        withMetadata.setMetadata(Map.of("productoId", metadataProductId.toString()));
+        SugerenciaIAEntity invalidMetadata = new SugerenciaIAEntity();
+        invalidMetadata.setMetadata(Map.of("productoId", "invalid"));
+        SugerenciaIAEntity blankMetadata = new SugerenciaIAEntity();
+        blankMetadata.setMetadata(Map.of("productoId", " "));
+        SugerenciaIAEntity noMetadata = new SugerenciaIAEntity();
+        when(springDataRepository.findAllByAlumnoEntityIdAndTipoOrderByCreadoEnDesc(
+                studentId,
+                TipoSugerenciaIA.ALERTA_PRECIO
+        )).thenReturn(List.of(
+                withEntity,
+                withMetadata,
+                invalidMetadata,
+                blankMetadata,
+                noMetadata
+        ));
+
+        List<UUID> result = repository.findProductIdsByAlumnoIdAndTipo(
+                studentId,
+                TipoSugerenciaIA.ALERTA_PRECIO
+        );
+
+        assertEquals(List.of(entityProductId, metadataProductId), result);
     }
 
     private PriceAlertContext savePriceAlert() {

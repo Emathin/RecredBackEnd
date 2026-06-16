@@ -18,15 +18,21 @@ import com.recred.backend.domain.models.DailyCloseStatus;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.KiosqueroDashboard;
+import com.recred.backend.domain.models.KiosqueroOperationalAlert;
 import com.recred.backend.domain.models.MedioPago;
+import com.recred.backend.domain.models.OperationalAlertSeverity;
+import com.recred.backend.domain.models.OperationalAlertType;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.infrastructure.web.KiosqueroAccessGuard;
+import com.recred.backend.infrastructure.web.KiosqueroOperationalAlertResponse;
 import com.recred.backend.infrastructure.web.KiosqueroOperationsController;
 import com.recred.backend.infrastructure.web.KiosqueroOrderResponse;
 import com.recred.backend.infrastructure.web.TimeSlotResponse;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
@@ -38,6 +44,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -157,6 +166,38 @@ class KiosqueroOperationsControllerTest {
     }
 
     @Test
+    void dailyReportCsv_ShouldReturnCsvWithDownloadHeadersAndDefaultDate() {
+        UUID buffetId = UUID.randomUUID();
+        DailyBuffetReport report = new DailyBuffetReport(
+                buffetId,
+                LocalDate.of(2026, 6, 15),
+                7,
+                5,
+                1,
+                1,
+                0,
+                0,
+                0,
+                0,
+                new BigDecimal("250.00"),
+                List.of(),
+                List.of()
+        );
+        when(generateDailyBuffetReport.execute(eq(buffetId), any(LocalDate.class)))
+                .thenReturn(report);
+
+        ResponseEntity<String> response = controller.dailyReportCsv(buffetId, null, null);
+
+        assertEquals(MediaType.valueOf("text/csv"), response.getHeaders().getContentType());
+        assertEquals("attachment; filename=\"daily-report.csv\"",
+                response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION));
+        assertTrue(response.getBody().contains("metric,value"));
+        assertTrue(response.getBody().contains("totalOrders,7"));
+        assertTrue(response.getBody().contains("deliveredTotal,250.00"));
+        verify(generateDailyBuffetReport).execute(eq(buffetId), any(LocalDate.class));
+    }
+
+    @Test
     void dashboard_ShouldDelegateToUseCase() {
         UUID buffetId = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 6, 10);
@@ -195,6 +236,33 @@ class KiosqueroOperationsControllerTest {
 
         assertEquals(dashboard, response.getBody());
         verify(getKiosqueroDashboard).execute(buffetId, null, from, to);
+    }
+
+    @Test
+    void alerts_ShouldReturnMappedOperationalAlerts() {
+        UUID buffetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        KiosqueroOperationalAlert alert = new KiosqueroOperationalAlert(
+                buffetId,
+                OperationalAlertType.DAILY_CAPACITY_LOW,
+                OperationalAlertSeverity.WARNING,
+                productId,
+                null,
+                LocalDateTime.of(2026, 6, 15, 10, 0),
+                "Cupo bajo"
+        );
+        when(listKiosqueroOperationalAlerts.execute(buffetId)).thenReturn(List.of(alert));
+
+        ResponseEntity<List<KiosqueroOperationalAlertResponse>> response =
+                controller.alerts(buffetId, null);
+
+        KiosqueroOperationalAlertResponse body = response.getBody().get(0);
+        assertEquals(buffetId, body.buffetId());
+        assertEquals("DAILY_CAPACITY_LOW", body.type());
+        assertEquals("WARNING", body.severity());
+        assertEquals(productId, body.productId());
+        assertEquals("Cupo bajo", body.message());
+        verify(listKiosqueroOperationalAlerts).execute(buffetId);
     }
 
     @Test

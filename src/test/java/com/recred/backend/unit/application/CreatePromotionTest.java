@@ -115,17 +115,14 @@ class CreatePromotionTest {
         LocalDateTime start = LocalDateTime.now();
         LocalDateTime end = LocalDateTime.now().plusDays(1);
 
-        // Test <= 0
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(productIds, BigDecimal.ZERO, name, start, end, false));
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(productIds, new BigDecimal("-5"), name, start, end, false));
 
-        // Test > 100
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(productIds, new BigDecimal("101"), name, start, end, false));
 
-        // Test null
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(productIds, null, name, start, end, false));
 
@@ -138,12 +135,11 @@ class CreatePromotionTest {
         BigDecimal discount = new BigDecimal("15");
         String name = "Promo Fail";
         LocalDateTime start = LocalDateTime.now().plusDays(5);
-        LocalDateTime end = LocalDateTime.now().plusDays(2); // End before start
+        LocalDateTime end = LocalDateTime.now().plusDays(2);
 
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(productIds, discount, name, start, end, false));
 
-        // Test null dates
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(productIds, discount, name, null, end, false));
         assertThrows(IllegalArgumentException.class, () ->

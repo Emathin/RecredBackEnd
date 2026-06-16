@@ -27,6 +27,15 @@ public class NotificationRepositoryImpl implements NotificationRepository {
                 .toList();
     }
 
+    @Override
+    public void markAsRead(UUID notificationId) {
+        NotificacionEntity entity = notificationJpaRepository.findById(notificationId)
+                .orElseThrow(() -> new RuntimeException("Notification not found"));
+        entity.setLeida(true);
+        entity.setLeidaEn(java.time.LocalDateTime.now());
+        notificationJpaRepository.save(entity);
+    }
+
     private Notification toDomain(NotificacionEntity entity) {
         return new Notification(
                 entity.getId(),

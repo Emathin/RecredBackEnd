@@ -10,6 +10,7 @@ import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.infrastructure.web.KiosqueroAccessGuard;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 
 import java.util.Optional;
@@ -44,6 +45,16 @@ class KiosqueroAccessGuardTest {
     }
 
     @Test
+    void requireBuffetAccess_WhenUserIsAdmin_ShouldPass() {
+        UUID buffetId = UUID.randomUUID();
+        Usuario user = user(UUID.randomUUID(), RolUsuario.ADMIN, null);
+
+        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
+
+        assertDoesNotThrow(() -> guard.requireBuffetAccess(auth(), buffetId));
+    }
+
+    @Test
     void requireBuffetAccess_WhenSellerDoesNotOwnBuffet_ShouldThrowException() {
         UUID userId = UUID.randomUUID();
         Usuario user = user(userId, RolUsuario.VENDEDOR, null);
@@ -66,6 +77,44 @@ class KiosqueroAccessGuardTest {
         when(buffetRepository.findById(buffetId)).thenReturn(Optional.of(buffet));
 
         assertDoesNotThrow(() -> guard.requireBuffetAccess(auth(), buffetId));
+    }
+
+    @Test
+    void requireBuffetAccess_WhenAuthenticationIsMissing_ShouldThrowException() {
+        assertThrows(AuthenticationCredentialsNotFoundException.class,
+                () -> guard.requireBuffetAccess(null, UUID.randomUUID()));
+    }
+
+    @Test
+    void requireBuffetAccess_WhenUserIsNotSynchronized_ShouldThrowException() {
+        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.empty());
+
+        assertThrows(AuthenticationCredentialsNotFoundException.class,
+                () -> guard.requireBuffetAccess(auth(), UUID.randomUUID()));
+    }
+
+    @Test
+    void requireBuffetAccess_WhenSchoolDirectorHasNoSchool_ShouldThrowException() {
+        Usuario user = user(UUID.randomUUID(), RolUsuario.DIRECTIVO_COLEGIO, null);
+
+        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
+
+        assertThrows(AccessDeniedException.class,
+                () -> guard.requireBuffetAccess(auth(), UUID.randomUUID()));
+    }
+
+    @Test
+    void requireBuffetAccess_WhenBuffetSchoolHasNoId_ShouldThrowException() {
+        UUID colegioId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        Usuario user = user(UUID.randomUUID(), RolUsuario.DIRECTIVO_COLEGIO, colegioId);
+        Buffet buffet = buffet(null);
+
+        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
+        when(buffetRepository.findById(buffetId)).thenReturn(Optional.of(buffet));
+
+        assertThrows(AccessDeniedException.class,
+                () -> guard.requireBuffetAccess(auth(), buffetId));
     }
 
     private TestingAuthenticationToken auth() {

@@ -2,6 +2,7 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
+import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.BuyerType;
@@ -12,9 +13,11 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
@@ -51,6 +54,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -269,21 +273,244 @@ class CreateAdvancePurchaseUseCaseTest {
         verifyNoInteractions(usuarioRepository);
     }
 
+    @Test
+    void execute_WhenRequestIsNull_ShouldThrowException() {
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(null, "sub"));
+
+        verifyNoInteractions(usuarioRepository);
+    }
+
+    @Test
+    void execute_WhenOrdersAreNull_ShouldThrowException() {
+        AdvancePurchaseRequest request = new AdvancePurchaseRequest(null);
+
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(request, "sub"));
+
+        verifyNoInteractions(usuarioRepository);
+    }
+
+    @Test
+    void execute_WhenUserDoesNotExist_ShouldThrowSecurityException() {
+        when(usuarioRepository.findByIdCognito("missing-sub")).thenReturn(Optional.empty());
+
+        assertThrows(SecurityException.class,
+                () -> useCase.execute(request(buffetId, null), "missing-sub"));
+
+        verifyNoInteractions(alumnoRepository, productRepository, walletRepository);
+    }
+
+    @Test
+    void execute_WhenStudentDoesNotExist_ShouldThrowAlumnoNoEncontradoException() {
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
+
+        assertThrows(AlumnoNoEncontradoException.class,
+                () -> useCase.execute(request(buffetId, null), "sub"));
+
+        verifyNoInteractions(productRepository, walletRepository);
+    }
+
+    @Test
+    void execute_WhenRoleIsNotAllowed_ShouldThrowSecurityException() {
+        user.setRol(RolUsuario.VENDEDOR);
+
+        assertThrows(SecurityException.class,
+                () -> useCase.execute(request(buffetId, null), "sub"));
+
+        verifyNoInteractions(tutorRepository, productRepository, walletRepository);
+    }
+
+    @Test
+    void execute_WhenTutorProfileDoesNotExist_ShouldThrowSecurityException() {
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
+
+        assertThrows(SecurityException.class,
+                () -> useCase.execute(request(buffetId, null), "sub"));
+
+        verifyNoInteractions(productRepository, walletRepository);
+    }
+
+    @Test
+    void execute_WhenDefaultBuffetDoesNotExist_ShouldThrowException() {
+        UUID schoolId = UUID.randomUUID();
+        student.setGrado(grade(schoolId));
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(buffetRepository.findFirstByColegioEntityIdAndActivoTrue(schoolId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(request(null, null), "sub"));
+
+        verifyNoInteractions(productRepository, walletRepository);
+    }
+
+    @Test
+    void execute_WhenStudentSchoolIsMissing_ShouldThrowException() {
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(request(null, null), "sub"));
+
+        verifyNoInteractions(buffetRepository, productRepository, walletRepository);
+    }
+
+    @Test
+    void execute_WhenDateIsMissing_ShouldThrowException() {
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(request(buffetId, null, null, List.of(item())), "sub"));
+
+        verifyNoInteractions(productRepository, walletRepository);
+    }
+
+    @Test
+    void execute_WhenDateIsInvalid_ShouldThrowException() {
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(request(buffetId, null, "20-06-2026",
+                        List.of(item())), "sub"));
+
+        verifyNoInteractions(productRepository, walletRepository);
+    }
+
+    @Test
+    void execute_WhenItemsAreMissing_ShouldThrowException() {
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(request(buffetId, null, "2026-06-20", List.of()), "sub"));
+
+        verifyNoInteractions(productRepository, walletRepository);
+    }
+
+    @Test
+    void execute_WhenItemsAreNull_ShouldThrowException() {
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(request(buffetId, null, "2026-06-20", null), "sub"));
+
+        verifyNoInteractions(productRepository, walletRepository);
+    }
+
+    @Test
+    void execute_WhenProductDoesNotExist_ShouldThrowException() {
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(productRepository.findActiveByIdWithStock(productId, buffetId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class,
+                () -> useCase.execute(request(buffetId, null), "sub"));
+
+        verifyNoInteractions(walletRepository);
+    }
+
+    @Test
+    void execute_WhenWalletDoesNotExist_ShouldThrowException() {
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class,
+                () -> useCase.execute(request(buffetId, null), "sub"));
+
+        verify(inventoryAvailabilityService, never()).reserve(any(), anyMap());
+    }
+
+    @Test
+    void execute_WhenProductPriceIsNull_ShouldUseZeroTotal() {
+        product.setPrecio(null);
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+
+        AdvancePurchaseResponse response = useCase.execute(request(buffetId, null), "sub");
+
+        assertEquals(0.0, response.total());
+        assertEquals(new BigDecimal("100.00"), wallet.getSaldoCreditos());
+    }
+
+    @Test
+    void execute_WithShortConstructor_ShouldCreatePurchaseWithoutMovementRepository() {
+        CreateAdvancePurchase localUseCase = new CreateAdvancePurchase(
+                purchaseValidator,
+                alumnoRepository,
+                productRepository,
+                purchaseRepository,
+                withdrawalCodeService,
+                inventoryAvailabilityService,
+                recessTimeSlotResolver,
+                advancePurchaseRulesService,
+                walletRepository,
+                buffetRepository,
+                usuarioRepository,
+                tutorRepository
+        );
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+
+        AdvancePurchaseResponse response = localUseCase.execute(request(buffetId, null), "sub");
+
+        assertEquals(purchaseId.toString(), response.orderId());
+    }
+
+    @Test
+    void execute_WhenMovementRepositoryExists_ShouldRegisterPurchaseMovement() {
+        MovimientoBilleteraRepository movementRepository =
+                mock(MovimientoBilleteraRepository.class);
+        CreateAdvancePurchase localUseCase = new CreateAdvancePurchase(
+                purchaseValidator,
+                alumnoRepository,
+                productRepository,
+                purchaseRepository,
+                withdrawalCodeService,
+                inventoryAvailabilityService,
+                recessTimeSlotResolver,
+                advancePurchaseRulesService,
+                walletRepository,
+                buffetRepository,
+                usuarioRepository,
+                tutorRepository,
+                movementRepository
+        );
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+
+        localUseCase.execute(request(buffetId, null), "sub");
+
+        verify(movementRepository).registrarMovimiento(
+                eq(wallet.getId()),
+                eq(TipoMovimientoBilletera.COMPRA),
+                eq(new BigDecimal("-50.00")),
+                eq("Compra anticipada en buffet"),
+                eq(userId)
+        );
+    }
+
     private AdvancePurchaseRequest request(UUID requestBuffetId, UUID requestSuggestionId) {
-        AdvancePurchaseRequest.ItemRequest itemRequest =
-                new AdvancePurchaseRequest.ItemRequest(productId, 2);
+        return request(requestBuffetId, requestSuggestionId, "2026-06-20", List.of(item()));
+    }
+
+    private AdvancePurchaseRequest request(
+            UUID requestBuffetId,
+            UUID requestSuggestionId,
+            String date,
+            List<AdvancePurchaseRequest.ItemRequest> items
+    ) {
         AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
                 studentId,
                 userId,
                 BuyerType.TUTOR,
                 requestBuffetId,
-                "2026-06-20",
+                date,
                 RecessTime.FIRST_RECESS,
-                List.of(itemRequest),
+                items,
                 requestSuggestionId,
                 tutorId
         );
         return new AdvancePurchaseRequest(List.of(orderRequest));
+    }
+
+    private AdvancePurchaseRequest.ItemRequest item() {
+        AdvancePurchaseRequest.ItemRequest itemRequest =
+                new AdvancePurchaseRequest.ItemRequest(productId, 2);
+        return itemRequest;
     }
 
     private Grado grade(UUID schoolId) {

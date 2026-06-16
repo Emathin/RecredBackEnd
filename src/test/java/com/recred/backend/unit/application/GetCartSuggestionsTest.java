@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -25,7 +26,9 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -120,6 +123,213 @@ class GetCartSuggestionsTest {
                 .noneMatch(s -> s.product().getId().equals(unknownStock.getId())));
     }
 
+    @Test
+    void execute_WhenAlumnoDoesNotExist_ShouldThrowException() {
+        UUID alumnoId = UUID.randomUUID();
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class,
+                () -> getCartSuggestions.execute(alumnoId, UUID.randomUUID(), Set.of(), 3));
+
+        verifyNoInteractions(productRepository, purchaseRepository, sugerenciaIARepository);
+    }
+
+    @Test
+    void execute_WhenNoProductsAreAvailable_ShouldReturnEmptyList() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        Alumno alumno = new Alumno();
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of());
+
+        List<CartSuggestion> result = getCartSuggestions.execute(
+                alumnoId,
+                buffetId,
+                Set.of(),
+                3
+        );
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(purchaseRepository, sugerenciaIARepository);
+    }
+
+    @Test
+    void execute_WithNullOptionalData_ShouldUseFallbackCollections() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        Producto favorite = product("Agua");
+        Alumno alumno = new Alumno();
+        alumno.setProductosBloqueados(null);
+        alumno.setProductosFavoritos(Set.of(favorite));
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(favorite));
+        when(purchaseRepository.findPurchasesByAlumno(alumnoId)).thenReturn(null);
+        when(purchaseRepository.findStudentCartAffinities(alumnoId, buffetId, Set.of()))
+                .thenReturn(null);
+        when(purchaseRepository.findBuffetCartAffinities(buffetId, Set.of())).thenReturn(null);
+        when(sugerenciaIARepository.findProductIdsByAlumnoIdAndTipo(
+                alumnoId,
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA))
+                .thenReturn(List.of());
+
+        List<CartSuggestion> result = getCartSuggestions.execute(alumnoId, buffetId, null, null);
+
+        assertEquals(1, result.size());
+        assertEquals("FAVORITE", result.get(0).source());
+        assertEquals("Esta entre los favoritos del alumno", result.get(0).reason());
+    }
+
+    @Test
+    void execute_WhenOnlyPurchaseHistoryMatches_ShouldUsePurchaseHistoryReason() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        Producto frequent = product("Jugo");
+        Alumno alumno = new Alumno();
+        LocalDateTime yesterday = LocalDate.now().minusDays(1).atStartOfDay();
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(frequent));
+        when(purchaseRepository.findPurchasesByAlumno(alumnoId)).thenReturn(List.of(
+                purchase(alumnoId, frequent, yesterday)
+        ));
+        when(purchaseRepository.findStudentCartAffinities(alumnoId, buffetId, Set.of()))
+                .thenReturn(List.of());
+        when(purchaseRepository.findBuffetCartAffinities(buffetId, Set.of())).thenReturn(List.of());
+        when(sugerenciaIARepository.findProductIdsByAlumnoIdAndTipo(
+                alumnoId,
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA))
+                .thenReturn(List.of());
+
+        List<CartSuggestion> result = getCartSuggestions.execute(alumnoId, buffetId, Set.of(), 0);
+
+        assertEquals(1, result.size());
+        assertEquals("PURCHASE_HISTORY", result.get(0).source());
+        assertEquals("El alumno lo compra con frecuencia", result.get(0).reason());
+    }
+
+    @Test
+    void execute_WhenPurchaseMatchesToday_ShouldUseDayPatternReason() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        Producto product = product("Ensalada");
+        Alumno alumno = new Alumno();
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
+        when(purchaseRepository.findPurchasesByAlumno(alumnoId)).thenReturn(List.of(
+                purchase(alumnoId, product, LocalDateTime.now())
+        ));
+        when(purchaseRepository.findStudentCartAffinities(alumnoId, buffetId, Set.of()))
+                .thenReturn(List.of());
+        when(purchaseRepository.findBuffetCartAffinities(buffetId, Set.of())).thenReturn(List.of());
+        when(sugerenciaIARepository.findProductIdsByAlumnoIdAndTipo(
+                alumnoId,
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA))
+                .thenReturn(List.of());
+
+        List<CartSuggestion> result = getCartSuggestions.execute(alumnoId, buffetId, Set.of(), 1);
+
+        assertEquals(1, result.size());
+        assertEquals("DAY_PATTERN", result.get(0).source());
+        assertEquals("Suele comprarse en dias como hoy", result.get(0).reason());
+    }
+
+    @Test
+    void execute_ShouldIgnoreNullProductIdsAndMergeAffinities() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        Producto productWithoutId = product("Sin id");
+        Producto complement = product("Alfajor");
+        productWithoutId.setId(null);
+        Alumno alumno = new Alumno();
+        alumno.setProductosFavoritos(null);
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId))
+                .thenReturn(List.of(productWithoutId, complement));
+        when(purchaseRepository.findPurchasesByAlumno(alumnoId)).thenReturn(List.of());
+        when(purchaseRepository.findStudentCartAffinities(alumnoId, buffetId, Set.of()))
+                .thenReturn(List.of(
+                        new CartProductAffinity(null, 99),
+                        new CartProductAffinity(complement.getId(), 1),
+                        new CartProductAffinity(complement.getId(), 2)
+                ));
+        when(purchaseRepository.findBuffetCartAffinities(buffetId, Set.of())).thenReturn(List.of());
+        when(sugerenciaIARepository.findProductIdsByAlumnoIdAndTipo(
+                alumnoId,
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA))
+                .thenReturn(List.of());
+
+        List<CartSuggestion> result = getCartSuggestions.execute(alumnoId, buffetId, Set.of(), 3);
+
+        assertEquals(1, result.size());
+        assertEquals(complement.getId(), result.get(0).product().getId());
+        assertEquals(60, result.get(0).score());
+    }
+
+    @Test
+    void execute_ShouldFilterBlockedProductsAndCandidatesWithoutSignals() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        Producto blocked = product("Bloqueado");
+        Producto frequent = product("Jugo");
+        Producto withoutSignals = product("Pan");
+        Alumno alumno = new Alumno();
+        alumno.setProductosBloqueados(Set.of(blocked));
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId))
+                .thenReturn(List.of(blocked, frequent, withoutSignals));
+        when(purchaseRepository.findPurchasesByAlumno(alumnoId)).thenReturn(List.of(
+                purchase(alumnoId, frequent, null)
+        ));
+        when(purchaseRepository.findStudentCartAffinities(alumnoId, buffetId, Set.of()))
+                .thenReturn(List.of());
+        when(purchaseRepository.findBuffetCartAffinities(buffetId, Set.of())).thenReturn(List.of());
+        when(sugerenciaIARepository.findProductIdsByAlumnoIdAndTipo(
+                alumnoId,
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA))
+                .thenReturn(List.of());
+
+        List<CartSuggestion> result = getCartSuggestions.execute(alumnoId, buffetId, Set.of(), 3);
+
+        assertEquals(1, result.size());
+        assertEquals(frequent.getId(), result.get(0).product().getId());
+        assertEquals("PURCHASE_HISTORY", result.get(0).source());
+    }
+
+    @Test
+    void execute_WhenScoresTie_ShouldOrderByNameAndAllowDuplicateAvailableIds() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        Producto banana = product("Banana");
+        Producto apple = product("apple");
+        Producto duplicated = product("Duplicado A");
+        Producto duplicatedCopy = product("Duplicado B");
+        duplicatedCopy.setId(duplicated.getId());
+        Alumno alumno = new Alumno();
+        alumno.setProductosFavoritos(Set.of(banana, apple, duplicated));
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId))
+                .thenReturn(List.of(banana, duplicated, apple, duplicatedCopy));
+        when(purchaseRepository.findPurchasesByAlumno(alumnoId)).thenReturn(List.of());
+        when(purchaseRepository.findStudentCartAffinities(alumnoId, buffetId, Set.of()))
+                .thenReturn(List.of());
+        when(purchaseRepository.findBuffetCartAffinities(buffetId, Set.of())).thenReturn(List.of());
+        when(sugerenciaIARepository.findProductIdsByAlumnoIdAndTipo(
+                alumnoId,
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA))
+                .thenReturn(List.of());
+
+        List<CartSuggestion> result = getCartSuggestions.execute(alumnoId, buffetId, Set.of(), 3);
+
+        assertEquals(3, result.size());
+        assertEquals(apple.getId(), result.get(0).product().getId());
+        assertEquals(banana.getId(), result.get(1).product().getId());
+    }
+
     private Producto product(String name) {
         Producto product = new Producto();
         product.setId(UUID.randomUUID());
@@ -130,12 +340,16 @@ class GetCartSuggestionsTest {
     }
 
     private PurchaseResume purchase(UUID alumnoId, Producto product) {
+        return purchase(alumnoId, product, LocalDateTime.now());
+    }
+
+    private PurchaseResume purchase(UUID alumnoId, Producto product, LocalDateTime date) {
         return new PurchaseResume(
                 alumnoId,
                 product.getId(),
                 product.getNombre(),
                 product.getPrecio(),
-                LocalDateTime.now()
+                date
         );
     }
 

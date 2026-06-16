@@ -77,10 +77,83 @@ class InventarioTest {
     }
 
     @Test
+    void productoDisponibleNoDisponible_DeberiaConsumirReservaSinDescontarCantidad() {
+        Inventario inventario = inventory(0, 0);
+        inventario.setTipoManejo(TipoManejoInventario.DISPONIBLE_NO_DISPONIBLE);
+        inventario.setEstado(EstadoInventario.DISPONIBLE);
+
+        inventario.consumirReserva(1);
+
+        assertEquals(0, inventario.getStockActual());
+        assertEquals(0, inventario.getStockReservado());
+        assertEquals(1, inventario.stockDisponible());
+    }
+
+    @Test
+    void liberarReserva_ConProductoDisponibleNoDisponible_NoDebeCambiarStock() {
+        Inventario inventario = inventory(0, 0);
+        inventario.setTipoManejo(TipoManejoInventario.DISPONIBLE_NO_DISPONIBLE);
+        inventario.setEstado(EstadoInventario.DISPONIBLE);
+
+        inventario.liberarReserva(1);
+
+        assertEquals(0, inventario.getStockActual());
+        assertEquals(0, inventario.getStockReservado());
+    }
+
+    @Test
+    void productoDisponibleNoDisponible_CuandoNoEstaDisponible_DeberiaLanzarExcepcion() {
+        Inventario inventario = inventory(0, 0);
+        inventario.setTipoManejo(TipoManejoInventario.DISPONIBLE_NO_DISPONIBLE);
+        inventario.setEstado(EstadoInventario.SIN_STOCK);
+
+        assertThrows(InsufficientStockException.class, () -> inventario.consumirReserva(1));
+    }
+
+    @Test
     void ajustarStock_MenorAReservado_DeberiaLanzarExcepcion() {
         Inventario inventario = inventory(10, 4);
 
         assertThrows(InventoryOperationException.class, () -> inventario.ajustarStock(3));
+    }
+
+    @Test
+    void ajustarStock_Negativo_DeberiaLanzarExcepcion() {
+        Inventario inventario = inventory(10, 0);
+
+        assertThrows(InventoryOperationException.class, () -> inventario.ajustarStock(-1));
+    }
+
+    @Test
+    void estadoActual_CuandoEstaDesactivado_DeberiaMantenerDesactivado() {
+        Inventario inventario = inventory(10, 0);
+        inventario.setEstado(EstadoInventario.DESACTIVADO);
+
+        assertEquals(EstadoInventario.DESACTIVADO, inventario.estadoActual());
+    }
+
+    @Test
+    void liberarReserva_CuandoReservaEsInsuficiente_DeberiaLanzarExcepcion() {
+        Inventario inventario = inventory(10, 1);
+
+        assertThrows(InventoryOperationException.class, () -> inventario.liberarReserva(2));
+    }
+
+    @Test
+    void consumirReserva_CuandoReservaEsInsuficiente_DeberiaLanzarExcepcion() {
+        Inventario inventario = inventory(10, 1);
+
+        assertThrows(InventoryOperationException.class, () -> inventario.consumirReserva(2));
+    }
+
+    @Test
+    void operacionesConCantidadCero_DeberianLanzarExcepcion() {
+        Inventario inventario = inventory(10, 1);
+
+        assertThrows(InventoryOperationException.class, () -> inventario.reservar(0));
+        assertThrows(InventoryOperationException.class, () -> inventario.consumir(0));
+        assertThrows(InventoryOperationException.class, () -> inventario.consumirReserva(0));
+        assertThrows(InventoryOperationException.class, () -> inventario.liberarReserva(0));
     }
 
     @Test

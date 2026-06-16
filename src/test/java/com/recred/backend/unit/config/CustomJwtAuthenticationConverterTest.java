@@ -5,7 +5,9 @@ import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -54,6 +56,52 @@ class CustomJwtAuthenticationConverterTest {
         verifyNoInteractions(usuarioRepository);
     }
 
+    @Test
+    void convert_WhenUserDoesNotExist_ShouldReturnEmptyAuthoritiesAndNotCache() {
+        when(usuarioRepository.findByIdCognito("missing-sub")).thenReturn(Optional.empty());
+        CustomJwtAuthenticationConverter converter = converter();
+
+        AbstractAuthenticationToken firstAuthentication = converter.convert(jwt("missing-sub"));
+        AbstractAuthenticationToken secondAuthentication = converter.convert(jwt("missing-sub"));
+
+        assertTrue(firstAuthentication.getAuthorities().isEmpty());
+        assertTrue(secondAuthentication.getAuthorities().isEmpty());
+        verify(usuarioRepository, times(2)).findByIdCognito("missing-sub");
+    }
+
+    @Test
+    void convert_WhenUserHasNoRole_ShouldReturnEmptyAuthorities() {
+        Usuario usuario = new Usuario();
+        when(usuarioRepository.findByIdCognito("cognito-sub"))
+                .thenReturn(Optional.of(usuario));
+        CustomJwtAuthenticationConverter converter = converter();
+
+        AbstractAuthenticationToken authentication = converter.convert(jwt("cognito-sub"));
+
+        assertTrue(authentication.getAuthorities().isEmpty());
+    }
+
+    @Test
+    void convert_WhenCacheExpires_ShouldReloadAuthorities() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-06-12T10:00:00Z"));
+        Usuario vendedor = new Usuario();
+        vendedor.setRol(RolUsuario.VENDEDOR);
+        Usuario padre = new Usuario();
+        padre.setRol(RolUsuario.PADRE);
+        when(usuarioRepository.findByIdCognito("cognito-sub"))
+                .thenReturn(Optional.of(vendedor), Optional.of(padre));
+        CustomJwtAuthenticationConverter converter =
+                new CustomJwtAuthenticationConverter(usuarioRepository, clock);
+
+        AbstractAuthenticationToken firstAuthentication = converter.convert(jwt("cognito-sub"));
+        clock.advance(Duration.ofMinutes(5));
+        AbstractAuthenticationToken secondAuthentication = converter.convert(jwt("cognito-sub"));
+
+        assertHasAuthority(firstAuthentication, "ROLE_VENDEDOR");
+        assertHasAuthority(secondAuthentication, "ROLE_PADRE");
+        verify(usuarioRepository, times(2)).findByIdCognito("cognito-sub");
+    }
+
     private CustomJwtAuthenticationConverter converter() {
         Clock clock = Clock.fixed(Instant.parse("2026-06-12T10:00:00Z"), ZoneOffset.UTC);
         return new CustomJwtAuthenticationConverter(usuarioRepository, clock);
@@ -81,5 +129,32 @@ class CustomJwtAuthenticationConverterTest {
                 .stream()
                 .anyMatch(authority -> authority.getAuthority().equals(expectedAuthority));
         assertTrue(hasAuthority);
+    }
+
+    private static class MutableClock extends Clock {
+        private Instant instant;
+
+        MutableClock(Instant instant) {
+            this.instant = instant;
+        }
+
+        void advance(Duration duration) {
+            instant = instant.plus(duration);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return instant;
+        }
     }
 }

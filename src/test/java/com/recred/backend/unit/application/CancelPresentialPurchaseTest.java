@@ -9,7 +9,9 @@ import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoCompra;
+import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
@@ -30,6 +32,8 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -84,6 +88,24 @@ class CancelPresentialPurchaseTest {
         assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
         verify(purchaseRepository).save(purchase);
         verify(walletRepository).save(wallet);
+    }
+
+    @Test
+    void execute_WithShortConstructor_ShouldCancelAndRefundWithoutMovementRepository() {
+        CancelPresentialPurchase localUseCase = new CancelPresentialPurchase(
+                purchaseRepository,
+                walletRepository,
+                inventoryAvailabilityService,
+                timeSlotRepository
+        );
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        when(walletRepository.findByStudentId(purchase.getStudent().getId()))
+                .thenReturn(Optional.of(wallet));
+
+        localUseCase.execute(purchaseId);
+
+        assertEquals(EstadoCompra.CANCELADO, purchase.getStatus());
+        assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
     }
 
     @Test
@@ -147,6 +169,28 @@ class CancelPresentialPurchaseTest {
     }
 
     @Test
+    void execute_WhenPurchaseHasNoStudent_ShouldThrowException() {
+        purchase.setStudent(null);
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+
+        assertThrows(IllegalStateException.class, () -> useCase.execute(purchaseId));
+
+        verify(walletRepository, never()).save(any());
+        verify(purchaseRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_WhenPurchaseStudentHasNoId_ShouldThrowException() {
+        purchase.getStudent().setId(null);
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+
+        assertThrows(IllegalStateException.class, () -> useCase.execute(purchaseId));
+
+        verify(walletRepository, never()).save(any());
+        verify(purchaseRepository, never()).save(any());
+    }
+
+    @Test
     void execute_WhenAdvancePurchaseIsMoreThanOneHourBeforePickup_ShouldCancelAndRefund() {
         purchase.setTipo(TipoCompra.ANTICIPADA);
         UUID slotId = UUID.randomUUID();
@@ -197,6 +241,23 @@ class CancelPresentialPurchaseTest {
     }
 
     @Test
+    void execute_WhenAdvancePurchaseTimeSlotDoesNotExist_ShouldThrowException() {
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+        UUID slotId = UUID.randomUUID();
+        purchase.setPickupSlotId(slotId);
+        purchase.setPickupDate(LocalDateTime.now(
+                ZoneId.of("America/Argentina/Buenos_Aires")).plusHours(2).toLocalDate());
+
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        when(timeSlotRepository.findById(slotId)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class, () -> useCase.execute(purchaseId));
+
+        verify(walletRepository, never()).save(any());
+        verify(purchaseRepository, never()).save(any());
+    }
+
+    @Test
     void execute_WhenAdvancePurchaseIsLessThanOneHourBeforePickup_ShouldThrowException() {
         purchase.setTipo(TipoCompra.ANTICIPADA);
         UUID slotId = UUID.randomUUID();
@@ -217,5 +278,30 @@ class CancelPresentialPurchaseTest {
 
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_WhenMovementRepositoryExists_ShouldRegisterRefundMovement() {
+        MovimientoBilleteraRepository movimientoBilleteraRepository =
+                mock(MovimientoBilleteraRepository.class);
+        CancelPresentialPurchase localUseCase = new CancelPresentialPurchase(
+                purchaseRepository,
+                walletRepository,
+                inventoryAvailabilityService,
+                timeSlotRepository,
+                movimientoBilleteraRepository
+        );
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        when(walletRepository.findByStudentId(purchase.getStudent().getId()))
+                .thenReturn(Optional.of(wallet));
+
+        localUseCase.execute(purchaseId);
+
+        verify(movimientoBilleteraRepository).registrarMovimientoSistema(
+                eq(wallet.getId()),
+                eq(TipoMovimientoBilletera.REEMBOLSO),
+                eq(new BigDecimal("50.00")),
+                eq("Reembolso por cancelacion de compra")
+        );
     }
 }

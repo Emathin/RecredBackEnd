@@ -4,6 +4,7 @@ import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.domain.exceptions.InsufficientStockException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
+import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.FranjaHoraria;
@@ -12,7 +13,9 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.TipoCompra;
+import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.AdvancePurchaseRulesService;
@@ -79,6 +82,8 @@ class CreateAssistantAdvancePurchaseTest {
     private InventoryAvailabilityService inventoryAvailabilityService;
     @Mock
     private AdvancePurchaseRulesService advancePurchaseRulesService;
+    @Mock
+    private MovimientoBilleteraRepository movimientoBilleteraRepository;
 
     private CreateAssistantAdvancePurchase useCase;
     private UUID studentId;
@@ -195,6 +200,159 @@ class CreateAssistantAdvancePurchaseTest {
         verify(withdrawalCodeService, never()).generateCode(any(Purchase.class));
     }
 
+    @Test
+    void executeThrowsWhenBuffetIdIsMissing() {
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(
+                studentId,
+                null,
+                Map.of(product, 1),
+                RecessTime.FIRST_RECESS,
+                LocalDate.of(2026, 5, 27)
+        ));
+    }
+
+    @Test
+    void executeThrowsWhenStudentDoesNotExist() {
+        when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
+
+        assertThrows(com.recred.backend.domain.exceptions.AlumnoNoEncontradoException.class,
+                () -> useCase.execute(
+                        studentId,
+                        buffetId,
+                        Map.of(product, 1),
+                        RecessTime.FIRST_RECESS,
+                        LocalDate.of(2026, 5, 27)
+                ));
+    }
+
+    @Test
+    void executeThrowsWhenWalletDoesNotExist() {
+        LocalDate pickupDate = LocalDate.of(2026, 5, 27);
+        Alumno student = student();
+        Map<Producto, Integer> cart = Map.of(product, 1);
+        FranjaHoraria slot = timeSlot();
+
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(recessTimeSlotResolver.resolve(student, RecessTime.FIRST_RECESS))
+                .thenReturn(slot);
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class, () -> useCase.execute(
+                studentId,
+                buffetId,
+                cart,
+                RecessTime.FIRST_RECESS,
+                pickupDate
+        ));
+
+        verify(inventoryAvailabilityService, never()).reserve(any(), any());
+    }
+
+    @Test
+    void executeThrowsWhenWalletBalanceIsInsufficient() {
+        LocalDate pickupDate = LocalDate.of(2026, 5, 27);
+        Alumno student = student();
+        Map<Producto, Integer> cart = Map.of(product, 10);
+        FranjaHoraria slot = timeSlot();
+
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(recessTimeSlotResolver.resolve(student, RecessTime.FIRST_RECESS))
+                .thenReturn(slot);
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+
+        assertThrows(com.recred.backend.domain.exceptions.InsufficientBalanceException.class,
+                () -> useCase.execute(
+                        studentId,
+                        buffetId,
+                        cart,
+                        RecessTime.FIRST_RECESS,
+                        pickupDate
+                ));
+
+        verify(inventoryAvailabilityService, never()).reserve(any(), any());
+        verify(purchaseRepository, never()).save(any(Purchase.class));
+    }
+
+    @Test
+    void executeGroupsTotalsByCategoryAndRegistersUserMovement() {
+        LocalDate pickupDate = LocalDate.of(2026, 5, 27);
+        UUID userId = UUID.randomUUID();
+        Alumno student = student();
+        student.setUsuarioId(userId);
+        Producto freeProduct = productWithCategory(null, UUID.randomUUID());
+        Producto paidProduct = productWithCategory(new BigDecimal("15.00"), UUID.randomUUID());
+        Map<Producto, Integer> cart = Map.of(freeProduct, 2, paidProduct, 2);
+        FranjaHoraria slot = timeSlot();
+        CreateAssistantAdvancePurchase useCaseWithMovements = useCaseWithMovements();
+
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(recessTimeSlotResolver.resolve(student, RecessTime.FIRST_RECESS))
+                .thenReturn(slot);
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("ABC123");
+        when(purchaseRepository.save(any(Purchase.class))).thenAnswer(invocation ->
+                invocation.getArgument(0));
+
+        useCaseWithMovements.execute(
+                studentId,
+                buffetId,
+                cart,
+                RecessTime.FIRST_RECESS,
+                pickupDate
+        );
+
+        verify(budgetValidator).validarPresupuesto(
+                eq(studentId),
+                eq(new BigDecimal("30.00")),
+                eq(Map.of(
+                        freeProduct.getCategoria().getId(),
+                        BigDecimal.ZERO,
+                        paidProduct.getCategoria().getId(),
+                        new BigDecimal("30.00")
+                )),
+                eq(LocalDateTime.of(2026, 5, 27, 10, 0))
+        );
+        verify(movimientoBilleteraRepository).registrarMovimiento(
+                eq(wallet.getId()),
+                eq(TipoMovimientoBilletera.COMPRA),
+                eq(new BigDecimal("-30.00")),
+                eq("Compra anticipada asistida"),
+                eq(userId)
+        );
+    }
+
+    @Test
+    void executeRegistersSystemMovementWhenStudentHasNoUserId() {
+        LocalDate pickupDate = LocalDate.of(2026, 5, 27);
+        Alumno student = student();
+        Map<Producto, Integer> cart = Map.of(product, 1);
+        FranjaHoraria slot = timeSlot();
+        CreateAssistantAdvancePurchase useCaseWithMovements = useCaseWithMovements();
+
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(recessTimeSlotResolver.resolve(student, RecessTime.FIRST_RECESS))
+                .thenReturn(slot);
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("ABC123");
+        when(purchaseRepository.save(any(Purchase.class))).thenAnswer(invocation ->
+                invocation.getArgument(0));
+
+        useCaseWithMovements.execute(
+                studentId,
+                buffetId,
+                cart,
+                RecessTime.FIRST_RECESS,
+                pickupDate
+        );
+
+        verify(movimientoBilleteraRepository).registrarMovimientoSistema(
+                eq(wallet.getId()),
+                eq(TipoMovimientoBilletera.COMPRA),
+                eq(new BigDecimal("-15.00")),
+                eq("Compra anticipada asistida")
+        );
+    }
+
     private Alumno student() {
         Colegio school = new Colegio();
         school.setId(schoolId);
@@ -213,10 +371,38 @@ class CreateAssistantAdvancePurchaseTest {
         return product;
     }
 
+    private Producto productWithCategory(BigDecimal price, UUID categoryId) {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(categoryId);
+        Producto product = product();
+        product.setPrecio(price);
+        product.setCategoria(category);
+        return product;
+    }
+
     private Billetera wallet() {
         Billetera wallet = new Billetera();
+        wallet.setId(UUID.randomUUID());
         wallet.setSaldoCreditos(new BigDecimal("100.00"));
         return wallet;
+    }
+
+    private CreateAssistantAdvancePurchase useCaseWithMovements() {
+        return new CreateAssistantAdvancePurchase(
+                studentRepository,
+                walletRepository,
+                purchaseRepository,
+                recessTimeSlotResolver,
+                timeValidator,
+                healthValidator,
+                budgetValidator,
+                withdrawalCodeService,
+                Clock.fixed(Instant.parse("2026-05-27T12:00:00Z"),
+                        ZoneId.of("America/Argentina/Buenos_Aires")),
+                inventoryAvailabilityService,
+                advancePurchaseRulesService,
+                movimientoBilleteraRepository
+        );
     }
 
     private FranjaHoraria timeSlot() {

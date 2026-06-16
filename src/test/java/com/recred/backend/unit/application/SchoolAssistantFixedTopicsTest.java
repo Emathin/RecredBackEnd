@@ -4,6 +4,7 @@ import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.SchoolAssistantFixedReply;
 import com.recred.backend.application.SchoolAssistantFixedTopics;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
+import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.MedioPago;
@@ -199,6 +200,7 @@ class SchoolAssistantFixedTopicsTest {
     void confirmsPendingAdvancePurchaseWithRecess() {
         Producto product = product("Yogur", new BigDecimal("900.00"));
         Purchase savedPurchase = purchase(product, 1, NOW);
+        savedPurchase.setStudent(alumno(studentId));
         savedPurchase.setId(UUID.randomUUID());
         savedPurchase.setStatus(EstadoCompra.PENDIENTE);
         savedPurchase.setWithdrawalCode("ABC123");
@@ -509,6 +511,609 @@ class SchoolAssistantFixedTopicsTest {
                 answer.action().type());
     }
 
+    @Test
+    void balanceWithoutRegisteredAmountUsesFallbackAnswer() {
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "saldo disponible",
+                studentContext(null),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals(
+                "Todavia no veo saldo registrado en tu cuenta.",
+                reply.orElseThrow().answer()
+        );
+        assertTrue(reply.orElseThrow().action().data().containsKey("saldo"));
+    }
+
+    @Test
+    void recentPurchasesWithoutHistoryUsesEmptyAnswer() {
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of());
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "historial de compras",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals(
+                "Todavia no veo compras registradas en tu historial.",
+                reply.orElseThrow().answer()
+        );
+    }
+
+    @Test
+    void menuWithoutPreviousBuffetUsesMissingBuffetAnswer() {
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of());
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "que venden",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals(
+                "Todavia no se que buffet usar para mostrarte productos.",
+                reply.orElseThrow().answer()
+        );
+        assertEquals(SchoolAssistantActionType.CONSULTA_MENU,
+                reply.orElseThrow().action().type());
+    }
+
+    @Test
+    void menuWithPreviousBuffetShowsOnlyAvailableProducts() {
+        Producto available = product("Ensalada", new BigDecimal("1500.00"));
+        available.setStockActual(3);
+        Producto unavailable = product("Tarta", new BigDecimal("1200.00"));
+        unavailable.setStockActual(0);
+        Purchase purchase = purchase(available, 1, NOW.minusDays(1));
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of(purchase));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(
+                available,
+                unavailable
+        ));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "menu",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertTrue(reply.orElseThrow().answer().contains("Ensalada"));
+        assertFalse(reply.orElseThrow().answer().contains("Tarta"));
+        assertEquals(buffetId.toString(), reply.orElseThrow().action().data().get("buffetId"));
+    }
+
+    @Test
+    void pendingOrdersForStudentShowsPendingPurchasesOnly() {
+        Producto product = product("Medialuna", new BigDecimal("500.00"));
+        Purchase pending = purchase(product, 2, NOW.minusMinutes(20));
+        pending.setStatus(EstadoCompra.LISTO);
+        Purchase delivered = purchase(product, 1, NOW.minusDays(1));
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of(
+                pending,
+                delivered
+        ));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "pedidos pendientes",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertTrue(reply.orElseThrow().answer().contains("Medialuna"));
+        assertTrue(reply.orElseThrow().answer().contains("Listo"));
+        assertEquals(SchoolAssistantActionType.CONSULTA_PEDIDOS,
+                reply.orElseThrow().action().type());
+    }
+
+    @Test
+    void withdrawalCodeForStudentShowsFirstPendingCode() {
+        Producto product = product("Jugo", new BigDecimal("800.00"));
+        Purchase purchase = purchase(product, 1, NOW.minusMinutes(15));
+        purchase.setStatus(EstadoCompra.LISTO);
+        purchase.setWithdrawalCode("RET123");
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of(purchase));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "codigo de retiro",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("Tu codigo de retiro es RET123.", reply.orElseThrow().answer());
+        assertEquals(SchoolAssistantActionType.CONSULTA_CODIGO_RETIRO,
+                reply.orElseThrow().action().type());
+    }
+
+    @Test
+    void cancellationWithPendingActionCancelsIt() {
+        Producto product = product("Yogur", new BigDecimal("900.00"));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "cancelar",
+                studentContext(new BigDecimal("5000.00")),
+                List.of(assistantMessage(pendingMetadata(product.getId(), 1)))
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("Listo, descarte esa compra pendiente.", reply.orElseThrow().answer());
+        assertEquals("CANCELADA", reply.orElseThrow().metadata().get("estadoAccionChatbot"));
+        assertEquals(SchoolAssistantActionStatus.CANCELADA,
+                reply.orElseThrow().action().status());
+    }
+
+    @Test
+    void cancellationWithoutPendingActionExplainsThereIsNothingToCancel() {
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "cancelar",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No tengo ninguna compra pendiente para cancelar.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void kiosqueroPendingOrdersUsesRepositoryStatusesAndLimit() {
+        Producto product = product("Cafe", new BigDecimal("600.00"));
+        Purchase purchase = purchase(product, 1, NOW);
+        purchase.setStatus(EstadoCompra.EN_PREPARACION);
+        when(purchaseRepository.findByBuffetAndStatuses(
+                eq(buffetId),
+                eq(List.of(
+                        EstadoCompra.PENDIENTE,
+                        EstadoCompra.EN_PREPARACION,
+                        EstadoCompra.LISTO
+                )),
+                eq(3)
+        )).thenReturn(List.of(purchase));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "estado de pedido",
+                kiosqueroContext(),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertTrue(reply.orElseThrow().answer().contains("Pedidos pendientes"));
+        assertTrue(reply.orElseThrow().answer().contains("Cafe"));
+    }
+
+    @Test
+    void tutorWithoutChildrenUsesEmptyFactsAnswer() {
+        SchoolAssistantContext context = new SchoolAssistantContext(
+                null,
+                Optional.empty(),
+                List.of(),
+                List.of(),
+                List.of(),
+                SchoolAssistantRole.TUTOR,
+                UUID.randomUUID(),
+                null,
+                List.of(),
+                List.of()
+        );
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "hijos",
+                context,
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No veo hijos asociados a tu cuenta.", reply.orElseThrow().answer());
+    }
+
+    @Test
+    void unknownStudentMessageReturnsEmpty() {
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "necesito ayuda con otra cosa",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isEmpty());
+    }
+
+    @Test
+    void unsupportedStudentIntentReturnsEmpty() {
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "ver presupuestos",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isEmpty());
+    }
+
+    @Test
+    void unsupportedTutorIntentReturnsEmpty() {
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "saldo disponible",
+                tutorContext(),
+                List.of()
+        );
+
+        assertTrue(reply.isEmpty());
+    }
+
+    @Test
+    void tutorStockQuestionReturnsEmpty() {
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "ver stock",
+                tutorContext(),
+                List.of()
+        );
+
+        assertTrue(reply.isEmpty());
+    }
+
+    @Test
+    void kiosqueroChildrenQuestionReturnsEmpty() {
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "mis hijos",
+                kiosqueroContext(),
+                List.of()
+        );
+
+        assertTrue(reply.isEmpty());
+    }
+
+    @Test
+    void kiosqueroPendingOrdersWithoutPurchasesUsesEmptyAnswer() {
+        when(purchaseRepository.findByBuffetAndStatuses(
+                eq(buffetId),
+                eq(List.of(
+                        EstadoCompra.PENDIENTE,
+                        EstadoCompra.EN_PREPARACION,
+                        EstadoCompra.LISTO
+                )),
+                eq(3)
+        )).thenReturn(List.of());
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "pedidos pendientes",
+                kiosqueroContext(),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No hay pedidos pendientes en el buffet por ahora.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void stockWithoutProductsUsesEmptyAnswer() {
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of());
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "inventario",
+                kiosqueroContext(),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No veo productos activos con stock por ahora.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void tutorBudgetsWithoutChildrenUsesEmptyFactsAnswer() {
+        SchoolAssistantContext context = new SchoolAssistantContext(
+                null,
+                Optional.empty(),
+                List.of(),
+                List.of(),
+                List.of(),
+                SchoolAssistantRole.TUTOR,
+                UUID.randomUUID(),
+                null,
+                List.of(),
+                List.of()
+        );
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "presupuestos",
+                context,
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No veo datos de hijos asociados a tu cuenta.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void eventsWithoutEventsUsesEmptyAnswer() {
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "eventos",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No veo eventos escolares proximos por ahora.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void menuWithPreviousBuffetButNoAvailableProductsUsesEmptyAnswer() {
+        Producto previousProduct = product("Pancho", new BigDecimal("1000.00"));
+        Purchase purchase = purchase(previousProduct, 1, NOW.minusDays(1));
+        Producto unavailable = product("Tarta", new BigDecimal("1200.00"));
+        unavailable.setStockActual(0);
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of(purchase));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(unavailable));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "menu",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No veo productos disponibles para ese buffet por ahora.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void studentPendingOrdersWithoutPendingPurchasesUsesEmptyAnswer() {
+        Producto product = product("Alfajor", new BigDecimal("700.00"));
+        Purchase purchase = purchase(product, 1, NOW.minusDays(1));
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of(purchase));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "pedidos pendientes",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No tenes pedidos pendientes.", reply.orElseThrow().answer());
+    }
+
+    @Test
+    void withdrawalCodeWithoutAvailableCodeUsesEmptyAnswer() {
+        Producto product = product("Jugo", new BigDecimal("800.00"));
+        Purchase purchase = purchase(product, 1, NOW.minusMinutes(15));
+        purchase.setStatus(EstadoCompra.LISTO);
+        purchase.setWithdrawalCode(" ");
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of(purchase));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "codigo de retiro",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No veo ningun pedido pendiente con codigo de retiro.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void repeatLastPurchaseWithoutRebuyableHistoryUsesFailedAnswer() {
+        Purchase purchase = new Purchase();
+        purchase.setStatus(EstadoCompra.ENTREGADO);
+        purchase.setItems(null);
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of(purchase));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "repeti mi ultima compra",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("Todavia no encontre una compra tuya que pueda repetir.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void buyUsualPurchaseWithoutPatternUsesFailedAnswer() {
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of());
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "comprame lo de siempre",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("Todavia no tengo suficientes compras tuyas para armar "
+                        + "una compra habitual.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void confirmWithoutPendingActionUsesFailedAnswer() {
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "confirmar",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No tengo ninguna compra pendiente para confirmar.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void selectRecessWithoutPendingActionUsesFailedAnswer() {
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "segundo recreo",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No tengo ninguna compra pendiente para elegir recreo.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void confirmPendingPurchaseFromAnotherStudentFails() {
+        Producto product = product("Yogur", new BigDecimal("900.00"));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "confirmar",
+                studentContext(new BigDecimal("5000.00")),
+                List.of(assistantMessage(pendingMetadata(
+                        UUID.randomUUID(),
+                        product.getId(),
+                        1,
+                        RecessTime.FIRST_RECESS
+                )))
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("Esa compra pendiente no corresponde a tu usuario.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void selectRecessForPendingPurchaseFromAnotherStudentFails() {
+        Producto product = product("Yogur", new BigDecimal("900.00"));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "salida",
+                studentContext(new BigDecimal("5000.00")),
+                List.of(assistantMessage(pendingMetadata(
+                        UUID.randomUUID(),
+                        product.getId(),
+                        1,
+                        null
+                )))
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("Esa compra pendiente no corresponde a tu usuario.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void confirmPendingPurchaseWithUnavailableProductFails() {
+        UUID productId = UUID.randomUUID();
+        when(productRepository.findActiveById(productId)).thenReturn(Optional.empty());
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "confirmar",
+                studentContext(new BigDecimal("5000.00")),
+                List.of(assistantMessage(pendingMetadata(
+                        productId,
+                        1,
+                        RecessTime.FIRST_RECESS
+                )))
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No pude realizar la compra porque algun producto ya no esta "
+                        + "disponible.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void repeatLastPurchaseWithUnavailableProductDoesNotCreatePlan() {
+        Producto product = product("Agua", new BigDecimal("700.00"));
+        Purchase purchase = purchase(product, 1, NOW.minusDays(1));
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of(purchase));
+        when(productRepository.findActiveById(product.getId())).thenReturn(Optional.empty());
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "repeti mi ultima compra",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("Todavia no encontre una compra tuya que pueda repetir.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void buyUsualPurchaseWithoutBuffetDoesNotCreatePlan() {
+        Producto product = product("Barrita", new BigDecimal("650.00"));
+        Purchase firstPurchase = purchase(product, 1, NOW.minusDays(1));
+        Purchase secondPurchase = purchase(product, 1, NOW.minusDays(2));
+        firstPurchase.setBuffetId(null);
+        secondPurchase.setBuffetId(null);
+
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of(
+                firstPurchase,
+                secondPurchase
+        ));
+        when(productRepository.findActiveById(product.getId())).thenReturn(Optional.of(product));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "comprame lo de siempre",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("Todavia no tengo suficientes compras tuyas para armar "
+                        + "una compra habitual.",
+                reply.orElseThrow().answer());
+    }
+
+    @Test
+    void frequentPurchasesWithPatternsListsSortedPatterns() {
+        Producto first = product("Agua", new BigDecimal("700.00"));
+        Producto second = product("Alfajor", new BigDecimal("500.00"));
+        Producto third = product("Jugo", new BigDecimal("800.00"));
+
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of(
+                purchase(first, 1, NOW.minusDays(3)),
+                purchase(second, 1, NOW.minusHours(1)),
+                purchase(third, 1, NOW.minusHours(2)),
+                purchase(first, 1, NOW.minusDays(1)),
+                purchase(second, 1, NOW.minusDays(4)),
+                purchase(third, 1, NOW.minusDays(5)),
+                purchase(first, 1, NOW.minusDays(2))
+        ));
+        when(productRepository.findById(first.getId())).thenReturn(Optional.of(first));
+        when(productRepository.findById(second.getId())).thenReturn(Optional.of(second));
+        when(productRepository.findById(third.getId())).thenReturn(Optional.of(third));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "que compro seguido",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        String answer = reply.orElseThrow().answer();
+        assertTrue(answer.contains("Tus compras frecuentes"));
+        assertTrue(answer.indexOf("Agua") < answer.indexOf("Alfajor"));
+        assertTrue(answer.indexOf("Alfajor") < answer.indexOf("Jugo"));
+        assertTrue(answer.contains("3 veces"));
+    }
+
+    @Test
+    void stockProductWithMissingFieldsUsesFormatterFallbacks() {
+        Producto product = product(null, null);
+        product.setStockActual(null);
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "stock",
+                kiosqueroContext(),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertTrue(reply.orElseThrow().answer().contains("Producto por $0.00"));
+    }
+
     private SchoolAssistantContext studentContext(BigDecimal balance) {
         return studentContext(balance, List.of());
     }
@@ -592,6 +1197,12 @@ class SchoolAssistantFixedTopicsTest {
         return purchase;
     }
 
+    private Alumno alumno(UUID id) {
+        Alumno alumno = new Alumno();
+        alumno.setId(id);
+        return alumno;
+    }
+
     private ChatMessage assistantMessage(Map<String, Object> metadata) {
         return new ChatMessage(
                 sessionId,
@@ -611,20 +1222,35 @@ class SchoolAssistantFixedTopicsTest {
             int quantity,
             RecessTime recessTime
     ) {
+        return pendingMetadata(studentId, productId, quantity, recessTime);
+    }
+
+    private Map<String, Object> pendingMetadata(
+            UUID ownerStudentId,
+            UUID productId,
+            int quantity,
+            RecessTime recessTime
+    ) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("estadoAccionChatbot", "PENDIENTE");
-        metadata.put("accionPendienteChatbot", pendingAction(productId, quantity, recessTime));
+        metadata.put("accionPendienteChatbot", pendingAction(
+                ownerStudentId,
+                productId,
+                quantity,
+                recessTime
+        ));
         return metadata;
     }
 
     private Map<String, Object> pendingAction(
+            UUID ownerStudentId,
             UUID productId,
             int quantity,
             RecessTime recessTime
     ) {
         Map<String, Object> action = new LinkedHashMap<>();
         action.put("tipo", "COMPRA_RAPIDA");
-        action.put("alumnoId", studentId.toString());
+        action.put("alumnoId", ownerStudentId.toString());
         action.put("buffetId", buffetId.toString());
         if (recessTime != null)
             action.put("recreo", recessTime.name());

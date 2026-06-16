@@ -52,7 +52,6 @@ public class SaveCarritoFavorito {
                 .orElseThrow(() -> new SecurityException(
                         "No se encontró perfil de tutor para el usuario"));
 
-        // Validate child belongs to tutor
         Alumno student = alumnoRepository.findById(alumnoId)
                 .orElseThrow(() -> new IllegalArgumentException("Hijo no encontrado"));
 

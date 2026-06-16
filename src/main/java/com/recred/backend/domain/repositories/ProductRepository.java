@@ -19,5 +19,5 @@ public interface ProductRepository {
     ProductChangeRecommendation findBuffetLeastSoldProducts(UUID buffetId);
     List<ProductChangeRecommendation> findBuffetTop5LeastSoldProducts(UUID buffetId);
     List<Producto> findBestSoldProducts();
-
-}
+    List<Producto> findBuffetTop3MostSold(UUID buffetId, UUID categoriaId);
+    }

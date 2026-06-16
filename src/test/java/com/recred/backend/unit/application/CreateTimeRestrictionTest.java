@@ -13,7 +13,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.CategoriaProducto;
+import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import java.util.List;
 import java.util.Optional;
 
 import java.util.UUID;
@@ -97,5 +101,97 @@ class CreateTimeRestrictionTest {
 
                 assertEquals(categoryId, guardada.getCategoria().getId());
                 assertEquals(classificationId, guardada.getClasificacionSalud().getId());
+        }
+
+        @Test
+        void execute_CuandoAlumnoYaTieneRestriccionGlobalDeSalud_LanzaExcepcion() {
+                UUID studentId = UUID.randomUUID();
+                UUID classificationId = UUID.randomUUID();
+                TimeRestrictionCommand command = new TimeRestrictionCommand(
+                                studentId,
+                                UUID.randomUUID(),
+                                null,
+                                classificationId);
+                Usuario usuario = new Usuario();
+                usuario.setId(UUID.randomUUID());
+                Alumno alumno = new Alumno();
+                ClasificacionSalud restriccion = new ClasificacionSalud();
+                restriccion.setId(classificationId);
+                alumno.setRestriccionesSalud(java.util.Set.of(restriccion));
+                when(usuarioRepository.findByIdCognito("test-sub")).thenReturn(Optional.of(usuario));
+                when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
+
+                assertThrows(IllegalArgumentException.class,
+                                () -> createTimeRestriction.execute(command, "test-sub"));
+        }
+
+        @Test
+        void execute_CuandoYaExisteRestriccionActivaPorCategoria_LanzaExcepcion() {
+                UUID studentId = UUID.randomUUID();
+                UUID timeSlotId = UUID.randomUUID();
+                UUID categoryId = UUID.randomUUID();
+                TimeRestrictionCommand command = new TimeRestrictionCommand(
+                                studentId,
+                                timeSlotId,
+                                categoryId,
+                                null);
+                Usuario usuario = new Usuario();
+                usuario.setId(UUID.randomUUID());
+                when(usuarioRepository.findByIdCognito("test-sub")).thenReturn(Optional.of(usuario));
+                when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(new Alumno()));
+                when(repository.findAllByAlumnoEntityId(studentId))
+                                .thenReturn(List.of(restriccionPorCategoria(
+                                                studentId,
+                                                timeSlotId,
+                                                categoryId)));
+
+                assertThrows(IllegalArgumentException.class,
+                                () -> createTimeRestriction.execute(command, "test-sub"));
+        }
+
+        @Test
+        void execute_CuandoYaExisteRestriccionActivaPorClasificacion_LanzaExcepcion() {
+                UUID studentId = UUID.randomUUID();
+                UUID timeSlotId = UUID.randomUUID();
+                UUID classificationId = UUID.randomUUID();
+                TimeRestrictionCommand command = new TimeRestrictionCommand(
+                                studentId,
+                                timeSlotId,
+                                null,
+                                classificationId);
+                Usuario usuario = new Usuario();
+                usuario.setId(UUID.randomUUID());
+                when(usuarioRepository.findByIdCognito("test-sub")).thenReturn(Optional.of(usuario));
+                when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(new Alumno()));
+                when(repository.findAllByAlumnoEntityId(studentId))
+                                .thenReturn(List.of(restriccionPorClasificacion(
+                                                studentId,
+                                                timeSlotId,
+                                                classificationId)));
+
+                assertThrows(IllegalArgumentException.class,
+                                () -> createTimeRestriction.execute(command, "test-sub"));
+        }
+
+        private RestriccionHoraria restriccionPorCategoria(
+                        UUID studentId,
+                        UUID timeSlotId,
+                        UUID categoryId) {
+                FranjaHoraria franja = new FranjaHoraria();
+                franja.setId(timeSlotId);
+                CategoriaProducto categoria = new CategoriaProducto();
+                categoria.setId(categoryId);
+                return new RestriccionHoraria(null, studentId, franja, categoria, null);
+        }
+
+        private RestriccionHoraria restriccionPorClasificacion(
+                        UUID studentId,
+                        UUID timeSlotId,
+                        UUID classificationId) {
+                FranjaHoraria franja = new FranjaHoraria();
+                franja.setId(timeSlotId);
+                ClasificacionSalud clasificacion = new ClasificacionSalud();
+                clasificacion.setId(classificationId);
+                return new RestriccionHoraria(null, studentId, franja, null, clasificacion);
         }
 }

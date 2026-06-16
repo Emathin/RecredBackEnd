@@ -71,4 +71,16 @@ class GetStockMovementsTest {
         assertThrows(InventoryNotFoundException.class,
                 () -> useCase.execute(buffetId, productId));
     }
+
+    @Test
+    void execute_WhenBuffetIdIsNull_ShouldThrowException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(null, UUID.randomUUID()));
+    }
+
+    @Test
+    void execute_WhenProductIdIsNull_ShouldThrowException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(UUID.randomUUID(), null));
+    }
 }

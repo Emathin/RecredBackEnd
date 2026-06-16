@@ -5,9 +5,12 @@ import com.recred.backend.domain.models.DailyBuffetReport;
 import com.recred.backend.domain.models.DailyInventorySnapshot;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoInventario;
+import com.recred.backend.domain.models.MedioPago;
+import com.recred.backend.domain.models.MovimientoStock;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoManejoInventario;
+import com.recred.backend.domain.models.TipoMovimientoStock;
 import com.recred.backend.domain.repositories.DailyBuffetCloseRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -16,6 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -117,10 +121,104 @@ class GenerateDailyBuffetReportTest {
         verify(productRepository, never()).findAllActiveWithStock(buffetId);
     }
 
+    @Test
+    void execute_ShouldAggregateRefundsPaymentsMovementsAndFallbackInventory() {
+        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
+        ProductRepository productRepository = mock(ProductRepository.class);
+        StockMovementRepository stockMovementRepository = mock(StockMovementRepository.class);
+        DailyBuffetCloseRepository dailyBuffetCloseRepository =
+                mock(DailyBuffetCloseRepository.class);
+        GenerateDailyBuffetReport useCase = new GenerateDailyBuffetReport(
+                purchaseRepository,
+                productRepository,
+                stockMovementRepository,
+                dailyBuffetCloseRepository
+        );
+        UUID buffetId = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 5, 27);
+        Producto paidProduct = product("Alfajor", "20.00");
+        Producto freeProduct = product("Producto sin precio", "1.00");
+        freeProduct.setPrecio(null);
+        Producto withoutInventory = product("Sin inventario", "1.00");
+        Producto soldOutProduct = inventoryProduct(product("Agotado", "1.00"));
+        soldOutProduct.setStockDisponible(0);
+        soldOutProduct.setEstadoInventario(EstadoInventario.SIN_STOCK);
+        Producto saturatedDailyCapacity = dailyCapacityProduct("Cupo lleno", "5.00");
+        List<Purchase> purchases = List.of(
+                purchase(EstadoCompra.ENTREGADO, paidProduct, 2, MedioPago.CREDITOS),
+                purchase(EstadoCompra.ENTREGADO, freeProduct, 1, null),
+                purchase(EstadoCompra.CANCELADO, paidProduct, 1, MedioPago.CREDITOS),
+                purchase(EstadoCompra.RECHAZADO, paidProduct, 1, MedioPago.CREDITOS),
+                purchase(EstadoCompra.EN_PREPARACION, paidProduct, 1, MedioPago.CREDITOS),
+                purchase(EstadoCompra.LISTO, paidProduct, 1, MedioPago.CREDITOS),
+                purchase(EstadoCompra.VENCIDO, paidProduct, 1, MedioPago.CREDITOS)
+        );
+        List<MovimientoStock> movements = List.of(
+                movement(TipoMovimientoStock.LIBERACION, 3),
+                movement(TipoMovimientoStock.LIBERACION, null),
+                movement(TipoMovimientoStock.VENTA, 2),
+                movement(null, 9)
+        );
+        when(purchaseRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
+                .thenReturn(purchases);
+        when(stockMovementRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
+                .thenReturn(movements);
+        when(dailyBuffetCloseRepository.findInventorySnapshotByBuffetAndDate(buffetId, date))
+                .thenReturn(Optional.empty());
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(
+                withoutInventory,
+                soldOutProduct,
+                saturatedDailyCapacity
+        ));
+        when(purchaseRepository.sumScheduledProductQuantity(
+                eq(buffetId),
+                eq(saturatedDailyCapacity.getId()),
+                eq(date),
+                anyList()
+        )).thenReturn(20L);
+
+        DailyBuffetReport report = useCase.execute(buffetId, date);
+
+        assertEquals(7, report.totalOrders());
+        assertEquals(2, report.deliveredOrders());
+        assertEquals(1, report.inPreparationOrders());
+        assertEquals(1, report.readyOrders());
+        assertEquals(1, report.expiredOrders());
+        assertEquals(1, report.cancelledOrders());
+        assertEquals(1, report.rejectedOrders());
+        assertEquals(new BigDecimal("40.00"), report.deliveredTotal());
+        assertEquals(new BigDecimal("40.00"), report.refundedCredits());
+        assertEquals(3, report.releasedReservations());
+        assertEquals(2, report.products().size());
+        assertEquals(1, report.salesByPaymentMethod().size());
+        assertEquals(MedioPago.CREDITOS,
+                report.salesByPaymentMethod().get(0).paymentMethod());
+        assertEquals(2, report.stockMovements().size());
+        assertEquals(List.of(soldOutProduct.getId()), report.soldOutProducts().stream()
+                .map(DailyInventorySnapshot::productId)
+                .toList());
+        assertEquals(0, report.inventory().stream()
+                .filter(item -> item.productId().equals(saturatedDailyCapacity.getId()))
+                .findFirst()
+                .orElseThrow()
+                .cupoDisponibleDia());
+    }
+
     private Purchase purchase(EstadoCompra status, Producto product, int quantity) {
+        return purchase(status, product, quantity, null);
+    }
+
+    private Purchase purchase(
+            EstadoCompra status,
+            Producto product,
+            int quantity,
+            MedioPago paymentMethod
+    ) {
         Purchase purchase = new Purchase();
         purchase.setStatus(status);
-        purchase.setTotalAmount(product.getPrecio().multiply(BigDecimal.valueOf(quantity)));
+        BigDecimal price = product.getPrecio() == null ? BigDecimal.ZERO : product.getPrecio();
+        purchase.setTotalAmount(price.multiply(BigDecimal.valueOf(quantity)));
+        purchase.setPaymentMethod(paymentMethod);
         purchase.setItems(Map.of(product, quantity));
         return purchase;
     }
@@ -155,5 +253,20 @@ class GenerateDailyBuffetReportTest {
         product.setEstadoInventario(EstadoInventario.DISPONIBLE);
         product.setTipoManejoInventario(TipoManejoInventario.CUPO_DIARIO);
         return product;
+    }
+
+    private MovimientoStock movement(TipoMovimientoStock type, Integer quantity) {
+        return new MovimientoStock(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                type,
+                quantity,
+                10,
+                7,
+                "Movimiento",
+                null,
+                null,
+                LocalDateTime.now()
+        );
     }
 }

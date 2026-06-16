@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -376,6 +377,33 @@ public class ProductRepositoryImplTest {
     }
 
     @Test
+    void findActiveByIdWithStock_WhenThereIsNoInventoryData_ShouldThrowCurrentNullPointer() {
+        UUID id = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(id);
+        entity.setNombre("Sin inventario");
+        Object[] resultObj = new Object[]{
+                entity,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        };
+
+        when(springDataRepository.findActiveByIdWithStockParams(id, buffetId))
+                .thenReturn(Optional.of(resultObj));
+
+        assertThrows(
+                NullPointerException.class,
+                () -> productRepository.findActiveByIdWithStock(id, buffetId)
+        );
+    }
+
+    @Test
     void dadoQueSeLlamaFindActiveByIdWithStock_cuandoExiste_entoncesMapeaCorrectamente() {
         UUID id = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -399,5 +427,118 @@ public class ProductRepositoryImplTest {
         assertTrue(result.isPresent());
         assertEquals(10, result.get().getStockActual());
         assertEquals(8, result.get().getStockDisponible());
+    }
+
+    @Test
+    void findAllActiveReturnsMappedDomains() {
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setNombre("Activo");
+        when(springDataRepository.findAllByActivoTrue()).thenReturn(List.of(entity));
+
+        List<Producto> result = productRepository.findAllActive();
+
+        assertEquals(1, result.size());
+        assertEquals("Activo", result.get(0).getNombre());
+    }
+
+    @Test
+    void findActiveByIdReturnsMappedDomain() {
+        UUID id = UUID.randomUUID();
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(id);
+        entity.setNombre("Activo");
+        when(springDataRepository.findByIdAndActivoTrue(id)).thenReturn(Optional.of(entity));
+
+        Optional<Producto> result = productRepository.findActiveById(id);
+
+        assertTrue(result.isPresent());
+        assertEquals(id, result.orElseThrow().getId());
+    }
+
+    @Test
+    void findActiveByIdWithStockReturnsEmptyWhenSpringDataReturnsEmpty() {
+        UUID id = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        when(springDataRepository.findActiveByIdWithStockParams(id, buffetId))
+                .thenReturn(Optional.empty());
+
+        Optional<Producto> result = productRepository.findActiveByIdWithStock(id, buffetId);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void findAllActiveWithStockWithoutInventoryDataThrowsCurrentNullPointer() {
+        UUID buffetId = UUID.randomUUID();
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(UUID.randomUUID());
+        Object[] resultObj = new Object[]{
+                entity,
+                null,
+                "sin numero",
+                null,
+                null,
+                null,
+                null,
+                null
+        };
+        when(springDataRepository.findAllActiveWithStockParams(buffetId))
+                .thenReturn(List.<Object[]>of(resultObj));
+
+        assertThrows(
+                NullPointerException.class,
+                () -> productRepository.findAllActiveWithStock(buffetId)
+        );
+    }
+
+    @Test
+    void findBuffetTop5LeastSoldProductsMapsRecommendations() {
+        UUID buffetId = UUID.randomUUID();
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setNombre("Menos vendido");
+        entity.setPrecio(new java.math.BigDecimal("100.00"));
+        when(springDataRepository.findBuffetTop5LeastSoldProducts(buffetId))
+                .thenReturn(List.of(entity));
+
+        List<ProductChangeRecommendation> result =
+                productRepository.findBuffetTop5LeastSoldProducts(buffetId);
+
+        assertEquals(1, result.size());
+        assertEquals(entity.getId(), result.get(0).getId());
+        assertEquals(buffetId, result.get(0).getIdBuffet());
+    }
+
+    @Test
+    void findBestSoldProductsMapsDomains() {
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setNombre("Mas vendido");
+        when(springDataRepository.findBestSoldProducts()).thenReturn(List.of(entity));
+
+        List<Producto> result = productRepository.findBestSoldProducts();
+
+        assertEquals(1, result.size());
+        assertEquals("Mas vendido", result.get(0).getNombre());
+    }
+
+    @Test
+    void updatePriceDelegatesToSpringDataRepository() {
+        UUID productId = UUID.randomUUID();
+        java.math.BigDecimal newPrice = new java.math.BigDecimal("1200.00");
+
+        productRepository.updatePrice(productId, newPrice);
+
+        verify(springDataRepository).updatePrice(productId, newPrice);
+    }
+
+    @Test
+    void saveThrowsWhenCategoryIsMissing() {
+        Producto producto = new Producto();
+        producto.setNombre("Sin categoria");
+
+        assertThrows(IllegalArgumentException.class, () -> productRepository.save(producto));
+        verify(springDataRepository, never()).save(any(ProductoEntity.class));
     }
 }

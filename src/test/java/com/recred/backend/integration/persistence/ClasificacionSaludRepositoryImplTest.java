@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -115,5 +116,23 @@ class ClasificacionSaludRepositoryImplTest {
         assertTrue(resultado.isEmpty(), "La lista debería estar vacía");
 
         verify(springDataRepository).findAll();
+    }
+
+    @Test
+    void toEntity_DeberiaMapearModeloAEntidad() {
+        ClasificacionSalud modelo = new ClasificacionSalud();
+        modelo.setId(id1);
+        modelo.setDescripcion("Sin azÃºcar");
+        modelo.setActivo(true);
+
+        ClasificacionSaludEntity entity = ReflectionTestUtils.invokeMethod(
+                repositoryImpl,
+                "toEntity",
+                modelo
+        );
+
+        assertEquals(id1, entity.getId());
+        assertEquals("Sin azÃºcar", entity.getDescripcion());
+        assertTrue(entity.getActivo());
     }
 }

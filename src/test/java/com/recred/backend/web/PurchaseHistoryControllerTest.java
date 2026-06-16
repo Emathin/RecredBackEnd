@@ -8,12 +8,16 @@ import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.infrastructure.web.PurchaseHistoryController;
+import com.recred.backend.infrastructure.web.PurchaseResponseDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,6 +27,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -115,4 +121,41 @@ class PurchaseHistoryControllerTest {
                  .andExpect(jsonPath("$[0].totalAmount").value(1200.00))
                  .andExpect(jsonPath("$[0].status").value("PENDIENTE"));
      }
+
+    @Test
+    void cuandoPideMiHistorialTutor_entoncesUsaElSubjectAutenticado() {
+        String cognitoSubject = "cognito-sub";
+        UUID compraId = UUID.randomUUID();
+        Purchase compra = new Purchase();
+        compra.setId(compraId);
+        compra.setTotalAmount(new BigDecimal("2200.00"));
+        compra.setStatus(EstadoCompra.ENTREGADO);
+        compra.setDate(LocalDateTime.now());
+        PurchaseHistoryController controller = new PurchaseHistoryController(
+                obtenerHistorialAlumno,
+                obtenerHistorialTutor,
+                obtenerHistorialPendienteAlumno
+        );
+        when(obtenerHistorialTutor.executeByCognitoSubject(cognitoSubject))
+                .thenReturn(List.of(compra));
+
+        ResponseEntity<List<PurchaseResponseDTO>> response = controller.getMyHistorial(
+                new UsernamePasswordAuthenticationToken(cognitoSubject, null)
+        );
+
+        assertEquals(1, response.getBody().size());
+        assertEquals(compraId, response.getBody().get(0).getId());
+    }
+
+    @Test
+    void cuandoPideMiHistorialTutorSinAutenticacion_entoncesFalla() {
+        PurchaseHistoryController controller = new PurchaseHistoryController(
+                obtenerHistorialAlumno,
+                obtenerHistorialTutor,
+                obtenerHistorialPendienteAlumno
+        );
+
+        assertThrows(AuthenticationCredentialsNotFoundException.class,
+                () -> controller.getMyHistorial(null));
+    }
 }

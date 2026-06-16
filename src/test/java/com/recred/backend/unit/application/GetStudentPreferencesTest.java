@@ -21,6 +21,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -120,6 +121,107 @@ class GetStudentPreferencesTest {
         assertNotNull(latest.getRespondidaEn());
         verify(sugerenciaIARepository).guardar(latest);
         verify(sugerenciaIARepository, never()).guardar(older);
+    }
+
+    @Test
+    void execute_WithTypeAndOnlyLast_ShouldReturnOnlyFirstPreference() {
+        UUID alumnoId = UUID.randomUUID();
+        SugerenciaIAEntity first = suggestion(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+        SugerenciaIAEntity second = suggestion(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+        when(sugerenciaIARepository.findByAlumnoIdAndTipo(
+                alumnoId,
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA))
+                .thenReturn(List.of(first, second));
+
+        List<SugerenciaIAEntity> result = getStudentPreferences.execute(
+                alumnoId,
+                true,
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA
+        );
+
+        assertEquals(List.of(first), result);
+    }
+
+    @Test
+    void execute_WithoutTypeAndWithoutOnlyLast_ShouldReturnAllPreferences() {
+        UUID alumnoId = UUID.randomUUID();
+        SugerenciaIAEntity first = suggestion(TipoSugerenciaIA.ALERTA_PRECIO);
+        SugerenciaIAEntity second = suggestion(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+        when(sugerenciaIARepository.findByAlumnoId(alumnoId)).thenReturn(List.of(first, second));
+
+        List<SugerenciaIAEntity> result = getStudentPreferences.execute(alumnoId, false, null);
+
+        assertEquals(List.of(first, second), result);
+    }
+
+    @Test
+    void execute_WithOnlyLastAndEmptyPreferences_ShouldReturnEmptyList() {
+        UUID alumnoId = UUID.randomUUID();
+        when(sugerenciaIARepository.findByAlumnoId(alumnoId)).thenReturn(List.of());
+
+        List<SugerenciaIAEntity> result = getStudentPreferences.execute(alumnoId, true, null);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void executeByUserId_WhenParentChildrenHaveNoSuggestions_ShouldReturnEmptyList() {
+        UUID parentUserId = UUID.randomUUID();
+        Tutor tutor = new Tutor();
+        tutor.setHijos(java.util.Set.of(child("Juan", "Perez")));
+
+        when(tutorRepository.findByUsuarioId(parentUserId)).thenReturn(Optional.of(tutor));
+        when(sugerenciaIARepository.findPendingParentNotificationsByAlumnoId(
+                tutor.getHijos().iterator().next().getId(),
+                null))
+                .thenReturn(List.of());
+
+        List<GetStudentPreferences.StudentPreferenceResult> result =
+                getStudentPreferences.executeByUserId(parentUserId, false, null);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void executeByUserId_WhenStudentHasNoPendingSuggestion_ShouldReturnEmptyList() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        Alumno alumno = child("Juan", "Perez");
+        alumno.setId(studentId);
+
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
+        when(sugerenciaIARepository.findPendingStudentNotificationsByAlumnoId(
+                studentId,
+                null)).thenReturn(List.of());
+
+        List<GetStudentPreferences.StudentPreferenceResult> result =
+                getStudentPreferences.executeByUserId(userId, false, null);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void executeByUserId_WhenNoTutorOrStudentExists_ShouldThrowException() {
+        UUID userId = UUID.randomUUID();
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> getStudentPreferences.executeByUserId(userId, false, null));
+    }
+
+    @Test
+    void executeByUserId_WhenStudentEntityDoesNotExist_ShouldThrowException() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> getStudentPreferences.executeByUserId(userId, false, null));
     }
 
     private Alumno child(String name, String lastName) {

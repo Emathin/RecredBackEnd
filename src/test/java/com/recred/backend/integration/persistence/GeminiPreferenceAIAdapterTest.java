@@ -2,6 +2,7 @@ package com.recred.backend.integration.persistence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.infrastructure.gemini.GeminiTextClient;
@@ -10,6 +11,7 @@ import com.recred.backend.infrastructure.persistence.GeminiPreferenceAIAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -21,6 +23,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -104,6 +107,22 @@ class GeminiPreferenceAIAdapterTest {
         assertTrue(result.isPresent());
         assertEquals("Sugerencia Markdown", result.get().titulo());
         assertEquals("prod-456", result.get().productoId());
+    }
+
+    @Test
+    void analyzePreferencesShouldIncludeStudentGradeWhenPresent() {
+        Alumno alumno = new Alumno();
+        Grado grado = new Grado();
+        grado.setAnio("3");
+        grado.setDivision("B");
+        alumno.setGrado(grado);
+        when(geminiTextClient.generate(anyString())).thenReturn(Optional.empty());
+
+        adapter.analizarPreferencias(alumno, Collections.emptyList(), Collections.emptyList());
+
+        ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+        verify(geminiTextClient).generate(promptCaptor.capture());
+        assertTrue(promptCaptor.getValue().contains("- Grado: 3 B"));
     }
 
     @Test

@@ -170,7 +170,6 @@ class TransferBalanceBetweenChildrenTest {
 
     @Test
     void execute_shouldThrowException_whenOneChildNotOwnedByTutor() {
-        // Child 1 is owned but Child 2 is not
         Alumno child1 = new Alumno();
         child1.setId(fromId);
         child1.setNombre("Hijo");

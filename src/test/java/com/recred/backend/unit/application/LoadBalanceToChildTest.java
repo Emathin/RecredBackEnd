@@ -130,7 +130,7 @@ class LoadBalanceToChildTest {
 
     @Test
     void execute_shouldThrowException_whenStudentIsNotChildOfTutor() {
-        tutor.setHijos(Set.of()); // Empty children
+        tutor.setHijos(Set.of());
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
         when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
 
