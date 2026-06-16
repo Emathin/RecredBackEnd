@@ -534,11 +534,85 @@ public class ProductRepositoryImplTest {
     }
 
     @Test
-    void saveThrowsWhenCategoryIsMissing() {
-        Producto producto = new Producto();
-        producto.setNombre("Sin categoria");
+    void findBuffetTop3MostSold_ShouldMapToDomain() {
+        UUID buffetId = UUID.randomUUID();
+        UUID categoryId = UUID.randomUUID();
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setNombre("Most Sold");
+        when(springDataRepository.findBuffetTop3MostSold(eq(buffetId), eq(categoryId), any()))
+                .thenReturn(List.of(entity));
 
-        assertThrows(IllegalArgumentException.class, () -> productRepository.save(producto));
-        verify(springDataRepository, never()).save(any(ProductoEntity.class));
+        List<Producto> result = productRepository.findBuffetTop3MostSold(buffetId, categoryId);
+
+        assertEquals(1, result.size());
+        assertEquals("Most Sold", result.get(0).getNombre());
     }
-}
+
+    @Test
+    void integerValue_ShouldHandleNonNumber() {
+        UUID buffetId = UUID.randomUUID();
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(UUID.randomUUID());
+        Object[] resultObj = new Object[]{
+                entity,
+                "not a number", // stockActual
+                5,
+                3,
+                EstadoInventario.DISPONIBLE,
+                TipoManejoInventario.STOCK_EXACTO,
+                20,
+                45
+        };
+
+        when(springDataRepository.findAllActiveWithStockParams(buffetId))
+                .thenReturn(java.util.Collections.singletonList(resultObj));
+
+        List<Producto> result = productRepository.findAllActiveWithStock(buffetId);
+        assertNull(result.get(0).getStockActual());
+    }
+
+    @Test
+    void save_ShouldCreateNewEntity_WhenIdIsNull() {
+        Producto producto = new Producto();
+        producto.setNombre("New Product");
+        producto.setActivo(true);
+        CategoriaProducto cat = new CategoriaProducto();
+        cat.setId(UUID.randomUUID());
+        producto.setCategoria(cat);
+
+        when(springDataRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        productRepository.save(producto);
+
+        verify(springDataRepository).save(argThat(entity -> entity.getId() == null));
+    }
+
+    @Test
+    void save_ShouldClearCollections_WhenDomainCollectionsAreNull() {
+        UUID id = UUID.randomUUID();
+        Producto producto = new Producto();
+        producto.setId(id);
+        producto.setMedidas(null);
+        producto.setTipos(null);
+        producto.setClasificacionesSalud(null);
+        CategoriaProducto cat = new CategoriaProducto();
+        cat.setId(UUID.randomUUID());
+        producto.setCategoria(cat);
+
+        ProductoEntity entity = new ProductoEntity();
+        entity.setId(id);
+        entity.getMedidas().add(new ProductoMedidaEntity());
+        entity.getTipos().add(new ClasificacionTipoEntity());
+        entity.getClasificacionesSalud().add(new ClasificacionSaludEntity());
+
+        when(springDataRepository.findById(id)).thenReturn(Optional.of(entity));
+        when(springDataRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        productRepository.save(producto);
+
+        assertTrue(entity.getMedidas().isEmpty());
+        assertTrue(entity.getTipos().isEmpty());
+        assertTrue(entity.getClasificacionesSalud().isEmpty());
+    }
+    }

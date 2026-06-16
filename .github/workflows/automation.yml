@@ -26,8 +26,16 @@ jobs:
       - name: Revisar calidad de codigo con Checkstyle
         run: ./mvnw checkstyle:check
 
-      - name: Compilar, testear y verificar
-        run: ./mvnw clean verify
+      - name: Compilar y Testear (Diferencial por rama)
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "Rama protegida detectada (${{ github.ref }}). Corriendo suite completa (verify)..."
+            ./mvnw clean verify
+          else
+            echo "Rama de feature detectada (${{ github.ref }}). Corriendo solo tests unitarios..."
+            ./mvnw clean test -Punit
+          fi
         env:
           COGNITO_ISSUER_URI: ${{ secrets.COGNITO_ISSUER_URI }}
 
