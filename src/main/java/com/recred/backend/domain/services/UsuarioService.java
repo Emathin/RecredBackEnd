@@ -112,6 +112,13 @@ public class UsuarioService {
         return usuarioRepository.save(usuario);
     }
 
+    public Usuario actualizarFotoPerfil(String cognitoId, String urlFotoPerfil) {
+        usuarioRepository.updateFotoPerfil(cognitoId, urlFotoPerfil);
+        Usuario usuario = obtenerUsuarioActual(cognitoId);
+        usuario.setUrlFotoPerfil(urlFotoPerfil);
+        return usuario;
+    }
+
     private void validateEditableProfile(String firstName, String lastName, String phone,
                                          String documentNumber) {
         if (firstName == null && lastName == null && phone == null && documentNumber == null) {
