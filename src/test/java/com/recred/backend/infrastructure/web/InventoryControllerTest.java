@@ -6,6 +6,7 @@ import com.recred.backend.application.AdjustInventoryStockCommand;
 import com.recred.backend.application.GetStockMovements;
 import com.recred.backend.application.InventoryQuickActionCommand;
 import com.recred.backend.application.ListInventoryProducts;
+import com.recred.backend.application.UploadProductImage;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.InventoryQuickActionType;
 import com.recred.backend.domain.models.Inventario;
@@ -48,6 +49,8 @@ class InventoryControllerTest {
     private GetStockMovements getStockMovements;
     @Mock
     private KiosqueroAccessGuard kiosqueroAccessGuard;
+    @Mock
+    private UploadProductImage uploadProductImage;
 
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
@@ -58,7 +61,8 @@ class InventoryControllerTest {
                 adjustInventoryStock,
                 listInventoryProducts,
                 getStockMovements,
-                kiosqueroAccessGuard
+                kiosqueroAccessGuard,
+                uploadProductImage
         )).build();
         objectMapper = new ObjectMapper();
     }

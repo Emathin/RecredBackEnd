@@ -5,6 +5,7 @@ import com.recred.backend.application.AdjustInventoryStockCommand;
 import com.recred.backend.application.GetStockMovements;
 import com.recred.backend.application.InventoryQuickActionCommand;
 import com.recred.backend.application.ListInventoryProducts;
+import com.recred.backend.application.UploadProductImage;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.InventoryQuickActionType;
 import com.recred.backend.domain.models.Inventario;
@@ -24,9 +25,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/inventory")
@@ -36,17 +40,20 @@ public class InventoryController {
     private final ListInventoryProducts listInventoryProducts;
     private final GetStockMovements getStockMovements;
     private final KiosqueroAccessGuard kiosqueroAccessGuard;
+    private final UploadProductImage uploadProductImage;
 
     public InventoryController(
             AdjustInventoryStock adjustInventoryStock,
             ListInventoryProducts listInventoryProducts,
             GetStockMovements getStockMovements,
-            KiosqueroAccessGuard kiosqueroAccessGuard
+            KiosqueroAccessGuard kiosqueroAccessGuard,
+            UploadProductImage uploadProductImage
     ) {
         this.adjustInventoryStock = adjustInventoryStock;
         this.listInventoryProducts = listInventoryProducts;
         this.getStockMovements = getStockMovements;
         this.kiosqueroAccessGuard = kiosqueroAccessGuard;
+        this.uploadProductImage = uploadProductImage;
     }
 
     @GetMapping("/{buffetId}")
@@ -133,6 +140,23 @@ public class InventoryController {
                 .toList();
         return ResponseEntity.ok(movements);
     }
+
+    @PostMapping(
+            value = "/{buffetId}/products/{productId}/imagen",
+            consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<ImagenUploadResponse> subirImagen(
+            @PathVariable UUID buffetId,
+            @PathVariable UUID productId,
+            @RequestParam("imagen") MultipartFile imagen,
+            Authentication authentication
+    ) {
+        kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
+        String url = uploadProductImage.execute(buffetId, productId, imagen);
+        return ResponseEntity.ok(new ImagenUploadResponse(url));
+    }
+
+    public record ImagenUploadResponse(String urlImagen) {}
 
     public record AdjustInventoryStockRequest(
             @PositiveOrZero Integer stockActual,

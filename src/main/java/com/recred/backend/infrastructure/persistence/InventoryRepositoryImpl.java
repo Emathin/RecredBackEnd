@@ -121,4 +121,10 @@ public class InventoryRepositoryImpl implements InventoryRepository {
     private EstadoInventario safeState(EstadoInventario state) {
         return state == null ? EstadoInventario.DISPONIBLE : state;
     }
+
+    @Override
+    @Transactional
+    public void updateUrlImagen(UUID buffetId, UUID productoId, String urlImagen) {
+        springDataInventoryRepository.updateUrlImagen(buffetId, productoId, urlImagen);
+    }
 }

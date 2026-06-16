@@ -98,6 +98,7 @@ import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePurchaseStatus;
 import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.application.UploadProductImage;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
 import com.recred.backend.domain.events.ProductPriceChangedPublisher;
 import com.recred.backend.domain.repositories.AIEventRepository;
@@ -1184,5 +1185,12 @@ public class UseCases {
                 predictStudentSpending,
                 obtenerHistorialAlumno
         );
+    }
+
+    @Bean
+    public UploadProductImage uploadProductImage(
+            com.recred.backend.infrastructure.cloudinary.CloudinaryService cloudinaryService,
+            InventoryRepository inventoryRepository) {
+        return new UploadProductImage(cloudinaryService, inventoryRepository);
     }
 }
