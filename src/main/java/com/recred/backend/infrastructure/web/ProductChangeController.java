@@ -56,7 +56,6 @@ public class ProductChangeController {
     public List<ProductChangeRecommendationResponse> generateProductChangeRecommendationPost(
             @PathVariable("idUsuario") UUID usuarioId
     ) {
-
         return generateProductChangeRecommendation.executeByUsuarioId(usuarioId)
                 .stream()
                 .map(ProductChangeRecommendationResponse::fromDomain)
