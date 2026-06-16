@@ -71,7 +71,8 @@ public class CancelPresentialPurchase {
         }
 
         Billetera wallet = walletRepository.findByStudentId(purchase.getStudent().getId())
-                .orElseThrow(() -> new IllegalStateException("Student wallet not found for refund."));
+                .orElseThrow(() ->
+                             new IllegalStateException("Student wallet not found for refund."));
 
         if (shouldReleaseReservation(purchase, previousStatus)) {
             inventoryAvailabilityService.releaseReservation(
@@ -115,7 +116,7 @@ public class CancelPresentialPurchase {
                 && purchase.getPickupDate() != null;
     }
 
-    private boolean shouldReleaseReservation(Purchase purchase, EstadoCompra previousStatus) {
+    private boolean shouldReleaseReservation(Purchase purchase, EstadoCompra previousStatus){
         return purchase.getTipo() == TipoCompra.ANTICIPADA
                 && previousStatus == EstadoCompra.PENDIENTE;
     }
