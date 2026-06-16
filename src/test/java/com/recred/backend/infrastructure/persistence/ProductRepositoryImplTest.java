@@ -186,6 +186,7 @@ public class ProductRepositoryImplTest {
         assertEquals(entity.getId(), result.getId());
         assertEquals(buffetId, result.getIdBuffet());
     }
+
     @Test
     void save_DeberiaNoReasignarCategoria_CuandoIdEsIgual() {
         UUID id = UUID.randomUUID();
@@ -298,6 +299,7 @@ public class ProductRepositoryImplTest {
 
         assertEquals(catId2, entity.getCategoria().getId());
     }
+
     @Test
     void dadoQueSeLlamaFindAllActiveWithStock_cuandoExisteStock_entoncesMapeaCorrectamente() {
         UUID buffetId = UUID.randomUUID();
@@ -311,8 +313,8 @@ public class ProductRepositoryImplTest {
                 EstadoInventario.DISPONIBLE,
                 TipoManejoInventario.STOCK_EXACTO,
                 20,
-                45
-        );
+                45,
+                null);
 
         when(springDataRepository.findAllActiveWithStockParams(buffetId))
                 .thenReturn(java.util.Collections.singletonList(resultObj));
@@ -340,8 +342,8 @@ public class ProductRepositoryImplTest {
                 EstadoInventario.DISPONIBLE,
                 TipoManejoInventario.STOCK_EXACTO,
                 null,
-                4
-        );
+                4,
+                null);
 
         when(springDataRepository.findAllActiveWithStockParams(buffetId))
                 .thenReturn(java.util.Collections.singletonList(resultObj));
@@ -365,8 +367,8 @@ public class ProductRepositoryImplTest {
                 EstadoInventario.DISPONIBLE,
                 TipoManejoInventario.STOCK_EXACTO,
                 null,
-                0
-        );
+                0,
+                null);
 
         when(springDataRepository.findAllActiveWithStockParams(buffetId))
                 .thenReturn(java.util.Collections.singletonList(resultObj));
@@ -391,8 +393,8 @@ public class ProductRepositoryImplTest {
                 null,
                 null,
                 null,
-                null
-        );
+                null,
+                null);
 
         when(springDataRepository.findActiveByIdWithStockParams(id, buffetId))
                 .thenReturn(Optional.of(resultObj));
@@ -419,8 +421,8 @@ public class ProductRepositoryImplTest {
                 EstadoInventario.DISPONIBLE,
                 TipoManejoInventario.STOCK_EXACTO,
                 null,
-                8
-        );
+                8,
+                null);
 
         when(springDataRepository.findActiveByIdWithStockParams(id, buffetId))
                 .thenReturn(Optional.of(resultObj));
@@ -482,15 +484,14 @@ public class ProductRepositoryImplTest {
                 null,
                 null,
                 null,
-                null
-        );
+                null,
+                null);
         when(springDataRepository.findAllActiveWithStockParams(buffetId))
                 .thenReturn(List.of(resultObj));
 
         assertThrows(
                 InventoryOperationException.class,
-                () -> productRepository.findAllActiveWithStock(buffetId)
-        );
+                () -> productRepository.findAllActiveWithStock(buffetId));
     }
 
     @Test
@@ -503,8 +504,7 @@ public class ProductRepositoryImplTest {
         when(springDataRepository.findBuffetTop5LeastSoldProducts(buffetId))
                 .thenReturn(List.of(entity));
 
-        List<ProductChangeRecommendation> result =
-                productRepository.findBuffetTop5LeastSoldProducts(buffetId);
+        List<ProductChangeRecommendation> result = productRepository.findBuffetTop5LeastSoldProducts(buffetId);
 
         assertEquals(1, result.size());
         assertEquals(entity.getId(), result.get(0).getId());
@@ -551,8 +551,8 @@ public class ProductRepositoryImplTest {
             EstadoInventario estado,
             TipoManejoInventario tipoManejo,
             Number cupoMaximoDiario,
-            Number stockDisponible
-    ) {
+            Number stockDisponible,
+            String urlImagen) {
         return new ProductStockResult(
                 entity,
                 stockActual,
@@ -561,7 +561,7 @@ public class ProductRepositoryImplTest {
                 estado,
                 tipoManejo,
                 cupoMaximoDiario,
-                stockDisponible
-        );
+                stockDisponible,
+                urlImagen);
     }
 }

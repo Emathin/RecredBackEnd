@@ -101,6 +101,7 @@ public class ProductRepositoryImpl implements ProductRepository {
         domain.setTipoManejoInventario(tipoManejo);
         domain.setCupoMaximoDiario(cupoMaximoDiario);
         domain.setStockDisponible(stockDisponible);
+        domain.setUrlImagen(result.urlImagen());
         return domain;
     }
 

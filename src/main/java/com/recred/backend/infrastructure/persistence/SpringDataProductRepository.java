@@ -38,7 +38,8 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                                         ELSE 0
                                     END
                                 ELSE i.stockActual - COALESCE(i.stockReservado, 0)
-                            END
+                            END,
+                            i.urlImagen
                         )
                         FROM ProductoEntity p
                         LEFT JOIN InventarioBuffetEntity i
@@ -67,7 +68,8 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                                         ELSE 0
                                     END
                                 ELSE i.stockActual - COALESCE(i.stockReservado, 0)
-                            END
+                            END,
+                            i.urlImagen
                         )
                         FROM ProductoEntity p
                         LEFT JOIN InventarioBuffetEntity i
