@@ -3,6 +3,7 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.BuyerType;
@@ -400,7 +401,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(productRepository.findActiveByIdWithStock(productId, buffetId))
                 .thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class,
+        assertThrows(ProductNotFoundException.class,
                 () -> useCase.execute(request(buffetId, null), "sub"));
 
         verifyNoInteractions(walletRepository);

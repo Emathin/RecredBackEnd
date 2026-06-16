@@ -1,5 +1,6 @@
 package com.recred.backend.integration.persistence;
 
+import com.recred.backend.domain.exceptions.InventoryOperationException;
 import com.recred.backend.domain.models.*;
 import com.recred.backend.infrastructure.entities.*;
 import com.recred.backend.infrastructure.persistence.ProductRepositoryImpl;
@@ -304,7 +305,7 @@ public class ProductRepositoryImplTest {
         UUID buffetId = UUID.randomUUID();
         ProductoEntity entity = new ProductoEntity();
         entity.setId(UUID.randomUUID());
-        Object[] resultObj = new Object[]{
+        ProductStockResult resultObj = stockResult(
                 entity,
                 50,
                 5,
@@ -313,9 +314,10 @@ public class ProductRepositoryImplTest {
                 TipoManejoInventario.STOCK_EXACTO,
                 20,
                 45
-        };
+        );
 
-        when(springDataRepository.findAllActiveWithStockParams(buffetId)).thenReturn(java.util.Collections.singletonList(resultObj));
+        when(springDataRepository.findAllActiveWithStockParams(buffetId))
+                .thenReturn(java.util.Collections.singletonList(resultObj));
 
         java.util.List<Producto> result = productRepository.findAllActiveWithStock(buffetId);
 
@@ -332,7 +334,7 @@ public class ProductRepositoryImplTest {
         UUID buffetId = UUID.randomUUID();
         ProductoEntity entity = new ProductoEntity();
         entity.setId(UUID.randomUUID());
-        Object[] resultObj = new Object[]{
+        ProductStockResult resultObj = stockResult(
                 entity,
                 4,
                 0,
@@ -341,7 +343,7 @@ public class ProductRepositoryImplTest {
                 TipoManejoInventario.STOCK_EXACTO,
                 null,
                 4
-        };
+        );
 
         when(springDataRepository.findAllActiveWithStockParams(buffetId))
                 .thenReturn(java.util.Collections.singletonList(resultObj));
@@ -357,7 +359,7 @@ public class ProductRepositoryImplTest {
         UUID buffetId = UUID.randomUUID();
         ProductoEntity entity = new ProductoEntity();
         entity.setId(UUID.randomUUID());
-        Object[] resultObj = new Object[]{
+        ProductStockResult resultObj = stockResult(
                 entity,
                 0,
                 0,
@@ -366,7 +368,7 @@ public class ProductRepositoryImplTest {
                 TipoManejoInventario.STOCK_EXACTO,
                 null,
                 0
-        };
+        );
 
         when(springDataRepository.findAllActiveWithStockParams(buffetId))
                 .thenReturn(java.util.Collections.singletonList(resultObj));
@@ -377,13 +379,13 @@ public class ProductRepositoryImplTest {
     }
 
     @Test
-    void findActiveByIdWithStock_WhenThereIsNoInventoryData_ShouldThrowCurrentNullPointer() {
+    void findActiveByIdWithStock_WhenThereIsNoInventoryData_ShouldReturnProductWithoutStock() {
         UUID id = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         ProductoEntity entity = new ProductoEntity();
         entity.setId(id);
         entity.setNombre("Sin inventario");
-        Object[] resultObj = new Object[]{
+        ProductStockResult resultObj = stockResult(
                 entity,
                 null,
                 null,
@@ -392,15 +394,17 @@ public class ProductRepositoryImplTest {
                 null,
                 null,
                 null
-        };
+        );
 
         when(springDataRepository.findActiveByIdWithStockParams(id, buffetId))
                 .thenReturn(Optional.of(resultObj));
 
-        assertThrows(
-                NullPointerException.class,
-                () -> productRepository.findActiveByIdWithStock(id, buffetId)
-        );
+        Optional<Producto> result = productRepository.findActiveByIdWithStock(id, buffetId);
+
+        assertTrue(result.isPresent());
+        assertEquals(id, result.get().getId());
+        assertNull(result.get().getStockActual());
+        assertNull(result.get().getEstadoInventario());
     }
 
     @Test
@@ -409,7 +413,7 @@ public class ProductRepositoryImplTest {
         UUID buffetId = UUID.randomUUID();
         ProductoEntity entity = new ProductoEntity();
         entity.setId(id);
-        Object[] resultObj = new Object[]{
+        ProductStockResult resultObj = stockResult(
                 entity,
                 10,
                 2,
@@ -418,9 +422,10 @@ public class ProductRepositoryImplTest {
                 TipoManejoInventario.STOCK_EXACTO,
                 null,
                 8
-        };
+        );
 
-        when(springDataRepository.findActiveByIdWithStockParams(id, buffetId)).thenReturn(Optional.of(resultObj));
+        when(springDataRepository.findActiveByIdWithStockParams(id, buffetId))
+                .thenReturn(Optional.of(resultObj));
 
         Optional<Producto> result = productRepository.findActiveByIdWithStock(id, buffetId);
 
@@ -469,25 +474,23 @@ public class ProductRepositoryImplTest {
     }
 
     @Test
-    void findAllActiveWithStockWithoutInventoryDataThrowsCurrentNullPointer() {
+    void findAllActiveWithStockWhenProductDataIsInvalidThrowsControlledException() {
         UUID buffetId = UUID.randomUUID();
-        ProductoEntity entity = new ProductoEntity();
-        entity.setId(UUID.randomUUID());
-        Object[] resultObj = new Object[]{
-                entity,
+        ProductStockResult resultObj = stockResult(
                 null,
-                "sin numero",
+                null,
+                null,
                 null,
                 null,
                 null,
                 null,
                 null
-        };
+        );
         when(springDataRepository.findAllActiveWithStockParams(buffetId))
-                .thenReturn(List.<Object[]>of(resultObj));
+                .thenReturn(List.of(resultObj));
 
         assertThrows(
-                NullPointerException.class,
+                InventoryOperationException.class,
                 () -> productRepository.findAllActiveWithStock(buffetId)
         );
     }
@@ -616,3 +619,29 @@ public class ProductRepositoryImplTest {
         assertTrue(entity.getClasificacionesSalud().isEmpty());
     }
     }
+<<<<<<< HEAD:src/test/java/com/recred/backend/integration/persistence/ProductRepositoryImplTest.java
+=======
+
+    private ProductStockResult stockResult(
+            ProductoEntity entity,
+            Number stockActual,
+            Number stockReservado,
+            Number stockMinimo,
+            EstadoInventario estado,
+            TipoManejoInventario tipoManejo,
+            Number cupoMaximoDiario,
+            Number stockDisponible
+    ) {
+        return new ProductStockResult(
+                entity,
+                stockActual,
+                stockReservado,
+                stockMinimo,
+                estado,
+                tipoManejo,
+                cupoMaximoDiario,
+                stockDisponible
+        );
+    }
+}
+>>>>>>> cda5cc3dd4c0bc10818062e24b30a20a7108d55b:src/test/java/com/recred/backend/infrastructure/persistence/ProductRepositoryImplTest.java
