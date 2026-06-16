@@ -1,9 +1,11 @@
 package com.recred.backend.infrastructure.gemini;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoPagoExterno;
 import com.recred.backend.domain.models.MedioPago;
+import com.recred.backend.domain.models.RolChatMensaje;
 import com.recred.backend.domain.models.SchoolAssistantContext;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
 import com.recred.backend.domain.models.SchoolAssistantPayment;
@@ -15,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -72,6 +75,21 @@ class GeminiSchoolAssistantResponderTest {
     }
 
     @Test
+    void returnEmptyWhenGeminiAnswerIsBlankAndIncludeHistoryInPrompt() {
+        when(geminiTextClient.generate(contains("USUARIO|2026-06-16T10:00|hola")))
+                .thenReturn(Optional.of(new GeminiTextResponse("""
+                        {
+                          "respuesta": "   "
+                        }
+                        """, "gemini-test")));
+
+        Optional<SchoolAssistantDraft> draft = responder.respond(promptWithHistory());
+
+        assertTrue(draft.isEmpty());
+        verify(geminiTextClient).generate(contains("USUARIO|2026-06-16T10:00|hola"));
+    }
+
+    @Test
     void returnEmptyWhenGeminiDoesNotGenerateText() {
         when(geminiTextClient.generate(contains("saldo=500.00"))).thenReturn(
                 Optional.empty()
@@ -107,6 +125,20 @@ class GeminiSchoolAssistantResponderTest {
                         ))
                 ),
                 List.of()
+        );
+    }
+
+    private SchoolAssistantPrompt promptWithHistory() {
+        return new SchoolAssistantPrompt(
+                prompt().question(),
+                prompt().context(),
+                List.of(new ChatMessage(
+                        UUID.randomUUID(),
+                        RolChatMensaje.USUARIO,
+                        "hola",
+                        Map.of(),
+                        LocalDateTime.of(2026, 6, 16, 10, 0)
+                ))
         );
     }
 }

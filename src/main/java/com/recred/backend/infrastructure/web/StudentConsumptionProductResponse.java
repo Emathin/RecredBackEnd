@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.recred.backend.domain.models.StudentConsumptionProduct;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 public record StudentConsumptionProductResponse(
@@ -17,7 +18,9 @@ public record StudentConsumptionProductResponse(
         @JsonProperty("precioUnitario")
         BigDecimal unitPrice,
         @JsonProperty("subtotal")
-        BigDecimal subtotal
+        BigDecimal subtotal,
+        @JsonProperty("clasificacionesSalud")
+        List<String> healthClassifications
 ) {
     public static StudentConsumptionProductResponse fromDomain(
             StudentConsumptionProduct product
@@ -28,7 +31,8 @@ public record StudentConsumptionProductResponse(
                 product.categoryName(),
                 product.quantity(),
                 product.unitPrice(),
-                product.subtotal()
+                product.subtotal(),
+                product.healthClassifications()
         );
     }
 }

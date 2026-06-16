@@ -24,10 +24,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -44,14 +46,16 @@ class SchoolAssistantControllerTest {
 
     private AskSchoolAssistant askSchoolAssistant;
     private SchoolAssistantConversations conversations;
+    private SchoolAssistantController controller;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         askSchoolAssistant = mock(AskSchoolAssistant.class);
         conversations = mock(SchoolAssistantConversations.class);
+        controller = new SchoolAssistantController(askSchoolAssistant, conversations);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new SchoolAssistantController(askSchoolAssistant, conversations))
+                .standaloneSetup(controller)
                 .build();
     }
 
@@ -254,5 +258,95 @@ class SchoolAssistantControllerTest {
 
         verify(conversations).closeStudentSession(studentId, sessionId);
         verify(conversations).deleteStudentSession(studentId, sessionId);
+    }
+
+    @Test
+    void tutorSessionEndpointsDelegateToAuthenticatedSubject() {
+        UUID sessionId = UUID.randomUUID();
+        UUID messageId = UUID.randomUUID();
+        TestingAuthenticationToken authentication =
+                new TestingAuthenticationToken("tutor-sub", "");
+        ChatSession session = new ChatSession(
+                sessionId,
+                EstadoChatSesion.CERRADA,
+                LocalDateTime.of(2026, 5, 27, 11, 0),
+                LocalDateTime.of(2026, 5, 27, 12, 0)
+        );
+        ChatMessage message = new ChatMessage(
+                messageId,
+                sessionId,
+                RolChatMensaje.ASISTENTE_IA,
+                "respuesta",
+                Map.of("tipo", "saldo"),
+                LocalDateTime.of(2026, 5, 27, 12, 0)
+        );
+        when(conversations.findTutorSessions("tutor-sub", 1, 5))
+                .thenReturn(List.of(session));
+        when(conversations.findTutorMessages("tutor-sub", sessionId, 2, 10))
+                .thenReturn(List.of(message));
+
+        List<SchoolAssistantSessionResponse> sessions =
+                controller.tutorSessions(authentication, 1, 5);
+        List<SchoolAssistantMessageResponse> messages =
+                controller.tutorMessages(authentication, sessionId, 2, 10);
+
+        assertEquals(sessionId, sessions.get(0).sessionId());
+        assertEquals(EstadoChatSesion.CERRADA, sessions.get(0).status());
+        assertEquals(messageId, messages.get(0).id());
+        assertEquals(RolChatMensaje.ASISTENTE_IA, messages.get(0).role());
+        assertEquals(204, controller.closeTutorSession(authentication, sessionId)
+                .getStatusCode().value());
+        assertEquals(204, controller.deleteTutorSession(authentication, sessionId)
+                .getStatusCode().value());
+        verify(conversations).closeTutorSession("tutor-sub", sessionId);
+        verify(conversations).deleteTutorSession("tutor-sub", sessionId);
+    }
+
+    @Test
+    void kiosqueroSessionEndpointsDelegateToAuthenticatedSubject() {
+        UUID sessionId = UUID.randomUUID();
+        UUID messageId = UUID.randomUUID();
+        TestingAuthenticationToken authentication =
+                new TestingAuthenticationToken("kiosquero-sub", "");
+        ChatSession session = new ChatSession(
+                sessionId,
+                EstadoChatSesion.ABIERTA,
+                LocalDateTime.of(2026, 5, 27, 11, 0),
+                LocalDateTime.of(2026, 5, 27, 12, 0)
+        );
+        ChatMessage message = new ChatMessage(
+                messageId,
+                sessionId,
+                RolChatMensaje.USUARIO,
+                "stock",
+                null,
+                LocalDateTime.of(2026, 5, 27, 12, 0)
+        );
+        when(conversations.findKiosqueroSessions("kiosquero-sub", 1, 5))
+                .thenReturn(List.of(session));
+        when(conversations.findKiosqueroMessages("kiosquero-sub", sessionId, 2, 10))
+                .thenReturn(List.of(message));
+
+        List<SchoolAssistantSessionResponse> sessions =
+                controller.kiosqueroSessions(authentication, 1, 5);
+        List<SchoolAssistantMessageResponse> messages =
+                controller.kiosqueroMessages(authentication, sessionId, 2, 10);
+
+        assertEquals(sessionId, sessions.get(0).sessionId());
+        assertEquals(EstadoChatSesion.ABIERTA, sessions.get(0).status());
+        assertEquals(messageId, messages.get(0).id());
+        assertEquals(RolChatMensaje.USUARIO, messages.get(0).role());
+        assertEquals(204, controller.closeKiosqueroSession(authentication, sessionId)
+                .getStatusCode().value());
+        assertEquals(204, controller.deleteKiosqueroSession(authentication, sessionId)
+                .getStatusCode().value());
+        verify(conversations).closeKiosqueroSession("kiosquero-sub", sessionId);
+        verify(conversations).deleteKiosqueroSession("kiosquero-sub", sessionId);
+    }
+
+    @Test
+    void tutorEndpointWithoutAuthenticationThrowsCredentialsException() {
+        assertThrows(AuthenticationCredentialsNotFoundException.class,
+                () -> controller.tutorSessions(null, 0, 20));
     }
 }

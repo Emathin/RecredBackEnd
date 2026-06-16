@@ -1,14 +1,22 @@
 package com.recred.backend.infrastructure.persistence;
 
+import com.recred.backend.domain.models.CategoriaProducto;
+import com.recred.backend.domain.models.PeriodoPresupuesto;
 import com.recred.backend.domain.models.PresupuestoAlumno;
+import com.recred.backend.domain.models.ReglaPresupuestoCategoria;
 import com.recred.backend.infrastructure.entities.PresupuestoAlumnoEntity;
+import com.recred.backend.infrastructure.entities.ReglaPresupuestoCategoriaEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -77,5 +85,104 @@ class PresupuestoRepositoryImplTest {
         assertEquals(domainMock.getId(), resultado.getId());
 
         verify(springDataRepository).save(any(PresupuestoAlumnoEntity.class));
+    }
+
+    @Test
+    void save_WhenBudgetHasReferencesAndRules_ShouldMapThemToEntity() {
+        UUID creatorId = UUID.randomUUID();
+        UUID categoryId = UUID.randomUUID();
+        domainMock.setAlumnoId(studentId);
+        domainMock.setCreadoPorUsuarioId(creatorId);
+        domainMock.setMontoLimiteGeneral(new BigDecimal("10000.00"));
+        domainMock.setPeriodo(PeriodoPresupuesto.MENSUAL);
+        domainMock.setFechaInicio(LocalDate.of(2026, 6, 1));
+        domainMock.setReglasCategoria(List.of(rule(categoryId)));
+        when(springDataRepository.findById(domainMock.getId()))
+                .thenReturn(Optional.empty());
+        when(springDataRepository.save(any(PresupuestoAlumnoEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        repositoryImpl.save(domainMock);
+
+        ArgumentCaptor<PresupuestoAlumnoEntity> captor =
+                ArgumentCaptor.forClass(PresupuestoAlumnoEntity.class);
+        verify(springDataRepository).save(captor.capture());
+        PresupuestoAlumnoEntity entity = captor.getValue();
+        assertEquals(studentId, entity.getAlumnoEntity().getId());
+        assertEquals(creatorId, entity.getCreadoPorUsuarioEntity().getId());
+        assertEquals(new BigDecimal("10000.00"), entity.getMontoLimite());
+        assertEquals(1, entity.getReglasCategoria().size());
+        assertEquals(categoryId, entity.getReglasCategoria().get(0).getCategoria().getId());
+        assertEquals(entity, entity.getReglasCategoria().get(0).getPresupuesto());
+    }
+
+    @Test
+    void save_WhenBudgetHasNoId_ShouldCreateEntity() {
+        domainMock.setId(null);
+        domainMock.setAlumnoId(studentId);
+        when(springDataRepository.save(any(PresupuestoAlumnoEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PresupuestoAlumno result = repositoryImpl.save(domainMock);
+
+        assertEquals(null, result.getId());
+        verify(springDataRepository).save(any(PresupuestoAlumnoEntity.class));
+    }
+
+    @Test
+    void save_WhenExistingRulesCollectionIsNull_ShouldSetRulesCollection() {
+        entityMock.setReglasCategoria(null);
+        domainMock.setAlumnoId(studentId);
+        domainMock.setReglasCategoria(List.of(rule(UUID.randomUUID())));
+        when(springDataRepository.findById(domainMock.getId()))
+                .thenReturn(Optional.of(entityMock));
+        when(springDataRepository.save(any(PresupuestoAlumnoEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        repositoryImpl.save(domainMock);
+
+        assertEquals(1, entityMock.getReglasCategoria().size());
+    }
+
+    @Test
+    void save_WhenExistingBudgetHasRules_ShouldClearAndFlushBeforeReplacing() {
+        ReglaPresupuestoCategoriaEntity existingRule =
+                new ReglaPresupuestoCategoriaEntity();
+        entityMock.setReglasCategoria(new java.util.ArrayList<>(List.of(existingRule)));
+        domainMock.setAlumnoId(studentId);
+        domainMock.setReglasCategoria(List.of(rule(UUID.randomUUID())));
+        when(springDataRepository.findById(domainMock.getId()))
+                .thenReturn(Optional.of(entityMock));
+        when(springDataRepository.saveAndFlush(entityMock)).thenReturn(entityMock);
+        when(springDataRepository.save(any(PresupuestoAlumnoEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        repositoryImpl.save(domainMock);
+
+        verify(springDataRepository).saveAndFlush(entityMock);
+        assertEquals(1, entityMock.getReglasCategoria().size());
+    }
+
+    @Test
+    void findById_WhenBudgetExists_ShouldReturnDomain() {
+        when(springDataRepository.findById(entityMock.getId()))
+                .thenReturn(Optional.of(entityMock));
+
+        Optional<PresupuestoAlumno> result = repositoryImpl.findById(entityMock.getId());
+
+        assertTrue(result.isPresent());
+        assertEquals(entityMock.getId(), result.get().getId());
+    }
+
+    private ReglaPresupuestoCategoria rule(UUID categoryId) {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(categoryId);
+        return new ReglaPresupuestoCategoria(
+                UUID.randomUUID(),
+                category,
+                new BigDecimal("30.00"),
+                new BigDecimal("3000.00"),
+                true
+        );
     }
 }

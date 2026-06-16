@@ -14,21 +14,17 @@ class WithdrawalCodeServiceImplTest {
     private final WithdrawalCodeServiceImpl service = new WithdrawalCodeServiceImpl();
 
     private static final List<String> PALABRAS_VALIDAS = Arrays.asList(
-        // Animales
         "GATO", "PERRO", "LEON", "TIGRE", "OSO", "PATO", "SAPO", "LOBO", "ZORRO", "MONO",
         "VACA", "TORO", "PUMA", "FOCA", "LORO", "CABRA", "CEBRA", "JIRAFA", "RATON", "CONEJO",
         "OVEJA", "CERDO", "GALLO", "PULPO", "BALLENA", "DELFIN", "TIBURON", "TORTUGA", "RANA",
         "AGUILA", "LAMA", "PANDA", "KOALA", "CISNE", "BUHO", "ERIZO",
-        // Colores
         "ROJO", "AZUL", "VERDE", "AMARILLO", "ROSA", "GRIS", "MARRON", "NEGRO", "BLANCO",
         "NARANJA", "VIOLETA", "PURPURA", "CELESTE", "DORADO", "PLATEADO", "TURQUESA", "FUCSIA",
         "BEIGE", "LILA", "SALMON", "CREMA", "OLIVA", "CORAL", "ARENA",
-        // Nombres
         "MATEO", "LUCAS", "SOFIA", "JUAN", "MARIA", "PEDRO", "ANA", "LUIS", "DIEGO", "PABLO",
         "TOMAS", "ENZO", "LOLA", "EMMA", "HUGO", "LEO", "VALEN", "SANTI", "BAUTI", "JOACO",
         "COTI", "MARTU", "MILI", "JULI", "FRAN", "NACHO", "TOBI", "BRUNO", "CLARA", "DANTE",
         "ELENA", "FELIPE", "GASTON", "IVAN", "LAURA", "MANUEL", "OLIVIA", "ROQUE", "SIMON",
-        // Naturaleza / Objetos
         "SOL", "LUNA", "ESTRELLA", "NUBE", "RIO", "MAR", "FLOR", "ARBOL", "CASA", "MESA",
         "SILLA", "LAPIZ", "LIBRO", "TAZA", "PLATO", "MANZANA", "PLATANO", "LIMON", "QUESO",
         "PAN", "LECHE", "AGUA", "MIEL", "DULCE", "TORTA", "PIZZA", "PASTA", "ARROZ", "VIENTO",

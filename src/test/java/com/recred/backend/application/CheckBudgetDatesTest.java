@@ -21,6 +21,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -113,5 +114,52 @@ class CheckBudgetDatesTest {
         assertEquals(1, response.validationResults().size());
         assertTrue(response.validationResults().get(0).blocked());
         assertEquals(expectedReason, response.validationResults().get(0).reason());
+    }
+
+    @Test
+    void execute_WhenProductDoesNotExist_ShouldThrowException() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        CheckBudgetDatesRequest request = new CheckBudgetDatesRequest(
+                List.of("2026-06-15"),
+                List.of(new CheckBudgetDatesRequest.CartItemRequest(productId, 1))
+        );
+
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> checkBudgetDates.execute(studentId, request)
+        );
+    }
+
+    @Test
+    void execute_WhenProductPriceIsNull_ShouldUseZeroAsItemTotal() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UUID categoryId = UUID.randomUUID();
+        CategoriaProducto categoria = new CategoriaProducto();
+        categoria.setId(categoryId);
+        Producto producto = new Producto();
+        producto.setId(productId);
+        producto.setPrecio(null);
+        producto.setCategoria(categoria);
+        CheckBudgetDatesRequest request = new CheckBudgetDatesRequest(
+                List.of("2026-06-15"),
+                List.of(new CheckBudgetDatesRequest.CartItemRequest(productId, 3))
+        );
+
+        when(productRepository.findById(productId)).thenReturn(Optional.of(producto));
+        when(budgetValidator.obtenerMotivoBloqueoPresupuesto(
+                eq(studentId),
+                eq(BigDecimal.ZERO),
+                any(),
+                any(LocalDateTime.class)
+        )).thenReturn(Optional.empty());
+
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+
+        assertEquals(1, response.validationResults().size());
+        assertFalse(response.validationResults().get(0).blocked());
     }
 }

@@ -7,7 +7,9 @@ import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
 import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.RespondToAISuggestion;
+import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +25,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -138,6 +141,33 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
+    void returnOkWithParentPreferenceView() {
+        UUID userId = UUID.randomUUID();
+        Alumno child = new Alumno();
+        child.setId(UUID.randomUUID());
+        Usuario childUser = new Usuario();
+        childUser.setId(UUID.randomUUID());
+        childUser.setNombre("Ana");
+        childUser.setApellido("Lopez");
+        child.setUsuario(childUser);
+        com.recred.backend.infrastructure.entities.SugerenciaIAEntity entity =
+                new com.recred.backend.infrastructure.entities.SugerenciaIAEntity();
+        entity.setTitulo("Probar fruta");
+        entity.setMensaje("Puede gustarle");
+        entity.setTipo(com.recred.backend.domain.models.TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+        when(getStudentPreferences.executeByUserId(userId, false, null))
+                .thenReturn(List.of(new StudentPreferenceResult(entity, child, true)));
+
+        ResponseEntity<List<StudentPreferenceResponse>> response =
+                controller.getPreferences(userId, false, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Ana Lopez: Probar fruta", response.getBody().get(0).titulo());
+        assertEquals(child.getId(), response.getBody().get(0).alumnoId());
+        assertEquals(childUser.getId(), response.getBody().get(0).alumnoUserId());
+    }
+
+    @Test
     void respondToAISuggestionSuccessfully() {
         UUID sugerenciaId = UUID.randomUUID();
 
@@ -158,6 +188,19 @@ class StudentPreferenceControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(agregarProductoFavorito).execute(studentId, productoId);
+    }
+
+    @Test
+    void agregarFavorito_WhenUserHasNoStudent_ShouldThrowException() {
+        UUID userId = UUID.randomUUID();
+        UUID productoId = UUID.randomUUID();
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> controller.agregarFavorito(userId, productoId));
+
+        assertEquals("No existe un alumno asociado al usuario: " + userId,
+                exception.getMessage());
     }
 
     @Test

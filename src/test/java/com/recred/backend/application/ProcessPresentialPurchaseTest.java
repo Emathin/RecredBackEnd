@@ -10,7 +10,9 @@ import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
@@ -33,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -199,5 +202,75 @@ class ProcessPresentialPurchaseTest {
                 () -> useCase.execute(studentId, cart, buffetId));
 
         verifyNoInteractions(walletRepository, purchaseRepository, inventoryAvailabilityService);
+    }
+
+    @Test
+    void execute_WithMovementRepositoryAndStudentWithoutUser_ShouldRegisterSystemMovement() {
+        MovimientoBilleteraRepository movementRepository =
+                mock(MovimientoBilleteraRepository.class);
+        ProcessPresentialPurchase localUseCase = new ProcessPresentialPurchase(
+                studentRepository,
+                walletRepository,
+                purchaseRepository,
+                purchaseValidator,
+                inventoryAvailabilityService,
+                movementRepository
+        );
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+
+        localUseCase.execute(studentId, cart, buffetId);
+
+        verify(movementRepository).registrarMovimientoSistema(
+                wallet.getId(),
+                TipoMovimientoBilletera.COMPRA,
+                new BigDecimal("-20.00"),
+                "Compra presencial en buffet"
+        );
+    }
+
+    @Test
+    void execute_WithMovementRepositoryAndStudentUser_ShouldRegisterUserMovement() {
+        UUID userId = UUID.randomUUID();
+        student.setUsuarioId(userId);
+        MovimientoBilleteraRepository movementRepository =
+                mock(MovimientoBilleteraRepository.class);
+        ProcessPresentialPurchase localUseCase = new ProcessPresentialPurchase(
+                studentRepository,
+                walletRepository,
+                purchaseRepository,
+                purchaseValidator,
+                inventoryAvailabilityService,
+                movementRepository
+        );
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+
+        localUseCase.execute(studentId, cart, buffetId);
+
+        verify(movementRepository).registrarMovimiento(
+                wallet.getId(),
+                TipoMovimientoBilletera.COMPRA,
+                new BigDecimal("-20.00"),
+                "Compra presencial en buffet",
+                userId
+        );
+    }
+
+    @Test
+    void constructorWithoutMovementRepositoryKeepsMovementRegistrationDisabled() {
+        ProcessPresentialPurchase localUseCase = new ProcessPresentialPurchase(
+                studentRepository,
+                walletRepository,
+                purchaseRepository,
+                purchaseValidator,
+                inventoryAvailabilityService
+        );
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+
+        localUseCase.execute(studentId, cart, buffetId);
+
+        verify(purchaseRepository).save(any(Purchase.class));
     }
 }

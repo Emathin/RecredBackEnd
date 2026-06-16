@@ -223,6 +223,111 @@ class InventoryControllerTest {
         verify(getStockMovements).execute(buffetId, productId);
     }
 
+    @Test
+    void inventoryOverview_ShouldMapAlternativeModesAndSoldOutStates() throws Exception {
+        UUID buffetId = UUID.randomUUID();
+        Producto availabilityProduct = product();
+        availabilityProduct.setTipoManejoInventario(
+                TipoManejoInventario.DISPONIBLE_NO_DISPONIBLE
+        );
+        availabilityProduct.setEstadoInventario(EstadoInventario.BAJO_STOCK);
+        availabilityProduct.setStockDisponible(1);
+        Producto defaultModeProduct = product();
+        defaultModeProduct.setTipoManejoInventario(null);
+        defaultModeProduct.setEstadoInventario(null);
+        defaultModeProduct.setStockDisponible(null);
+        Producto dailyProduct = product();
+        dailyProduct.setTipoManejoInventario(TipoManejoInventario.CUPO_DIARIO);
+        dailyProduct.setCupoMaximoDiario(null);
+        dailyProduct.setStockActual(7);
+        dailyProduct.setStockDisponible(0);
+        Producto disabledProduct = product();
+        disabledProduct.setEstadoInventario(EstadoInventario.DESACTIVADO);
+
+        when(listInventoryProducts.execute(buffetId)).thenReturn(List.of(
+                availabilityProduct,
+                defaultModeProduct,
+                dailyProduct,
+                disabledProduct
+        ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+                        "/api/v1/inventory/{buffetId}/overview",
+                        buffetId
+                ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].tipoManejoInventario")
+                        .value("DISPONIBLE_NO_DISPONIBLE"))
+                .andExpect(jsonPath("$[0].bajoStock").value(true))
+                .andExpect(jsonPath("$[1].tipoManejoInventario").value("STOCK_EXACTO"))
+                .andExpect(jsonPath("$[2].cupoMaximoDiario").value(7))
+                .andExpect(jsonPath("$[2].agotado").value(true))
+                .andExpect(jsonPath("$[2].disponible").value(false))
+                .andExpect(jsonPath("$[3].agotado").value(true))
+                .andExpect(jsonPath("$[3].disponible").value(false));
+    }
+
+    @Test
+    void adjustStock_WhenInventoryStateIsNull_ShouldReturnNullFields() throws Exception {
+        UUID buffetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Inventario inventory = org.mockito.Mockito.mock(Inventario.class);
+        when(inventory.getId()).thenReturn(UUID.randomUUID());
+        when(inventory.getBuffetId()).thenReturn(buffetId);
+        when(inventory.getProductoId()).thenReturn(productId);
+        when(inventory.getStockActual()).thenReturn(12);
+        when(inventory.getStockReservado()).thenReturn(2);
+        when(inventory.stockMinimoEfectivo()).thenReturn(1);
+        when(inventory.stockDisponible()).thenReturn(10);
+        when(inventory.estadoActual()).thenReturn(null);
+        when(inventory.getTipoManejo()).thenReturn(null);
+
+        when(adjustInventoryStock.execute(any(AdjustInventoryStockCommand.class)))
+                .thenReturn(inventory);
+
+        mockMvc.perform(patch(
+                        "/api/v1/inventory/{buffetId}/products/{productId}/stock",
+                        buffetId,
+                        productId
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "stockActual", 12,
+                                "motivo", "Correccion manual"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estadoInventario").doesNotExist())
+                .andExpect(jsonPath("$.tipoManejoInventario").doesNotExist());
+    }
+
+    @Test
+    void movements_WhenMovementTypeIsNull_ShouldReturnNullType() throws Exception {
+        UUID buffetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        MovimientoStock movement = new MovimientoStock(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null,
+                5,
+                10,
+                15,
+                "Carga inicial",
+                UUID.randomUUID(),
+                null,
+                LocalDateTime.of(2026, 6, 8, 10, 0)
+        );
+
+        when(getStockMovements.execute(buffetId, productId)).thenReturn(List.of(movement));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+                        "/api/v1/inventory/{buffetId}/products/{productId}/movements",
+                        buffetId,
+                        productId
+                ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].tipo").doesNotExist());
+    }
+
     private Inventario inventory(UUID buffetId, UUID productId) {
         Inventario inventory = new Inventario();
         inventory.setId(UUID.randomUUID());

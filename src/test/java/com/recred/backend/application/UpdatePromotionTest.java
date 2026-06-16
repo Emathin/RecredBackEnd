@@ -101,6 +101,25 @@ class UpdatePromotionTest {
     }
 
     @Test
+    void execute_shouldSetDraftStatus_whenPromotionStartsInFuture() {
+        LocalDateTime futureStart = LocalDateTime.now().plusDays(1);
+        LocalDateTime futureEnd = LocalDateTime.now().plusDays(10);
+        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
+        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Promotion result = updatePromotion.execute(
+                promoId,
+                null,
+                null,
+                null,
+                futureStart,
+                futureEnd
+        );
+
+        assertEquals(PromotionStatus.DRAFT, result.getStatus());
+    }
+
+    @Test
     void execute_shouldThrowException_whenPromotionNotFound() {
         when(promotionRepository.findById(promoId)).thenReturn(Optional.empty());
 
@@ -127,10 +146,8 @@ class UpdatePromotionTest {
     void execute_shouldThrowException_whenUpdatedDiscountIsInvalid() {
         when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
 
-        // Test <= 0
         assertThrows(IllegalArgumentException.class, () ->
                 updatePromotion.execute(promoId, null, BigDecimal.ZERO, null, null, null));
-        // Test > 100
         assertThrows(IllegalArgumentException.class, () ->
                 updatePromotion.execute(promoId, null, new BigDecimal("105"), null, null, null));
 
@@ -142,7 +159,7 @@ class UpdatePromotionTest {
         when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
 
         LocalDateTime badStart = LocalDateTime.now().plusDays(10);
-        LocalDateTime badEnd = LocalDateTime.now().plusDays(2); // End before start
+        LocalDateTime badEnd = LocalDateTime.now().plusDays(2);
 
         assertThrows(IllegalArgumentException.class, () ->
                 updatePromotion.execute(promoId, null, null, null, badStart, badEnd));

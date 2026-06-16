@@ -59,7 +59,6 @@ public class CarritoFavoritoRepositoryImpl implements CarritoFavoritoRepository 
             entity.setAlumno(alumnoEntity);
         }
 
-        // Clear existing items and rebuild to avoid orphan issues
         entity.getItems().clear();
         if (model.getItems() != null) {
             for (var entry : model.getItems().entrySet()) {

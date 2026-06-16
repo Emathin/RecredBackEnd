@@ -22,12 +22,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -194,6 +197,177 @@ class GetKiosqueroDashboardTest {
         );
     }
 
+    @Test
+    void execute_ShouldRejectInvalidInputsAndRanges() {
+        GetKiosqueroDashboard useCase = useCase(
+                mock(PurchaseRepository.class),
+                mock(ProductRepository.class),
+                mock(StockMovementRepository.class)
+        );
+        UUID buffetId = UUID.randomUUID();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(null, LocalDate.of(2026, 6, 10)));
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(buffetId, null, LocalDate.of(2026, 6, 1), null));
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(
+                        buffetId,
+                        null,
+                        LocalDate.of(2026, 6, 2),
+                        LocalDate.of(2026, 6, 1)
+                ));
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(
+                        buffetId,
+                        null,
+                        LocalDate.of(2025, 1, 1),
+                        LocalDate.of(2026, 6, 1)
+                ));
+    }
+
+    @Test
+    void execute_ShouldHandleNullDatesAndSparseDashboardData() {
+        UUID buffetId = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 6, 10);
+        Producto nullPriceProduct = product("Producto sin precio", "1.00");
+        nullPriceProduct.setPrecio(null);
+        Producto uncategorized = product("Sin categoria real", "10.00");
+        Producto unnamedCategory = product("Categoria sin nombre", "1.00");
+        CategoriaProducto category = category(null);
+        unnamedCategory.setCategoria(category);
+        Producto invalidProduct = product("Cantidad invalida", "2.00");
+        Producto withoutInventory = product("Sin inventario", "1.00");
+        Producto reservedWithoutQuantity = product("Reserva nula", "1.00");
+        reservedWithoutQuantity.setStockActual(5);
+        reservedWithoutQuantity.setStockReservado(null);
+        Producto lowWithoutState = product("Bajo sin estado", "1.00");
+        lowWithoutState.setStockActual(2);
+        lowWithoutState.setStockDisponible(1);
+        lowWithoutState.setStockMinimo(2);
+        Producto soldOutByQuantity = product("Agotado por cantidad", "1.00");
+        soldOutByQuantity.setStockActual(2);
+        soldOutByQuantity.setStockDisponible(0);
+        soldOutByQuantity.setStockMinimo(1);
+        soldOutByQuantity.setEstadoInventario(EstadoInventario.DISPONIBLE);
+        List<Purchase> purchases = List.of(
+                purchaseWithItems(
+                        EstadoCompra.ENTREGADO,
+                        TipoCompra.PRESENCIAL,
+                        Map.of(nullPriceProduct, 1),
+                        null,
+                        date.atTime(8, 30),
+                        null
+                ),
+                purchaseWithItems(
+                        EstadoCompra.ENTREGADO,
+                        TipoCompra.PRESENCIAL,
+                        Map.of(uncategorized, 1),
+                        "10.00",
+                        date.atTime(9, 0),
+                        null
+                ),
+                purchaseWithItems(
+                        EstadoCompra.ENTREGADO,
+                        TipoCompra.PRESENCIAL,
+                        Map.of(unnamedCategory, 1),
+                        "1.00",
+                        date.atTime(9, 15),
+                        null
+                ),
+                purchaseWithItems(
+                        EstadoCompra.ENTREGADO,
+                        TipoCompra.PRESENCIAL,
+                        invalidItems(invalidProduct),
+                        "0.00",
+                        date.atTime(9, 30),
+                        null
+                ),
+                purchaseWithItems(
+                        EstadoCompra.PENDIENTE,
+                        TipoCompra.ANTICIPADA,
+                        Map.of(uncategorized, 1),
+                        "10.00",
+                        null,
+                        "Primer recreo"
+                )
+        );
+        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
+        ProductRepository productRepository = mock(ProductRepository.class);
+        StockMovementRepository stockMovementRepository = mock(StockMovementRepository.class);
+        GetKiosqueroDashboard useCase = useCase(
+                purchaseRepository,
+                productRepository,
+                stockMovementRepository
+        );
+
+        when(purchaseRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
+                .thenReturn(purchases);
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(
+                withoutInventory,
+                reservedWithoutQuantity,
+                lowWithoutState,
+                soldOutByQuantity
+        ));
+        when(stockMovementRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
+                .thenReturn(List.of(
+                        movement(TipoMovimientoStock.LIBERACION, 3, null),
+                        movement(TipoMovimientoStock.AJUSTE, 1, 0)
+                ));
+
+        KiosqueroDashboard dashboard = useCase.execute(buffetId, null);
+
+        assertEquals(date, dashboard.date());
+        assertEquals(new BigDecimal("11.00"), dashboard.summary().totalSold());
+        assertTrue(dashboard.activity().salesByCategory().stream()
+                .anyMatch(categorySales -> "Sin categoria".equals(categorySales.categoryName())));
+        assertTrue(dashboard.products().topSoldProducts().stream()
+                .anyMatch(metric -> "Producto sin precio".equals(metric.productName())
+                        && BigDecimal.ZERO.equals(metric.total())));
+        assertTrue(dashboard.products().productsNeedingRestock().stream()
+                .anyMatch(item -> "Bajo sin estado".equals(item.productName())
+                        && item.estadoInventario() == null));
+        assertTrue(dashboard.products().soldOutProducts().stream()
+                .anyMatch(item -> "Agotado por cantidad".equals(item.productName())));
+        assertEquals(1, dashboard.alerts().soldOutEvents());
+    }
+
+    @Test
+    void execute_ShouldUseZeroAverageWhenThereAreNoDeliveredOrders() {
+        UUID buffetId = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 6, 10);
+        Producto product = product("Pendiente", "10.00");
+        Purchase pending = purchase(
+                EstadoCompra.PENDIENTE,
+                TipoCompra.ANTICIPADA,
+                product,
+                1,
+                "10.00",
+                date.atTime(10, 0),
+                "Primer recreo"
+        );
+        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
+        ProductRepository productRepository = mock(ProductRepository.class);
+        StockMovementRepository stockMovementRepository = mock(StockMovementRepository.class);
+        GetKiosqueroDashboard useCase = useCase(
+                purchaseRepository,
+                productRepository,
+                stockMovementRepository
+        );
+
+        when(purchaseRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
+                .thenReturn(List.of(pending));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of());
+        when(stockMovementRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
+                .thenReturn(List.of());
+
+        KiosqueroDashboard dashboard = useCase.execute(buffetId, date);
+
+        assertEquals(BigDecimal.ZERO, dashboard.summary().averageTicket());
+        assertFalse(dashboard.alerts().items().stream()
+                .anyMatch(alert -> "Creditos devueltos".equals(alert.label())));
+    }
+
     private Producto product(String name, String price) {
         Producto product = new Producto();
         product.setId(UUID.randomUUID());
@@ -255,6 +429,32 @@ class GetKiosqueroDashboardTest {
         return purchase;
     }
 
+    private Purchase purchaseWithItems(
+            EstadoCompra status,
+            TipoCompra type,
+            Map<Producto, Integer> items,
+            String total,
+            LocalDateTime date,
+            String slot
+    ) {
+        Purchase purchase = new Purchase();
+        purchase.setId(UUID.randomUUID());
+        purchase.setStatus(status);
+        purchase.setTipo(type);
+        purchase.setTotalAmount(total == null ? null : new BigDecimal(total));
+        purchase.setDate(date);
+        purchase.setPickupSlotDescription(slot);
+        setPickupSlotData(purchase, slot);
+        purchase.setItems(items);
+        return purchase;
+    }
+
+    private Map<Producto, Integer> invalidItems(Producto product) {
+        Map<Producto, Integer> items = new LinkedHashMap<>();
+        items.put(product, 0);
+        return items;
+    }
+
     private void setPickupSlotData(Purchase purchase, String slot) {
         if (slot == null) {
             return;
@@ -275,8 +475,8 @@ class GetKiosqueroDashboardTest {
 
     private MovimientoStock movement(
             TipoMovimientoStock type,
-            int quantity,
-            int newQuantity
+            Integer quantity,
+            Integer newQuantity
     ) {
         return new MovimientoStock(
                 UUID.randomUUID(),
@@ -289,6 +489,22 @@ class GetKiosqueroDashboardTest {
                 null,
                 null,
                 LocalDateTime.now()
+        );
+    }
+
+    private GetKiosqueroDashboard useCase(
+            PurchaseRepository purchaseRepository,
+            ProductRepository productRepository,
+            StockMovementRepository stockMovementRepository
+    ) {
+        return new GetKiosqueroDashboard(
+                purchaseRepository,
+                productRepository,
+                stockMovementRepository,
+                Clock.fixed(
+                        Instant.parse("2026-06-10T15:00:00Z"),
+                        ZoneId.of("America/Argentina/Buenos_Aires")
+                )
         );
     }
 }

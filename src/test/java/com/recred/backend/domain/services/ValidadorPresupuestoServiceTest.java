@@ -25,10 +25,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -145,6 +148,81 @@ class ValidadorPresupuestoServiceTest {
         assertDoesNotThrow(() -> {
             validador.validarPresupuesto(alumnoId, BigDecimal.valueOf(500), Collections.emptyMap(), momentoCompra);
         });
+    }
+
+    @Test
+    void validarPresupuesto_ConReglaSinGastoEnCarrito_NoConsultaGastoDeCategoria() {
+        UUID categoriaId = UUID.randomUUID();
+        PresupuestoAlumno presupuesto = crearPresupuestoBase(BigDecimal.valueOf(2000));
+        presupuesto.setReglasCategoria(List.of(reglaCategoria(categoriaId, "Bebidas")));
+        when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.of(presupuesto));
+        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rangoSimulado);
+        when(compraRepository.sumarGastosPorAlumnoEnRango(eq(alumnoId), any(), any()))
+                .thenReturn(BigDecimal.ZERO);
+
+        assertDoesNotThrow(() -> validador.validarPresupuesto(
+                alumnoId,
+                BigDecimal.valueOf(100),
+                Collections.emptyMap(),
+                momentoCompra
+        ));
+
+        verify(compraRepository, never()).sumarGastosPorCategoriaEnRango(
+                eq(alumnoId), eq(categoriaId), any(), any()
+        );
+    }
+
+    @Test
+    void obtenerMotivoBloqueoPresupuesto_ShouldFormatAllBudgetPeriods() {
+        PresupuestoAlumno nullPeriod = crearPresupuestoBase(BigDecimal.valueOf(1000));
+        nullPeriod.setPeriodo(null);
+        PresupuestoAlumno weekly = crearPresupuestoBase(BigDecimal.valueOf(1000));
+        weekly.setPeriodo(PeriodoPresupuesto.SEMANAL);
+        PresupuestoAlumno biweekly = crearPresupuestoBase(BigDecimal.valueOf(1000));
+        biweekly.setPeriodo(PeriodoPresupuesto.QUINCENAL);
+        PresupuestoAlumno monthly = crearPresupuestoBase(BigDecimal.valueOf(1000));
+        monthly.setPeriodo(PeriodoPresupuesto.MENSUAL);
+        when(presupuestoRepository.findActivoByAlumnoId(alumnoId))
+                .thenReturn(
+                        Optional.of(nullPeriod),
+                        Optional.of(weekly),
+                        Optional.of(biweekly),
+                        Optional.of(monthly)
+                );
+        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rangoSimulado);
+        when(compraRepository.sumarGastosPorAlumnoEnRango(eq(alumnoId), any(), any()))
+                .thenReturn(BigDecimal.valueOf(900));
+
+        assertEquals("Supera el presupuesto diario: disponible $100.00",
+                motivoBloqueo(BigDecimal.valueOf(200)).orElseThrow());
+        assertEquals("Supera el presupuesto semanal: disponible $100.00",
+                motivoBloqueo(BigDecimal.valueOf(200)).orElseThrow());
+        assertEquals("Supera el presupuesto quincenal: disponible $100.00",
+                motivoBloqueo(BigDecimal.valueOf(200)).orElseThrow());
+        assertEquals("Supera el presupuesto mensual: disponible $100.00",
+                motivoBloqueo(BigDecimal.valueOf(200)).orElseThrow());
+    }
+
+    private Optional<String> motivoBloqueo(BigDecimal monto) {
+        return validador.obtenerMotivoBloqueoPresupuesto(
+                alumnoId,
+                monto,
+                Collections.emptyMap(),
+                momentoCompra
+        );
+    }
+
+    private ReglaPresupuestoCategoria reglaCategoria(UUID categoriaId, String descripcion) {
+        CategoriaProducto categoria = new CategoriaProducto();
+        categoria.setId(categoriaId);
+        categoria.setDescripcion(descripcion);
+        return new ReglaPresupuestoCategoria(
+                UUID.randomUUID(),
+                categoria,
+                BigDecimal.valueOf(20),
+                BigDecimal.valueOf(1000),
+                true
+        );
     }
 
     private PresupuestoAlumno crearPresupuestoBase(BigDecimal limiteGeneral) {

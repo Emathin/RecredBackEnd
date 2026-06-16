@@ -109,6 +109,42 @@ class CloseDailyBuffetTest {
         verify(expireAdvancePurchases, never()).executeDetailed(any(), any());
     }
 
+    @Test
+    void execute_WhenUsingDefaultPublisherAndCloseDoesNotExist_ShouldCloseWithoutPublishingMock() {
+        UUID buffetId = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 6, 8);
+        ExpireAdvancePurchases expireAdvancePurchases = mock(ExpireAdvancePurchases.class);
+        GenerateDailyBuffetReport generateDailyBuffetReport =
+                mock(GenerateDailyBuffetReport.class);
+        DailyBuffetCloseRepository closeRepository = mock(DailyBuffetCloseRepository.class);
+        CloseDailyBuffet useCase = new CloseDailyBuffet(
+                expireAdvancePurchases,
+                generateDailyBuffetReport,
+                closeRepository
+        );
+        DailyBuffetClose close = new DailyBuffetClose(
+                UUID.randomUUID(),
+                buffetId,
+                date,
+                0,
+                0,
+                BigDecimal.ZERO
+        );
+
+        when(closeRepository.findByBuffetAndDate(buffetId, date)).thenReturn(Optional.empty());
+        when(expireAdvancePurchases.executeDetailed(any(), any()))
+                .thenReturn(new ExpirationResult(0, 0));
+        when(generateDailyBuffetReport.execute(buffetId, date)).thenReturn(report(buffetId, date));
+        when(closeRepository.saveWithInventorySnapshot(any(DailyBuffetClose.class), anyList()))
+                .thenReturn(close);
+
+        DailyCloseResult result = useCase.execute(buffetId, date);
+
+        assertFalse(result.alreadyClosed());
+        assertEquals(0, result.expiredPurchases());
+        verify(closeRepository).saveWithInventorySnapshot(any(DailyBuffetClose.class), anyList());
+    }
+
     private DailyBuffetReport report(UUID buffetId, LocalDate date) {
         return new DailyBuffetReport(
                 buffetId,

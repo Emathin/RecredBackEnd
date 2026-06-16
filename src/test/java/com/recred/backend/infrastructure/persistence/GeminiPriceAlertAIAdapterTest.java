@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
 import com.recred.backend.infrastructure.gemini.GeminiTextClient;
@@ -85,6 +86,34 @@ class GeminiPriceAlertAIAdapterTest {
         assertTrue(result.isPresent());
         assertEquals("Cambio de precio en Alfajor", result.get().titulo());
         assertEquals("Cambio automatico detectado de -20.00, equivalente a -16.67%.",
+                result.get().razonIA());
+    }
+
+    @Test
+    void returnFallbackWhenGeminiResponseHasBlankFieldsAndOldPriceIsZero() {
+        Alumno alumno = student();
+        Grado grado = new Grado();
+        grado.setAnio("1");
+        grado.setDivision("A");
+        alumno.setGrado(grado);
+        givenGeminiResponse("""
+                {
+                  "mensaje": "Mensaje",
+                  "razonIA": "Razon"
+                }
+                """);
+
+        Optional<PriceAlertAIRepository.PriceAlertResult> result =
+                adapter.analyzeImpact(
+                        alumno,
+                        product(),
+                        BigDecimal.ZERO,
+                        new BigDecimal("10.00")
+                );
+
+        assertTrue(result.isPresent());
+        assertEquals("Cambio de precio en Alfajor", result.get().titulo());
+        assertEquals("Cambio automatico detectado de 10.00, equivalente a 0%.",
                 result.get().razonIA());
     }
 

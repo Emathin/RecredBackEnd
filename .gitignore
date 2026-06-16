@@ -22,6 +22,7 @@ target/
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
+/md
 /dist/
 /nbdist/
 /.nb-gradle/
@@ -64,4 +65,4 @@ AGENTS.md
 
 # Local secrets
 secrets/*
-!secrets/.gitkeepAGENTS.md
+!secrets/.gitkeep

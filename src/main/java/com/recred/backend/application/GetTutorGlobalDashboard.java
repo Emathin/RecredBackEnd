@@ -53,7 +53,7 @@ public class GetTutorGlobalDashboard {
                 PresupuestoAlumno p = presupuestoOpt.get();
                 budgetDto = new BudgetSummaryDTO(
                         p.getPeriodo().name(),
-                        BigDecimal.ZERO, // Mock: TODO calculate actual spent
+                        BigDecimal.ZERO,
                         p.getMontoLimiteGeneral()
                 );
             }
@@ -76,7 +76,7 @@ public class GetTutorGlobalDashboard {
                             + prediction.spendingPrediction().predictedSpending();
                 }
             } catch (Exception e) {
-                // Ignore if prediction fails
+                
             }
 
             List<Purchase> historial = obtenerHistorialAlumno.execute(alumno.getId());
