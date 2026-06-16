@@ -64,7 +64,8 @@ public class UpdatePurchaseStatus {
         EstadoCompra previousStatus = purchase.getStatus();
 
         if (requestedStatus == EstadoCompra.CANCELADO) {
-            InvalidPurchaseStatusTransitionException exception = new InvalidPurchaseStatusTransitionException(
+            InvalidPurchaseStatusTransitionException exception = 
+                new InvalidPurchaseStatusTransitionException(
                     purchase.getStatus(),
                     requestedStatus);
             throw exception;
@@ -133,7 +134,8 @@ public class UpdatePurchaseStatus {
         }
 
         Billetera wallet = walletRepository.findByStudentId(purchase.getStudent().getId())
-                .orElseThrow(() -> new IllegalStateException("Student wallet not found for refund."));
+                .orElseThrow(() -> 
+                             new IllegalStateException("Student wallet not found for refund."));
         wallet.credit(purchase.getTotalAmount());
         walletRepository.save(wallet);
         registerRefundMovement(wallet, purchase);
