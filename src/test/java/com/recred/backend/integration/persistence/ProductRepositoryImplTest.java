@@ -566,7 +566,8 @@ public class ProductRepositoryImplTest {
                 EstadoInventario.DISPONIBLE,
                 TipoManejoInventario.STOCK_EXACTO,
                 20,
-                45
+                45,
+                "http://example.com/image.jpg"
         );
 
         when(springDataRepository.findAllActiveWithStockParams(buffetId))
