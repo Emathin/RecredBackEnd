@@ -21,7 +21,8 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
         Optional<ProductoEntity> findByIdAndActivoTrue(UUID id);
 
         @Query("""
-                        SELECT p,
+                        SELECT new com.recred.backend.infrastructure.persistence.ProductStockResult(
+                            p,
                             i.stockActual,
                             COALESCE(i.stockReservado, 0),
                             i.stockMinimo,
@@ -38,16 +39,19 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                                     END
                                 ELSE i.stockActual - COALESCE(i.stockReservado, 0)
                             END
+                        )
                         FROM ProductoEntity p
                         LEFT JOIN InventarioBuffetEntity i
                             ON i.productoEntity = p
                             AND i.buffetEntity.id = :buffetId
                         WHERE p.activo = true
                         """)
-        List<Object[]> findAllActiveWithStockParams(@Param("buffetId") UUID buffetId);
+        List<ProductStockResult> findAllActiveWithStockParams(
+                        @Param("buffetId") UUID buffetId);
 
         @Query("""
-                        SELECT p,
+                        SELECT new com.recred.backend.infrastructure.persistence.ProductStockResult(
+                            p,
                             i.stockActual,
                             COALESCE(i.stockReservado, 0),
                             i.stockMinimo,
@@ -64,6 +68,7 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                                     END
                                 ELSE i.stockActual - COALESCE(i.stockReservado, 0)
                             END
+                        )
                         FROM ProductoEntity p
                         LEFT JOIN InventarioBuffetEntity i
                             ON i.productoEntity = p
@@ -71,7 +76,7 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                         WHERE p.id = :id
                             AND p.activo = true
                         """)
-        Optional<Object[]> findActiveByIdWithStockParams(
+        Optional<ProductStockResult> findActiveByIdWithStockParams(
                         @Param("id") UUID id,
                         @Param("buffetId") UUID buffetId);
 

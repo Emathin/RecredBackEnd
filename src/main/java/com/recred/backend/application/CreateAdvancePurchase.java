@@ -2,6 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
+import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.BuyerType;
@@ -273,7 +274,7 @@ public class CreateAdvancePurchase {
                             itemRequest.productId(),
                             buffetId
                     )
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
+                    .orElseThrow(() -> new ProductNotFoundException(itemRequest.productId()));
             items.put(product, itemRequest.quantity());
         }
         return items;
