@@ -6,6 +6,10 @@ import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.GenerateComboSuggestion;
 import com.recred.backend.application.GetTutorGlobalDashboard;
+import com.recred.backend.application.EnableSchoolCredit;
+import com.recred.backend.application.GetActiveSchoolCredit;
+import com.recred.backend.application.GetLastRecharge;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
@@ -135,6 +139,7 @@ import com.recred.backend.domain.repositories.PurchaseRecommendationNotification
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCalendarRepository;
@@ -1229,5 +1234,31 @@ public class UseCases {
                 predictStudentSpending,
                 obtenerHistorialAlumno
         );
+    }
+
+    @Bean
+    public EnableSchoolCredit enableSchoolCredit(
+            TutorRepository tutorRepository,
+            AlumnoRepository alumnoRepository,
+            SchoolCreditRepository schoolCreditRepository,
+            PurchaseRepository purchaseRepository,
+            WalletRepository walletRepository,
+            Clock clock) {
+        return new EnableSchoolCredit(
+                tutorRepository, alumnoRepository, schoolCreditRepository,
+                purchaseRepository, walletRepository, clock);
+    }
+
+    @Bean
+    public GetLastRecharge getLastRecharge(
+            AlumnoRepository alumnoRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        return new GetLastRecharge(alumnoRepository, movimientoBilleteraRepository);
+    }
+
+    @Bean
+    public GetActiveSchoolCredit getActiveSchoolCredit(
+            SchoolCreditRepository schoolCreditRepository) {
+        return new GetActiveSchoolCredit(schoolCreditRepository);
     }
 }
