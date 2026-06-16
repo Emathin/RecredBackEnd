@@ -6,7 +6,9 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoCompra;
+import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
@@ -22,17 +24,28 @@ public class CancelPresentialPurchase {
     private final WalletRepository walletRepository;
     private final InventoryAvailabilityService inventoryAvailabilityService;
     private final FranjaHorariaRepository timeSlotRepository;
+    private final MovimientoBilleteraRepository movimientoBilleteraRepository;
 
     public CancelPresentialPurchase(
             PurchaseRepository purchaseRepository,
             WalletRepository walletRepository,
             InventoryAvailabilityService inventoryAvailabilityService,
-            FranjaHorariaRepository timeSlotRepository
-    ) {
+            FranjaHorariaRepository timeSlotRepository) {
+        this(purchaseRepository, walletRepository, inventoryAvailabilityService,
+                timeSlotRepository, null);
+    }
+
+    public CancelPresentialPurchase(
+            PurchaseRepository purchaseRepository,
+            WalletRepository walletRepository,
+            InventoryAvailabilityService inventoryAvailabilityService,
+            FranjaHorariaRepository timeSlotRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
         this.purchaseRepository = purchaseRepository;
         this.walletRepository = walletRepository;
         this.inventoryAvailabilityService = inventoryAvailabilityService;
         this.timeSlotRepository = timeSlotRepository;
+        this.movimientoBilleteraRepository = movimientoBilleteraRepository;
     }
 
     @Transactional
@@ -46,8 +59,7 @@ public class CancelPresentialPurchase {
         if (previousStatus != EstadoCompra.PENDIENTE) {
             throw new InvalidPurchaseStatusTransitionException(
                     previousStatus,
-                    EstadoCompra.CANCELADO
-            );
+                    EstadoCompra.CANCELADO);
         }
 
         validateAdvancePurchaseCancellationWindow(purchase);
@@ -59,20 +71,19 @@ public class CancelPresentialPurchase {
         }
 
         Billetera wallet = walletRepository.findByStudentId(purchase.getStudent().getId())
-                .orElseThrow(() ->
-                        new IllegalStateException("Student wallet not found for refund."));
+                .orElseThrow(() -> new IllegalStateException("Student wallet not found for refund."));
 
         if (shouldReleaseReservation(purchase, previousStatus)) {
             inventoryAvailabilityService.releaseReservation(
                     purchase.getBuffetId(),
                     purchase.getItems(),
-                    purchase.getId()
-            );
+                    purchase.getId());
         }
 
         wallet.credit(purchase.getTotalAmount());
 
         walletRepository.save(wallet);
+        registerRefundMovement(wallet, purchase);
         purchaseRepository.save(purchase);
     }
 
@@ -89,8 +100,7 @@ public class CancelPresentialPurchase {
         LocalDateTime nowInZone = LocalDateTime.now(zoneId);
         LocalDateTime startDateTime = LocalDateTime.of(
                 purchase.getPickupDate(),
-                franja.getHoraInicio()
-        );
+                franja.getHoraInicio());
 
         if (!nowInZone.isBefore(startDateTime.minusHours(1))) {
             throw new IllegalArgumentException(
@@ -108,5 +118,16 @@ public class CancelPresentialPurchase {
     private boolean shouldReleaseReservation(Purchase purchase, EstadoCompra previousStatus) {
         return purchase.getTipo() == TipoCompra.ANTICIPADA
                 && previousStatus == EstadoCompra.PENDIENTE;
+    }
+
+    private void registerRefundMovement(Billetera wallet, Purchase purchase) {
+        if (movimientoBilleteraRepository == null) {
+            return;
+        }
+        movimientoBilleteraRepository.registrarMovimientoSistema(
+                wallet.getId(),
+                TipoMovimientoBilletera.REEMBOLSO,
+                purchase.getTotalAmount(),
+                "Reembolso por cancelacion de compra");
     }
 }

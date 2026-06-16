@@ -8,12 +8,14 @@ import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.ProductoMedida;
 import com.recred.backend.domain.models.TipoManejoInventario;
+import com.recred.backend.domain.exceptions.InventoryOperationException;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionTipoEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.ProductoMedidaEntity;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,7 +63,7 @@ public class ProductRepositoryImpl implements ProductRepository {
     public List<Producto> findAllActiveWithStock(UUID buffetId) {
         return springDataRepository.findAllActiveWithStockParams(buffetId)
                 .stream()
-                .map(this::mapObjectArrayToDomain)
+                .map(this::mapStockResultToDomain)
                 .toList();
     }
 
@@ -69,18 +71,20 @@ public class ProductRepositoryImpl implements ProductRepository {
     @Transactional(readOnly = true)
     public Optional<Producto> findActiveByIdWithStock(UUID id, UUID buffetId) {
         return springDataRepository.findActiveByIdWithStockParams(id, buffetId)
-                .map(this::mapObjectArrayToDomain);
+                .map(this::mapStockResultToDomain);
     }
 
-    private Producto mapObjectArrayToDomain(Object[] result) {
-        ProductoEntity entity = (ProductoEntity) result[0];
-        Integer stockActual = integerValue(result[1]);
-        Integer stockReservado = integerValue(result[2]);
-        Integer stockMinimo = integerValue(result[3]);
-        EstadoInventario estado = (EstadoInventario) result[4];
-        TipoManejoInventario tipoManejo = (TipoManejoInventario) result[5];
-        Integer cupoMaximoDiario = integerValue(result[6]);
-        Integer stockDisponible = integerValue(result[7]);
+    private Producto mapStockResultToDomain(ProductStockResult result) {
+        validateStockResult(result);
+
+        ProductoEntity entity = result.product();
+        Integer stockActual = integerValue(result.stockActual());
+        Integer stockReservado = integerValue(result.stockReservado());
+        Integer stockMinimo = integerValue(result.stockMinimo());
+        EstadoInventario estado = result.estado();
+        TipoManejoInventario tipoManejo = result.tipoManejo();
+        Integer cupoMaximoDiario = integerValue(result.cupoMaximoDiario());
+        Integer stockDisponible = integerValue(result.stockDisponible());
         Inventario inventario = inventario(
                 stockActual,
                 stockReservado,
@@ -91,14 +95,27 @@ public class ProductRepositoryImpl implements ProductRepository {
         Producto domain = entity.toDomain();
         domain.setStockActual(stockActual);
         domain.setStockReservado(stockReservado);
-        domain.setStockMinimo(inventario == null
-                ? stockMinimo
-                : inventario.stockMinimoEfectivo());
+        domain.setStockMinimo(stockMinimo(inventario, stockMinimo));
         domain.setEstadoInventario(inventario == null ? estado : inventario.estadoActual());
         domain.setTipoManejoInventario(tipoManejo);
         domain.setCupoMaximoDiario(cupoMaximoDiario);
         domain.setStockDisponible(stockDisponible);
         return domain;
+    }
+
+    private Integer stockMinimo(Inventario inventario, Integer stockMinimo) {
+        if (inventario == null) {
+            return stockMinimo;
+        }
+
+        return inventario.stockMinimoEfectivo();
+    }
+
+    private void validateStockResult(ProductStockResult result) {
+        if (result == null || result.product() == null) {
+            throw new InventoryOperationException(
+                    "El resultado de inventario del producto tiene un formato invalido");
+        }
     }
 
     private Inventario inventario(
@@ -169,6 +186,16 @@ public class ProductRepositoryImpl implements ProductRepository {
     public List<Producto> findBestSoldProducts() {
         List<ProductoEntity> productos = springDataRepository.findBestSoldProducts();
         return productos.stream().map(ProductoEntity::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Producto> findBuffetTop3MostSold(UUID buffetId, UUID categoriaId) {
+        return springDataRepository.findBuffetTop3MostSold(
+                buffetId, categoriaId, PageRequest.of(0, 3))
+                .stream()
+                .map(ProductoEntity::toDomain)
+                .toList();
     }
 
     @Override

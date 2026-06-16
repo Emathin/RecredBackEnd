@@ -114,7 +114,6 @@ public class PurchaseSuggestController {
         );
 
         // TODO: Implementar lógica de código de verificación si fuera necesario
-        // String verificationCode = ...
 
         AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
 

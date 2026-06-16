@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.infrastructure.entities.ProductoEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -20,7 +21,8 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
         Optional<ProductoEntity> findByIdAndActivoTrue(UUID id);
 
         @Query("""
-                        SELECT p,
+                        SELECT new com.recred.backend.infrastructure.persistence.ProductStockResult(
+                            p,
                             i.stockActual,
                             COALESCE(i.stockReservado, 0),
                             i.stockMinimo,
@@ -37,16 +39,19 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                                     END
                                 ELSE i.stockActual - COALESCE(i.stockReservado, 0)
                             END
+                        )
                         FROM ProductoEntity p
                         LEFT JOIN InventarioBuffetEntity i
                             ON i.productoEntity = p
                             AND i.buffetEntity.id = :buffetId
                         WHERE p.activo = true
                         """)
-        List<Object[]> findAllActiveWithStockParams(@Param("buffetId") UUID buffetId);
+        List<ProductStockResult> findAllActiveWithStockParams(
+                        @Param("buffetId") UUID buffetId);
 
         @Query("""
-                        SELECT p,
+                        SELECT new com.recred.backend.infrastructure.persistence.ProductStockResult(
+                            p,
                             i.stockActual,
                             COALESCE(i.stockReservado, 0),
                             i.stockMinimo,
@@ -63,6 +68,7 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                                     END
                                 ELSE i.stockActual - COALESCE(i.stockReservado, 0)
                             END
+                        )
                         FROM ProductoEntity p
                         LEFT JOIN InventarioBuffetEntity i
                             ON i.productoEntity = p
@@ -70,7 +76,7 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                         WHERE p.id = :id
                             AND p.activo = true
                         """)
-        Optional<Object[]> findActiveByIdWithStockParams(
+        Optional<ProductStockResult> findActiveByIdWithStockParams(
                         @Param("id") UUID id,
                         @Param("buffetId") UUID buffetId);
 
@@ -130,4 +136,21 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                         ORDER BY SUM(COALESCE(cd.cantidad, 0)) DESC LIMIT 3
                         """)
         List<ProductoEntity> findBestSoldProducts();
+
+        @Query("""
+            SELECT p
+            FROM ProductoEntity p
+            JOIN CompraDetalleEntity cd ON cd.productoEntity.id = p.id
+            JOIN CompraEntity c ON cd.compra.id = c.id
+            JOIN InventarioBuffetEntity i ON i.productoEntity = p AND i.buffetEntity.id = :buffetId
+            WHERE c.buffetEntity.id = :buffetId
+            AND p.categoria.id <> :categoriaId
+            AND (i.stockActual - COALESCE(i.stockReservado, 0)) > 0
+            GROUP BY p.id
+            ORDER BY SUM(cd.cantidad) DESC
+            """)
+        List<ProductoEntity> findBuffetTop3MostSold(
+                @Param("buffetId") UUID buffetId,
+                @Param("categoriaId") UUID categoriaId,
+                Pageable pageable);
 }

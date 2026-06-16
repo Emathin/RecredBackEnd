@@ -10,7 +10,9 @@ import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RecessTime;
+import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.AdvancePurchaseRulesService;
@@ -43,6 +45,7 @@ public class CreateAssistantAdvancePurchase {
     private final Clock clock;
     private final InventoryAvailabilityService inventoryAvailabilityService;
     private final AdvancePurchaseRulesService advancePurchaseRulesService;
+    private final MovimientoBilleteraRepository movimientoBilleteraRepository;
 
     public CreateAssistantAdvancePurchase(
             AlumnoRepository studentRepository,
@@ -57,6 +60,25 @@ public class CreateAssistantAdvancePurchase {
             InventoryAvailabilityService inventoryAvailabilityService,
             AdvancePurchaseRulesService advancePurchaseRulesService
     ) {
+        this(studentRepository, walletRepository, purchaseRepository, recessTimeSlotResolver,
+                timeValidator, healthValidator, budgetValidator, withdrawalCodeService, clock,
+                inventoryAvailabilityService, advancePurchaseRulesService, null);
+    }
+
+    public CreateAssistantAdvancePurchase(
+            AlumnoRepository studentRepository,
+            WalletRepository walletRepository,
+            PurchaseRepository purchaseRepository,
+            RecessTimeSlotResolver recessTimeSlotResolver,
+            ValidadorHorarioService timeValidator,
+            ValidacionRestriccionesService healthValidator,
+            ValidadorPresupuestoService budgetValidator,
+            WithdrawalCodeService withdrawalCodeService,
+            Clock clock,
+            InventoryAvailabilityService inventoryAvailabilityService,
+            AdvancePurchaseRulesService advancePurchaseRulesService,
+            MovimientoBilleteraRepository movimientoBilleteraRepository
+    ) {
         this.studentRepository = studentRepository;
         this.walletRepository = walletRepository;
         this.purchaseRepository = purchaseRepository;
@@ -68,6 +90,7 @@ public class CreateAssistantAdvancePurchase {
         this.clock = clock;
         this.inventoryAvailabilityService = inventoryAvailabilityService;
         this.advancePurchaseRulesService = advancePurchaseRulesService;
+        this.movimientoBilleteraRepository = movimientoBilleteraRepository;
     }
 
     @Transactional
@@ -116,7 +139,9 @@ public class CreateAssistantAdvancePurchase {
 
         wallet.debit(total);
         walletRepository.save(wallet);
-        return purchaseRepository.save(purchase);
+        Purchase savedPurchase = purchaseRepository.save(purchase);
+        registerPurchaseMovement(wallet, student, total);
+        return savedPurchase;
     }
 
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
@@ -145,4 +170,25 @@ public class CreateAssistantAdvancePurchase {
         return product.getPrecio() == null ? BigDecimal.ZERO : product.getPrecio();
     }
 
+    private void registerPurchaseMovement(Billetera wallet, Alumno student, BigDecimal amount) {
+        if (movimientoBilleteraRepository == null) {
+            return;
+        }
+        if (student.getUsuarioId() == null) {
+            movimientoBilleteraRepository.registrarMovimientoSistema(
+                    wallet.getId(),
+                    TipoMovimientoBilletera.COMPRA,
+                    amount.negate(),
+                    "Compra anticipada asistida"
+            );
+            return;
+        }
+        movimientoBilleteraRepository.registrarMovimiento(
+                wallet.getId(),
+                TipoMovimientoBilletera.COMPRA,
+                amount.negate(),
+                "Compra anticipada asistida",
+                student.getUsuarioId()
+        );
+    }
 }
