@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface MovimientoBilleteraRepository {
+
     List<WalletMovement> findByStudentIdAndDateRange(
             UUID studentId,
             LocalDateTime from,
@@ -16,12 +17,14 @@ public interface MovimientoBilleteraRepository {
     );
 
     void registrarMovimiento(
-            UUID billeteraId, 
-            TipoMovimientoBilletera tipo, 
-            BigDecimal monto, 
-            String descripcion, 
+            UUID billeteraId,
+            TipoMovimientoBilletera tipo,
+            BigDecimal monto,
+            String descripcion,
             UUID usuarioId
     );
+
+    BigDecimal obtenerUltimoMontoCarga(UUID billeteraId);
 
     void registrarMovimientoSistema(
             UUID billeteraId,

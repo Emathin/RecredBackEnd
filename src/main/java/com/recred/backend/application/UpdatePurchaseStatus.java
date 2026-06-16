@@ -30,8 +30,7 @@ public class UpdatePurchaseStatus {
     public UpdatePurchaseStatus(
             PurchaseRepository purchaseRepository,
             InventoryAvailabilityService inventoryAvailabilityService,
-            WalletRepository walletRepository
-    ) {
+            WalletRepository walletRepository) {
         this(purchaseRepository, inventoryAvailabilityService, walletRepository, event -> {
         });
     }
@@ -40,8 +39,7 @@ public class UpdatePurchaseStatus {
             PurchaseRepository purchaseRepository,
             InventoryAvailabilityService inventoryAvailabilityService,
             WalletRepository walletRepository,
-            KiosqueroRealtimeEventPublisher realtimeEventPublisher
-    ) {
+            KiosqueroRealtimeEventPublisher realtimeEventPublisher) {
         this(purchaseRepository, inventoryAvailabilityService, walletRepository,
                 realtimeEventPublisher, null);
     }
@@ -51,8 +49,7 @@ public class UpdatePurchaseStatus {
             InventoryAvailabilityService inventoryAvailabilityService,
             WalletRepository walletRepository,
             KiosqueroRealtimeEventPublisher realtimeEventPublisher,
-            MovimientoBilleteraRepository movimientoBilleteraRepository
-    ) {
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
         this.purchaseRepository = purchaseRepository;
         this.inventoryAvailabilityService = inventoryAvailabilityService;
         this.walletRepository = walletRepository;
@@ -67,11 +64,10 @@ public class UpdatePurchaseStatus {
         EstadoCompra previousStatus = purchase.getStatus();
 
         if (requestedStatus == EstadoCompra.CANCELADO) {
-            InvalidPurchaseStatusTransitionException exception =
-                    new InvalidPurchaseStatusTransitionException(
-                            purchase.getStatus(),
-                            requestedStatus
-                    );
+            InvalidPurchaseStatusTransitionException exception = 
+                new InvalidPurchaseStatusTransitionException(
+                    purchase.getStatus(),
+                    requestedStatus);
             throw exception;
         }
 
@@ -81,16 +77,14 @@ public class UpdatePurchaseStatus {
             inventoryAvailabilityService.consumeReservation(
                     purchase.getBuffetId(),
                     purchase.getItems(),
-                    purchase.getId()
-            );
+                    purchase.getId());
         }
 
         if (shouldReleaseReservation(purchase, previousStatus, requestedStatus)) {
             inventoryAvailabilityService.releaseReservation(
                     purchase.getBuffetId(),
                     purchase.getItems(),
-                    purchase.getId()
-            );
+                    purchase.getId());
         }
 
         if (shouldRefund(purchase, requestedStatus)) {
@@ -111,8 +105,7 @@ public class UpdatePurchaseStatus {
         realtimeEventPublisher.publish(KiosqueroRealtimeEvent.purchase(
                 KiosqueroRealtimeEventType.ORDER_EXPIRED,
                 purchase,
-                "Pedido vencido o no retirado"
-        ));
+                "Pedido vencido o no retirado"));
     }
 
     private boolean shouldConsumeReservation(Purchase purchase, EstadoCompra requestedStatus) {
@@ -123,12 +116,11 @@ public class UpdatePurchaseStatus {
     private boolean shouldReleaseReservation(
             Purchase purchase,
             EstadoCompra previousStatus,
-            EstadoCompra requestedStatus
-    ) {
+            EstadoCompra requestedStatus) {
         return purchase.getTipo() == TipoCompra.ANTICIPADA
                 && hasActiveReservation(previousStatus)
                 && (requestedStatus == EstadoCompra.RECHAZADO
-                || requestedStatus == EstadoCompra.VENCIDO);
+                        || requestedStatus == EstadoCompra.VENCIDO);
     }
 
     private boolean shouldRefund(Purchase purchase, EstadoCompra requestedStatus) {
@@ -142,8 +134,8 @@ public class UpdatePurchaseStatus {
         }
 
         Billetera wallet = walletRepository.findByStudentId(purchase.getStudent().getId())
-                .orElseThrow(() ->
-                        new IllegalStateException("Student wallet not found for refund."));
+                .orElseThrow(() -> 
+                             new IllegalStateException("Student wallet not found for refund."));
         wallet.credit(purchase.getTotalAmount());
         walletRepository.save(wallet);
         registerRefundMovement(wallet, purchase);
@@ -163,7 +155,6 @@ public class UpdatePurchaseStatus {
                 wallet.getId(),
                 TipoMovimientoBilletera.REEMBOLSO,
                 purchase.getTotalAmount(),
-                "Reembolso por rechazo de compra"
-        );
+                "Reembolso por rechazo de compra");
     }
 }

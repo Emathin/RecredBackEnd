@@ -47,7 +47,7 @@ public class OpenMeteoWeatherClient {
         }
     }
 
-    String translateWeatherCode(Integer code) {
+    public String translateWeatherCode(Integer code) {
         if (code == 0) {
             return "Despejado";
         }

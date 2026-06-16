@@ -30,8 +30,7 @@ public class CancelPresentialPurchase {
             PurchaseRepository purchaseRepository,
             WalletRepository walletRepository,
             InventoryAvailabilityService inventoryAvailabilityService,
-            FranjaHorariaRepository timeSlotRepository
-    ) {
+            FranjaHorariaRepository timeSlotRepository) {
         this(purchaseRepository, walletRepository, inventoryAvailabilityService,
                 timeSlotRepository, null);
     }
@@ -41,8 +40,7 @@ public class CancelPresentialPurchase {
             WalletRepository walletRepository,
             InventoryAvailabilityService inventoryAvailabilityService,
             FranjaHorariaRepository timeSlotRepository,
-            MovimientoBilleteraRepository movimientoBilleteraRepository
-    ) {
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
         this.purchaseRepository = purchaseRepository;
         this.walletRepository = walletRepository;
         this.inventoryAvailabilityService = inventoryAvailabilityService;
@@ -61,8 +59,7 @@ public class CancelPresentialPurchase {
         if (previousStatus != EstadoCompra.PENDIENTE) {
             throw new InvalidPurchaseStatusTransitionException(
                     previousStatus,
-                    EstadoCompra.CANCELADO
-            );
+                    EstadoCompra.CANCELADO);
         }
 
         validateAdvancePurchaseCancellationWindow(purchase);
@@ -75,14 +72,13 @@ public class CancelPresentialPurchase {
 
         Billetera wallet = walletRepository.findByStudentId(purchase.getStudent().getId())
                 .orElseThrow(() ->
-                        new IllegalStateException("Student wallet not found for refund."));
+                             new IllegalStateException("Student wallet not found for refund."));
 
         if (shouldReleaseReservation(purchase, previousStatus)) {
             inventoryAvailabilityService.releaseReservation(
                     purchase.getBuffetId(),
                     purchase.getItems(),
-                    purchase.getId()
-            );
+                    purchase.getId());
         }
 
         wallet.credit(purchase.getTotalAmount());
@@ -105,8 +101,7 @@ public class CancelPresentialPurchase {
         LocalDateTime nowInZone = LocalDateTime.now(zoneId);
         LocalDateTime startDateTime = LocalDateTime.of(
                 purchase.getPickupDate(),
-                franja.getHoraInicio()
-        );
+                franja.getHoraInicio());
 
         if (!nowInZone.isBefore(startDateTime.minusHours(1))) {
             throw new IllegalArgumentException(
@@ -121,7 +116,7 @@ public class CancelPresentialPurchase {
                 && purchase.getPickupDate() != null;
     }
 
-    private boolean shouldReleaseReservation(Purchase purchase, EstadoCompra previousStatus) {
+    private boolean shouldReleaseReservation(Purchase purchase, EstadoCompra previousStatus){
         return purchase.getTipo() == TipoCompra.ANTICIPADA
                 && previousStatus == EstadoCompra.PENDIENTE;
     }
@@ -134,7 +129,6 @@ public class CancelPresentialPurchase {
                 wallet.getId(),
                 TipoMovimientoBilletera.REEMBOLSO,
                 purchase.getTotalAmount(),
-                "Reembolso por cancelacion de compra"
-        );
+                "Reembolso por cancelacion de compra");
     }
 }

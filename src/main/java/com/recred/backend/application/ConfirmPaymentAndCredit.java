@@ -35,23 +35,19 @@ public class ConfirmPaymentAndCredit {
 
         PaymentDetails details = externalPaymentService.getPaymentDetails(paymentId);
 
-
         if (details.status() == PaymentStatus.APPROVED) {
             Billetera wallet = walletRepository.findByStudentId(details.studentId())
                     .orElseThrow(() -> new RuntimeException(
                             "Billetera no encontrada para alumno: " + details.studentId()));
 
-
             wallet.credit(details.amount());
-
 
             walletRepository.save(wallet);
             registerSystemMovement(
                     wallet,
                     TipoMovimientoBilletera.CARGA,
                     details.amount(),
-                    "Acreditacion de pago Mercado Pago: " + details.paymentId()
-            );
+                    "Acreditacion de pago Mercado Pago: " + details.paymentId());
         }
     }
 
@@ -67,7 +63,6 @@ public class ConfirmPaymentAndCredit {
                 wallet.getId(),
                 type,
                 amount,
-                description
-        );
+                description);
     }
 }
