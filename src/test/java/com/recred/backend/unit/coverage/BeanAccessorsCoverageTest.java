@@ -1,4 +1,4 @@
-package com.recred.backend.coverage;
+package com.recred.backend.unit.coverage;
 
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;

@@ -1,5 +1,6 @@
-package com.recred.backend.config;
+package com.recred.backend.integration.config;
 
+import com.recred.backend.config.CognitoAudienceValidator;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;

@@ -1,4 +1,4 @@
-package com.recred.backend.infrastructure.cognito;
+package com.recred.backend.integration.cognito;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.config.CognitoAdminProperties;
@@ -10,6 +10,8 @@ import java.net.http.HttpResponse;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+
+import com.recred.backend.infrastructure.cognito.CognitoStudentIdentityServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 

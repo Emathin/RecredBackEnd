@@ -1,7 +1,8 @@
-package com.recred.backend.infrastructure.entities;
+package com.recred.backend.integration.entities;
 
 import com.recred.backend.domain.models.CarritoFavorito;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.infrastructure.entities.*;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

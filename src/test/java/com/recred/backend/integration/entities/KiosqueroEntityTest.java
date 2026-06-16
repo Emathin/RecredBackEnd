@@ -1,8 +1,9 @@
-package com.recred.backend.infrastructure.entities;
+package com.recred.backend.integration.entities;
 
 import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.infrastructure.entities.*;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;

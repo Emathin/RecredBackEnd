@@ -1,5 +1,8 @@
-package com.recred.backend.config;
+package com.recred.backend.integration.config;
 
+import com.recred.backend.config.GlobalExceptionHandler;
+import com.recred.backend.config.ErrorResponse;
+import com.recred.backend.config.RequestIdContext;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.BuffetNotFoundException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;

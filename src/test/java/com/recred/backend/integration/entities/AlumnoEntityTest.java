@@ -1,4 +1,4 @@
-package com.recred.backend.infrastructure.entities;
+package com.recred.backend.integration.entities;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
@@ -7,6 +7,7 @@ import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.RestriccionHoraria;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.infrastructure.entities.*;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

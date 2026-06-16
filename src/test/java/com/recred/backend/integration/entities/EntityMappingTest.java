@@ -1,4 +1,4 @@
-package com.recred.backend.infrastructure.entities;
+package com.recred.backend.integration.entities;
 
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.Buffet;
@@ -8,6 +8,7 @@ import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Nivel;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoCompra;
+import com.recred.backend.infrastructure.entities.*;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

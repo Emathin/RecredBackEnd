@@ -1,7 +1,8 @@
-package com.recred.backend.config;
+package com.recred.backend.integration.config;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;

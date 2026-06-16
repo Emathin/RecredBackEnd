@@ -1,5 +1,6 @@
-package com.recred.backend.config;
+package com.recred.backend.integration.config;
 
+import com.recred.backend.config.RestClientConfig;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClient;

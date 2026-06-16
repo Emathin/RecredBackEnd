@@ -7,7 +7,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.List;
 
-class CognitoAudienceValidator implements OAuth2TokenValidator<Jwt> {
+public class CognitoAudienceValidator implements OAuth2TokenValidator<Jwt> {
     private final String audience;
 
     public CognitoAudienceValidator(String audience) {
