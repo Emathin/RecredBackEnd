@@ -34,7 +34,7 @@ public class CustomJwtAuthenticationConverter implements
         this(usuarioRepository, Clock.systemUTC());
     }
 
-    CustomJwtAuthenticationConverter(UsuarioRepository usuarioRepository, Clock clock) {
+    public CustomJwtAuthenticationConverter(UsuarioRepository usuarioRepository, Clock clock) {
         this.usuarioRepository = usuarioRepository;
         this.clock = clock;
     }

@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/usuarios/{userId}/preferencias")
+@RequestMapping("/api/v1")
 public class StudentPreferenceController {
 
     private final DetectStudentPreferences detectStudentPreferences;
@@ -51,7 +51,7 @@ public class StudentPreferenceController {
         this.getFavoritosByAlumno = getFavoritosByAlumno;
     }
 
-    @PostMapping("/detectar")
+    @PostMapping("/usuarios/{userId}/preferencias/detectar")
     public ResponseEntity<StudentPreferenceResponse> detect(
             @PathVariable UUID userId,
             @RequestParam("buffetId") UUID buffetId
@@ -63,7 +63,7 @@ public class StudentPreferenceController {
                 .orElse(ResponseEntity.noContent().build());
     }
 
-    @GetMapping
+    @GetMapping("/usuarios/{userId}/preferencias")
     public ResponseEntity<List<StudentPreferenceResponse>> getPreferences(
             @PathVariable UUID userId,
             @RequestParam(name = "ultima", required = false, defaultValue = "false") boolean ultima,
@@ -91,7 +91,7 @@ public class StudentPreferenceController {
                 result.child());
     }
 
-    @PatchMapping("/{sugerenciaId}/responder")
+    @PatchMapping("/usuarios/{userId}/preferencias/{sugerenciaId}/responder")
     public ResponseEntity<Void> respond(
             @PathVariable UUID sugerenciaId,
             @RequestParam("aceptada") boolean aceptada
@@ -100,32 +100,29 @@ public class StudentPreferenceController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/favoritos/{productoId}")
+    @PostMapping("/alumnos/{alumnoId}/preferencias/favoritos/{productoId}")
     public ResponseEntity<Void> agregarFavorito(
-            @PathVariable UUID userId,
+            @PathVariable UUID alumnoId,
             @PathVariable UUID productoId
     ) {
-        UUID resolvedAlumnoId = resolveAlumnoId(userId);
-        agregarProductoFavorito.execute(resolvedAlumnoId, productoId);
+        agregarProductoFavorito.execute(alumnoId, productoId);
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/favoritos/{productoId}")
+    @DeleteMapping("/alumnos/{alumnoId}/preferencias/favoritos/{productoId}")
     public ResponseEntity<Void> removerFavorito(
-            @PathVariable UUID userId,
+            @PathVariable UUID alumnoId,
             @PathVariable UUID productoId
     ) {
-        UUID resolvedAlumnoId = resolveAlumnoId(userId);
-        removerProductoFavorito.execute(resolvedAlumnoId, productoId);
+        removerProductoFavorito.execute(alumnoId, productoId);
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/favoritos")
+    @GetMapping("/alumnos/{alumnoId}/preferencias/favoritos")
     public ResponseEntity<List<ProductResponseDTO>> obtenerFavoritos(
-            @PathVariable UUID userId
+            @PathVariable UUID alumnoId
     ) {
-        UUID resolvedAlumnoId = resolveAlumnoId(userId);
-        List<ProductResponseDTO> favoritos = getFavoritosByAlumno.execute(resolvedAlumnoId)
+        List<ProductResponseDTO> favoritos = getFavoritosByAlumno.execute(alumnoId)
                 .stream()
                 .map(ProductResponseDTO::fromDomain)
                 .toList();
