@@ -86,6 +86,22 @@ class StudentPreferenceResponseTest {
     }
 
     @Test
+    void fromParentViewShouldUseBaseStudentWhenChildIsNull() {
+        UUID alumnoId = UUID.randomUUID();
+        SugerenciaIAEntity entity = suggestion(UUID.randomUUID(), alumnoId);
+
+        StudentPreferenceResponse response = StudentPreferenceResponse.fromParentView(
+                entity,
+                null
+        );
+
+        assertEquals(alumnoId, response.alumnoId());
+        assertNull(response.alumnoUserId());
+        assertNull(response.alumnoNombre());
+        assertEquals("Producto recomendado", response.titulo());
+    }
+
+    @Test
     void fromStudentViewShouldReturnBaseWhenChildIsNull() {
         SugerenciaIAEntity entity = suggestion(UUID.randomUUID(), UUID.randomUUID());
 
@@ -114,6 +130,22 @@ class StudentPreferenceResponseTest {
         assertEquals("Ana Perez", response.alumnoNombre());
         assertEquals("Producto recomendado", response.titulo());
         assertEquals("Compra este producto", response.mensaje());
+    }
+
+    @Test
+    void fromStudentViewShouldMapChildWithoutUser() {
+        SugerenciaIAEntity entity = suggestion(UUID.randomUUID(), UUID.randomUUID());
+        Alumno child = new Alumno();
+        child.setId(UUID.randomUUID());
+
+        StudentPreferenceResponse response = StudentPreferenceResponse.fromStudentView(
+                entity,
+                child
+        );
+
+        assertEquals(child.getId(), response.alumnoId());
+        assertNull(response.alumnoUserId());
+        assertNull(response.alumnoNombre());
     }
 
     @Test

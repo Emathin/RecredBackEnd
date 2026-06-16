@@ -19,6 +19,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
@@ -56,5 +58,44 @@ public class GenerateParentSummaryJobTest {
         verify(generateParentSummary, times(1)).execute(any(), any(), any());
         verify(pushNotificationSender, times(1)).send(any());
         verify(notificacionJpaRepository, times(1)).save(any());
+    }
+
+    @Test
+    void run_WhenUsuarioEntityDoesNotExist_ShouldContinueWithoutSavingNotification() {
+        UUID usuarioId = UUID.randomUUID();
+        Tutor tutor = tutor(usuarioId);
+
+        when(tutorRepository.findAll()).thenReturn(Collections.singletonList(tutor));
+        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.empty());
+
+        generateParentSummaryJob.run();
+
+        verify(generateParentSummary).execute(any(), any(), any());
+        verify(pushNotificationSender).send(any());
+        verify(notificacionJpaRepository, never()).save(any());
+    }
+
+    @Test
+    void run_WhenSummaryGenerationFails_ShouldContinueWithoutSendingNotification() {
+        UUID usuarioId = UUID.randomUUID();
+        Tutor tutor = tutor(usuarioId);
+
+        when(tutorRepository.findAll()).thenReturn(Collections.singletonList(tutor));
+        doThrow(new RuntimeException("error")).when(generateParentSummary)
+                .execute(any(), any(), any());
+
+        generateParentSummaryJob.run();
+
+        verify(pushNotificationSender, never()).send(any());
+        verify(usuarioRepository, never()).findById(any());
+        verify(notificacionJpaRepository, never()).save(any());
+    }
+
+    private Tutor tutor(UUID usuarioId) {
+        Tutor tutor = new Tutor();
+        Usuario usuario = new Usuario();
+        usuario.setId(usuarioId);
+        tutor.setUsuario(usuario);
+        return tutor;
     }
 }

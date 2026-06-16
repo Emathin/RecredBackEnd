@@ -31,8 +31,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -140,6 +144,36 @@ class GlobalExceptionHandlerTest {
                 HttpStatus.CONFLICT, "CONFLICT", null);
         assertError(handler.handleGeneralException(new RuntimeException("Error")),
                 HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", null);
+    }
+
+    @Test
+    void webFrameworkHandlers_ShouldReturnExpectedStatuses() {
+        ResponseEntity<ErrorResponse> mismatch = handler.handleTypeMismatch(
+                new MethodArgumentTypeMismatchException(
+                        "abc", UUID.class, "id", null, null
+                )
+        );
+        ResponseEntity<ErrorResponse> missingResource = handler.handleNoResourceFound(
+                new NoResourceFoundException(HttpMethod.GET, "/api/missing", "missing")
+        );
+
+        assertError(mismatch, HttpStatus.BAD_REQUEST, "BAD_REQUEST", null);
+        assertEquals(true, mismatch.getBody().mensaje().contains("'id'"));
+        assertEquals(true, mismatch.getBody().mensaje().contains("'abc'"));
+        assertError(missingResource, HttpStatus.NOT_FOUND, "NOT_FOUND", null);
+        assertEquals("El recurso solicitado no existe: missing",
+                missingResource.getBody().mensaje());
+    }
+
+    @Test
+    void defaultCode_WhenStatusIsNotMapped_ShouldReturnGenericError() {
+        String code = ReflectionTestUtils.invokeMethod(
+                handler,
+                "defaultCode",
+                HttpStatus.I_AM_A_TEAPOT
+        );
+
+        assertEquals("ERROR", code);
     }
 
     private void assertError(

@@ -5,6 +5,7 @@ import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.ProductSaleStatistics;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,24 @@ class GeminiproductChangeAnalyzerTest {
         ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
         verify(geminiTextClient).generate(promptCaptor.capture());
         assertTrue(promptCaptor.getValue().contains("nombreProducto=Alfajor"));
+    }
+
+    @Test
+    void analyze_WhenGeminiReturnsNullAlerts_ShouldMapEmptyAlerts() {
+        GeminiproductChangeAnalyzer analyzer = analyzer();
+        when(geminiTextClient.generate(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(Optional.of(new GeminiTextResponse("""
+                        {
+                          "resumen": "Sin alertas.",
+                          "alertas": null,
+                          "recomendaciones": []
+                        }
+                        """, "gemini-test")));
+
+        Optional<ProductChangeAnalysis> result = analyzer.analyze(recommendation());
+
+        assertTrue(result.isPresent());
+        assertEquals(List.of(), result.orElseThrow().alerts());
     }
 
     @Test

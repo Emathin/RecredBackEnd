@@ -124,6 +124,41 @@ public class GenerateParentSummaryTest {
     }
 
     @Test
+    void execute_WhenMostConsumedProductsHaveSameQuantity_ShouldChooseHighestPrice()
+            throws Exception {
+        UUID usuarioId = UUID.randomUUID();
+        LocalDateTime inicio = LocalDateTime.of(2026, 6, 1, 0, 0);
+        LocalDateTime fin = LocalDateTime.of(2026, 6, 15, 23, 59);
+        Usuario parentUser = new Usuario();
+        parentUser.setId(usuarioId);
+        Tutor tutor = new Tutor();
+        tutor.setUsuario(parentUser);
+        Alumno child = child("Ana");
+        tutor.setHijos(Set.of(child));
+        Producto cheap = product("Agua", "10.00", category("Bebidas"));
+        Producto expensive = product("Sandwich", "50.00", category("Comida"));
+
+        when(tutorRepository.findByUsuarioId(usuarioId)).thenReturn(Optional.of(tutor));
+        when(purchaseRepository.findByAlumnoAndDateRange(child.getId(), inicio, fin))
+                .thenReturn(List.of(
+                        purchase(cheap, 1, "10.00"),
+                        purchase(expensive, 1, "50.00")
+                ));
+        when(presupuestoRepository.findActivoByAlumnoId(child.getId()))
+                .thenReturn(Optional.empty());
+        when(parentSummaryAnalyzer.analyze(any())).thenReturn("Mensaje final");
+        when(summaryRepository.save(any(Summary.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Summary result = generateParentSummary.execute(usuarioId, inicio, fin);
+
+        JsonNode json = OBJECT_MAPPER.readTree(result.getResumen());
+        JsonNode productNode = json.get("hijos").get("Ana").get("productoMasConsumido");
+        assertEquals("Sandwich", productNode.get("nombre").asText());
+        assertEquals(50, productNode.get("precio").asInt());
+    }
+
+    @Test
     void executeThrowsWhenTutorDoesNotExist() {
         UUID usuarioId = UUID.randomUUID();
         when(tutorRepository.findByUsuarioId(usuarioId)).thenReturn(Optional.empty());

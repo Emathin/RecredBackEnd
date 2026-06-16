@@ -59,6 +59,23 @@ class FranjaHorariaRepositoryImplTest {
     }
 
     @Test
+    void saveShouldCreateEntityWhenDomainHasNoId() {
+        FranjaHoraria domain = timeSlot(null);
+        when(springDataRepository.save(any(FranjaHorariaEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        FranjaHoraria result = repository.save(domain);
+
+        ArgumentCaptor<FranjaHorariaEntity> captor = ArgumentCaptor.forClass(
+                FranjaHorariaEntity.class
+        );
+        verify(springDataRepository).save(captor.capture());
+        assertEquals("Primer recreo", captor.getValue().getDescripcion());
+        assertEquals(domain.getColegioId(), captor.getValue().getColegioEntity().getId());
+        assertEquals(null, result.getId());
+    }
+
+    @Test
     void saveShouldUpdateExistingEntity() {
         UUID id = UUID.randomUUID();
         FranjaHoraria domain = timeSlot(id);

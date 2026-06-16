@@ -2,6 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.ConsumoAlumnoNoAutorizadoException;
 import com.recred.backend.domain.exceptions.RangoFechasConsumoInvalidoException;
+import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.ConsumptionRequester;
 import com.recred.backend.domain.models.EstadoCompra;
@@ -228,6 +229,104 @@ class GetStudentWalletSummaryTest {
                         Optional.of(LocalDate.of(2026, 6, 1))
                 )
         );
+    }
+
+    @Test
+    void rejectsMissingAuthenticatedUser() {
+        UUID studentId = UUID.randomUUID();
+        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                UsuarioAutenticadoNoEncontradoException.class,
+                () -> useCase.execute(
+                        COGNITO_SUBJECT,
+                        studentId,
+                        Optional.empty(),
+                        Optional.empty()
+                )
+        );
+        verify(walletRepository, never()).findByStudentId(any());
+    }
+
+    @Test
+    void rejectsStudentWithoutAssociatedStudentId() {
+        UUID userId = UUID.randomUUID();
+        UUID requestedStudentId = UUID.randomUUID();
+        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.of(new ConsumptionRequester(
+                        userId,
+                        RolUsuario.ALUMNO,
+                        null
+                )));
+
+        assertThrows(
+                ConsumoAlumnoNoAutorizadoException.class,
+                () -> useCase.execute(
+                        COGNITO_SUBJECT,
+                        requestedStudentId,
+                        Optional.empty(),
+                        Optional.empty()
+                )
+        );
+        verify(walletRepository, never()).findByStudentId(any());
+    }
+
+    @Test
+    void rejectsWhenWalletDoesNotExistForStudent() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.of(new ConsumptionRequester(
+                        userId,
+                        RolUsuario.ALUMNO,
+                        studentId
+                )));
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> useCase.execute(
+                        COGNITO_SUBJECT,
+                        studentId,
+                        Optional.empty(),
+                        Optional.empty()
+                )
+        );
+    }
+
+    @Test
+    void groupsNullCategoryAsUncategorizedAndUsesZeroPercentageWhenNoSpending() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        StudentConsumptionProduct product = product(null, "0.00");
+        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.of(new ConsumptionRequester(
+                        userId,
+                        RolUsuario.ALUMNO,
+                        studentId
+                )));
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet("0.00")));
+        when(movementRepository.findByStudentIdAndDateRange(eq(studentId), any(), any()))
+                .thenReturn(List.of());
+        when(consumptionRepository.findPurchasesByStudentIdAndDateRange(
+                eq(studentId),
+                anyCollection(),
+                any(),
+                any()
+        )).thenReturn(List.of(purchase("0.00", product)));
+
+        StudentWalletSummary summary = useCase.execute(
+                COGNITO_SUBJECT,
+                studentId,
+                Optional.empty(),
+                Optional.empty()
+        );
+
+        assertEquals("Sin categoria", summary.categorySpending().get(0).category());
+        assertEquals(new BigDecimal("0.00"), summary.categorySpending().get(0).percentage());
+        assertEquals("Sin clasificar", summary.healthSpending().get(0).classification());
+        assertEquals(new BigDecimal("0.00"), summary.healthSpending().get(0).percentage());
     }
 
     private Billetera wallet(String balance) {

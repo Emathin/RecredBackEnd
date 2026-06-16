@@ -11,6 +11,7 @@ import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.ProductRecommendationResult;
+import com.recred.backend.domain.models.ProductSaleStatistics;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.PurchasePatternAnalysis;
 import com.recred.backend.domain.models.PurchaseRecommendationResult;
@@ -123,12 +124,22 @@ class AIEventPersistenceRepositoryTest {
                 objectMapper
         );
         AIEventEntity event = productChangeEvent(buffetId);
+        Map<String, Object> statsMap = Map.of("ventasPeriodo", 5);
+        ProductSaleStatistics statistics = new ProductSaleStatistics();
+        statistics.setVentasPeriodo(5L);
+        event.setInputData(Map.of(
+                "nombre", "Producto 1",
+                "precio", 10.0,
+                "saleStatistics", statsMap
+        ));
         event.setResultData(Map.of("analisisIa", Map.of(
                 "resumen", "Conviene ajustar stock.",
                 "alertas", List.of("Baja rotacion"),
                 "recomendaciones", List.of("Promocionar"),
                 "modelo", "gemini-test"
         )));
+        when(objectMapper.convertValue(statsMap, ProductSaleStatistics.class))
+                .thenReturn(statistics);
         when(aiEventJpaRepository.findFirstByTypeAndBuffetEntityIdOrderByCreatedAtDesc(
                 AIEventType.PRODUCTO_CAMBIO,
                 buffetId
@@ -141,6 +152,10 @@ class AIEventPersistenceRepositoryTest {
         assertTrue(result.orElseThrow().getAiAnalysis().isPresent());
         assertEquals("Conviene ajustar stock.",
                 result.orElseThrow().getAiAnalysis().orElseThrow().summary());
+        assertEquals(5L, result.orElseThrow()
+                .getProductChangeRecommendation()
+                .getSaleStatistics()
+                .getVentasPeriodo());
     }
 
     @Test
@@ -178,6 +193,39 @@ class AIEventPersistenceRepositoryTest {
         assertEquals("Alfajor", event.getInputData().get("nombre"));
         assertEquals("Subio la demanda.",
                 aiAnalysis(event).get("resumen"));
+    }
+
+    @Test
+    void registerProductChangeRecommendation_WhenStatisticsExist_ShouldPersistThem() {
+        UUID buffetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        ProductSaleStatistics statistics = new ProductSaleStatistics();
+        statistics.setVentasPeriodo(7L);
+        Map<String, Object> statisticsMap = Map.of("ventasPeriodo", 7L);
+        ProductChangeRecommendation recommendation = new ProductChangeRecommendation();
+        recommendation.setId(productId);
+        recommendation.setIdBuffet(buffetId);
+        recommendation.setNombre("Alfajor");
+        recommendation.setPrecio(new BigDecimal("10.00"));
+        recommendation.setSaleStatistics(statistics);
+        when(entityManager.getReference(BuffetEntity.class, buffetId))
+                .thenReturn(new BuffetEntity());
+        when(entityManager.getReference(ProductoEntity.class, productId))
+                .thenReturn(new ProductoEntity());
+        when(objectMapper.convertValue(statistics, Map.class)).thenReturn(statisticsMap);
+        AIEventPersistenceRepository repository = new AIEventPersistenceRepository(
+                aiEventJpaRepository,
+                entityManager,
+                objectMapper
+        );
+
+        repository.registerProductChangeRecommendation(
+                new ProductRecommendationResult(recommendation, Optional.empty())
+        );
+
+        ArgumentCaptor<AIEventEntity> captor = ArgumentCaptor.forClass(AIEventEntity.class);
+        verify(aiEventJpaRepository).save(captor.capture());
+        assertEquals(statisticsMap, captor.getValue().getInputData().get("saleStatistics"));
     }
 
     @Test

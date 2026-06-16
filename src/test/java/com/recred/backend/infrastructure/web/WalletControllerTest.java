@@ -11,6 +11,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -23,6 +25,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -126,6 +129,32 @@ class WalletControllerTest {
                 .andExpect(jsonPath("$.periodo.desde").value("2026-06-01"))
                 .andExpect(jsonPath("$.periodo.hasta").value("2026-06-14"))
                 .andExpect(jsonPath("$.cantidadCompras").value(8));
+    }
+
+    @Test
+    void loadBalanceWithoutAuthenticationShouldThrow() {
+        WalletController.LoadBalanceRequest request = new WalletController.LoadBalanceRequest(
+                UUID.randomUUID(),
+                BigDecimal.TEN
+        );
+
+        assertThrows(AuthenticationCredentialsNotFoundException.class,
+                () -> walletController.loadBalance(request, null));
+    }
+
+    @Test
+    void transferBalanceWithInvalidAuthenticationPrincipalShouldThrow() {
+        WalletController.TransferBalanceRequest request =
+                new WalletController.TransferBalanceRequest(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        BigDecimal.TEN
+                );
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken("subject", null);
+
+        assertThrows(SecurityException.class,
+                () -> walletController.transferBalance(request, authentication));
     }
 
     private Authentication authentication() {

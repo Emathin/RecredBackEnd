@@ -36,6 +36,43 @@ class KiosqueroRealtimeEventStreamTest {
     }
 
     @Test
+    void publish_WhenEventHasNoRegisteredEmitter_ShouldIgnoreIt() {
+        KiosqueroRealtimeEventStream stream = new KiosqueroRealtimeEventStream();
+
+        stream.publish(event(UUID.randomUUID()));
+
+        assertTrue(emitters(stream).isEmpty());
+    }
+
+    @Test
+    void subscribe_ShouldRegisterEmitterAndAllowRemoval() {
+        UUID buffetId = UUID.randomUUID();
+        KiosqueroRealtimeEventStream stream = new KiosqueroRealtimeEventStream();
+
+        SseEmitter emitter = stream.subscribe(buffetId);
+
+        assertEquals(1, emitters(stream).get(buffetId).size());
+
+        ReflectionTestUtils.invokeMethod(stream, "remove", buffetId, emitter);
+
+        assertTrue(emitters(stream).isEmpty());
+    }
+
+    @Test
+    void remove_WhenBuffetHasNoEmitters_ShouldDoNothing() {
+        KiosqueroRealtimeEventStream stream = new KiosqueroRealtimeEventStream();
+
+        ReflectionTestUtils.invokeMethod(
+                stream,
+                "remove",
+                UUID.randomUUID(),
+                new SseEmitter()
+        );
+
+        assertTrue(emitters(stream).isEmpty());
+    }
+
+    @Test
     void publish_WhenEmitterExists_ShouldSendEvent() {
         UUID buffetId = UUID.randomUUID();
         KiosqueroRealtimeEventStream stream = new KiosqueroRealtimeEventStream();

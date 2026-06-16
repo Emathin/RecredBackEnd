@@ -3,6 +3,7 @@ package com.recred.backend.domain.models;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -180,7 +181,35 @@ class AlumnoTest {
     }
 
     @Test
+    void constructorParametrizadoDebeAsignarCamposYUsarRestriccionesVaciasSiSonNulas() {
+        UUID id = UUID.randomUUID();
+        Usuario usuario = new Usuario();
+        Grado grado = new Grado();
+
+        Alumno creado = new Alumno(id, usuario, false, grado, null);
+
+        assertEquals(id, creado.getId());
+        assertEquals(usuario, creado.getUsuario());
+        assertEquals(false, creado.getActivo());
+        assertEquals(grado, creado.getGrado());
+        assertTrue(creado.getRestriccionesSalud().isEmpty());
+    }
+
+    @Test
+    void constructorParametrizadoDebeConservarRestriccionesRecibidas() {
+        UUID id = UUID.randomUUID();
+
+        Alumno creado = new Alumno(id, null, true, null, Set.of(clasificacion));
+
+        assertEquals(1, creado.getRestriccionesSalud().size());
+        assertTrue(creado.getRestriccionesSalud().contains(clasificacion));
+    }
+
+    @Test
     void calculateCurrentLevelShouldReturnBronzeSilverAndGold() {
+        alumno.setPuntosRecompensa(null);
+        assertEquals(RewardLevel.BRONZE, alumno.calculateCurrentLevel());
+
         alumno.setPuntosRecompensa(99);
         assertEquals(RewardLevel.BRONZE, alumno.calculateCurrentLevel());
 

@@ -86,4 +86,45 @@ class ChatMessagePersistenceRepositoryTest {
         assertEquals(RolChatMensaje.ASISTENTE_IA, messages.get(0).role());
         assertEquals("Respuesta", messages.get(0).content());
     }
+
+    @Test
+    void findBySessionIdMapsPagedMessagesToDomain() {
+        UUID sessionId = UUID.randomUUID();
+        ChatSesionEntity session = new ChatSesionEntity();
+        session.setId(sessionId);
+        ChatMensajeEntity entity = new ChatMensajeEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setSesion(session);
+        entity.setRol(RolChatMensaje.USUARIO);
+        entity.setContenido("Pregunta");
+        entity.setMetadata(Map.of("origen", "test"));
+        entity.setFechaHora(LocalDateTime.of(2026, 5, 27, 13, 0));
+        ChatMessagePersistenceRepository repository = new ChatMessagePersistenceRepository(
+                chatMessageRepository,
+                entityManager
+        );
+
+        when(chatMessageRepository.findBySessionId(sessionId, PageRequest.of(1, 5)))
+                .thenReturn(List.of(entity));
+
+        List<ChatMessage> messages = repository.findBySessionId(sessionId, 1, 5);
+
+        assertEquals(1, messages.size());
+        assertEquals(entity.getId(), messages.get(0).id());
+        assertEquals(sessionId, messages.get(0).sessionId());
+        assertEquals(RolChatMensaje.USUARIO, messages.get(0).role());
+    }
+
+    @Test
+    void deleteBySessionIdDelegatesToSpringDataRepository() {
+        UUID sessionId = UUID.randomUUID();
+        ChatMessagePersistenceRepository repository = new ChatMessagePersistenceRepository(
+                chatMessageRepository,
+                entityManager
+        );
+
+        repository.deleteBySessionId(sessionId);
+
+        verify(chatMessageRepository).deleteBySessionId(sessionId);
+    }
 }

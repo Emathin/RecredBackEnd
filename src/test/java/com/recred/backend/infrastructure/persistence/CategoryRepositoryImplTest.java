@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -73,5 +74,21 @@ class CategoryRepositoryImplTest {
         categoryRepository.save(category);
 
         assertEquals("Actualizada", existingEntity.getDescripcion());
+    }
+
+    @Test
+    void getAllCategories_DeberiaMapearTodasLasEntidades() {
+        CategoriaProductoEntity entity = new CategoriaProductoEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setDescripcion("Bebidas");
+        entity.setActivo(true);
+        when(springDataRepository.findAll()).thenReturn(List.of(entity));
+
+        List<CategoriaProducto> result = categoryRepository.getAllCategories();
+
+        assertEquals(1, result.size());
+        assertEquals(entity.getId(), result.get(0).getId());
+        assertEquals("Bebidas", result.get(0).getDescripcion());
+        assertEquals(true, result.get(0).getActivo());
     }
 }

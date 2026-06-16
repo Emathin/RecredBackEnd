@@ -3,6 +3,8 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.PaymentDetails;
 import com.recred.backend.domain.models.PaymentStatus;
+import com.recred.backend.domain.models.TipoMovimientoBilletera;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,6 +50,75 @@ class ConfirmPaymentAndCreditTest {
 
         assertEquals(amount, wallet.getSaldoCreditos());
         verify(walletRepository).save(wallet);
+    }
+
+    @Test
+    void execute_WithTwoArgumentConstructor_ShouldCreditApprovedPayment() {
+        String paymentId = "12345";
+        UUID studentId = UUID.randomUUID();
+        BigDecimal amount = new BigDecimal("1500.00");
+        PaymentDetails details = new PaymentDetails(paymentId, studentId, amount,
+                PaymentStatus.APPROVED);
+        Billetera wallet = new Billetera();
+        wallet.setSaldoCreditos(BigDecimal.ZERO);
+        ConfirmPaymentAndCredit useCase = new ConfirmPaymentAndCredit(
+                walletRepository,
+                externalPaymentService
+        );
+
+        when(externalPaymentService.getPaymentDetails(paymentId)).thenReturn(details);
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+
+        useCase.execute(paymentId);
+
+        assertEquals(amount, wallet.getSaldoCreditos());
+        verify(walletRepository).save(wallet);
+    }
+
+    @Test
+    void execute_AprobadoConMovimientoRepository_RegistraMovimientoSistema() {
+        String paymentId = "12345";
+        UUID studentId = UUID.randomUUID();
+        BigDecimal amount = new BigDecimal("1500.00");
+        PaymentDetails details = new PaymentDetails(paymentId, studentId, amount,
+                PaymentStatus.APPROVED);
+        Billetera wallet = new Billetera();
+        wallet.setId(UUID.randomUUID());
+        wallet.setSaldoCreditos(BigDecimal.ZERO);
+        MovimientoBilleteraRepository movimientoBilleteraRepository =
+                mock(MovimientoBilleteraRepository.class);
+        ConfirmPaymentAndCredit useCase = new ConfirmPaymentAndCredit(
+                walletRepository,
+                externalPaymentService,
+                movimientoBilleteraRepository
+        );
+
+        when(externalPaymentService.getPaymentDetails(paymentId)).thenReturn(details);
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+
+        useCase.execute(paymentId);
+
+        verify(movimientoBilleteraRepository).registrarMovimientoSistema(
+                eq(wallet.getId()),
+                eq(TipoMovimientoBilletera.CARGA),
+                eq(amount),
+                eq("Acreditacion de pago Mercado Pago: " + paymentId)
+        );
+    }
+
+    @Test
+    void execute_PagoAprobadoSinBilletera_DeberiaLanzarExcepcion() {
+        String paymentId = "12345";
+        UUID studentId = UUID.randomUUID();
+        PaymentDetails details = new PaymentDetails(paymentId, studentId,
+                new BigDecimal("1500.00"), PaymentStatus.APPROVED);
+
+        when(externalPaymentService.getPaymentDetails(paymentId)).thenReturn(details);
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class, () -> confirmPaymentAndCredit.execute(paymentId));
+
+        verify(walletRepository, never()).save(any());
     }
 
     @Test

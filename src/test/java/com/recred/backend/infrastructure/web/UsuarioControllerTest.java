@@ -1,8 +1,10 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.models.Buffet;
+import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.UsuarioService;
 import java.time.Instant;
@@ -44,6 +46,51 @@ class UsuarioControllerTest {
         assertEquals(usuario.getKiosquero().getId(), response.getBody().get("kiosqueroId"));
         assertEquals("VENDEDOR", response.getBody().get("rol"));
         verify(usuarioService).sincronizarUsuarioCognito(any(Jwt.class), isNull());
+    }
+
+    @Test
+    void syncUserWithProfileRequestReturnsPendingRoleAndStudentTutorIds() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID tutorId = UUID.randomUUID();
+        Usuario usuario = new Usuario();
+        usuario.setId(UUID.randomUUID());
+        usuario.setEmail("familia@example.com");
+        Alumno alumno = new Alumno();
+        alumno.setId(alumnoId);
+        Tutor tutor = new Tutor();
+        tutor.setId(tutorId);
+        usuario.setAlumno(alumno);
+        usuario.setTutor(tutor);
+        SyncUserRequest request = new SyncUserRequest(
+                "familia@example.com",
+                "Ana",
+                "Lopez",
+                null,
+                null
+        );
+        when(usuarioService.sincronizarUsuarioCognito(any(Jwt.class), any()))
+                .thenReturn(usuario);
+
+        ResponseEntity<Map<String, Object>> response = controller.syncUser(jwt(), request);
+
+        assertEquals("PENDIENTE", response.getBody().get("rol"));
+        assertEquals(alumnoId, response.getBody().get("alumnoId"));
+        assertEquals(tutorId, response.getBody().get("tutorId"));
+    }
+
+    @Test
+    void assignRoleShouldUpdateRoleUsingJwtSubject() {
+        Usuario usuario = new Usuario();
+        usuario.setId(UUID.randomUUID());
+        usuario.setEmail("padre@example.com");
+        usuario.setRol(RolUsuario.PADRE);
+        when(usuarioService.actualizarRol("cognito-sub", "PADRE")).thenReturn(usuario);
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.assignRole(jwt(), Map.of("rol", "PADRE"));
+
+        assertEquals("PADRE", response.getBody().get("rol"));
+        verify(usuarioService).actualizarRol("cognito-sub", "PADRE");
     }
 
     private Usuario sellerUser(UUID buffetId) {

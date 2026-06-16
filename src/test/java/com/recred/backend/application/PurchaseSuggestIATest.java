@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -170,5 +171,135 @@ class PurchaseSuggestIATest {
         Optional<SugerenciaIA> result = useCase.execute(cognitoId);
 
         assertTrue(result.isPresent());
+    }
+
+    @Test
+    void execute_RolNoVisible_DeberiaRetornarVacio() {
+        LocalDateTime now = LocalDateTime.of(2026, 6, 1, 21, 0);
+        setupUseCase(now);
+
+        Usuario vendedor = new Usuario();
+        vendedor.setRol(RolUsuario.VENDEDOR);
+
+        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(vendedor);
+
+        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+
+        assertFalse(result.isPresent());
+        verifyNoInteractions(sugerenciaIARepository);
+    }
+
+    @Test
+    void execute_PadreVisibleSinTutor_DeberiaRetornarVacio() {
+        LocalDateTime now = LocalDateTime.of(2026, 6, 1, 21, 0);
+        setupUseCase(now);
+
+        Usuario padre = new Usuario();
+        padre.setRol(RolUsuario.PADRE);
+
+        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
+
+        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+
+        assertFalse(result.isPresent());
+        verifyNoInteractions(sugerenciaIARepository);
+    }
+
+    @Test
+    void execute_AlumnoSinAlumnoAsociado_DeberiaRetornarVacio() {
+        LocalDateTime now = LocalDateTime.of(2026, 6, 1, 10, 0);
+        setupUseCase(now);
+
+        Usuario usuarioAlumno = new Usuario();
+        usuarioAlumno.setRol(RolUsuario.ALUMNO);
+
+        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuarioAlumno);
+
+        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+
+        assertFalse(result.isPresent());
+        verifyNoInteractions(sugerenciaIARepository);
+    }
+
+    @Test
+    void execute_DeberiaIgnorarSugerenciasYaRespondidasYElegirLaMasReciente() {
+        LocalDateTime now = LocalDateTime.of(2026, 6, 1, 21, 0);
+        setupUseCase(now);
+
+        Usuario padre = new Usuario();
+        padre.setRol(RolUsuario.PADRE);
+        Tutor tutor = new Tutor();
+        Alumno hijo = new Alumno();
+        hijo.setId(UUID.randomUUID());
+        tutor.addHijo(hijo);
+        padre.setTutor(tutor);
+
+        SugerenciaIAEntity accepted = suggestion(now.minusMinutes(1));
+        accepted.setAceptada(true);
+        SugerenciaIAEntity olderPending = suggestion(now.minusHours(3));
+        SugerenciaIAEntity latestPending = suggestion(now.minusMinutes(30));
+
+        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
+        when(sugerenciaIARepository.findByAlumnoIdAndTipo(
+                hijo.getId(),
+                TipoSugerenciaIA.RECOMENDACION_SALUDABLE))
+                .thenReturn(List.of(accepted, olderPending, latestPending));
+
+        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+
+        assertTrue(result.isPresent());
+        assertEquals(latestPending.getId(), result.get().getId());
+    }
+
+    @Test
+    void isVisibleParaAlumno_WhenStudentHasNoSchool_ShouldReturnFalse() {
+        setupUseCase(LocalDateTime.of(2026, 6, 1, 10, 0));
+
+        Boolean result = ReflectionTestUtils.invokeMethod(
+                useCase,
+                "isVisibleParaAlumno",
+                new Alumno(),
+                LocalDateTime.of(2026, 6, 1, 10, 0)
+        );
+
+        assertFalse(result);
+    }
+
+    @Test
+    void isVisibleParaAlumno_WhenSchoolHasActiveSlotForNow_ShouldReturnTrue() {
+        LocalDateTime now = LocalDateTime.of(2026, 6, 1, 10, 0);
+        setupUseCase(now);
+        Colegio colegio = new Colegio();
+        colegio.setId(UUID.randomUUID());
+        Grado grado = new Grado();
+        grado.setColegio(colegio);
+        Alumno alumno = new Alumno();
+        alumno.setGrado(grado);
+        FranjaHoraria franja = new FranjaHoraria();
+        franja.setActivo(true);
+        franja.setHoraInicio(LocalTime.of(9, 30));
+        franja.setHoraFin(LocalTime.of(10, 30));
+
+        when(franjaHorariaRepository.findAllByColegioId(colegio.getId()))
+                .thenReturn(List.of(franja));
+
+        Boolean result = ReflectionTestUtils.invokeMethod(
+                useCase,
+                "isVisibleParaAlumno",
+                alumno,
+                now
+        );
+
+        assertTrue(result);
+    }
+
+    private SugerenciaIAEntity suggestion(LocalDateTime creadoEn) {
+        SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
+        suggestion.setId(UUID.randomUUID());
+        suggestion.setAceptada(null);
+        suggestion.setCreadoEn(creadoEn);
+        suggestion.setTitulo("Test");
+        suggestion.setMensaje("Mensaje");
+        return suggestion;
     }
 }

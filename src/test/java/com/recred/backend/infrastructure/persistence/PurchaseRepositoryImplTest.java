@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -169,6 +170,127 @@ class PurchaseRepositoryImplTest {
     }
 
     @Test
+    void save_WithSingleArgumentConstructor_ShouldPublishToNoopPublisher() {
+        PurchaseRepositoryImpl repositoryWithNoopPublisher =
+                new PurchaseRepositoryImpl(springDataRepository);
+        when(springDataRepository.save(any(CompraEntity.class)))
+                .thenAnswer(invocation -> {
+                    CompraEntity entity = invocation.getArgument(0);
+                    entity.setId(UUID.randomUUID());
+                    return entity;
+                });
+
+        Purchase savedPurchase = repositoryWithNoopPublisher.save(purchase);
+
+        assertTrue(savedPurchase.getId() != null);
+    }
+
+    @Test
+    void save_WhenPurchaseHasExplicitTutorId_ShouldSetTutorEntity() {
+        UUID tutorId = UUID.randomUUID();
+        purchase.setTutorId(tutorId);
+        when(springDataRepository.save(any(CompraEntity.class)))
+                .thenAnswer(invocation -> {
+                    CompraEntity entity = invocation.getArgument(0);
+                    entity.setId(UUID.randomUUID());
+                    return entity;
+                });
+
+        repository.save(purchase);
+
+        ArgumentCaptor<CompraEntity> entityCaptor = ArgumentCaptor.forClass(CompraEntity.class);
+        verify(springDataRepository).save(entityCaptor.capture());
+        assertEquals(tutorId, entityCaptor.getValue().getTutorEntity().getId());
+    }
+
+    @Test
+    void save_WhenPurchaseHasNoBuffet_ShouldSkipDashboardEvent() {
+        purchase.setBuffetId(null);
+        when(springDataRepository.save(any(CompraEntity.class)))
+                .thenAnswer(invocation -> {
+                    CompraEntity entity = invocation.getArgument(0);
+                    entity.setId(UUID.randomUUID());
+                    return entity;
+                });
+
+        repository.save(purchase);
+
+        ArgumentCaptor<KiosqueroRealtimeEvent> eventCaptor =
+                ArgumentCaptor.forClass(KiosqueroRealtimeEvent.class);
+        verify(realtimeEventPublisher).publish(eventCaptor.capture());
+        assertFalse(eventCaptor.getAllValues().stream()
+                .anyMatch(event -> event.type() == KiosqueroRealtimeEventType.DASHBOARD_CHANGED));
+    }
+
+    @Test
+    void save_WhenPurchaseDateIsNull_ShouldUseCurrentDateForDashboardEvent() {
+        purchase.setDate(null);
+        when(springDataRepository.save(any(CompraEntity.class)))
+                .thenAnswer(invocation -> {
+                    CompraEntity entity = invocation.getArgument(0);
+                    entity.setId(UUID.randomUUID());
+                    return entity;
+                });
+
+        repository.save(purchase);
+
+        ArgumentCaptor<KiosqueroRealtimeEvent> eventCaptor =
+                ArgumentCaptor.forClass(KiosqueroRealtimeEvent.class);
+        verify(realtimeEventPublisher, atLeastOnce()).publish(eventCaptor.capture());
+        KiosqueroRealtimeEvent dashboardEvent = eventCaptor.getAllValues().stream()
+                .filter(event -> event.type() == KiosqueroRealtimeEventType.DASHBOARD_CHANGED)
+                .findFirst()
+                .orElseThrow();
+        assertTrue(dashboardEvent.date() != null);
+    }
+
+    @Test
+    void save_WhenAdvancePurchaseHasNoPickupData_ShouldOnlySetVerificationCode() {
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+        purchase.setWithdrawalCode("ABC123");
+        purchase.setPickupSlotId(null);
+        purchase.setPickupDate(null);
+        when(springDataRepository.save(any(CompraEntity.class)))
+                .thenAnswer(invocation -> {
+                    CompraEntity entity = invocation.getArgument(0);
+                    entity.setId(UUID.randomUUID());
+                    return entity;
+                });
+
+        repository.save(purchase);
+
+        ArgumentCaptor<CompraEntity> entityCaptor = ArgumentCaptor.forClass(CompraEntity.class);
+        verify(springDataRepository).save(entityCaptor.capture());
+        CompraAnticipadaEntity entity = (CompraAnticipadaEntity) entityCaptor.getValue();
+        assertEquals("ABC123", entity.getCodigoVerificacion());
+        assertTrue(entity.getRetiroProgramadoEntity() == null);
+    }
+
+    @Test
+    void save_WhenAdvancePurchaseHasWithdrawalStatus_ShouldUseItInScheduledPickup() {
+        UUID pickupSlotId = UUID.randomUUID();
+        LocalDate pickupDate = LocalDate.of(2026, 6, 8);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+        purchase.setWithdrawalCode("ABC123");
+        purchase.setPickupSlotId(pickupSlotId);
+        purchase.setPickupDate(pickupDate);
+        purchase.setWithdrawalStatus(EstadoRetiro.LISTO);
+        when(springDataRepository.save(any(CompraEntity.class)))
+                .thenAnswer(invocation -> {
+                    CompraEntity entity = invocation.getArgument(0);
+                    entity.setId(UUID.randomUUID());
+                    return entity;
+                });
+
+        repository.save(purchase);
+
+        ArgumentCaptor<CompraEntity> entityCaptor = ArgumentCaptor.forClass(CompraEntity.class);
+        verify(springDataRepository).save(entityCaptor.capture());
+        CompraAnticipadaEntity entity = (CompraAnticipadaEntity) entityCaptor.getValue();
+        assertEquals(EstadoRetiro.LISTO, entity.getRetiroProgramadoEntity().getEstado());
+    }
+
+    @Test
     void findById_WhenPurchaseExists_ShouldReturnMappedPurchase() {
         CompraPresencialEntity entity = compraEntity();
         when(springDataRepository.findById(purchaseId)).thenReturn(Optional.of(entity));
@@ -188,6 +310,23 @@ class PurchaseRepositoryImplTest {
         Optional<Purchase> result = repository.findById(purchaseId);
 
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void findByAlumnoAndDateRange_ShouldMapEntitiesToDomain() {
+        LocalDateTime start = LocalDateTime.now().minusDays(1);
+        LocalDateTime end = LocalDateTime.now();
+        CompraPresencialEntity entity = compraEntity();
+        when(springDataRepository.findAllByAlumnoIdAndFechaHoraBetween(
+                studentId,
+                start,
+                end
+        )).thenReturn(List.of(entity));
+
+        List<Purchase> result = repository.findByAlumnoAndDateRange(studentId, start, end);
+
+        assertEquals(1, result.size());
+        assertEquals(purchaseId, result.get(0).getId());
     }
 
     @Test

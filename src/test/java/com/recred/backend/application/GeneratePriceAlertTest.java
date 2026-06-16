@@ -126,6 +126,42 @@ class GeneratePriceAlertTest {
         verify(sugerenciaIARepository, never()).savePriceAlert(any());
     }
 
+    @Test
+    void execute_WhenAiResultIsEmpty_ShouldNotSaveAlert() {
+        Producto producto = product();
+        Alumno alumno = studentWithTutorUser(UUID.randomUUID(), UUID.randomUUID());
+        BigDecimal oldPrice = new BigDecimal("100.00");
+        BigDecimal newPrice = new BigDecimal("120.00");
+        givenAffectedStudentWithoutRecentAlert(producto, alumno);
+        when(priceAlertAIRepository.analyzeImpact(alumno, producto, oldPrice, newPrice))
+                .thenReturn(Optional.empty());
+
+        generatePriceAlert.execute(producto, oldPrice, newPrice, null);
+
+        verify(sugerenciaIARepository, never()).savePriceAlert(any());
+    }
+
+    @Test
+    void execute_WhenTutorsHaveNoUserId_ShouldSaveAlertWithoutTutorUsers() {
+        Producto producto = product();
+        BigDecimal oldPrice = new BigDecimal("100.00");
+        BigDecimal newPrice = new BigDecimal("120.00");
+        UUID buffetId = UUID.randomUUID();
+        Alumno alumno = new Alumno();
+        alumno.setId(UUID.randomUUID());
+        alumno.getTutores().add(new Tutor());
+        Tutor tutorWithoutUserId = new Tutor();
+        tutorWithoutUserId.setUsuario(new Usuario());
+        alumno.getTutores().add(tutorWithoutUserId);
+        givenAffectedStudentWithoutRecentAlert(producto, alumno);
+        givenAiResult(alumno, producto, oldPrice, newPrice);
+
+        generatePriceAlert.execute(producto, oldPrice, newPrice, buffetId);
+
+        PriceAlertSuggestion saved = capturedSuggestion();
+        assertTrue(saved.tutorUserIds().isEmpty());
+    }
+
     private Producto product() {
         Producto producto = new Producto();
         producto.setId(UUID.randomUUID());

@@ -57,11 +57,15 @@ class PurchaseTest {
     @Test
     void changeStatusTo_WhenTransitionIsValid_ShouldUpdateStatus() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
 
         purchase.changeStatusTo(EstadoCompra.EN_PREPARACION);
+        assertEquals(EstadoRetiro.EN_PREPARACION, purchase.getWithdrawalStatus());
+
         purchase.changeStatusTo(EstadoCompra.LISTO);
 
         assertEquals(EstadoCompra.LISTO, purchase.getStatus());
+        assertEquals(EstadoRetiro.LISTO, purchase.getWithdrawalStatus());
     }
 
     @Test
@@ -195,6 +199,13 @@ class PurchaseTest {
     @Test
     void cancel_WhenPurchaseIsAlreadyCancelled_ShouldThrowException() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.CANCELADO);
+
+        assertThrows(IllegalStateException.class, purchase::cancel);
+    }
+
+    @Test
+    void cancel_WhenPurchaseIsNotPendingOrInPreparation_ShouldThrowException() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.LISTO);
 
         assertThrows(IllegalStateException.class, purchase::cancel);
     }
