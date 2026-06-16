@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.persistence.ProductStockResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -557,16 +558,16 @@ public class ProductRepositoryImplTest {
         UUID buffetId = UUID.randomUUID();
         ProductoEntity entity = new ProductoEntity();
         entity.setId(UUID.randomUUID());
-        Object[] resultObj = new Object[]{
+        ProductStockResult resultObj = stockResult(
                 entity,
-                "not a number", // stockActual
+                null, // "not a number" ya no es posible por tipos, usamos null
                 5,
                 3,
                 EstadoInventario.DISPONIBLE,
                 TipoManejoInventario.STOCK_EXACTO,
                 20,
                 45
-        };
+        );
 
         when(springDataRepository.findAllActiveWithStockParams(buffetId))
                 .thenReturn(java.util.Collections.singletonList(resultObj));
@@ -618,9 +619,6 @@ public class ProductRepositoryImplTest {
         assertTrue(entity.getTipos().isEmpty());
         assertTrue(entity.getClasificacionesSalud().isEmpty());
     }
-    }
-<<<<<<< HEAD:src/test/java/com/recred/backend/integration/persistence/ProductRepositoryImplTest.java
-=======
 
     private ProductStockResult stockResult(
             ProductoEntity entity,
@@ -644,4 +642,3 @@ public class ProductRepositoryImplTest {
         );
     }
 }
->>>>>>> cda5cc3dd4c0bc10818062e24b30a20a7108d55b:src/test/java/com/recred/backend/infrastructure/persistence/ProductRepositoryImplTest.java

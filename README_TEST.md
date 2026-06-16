@@ -8,12 +8,12 @@ Hemos organizado la suite de pruebas para separar la lógica de negocio de la in
 *   **`src/test/.../unit/` (El Cerebro):** Lógica pura de negocio (Casos de Uso y Modelos).
     *   **Tecnología:** JUnit 5 + Mockito (`@ExtendWith(MockitoExtension.class)`).
     *   **Impacto:** Sin carga de Spring, ejecución instantánea.
-*   **`src/test/.../integration/` (Los Cables):** El mundo exterior y adaptadores.
-    *   **Tecnología:** Spring Boot Test (`@SpringBootTest`, `@DataJpaTest`).
-    *   **Impacto:** Espejo exacto de la carpeta `infrastructure` de producción. Prueba DB, Cognito, APIs externas.
-*   **`src/test/.../web/` (El Contrato):** Validación de la API y DTOs.
-    *   **Tecnología:** Mezcla de Mockito puro y `@WebMvcTest`.
-    *   **Impacto:** Asegura que los endpoints y respuestas JSON sean correctos.
+*   **`src/test/.../integration/` (Los Cables):** Adaptadores de infraestructura y servicios externos.
+    *   **Tecnología:** Predominantemente Mockito (`@ExtendWith(MockitoExtension.class)`) para validar el mapeo entre Dominio y Entidades. `@SpringBootTest` se utiliza para "BackendApplicationTests".
+    *   **Impacto:** Validación quirúrgica de herramientas y repositorios sin el costo temporal de levantar una base de datos real o el contexto de Spring.
+*   **`src/test/.../web/` (El Contrato):** Validación de la API y ruteo.
+    *   **Tecnología:** Mockito puro para lógica de controladores y `@WebMvcTest` para validar contratos y seguridad.
+    *   **Impacto:** Equilibrio entre velocidad de testeo y validación del ruteo de Spring.
 
 ---
 
