@@ -35,10 +35,26 @@ class SchoolAssistantAnswerFormatterTest {
     }
 
     @Test
+    void formatsUntitledListLikeItemsAsBullets() {
+        assertEquals("""
+                - Agua por $10
+                - Jugo por $20
+                - Pan por $30
+                """.trim(), formatter.format("Agua por $10; Jugo por $20; Pan por $30"));
+    }
+
+    @Test
     void keepsShortAnswerWithoutListFormat() {
         assertEquals(
                 "Tenes $500.00 disponibles.",
                 formatter.format("  Tenes   $500.00 disponibles.  ")
         );
+    }
+
+    @Test
+    void keepsNullShortAndNonListAnswersStable() {
+        assertEquals("", formatter.format(null));
+        assertEquals("uno; dos", formatter.format("uno; dos"));
+        assertEquals("uno; ; dos; tres", formatter.format("uno; ; dos; tres"));
     }
 }

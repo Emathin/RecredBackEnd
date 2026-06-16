@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -187,6 +188,47 @@ class GenerarMenuBuffetTest {
     }
 
     @Test
+    void execute_ShouldMapSpecificHealthConflictReasons() {
+        ClasificacionSalud sinSodio = classification("Sin Sodio");
+        ClasificacionSalud sinAzucar = classification("Sin Azucar");
+        ClasificacionSalud vegano = classification("Apto Vegano");
+        alumno.setRestriccionesSalud(new java.util.LinkedHashSet<>(
+                List.of(sinSodio, sinAzucar, vegano)
+        ));
+
+        Producto product = product("Combo", BigDecimal.TEN, 10);
+        product.setClasificacionesSalud(Set.of());
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
+        when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
+
+        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
+
+        assertTrue(result.get(0).bloqueado());
+        assertEquals(
+                "Contiene: Alto sodio, Azucar, Ingredientes de origen animal",
+                result.get(0).motivoBloqueo()
+        );
+    }
+
+    @Test
+    void execute_WhenHealthRestrictionDoesNotConflict_ShouldAllowProduct() {
+        ClasificacionSalud sinTacc = classification("Sin TACC");
+        alumno.setRestriccionesSalud(Set.of(sinTacc));
+        Producto product = product("Alfajor sin TACC", BigDecimal.TEN, 10);
+        product.setClasificacionesSalud(Set.of(classification(sinTacc.getId(), "Sin TACC")));
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
+        when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
+
+        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
+
+        assertFalse(result.get(0).bloqueado());
+    }
+
+    @Test
     void execute_ShouldBlockProduct_WhenTimeRestrictionBlocksIt() {
         RestriccionHoraria restriction = mock(RestriccionHoraria.class);
         when(restriction.bloquea(any(Producto.class), any(LocalDateTime.class))).thenReturn(true);
@@ -251,6 +293,93 @@ class GenerarMenuBuffetTest {
         assertFalse(result.get(0).bloqueado());
         assertNull(result.get(0).motivoBloqueo());
         assertEquals(product.getId(), result.get(0).id());
+    }
+
+    @Test
+    void execute_WhenOptionalStudentCollectionsAreNull_ShouldTreatThemAsEmpty() {
+        Producto product = product("Galletitas", BigDecimal.TEN, 10);
+        alumno.setProductosBloqueados(null);
+        alumno.setRestriccionesHorarias(null);
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
+        when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
+
+        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
+
+        assertFalse(result.get(0).bloqueado());
+    }
+
+    @Test
+    void execute_WhenActiveBudgetHasNullCategoryRules_ShouldUseGeneralBudgetOnly() {
+        Producto product = product("Galletitas", new BigDecimal("10.00"), 10);
+        LocalDateTime moment = LocalDateTime.now();
+        RangoFechas range = new RangoFechas(moment.minusHours(1), moment.plusHours(1));
+        PresupuestoAlumno budget = new PresupuestoAlumno();
+        budget.setPeriodo(PeriodoPresupuesto.DIARIO);
+        budget.setMontoLimiteGeneral(new BigDecimal("100.00"));
+        budget.setFechaInicio(LocalDate.now().minusDays(1));
+        budget.setReglasCategoria(null);
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
+        when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.of(budget));
+        when(calculadorPeriodo.calcularRango(any(), eq(moment))).thenReturn(range);
+        when(purchaseRepository.sumarGastosPorAlumnoEnRango(alumnoId, range.inicio(), range.fin()))
+                .thenReturn(BigDecimal.ZERO);
+
+        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, moment);
+
+        assertFalse(result.get(0).bloqueado());
+    }
+
+    @Test
+    void execute_WhenProductHasNoCategory_ShouldNotApplyCategoryBudget() {
+        Producto product = product("Galletitas", new BigDecimal("10.00"), 10);
+        product.setCategoria(null);
+        LocalDateTime moment = LocalDateTime.now();
+        RangoFechas range = new RangoFechas(moment.minusHours(1), moment.plusHours(1));
+        PresupuestoAlumno budget = budget(category("Snacks"), new BigDecimal("100.00"),
+                new BigDecimal("5.00"));
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
+        when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.of(budget));
+        when(calculadorPeriodo.calcularRango(any(), eq(moment))).thenReturn(range);
+        when(purchaseRepository.sumarGastosPorAlumnoEnRango(alumnoId, range.inicio(), range.fin()))
+                .thenReturn(BigDecimal.ZERO);
+        when(purchaseRepository.sumarGastosPorCategoriaEnRango(
+                eq(alumnoId),
+                any(UUID.class),
+                eq(range.inicio()),
+                eq(range.fin())
+        )).thenReturn(BigDecimal.ZERO);
+
+        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, moment);
+
+        assertFalse(result.get(0).bloqueado());
+    }
+
+    @Test
+    void motivoConflictoSalud_ShouldReturnOriginalDescriptionWhenItHasNoKnownMapping() {
+        String result = ReflectionTestUtils.invokeMethod(
+                useCase,
+                "motivoConflictoSalud",
+                "Colorante"
+        );
+
+        assertEquals("Colorante", result);
+    }
+
+    @Test
+    void normalizarDescripcion_WhenDescriptionIsNull_ShouldReturnEmptyString() {
+        String result = ReflectionTestUtils.invokeMethod(
+                useCase,
+                "normalizarDescripcion",
+                (String) null
+        );
+
+        assertEquals("", result);
     }
 
     private Producto product(String name, BigDecimal price, int stockDisponible) {

@@ -3,6 +3,8 @@ package com.recred.backend.infrastructure.mercadopago;
 import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceRequest;
+import com.mercadopago.exceptions.MPApiException;
+import com.mercadopago.net.MPResponse;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.preference.Preference;
 import com.recred.backend.domain.models.PaymentDetails;
@@ -19,6 +21,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -147,6 +150,34 @@ class MercadoPagoAdapterTest {
 
             assertEquals("Error al crear preferencia de Mercado Pago",
                     exception.getMessage());
+        }
+    }
+
+    @Test
+    void createTopUpPreference_WhenApiFails_ShouldIncludeApiContent() throws Exception {
+        when(properties.getSuccessUrl()).thenReturn("https://front.test/success");
+        when(properties.getPendingUrl()).thenReturn("https://front.test/pending");
+        when(properties.getFailureUrl()).thenReturn("https://front.test/failure");
+        when(properties.getNotificationUrl()).thenReturn("https://api.test/webhook");
+        MPApiException apiException = new MPApiException(
+                "api error",
+                new MPResponse(400, Map.of(), "invalid preference")
+        );
+
+        try (MockedConstruction<PreferenceClient> ignored = mockConstruction(
+                PreferenceClient.class,
+                (client, context) -> when(client.create(any(PreferenceRequest.class)))
+                        .thenThrow(apiException)
+        )) {
+            RuntimeException exception = assertThrows(RuntimeException.class,
+                    () -> mercadoPagoAdapter.createTopUpPreference(
+                            UUID.randomUUID(),
+                            new BigDecimal("1500.00")
+                    ));
+
+            assertEquals("Error al crear preferencia: invalid preference",
+                    exception.getMessage());
+            assertEquals(apiException, exception.getCause());
         }
     }
 

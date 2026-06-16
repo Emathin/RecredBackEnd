@@ -115,6 +115,29 @@ class MovimientoBilleteraRepositoryImplTest {
     }
 
     @Test
+    void findByStudentIdAndDateRange_WhenAmountIsNull_ShouldMapZeroAmount() {
+        UUID studentId = UUID.randomUUID();
+        LocalDateTime from = LocalDateTime.now().minusDays(7);
+        LocalDateTime to = LocalDateTime.now();
+        MovimientoBilleteraEntity movement = movement(TipoMovimientoBilletera.AJUSTE, null);
+
+        when(springDataMovimientoBilleteraRepository.findByStudentIdAndDateRange(
+                studentId,
+                from,
+                to
+        )).thenReturn(List.of(movement));
+
+        List<WalletMovement> result = repository.findByStudentIdAndDateRange(
+                studentId,
+                from,
+                to
+        );
+
+        assertEquals(BigDecimal.ZERO, result.get(0).amount());
+        assertEquals(WalletMovementDirection.ENTRADA, result.get(0).direction());
+    }
+
+    @Test
     void registrarMovimientoSistema_WhenSystemUserExists_ShouldUseIt() {
         UUID walletId = UUID.randomUUID();
         UUID systemUserId = UUID.randomUUID();

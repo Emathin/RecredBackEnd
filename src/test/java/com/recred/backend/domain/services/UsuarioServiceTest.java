@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -184,6 +185,21 @@ class UsuarioServiceTest {
 
         assertEquals("persona@example.com", result.getEmail());
         assertEquals("persona@example.com", result.getNombre());
+    }
+
+    @Test
+    void sincronizarUsuarioCognitoUsesGenericEmailFallbackWhenSubjectIsMissing() {
+        Jwt jwt = mock(Jwt.class);
+        when(jwt.getSubject()).thenReturn(null);
+        when(usuarioRepository.findByIdCognito(null)).thenReturn(Optional.empty());
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Usuario result = usuarioService.sincronizarUsuarioCognito(jwt);
+
+        assertEquals("usuario-cognito@recred.local", result.getEmail());
+        assertEquals("Sin Nombre", result.getNombre());
+        assertEquals("Sin Apellido", result.getApellido());
     }
 
     @Test

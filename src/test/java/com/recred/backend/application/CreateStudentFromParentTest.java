@@ -114,6 +114,36 @@ class CreateStudentFromParentTest {
     }
 
     @Test
+    void missingAuthenticatedUserShouldThrowException() {
+        when(usuarioRepository.findByIdCognito(PARENT_SUB)).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
+                        "Perez", "juan@example.com", null, null));
+
+        assertEquals("Usuario autenticado no encontrado", exception.getMessage());
+        verify(cognitoStudentIdentityService, never())
+                .createStudentUser(any(), any(), any(), any());
+    }
+
+    @Test
+    void missingTutorShouldThrowException() {
+        UUID parentUserId = UUID.randomUUID();
+        Usuario parent = user(parentUserId, RolUsuario.PADRE);
+
+        when(usuarioRepository.findByIdCognito(PARENT_SUB)).thenReturn(Optional.of(parent));
+        when(tutorRepository.findByUsuarioId(parentUserId)).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
+                        "Perez", "juan@example.com", null, null));
+
+        assertEquals("Tutor no encontrado para el usuario autenticado", exception.getMessage());
+        verify(cognitoStudentIdentityService, never())
+                .createStudentUser(any(), any(), any(), any());
+    }
+
+    @Test
     void duplicatedEmailStopsBeforeCreatingCognitoUser() {
         UUID parentUserId = UUID.randomUUID();
         Usuario parent = user(parentUserId, RolUsuario.PADRE);
@@ -171,6 +201,50 @@ class CreateStudentFromParentTest {
         verify(usuarioRepository, never()).findByIdCognito(any());
         verify(cognitoStudentIdentityService, never())
                 .createStudentUser(any(), any(), any(), any());
+    }
+
+    @Test
+    void blankRequiredFieldsAreRejected() {
+        assertThrows(IllegalArgumentException.class, () ->
+                createStudentFromParent.execute(PARENT_SUB, "juan", " ",
+                        "Perez", "juan@example.com", null, null));
+        assertThrows(IllegalArgumentException.class, () ->
+                createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
+                        " ", "juan@example.com", null, null));
+        assertThrows(IllegalArgumentException.class, () ->
+                createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
+                        "Perez", " ", null, null));
+    }
+
+    @Test
+    void blankOptionalUsernameAndDniShouldBeStoredAsNull() {
+        UUID savedUserId = UUID.randomUUID();
+        UUID savedAlumnoId = UUID.randomUUID();
+        givenParentWithTutor();
+        when(usuarioRepository.findByEmail("juan.perez@example.com"))
+                .thenReturn(Optional.empty());
+        when(cognitoStudentIdentityService.createStudentUser(
+                null,
+                "juan.perez@example.com",
+                "Juan",
+                "Perez"
+        )).thenReturn(new CreatedCognitoUser("student-sub", "generated"));
+        persistSavedEntities(savedUserId, savedAlumnoId);
+
+        createStudentFromParent.execute(
+                PARENT_SUB,
+                " ",
+                " Juan ",
+                " Perez ",
+                " juan.perez@example.com ",
+                " ",
+                null
+        );
+
+        verify(usuarioRepository).save(usuarioCaptor.capture());
+        verify(alumnoRepository).save(alumnoCaptor.capture());
+        assertEquals(null, usuarioCaptor.getValue().getDni());
+        assertEquals(null, alumnoCaptor.getValue().getGrado());
     }
 
     @Test

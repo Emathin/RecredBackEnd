@@ -101,6 +101,25 @@ class UpdatePromotionTest {
     }
 
     @Test
+    void execute_shouldSetDraftStatus_whenPromotionStartsInFuture() {
+        LocalDateTime futureStart = LocalDateTime.now().plusDays(1);
+        LocalDateTime futureEnd = LocalDateTime.now().plusDays(10);
+        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
+        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Promotion result = updatePromotion.execute(
+                promoId,
+                null,
+                null,
+                null,
+                futureStart,
+                futureEnd
+        );
+
+        assertEquals(PromotionStatus.DRAFT, result.getStatus());
+    }
+
+    @Test
     void execute_shouldThrowException_whenPromotionNotFound() {
         when(promotionRepository.findById(promoId)).thenReturn(Optional.empty());
 

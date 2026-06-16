@@ -225,4 +225,41 @@ class UpdateProductTest {
                         && Integer.valueOf(25).equals(inventory.getCupoMaximoDiario())
         ));
     }
+
+    @Test
+    void dadoQueVieneSoloCupoDiario_cuandoNoExisteInventario_entoncesUsaTipoPorDefecto() {
+        UUID id = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
+        UpdateProductCommand command = new UpdateProductCommand(
+                id,
+                "Nombre Act",
+                "Desc Act",
+                BigDecimal.TEN,
+                new BigDecimal("0.5"),
+                false,
+                null,
+                null,
+                buffetId,
+                null,
+                null,
+                null,
+                null,
+                8
+        );
+        Producto existing = new Producto();
+        existing.setId(id);
+
+        when(productRepository.findActiveById(id)).thenReturn(Optional.of(existing));
+        when(productRepository.save(existing)).thenReturn(existing);
+        when(inventoryRepository.findByBuffetAndProduct(buffetId, id))
+                .thenReturn(Optional.empty());
+
+        updateProduct.execute(command);
+
+        verify(inventoryRepository).save(argThat(inventory ->
+                TipoManejoInventario.STOCK_EXACTO.equals(inventory.getTipoManejo())
+                        && Integer.valueOf(8).equals(inventory.getCupoMaximoDiario())
+                        && inventory.getStockActual() == null
+        ));
+    }
 }

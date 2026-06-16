@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.RestriccionHoraria;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import org.junit.jupiter.api.Test;
@@ -12,10 +13,12 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -94,5 +97,56 @@ class UpdateTimeRestrictionTest {
 
         assertThrows(RuntimeException.class,
                 () -> updateTimeRestriction.execute(restrictionId, command));
+    }
+
+    @Test
+    void execute_LanzaExcepcion_CuandoAlumnoNoExiste() {
+        UUID restrictionId = UUID.randomUUID();
+        UUID alumnoId = UUID.randomUUID();
+        TimeRestrictionCommand command = new TimeRestrictionCommand(
+                alumnoId,
+                UUID.randomUUID(),
+                null,
+                null
+        );
+        RestriccionHoraria restriccionExistente = new RestriccionHoraria();
+        restriccionExistente.setAlumnoId(alumnoId);
+
+        when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> updateTimeRestriction.execute(restrictionId, command)
+        );
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void execute_LanzaExcepcion_CuandoClasificacionYaEstaAsignadaGlobalmente() {
+        UUID restrictionId = UUID.randomUUID();
+        UUID alumnoId = UUID.randomUUID();
+        UUID classificationId = UUID.randomUUID();
+        TimeRestrictionCommand command = new TimeRestrictionCommand(
+                alumnoId,
+                UUID.randomUUID(),
+                null,
+                classificationId
+        );
+        RestriccionHoraria restriccionExistente = new RestriccionHoraria();
+        restriccionExistente.setAlumnoId(alumnoId);
+        ClasificacionSalud clasificacion = new ClasificacionSalud();
+        clasificacion.setId(classificationId);
+        Alumno alumno = new Alumno();
+        alumno.setRestriccionesSalud(Set.of(clasificacion));
+
+        when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> updateTimeRestriction.execute(restrictionId, command)
+        );
+        verify(repository, never()).save(any());
     }
 }

@@ -117,6 +117,34 @@ class PresupuestoRepositoryImplTest {
     }
 
     @Test
+    void save_WhenBudgetHasNoId_ShouldCreateEntity() {
+        domainMock.setId(null);
+        domainMock.setAlumnoId(studentId);
+        when(springDataRepository.save(any(PresupuestoAlumnoEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PresupuestoAlumno result = repositoryImpl.save(domainMock);
+
+        assertEquals(null, result.getId());
+        verify(springDataRepository).save(any(PresupuestoAlumnoEntity.class));
+    }
+
+    @Test
+    void save_WhenExistingRulesCollectionIsNull_ShouldSetRulesCollection() {
+        entityMock.setReglasCategoria(null);
+        domainMock.setAlumnoId(studentId);
+        domainMock.setReglasCategoria(List.of(rule(UUID.randomUUID())));
+        when(springDataRepository.findById(domainMock.getId()))
+                .thenReturn(Optional.of(entityMock));
+        when(springDataRepository.save(any(PresupuestoAlumnoEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        repositoryImpl.save(domainMock);
+
+        assertEquals(1, entityMock.getReglasCategoria().size());
+    }
+
+    @Test
     void save_WhenExistingBudgetHasRules_ShouldClearAndFlushBeforeReplacing() {
         ReglaPresupuestoCategoriaEntity existingRule =
                 new ReglaPresupuestoCategoriaEntity();

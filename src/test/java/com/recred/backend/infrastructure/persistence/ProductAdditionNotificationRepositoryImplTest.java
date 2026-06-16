@@ -20,6 +20,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -84,6 +85,29 @@ class ProductAdditionNotificationRepositoryImplTest {
         assertEquals(notificationId.toString(), push.data().get("notificacionId"));
         assertEquals(productId.toString(), push.data().get("productoId"));
         assertEquals(TipoNotificacion.SUGERENCIA_IA.name(), push.data().get("tipo"));
+    }
+
+    @Test
+    void save_WhenJpaRepositoryReturnsNull_ShouldUseOriginalNotification() {
+        UUID userId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UsuarioEntity userEntity = new UsuarioEntity();
+        userEntity.setId(userId);
+        ProductoEntity productEntity = new ProductoEntity();
+        productEntity.setId(productId);
+        when(entityManager.getReference(UsuarioEntity.class, userId)).thenReturn(userEntity);
+        when(entityManager.getReference(ProductoEntity.class, productId))
+                .thenReturn(productEntity);
+        when(notificationJpaRepository.save(any(NotificacionEntity.class))).thenReturn(null);
+        ProductAdditionNotificationRepositoryImpl repository =
+                new ProductAdditionNotificationRepositoryImpl(
+                        notificationJpaRepository,
+                        entityManager,
+                        eventPublisher
+                );
+
+        assertThrows(NullPointerException.class,
+                () -> repository.save(product(productId), kiosquero(userId)));
     }
 
     private Producto product(UUID productId) {

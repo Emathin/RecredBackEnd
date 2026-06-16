@@ -83,6 +83,41 @@ class FirebasePushNotificationSenderTest {
     }
 
     @Test
+    void sendDataOnlyPushWhenNotificationHasNoTitleOrMessage()
+            throws FirebaseMessagingException {
+        UserDeviceTokenRepository tokenRepository = mock(UserDeviceTokenRepository.class);
+        FirebaseApp firebaseApp = mock(FirebaseApp.class);
+        FirebasePushNotificationSender sender = new FirebasePushNotificationSender(
+                Optional.of(firebaseApp),
+                tokenRepository
+        );
+        PushNotification notification = new PushNotification(
+                UUID.randomUUID(),
+                null,
+                null,
+                Map.of("tipo", "DATA_ONLY")
+        );
+        when(tokenRepository.findActiveTokensByUserId(notification.userId()))
+                .thenReturn(List.of("token-1"));
+        FirebaseMessaging messaging = mock(FirebaseMessaging.class);
+        BatchResponse batchResponse = mock(BatchResponse.class);
+        when(batchResponse.getFailureCount()).thenReturn(0);
+        when(messaging.sendEachForMulticast(
+                org.mockito.ArgumentMatchers.any(MulticastMessage.class)
+        )).thenReturn(batchResponse);
+
+        try (MockedStatic<FirebaseMessaging> mocked = mockStatic(FirebaseMessaging.class)) {
+            mocked.when(() -> FirebaseMessaging.getInstance(firebaseApp)).thenReturn(messaging);
+
+            sender.send(notification);
+
+            verify(messaging).sendEachForMulticast(
+                    org.mockito.ArgumentMatchers.any(MulticastMessage.class)
+            );
+        }
+    }
+
+    @Test
     void continueWhenFirebaseRejectsToken() throws FirebaseMessagingException {
         UserDeviceTokenRepository tokenRepository = mock(UserDeviceTokenRepository.class);
         FirebaseApp firebaseApp = mock(FirebaseApp.class);
@@ -140,6 +175,41 @@ class FirebasePushNotificationSenderTest {
             
             verify(messaging).sendEachForMulticast(org.mockito.ArgumentMatchers.any(MulticastMessage.class));
             verify(tokenRepository).deactivateTokens(List.of("token-1"));
+        }
+    }
+
+    @Test
+    void keepTokenActiveWhenFirebaseRejectsWithRetryableError()
+            throws FirebaseMessagingException {
+        UserDeviceTokenRepository tokenRepository = mock(UserDeviceTokenRepository.class);
+        FirebaseApp firebaseApp = mock(FirebaseApp.class);
+        FirebasePushNotificationSender sender = new FirebasePushNotificationSender(
+                Optional.of(firebaseApp),
+                tokenRepository
+        );
+        PushNotification notification = notification();
+        when(tokenRepository.findActiveTokensByUserId(notification.userId()))
+                .thenReturn(List.of("token-1"));
+        FirebaseMessaging messaging = mock(FirebaseMessaging.class);
+        BatchResponse batchResponse = mock(BatchResponse.class);
+        when(batchResponse.getFailureCount()).thenReturn(1);
+        SendResponse sendResponse = mock(SendResponse.class);
+        when(sendResponse.isSuccessful()).thenReturn(false);
+        FirebaseMessagingException exception = mock(FirebaseMessagingException.class);
+        when(exception.getMessagingErrorCode()).thenReturn(MessagingErrorCode.INTERNAL);
+        when(exception.getMessage()).thenReturn("firebase internal error");
+        when(sendResponse.getException()).thenReturn(exception);
+        when(batchResponse.getResponses()).thenReturn(List.of(sendResponse));
+        when(messaging.sendEachForMulticast(
+                org.mockito.ArgumentMatchers.any(MulticastMessage.class)
+        )).thenReturn(batchResponse);
+
+        try (MockedStatic<FirebaseMessaging> mocked = mockStatic(FirebaseMessaging.class)) {
+            mocked.when(() -> FirebaseMessaging.getInstance(firebaseApp)).thenReturn(messaging);
+
+            sender.send(notification);
+
+            verify(tokenRepository, never()).deactivateTokens(List.of("token-1"));
         }
     }
 
