@@ -3,9 +3,12 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
+import com.recred.backend.domain.models.CreditStatus;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.SchoolCredit;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +44,9 @@ class TransferBalanceBetweenChildrenTest {
 
     @Mock
     private com.recred.backend.domain.repositories.MovimientoBilleteraRepository movimientoBilleteraRepository;
+
+    @Mock
+    private SchoolCreditRepository schoolCreditRepository;
 
     @InjectMocks
     private TransferBalanceBetweenChildren transferUseCase;
@@ -95,6 +101,7 @@ class TransferBalanceBetweenChildrenTest {
         when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
         when(walletRepository.findByStudentId(fromId)).thenReturn(Optional.of(fromWallet));
         when(walletRepository.findByStudentId(toId)).thenReturn(Optional.of(toWallet));
+        when(schoolCreditRepository.findByStudentIdAndStatus(toId, CreditStatus.ACTIVE)).thenReturn(Optional.empty());
 
         transferUseCase.execute(cognitoSub, fromId, toId, amount);
 
@@ -116,6 +123,63 @@ class TransferBalanceBetweenChildrenTest {
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.eq(parentUser.getId())
         );
+    }
+
+    @Test
+    void execute_shouldPayOffMicroloan_whenActiveCreditExists() {
+        BigDecimal amount = new BigDecimal("30.00");
+        SchoolCredit activeCredit = new SchoolCredit();
+        activeCredit.setId(UUID.randomUUID());
+        activeCredit.setAmount(new BigDecimal("20.00"));
+        activeCredit.setStatus(CreditStatus.ACTIVE);
+
+        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
+        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
+        when(walletRepository.findByStudentId(fromId)).thenReturn(Optional.of(fromWallet));
+        when(walletRepository.findByStudentId(toId)).thenReturn(Optional.of(toWallet));
+        when(schoolCreditRepository.findByStudentIdAndStatus(toId, CreditStatus.ACTIVE)).thenReturn(Optional.of(activeCredit));
+
+        transferUseCase.execute(cognitoSub, fromId, toId, amount);
+
+        assertEquals(new BigDecimal("70.00"), fromWallet.getSaldoCreditos());
+        // $30 transfer - $20 credit = $10 added to balance. Original was $50 -> $60
+        assertEquals(new BigDecimal("60.00"), toWallet.getSaldoCreditos());
+        assertEquals(BigDecimal.ZERO, activeCredit.getAmount());
+        assertEquals(CreditStatus.PAID, activeCredit.getStatus());
+        
+        verify(schoolCreditRepository).save(activeCredit);
+        verify(movimientoBilleteraRepository).registrarMovimiento(
+                org.mockito.ArgumentMatchers.eq(toWallet.getId()),
+                org.mockito.ArgumentMatchers.eq(com.recred.backend.domain.models.TipoMovimientoBilletera.AJUSTE),
+                org.mockito.ArgumentMatchers.eq(new BigDecimal("-20.00")),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(parentUser.getId())
+        );
+    }
+
+    @Test
+    void execute_shouldReduceMicroloan_whenTransferIsLessThanCredit() {
+        BigDecimal amount = new BigDecimal("30.00");
+        SchoolCredit activeCredit = new SchoolCredit();
+        activeCredit.setId(UUID.randomUUID());
+        activeCredit.setAmount(new BigDecimal("50.00"));
+        activeCredit.setStatus(CreditStatus.ACTIVE);
+
+        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
+        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
+        when(walletRepository.findByStudentId(fromId)).thenReturn(Optional.of(fromWallet));
+        when(walletRepository.findByStudentId(toId)).thenReturn(Optional.of(toWallet));
+        when(schoolCreditRepository.findByStudentIdAndStatus(toId, CreditStatus.ACTIVE)).thenReturn(Optional.of(activeCredit));
+
+        transferUseCase.execute(cognitoSub, fromId, toId, amount);
+
+        assertEquals(new BigDecimal("70.00"), fromWallet.getSaldoCreditos());
+        // $30 transfer fully consumed. Original was $50 -> $50
+        assertEquals(new BigDecimal("50.00"), toWallet.getSaldoCreditos());
+        assertEquals(new BigDecimal("20.00"), activeCredit.getAmount());
+        assertEquals(CreditStatus.ACTIVE, activeCredit.getStatus());
+        
+        verify(schoolCreditRepository).save(activeCredit);
     }
 
     @Test

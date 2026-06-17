@@ -2,10 +2,12 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
+import com.recred.backend.domain.models.CreditStatus;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.models.TipoMovimientoBilletera;
+import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
@@ -21,16 +23,19 @@ public class TransferBalanceBetweenChildren {
     private final TutorRepository tutorRepository;
     private final WalletRepository walletRepository;
     private final MovimientoBilleteraRepository movimientoBilleteraRepository;
+    private final SchoolCreditRepository schoolCreditRepository;
 
     public TransferBalanceBetweenChildren(
             UsuarioRepository usuarioRepository, 
             TutorRepository tutorRepository,
             WalletRepository walletRepository,
-            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+            MovimientoBilleteraRepository movimientoBilleteraRepository,
+            SchoolCreditRepository schoolCreditRepository) {
         this.usuarioRepository = usuarioRepository;
         this.tutorRepository = tutorRepository;
         this.walletRepository = walletRepository;
         this.movimientoBilleteraRepository = movimientoBilleteraRepository;
+        this.schoolCreditRepository = schoolCreditRepository;
     }
 
     @Transactional
@@ -79,10 +84,9 @@ public class TransferBalanceBetweenChildren {
                         "Billetera destino no encontrada"));
 
         fromWallet.debit(amount);
-        toWallet.credit(amount);
+        toWallet.credit(amount); // Register total amount
 
         walletRepository.save(fromWallet);
-        walletRepository.save(toWallet);
 
         String descDebito = "Transferencia enviada a " 
                 + toStudent.getNombre() + " " + toStudent.getApellido();
@@ -103,6 +107,33 @@ public class TransferBalanceBetweenChildren {
                 descCredito, 
                 padre.getId()
         );
+
+        schoolCreditRepository.findByStudentIdAndStatus(toStudentId, CreditStatus.ACTIVE)
+                .ifPresent(credit -> {
+                    BigDecimal creditAmount = credit.getAmount();
+                    BigDecimal paidAmount;
+                    if (amount.compareTo(creditAmount) >= 0) {
+                        paidAmount = creditAmount;
+                        credit.setAmount(BigDecimal.ZERO);
+                        credit.setStatus(CreditStatus.PAID);
+                    } else {
+                        paidAmount = amount;
+                        credit.setAmount(creditAmount.subtract(amount));
+                    }
+                    schoolCreditRepository.save(credit);
+                    
+                    // Deduct paid amount from wallet and record movement
+                    toWallet.debit(paidAmount);
+                    movimientoBilleteraRepository.registrarMovimiento(
+                            toWallet.getId(), 
+                            TipoMovimientoBilletera.AJUSTE, 
+                            paidAmount.negate(), 
+                            "Pago automático de microcrédito con transferencia", 
+                            padre.getId()
+                    );
+                });
+
+        walletRepository.save(toWallet);
     }
 }
 

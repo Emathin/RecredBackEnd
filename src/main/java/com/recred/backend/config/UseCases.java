@@ -1064,12 +1064,14 @@ public class UseCases {
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             WalletRepository walletRepository,
-            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+            MovimientoBilleteraRepository movimientoBilleteraRepository,
+            SchoolCreditRepository schoolCreditRepository) {
         return new TransferBalanceBetweenChildren(
                 usuarioRepository,
                 tutorRepository,
                 walletRepository,
-                movimientoBilleteraRepository
+                movimientoBilleteraRepository,
+                schoolCreditRepository
         );
     }
 
