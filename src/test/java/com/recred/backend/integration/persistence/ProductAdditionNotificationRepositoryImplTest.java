@@ -3,10 +3,12 @@ package com.recred.backend.infrastructure.persistence;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.PushNotification;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.TipoNotificacion;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.infrastructure.entities.NotificacionEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
 import jakarta.persistence.EntityManager;
@@ -42,14 +44,20 @@ class ProductAdditionNotificationRepositoryImplTest {
     void save_ShouldPersistNotificationAndPublishPushEvent() {
         UUID userId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
+        UUID suggestionId = UUID.randomUUID();
         UUID notificationId = UUID.randomUUID();
         UsuarioEntity userEntity = new UsuarioEntity();
         userEntity.setId(userId);
         ProductoEntity productEntity = new ProductoEntity();
         productEntity.setId(productId);
+        SugerenciaIAEntity suggestionEntity = new SugerenciaIAEntity();
+
         when(entityManager.getReference(UsuarioEntity.class, userId)).thenReturn(userEntity);
         when(entityManager.getReference(ProductoEntity.class, productId))
                 .thenReturn(productEntity);
+        when(entityManager.getReference(SugerenciaIAEntity.class, suggestionId))
+                .thenReturn(suggestionEntity);
+
         when(notificationJpaRepository.save(any(NotificacionEntity.class)))
                 .thenAnswer(invocation -> {
                     NotificacionEntity notification = invocation.getArgument(0);
@@ -63,7 +71,9 @@ class ProductAdditionNotificationRepositoryImplTest {
                         eventPublisher
                 );
 
-        repository.save(product(productId), kiosquero(userId));
+        SugerenciaIA suggestion = new SugerenciaIA();
+        suggestion.setId(suggestionId);
+        repository.save(product(productId), kiosquero(userId), suggestion);
 
         ArgumentCaptor<NotificacionEntity> notificationCaptor =
                 ArgumentCaptor.forClass(NotificacionEntity.class);
@@ -71,7 +81,8 @@ class ProductAdditionNotificationRepositoryImplTest {
         NotificacionEntity notification = notificationCaptor.getValue();
         assertEquals(userEntity, notification.getUsuarioEntity());
         assertEquals(productEntity, notification.getProductoEntity());
-        assertEquals(TipoNotificacion.SUGERENCIA_IA, notification.getTipo());
+        assertEquals(suggestionEntity, notification.getSugerenciaIaEntity());
+        assertEquals(TipoNotificacion.AGREGAR_PRODUCTO, notification.getTipo());
         assertEquals("Sugerencia de producto", notification.getTitulo());
         assertFalse(notification.getLeida());
         assertTrue(notification.getMensaje().contains("Barrita"));
@@ -84,30 +95,7 @@ class ProductAdditionNotificationRepositoryImplTest {
         assertEquals(userId, push.userId());
         assertEquals(notificationId.toString(), push.data().get("notificacionId"));
         assertEquals(productId.toString(), push.data().get("productoId"));
-        assertEquals(TipoNotificacion.SUGERENCIA_IA.name(), push.data().get("tipo"));
-    }
-
-    @Test
-    void save_WhenJpaRepositoryReturnsNull_ShouldUseOriginalNotification() {
-        UUID userId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        UsuarioEntity userEntity = new UsuarioEntity();
-        userEntity.setId(userId);
-        ProductoEntity productEntity = new ProductoEntity();
-        productEntity.setId(productId);
-        when(entityManager.getReference(UsuarioEntity.class, userId)).thenReturn(userEntity);
-        when(entityManager.getReference(ProductoEntity.class, productId))
-                .thenReturn(productEntity);
-        when(notificationJpaRepository.save(any(NotificacionEntity.class))).thenReturn(null);
-        ProductAdditionNotificationRepositoryImpl repository =
-                new ProductAdditionNotificationRepositoryImpl(
-                        notificationJpaRepository,
-                        entityManager,
-                        eventPublisher
-                );
-
-        assertThrows(NullPointerException.class,
-                () -> repository.save(product(productId), kiosquero(userId)));
+        assertEquals(TipoNotificacion.AGREGAR_PRODUCTO.name(), push.data().get("tipo"));
     }
 
     private Producto product(UUID productId) {

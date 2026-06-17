@@ -1,4 +1,4 @@
-package com.recred.backend.config;
+﻿package com.recred.backend.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddHealthRestriction;
@@ -6,6 +6,8 @@ import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.GenerateComboSuggestion;
 import com.recred.backend.application.GetTutorGlobalDashboard;
+import com.recred.backend.application.GetSuggestionByNotificationId;
+import com.recred.backend.application.GetSuggestionByType;
 import com.recred.backend.application.EnableSchoolCredit;
 import com.recred.backend.application.GetActiveSchoolCredit;
 import com.recred.backend.application.GetLastRecharge;
@@ -134,6 +136,7 @@ import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
 import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.ProductStatisticsRepository;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.domain.repositories.PurchaseRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -1019,13 +1022,17 @@ public class UseCases {
             KiosqueroRepository kiosqueroRepository,
             InventoryRepository inventoryRepository,
             AIEventRepository aiEventRepository,
-            ProductAdditionNotificationRepository notificationRepository) {
+            ProductAdditionNotificationRepository notificationRepository,
+            ProductStatisticsRepository productStatisticsRepository,
+            SugerenciaIARepository sugerenciaIARepository) {
         return new AddProductRecommendation(
                 productRepository,
                 kiosqueroRepository,
                 inventoryRepository,
                 aiEventRepository,
-                notificationRepository);
+                notificationRepository,
+                productStatisticsRepository,
+                sugerenciaIARepository);
     }
 
     @Bean
@@ -1058,12 +1065,15 @@ public class UseCases {
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             WalletRepository walletRepository,
-            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+            MovimientoBilleteraRepository movimientoBilleteraRepository,
+            SchoolCreditRepository schoolCreditRepository) {
         return new TransferBalanceBetweenChildren(
                 usuarioRepository,
                 tutorRepository,
                 walletRepository,
-                movimientoBilleteraRepository);
+                movimientoBilleteraRepository,
+                schoolCreditRepository
+        );
     }
 
     @Bean
@@ -1265,4 +1275,18 @@ public class UseCases {
             SchoolCreditRepository schoolCreditRepository) {
         return new GetActiveSchoolCredit(schoolCreditRepository);
     }
+
+    @Bean
+    public GetSuggestionByNotificationId getSuggestionByNotificationId(
+            SuggestionAiRepository suggestionAiRepository) {
+        return new GetSuggestionByNotificationId(suggestionAiRepository);
+    }
+
+    @Bean
+    public GetSuggestionByType getSuggestionByType(
+            SuggestionAiRepository suggestionAiRepository,
+            KiosqueroRepository kiosqueroRepository) {
+        return new GetSuggestionByType(suggestionAiRepository, kiosqueroRepository);
+    }
 }
+
