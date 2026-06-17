@@ -3,16 +3,18 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.ProductStatisticsRepository;
+import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,7 +43,12 @@ public class AddProductRecommendationTest {
     @Mock
     private ProductAdditionNotificationRepository notificationRepository;
 
-    @InjectMocks
+    @Mock
+    private ProductStatisticsRepository productStatisticsRepository;
+
+    @Mock
+    private SugerenciaIARepository sugerenciaIARepository;
+
     private AddProductRecommendation useCase;
 
     private Producto producto;
@@ -50,6 +57,16 @@ public class AddProductRecommendationTest {
 
     @BeforeEach
     void setUp() {
+        useCase = new AddProductRecommendation(
+                productRepository,
+                kiosqueroRepository,
+                inventoryRepository,
+                aiEventRepository,
+                notificationRepository,
+                productStatisticsRepository,
+                sugerenciaIARepository
+        );
+
         producto = new Producto();
         producto.setId(UUID.randomUUID());
         producto.setNombre("Producto Test");
@@ -64,16 +81,21 @@ public class AddProductRecommendationTest {
     }
 
     @Test
-    void WhenProductIsNotInStockShouldRegisterRecommendationAndSendNotifications() {
+    void WhenProductIsNotInStockShouldRegisterRecommendationWithCorrectStatistics() {
         when(productRepository.findBestSoldProducts()).thenReturn(List.of(producto));
         when(kiosqueroRepository.findAll()).thenReturn(List.of(kiosquero));
         when(kiosqueroRepository.findBuffetById(kiosquero.getId())).thenReturn(buffetId);
         when(inventoryRepository.checkIfProductIsInStock(producto.getId(), buffetId)).thenReturn(false);
+        
+        when(productStatisticsRepository.countTotalSalesByProduct(any(), any())).thenReturn(100L);
+        when(productStatisticsRepository.countDistinctCustomersByProduct(any(), any())).thenReturn(50L);
+        when(productStatisticsRepository.calculateTotalRevenueByProduct(any(), any())).thenReturn(new java.math.BigDecimal("5000"));
 
         useCase.execute();
 
         verify(aiEventRepository).registerProductAdditionRecommendation(producto, kiosquero, buffetId);
-        verify(notificationRepository).save(producto, kiosquero);
+        verify(sugerenciaIARepository).save(any(SugerenciaIA.class));
+        verify(notificationRepository).save(any(Producto.class), any(Kiosquero.class), any(SugerenciaIA.class));
     }
 
     @Test
@@ -86,7 +108,7 @@ public class AddProductRecommendationTest {
         useCase.execute();
 
         verify(aiEventRepository, never()).registerProductAdditionRecommendation(any(), any(), any());
-        verify(notificationRepository, never()).save(any(), any());
+        verify(notificationRepository, never()).save(any(), any(), any());
     }
 
 }
