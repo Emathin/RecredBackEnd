@@ -150,12 +150,7 @@ class SchoolAssistantContentFormatter {
     }
 
     String recessLabel(RecessTime recessTime) {
-        return switch (recessTime) {
-            case FIRST_RECESS -> "primer recreo";
-            case SECOND_RECESS -> "segundo recreo";
-            case NOON -> "mediodia";
-            case AFTER_HOURS -> "salida";
-        };
+        return recessTime.getLabel();
     }
 
     String value(Object value) {
