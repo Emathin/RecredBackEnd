@@ -17,17 +17,19 @@ public class GeminiBulkStockAnalyzer implements BulkStockAnalyzer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GeminiBulkStockAnalyzer.class);
     
-    private static final String SYSTEM_PROMPT = """
+    private static final String SYSTEM_PROMPT_TEMPLATE = """
             Sos un experto en extracción de datos de inventario. Tu tarea es analizar el documento
             adjunto (PDF o imagen) y extraer TODOS los productos de la lista.
             
+            Categorías permitidas (usar nombre exacto): [%s]
+
             Para cada producto, genera un objeto con:
             - nombre: Nombre del producto.
             - descripcion: Detalle corto.
             - precio: Número decimal.
             - peso: Número decimal (en gramos o ml).
             - requiere_preparacion: Boolean (true si es comida elaborada, false si es industrial).
-            - categoria_nombre: Nombre de la categoría.
+            - categoria_nombre: El nombre exacto de la categoría de la lista anterior.
             - stock_actual: Número entero.
             - salud_etiquetas: Array de strings (ej: ["Sin TACC", "Sin Azúcar"]).
             - tipo_etiquetas: Array de strings (ej: ["Lácteo", "Bebida"]).
@@ -35,8 +37,11 @@ public class GeminiBulkStockAnalyzer implements BulkStockAnalyzer {
             REGLAS CRÍTICAS:
             1. Retorna ÚNICAMENTE un JSON con la estructura {"productos": [...]}.
             2. Si la lista es muy larga, procésala completa hasta el final sin cortar el JSON.
-            3. No inventes datos. Si un campo no está, usa null.
-            4. Responde SIEMPRE en español.
+            3. Para 'categoria_nombre', intentá usar uno de los valores de la lista de categorías. 
+               Si el producto no encaja claramente en ninguna, sugerí un nombre de categoría
+               nuevo, corto y descriptivo (ej: 'Snacks', 'Bebidas'). NO devuelvas null.
+            4. No inventes otros datos. Si un campo no está, usa null.
+            5. Responde SIEMPRE en español.
             """;
 
     private final GeminiTextClient geminiTextClient;
@@ -48,9 +53,14 @@ public class GeminiBulkStockAnalyzer implements BulkStockAnalyzer {
     }
 
     @Override
-    public List<RawBulkProduct> analyze(byte[] fileContent, String contentType) {
+    public List<RawBulkProduct> analyze(byte[] fileContent,
+                                        String contentType,
+                                        List<String> availableCategories) {
         try {
-            return geminiTextClient.generateWithFile(SYSTEM_PROMPT, fileContent, contentType)
+            String categoriesList = String.join("|", availableCategories);
+            String prompt = String.format(SYSTEM_PROMPT_TEMPLATE, categoriesList);
+
+            return geminiTextClient.generateWithFile(prompt, fileContent, contentType)
                     .map(response -> {
                         LOGGER.info("Raw Gemini Response: {}", response.text());
                         return parseResponse(response.text());

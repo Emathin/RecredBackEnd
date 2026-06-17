@@ -63,11 +63,14 @@ class ParseBulkStockTest {
                 List.of("Bebida")
         );
 
-        when(bulkStockAnalyzer.analyze(content, contentType)).thenReturn(List.of(rawProduct));
-
         CategoriaProducto categoria = new CategoriaProducto();
         categoria.setId(UUID.randomUUID());
         categoria.setDescripcion("Bebidas");
+        
+        when(categoryRepository.getAllCategories()).thenReturn(List.of(categoria));
+        when(bulkStockAnalyzer.analyze(eq(content), eq(contentType), anyList()))
+                .thenReturn(List.of(rawProduct));
+
         when(categoryRepository.findByDescription("Bebidas")).thenReturn(Optional.of(categoria));
 
         ClasificacionSalud salud = new ClasificacionSalud();
@@ -104,7 +107,7 @@ class ParseBulkStockTest {
     }
 
     @Test
-    void execute_ResuelveNuevaCategoria_CuandoNoExisteEnRepo() {
+    void execute_RetornaNuevaCategoria_CuandoNoExisteEnRepo() {
         byte[] content = "dummy".getBytes();
         String contentType = "text/csv";
         ParseBulkStockCommand command = new ParseBulkStockCommand(content, contentType);
@@ -113,7 +116,9 @@ class ParseBulkStockTest {
                 "Alfajor", null, null, null, false, "Golosinas", null, List.of(), List.of()
         );
 
-        when(bulkStockAnalyzer.analyze(content, contentType)).thenReturn(List.of(rawProduct));
+        when(categoryRepository.getAllCategories()).thenReturn(List.of());
+        when(bulkStockAnalyzer.analyze(eq(content), eq(contentType), anyList()))
+                .thenReturn(List.of(rawProduct));
         when(categoryRepository.findByDescription("Golosinas")).thenReturn(Optional.empty());
 
         BulkStockParseResponse response = parseBulkStock.execute(command);

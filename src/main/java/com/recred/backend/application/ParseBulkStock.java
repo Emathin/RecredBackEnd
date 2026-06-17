@@ -40,9 +40,13 @@ public class ParseBulkStock {
 
     public BulkStockParseResponse execute(ParseBulkStockCommand command) {
         validateFile(command.fileContent(), command.contentType());
+
+        List<String> availableCategories = categoryRepository.getAllCategories().stream()
+                .map(CategoriaProducto::getDescripcion)
+                .collect(Collectors.toList());
         
         List<RawBulkProduct> rawProducts = bulkStockAnalyzer
-                .analyze(command.fileContent(), command.contentType());
+                .analyze(command.fileContent(), command.contentType(), availableCategories);
         
         List<BulkProductData> resolvedProducts = rawProducts.stream()
                 .map(this::resolveEntity)
@@ -53,14 +57,15 @@ public class ParseBulkStock {
 
     private BulkProductData resolveEntity(RawBulkProduct raw) {
         UUID categoriaId = null;
-        String nuevaCategoriaNombre = raw.categoriaNombre();
+        String nuevaCategoriaNombre = null;
 
         if (raw.categoriaNombre() != null && !raw.categoriaNombre().isBlank()) {
             Optional<CategoriaProducto> category = categoryRepository
                     .findByDescription(raw.categoriaNombre());
             if (category.isPresent()) {
                 categoriaId = category.get().getId();
-                nuevaCategoriaNombre = null;
+            } else {
+                nuevaCategoriaNombre = raw.categoriaNombre();
             }
         }
 

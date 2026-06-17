@@ -65,7 +65,7 @@ public class SecurityConfig {
                                         )
                                 .permitAll()
                                 .anyRequest()
-                                .permitAll()//.authenticated()
+                                .authenticated()
                         )
 
                         .oauth2ResourceServer(oauth2 -> oauth2

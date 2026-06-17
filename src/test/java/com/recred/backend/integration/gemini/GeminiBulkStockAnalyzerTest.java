@@ -55,7 +55,7 @@ class GeminiBulkStockAnalyzerTest {
         when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
                 .thenReturn(Optional.of(new GeminiTextResponse(jsonResponse, "model")));
 
-        List<RawBulkProduct> result = analyzer.analyze("dummy".getBytes(), "application/pdf");
+        List<RawBulkProduct> result = analyzer.analyze("dummy".getBytes(), "application/pdf", List.of("Cat 1"));
 
         assertEquals(1, result.size());
         assertEquals("Producto 1", result.get(0).nombre());
@@ -68,7 +68,7 @@ class GeminiBulkStockAnalyzerTest {
         when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
                 .thenReturn(Optional.empty());
 
-        List<RawBulkProduct> result = analyzer.analyze("dummy".getBytes(), "application/pdf");
+        List<RawBulkProduct> result = analyzer.analyze("dummy".getBytes(), "application/pdf", List.of());
 
         assertTrue(result.isEmpty());
     }
