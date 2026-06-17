@@ -60,6 +60,8 @@ public class AddProductRecommendation {
         for (Producto product : bestSoldProducts) {
 
             Map<String, Object> stats = new HashMap<>();
+            stats.put("productName", product.getNombre());
+            stats.put("productPrice", product.getPrecio());
             stats.put("totalSales",
                     productStatisticsJpaRepository
                             .countTotalSalesByProduct(product.getId(), since));
