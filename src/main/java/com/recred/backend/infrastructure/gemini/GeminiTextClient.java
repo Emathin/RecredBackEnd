@@ -7,5 +7,6 @@ import java.util.Optional;
 public interface GeminiTextClient {
     Optional<GeminiTextResponse> generate(String prompt);
     Optional<GeminiTextResponse> generateWithImage(String prompt, MultipartFile image);
+    Optional<GeminiTextResponse> generateWithFile(String prompt, MultipartFile file);
 
 }
