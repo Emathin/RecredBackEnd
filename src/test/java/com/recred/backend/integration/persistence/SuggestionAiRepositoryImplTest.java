@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.PurchasePatternAnalysis;
 import com.recred.backend.domain.models.PurchaseRecommendationResult;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.infrastructure.entities.AIEventEntity;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
@@ -34,11 +35,14 @@ class SuggestionAiRepositoryImplTest {
     @Mock
     private SpringDataSuggestionAiRepository springDataRepository;
 
+    @Mock
+    private NotificacionJpaRepository notificacionRepository;
+
     private SuggestionAiRepositoryImpl repository;
 
     @BeforeEach
     void setUp() {
-        repository = new SuggestionAiRepositoryImpl(entityManager, springDataRepository);
+        repository = new SuggestionAiRepositoryImpl(entityManager, springDataRepository, notificacionRepository);
     }
 
     @Test
@@ -104,5 +108,29 @@ class SuggestionAiRepositoryImplTest {
 
         assertSame(notification, result);
         verify(springDataRepository).findByTipoAndStudentId("MONDAY", studentId);
+    }
+
+    @Test
+    void getSuggestionByNotificationIdShouldReturnMappedDomainObject() {
+        UUID notificationId = UUID.randomUUID();
+        SugerenciaIAEntity entity = new SugerenciaIAEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setTipo(TipoSugerenciaIA.MONDAY);
+        entity.setTitulo("Test");
+        entity.setMensaje("Message");
+        
+        NotificacionEntity notification = new NotificacionEntity();
+        notification.setSugerenciaIaEntity(entity);
+        
+        when(notificacionRepository.findByIdWithSuggestion(notificationId))
+                .thenReturn(Optional.of(notification));
+
+        SugerenciaIA result = repository.getSuggestionByNotificationId(notificationId);
+
+        assertEquals(entity.getId(), result.getId());
+        assertEquals(TipoSugerenciaIA.MONDAY, result.getTipo());
+        assertEquals("Test", result.getTitulo());
+        assertEquals("Message", result.getMensaje());
+        verify(notificacionRepository).findByIdWithSuggestion(notificationId);
     }
 }

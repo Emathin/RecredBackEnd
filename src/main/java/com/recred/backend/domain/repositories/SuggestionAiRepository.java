@@ -13,4 +13,7 @@ public interface SuggestionAiRepository {
     List<NotificacionEntity> findByTipo(String tomorrow);
 
     NotificacionEntity findByTipoAndStudentId(String today, UUID studentID);
+
+    com.recred.backend.domain.models.SugerenciaIA getSuggestionByNotificationId(
+            UUID notificationId);
 }

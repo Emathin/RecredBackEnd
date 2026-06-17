@@ -6,6 +6,7 @@ import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.GenerateComboSuggestion;
 import com.recred.backend.application.GetTutorGlobalDashboard;
+import com.recred.backend.application.GetSuggestionByNotificationId;
 import com.recred.backend.application.EnableSchoolCredit;
 import com.recred.backend.application.GetActiveSchoolCredit;
 import com.recred.backend.application.GetLastRecharge;
@@ -1267,5 +1268,11 @@ public class UseCases {
     public GetActiveSchoolCredit getActiveSchoolCredit(
             SchoolCreditRepository schoolCreditRepository) {
         return new GetActiveSchoolCredit(schoolCreditRepository);
+    }
+
+    @Bean
+    public GetSuggestionByNotificationId getSuggestionByNotificationId(
+            SuggestionAiRepository suggestionAiRepository) {
+        return new GetSuggestionByNotificationId(suggestionAiRepository);
     }
 }
