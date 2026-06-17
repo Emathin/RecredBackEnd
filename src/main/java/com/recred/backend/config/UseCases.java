@@ -1,4 +1,4 @@
-﻿package com.recred.backend.config;
+package com.recred.backend.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddHealthRestriction;
@@ -1289,4 +1289,6 @@ public class UseCases {
         return new GetSuggestionByType(suggestionAiRepository, kiosqueroRepository);
     }
 }
+
+
 
