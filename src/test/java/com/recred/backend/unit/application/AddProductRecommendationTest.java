@@ -1,14 +1,18 @@
 package com.recred.backend.unit.application;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.SugerenciaIARepository;
+import com.recred.backend.infrastructure.persistence.ProductStatisticsJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,6 +44,15 @@ public class AddProductRecommendationTest {
 
     @Mock
     private ProductAdditionNotificationRepository notificationRepository;
+
+    @Mock
+    private ProductStatisticsJpaRepository productStatisticsJpaRepository;
+
+    @Mock
+    private SugerenciaIARepository sugerenciaIARepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private AddProductRecommendation useCase;
@@ -73,7 +86,7 @@ public class AddProductRecommendationTest {
         useCase.execute();
 
         verify(aiEventRepository).registerProductAdditionRecommendation(producto, kiosquero, buffetId);
-        verify(notificationRepository).save(producto, kiosquero);
+        verify(notificationRepository).save(any(Producto.class), any(Kiosquero.class), any(SugerenciaIA.class));
     }
 
     @Test
@@ -86,7 +99,7 @@ public class AddProductRecommendationTest {
         useCase.execute();
 
         verify(aiEventRepository, never()).registerProductAdditionRecommendation(any(), any(), any());
-        verify(notificationRepository, never()).save(any(), any());
+        verify(notificationRepository, never()).save(any(), any(), any());
     }
 
 }

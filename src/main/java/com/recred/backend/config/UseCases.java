@@ -183,6 +183,7 @@ import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.gemini.GeminiTextClient;
 import com.recred.backend.infrastructure.gemini.LoadStockIAService;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
+import com.recred.backend.infrastructure.persistence.ProductStatisticsJpaRepository;
 import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -1017,13 +1018,19 @@ public class UseCases {
             KiosqueroRepository kiosqueroRepository,
             InventoryRepository inventoryRepository,
             AIEventRepository aiEventRepository,
-            ProductAdditionNotificationRepository notificationRepository) {
+            ProductAdditionNotificationRepository notificationRepository,
+            ProductStatisticsJpaRepository productStatisticsJpaRepository,
+            SugerenciaIARepository sugerenciaIARepository,
+            ObjectMapper objectMapper) {
         return new AddProductRecommendation(
                 productRepository,
                 kiosqueroRepository,
                 inventoryRepository,
                 aiEventRepository,
-                notificationRepository);
+                notificationRepository,
+                productStatisticsJpaRepository,
+                sugerenciaIARepository,
+                objectMapper);
     }
 
     @Bean

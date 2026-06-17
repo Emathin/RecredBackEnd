@@ -1,6 +1,7 @@
 package com.recred.backend.domain.repositories;
 
 import com.recred.backend.domain.models.PriceAlertSuggestion;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 
@@ -9,9 +10,13 @@ import java.util.List;
 import java.util.UUID;
 
 public interface SugerenciaIARepository {
+    SugerenciaIA save(SugerenciaIA sugerencia);
+//...
+
     void guardar(SugerenciaIAEntity sugerencia);
 
     void savePriceAlert(PriceAlertSuggestion suggestion);
+// ...
 
     boolean hasRecentPriceAlert(UUID studentId, UUID productId, LocalDateTime since);
 

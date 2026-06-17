@@ -233,9 +233,8 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         ));
         aiEventEntity.setInputOrigin("BACKEND PRODUCT ADDITION RECO");
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("resumen", "El producto " + product.getNombre() +
-                " experimenta una gran cantidad de ventas. Te sugerimos " +
-                "que lo agregues a tu stock") ;
+        data.put("resumen", "Te recomendamos agregar " + product.getNombre() +
+                " a tu stock") ;
         aiEventEntity.setResultData(data);
         aiEventJpaRepository.save(aiEventEntity);
     }

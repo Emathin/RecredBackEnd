@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Getter
@@ -16,8 +17,11 @@ import java.util.UUID;
 public class SugerenciaIA {
     private UUID id;
     private UUID alumnoId;
+    private UUID buffetId;
     private UUID productoId;
     private Producto producto;
+    private TipoSugerenciaIA tipo;
     private String titulo;
     private String mensaje;
+    private Map<String, Object> metadata;
 }

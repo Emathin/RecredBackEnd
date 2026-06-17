@@ -3,10 +3,12 @@ package com.recred.backend.infrastructure.persistence;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.PushNotification;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.TipoNotificacion;
 import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
 import com.recred.backend.infrastructure.entities.NotificacionEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
 import jakarta.persistence.EntityManager;
@@ -37,7 +39,7 @@ public class ProductAdditionNotificationRepositoryImpl
 
     @Override
     @Transactional
-    public void save(Producto product, Kiosquero kiosquero) {
+    public void save(Producto product, Kiosquero kiosquero, SugerenciaIA suggestion) {
         NotificacionEntity notification = new NotificacionEntity();
         notification.setUsuarioEntity(entityManager.getReference(
                 UsuarioEntity.class,
@@ -47,12 +49,14 @@ public class ProductAdditionNotificationRepositoryImpl
                 ProductoEntity.class,
                 product.getId()
         ));
+        notification.setSugerenciaIaEntity(entityManager.getReference(
+                SugerenciaIAEntity.class,
+                suggestion.getId()
+        ));
         notification.setTipo(TipoNotificacion.SUGERENCIA_IA);
         notification.setTitulo("Sugerencia de producto");
-        notification.setMensaje("El producto " + product.getNombre() +
-                " experimenta una gran cantidad de ventas en contextos similares al tuyo" +
-                ". Te sugerimos " +
-                "que lo agregues a tu stock.");
+        notification.setMensaje("Te recomendamos agregar " + product.getNombre() +
+                " a tu stock" );
         notification.setLeida(false);
 
         saveAndPublishNotification(notification);

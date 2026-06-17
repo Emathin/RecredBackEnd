@@ -12,6 +12,23 @@ import java.util.UUID;
 public interface ProductStatisticsJpaRepository extends JpaRepository<CompraDetalleEntity, UUID> {
 
     @Query("SELECT SUM(cd.cantidad) FROM CompraDetalleEntity cd JOIN cd.compra c " +
+            "WHERE cd.productoEntity.id = :productoId AND c.fechaHora >= :since")
+    Long countTotalSalesByProduct(@Param("productoId") UUID productoId,
+                                  @Param("since") java.time.LocalDateTime since);
+
+    @Query("SELECT COUNT(DISTINCT c.alumnoEntity.id) FROM CompraDetalleEntity cd " +
+            "JOIN cd.compra c WHERE cd.productoEntity.id = :productoId AND c.fechaHora >= :since")
+    Long countDistinctCustomersByProduct(@Param("productoId") UUID productoId,
+                                         @Param("since") java.time.LocalDateTime since);
+
+    @Query("SELECT SUM(cd.cantidad * cd.precioUnitario) " +
+            "FROM CompraDetalleEntity cd JOIN cd.compra c " +
+            "WHERE cd.productoEntity.id = :productoId AND c.fechaHora >= :since")
+    java.math.BigDecimal calculateTotalRevenueByProduct(
+            @Param("productoId") UUID productoId,
+            @Param("since") java.time.LocalDateTime since);
+
+    @Query("SELECT SUM(cd.cantidad) FROM CompraDetalleEntity cd JOIN cd.compra c " +
             "WHERE cd.productoEntity.id = :productoId AND c.buffetEntity.id = :buffetId " +
             "AND c.fechaHora >= :since")
     Long countTotalSalesByProductAndBuffet(@Param("productoId") UUID productoId,
