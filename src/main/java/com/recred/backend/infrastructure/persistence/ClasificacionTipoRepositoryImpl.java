@@ -15,7 +15,8 @@ public class ClasificacionTipoRepositoryImpl implements ClasificacionTipoReposit
 
     private final SpringDataClasificacionTipoRepository springDataRepository;
 
-    public ClasificacionTipoRepositoryImpl(SpringDataClasificacionTipoRepository springDataRepository) {
+    public ClasificacionTipoRepositoryImpl(
+            SpringDataClasificacionTipoRepository springDataRepository) {
         this.springDataRepository = springDataRepository;
     }
 

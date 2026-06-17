@@ -8,14 +8,12 @@ import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.recred.backend.config.GeminiProperties;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 
 @Component
 public class GoogleGeminiTextClient implements GeminiTextClient {
@@ -56,35 +54,23 @@ public class GoogleGeminiTextClient implements GeminiTextClient {
     }
 
     @Override
-    public Optional<GeminiTextResponse> generateWithImage(String prompt, MultipartFile image) {
-        return generateWithFile(prompt, image);
-    }
-
-    @Override
-    public Optional<GeminiTextResponse> generateWithFile(String prompt, MultipartFile file) {
+    public Optional<GeminiTextResponse> generateWithFile(String prompt, 
+                                                         byte[] fileContent, 
+                                                         String mimeType) {
         if (!geminiProperties.isConfigured()) {
             return Optional.empty();
         }
 
-        try {
-            byte[] fileBytes = file.getBytes();
-            String mimeType = Optional.ofNullable(file.getContentType())
-                    .orElse("application/octet-stream");
+        try (Client client = Client.builder()
+                .apiKey(geminiProperties.apiKey())
+                .build()) {
 
-            try (Client client = Client.builder()
-                    .apiKey(geminiProperties.apiKey())
-                    .build()) {
+            GenerateContentResponse response = generateVisionContent(
+                    client, prompt, fileContent, mimeType);
 
-                GenerateContentResponse response = generateVisionContent(
-                        client, prompt, fileBytes, mimeType);
-
-                return Optional.ofNullable(response.text())
-                        .filter(text -> !text.isBlank())
-                        .map(text -> new GeminiTextResponse(text, geminiProperties.model()));
-            }
-        } catch (IOException ioException) {
-            LOGGER.error("Error reading file: {}", ioException.getMessage());
-            return Optional.empty();
+            return Optional.ofNullable(response.text())
+                    .filter(text -> !text.isBlank())
+                    .map(text -> new GeminiTextResponse(text, geminiProperties.model()));
         } catch (RuntimeException exception) {
             LOGGER.warn("Gemini content generation with file failed: {}", exception.getMessage());
             return Optional.empty();

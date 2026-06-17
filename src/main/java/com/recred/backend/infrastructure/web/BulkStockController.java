@@ -25,9 +25,18 @@ public class BulkStockController {
     }
 
     @PostMapping(value = "/bulk-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Procesa un archivo (PDF, Excel, CSV) para extraer productos masivamente")
-    public ResponseEntity<BulkStockParseResponse> uploadFile(@RequestParam("file") MultipartFile file) {
-        BulkStockParseResponse response = parseBulkStock.execute(new ParseBulkStockCommand(file));
-        return ResponseEntity.ok(response);
+    @Operation(summary = "Procesa un archivo (PDF, CSV) para extraer productos masivamente")
+    public ResponseEntity<BulkStockParseResponse> uploadFile(
+            @RequestParam("file") MultipartFile file) {
+        try {
+            ParseBulkStockCommand command = new ParseBulkStockCommand(
+                    file.getBytes(),
+                    file.getContentType()
+            );
+            BulkStockParseResponse response = parseBulkStock.execute(command);
+            return ResponseEntity.ok(response);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Error reading uploaded file", e);
+        }
     }
 }

@@ -2,14 +2,10 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.FileValidationException;
 import com.recred.backend.domain.models.CategoriaProducto;
-import com.recred.backend.domain.models.ClasificacionSalud;
-import com.recred.backend.domain.models.ClasificacionTipo;
 import com.recred.backend.domain.repositories.CategoryRepository;
 import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import com.recred.backend.domain.repositories.ClasificacionTipoRepository;
 import com.recred.backend.domain.services.BulkStockAnalyzer;
-import com.recred.backend.infrastructure.web.SaveProductDTO;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,7 +18,9 @@ public class ParseBulkStock {
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
             "application/pdf",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
-            "text/csv"
+            "text/csv",
+            "image/jpeg",
+            "image/png"
     );
 
     private final BulkStockAnalyzer bulkStockAnalyzer;
@@ -41,23 +39,25 @@ public class ParseBulkStock {
     }
 
     public BulkStockParseResponse execute(ParseBulkStockCommand command) {
-        validateFile(command.file());
+        validateFile(command.fileContent(), command.contentType());
         
-        List<RawBulkProduct> rawProducts = bulkStockAnalyzer.analyze(command.file());
+        List<RawBulkProduct> rawProducts = bulkStockAnalyzer
+                .analyze(command.fileContent(), command.contentType());
         
-        List<SaveProductDTO> resolvedProducts = rawProducts.stream()
+        List<BulkProductData> resolvedProducts = rawProducts.stream()
                 .map(this::resolveEntity)
                 .collect(Collectors.toList());
         
         return new BulkStockParseResponse(resolvedProducts);
     }
 
-    private SaveProductDTO resolveEntity(RawBulkProduct raw) {
+    private BulkProductData resolveEntity(RawBulkProduct raw) {
         UUID categoriaId = null;
         String nuevaCategoriaNombre = raw.categoriaNombre();
 
         if (raw.categoriaNombre() != null && !raw.categoriaNombre().isBlank()) {
-            Optional<CategoriaProducto> category = categoryRepository.findByDescription(raw.categoriaNombre());
+            Optional<CategoriaProducto> category = categoryRepository
+                    .findByDescription(raw.categoriaNombre());
             if (category.isPresent()) {
                 categoriaId = category.get().getId();
                 nuevaCategoriaNombre = null;
@@ -76,7 +76,7 @@ public class ParseBulkStock {
                 .map(opt -> opt.get().getId())
                 .collect(Collectors.toSet());
 
-        return new SaveProductDTO(
+        return new BulkProductData(
                 raw.nombre(),
                 raw.descripcion(),
                 raw.precio(),
@@ -84,21 +84,22 @@ public class ParseBulkStock {
                 raw.requierePreparacion(),
                 categoriaId,
                 nuevaCategoriaNombre,
-                null, // buffetId se asignará en el front o por contexto
                 raw.stockActual(),
                 saludIds,
                 tipoIds
         );
     }
 
-    private void validateFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
+    private void validateFile(byte[] content, String contentType) {
+        if (content == null || content.length == 0) {
             throw new FileValidationException("El archivo no puede estar vacío");
         }
 
-        String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
-            throw new FileValidationException("Formato de archivo no permitido. Se aceptan PDF, Excel (.xlsx) y CSV.");
+        if (contentType == null || 
+            !ALLOWED_CONTENT_TYPES.contains(contentType)) {
+            throw new FileValidationException(
+                    "Formato de archivo no permitido. " + 
+                    "Se aceptan PDF, CSV e imágenes.");
         }
     }
 }

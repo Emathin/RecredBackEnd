@@ -7,7 +7,6 @@ import com.recred.backend.application.RawBulkProduct;
 import com.recred.backend.domain.services.BulkStockAnalyzer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -19,14 +18,15 @@ public class GeminiBulkStockAnalyzer implements BulkStockAnalyzer {
     private static final Logger LOGGER = LoggerFactory.getLogger(GeminiBulkStockAnalyzer.class);
     
     private static final String SYSTEM_PROMPT = """
-            Sos un experto en extracción de datos de inventario. Tu tarea es analizar el documento adjunto (PDF o imagen) y extraer TODOS los productos de la lista.
+            Sos un experto en extracción de datos de inventario. Tu tarea es analizar el documento
+            adjunto (PDF o imagen) y extraer TODOS los productos de la lista.
             
             Para cada producto, genera un objeto con:
             - nombre: Nombre del producto.
             - descripcion: Detalle corto.
             - precio: Número decimal.
             - peso: Número decimal (en gramos o ml).
-            - requiere_preparacion: Boolean (true si es comida elaborada, false si es producto industrial).
+            - requiere_preparacion: Boolean (true si es comida elaborada, false si es industrial).
             - categoria_nombre: Nombre de la categoría.
             - stock_actual: Número entero.
             - salud_etiquetas: Array de strings (ej: ["Sin TACC", "Sin Azúcar"]).
@@ -34,7 +34,7 @@ public class GeminiBulkStockAnalyzer implements BulkStockAnalyzer {
 
             REGLAS CRÍTICAS:
             1. Retorna ÚNICAMENTE un JSON con la estructura {"productos": [...]}.
-            2. Si la lista es muy larga, asegúrate de procesar todos hasta el final sin cortar el JSON.
+            2. Si la lista es muy larga, procésala completa hasta el final sin cortar el JSON.
             3. No inventes datos. Si un campo no está, usa null.
             4. Responde SIEMPRE en español.
             """;
@@ -48,9 +48,9 @@ public class GeminiBulkStockAnalyzer implements BulkStockAnalyzer {
     }
 
     @Override
-    public List<RawBulkProduct> analyze(MultipartFile file) {
+    public List<RawBulkProduct> analyze(byte[] fileContent, String contentType) {
         try {
-            return geminiTextClient.generateWithFile(SYSTEM_PROMPT, file)
+            return geminiTextClient.generateWithFile(SYSTEM_PROMPT, fileContent, contentType)
                     .map(response -> {
                         LOGGER.info("Raw Gemini Response: {}", response.text());
                         return parseResponse(response.text());
@@ -65,7 +65,8 @@ public class GeminiBulkStockAnalyzer implements BulkStockAnalyzer {
     private List<RawBulkProduct> parseResponse(String json) {
         try {
             String cleanedJson = cleanJson(json);
-            GeminiBulkResponse response = objectMapper.readValue(cleanedJson, GeminiBulkResponse.class);
+            GeminiBulkResponse response = objectMapper
+                    .readValue(cleanedJson, GeminiBulkResponse.class);
             if (response.productos == null) {
                 LOGGER.warn("Gemini returned a null product list. Cleaned JSON: {}", cleanedJson);
                 return Collections.emptyList();
@@ -74,13 +75,16 @@ public class GeminiBulkStockAnalyzer implements BulkStockAnalyzer {
                     .map(this::mapToRaw)
                     .collect(Collectors.toList());
         } catch (IOException e) {
-            LOGGER.error("Error parseando JSON de Gemini: {}. Raw JSON: {}", e.getMessage(), json);
+            LOGGER.error("Error parseando JSON de Gemini: {}. Raw JSON: {}",
+                    e.getMessage(), json);
             return Collections.emptyList();
         }
     }
 
     private String cleanJson(String json) {
-        if (json == null) return null;
+        if (json == null) {
+            return null;
+        }
         return json.trim()
                 .replace("```json", "")
                 .replace("```", "")

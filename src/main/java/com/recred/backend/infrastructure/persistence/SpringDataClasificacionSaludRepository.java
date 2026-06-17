@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface SpringDataClasificacionSaludRepository extends JpaRepository<ClasificacionSaludEntity, UUID> {
+public interface SpringDataClasificacionSaludRepository 
+        extends JpaRepository<ClasificacionSaludEntity, UUID> {
     Optional<ClasificacionSaludEntity> findByDescripcion(String descripcion);
 }
