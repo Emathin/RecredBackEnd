@@ -53,7 +53,7 @@ public class ProductAdditionNotificationRepositoryImpl
                 SugerenciaIAEntity.class,
                 suggestion.getId()
         ));
-        notification.setTipo(TipoNotificacion.SUGERENCIA_IA);
+        notification.setTipo(TipoNotificacion.AGREGAR_PRODUCTO);
         notification.setTitulo("Sugerencia de producto");
         notification.setMensaje("Te recomendamos agregar " + product.getNombre() +
                 " a tu stock" );

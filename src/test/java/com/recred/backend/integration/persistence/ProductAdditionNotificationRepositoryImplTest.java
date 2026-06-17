@@ -82,7 +82,7 @@ class ProductAdditionNotificationRepositoryImplTest {
         assertEquals(userEntity, notification.getUsuarioEntity());
         assertEquals(productEntity, notification.getProductoEntity());
         assertEquals(suggestionEntity, notification.getSugerenciaIaEntity());
-        assertEquals(TipoNotificacion.SUGERENCIA_IA, notification.getTipo());
+        assertEquals(TipoNotificacion.AGREGAR_PRODUCTO, notification.getTipo());
         assertEquals("Sugerencia de producto", notification.getTitulo());
         assertFalse(notification.getLeida());
         assertTrue(notification.getMensaje().contains("Barrita"));
@@ -95,7 +95,7 @@ class ProductAdditionNotificationRepositoryImplTest {
         assertEquals(userId, push.userId());
         assertEquals(notificationId.toString(), push.data().get("notificacionId"));
         assertEquals(productId.toString(), push.data().get("productoId"));
-        assertEquals(TipoNotificacion.SUGERENCIA_IA.name(), push.data().get("tipo"));
+        assertEquals(TipoNotificacion.AGREGAR_PRODUCTO.name(), push.data().get("tipo"));
     }
 
     private Producto product(UUID productId) {
