@@ -84,6 +84,7 @@ public class InventarioBuffetEntity {
                 this.estado,
                 this.tipoManejo,
                 this.cupoMaximoDiario,
+                this.urlImagen,
                 this.actualizadoEn
         );
     }

@@ -99,6 +99,7 @@ public class InventoryRepositoryImpl implements InventoryRepository {
         producto.setTipoManejoInventario(inventory.getTipoManejo());
         producto.setEstadoInventario(domainInventory.estadoActual());
         producto.setCupoMaximoDiario(inventory.getCupoMaximoDiario());
+        producto.setUrlImagen(inventory.getUrlImagen());
 
         if (entity.getCategoria() != null) {
             com.recred.backend.domain.models.CategoriaProducto category =

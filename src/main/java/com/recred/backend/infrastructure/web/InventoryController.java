@@ -191,6 +191,7 @@ public class InventoryController {
             Integer stockMinimo,
             Integer cupoMaximoDiario,
             Integer cupoDisponibleDia,
+            String urlImagen,
             Boolean disponible,
             Boolean bajoStock,
             Boolean agotado
@@ -218,6 +219,7 @@ public class InventoryController {
                     product.getStockMinimo(),
                     cupoMaximoDiario,
                     cupoDisponibleDia,
+                    product.getUrlImagen(),
                     !soldOut && product.getEstadoInventario() != EstadoInventario.DESACTIVADO,
                     product.getEstadoInventario() == EstadoInventario.BAJO_STOCK,
                     soldOut
@@ -263,7 +265,8 @@ public class InventoryController {
             Integer stockDisponible,
             String estadoInventario,
             String tipoManejoInventario,
-            Integer cupoMaximoDiario
+            Integer cupoMaximoDiario,
+            String urlImagen
     ) {
         static InventoryResponse fromDomain(Inventario inventory) {
             EstadoInventario estado = inventory.estadoActual();
@@ -279,7 +282,8 @@ public class InventoryController {
                     inventory.getTipoManejo() == null
                             ? null
                             : inventory.getTipoManejo().name(),
-                    inventory.getCupoMaximoDiario()
+                    inventory.getCupoMaximoDiario(),
+                    inventory.getUrlImagen()
             );
         }
     }

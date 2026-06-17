@@ -26,6 +26,7 @@ public class Inventario {
     private EstadoInventario estado;
     private TipoManejoInventario tipoManejo;
     private Integer cupoMaximoDiario;
+    private String urlImagen;
     private LocalDateTime actualizadoEn;
 
     public int stockDisponible() {

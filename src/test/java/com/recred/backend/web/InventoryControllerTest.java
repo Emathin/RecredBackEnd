@@ -86,6 +86,7 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$[0].stockActual").value(12))
                 .andExpect(jsonPath("$[0].stockReservado").value(2))
                 .andExpect(jsonPath("$[0].stockDisponible").value(10))
+                .andExpect(jsonPath("$[0].urlImagen").value("http://example.com/image.jpg"))
                 .andExpect(jsonPath("$[0].estadoInventario").value("DISPONIBLE"))
                 .andExpect(jsonPath("$[0].tipoManejoInventario").value("STOCK_EXACTO"));
 
@@ -115,6 +116,7 @@ class InventoryControllerTest {
                         ))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stockActual").value(12))
+                .andExpect(jsonPath("$.urlImagen").value("http://example.com/image.jpg"))
                 .andExpect(jsonPath("$.stockDisponible").value(10));
 
         ArgumentCaptor<AdjustInventoryStockCommand> captor =
@@ -136,6 +138,7 @@ class InventoryControllerTest {
         product.setStockReservado(5);
         product.setStockDisponible(15);
         product.setCupoMaximoDiario(20);
+        product.setUrlImagen("http://example.com/image.jpg");
 
         when(listInventoryProducts.execute(buffetId)).thenReturn(List.of(product));
 
@@ -150,6 +153,7 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$[0].stockDisponible").value(15))
                 .andExpect(jsonPath("$[0].cupoMaximoDiario").value(20))
                 .andExpect(jsonPath("$[0].cupoDisponibleDia").value(15))
+                .andExpect(jsonPath("$[0].urlImagen").value("http://example.com/image.jpg"))
                 .andExpect(jsonPath("$[0].disponible").value(true))
                 .andExpect(jsonPath("$[0].agotado").value(false));
     }
@@ -341,6 +345,7 @@ class InventoryControllerTest {
         inventory.setStockMinimo(1);
         inventory.setEstado(EstadoInventario.DISPONIBLE);
         inventory.setTipoManejo(TipoManejoInventario.STOCK_EXACTO);
+        inventory.setUrlImagen("http://example.com/image.jpg");
         return inventory;
     }
 
@@ -355,6 +360,7 @@ class InventoryControllerTest {
         product.setStockDisponible(10);
         product.setEstadoInventario(EstadoInventario.DISPONIBLE);
         product.setTipoManejoInventario(TipoManejoInventario.STOCK_EXACTO);
+        product.setUrlImagen("http://example.com/image.jpg");
         return product;
     }
 }
