@@ -46,7 +46,7 @@ public class InventarioBuffetEntity {
     @Column(name = "stock_actual", nullable = false)
     private Integer stockActual = 0;
 
-    @Column(name = "stock_reservado", nullable = false)
+    @Column(name = "stock_reservado", nullable = false, columnDefinition = "integer default 0")
     private Integer stockReservado = 0;
 
     @Column(name = "stock_minimo")
@@ -57,7 +57,8 @@ public class InventarioBuffetEntity {
     private EstadoInventario estado = EstadoInventario.DISPONIBLE;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "tipo_manejo", nullable = false)
+    @Column(name = "tipo_manejo", nullable = false,
+            columnDefinition = "varchar(255) default 'STOCK_EXACTO'")
     private TipoManejoInventario tipoManejo = TipoManejoInventario.STOCK_EXACTO;
 
     @Column(name = "cupo_maximo_diario")

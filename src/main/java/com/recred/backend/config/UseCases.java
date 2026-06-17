@@ -89,6 +89,7 @@ import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveCarritoFavorito;
+import com.recred.backend.application.SaveBulkProducts;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SchoolAssistantConversations;
 import com.recred.backend.application.SchoolAssistantFixedTopics;
@@ -841,6 +842,11 @@ public class UseCases {
             InventoryRepository inventoryRepository,
             CategoryRepository categoryRepository) {
         return new SaveProduct(productRepository, inventoryRepository, categoryRepository);
+    }
+
+    @Bean
+    public SaveBulkProducts saveBulkProducts(SaveProduct saveProduct) {
+        return new SaveBulkProducts(saveProduct);
     }
 
     @Bean
