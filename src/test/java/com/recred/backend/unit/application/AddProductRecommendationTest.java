@@ -77,15 +77,20 @@ public class AddProductRecommendationTest {
     }
 
     @Test
-    void WhenProductIsNotInStockShouldRegisterRecommendationAndSendNotifications() {
+    void WhenProductIsNotInStockShouldRegisterRecommendationWithCorrectStatistics() {
         when(productRepository.findBestSoldProducts()).thenReturn(List.of(producto));
         when(kiosqueroRepository.findAll()).thenReturn(List.of(kiosquero));
         when(kiosqueroRepository.findBuffetById(kiosquero.getId())).thenReturn(buffetId);
         when(inventoryRepository.checkIfProductIsInStock(producto.getId(), buffetId)).thenReturn(false);
+        
+        when(productStatisticsJpaRepository.countTotalSalesByProduct(any(), any())).thenReturn(100L);
+        when(productStatisticsJpaRepository.countDistinctCustomersByProduct(any(), any())).thenReturn(50L);
+        when(productStatisticsJpaRepository.calculateTotalRevenueByProduct(any(), any())).thenReturn(new java.math.BigDecimal("5000"));
 
         useCase.execute();
 
         verify(aiEventRepository).registerProductAdditionRecommendation(producto, kiosquero, buffetId);
+        verify(sugerenciaIARepository).save(any(SugerenciaIA.class));
         verify(notificationRepository).save(any(Producto.class), any(Kiosquero.class), any(SugerenciaIA.class));
     }
 
