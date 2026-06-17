@@ -127,11 +127,6 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                         select p, SUM(COALESCE(cd.cantidad, 0)) as cantidad
                         FROM ProductoEntity p
                         LEFT JOIN CompraDetalleEntity cd ON cd.productoEntity.id = p.id
-                        AND  p.id NOT IN(
-                                    SELECT AI.productoEntity.id
-                                    FROM AIEventEntity AI
-                                    WHERE AI.productoEntity.id IS NOT NULL
-                                    )
                         GROUP BY p.id
                         ORDER BY SUM(COALESCE(cd.cantidad, 0)) DESC LIMIT 3
                         """)
