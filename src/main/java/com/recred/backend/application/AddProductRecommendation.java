@@ -1,6 +1,5 @@
 package com.recred.backend.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.SugerenciaIA;
@@ -10,8 +9,8 @@ import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.ProductStatisticsRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import com.recred.backend.infrastructure.persistence.ProductStatisticsJpaRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -28,9 +27,8 @@ public class AddProductRecommendation {
     private final InventoryRepository inventoryRepository;
     private final AIEventRepository aiEventRepository;
     private final ProductAdditionNotificationRepository notificationRepository;
-    private final ProductStatisticsJpaRepository productStatisticsJpaRepository;
+    private final ProductStatisticsRepository productStatisticsRepository;
     private final SugerenciaIARepository sugerenciaIARepository;
-    private final ObjectMapper objectMapper;
 
 
     public AddProductRecommendation(ProductRepository productRepository,
@@ -38,17 +36,15 @@ public class AddProductRecommendation {
                                     InventoryRepository inventoryRepository,
                                     AIEventRepository aiEventRepository,
                                     ProductAdditionNotificationRepository notificationRepository,
-                                    ProductStatisticsJpaRepository productStatisticsJpaRepository,
-                                    SugerenciaIARepository sugerenciaIARepository,
-                                    ObjectMapper objectMapper) {
+                                    ProductStatisticsRepository productStatisticsRepository,
+                                    SugerenciaIARepository sugerenciaIARepository) {
         this.productRepository = productRepository;
         this.kiosqueroRepository = kiosqueroRepository;
         this.inventoryRepository = inventoryRepository;
         this.aiEventRepository = aiEventRepository;
         this.notificationRepository = notificationRepository;
-        this.productStatisticsJpaRepository = productStatisticsJpaRepository;
+        this.productStatisticsRepository = productStatisticsRepository;
         this.sugerenciaIARepository = sugerenciaIARepository;
-        this.objectMapper = objectMapper;
     }
     @Transactional
     public void execute() {
@@ -63,13 +59,13 @@ public class AddProductRecommendation {
             stats.put("productName", product.getNombre());
             stats.put("productPrice", product.getPrecio());
             stats.put("totalSales",
-                    productStatisticsJpaRepository
+                    productStatisticsRepository
                             .countTotalSalesByProduct(product.getId(), since));
             stats.put("totalCustomers",
-                    productStatisticsJpaRepository
+                    productStatisticsRepository
                             .countDistinctCustomersByProduct(product.getId(), since));
             stats.put("totalRevenue",
-                    productStatisticsJpaRepository
+                    productStatisticsRepository
                             .calculateTotalRevenueByProduct(product.getId(), since));
             
             for (Kiosquero kiosquero : kiosqueros) {

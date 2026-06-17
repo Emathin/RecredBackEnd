@@ -1,6 +1,5 @@
 package com.recred.backend.unit.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
@@ -11,12 +10,11 @@ import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.ProductStatisticsRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import com.recred.backend.infrastructure.persistence.ProductStatisticsJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -46,15 +44,11 @@ public class AddProductRecommendationTest {
     private ProductAdditionNotificationRepository notificationRepository;
 
     @Mock
-    private ProductStatisticsJpaRepository productStatisticsJpaRepository;
+    private ProductStatisticsRepository productStatisticsRepository;
 
     @Mock
     private SugerenciaIARepository sugerenciaIARepository;
 
-    @Mock
-    private ObjectMapper objectMapper;
-
-    @InjectMocks
     private AddProductRecommendation useCase;
 
     private Producto producto;
@@ -63,6 +57,16 @@ public class AddProductRecommendationTest {
 
     @BeforeEach
     void setUp() {
+        useCase = new AddProductRecommendation(
+                productRepository,
+                kiosqueroRepository,
+                inventoryRepository,
+                aiEventRepository,
+                notificationRepository,
+                productStatisticsRepository,
+                sugerenciaIARepository
+        );
+
         producto = new Producto();
         producto.setId(UUID.randomUUID());
         producto.setNombre("Producto Test");
@@ -83,9 +87,9 @@ public class AddProductRecommendationTest {
         when(kiosqueroRepository.findBuffetById(kiosquero.getId())).thenReturn(buffetId);
         when(inventoryRepository.checkIfProductIsInStock(producto.getId(), buffetId)).thenReturn(false);
         
-        when(productStatisticsJpaRepository.countTotalSalesByProduct(any(), any())).thenReturn(100L);
-        when(productStatisticsJpaRepository.countDistinctCustomersByProduct(any(), any())).thenReturn(50L);
-        when(productStatisticsJpaRepository.calculateTotalRevenueByProduct(any(), any())).thenReturn(new java.math.BigDecimal("5000"));
+        when(productStatisticsRepository.countTotalSalesByProduct(any(), any())).thenReturn(100L);
+        when(productStatisticsRepository.countDistinctCustomersByProduct(any(), any())).thenReturn(50L);
+        when(productStatisticsRepository.calculateTotalRevenueByProduct(any(), any())).thenReturn(new java.math.BigDecimal("5000"));
 
         useCase.execute();
 
