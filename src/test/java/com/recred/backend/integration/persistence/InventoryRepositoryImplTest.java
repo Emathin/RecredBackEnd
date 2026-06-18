@@ -270,4 +270,31 @@ class InventoryRepositoryImplTest {
         entity.setTipoManejo(TipoManejoInventario.STOCK_EXACTO);
         return entity;
     }
+
+    @Test
+    void save_WhenUrlImagenIsNull_ShouldSaveDefaultLogoUrl() {
+        UUID buffetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Inventario inventario = new Inventario();
+        inventario.setBuffetId(buffetId);
+        inventario.setProductoId(productId);
+        inventario.setStockActual(10);
+        inventario.setTipoManejo(TipoManejoInventario.STOCK_EXACTO);
+        inventario.setEstado(EstadoInventario.DISPONIBLE);
+        inventario.setUrlImagen(null);
+
+        when(springDataInventoryRepository.findByBuffetEntityIdAndProductoEntityId(buffetId, productId))
+                .thenReturn(Optional.empty());
+        when(springDataInventoryRepository.save(any(InventarioBuffetEntity.class)))
+                .thenAnswer(i -> i.getArgument(0));
+
+        Inventario saved = inventoryRepository.save(inventario);
+
+        assertEquals(InventarioBuffetEntity.DEFAULT_LOGO_URL, saved.getUrlImagen());
+
+        ArgumentCaptor<InventarioBuffetEntity> captor =
+                ArgumentCaptor.forClass(InventarioBuffetEntity.class);
+        verify(springDataInventoryRepository).save(captor.capture());
+        assertEquals(InventarioBuffetEntity.DEFAULT_LOGO_URL, captor.getValue().getUrlImagen());
+    }
 }

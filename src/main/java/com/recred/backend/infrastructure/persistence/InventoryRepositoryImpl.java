@@ -47,7 +47,8 @@ public class InventoryRepositoryImpl implements InventoryRepository {
         entity.setTipoManejo(safeType(inventario.getTipoManejo()));
         entity.setCupoMaximoDiario(inventario.getCupoMaximoDiario());
         
-        String imageToSave = (inventario.getUrlImagen() == null || inventario.getUrlImagen().isBlank())
+        String imageToSave = (inventario.getUrlImagen() == null 
+                || inventario.getUrlImagen().isBlank())
                 ? InventarioBuffetEntity.DEFAULT_LOGO_URL
                 : inventario.getUrlImagen();
         entity.setUrlImagen(imageToSave);

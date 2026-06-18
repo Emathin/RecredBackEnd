@@ -703,7 +703,13 @@ public class GetKiosqueroDashboard {
         }
 
         DashboardProductMetric toMetric() {
-            return new DashboardProductMetric(productId, productName, quantity, total, productImage);
+            return new DashboardProductMetric(
+                    productId,
+                    productName,
+                    quantity,
+                    total,
+                    productImage
+            );
         }
 
         private BigDecimal price(BigDecimal value) {
