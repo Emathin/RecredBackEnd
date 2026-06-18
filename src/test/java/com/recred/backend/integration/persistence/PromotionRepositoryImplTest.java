@@ -30,11 +30,14 @@ class PromotionRepositoryImplTest {
     @Mock
     private PromotionSpringDataRepository springDataRepository;
 
+    @Mock
+    private SpringDataBuffetRepository buffetRepository;
+
     private PromotionRepositoryImpl repository;
 
     @BeforeEach
     void setUp() {
-        repository = new PromotionRepositoryImpl(springDataRepository);
+        repository = new PromotionRepositoryImpl(springDataRepository, buffetRepository);
     }
 
     @Test

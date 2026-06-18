@@ -16,4 +16,5 @@ public class PromotionRequestDTO {
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private List<UUID> productIds;
+    private UUID buffetId;
 }
