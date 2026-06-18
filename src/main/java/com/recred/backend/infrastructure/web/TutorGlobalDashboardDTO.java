@@ -8,6 +8,7 @@ import java.util.UUID;
 public record TutorGlobalDashboardDTO(
     String tutorId,
     BigDecimal totalBalance,
+    String dashboardConfig,
     List<ChildDashboardDTO> children
 ) {
     public record ChildDashboardDTO(

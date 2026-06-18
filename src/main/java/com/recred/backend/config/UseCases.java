@@ -6,6 +6,7 @@ import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.GenerateComboSuggestion;
 import com.recred.backend.application.GetTutorGlobalDashboard;
+import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.application.GetSuggestionByNotificationId;
 import com.recred.backend.application.GetSuggestionByType;
 import com.recred.backend.application.EnableSchoolCredit;
@@ -1235,14 +1236,21 @@ public class UseCases {
             GetActiveBudgetByStudent getActiveBudgetByStudent,
             GetStudentRewardStatus getStudentRewardStatus,
             PredictStudentSpending predictStudentSpending,
-            ObtenerHistorialAlumno obtenerHistorialAlumno) {
+            ObtenerHistorialAlumno obtenerHistorialAlumno,
+            TutorRepository tutorRepository) {
         return new GetTutorGlobalDashboard(
                 obtenerHijosPorPadre,
                 getActiveBudgetByStudent,
                 getStudentRewardStatus,
                 predictStudentSpending,
-                obtenerHistorialAlumno
+                obtenerHistorialAlumno,
+                tutorRepository
         );
+    }
+
+    @Bean
+    public UpdateTutorDashboardConfig updateTutorDashboardConfig(TutorRepository tutorRepository) {
+        return new UpdateTutorDashboardConfig(tutorRepository);
     }
 
     @Bean

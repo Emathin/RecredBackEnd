@@ -19,6 +19,7 @@ public class Tutor {
     private Boolean activa = true;
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
+    private String dashboardConfig;
     private Set<Alumno> hijos = new HashSet<>();
 
     public void addHijo(Alumno alumno) {

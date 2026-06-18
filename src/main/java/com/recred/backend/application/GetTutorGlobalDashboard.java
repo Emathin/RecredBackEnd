@@ -3,6 +3,8 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.BudgetSummaryDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.ChildDashboardDTO;
@@ -23,17 +25,20 @@ public class GetTutorGlobalDashboard {
     private final GetStudentRewardStatus getStudentRewardStatus;
     private final PredictStudentSpending predictStudentSpending;
     private final ObtenerHistorialAlumno obtenerHistorialAlumno;
+    private final TutorRepository tutorRepository;
 
     public GetTutorGlobalDashboard(ObtenerHijosPorPadre obtenerHijosPorPadre,
                                    GetActiveBudgetByStudent getActiveBudgetByStudent,
                                    GetStudentRewardStatus getStudentRewardStatus,
                                    PredictStudentSpending predictStudentSpending,
-                                   ObtenerHistorialAlumno obtenerHistorialAlumno) {
+                                   ObtenerHistorialAlumno obtenerHistorialAlumno,
+                                   TutorRepository tutorRepository) {
         this.obtenerHijosPorPadre = obtenerHijosPorPadre;
         this.getActiveBudgetByStudent = getActiveBudgetByStudent;
         this.getStudentRewardStatus = getStudentRewardStatus;
         this.predictStudentSpending = predictStudentSpending;
         this.obtenerHistorialAlumno = obtenerHistorialAlumno;
+        this.tutorRepository = tutorRepository;
     }
 
     public TutorGlobalDashboardDTO executeByCognitoSubject(String cognitoSubject) {
@@ -116,7 +121,10 @@ public class GetTutorGlobalDashboard {
             ));
         }
 
-        return new TutorGlobalDashboardDTO("ME", totalBalance, childrenDashboards);
+        Tutor tutor = tutorRepository.findByUsuarioIdCognito(cognitoSubject).orElse(null);
+        String dashboardConfig = tutor != null ? tutor.getDashboardConfig() : null;
+
+        return new TutorGlobalDashboardDTO("ME", totalBalance, dashboardConfig, childrenDashboards);
     }
 
     private String getPurchaseName(Purchase p) {
