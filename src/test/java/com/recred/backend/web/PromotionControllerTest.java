@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.CreatePromotion;
 import com.recred.backend.application.DeletePromotion;
 import com.recred.backend.application.GetActivePromotions;
+import com.recred.backend.application.GetActivePromotionsByBuffet;
 import com.recred.backend.application.GetPromotionById;
 import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.domain.models.Producto;
@@ -28,6 +29,7 @@ class PromotionControllerTest {
     private UpdatePromotion updatePromotion;
     private DeletePromotion deletePromotion;
     private GetActivePromotions getActivePromotions;
+    private GetActivePromotionsByBuffet getActivePromotionsByBuffet;
     private GetPromotionById getPromotionById;
     private PromotionController controller;
 
@@ -37,12 +39,14 @@ class PromotionControllerTest {
         updatePromotion = mock(UpdatePromotion.class);
         deletePromotion = mock(DeletePromotion.class);
         getActivePromotions = mock(GetActivePromotions.class);
+        getActivePromotionsByBuffet = mock(GetActivePromotionsByBuffet.class);
         getPromotionById = mock(GetPromotionById.class);
         controller = new PromotionController(
                 createPromotion,
                 updatePromotion,
                 deletePromotion,
                 getActivePromotions,
+                getActivePromotionsByBuffet,
                 getPromotionById
         );
     }
@@ -61,6 +65,23 @@ class PromotionControllerTest {
         assertEquals(promotionId, response.getBody().get(0).getId());
         assertEquals("Combo", response.getBody().get(0).getName());
         assertEquals(List.of(productId), response.getBody().get(0).getProductIds());
+    }
+
+    @Test
+    void listActivePromotionsByBuffetReturnsMappedPromotions() {
+        UUID buffetId = UUID.randomUUID();
+        UUID promotionId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Promotion promotion = promotion(promotionId, productId);
+        when(getActivePromotionsByBuffet.execute(buffetId)).thenReturn(List.of(promotion));
+
+        ResponseEntity<List<PromotionResponseDTO>> response =
+                controller.listActivePromotionsByBuffet(buffetId);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(1, response.getBody().size());
+        assertEquals(promotionId, response.getBody().get(0).getId());
+        verify(getActivePromotionsByBuffet).execute(buffetId);
     }
 
     @Test

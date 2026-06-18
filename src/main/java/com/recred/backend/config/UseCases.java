@@ -5,6 +5,8 @@ import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.GenerateComboSuggestion;
+import com.recred.backend.application.GetActivePromotionsByBuffet;
+import com.recred.backend.application.GetActiveSchools;
 import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.GetSuggestionByNotificationId;
 import com.recred.backend.application.GetSuggestionByType;
@@ -46,7 +48,7 @@ import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GenerateTopUpLink;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetActivePromotions;
-import com.recred.backend.application.GetActiveSchools;
+
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetAllProducts;
 import com.recred.backend.application.GetBuffetByAlumno;
@@ -1176,6 +1178,12 @@ public class UseCases {
     @Bean
     public GetActivePromotions getActivePromotions(PromotionRepository promotionRepository) {
         return new GetActivePromotions(promotionRepository);
+    }
+
+    @Bean
+    public GetActivePromotionsByBuffet getActivePromotionsByBuffet(
+            PromotionRepository promotionRepository) {
+        return new GetActivePromotionsByBuffet(promotionRepository);
     }
 
     @Bean

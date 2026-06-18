@@ -15,12 +15,18 @@ public interface PromotionSpringDataRepository extends JpaRepository<PromotionEn
     @EntityGraph(attributePaths =
             {"products", "products.categoria", "products.tipos",
                     "products.clasificacionesSalud", "buffetEntity"})
+    List<PromotionEntity> findByStatusAndBuffetEntityId(PromotionStatus status, UUID buffetId);
+
+    @EntityGraph(attributePaths =
+            {"products", "products.categoria", "products.tipos",
+                    "products.clasificacionesSalud", "buffetEntity"})
     List<PromotionEntity> findByStatus(PromotionStatus status);
 
     @EntityGraph(attributePaths =
-            {"products", "products.categoria",
-                    "products.tipos", "products.clasificacionesSalud", "buffetEntity"})
+            {"products", "products.categoria", "products.tipos",
+                    "products.clasificacionesSalud", "buffetEntity"})
     List<PromotionEntity> findByStatusAndStartDateBefore(
             PromotionStatus status, LocalDateTime startDate);
+
 
 }
