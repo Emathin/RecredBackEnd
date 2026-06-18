@@ -34,6 +34,7 @@ import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.ExpireAdvancePurchases;
 import com.recred.backend.application.GenerarMenuBuffet;
+import com.recred.backend.application.GenerateComboSuggestion;
 import com.recred.backend.application.GenerateDailyBuffetReport;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
 import com.recred.backend.application.GenerateLowBalanceAlerts;
@@ -75,6 +76,7 @@ import com.recred.backend.application.GetStudentRewardStatus;
 import com.recred.backend.application.GetStudentWalletSummary;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
+import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.ListDailyBuffetCloses;
 import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
@@ -87,6 +89,7 @@ import com.recred.backend.application.ObtenerHijosPorPadre;
 import com.recred.backend.application.ObtenerHistorialAlumno;
 import com.recred.backend.application.ObtenerHistorialPendienteAlumno;
 import com.recred.backend.application.ObtenerHistorialTutor;
+import com.recred.backend.application.ParseBulkStock;
 import com.recred.backend.application.PredictStudentSpending;
 import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
@@ -95,9 +98,11 @@ import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveCarritoFavorito;
+import com.recred.backend.application.SaveBulkProducts;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SchoolAssistantConversations;
 import com.recred.backend.application.SchoolAssistantFixedTopics;
+import com.recred.backend.application.SetNotificationAsAlreadyRead;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
@@ -118,6 +123,7 @@ import com.recred.backend.domain.repositories.CategoryRepository;
 import com.recred.backend.domain.repositories.ChatMessageRepository;
 import com.recred.backend.domain.repositories.ChatSessionRepository;
 import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
+import com.recred.backend.domain.repositories.ClasificacionTipoRepository;
 import com.recred.backend.domain.repositories.ColegioRepository;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertNotificationRepository;
@@ -130,6 +136,7 @@ import com.recred.backend.domain.repositories.HealthyRecommendationNotificationR
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.NotificationRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
@@ -157,6 +164,7 @@ import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.AdvancePurchaseRulesService;
+import com.recred.backend.domain.services.BulkStockAnalyzer;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.CognitoStudentIdentityService;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
@@ -182,6 +190,7 @@ import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.domain.services.WithdrawalCodeServiceImpl;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
+import com.recred.backend.infrastructure.gemini.GeminiBulkStockAnalyzer;
 import com.recred.backend.infrastructure.gemini.GeminiParentSummaryAnalyzer;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.gemini.GeminiTextClient;
@@ -837,7 +846,7 @@ public class UseCases {
 
     @Bean
     public LoadStockIA loadStockIA(LoadStockIAService loadStockIAService,
-            CloudinaryService cloudinaryService) {
+                                   CloudinaryService cloudinaryService) {
         return new LoadStockIA(loadStockIAService, cloudinaryService);
     }
 
@@ -847,6 +856,11 @@ public class UseCases {
             InventoryRepository inventoryRepository,
             CategoryRepository categoryRepository) {
         return new SaveProduct(productRepository, inventoryRepository, categoryRepository);
+    }
+
+    @Bean
+    public SaveBulkProducts saveBulkProducts(SaveProduct saveProduct) {
+        return new SaveBulkProducts(saveProduct);
     }
 
     @Bean
@@ -1008,7 +1022,7 @@ public class UseCases {
             GeminiSeasonalSuggester seasonalSuggester,
             OpenMeteoWeatherClient weatherClient,
             ProductRepository productRepository,
-            CreatePromotion createPromotion) {
+            CreatePromotion createPromotion){
         return new GenerateSeasonalRecommendation(
                 weatherClient,
                 seasonalSuggester,
@@ -1220,6 +1234,20 @@ public class UseCases {
                 carritoFavoritoRepository,
                 usuarioRepository,
                 tutorRepository);
+    }
+    @Bean
+    public GeminiBulkStockAnalyzer bulkStockAnalyzer(GeminiTextClient geminiTextClient,
+                                                     ObjectMapper objectMapper) {
+        return new GeminiBulkStockAnalyzer(geminiTextClient, objectMapper);
+    }
+
+    @Bean
+    public ParseBulkStock parseBulkStock(BulkStockAnalyzer bulkStockAnalyzer,
+                                         CategoryRepository categoryRepository,
+                                         ClasificacionSaludRepository saludRepository,
+                                         ClasificacionTipoRepository tipoRepository) {
+        return new ParseBulkStock(bulkStockAnalyzer, categoryRepository,
+                saludRepository, tipoRepository);
     }
 
     @Bean

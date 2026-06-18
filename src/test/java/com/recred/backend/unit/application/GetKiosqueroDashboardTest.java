@@ -181,6 +181,7 @@ class GetKiosqueroDashboardTest {
         assertEquals(14, dashboard.trends().lastSevenDays().size());
         assertEquals(14, dashboard.trends().salesByDay().size());
         assertEquals("Alfajor", dashboard.products().mostReservedProducts().get(0).productName());
+        assertEquals("http://example.com/alfajor.jpg", dashboard.products().mostReservedProducts().get(0).image());
         assertEquals(3, dashboard.products().mostReservedProducts().get(0).quantity());
         assertEquals(1, dashboard.trends().salesByDay().get(0).deliveredOrders());
         assertEquals(1, dashboard.trends().salesByDay().get(1).rejectedOrders());
@@ -374,6 +375,7 @@ class GetKiosqueroDashboardTest {
         product.setId(UUID.randomUUID());
         product.setNombre(name);
         product.setPrecio(new BigDecimal(price));
+        product.setUrlImagen("http://example.com/" + name.toLowerCase() + ".jpg");
         return product;
     }
 

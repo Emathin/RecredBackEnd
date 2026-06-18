@@ -87,6 +87,7 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$[0].stockReservado").value(2))
                 .andExpect(jsonPath("$[0].stockDisponible").value(10))
                 .andExpect(jsonPath("$[0].urlImagen").value("http://example.com/image.jpg"))
+                .andExpect(jsonPath("$[0].image").value("http://example.com/image.jpg"))
                 .andExpect(jsonPath("$[0].estadoInventario").value("DISPONIBLE"))
                 .andExpect(jsonPath("$[0].tipoManejoInventario").value("STOCK_EXACTO"));
 
@@ -154,6 +155,7 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$[0].cupoMaximoDiario").value(20))
                 .andExpect(jsonPath("$[0].cupoDisponibleDia").value(15))
                 .andExpect(jsonPath("$[0].urlImagen").value("http://example.com/image.jpg"))
+                .andExpect(jsonPath("$[0].image").value("http://example.com/image.jpg"))
                 .andExpect(jsonPath("$[0].disponible").value(true))
                 .andExpect(jsonPath("$[0].agotado").value(false));
     }
