@@ -59,6 +59,7 @@ public class SaveProduct {
         }
         inventario.setTipoManejo(tipoManejo(command));
         inventario.setCupoMaximoDiario(command.cupoMaximoDiario());
+        inventario.setUrlImagen(command.urlImagen());
         inventoryRepository.save(inventario);
     }
 
@@ -93,6 +94,7 @@ public class SaveProduct {
         producto.setPrecio(command.precio());
         producto.setPeso(command.peso());
         producto.setRequierePreparacion(command.requierePreparacion());
+        producto.setUrlImagen(command.urlImagen());
         producto.setActivo(true);
 
         handleCategory(command, producto);

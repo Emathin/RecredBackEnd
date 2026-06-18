@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.DeleteProduct;
 import com.recred.backend.application.GetAllProducts;
 import com.recred.backend.application.GetProductById;
+import com.recred.backend.application.ParseBulkStock;
+import com.recred.backend.application.SaveBulkProducts;
 import com.recred.backend.application.SaveProductCommand;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.UpdateProduct;
@@ -54,6 +56,10 @@ class ProductControllerTest {
     private DeleteProduct deleteProduct;
     @Mock
     private UpdateProductPrice updateProductPrice;
+    @Mock
+    private ParseBulkStock parseBulkStock;
+    @Mock
+    private SaveBulkProducts saveBulkProducts;
 
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
@@ -67,7 +73,9 @@ class ProductControllerTest {
                 saveProduct,
                 updateProduct,
                 deleteProduct,
-                updateProductPrice
+                updateProductPrice,
+                parseBulkStock,
+                saveBulkProducts
         );
         mockMvc = standaloneSetup(controller).build();
         objectMapper = new ObjectMapper();
@@ -215,7 +223,8 @@ class ProductControllerTest {
                 null,
                 null,
                 Set.of(),
-                Set.of()
+                Set.of(),
+                null
         );
     }
 

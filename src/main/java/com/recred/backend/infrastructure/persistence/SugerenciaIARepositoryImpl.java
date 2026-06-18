@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.persistence;
 import com.recred.backend.domain.models.AIEventType;
 import com.recred.backend.domain.models.PriceAlertSuggestion;
 import com.recred.backend.domain.models.PushNotification;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.TipoNotificacion;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
@@ -46,6 +47,29 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
         this.notificationJpaRepository = notificationJpaRepository;
         this.entityManager = entityManager;
         this.eventPublisher = eventPublisher;
+    }
+
+    @Override
+    public SugerenciaIA save(SugerenciaIA sugerencia) {
+        SugerenciaIAEntity entity = new SugerenciaIAEntity();
+        entity.setTipo(sugerencia.getTipo());
+        entity.setTitulo(sugerencia.getTitulo());
+        entity.setMensaje(sugerencia.getMensaje());
+        entity.setMetadata(sugerencia.getMetadata());
+        if (sugerencia.getAlumnoId() != null) {
+            entity.setAlumnoEntity(reference(AlumnoEntity.class, sugerencia.getAlumnoId()));
+        }
+        if (sugerencia.getBuffetId() != null) {
+            entity.setBuffetEntity(reference(BuffetEntity.class, sugerencia.getBuffetId()));
+        }
+        if (sugerencia.getProductoId() != null) {
+            entity.setProductoEntity(reference(ProductoEntity.class, sugerencia.getProductoId()));
+        }
+        entity.setAceptada(false);
+
+        SugerenciaIAEntity savedEntity = springDataRepository.save(entity);
+        sugerencia.setId(savedEntity.getId());
+        return sugerencia;
     }
 
     @Override

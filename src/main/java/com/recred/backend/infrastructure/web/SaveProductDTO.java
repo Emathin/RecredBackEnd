@@ -20,7 +20,8 @@ public record SaveProductDTO(
         TipoManejoInventario tipoManejoInventario,
         Integer cupoMaximoDiario,
         Set<UUID> clasificacionesSaludIds,
-        Set<UUID> tiposIds
+        Set<UUID> tiposIds,
+        String urlImagen
 ) {
     public SaveProductDTO(
             String nombre,
@@ -48,7 +49,8 @@ public record SaveProductDTO(
                 stockActual == null ? null : TipoManejoInventario.STOCK_EXACTO,
                 null,
                 clasificacionesSaludIds,
-                tiposIds
+                tiposIds,
+                null
         );
     }
 
@@ -66,7 +68,8 @@ public record SaveProductDTO(
                 clasificacionesSaludIds,
                 tiposIds,
                 tipoManejoInventario,
-                cupoMaximoDiario
+                cupoMaximoDiario,
+                urlImagen
         );
     }
 }

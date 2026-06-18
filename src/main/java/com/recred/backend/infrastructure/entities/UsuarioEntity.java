@@ -79,6 +79,9 @@ public class UsuarioEntity {
     @Column(name = "actualizado_en", updatable = false)
     private LocalDateTime actualizadoEn;
 
+    @Column(name = "url_foto_perfil", columnDefinition = "TEXT")
+    private String urlFotoPerfil;
+
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private AlumnoEntity alumnoEntity;
 
@@ -124,6 +127,7 @@ public class UsuarioEntity {
         usuario.setActivo(this.activo);
         usuario.setCreadoEn(this.creadoEn);
         usuario.setActualizadoEn(this.actualizadoEn);
+        usuario.setUrlFotoPerfil(this.urlFotoPerfil);
 
         if (this.colegioEntity != null) {
             usuario.setColegio(this.colegioEntity.toDomain());

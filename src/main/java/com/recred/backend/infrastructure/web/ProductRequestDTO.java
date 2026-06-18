@@ -24,7 +24,8 @@ public record ProductRequestDTO(
         TipoManejoInventario tipoManejoInventario,
         Integer cupoMaximoDiario,
         Set<UUID> clasificacionesSaludIds,
-        Set<UUID> tiposIds
+        Set<UUID> tiposIds,
+        String urlImagen
 ) {
 
     public SaveProductCommand toSaveCommand() {
@@ -41,7 +42,8 @@ public record ProductRequestDTO(
                 clasificacionesSaludIds,
                 tiposIds,
                 tipoManejoInventario,
-                cupoMaximoDiario
+                cupoMaximoDiario,
+                urlImagen
         );
     }
 
@@ -60,7 +62,8 @@ public record ProductRequestDTO(
                 clasificacionesSaludIds,
                 tiposIds,
                 tipoManejoInventario,
-                cupoMaximoDiario
+                cupoMaximoDiario,
+                urlImagen
         );
     }
 }
