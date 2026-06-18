@@ -2,14 +2,19 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,9 +25,12 @@ import java.util.Optional;
 public class UserProfileController {
 
     private final UsuarioService usuarioService;
+    private final CloudinaryService cloudinaryService;
 
-    public UserProfileController(UsuarioService usuarioService) {
+    public UserProfileController(UsuarioService usuarioService,
+            CloudinaryService cloudinaryService) {
         this.usuarioService = usuarioService;
+        this.cloudinaryService = cloudinaryService;
     }
 
     @GetMapping("/me")
@@ -58,6 +66,16 @@ public class UserProfileController {
         return ResponseEntity.ok(buildUserProfileResponse(usuario));
     }
 
+    @PostMapping(value = "/me/profile/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> subirFotoPerfil(
+            Authentication authentication,
+            @RequestParam("foto") MultipartFile foto) {
+        String sub = cognitoSubject(authentication);
+        String url = cloudinaryService.uploadImage(foto);
+        Usuario usuario = usuarioService.actualizarFotoPerfil(sub, url);
+        return ResponseEntity.ok(buildUserProfileResponse(usuario));
+    }
+
     private String cognitoSubject(Authentication authentication) {
         return Optional.ofNullable(authentication)
                 .map(Authentication::getName)
@@ -80,6 +98,7 @@ public class UserProfileController {
         Map<String, Object> response = buildUserSessionResponse(usuario);
         response.put("phone", usuario.getTelefono());
         response.put("documentNumber", usuario.getDni());
+        response.put("urlFotoPerfil", usuario.getUrlFotoPerfil());
 
         return response;
     }

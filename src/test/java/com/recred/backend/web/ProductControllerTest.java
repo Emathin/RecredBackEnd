@@ -215,7 +215,8 @@ class ProductControllerTest {
                 null,
                 null,
                 Set.of(),
-                Set.of()
+                Set.of(),
+                null
         );
     }
 

@@ -234,6 +234,27 @@ class InventoryRepositoryImplTest {
         assertNull(result.get(0).getCategoria());
     }
 
+    @Test
+    void findAvailableProductsByBuffet_ShouldMapUrlImagen() {
+        UUID buffetId = UUID.randomUUID();
+        String url = "https://example.com/image.png";
+
+        ProductoEntity productoEntity = new ProductoEntity();
+        productoEntity.setId(UUID.randomUUID());
+        productoEntity.setNombre("Jugo");
+
+        InventarioBuffetEntity inventario = new InventarioBuffetEntity();
+        inventario.setProductoEntity(productoEntity);
+        inventario.setUrlImagen(url);
+
+        when(springDataInventoryRepository.findAvailableByBuffetId(buffetId))
+                .thenReturn(List.of(inventario));
+
+        List<Producto> result = inventoryRepository.findAvailableProductsByBuffet(buffetId);
+
+        assertEquals(url, result.get(0).getUrlImagen());
+    }
+
     private InventarioBuffetEntity inventoryEntity(UUID buffetId, UUID productId) {
         BuffetEntity buffetEntity = new BuffetEntity();
         buffetEntity.setId(buffetId);

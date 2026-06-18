@@ -12,6 +12,7 @@ public record ProductStockResult(
         EstadoInventario estado,
         TipoManejoInventario tipoManejo,
         Number cupoMaximoDiario,
-        Number stockDisponible
+        Number stockDisponible,
+        String urlImagen
 ) {
 }

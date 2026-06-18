@@ -4,6 +4,7 @@ import com.recred.backend.infrastructure.entities.InventarioBuffetEntity;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -45,4 +46,17 @@ public interface SpringDataInventoryRepository extends JpaRepository<InventarioB
             OR i.stockActual > COALESCE(i.stockReservado, 0))
 """)
     boolean existsByProductIdAndKiosqueroId(UUID productId, UUID buffetId);
+
+    @Modifying
+    @Query("""
+            UPDATE InventarioBuffetEntity i
+            SET i.urlImagen = :urlImagen
+            WHERE i.buffetEntity.id = :buffetId
+            AND i.productoEntity.id = :productoId
+            """)
+    void updateUrlImagen(
+            @Param("buffetId") UUID buffetId,
+            @Param("productoId") UUID productoId,
+            @Param("urlImagen") String urlImagen
+    );
 }
