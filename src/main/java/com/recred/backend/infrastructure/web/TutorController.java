@@ -58,7 +58,8 @@ public class TutorController {
                 request.apellido(),
                 request.email(),
                 request.dni(),
-                request.gradoId()
+                request.gradoId(),
+                request.urlFotoPerfil()
         ));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(alumno);

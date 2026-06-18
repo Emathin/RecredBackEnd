@@ -8,6 +8,7 @@ public record CreateChildRequest(
         String apellido,
         String email,
         String dni,
-        UUID gradoId
+        UUID gradoId,
+        String urlFotoPerfil
 ) {
 }

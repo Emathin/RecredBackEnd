@@ -74,7 +74,7 @@ class TutorControllerTest {
 
         Usuario usuarioHijo = new Usuario();
         usuarioHijo.setNombre("Lucas");
-        usuarioHijo.setApellido("Pérez");
+        usuarioHijo.setApellido("P??rez");
 
         Colegio colegio = new Colegio();
         colegio.setId(colegioId);
@@ -101,7 +101,7 @@ class TutorControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(alumnoId.toString()))
                 .andExpect(jsonPath("$[0].nombre").value("Lucas"))
-                .andExpect(jsonPath("$[0].apellido").value("Pérez"))
+                .andExpect(jsonPath("$[0].apellido").value("P??rez"))
                 .andExpect(jsonPath("$[0].activo").value(true))
                 .andExpect(jsonPath("$[0].grado").value("1 A"))
                 .andExpect(jsonPath("$[0].colegioId").value(colegioId.toString()))
@@ -139,7 +139,7 @@ class TutorControllerTest {
                 "mateo@test.com",
                 "12345678",
                 gradoId
-        )).thenReturn(alumno);
+        , null)).thenReturn(alumno);
 
         mockMvc.perform(post("/api/v1/tutores/me/hijos")
                         .principal(new TestingAuthenticationToken("tutor-sub", ""))
@@ -166,7 +166,7 @@ class TutorControllerTest {
                 "mateo@test.com",
                 "12345678",
                 gradoId
-        );
+        , null);
     }
 
     @Test
@@ -230,7 +230,7 @@ class TutorControllerTest {
                 "Gomez",
                 "mateo@test.com",
                 "12345678",
-                UUID.randomUUID()
+                UUID.randomUUID(), null
         );
 
         assertThrows(AuthenticationCredentialsNotFoundException.class,
@@ -249,3 +249,6 @@ class TutorControllerTest {
         return alumno;
     }
 }
+
+
+
