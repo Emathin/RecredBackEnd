@@ -31,6 +31,8 @@ import java.util.UUID;
 @NoArgsConstructor
 public class InventarioBuffetEntity {
 
+    public static final String DEFAULT_LOGO_URL = "https://res.cloudinary.com/djzfudbze/image/upload/v1781748941/logo_sin_fondo_ikciro.png";
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -65,7 +67,7 @@ public class InventarioBuffetEntity {
     private Integer cupoMaximoDiario;
 
     @Column(name = "url_imagen", columnDefinition = "TEXT")
-    private String urlImagen;
+    private String urlImagen = DEFAULT_LOGO_URL;
 
     @OneToMany(mappedBy = "inventario", cascade = CascadeType.ALL, orphanRemoval = true)
     private java.util.List<MovimientoStockEntity> movimientos = new java.util.ArrayList<>();
@@ -85,7 +87,7 @@ public class InventarioBuffetEntity {
                 this.estado,
                 this.tipoManejo,
                 this.cupoMaximoDiario,
-                this.urlImagen,
+                (this.urlImagen == null || this.urlImagen.isBlank()) ? DEFAULT_LOGO_URL : this.urlImagen,
                 this.actualizadoEn
         );
     }
