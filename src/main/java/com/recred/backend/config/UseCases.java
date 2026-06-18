@@ -192,6 +192,11 @@ import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.domain.services.WithdrawalCodeServiceImpl;
+import com.recred.backend.application.SaveKiosqueroPayoutConfig;
+import com.recred.backend.application.GetKiosqueroPayoutConfig;
+import com.recred.backend.application.ProcessScheduledPayouts;
+import com.recred.backend.domain.repositories.KiosqueroPayoutConfigRepository;
+import com.recred.backend.domain.services.PayoutPaymentService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.infrastructure.gemini.GeminiBulkStockAnalyzer;
 import com.recred.backend.infrastructure.gemini.GeminiParentSummaryAnalyzer;
@@ -1329,5 +1334,27 @@ public class UseCases {
             SuggestionAiRepository suggestionAiRepository,
             KiosqueroRepository kiosqueroRepository) {
         return new GetSuggestionByType(suggestionAiRepository, kiosqueroRepository);
+    }
+
+    @Bean
+    public SaveKiosqueroPayoutConfig saveKiosqueroPayoutConfig(
+            KiosqueroPayoutConfigRepository repository) {
+        return new SaveKiosqueroPayoutConfig(repository);
+    }
+
+    @Bean
+    public GetKiosqueroPayoutConfig getKiosqueroPayoutConfig(
+            KiosqueroPayoutConfigRepository repository) {
+        return new GetKiosqueroPayoutConfig(repository);
+    }
+
+    @Bean
+    public ProcessScheduledPayouts processScheduledPayouts(
+            KiosqueroPayoutConfigRepository repository,
+            PayoutPaymentService paymentService,
+            KiosqueroRepository kiosqueroRepository,
+            PurchaseRepository purchaseRepository) {
+        return new ProcessScheduledPayouts(repository, paymentService,
+                kiosqueroRepository, purchaseRepository);
     }
 }
