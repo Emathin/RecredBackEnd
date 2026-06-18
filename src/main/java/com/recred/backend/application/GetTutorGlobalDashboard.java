@@ -44,12 +44,20 @@ public class GetTutorGlobalDashboard {
     public TutorGlobalDashboardDTO executeByCognitoSubject(String cognitoSubject) {
         Set<Alumno> hijos = obtenerHijosPorPadre.executeByCognitoSubject(cognitoSubject);
         BigDecimal totalBalance = BigDecimal.ZERO;
+        BigDecimal totalDebt = BigDecimal.ZERO;
         List<ChildDashboardDTO> childrenDashboards = new ArrayList<>();
 
         for (Alumno alumno : hijos) {
             BigDecimal balance = alumno.getBilletera() != null 
                     ? alumno.getBilletera().getSaldoCreditos() : BigDecimal.ZERO;
             totalBalance = totalBalance.add(balance);
+
+            BigDecimal debt = alumno.getBilletera() != null 
+                    ? alumno.getBilletera().getSaldoDeudaInterno() : BigDecimal.ZERO;
+            if (debt == null) {
+                debt = BigDecimal.ZERO;
+            }
+            totalDebt = totalDebt.add(debt);
 
             Optional<PresupuestoAlumno> presupuestoOpt = getActiveBudgetByStudent
                     .execute(alumno.getId());
@@ -112,6 +120,7 @@ public class GetTutorGlobalDashboard {
                     alumno.getId(),
                     stuName,
                     balance,
+                    debt,
                     predictionMsg,
                     budgetDto,
                     healthDto,
@@ -124,7 +133,8 @@ public class GetTutorGlobalDashboard {
         Tutor tutor = tutorRepository.findByUsuarioIdCognito(cognitoSubject).orElse(null);
         String dashboardConfig = tutor != null ? tutor.getDashboardConfig() : null;
 
-        return new TutorGlobalDashboardDTO("ME", totalBalance, dashboardConfig, childrenDashboards);
+        return new TutorGlobalDashboardDTO("ME", totalBalance, totalDebt, 
+                dashboardConfig, childrenDashboards);
     }
 
     private String getPurchaseName(Purchase p) {

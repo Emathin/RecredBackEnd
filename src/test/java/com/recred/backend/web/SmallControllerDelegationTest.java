@@ -65,6 +65,7 @@ class SmallControllerDelegationTest {
         TutorGlobalDashboardDTO dashboard = new TutorGlobalDashboardDTO(
                 UUID.randomUUID().toString(),
                 BigDecimal.TEN,
+                BigDecimal.ZERO,
                 null,
                 List.of()
         );
