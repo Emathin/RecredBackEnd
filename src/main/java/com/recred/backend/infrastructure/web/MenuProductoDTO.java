@@ -19,7 +19,8 @@ public record MenuProductoDTO(
         Integer cupoDisponibleDia,
         Boolean bloqueado,
         String motivoBloqueo,
-        CategoryDTO categoria
+        CategoryDTO categoria,
+        String urlImagen
 ) {
     public record CategoryDTO(UUID id, String descripcion) {}
 
@@ -27,14 +28,16 @@ public record MenuProductoDTO(
             UUID id, String nombre, String descripcion,
             BigDecimal precio, CategoryDTO categoria) {
         return new MenuProductoDTO(id, nombre, descripcion,
-                precio, null, null, null, null, null, null, null, null, false, null, categoria);
+                precio, null, null, null, null, null, null, null, null, false, null, categoria,
+                null);
     }
 
     public static MenuProductoDTO bloqueado(
             UUID id, String nombre, String descripcion,
             BigDecimal precio, String motivo, CategoryDTO categoria) {
         return new MenuProductoDTO(id, nombre, descripcion,
-                precio, null, null, null, null, null, null, null, null, true, motivo, categoria);
+                precio, null, null, null, null, null, null, null, null, true, motivo, categoria,
+                null);
     }
 
     public static MenuProductoDTO permitido(Producto producto) {
@@ -69,7 +72,8 @@ public record MenuProductoDTO(
                 producto.getCupoDisponibleDia(),
                 bloqueado,
                 motivo,
-                category(producto)
+                category(producto),
+                producto.getUrlImagen()
         );
     }
 

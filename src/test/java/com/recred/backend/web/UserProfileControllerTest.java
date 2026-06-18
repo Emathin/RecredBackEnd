@@ -3,6 +3,7 @@ package com.recred.backend.web;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.infrastructure.web.UserProfileController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,13 +31,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class UserProfileControllerTest {
 
     private UsuarioService usuarioService;
+    private CloudinaryService cloudinaryService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         usuarioService = mock(UsuarioService.class);
+        cloudinaryService = mock(CloudinaryService.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new UserProfileController(usuarioService))
+                .standaloneSetup(new UserProfileController(usuarioService, cloudinaryService))
                 .build();
     }
 

@@ -150,7 +150,8 @@ class SaveProductTest {
                 null,
                 null,
                 TipoManejoInventario.CUPO_DIARIO,
-                20
+                20,
+                null
         );
         Producto savedProduct = new Producto();
         savedProduct.setId(productId);

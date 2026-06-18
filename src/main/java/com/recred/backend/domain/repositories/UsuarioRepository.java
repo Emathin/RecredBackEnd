@@ -13,4 +13,6 @@ public interface UsuarioRepository {
     Optional<Usuario> findByIdCognito(String sub);
 
     Optional<Usuario> findByEmail(String email);
+
+    void updateFotoPerfil(String idCognito, String urlFotoPerfil);
 }

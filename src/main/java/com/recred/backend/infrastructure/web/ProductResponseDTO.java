@@ -26,6 +26,8 @@ public record ProductResponseDTO(
         String tipoManejoInventario,
         Integer cupoMaximoDiario,
         Integer cupoDisponibleDia,
+        String urlImagen,
+        String image,
         CategoryDTO categoria,
         Set<ClasificacionDTO> clasificacionesSalud,
         Set<ClasificacionDTO> tipos
@@ -65,6 +67,8 @@ public record ProductResponseDTO(
                         : producto.getTipoManejoInventario().name(),
                 producto.getCupoMaximoDiario(),
                 producto.getCupoDisponibleDia(),
+                producto.getUrlImagen(),
+                producto.getUrlImagen(),
                 categoriaDTO,
                 saludDTOs,
                 tiposDTOs

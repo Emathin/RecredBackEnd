@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 class GoogleGeminiTextClientTest {
 
     private static final String MODEL = "gemini-test";
-    private static final String VISION_MODEL = "gemini-3.1-flash-lite";
+    private static final String VISION_MODEL = MODEL;
     private static final String API_KEY = "test-api-key";
     private static final String BASE_PATH = "/v1beta/models/" + MODEL + ":generateContent";
     private static final String VISION_PATH = "/v1beta/models/" + VISION_MODEL + ":generateContent";
@@ -132,15 +132,17 @@ class GoogleGeminiTextClientTest {
     }
 
     @Test
-    void noGenerarTextoConImagenCuandoGeminiNoEstaConfigurado() {
+    void noGenerarTextoConImagenCuandoGeminiNoEstaConfigurado() throws IOException {
         GoogleGeminiTextClient client = new GoogleGeminiTextClient(new GeminiProperties(
                 "",
                 MODEL,
                 true
         ));
-        MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
+        MockMultipartFile file = new MockMultipartFile(
+                "image", "test.jpg", "image/jpeg", "content".getBytes());
 
-        Optional<GeminiTextResponse> response = client.generateWithImage("prompt", file);
+        Optional<GeminiTextResponse> response = client.generateWithFile(
+                "prompt", file.getBytes(), file.getContentType());
 
         assertTrue(response.isEmpty());
     }
@@ -168,9 +170,11 @@ class GoogleGeminiTextClientTest {
         try {
             configurarBaseUrl(server);
             GoogleGeminiTextClient client = clienteConfigurado();
-            MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
+            MockMultipartFile file = new MockMultipartFile(
+                    "image", "test.jpg", "image/jpeg", "content".getBytes());
 
-            Optional<GeminiTextResponse> response = client.generateWithImage("prompt", file);
+            Optional<GeminiTextResponse> response = client.generateWithFile(
+                    "prompt", file.getBytes(), file.getContentType());
 
             assertTrue(response.isPresent());
             assertEquals("{\"nombre\":\"Coca Cola\"}", response.orElseThrow().text());
@@ -181,26 +185,17 @@ class GoogleGeminiTextClientTest {
     }
 
     @Test
-    void devolverVacioCuandoFallaLecturaDeImagen() throws IOException {
-        GoogleGeminiTextClient client = clienteConfigurado();
-        MultipartFile file = mock(MultipartFile.class);
-        when(file.getBytes()).thenThrow(new IOException("Read error"));
-
-        Optional<GeminiTextResponse> response = client.generateWithImage("prompt", file);
-
-        assertTrue(response.isEmpty());
-    }
-
-    @Test
     void devolverVacioCuandoGeminiFallaConImagen() throws IOException {
         HttpServer server = iniciarServidorGemini(VISION_PATH, 500, "Error");
 
         try {
             configurarBaseUrl(server);
             GoogleGeminiTextClient client = clienteConfigurado();
-            MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
+            MockMultipartFile file = new MockMultipartFile(
+                    "image", "test.jpg", "image/jpeg", "content".getBytes());
 
-            Optional<GeminiTextResponse> response = client.generateWithImage("prompt", file);
+            Optional<GeminiTextResponse> response = client.generateWithFile(
+                    "prompt", file.getBytes(), file.getContentType());
 
             assertTrue(response.isEmpty());
         } finally {
