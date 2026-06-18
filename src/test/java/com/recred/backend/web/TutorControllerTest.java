@@ -1,9 +1,11 @@
 package com.recred.backend.web;
 
+import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.ObtenerHijosPorPadre;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
+import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.Colegio;
@@ -66,6 +68,12 @@ class TutorControllerTest {
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
+    @MockitoBean
+    private ActualizarFotoAlumno actualizarFotoAlumno;
+
+    @MockitoBean
+    private CloudinaryService cloudinaryService;
+
     @Test
     void dadoUnTutorConHijos_cuandoConsultaEndpoint_entoncesRetorna200YListaDeEstudiantes() throws Exception {
         UUID tutorId = UUID.randomUUID();
@@ -74,7 +82,7 @@ class TutorControllerTest {
 
         Usuario usuarioHijo = new Usuario();
         usuarioHijo.setNombre("Lucas");
-        usuarioHijo.setApellido("P??rez");
+        usuarioHijo.setApellido("Pérez");
 
         Colegio colegio = new Colegio();
         colegio.setId(colegioId);
@@ -101,7 +109,7 @@ class TutorControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(alumnoId.toString()))
                 .andExpect(jsonPath("$[0].nombre").value("Lucas"))
-                .andExpect(jsonPath("$[0].apellido").value("P??rez"))
+                .andExpect(jsonPath("$[0].apellido").value("Pérez"))
                 .andExpect(jsonPath("$[0].activo").value(true))
                 .andExpect(jsonPath("$[0].grado").value("1 A"))
                 .andExpect(jsonPath("$[0].colegioId").value(colegioId.toString()))
@@ -138,8 +146,9 @@ class TutorControllerTest {
                 "Gomez",
                 "mateo@test.com",
                 "12345678",
-                gradoId
-        , null)).thenReturn(alumno);
+                gradoId,
+                null
+        )).thenReturn(alumno);
 
         mockMvc.perform(post("/api/v1/tutores/me/hijos")
                         .principal(new TestingAuthenticationToken("tutor-sub", ""))
@@ -165,8 +174,9 @@ class TutorControllerTest {
                 "Gomez",
                 "mateo@test.com",
                 "12345678",
-                gradoId
-        , null);
+                gradoId,
+                null
+        );
     }
 
     @Test
@@ -176,7 +186,9 @@ class TutorControllerTest {
         TutorController controller = new TutorController(
                 obtenerHijosPorPadre,
                 usuarioService,
-                createStudentFromParent
+                createStudentFromParent,
+                actualizarFotoAlumno,
+                cloudinaryService
         );
         Usuario usuario = new Usuario();
         com.recred.backend.domain.models.Tutor tutor =
@@ -203,7 +215,9 @@ class TutorControllerTest {
         TutorController controller = new TutorController(
                 obtenerHijosPorPadre,
                 usuarioService,
-                createStudentFromParent
+                createStudentFromParent,
+                actualizarFotoAlumno,
+                cloudinaryService
         );
         Usuario usuario = new Usuario();
         when(usuarioService.obtenerUsuarioActual("tutor-sub")).thenReturn(usuario);
@@ -222,7 +236,9 @@ class TutorControllerTest {
         TutorController controller = new TutorController(
                 obtenerHijosPorPadre,
                 usuarioService,
-                createStudentFromParent
+                createStudentFromParent,
+                actualizarFotoAlumno,
+                cloudinaryService
         );
         CreateChildRequest request = new CreateChildRequest(
                 "mateo",
@@ -230,7 +246,8 @@ class TutorControllerTest {
                 "Gomez",
                 "mateo@test.com",
                 "12345678",
-                UUID.randomUUID(), null
+                UUID.randomUUID(),
+                null
         );
 
         assertThrows(AuthenticationCredentialsNotFoundException.class,
@@ -249,6 +266,3 @@ class TutorControllerTest {
         return alumno;
     }
 }
-
-
-

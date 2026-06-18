@@ -1,8 +1,11 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.ObtenerHijosPorPadre;
+import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
@@ -11,7 +14,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +24,7 @@ import java.util.UUID;
 
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.UsuarioService;
-import org.springframework.security.core.Authentication;
+
 
 @RestController
 @RequestMapping("/api/v1/tutores")
@@ -28,13 +33,19 @@ public class TutorController {
     private final ObtenerHijosPorPadre obtenerHijosPorPadre;
     private final UsuarioService usuarioService;
     private final CreateStudentFromParent createStudentFromParent;
+    private final ActualizarFotoAlumno actualizarFotoAlumno;
+    private final CloudinaryService cloudinaryService;
 
-    public TutorController(ObtenerHijosPorPadre obtenerHijosPorPadre, 
+    public TutorController(ObtenerHijosPorPadre obtenerHijosPorPadre,
                            UsuarioService usuarioService,
-                           CreateStudentFromParent createStudentFromParent) {
+                           CreateStudentFromParent createStudentFromParent,
+                           ActualizarFotoAlumno actualizarFotoAlumno,
+                           CloudinaryService cloudinaryService) {
         this.obtenerHijosPorPadre = obtenerHijosPorPadre;
         this.usuarioService = usuarioService;
         this.createStudentFromParent = createStudentFromParent;
+        this.actualizarFotoAlumno = actualizarFotoAlumno;
+        this.cloudinaryService = cloudinaryService;
     }
 
     @GetMapping("/me/hijos")
@@ -88,6 +99,19 @@ public class TutorController {
                 .toList();
 
         return ResponseEntity.ok(alumnos);
+    }
+
+    @PostMapping(value = "/me/hijos/{alumnoId}/foto",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<StudentDTO> subirFotoHijo(
+            Authentication authentication,
+            @PathVariable UUID alumnoId,
+            @RequestParam("foto") MultipartFile foto) {
+        String cognitoSub = cognitoSubject(authentication);
+        String url = cloudinaryService.uploadImage(foto);
+        com.recred.backend.domain.models.Alumno alumno =
+                actualizarFotoAlumno.execute(cognitoSub, alumnoId, url);
+        return ResponseEntity.ok(StudentDTO.fromDomain(alumno));
     }
 
     private String cognitoSubject(Authentication authentication) {

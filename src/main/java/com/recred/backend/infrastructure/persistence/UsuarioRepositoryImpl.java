@@ -94,4 +94,10 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
     public void updateFotoPerfil(String idCognito, String urlFotoPerfil) {
         springDataUsuarioRepository.updateFotoPerfil(idCognito, urlFotoPerfil);
     }
+
+    @Override
+    @Transactional
+    public void updateFotoPerfilByUsuarioId(UUID usuarioId, String urlFotoPerfil) {
+        springDataUsuarioRepository.updateFotoPerfilByUsuarioId(usuarioId, urlFotoPerfil);
+    }
 }

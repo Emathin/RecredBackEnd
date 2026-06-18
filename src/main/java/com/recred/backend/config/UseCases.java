@@ -23,6 +23,7 @@ import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreatePromotion;
+import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DeleteCarritoFavorito;
@@ -381,6 +382,14 @@ public class UseCases {
                 alumnoRepository,
                 gradoRepository,
                 cognitoStudentIdentityService);
+    }
+
+    @Bean
+    public ActualizarFotoAlumno actualizarFotoAlumno(
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            AlumnoRepository alumnoRepository) {
+        return new ActualizarFotoAlumno(usuarioRepository, tutorRepository, alumnoRepository);
     }
 
     @Bean
