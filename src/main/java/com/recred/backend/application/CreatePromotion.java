@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
@@ -25,8 +26,9 @@ public class CreatePromotion {
             String name, 
             LocalDateTime startDate, 
             LocalDateTime endDate,
+            UUID buffetId,
             boolean forceDraft) {
-            
+
         if (!hasMinimumProducts(productIds)) {
             throw new IllegalArgumentException("A promotion requires at least 2 products.");
         }
@@ -42,7 +44,13 @@ public class CreatePromotion {
         promotion.setDiscountPercentage(discountPercentage);
         promotion.setStartDate(startDate);
         promotion.setEndDate(endDate);
-        
+
+        if (buffetId != null) {
+            Buffet buffet = new Buffet();
+            buffet.setId(buffetId);
+            promotion.setBuffet(buffet);
+        }
+
         if (forceDraft) {
             promotion.setStatus(PromotionStatus.DRAFT);
         } else if (isPromotionCurrentlyActive(startDate, endDate)) {
@@ -50,17 +58,18 @@ public class CreatePromotion {
         } else {
             promotion.setStatus(PromotionStatus.DRAFT);
         }
-        
+
         List<Producto> products = productIds.stream().map(id -> {
             Producto p = new Producto();
             p.setId(id);
             return p;
         }).collect(Collectors.toList());
-        
+
         promotion.setProducts(products);
 
         return promotionRepository.save(promotion);
     }
+//...
 
     private boolean hasMinimumProducts(List<UUID> productIds) {
         return productIds != null && productIds.size() >= 2;

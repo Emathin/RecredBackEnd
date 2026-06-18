@@ -82,7 +82,9 @@ class PromotionControllerTest {
     void createPromotionDelegatesRequestAndReturnsResponse() {
         UUID firstProductId = UUID.randomUUID();
         UUID secondProductId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
         PromotionRequestDTO request = request(List.of(firstProductId, secondProductId));
+        request.setBuffetId(buffetId);
         Promotion promotion = promotion(UUID.randomUUID(), firstProductId);
         when(createPromotion.execute(
                 request.getProductIds(),
@@ -90,6 +92,7 @@ class PromotionControllerTest {
                 request.getName(),
                 request.getStartDate(),
                 request.getEndDate(),
+                request.getBuffetId(),
                 false
         )).thenReturn(promotion);
 
@@ -104,6 +107,7 @@ class PromotionControllerTest {
                 request.getName(),
                 request.getStartDate(),
                 request.getEndDate(),
+                request.getBuffetId(),
                 false
         );
     }

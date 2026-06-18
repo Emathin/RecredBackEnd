@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -70,6 +71,10 @@ public class PromotionEntity {
     )
     private Set<ProductoEntity> products = new HashSet<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "buffet_id")
+    private BuffetEntity buffetEntity;
+
     public Promotion toDomain() {
         Promotion domain = new Promotion();
         domain.setId(this.id);
@@ -81,10 +86,14 @@ public class PromotionEntity {
         domain.setCreatedAt(this.createdAt);
         domain.setUpdatedAt(this.updatedAt);
         
-        if (this.products != null) {
+        if (this.products != null && org.hibernate.Hibernate.isInitialized(this.products)) {
             domain.setProducts(this.products.stream()
                     .map(ProductoEntity::toDomain)
                     .collect(Collectors.toList()));
+        }
+        
+        if (this.buffetEntity != null) {
+            domain.setBuffet(this.buffetEntity.toDomain());
         }
         
         return domain;

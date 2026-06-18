@@ -16,9 +16,12 @@ import java.util.stream.Collectors;
 public class PromotionRepositoryImpl implements PromotionRepository {
 
     private final PromotionSpringDataRepository repository;
+    private final SpringDataBuffetRepository buffetRepository;
 
-    public PromotionRepositoryImpl(PromotionSpringDataRepository repository) {
+    public PromotionRepositoryImpl(PromotionSpringDataRepository repository,
+                                   SpringDataBuffetRepository buffetRepository) {
         this.repository = repository;
+        this.buffetRepository = buffetRepository;
     }
 
     @Override
@@ -63,6 +66,11 @@ public class PromotionRepositoryImpl implements PromotionRepository {
                 productoEntity.setId(p.getId());
                 return productoEntity;
             }).collect(Collectors.toSet()));
+        }
+        
+        if (promotion.getBuffet() != null) {
+            buffetRepository.findById(promotion.getBuffet().getId())
+                    .ifPresent(entity::setBuffetEntity);
         }
         
         return repository.save(entity).toDomain();

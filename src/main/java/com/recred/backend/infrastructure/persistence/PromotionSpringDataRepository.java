@@ -13,11 +13,13 @@ import java.util.UUID;
 @Repository
 public interface PromotionSpringDataRepository extends JpaRepository<PromotionEntity, UUID> {
     @EntityGraph(attributePaths =
-            {"products", "products.categoria", "products.tipos", "products.clasificacionesSalud"})
+            {"products", "products.categoria", "products.tipos",
+                    "products.clasificacionesSalud", "buffetEntity"})
     List<PromotionEntity> findByStatus(PromotionStatus status);
 
     @EntityGraph(attributePaths =
-            {"products", "products.categoria", "products.tipos", "products.clasificacionesSalud"})
+            {"products", "products.categoria",
+                    "products.tipos", "products.clasificacionesSalud", "buffetEntity"})
     List<PromotionEntity> findByStatusAndStartDateBefore(
             PromotionStatus status, LocalDateTime startDate);
 

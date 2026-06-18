@@ -21,6 +21,7 @@ public class Promotion {
     private LocalDateTime endDate;
     private PromotionStatus status;
     private List<Producto> products;
+    private Buffet buffet;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

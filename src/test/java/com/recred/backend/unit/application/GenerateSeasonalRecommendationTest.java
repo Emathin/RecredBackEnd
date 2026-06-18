@@ -58,7 +58,7 @@ class GenerateSeasonalRecommendationTest {
         when(geminiSuggesterMock.getSeasonalRecommendations(anyString(), anyDouble(), anyString()))
                 .thenReturn(recomendacionSimulada);
 
-        RecommendationResponseDTO resultado = useCase.execute(-34.7, -58.47);
+        RecommendationResponseDTO resultado = useCase.execute(-34.7, -58.47, null);
 
         assertNotNull(resultado);
         assertEquals("Promo 2x1 en helados.", resultado.getPromocionalTip());
@@ -72,7 +72,7 @@ class GenerateSeasonalRecommendationTest {
                 .thenThrow(new RuntimeException("Weather service is currently unavailable"));
 
         RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
-            useCase.execute(-34.7, -58.47);
+            useCase.execute(-34.7, -58.47, null);
         });
 
         assertEquals("Weather service is currently unavailable", excepcion.getMessage());
@@ -87,7 +87,7 @@ class GenerateSeasonalRecommendationTest {
                 .thenThrow(new RuntimeException("Failed to generate seasonal recommendations from AI."));
 
         RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
-            useCase.execute(-34.7, -58.47);
+            useCase.execute(-34.7, -58.47, null);
         });
 
         assertEquals("Failed to generate seasonal recommendations from AI.", excepcion.getMessage());
@@ -104,7 +104,7 @@ class GenerateSeasonalRecommendationTest {
         when(geminiSuggesterMock.getSeasonalRecommendations(anyString(), anyDouble(), anyString()))
                 .thenReturn(recomendacionSimulada);
 
-        useCase.execute(10.0, 20.0);
+        useCase.execute(10.0, 20.0, null);
 
         InOrder ordenDeInvocacion = inOrder(climaServiceMock, geminiSuggesterMock);
         ordenDeInvocacion.verify(climaServiceMock).getCurrentWeather(10.0, 20.0);
@@ -139,10 +139,11 @@ class GenerateSeasonalRecommendationTest {
                 eq("Promo fresca"),
                 any(),
                 any(),
+                isNull(),
                 eq(true)
         )).thenReturn(createdPromotion);
 
-        RecommendationResponseDTO resultado = useCase.execute(-34.7, -58.47);
+        RecommendationResponseDTO resultado = useCase.execute(-34.7, -58.47, null);
 
         assertNotNull(resultado.getCreatedPromotion());
         assertEquals(createdPromotion.getId(), resultado.getCreatedPromotion().getId());
@@ -152,6 +153,7 @@ class GenerateSeasonalRecommendationTest {
                 eq("Promo fresca"),
                 any(),
                 any(),
+                isNull(),
                 eq(true)
         );
     }
@@ -184,10 +186,11 @@ class GenerateSeasonalRecommendationTest {
                 eq("Promo invierno"),
                 any(),
                 any(),
+                isNull(),
                 eq(true)
         )).thenReturn(createdPromotion);
 
-        RecommendationResponseDTO resultado = useCase.execute(-34.7, -58.47);
+        RecommendationResponseDTO resultado = useCase.execute(-34.7, -58.47, null);
 
         assertEquals(createdPromotion.getId(), resultado.getCreatedPromotion().getId());
         verify(createPromotion).execute(
@@ -196,6 +199,7 @@ class GenerateSeasonalRecommendationTest {
                 eq("Promo invierno"),
                 any(),
                 any(),
+                isNull(),
                 eq(true)
         );
     }

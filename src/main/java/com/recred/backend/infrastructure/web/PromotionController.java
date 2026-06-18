@@ -66,6 +66,7 @@ public class PromotionController {
                 request.getName(),
                 request.getStartDate(),
                 request.getEndDate(),
+                request.getBuffetId(),
                 false
         );
         return ResponseEntity.ok(PromotionResponseDTO.fromDomain(promotion));
