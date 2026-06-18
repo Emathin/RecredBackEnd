@@ -17,8 +17,10 @@ import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.StockMovementRepository;
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 
@@ -32,6 +34,10 @@ public class InventoryAvailabilityService {
             "Consumo confirmado por entrega de compra anticipada";
     private static final String PRESENTIAL_PURCHASE_CONSUMPTION =
             "Consumo por venta presencial";
+    private static final EnumMap<TipoMovimientoStock, KiosqueroRealtimeChangeKind>
+            CHANGE_KIND_BY_MOVEMENT_TYPE = movementTypeChangeKinds();
+    private static final EnumMap<InventoryQuickActionType, KiosqueroRealtimeChangeKind>
+            CHANGE_KIND_BY_QUICK_ACTION = quickActionChangeKinds();
 
     private final InventoryRepository inventoryRepository;
     private final StockMovementRepository stockMovementRepository;
@@ -405,27 +411,64 @@ public class InventoryAvailabilityService {
                 "Stock actualizado"
         ));
 
+        publishInventoryStatusEvent(inventory, movementType, reason);
+        publishDashboardChanged(inventory.getBuffetId(), changeKind, reason);
+    }
+
+    private void publishInventoryStatusEvent(
+            Inventario inventory,
+            TipoMovimientoStock movementType,
+            String reason
+    ) {
         if (isSoldOut(inventory)) {
-            realtimeEventPublisher.publish(KiosqueroRealtimeEvent.inventory(
-                    KiosqueroRealtimeEventType.PRODUCT_SOLD_OUT,
-                    inventory,
-                    movementType,
-                    KiosqueroRealtimeChangeKind.SOLD_OUT,
-                    reason,
-                    "Producto sin stock"
-            ));
-        } else if (inventory.estadoActual() == EstadoInventario.BAJO_STOCK) {
-            realtimeEventPublisher.publish(KiosqueroRealtimeEvent.inventory(
-                    KiosqueroRealtimeEventType.LOW_STOCK,
-                    inventory,
-                    movementType,
-                    KiosqueroRealtimeChangeKind.LOW_STOCK,
-                    reason,
-                    "Stock bajo"
-            ));
+            publishSoldOutEvent(inventory, movementType, reason);
+            return;
         }
 
-        publishDashboardChanged(inventory.getBuffetId(), changeKind, reason);
+        publishLowStockEventIfNeeded(inventory, movementType, reason);
+    }
+
+    private void publishSoldOutEvent(
+            Inventario inventory,
+            TipoMovimientoStock movementType,
+            String reason
+    ) {
+        realtimeEventPublisher.publish(KiosqueroRealtimeEvent.inventory(
+                KiosqueroRealtimeEventType.PRODUCT_SOLD_OUT,
+                inventory,
+                movementType,
+                KiosqueroRealtimeChangeKind.SOLD_OUT,
+                reason,
+                "Producto sin stock"
+        ));
+    }
+
+    private void publishLowStockEventIfNeeded(
+            Inventario inventory,
+            TipoMovimientoStock movementType,
+            String reason
+    ) {
+        Optional.of(inventory)
+                .filter(this::isLowStock)
+                .ifPresent(lowStockInventory -> publishLowStockEvent(
+                        lowStockInventory,
+                        movementType,
+                        reason));
+    }
+
+    private void publishLowStockEvent(
+            Inventario inventory,
+            TipoMovimientoStock movementType,
+            String reason
+    ) {
+        realtimeEventPublisher.publish(KiosqueroRealtimeEvent.inventory(
+                KiosqueroRealtimeEventType.LOW_STOCK,
+                inventory,
+                movementType,
+                KiosqueroRealtimeChangeKind.LOW_STOCK,
+                reason,
+                "Stock bajo"
+        ));
     }
 
     private void publishDashboardChanged(
@@ -442,27 +485,59 @@ public class InventoryAvailabilityService {
     }
 
     private KiosqueroRealtimeChangeKind changeKind(TipoMovimientoStock movementType) {
-        return switch (movementType) {
-            case VENTA -> KiosqueroRealtimeChangeKind.SALE;
-            case RESERVA -> KiosqueroRealtimeChangeKind.RESERVATION;
-            case LIBERACION -> KiosqueroRealtimeChangeKind.RESERVATION_RELEASED;
-            case CONSUMO -> KiosqueroRealtimeChangeKind.RESERVATION_CONSUMED;
-            default -> KiosqueroRealtimeChangeKind.STOCK_ONLY;
-        };
+        return CHANGE_KIND_BY_MOVEMENT_TYPE.getOrDefault(
+                movementType,
+                KiosqueroRealtimeChangeKind.STOCK_ONLY);
     }
 
     private KiosqueroRealtimeChangeKind changeKind(InventoryQuickActionType action) {
-        return switch (action) {
-            case SET_DAILY_CAPACITY, SET_AVAILABLE, SET_UNAVAILABLE ->
-                    KiosqueroRealtimeChangeKind.CONFIG_CHANGED;
-            case SET_STOCK, ADD_STOCK, SUBTRACT_STOCK, MARK_SOLD_OUT ->
-                    KiosqueroRealtimeChangeKind.STOCK_ONLY;
-        };
+        return Optional.ofNullable(CHANGE_KIND_BY_QUICK_ACTION.get(action))
+                .orElseThrow(() -> new InventoryOperationException(
+                        "La accion no esta configurada."));
     }
 
     private boolean isSoldOut(Inventario inventory) {
         return inventory.estadoActual() == EstadoInventario.SIN_STOCK
                 || inventory.stockDisponible() <= 0;
+    }
+
+    private boolean isLowStock(Inventario inventory) {
+        return inventory.estadoActual() == EstadoInventario.BAJO_STOCK;
+    }
+
+    private static EnumMap<TipoMovimientoStock, KiosqueroRealtimeChangeKind>
+            movementTypeChangeKinds() {
+        EnumMap<TipoMovimientoStock, KiosqueroRealtimeChangeKind> changeKinds =
+                new EnumMap<>(TipoMovimientoStock.class);
+        changeKinds.put(TipoMovimientoStock.VENTA, KiosqueroRealtimeChangeKind.SALE);
+        changeKinds.put(TipoMovimientoStock.RESERVA,
+                KiosqueroRealtimeChangeKind.RESERVATION);
+        changeKinds.put(TipoMovimientoStock.LIBERACION,
+                KiosqueroRealtimeChangeKind.RESERVATION_RELEASED);
+        changeKinds.put(TipoMovimientoStock.CONSUMO,
+                KiosqueroRealtimeChangeKind.RESERVATION_CONSUMED);
+        return changeKinds;
+    }
+
+    private static EnumMap<InventoryQuickActionType, KiosqueroRealtimeChangeKind>
+            quickActionChangeKinds() {
+        EnumMap<InventoryQuickActionType, KiosqueroRealtimeChangeKind> changeKinds =
+                new EnumMap<>(InventoryQuickActionType.class);
+        changeKinds.put(InventoryQuickActionType.SET_DAILY_CAPACITY,
+                KiosqueroRealtimeChangeKind.CONFIG_CHANGED);
+        changeKinds.put(InventoryQuickActionType.SET_AVAILABLE,
+                KiosqueroRealtimeChangeKind.CONFIG_CHANGED);
+        changeKinds.put(InventoryQuickActionType.SET_UNAVAILABLE,
+                KiosqueroRealtimeChangeKind.CONFIG_CHANGED);
+        changeKinds.put(InventoryQuickActionType.SET_STOCK,
+                KiosqueroRealtimeChangeKind.STOCK_ONLY);
+        changeKinds.put(InventoryQuickActionType.ADD_STOCK,
+                KiosqueroRealtimeChangeKind.STOCK_ONLY);
+        changeKinds.put(InventoryQuickActionType.SUBTRACT_STOCK,
+                KiosqueroRealtimeChangeKind.STOCK_ONLY);
+        changeKinds.put(InventoryQuickActionType.MARK_SOLD_OUT,
+                KiosqueroRealtimeChangeKind.STOCK_ONLY);
+        return changeKinds;
     }
 
     private List<CartItem> sortedItems(Map<Producto, Integer> cart) {
