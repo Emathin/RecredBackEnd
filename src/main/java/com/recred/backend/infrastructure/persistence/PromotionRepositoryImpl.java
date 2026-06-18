@@ -29,6 +29,13 @@ public class PromotionRepositoryImpl implements PromotionRepository {
     }
 
     @Override
+    public List<Promotion> findDraftPromotionsByStartDateBefore(java.time.LocalDateTime date) {
+        return repository.findByStatusAndStartDateBefore(PromotionStatus.DRAFT, date).stream()
+                .map(PromotionEntity::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public Optional<Promotion> findById(UUID id) {
         return repository.findById(id)
                 .map(PromotionEntity::toDomain);

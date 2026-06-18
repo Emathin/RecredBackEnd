@@ -81,6 +81,7 @@ import com.recred.backend.application.ListKiosqueroOperationalAlerts;
 import com.recred.backend.application.ListKiosqueroOrders;
 import com.recred.backend.application.LoadBalanceToChild;
 import com.recred.backend.application.LoadStockIA;
+import com.recred.backend.application.ManagePromotionStatus;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.ObtenerHijosPorPadre;
@@ -1221,6 +1222,11 @@ public class UseCases {
                 tutorRepository
         );
     }
+    @Bean
+    public ManagePromotionStatus managePromotionStatus(PromotionRepository promotionRepository) {
+        return new ManagePromotionStatus(promotionRepository);
+    }
+    
     @Bean
     public SetNotificationAsAlreadyRead setNotificationAsAlreadyRead(
             NotificationRepository notificationRepository) {
