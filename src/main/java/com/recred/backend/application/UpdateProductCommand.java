@@ -19,7 +19,8 @@ public record UpdateProductCommand(
         Set<UUID> clasificacionesSaludIds,
         Set<UUID> tiposIds,
         TipoManejoInventario tipoManejoInventario,
-        Integer cupoMaximoDiario
+        Integer cupoMaximoDiario,
+        String urlImagen
 ) {
     public UpdateProductCommand(
             UUID id,
@@ -49,6 +50,7 @@ public record UpdateProductCommand(
                 clasificacionesSaludIds,
                 tiposIds,
                 TipoManejoInventario.STOCK_EXACTO,
+                null,
                 null
         );
     }

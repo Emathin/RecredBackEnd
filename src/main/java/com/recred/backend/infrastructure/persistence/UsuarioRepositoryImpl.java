@@ -63,6 +63,7 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
         entity.setRol(usuario.getRol());
         entity.setAutenticadoConCognito(usuario.getAutenticadoConCognito());
         entity.setActivo(usuario.getActivo());
+        entity.setUrlFotoPerfil(usuario.getUrlFotoPerfil());
 
         entity.setCreadoEn(usuario.getCreadoEn());
         entity.setActualizadoEn(usuario.getActualizadoEn());
@@ -86,5 +87,11 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
         }
 
         return entity;
+    }
+
+    @Override
+    @Transactional
+    public void updateFotoPerfil(String idCognito, String urlFotoPerfil) {
+        springDataUsuarioRepository.updateFotoPerfil(idCognito, urlFotoPerfil);
     }
 }

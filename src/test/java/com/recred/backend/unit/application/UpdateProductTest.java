@@ -208,7 +208,8 @@ class UpdateProductTest {
                 null,
                 null,
                 TipoManejoInventario.CUPO_DIARIO,
-                25
+                25,
+                null
         );
         Producto existing = new Producto();
         existing.setId(id);
@@ -246,7 +247,8 @@ class UpdateProductTest {
                 null,
                 null,
                 null,
-                8
+                8,
+                null
         );
         Producto existing = new Producto();
         existing.setId(id);

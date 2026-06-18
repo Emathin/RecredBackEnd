@@ -52,6 +52,7 @@ public class UpdateProduct {
         product.setPrecio(command.precio());
         product.setPeso(command.peso());
         product.setRequierePreparacion(command.requierePreparacion());
+        product.setUrlImagen(command.urlImagen());
 
         handleCategory(command, product);
         handleClasificacionesSalud(command, product);
@@ -130,6 +131,7 @@ public class UpdateProduct {
         }
         inventario.setTipoManejo(tipoManejo(command));
         inventario.setCupoMaximoDiario(command.cupoMaximoDiario());
+        inventario.setUrlImagen(command.urlImagen());
         inventoryRepository.save(inventario);
     }
 

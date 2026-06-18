@@ -1,5 +1,6 @@
 package com.recred.backend.infrastructure.persistence;
 
+import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.infrastructure.entities.NotificacionEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,4 +22,11 @@ public interface SpringDataSuggestionAiRepository
             "and n.alumnoEntity.id = CAST (:studentId AS java.util.UUID)" +
             "")
     NotificacionEntity findByTipoAndStudentId(String today, UUID studentId);
+
+    @Query("SELECT DISTINCT s FROM SugerenciaIAEntity s " +
+           "WHERE s.buffetEntity.id = :buffetId AND s.tipo = :tipo " +
+           "ORDER BY s.creadoEn DESC")
+    List<SugerenciaIAEntity>
+    findDistinctByBuffetEntityIdAndTipoOrderByCreadoEnDesc(
+            UUID buffetId, TipoSugerenciaIA tipo);
 }

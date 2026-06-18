@@ -6,14 +6,18 @@ import com.recred.backend.application.SchoolAssistantConversations;
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.ChatSession;
 import com.recred.backend.domain.models.EstadoChatSesion;
+import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.RolChatMensaje;
 import com.recred.backend.domain.models.SchoolAssistantAction;
+import com.recred.backend.domain.models.SchoolAssistantActionStatus;
 import com.recred.backend.domain.models.SchoolAssistantActionType;
 import com.recred.backend.domain.models.SchoolAssistantAnswer;
 import com.recred.backend.domain.models.SchoolAssistantCapability;
 import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolAssistantRole;
 import com.recred.backend.domain.models.SchoolAssistantSuggestion;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -121,6 +125,50 @@ class SchoolAssistantControllerTest {
         assertEquals("saldo", command.message());
         assertEquals(Optional.of(sessionId), command.sessionId());
         assertTrue(command.sessionId().isPresent());
+    }
+
+    @Test
+    void askReturnsReadableRecessLabelForAdvancePurchaseAction() throws Exception {
+        UUID studentId = UUID.randomUUID();
+        UUID sessionId = UUID.randomUUID();
+        UUID purchaseId = UUID.randomUUID();
+        SchoolAssistantAction action = new SchoolAssistantAction(
+                SchoolAssistantActionType.COMPRA_ANTICIPADA,
+                SchoolAssistantActionStatus.EJECUTADA,
+                false,
+                List.of(),
+                purchaseId,
+                EstadoCompra.PENDIENTE,
+                "TORO",
+                new BigDecimal("5250.00"),
+                RecessTime.SECOND_RECESS,
+                Map.of()
+        );
+        SchoolAssistantAnswer answer = new SchoolAssistantAnswer(
+                sessionId,
+                "Compra creada.",
+                List.of(SchoolAssistantCapability.COMPRAS),
+                LocalDateTime.of(2026, 5, 27, 12, 0),
+                false,
+                "fixed",
+                SchoolAssistantRole.ALUMNO,
+                SchoolAssistantIntent.CONFIRM_PURCHASE,
+                action,
+                List.of(),
+                Map.of()
+        );
+        when(askSchoolAssistant.execute(eq(studentId), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(answer);
+
+        mockMvc.perform(post("/api/v1/ia/alumnos/{alumnoId}/asistente/mensajes", studentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "mensaje": "confirmar"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accion.recreo").value("segundo recreo"));
     }
 
     @Test

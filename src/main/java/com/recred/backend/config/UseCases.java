@@ -4,6 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
+import com.recred.backend.application.GenerateComboSuggestion;
+import com.recred.backend.application.GetTutorGlobalDashboard;
+import com.recred.backend.application.GetSuggestionByNotificationId;
+import com.recred.backend.application.GetSuggestionByType;
+import com.recred.backend.application.EnableSchoolCredit;
+import com.recred.backend.application.GetActiveSchoolCredit;
+import com.recred.backend.application.GetLastRecharge;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.BloquearProductoManual;
@@ -53,6 +61,7 @@ import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.application.GetKiosqueroDashboard;
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
+import com.recred.backend.application.SetNotificationAsAlreadyRead;
 import com.recred.backend.application.GetLoggedUserNotifications;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetProductById;
@@ -103,6 +112,7 @@ import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePurchaseStatus;
 import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.application.UploadProductImage;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
 import com.recred.backend.domain.events.ProductPriceChangedPublisher;
 import com.recred.backend.domain.repositories.AIEventRepository;
@@ -133,11 +143,13 @@ import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
 import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.ProductStatisticsRepository;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.domain.repositories.PurchaseRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCalendarRepository;
@@ -177,6 +189,7 @@ import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.domain.services.WithdrawalCodeServiceImpl;
+import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.infrastructure.gemini.GeminiBulkStockAnalyzer;
 import com.recred.backend.infrastructure.gemini.GeminiParentSummaryAnalyzer;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
@@ -215,6 +228,7 @@ public class UseCases {
     public ParentSummaryAnalyzer parentSummaryAnalyzer(GeminiTextClient geminiTextClient) {
         return new GeminiParentSummaryAnalyzer(geminiTextClient);
     }
+
     @Bean
     public WithdrawalCodeServiceImpl withdrawalCodeServiceImpl() {
         return new WithdrawalCodeServiceImpl();
@@ -296,8 +310,7 @@ public class UseCases {
                 buffetRepository,
                 usuarioRepository,
                 tutorRepository,
-                movimientoBilleteraRepository
-        );
+                movimientoBilleteraRepository);
     }
 
     @Bean
@@ -832,8 +845,9 @@ public class UseCases {
     }
 
     @Bean
-    public LoadStockIA loadStockIA(LoadStockIAService loadStockIAService) {
-        return new LoadStockIA(loadStockIAService);
+    public LoadStockIA loadStockIA(LoadStockIAService loadStockIAService,
+                                   CloudinaryService cloudinaryService) {
+        return new LoadStockIA(loadStockIAService, cloudinaryService);
     }
 
     @Bean
@@ -1022,13 +1036,17 @@ public class UseCases {
             KiosqueroRepository kiosqueroRepository,
             InventoryRepository inventoryRepository,
             AIEventRepository aiEventRepository,
-            ProductAdditionNotificationRepository notificationRepository) {
+            ProductAdditionNotificationRepository notificationRepository,
+            ProductStatisticsRepository productStatisticsRepository,
+            SugerenciaIARepository sugerenciaIARepository) {
         return new AddProductRecommendation(
                 productRepository,
                 kiosqueroRepository,
                 inventoryRepository,
                 aiEventRepository,
-                notificationRepository);
+                notificationRepository,
+                productStatisticsRepository,
+                sugerenciaIARepository);
     }
 
     @Bean
@@ -1053,8 +1071,7 @@ public class UseCases {
                 usuarioRepository,
                 tutorRepository,
                 walletRepository,
-                movimientoBilleteraRepository
-        );
+                movimientoBilleteraRepository);
     }
 
     @Bean
@@ -1062,12 +1079,14 @@ public class UseCases {
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             WalletRepository walletRepository,
-            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+            MovimientoBilleteraRepository movimientoBilleteraRepository,
+            SchoolCreditRepository schoolCreditRepository) {
         return new TransferBalanceBetweenChildren(
                 usuarioRepository,
                 tutorRepository,
                 walletRepository,
-                movimientoBilleteraRepository
+                movimientoBilleteraRepository,
+                schoolCreditRepository
         );
     }
 
@@ -1192,8 +1211,7 @@ public class UseCases {
                 usuarioRepository,
                 tutorRepository,
                 alumnoRepository,
-                productRepository
-        );
+                productRepository);
     }
 
     @Bean
@@ -1204,8 +1222,7 @@ public class UseCases {
         return new GetCarritosFavoritosByTutor(
                 carritoFavoritoRepository,
                 usuarioRepository,
-                tutorRepository
-        );
+                tutorRepository);
     }
 
     @Bean
@@ -1216,8 +1233,7 @@ public class UseCases {
         return new DeleteCarritoFavorito(
                 carritoFavoritoRepository,
                 usuarioRepository,
-                tutorRepository
-        );
+                tutorRepository);
     }
     @Bean
     public GeminiBulkStockAnalyzer bulkStockAnalyzer(GeminiTextClient geminiTextClient,
@@ -1252,7 +1268,55 @@ public class UseCases {
                 getActiveBudgetByStudent,
                 getStudentRewardStatus,
                 predictStudentSpending,
-                obtenerHistorialAlumno
-        );
+                obtenerHistorialAlumno);
+    }
+
+    @Bean
+    public UploadProductImage uploadProductImage(
+            com.recred.backend.infrastructure.cloudinary.CloudinaryService cloudinaryService,
+            InventoryRepository inventoryRepository) {
+        return new UploadProductImage(cloudinaryService, inventoryRepository);
+    }
+
+    @Bean
+    public EnableSchoolCredit enableSchoolCredit(
+            TutorRepository tutorRepository,
+            AlumnoRepository alumnoRepository,
+            SchoolCreditRepository schoolCreditRepository,
+            PurchaseRepository purchaseRepository,
+            WalletRepository walletRepository,
+            Clock clock) {
+        return new EnableSchoolCredit(
+                tutorRepository, alumnoRepository, schoolCreditRepository,
+                purchaseRepository, walletRepository, clock);
+    }
+
+    @Bean
+    public GetLastRecharge getLastRecharge(
+            AlumnoRepository alumnoRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        return new GetLastRecharge(alumnoRepository, movimientoBilleteraRepository);
+    }
+
+    @Bean
+    public GetActiveSchoolCredit getActiveSchoolCredit(
+            SchoolCreditRepository schoolCreditRepository) {
+        return new GetActiveSchoolCredit(schoolCreditRepository);
+    }
+
+    @Bean
+    public GetSuggestionByNotificationId getSuggestionByNotificationId(
+            SuggestionAiRepository suggestionAiRepository) {
+        return new GetSuggestionByNotificationId(suggestionAiRepository);
+    }
+
+    @Bean
+    public GetSuggestionByType getSuggestionByType(
+            SuggestionAiRepository suggestionAiRepository,
+            KiosqueroRepository kiosqueroRepository) {
+        return new GetSuggestionByType(suggestionAiRepository, kiosqueroRepository);
     }
 }
+
+
+

@@ -18,7 +18,8 @@ public record SaveProductCommand(
         Set<UUID> clasificacionesSaludIds,
         Set<UUID> tiposIds,
         TipoManejoInventario tipoManejoInventario,
-        Integer cupoMaximoDiario
+        Integer cupoMaximoDiario,
+        String urlImagen
 ) {
     public SaveProductCommand(
             String nombre,
@@ -45,6 +46,7 @@ public record SaveProductCommand(
                 stockActual,
                 clasificacionesSaludIds,
                 tiposIds,
+                null,
                 null,
                 null
         );

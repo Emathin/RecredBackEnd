@@ -13,4 +13,5 @@ public interface InventoryRepository {
     Optional<Inventario> findLockedByBuffetAndProduct(UUID buffetId, UUID productoId);
     boolean checkIfProductIsInStock(UUID productId, UUID buffetId);
     List<Producto> findAvailableProductsByBuffet(UUID buffetId);
+    void updateUrlImagen(UUID buffetId, UUID productoId, String urlImagen);
 }

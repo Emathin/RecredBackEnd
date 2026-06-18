@@ -64,6 +64,9 @@ public class InventarioBuffetEntity {
     @Column(name = "cupo_maximo_diario")
     private Integer cupoMaximoDiario;
 
+    @Column(name = "url_imagen", columnDefinition = "TEXT")
+    private String urlImagen;
+
     @OneToMany(mappedBy = "inventario", cascade = CascadeType.ALL, orphanRemoval = true)
     private java.util.List<MovimientoStockEntity> movimientos = new java.util.ArrayList<>();
 
@@ -82,6 +85,7 @@ public class InventarioBuffetEntity {
                 this.estado,
                 this.tipoManejo,
                 this.cupoMaximoDiario,
+                this.urlImagen,
                 this.actualizadoEn
         );
     }

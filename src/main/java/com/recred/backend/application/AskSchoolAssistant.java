@@ -6,28 +6,17 @@ import com.recred.backend.domain.exceptions.InvalidChatMessageException;
 import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
 import com.recred.backend.domain.exceptions.TutorNoEncontradoException;
 import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.ChatSession;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.PresupuestoAlumno;
-import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RolChatMensaje;
 import com.recred.backend.domain.models.SchoolAssistantAction;
 import com.recred.backend.domain.models.SchoolAssistantAnswer;
-import com.recred.backend.domain.models.SchoolAssistantActionType;
 import com.recred.backend.domain.models.SchoolAssistantCapability;
 import com.recred.backend.domain.models.SchoolAssistantContext;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
 import com.recred.backend.domain.models.SchoolAssistantIntent;
-import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
-import com.recred.backend.domain.models.SchoolAssistantPurchase;
-import com.recred.backend.domain.models.SchoolAssistantRole;
 import com.recred.backend.domain.models.SchoolAssistantSuggestion;
-import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -44,73 +33,29 @@ import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
-import java.math.BigDecimal;
 import java.time.Clock;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 public class AskSchoolAssistant {
 
-    private static final int RECENT_PAYMENT_LIMIT = 5;
-    private static final int CHILD_PAYMENT_LIMIT = 2;
-    private static final int RECENT_PURCHASE_LIMIT = 10;
     private static final int RECENT_HISTORY_LIMIT = 6;
-    private static final int UPCOMING_EVENT_DAYS = 30;
-    private static final int PRODUCT_FACT_LIMIT = 20;
-    private static final int ORDER_FACT_LIMIT = 10;
-    private static final List<SchoolAssistantCapability> STUDENT_CAPABILITIES = List.of(
-            SchoolAssistantCapability.SALDO,
-            SchoolAssistantCapability.PAGOS,
-            SchoolAssistantCapability.COMPRAS,
-            SchoolAssistantCapability.EVENTOS
-    );
-    private static final List<SchoolAssistantCapability> TUTOR_CAPABILITIES = List.of(
-            SchoolAssistantCapability.HIJOS,
-            SchoolAssistantCapability.SALDO,
-            SchoolAssistantCapability.PAGOS,
-            SchoolAssistantCapability.COMPRAS,
-            SchoolAssistantCapability.EVENTOS,
-            SchoolAssistantCapability.PRESUPUESTOS,
-            SchoolAssistantCapability.RESTRICCIONES
-    );
-    private static final List<SchoolAssistantCapability> KIOSQUERO_CAPABILITIES = List.of(
-            SchoolAssistantCapability.STOCK,
-            SchoolAssistantCapability.VENTAS,
-            SchoolAssistantCapability.PEDIDOS,
-            SchoolAssistantCapability.COMPRAS
-    );
-    private static final String STUDENT_FALLBACK =
-            "No pude responder ahora. Puedo ayudarte con saldos, pagos, compras "
-                    + "y eventos escolares.";
-    private static final String TUTOR_FALLBACK =
-            "No pude responder ahora. Puedo ayudarte con saldos, pagos, compras, "
-                    + "eventos, presupuestos y restricciones de tus hijos.";
-    private static final String KIOSQUERO_FALLBACK =
-            "No pude responder ahora. Puedo ayudarte con stock, ventas y pedidos del buffet.";
 
     private final AlumnoRepository alumnoRepository;
-    private final WalletRepository walletRepository;
-    private final SchoolAssistantPaymentRepository paymentRepository;
-    private final SchoolAssistantPurchaseRepository schoolAssistantPurchaseRepository;
-    private final SchoolCalendarRepository schoolCalendarRepository;
     private final ChatSessionRepository chatSessionRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final SchoolAssistantResponder schoolAssistantResponder;
     private final UsuarioRepository usuarioRepository;
     private final TutorRepository tutorRepository;
     private final KiosqueroRepository kiosqueroRepository;
-    private final ProductRepository productRepository;
-    private final PurchaseRepository purchaseRepository;
-    private final PresupuestoRepository presupuestoRepository;
     private final SchoolAssistantFixedTopics fixedTopics;
     private final SchoolAssistantAnswerFormatter answerFormatter;
+    private final SchoolAssistantRoleCatalog roleCatalog;
+    private final SchoolAssistantContextFactory contextFactory;
     private final Clock clock;
 
     public AskSchoolAssistant(
@@ -132,21 +77,26 @@ public class AskSchoolAssistant {
             Clock clock
     ) {
         this.alumnoRepository = alumnoRepository;
-        this.walletRepository = walletRepository;
-        this.paymentRepository = paymentRepository;
-        this.schoolAssistantPurchaseRepository = schoolAssistantPurchaseRepository;
-        this.schoolCalendarRepository = schoolCalendarRepository;
         this.chatSessionRepository = chatSessionRepository;
         this.chatMessageRepository = chatMessageRepository;
         this.schoolAssistantResponder = schoolAssistantResponder;
         this.usuarioRepository = usuarioRepository;
         this.tutorRepository = tutorRepository;
         this.kiosqueroRepository = kiosqueroRepository;
-        this.productRepository = productRepository;
-        this.purchaseRepository = purchaseRepository;
-        this.presupuestoRepository = presupuestoRepository;
         this.fixedTopics = fixedTopics;
         this.answerFormatter = new SchoolAssistantAnswerFormatter();
+        this.roleCatalog = new SchoolAssistantRoleCatalog();
+        this.contextFactory = new SchoolAssistantContextFactory(
+                walletRepository,
+                paymentRepository,
+                schoolAssistantPurchaseRepository,
+                schoolCalendarRepository,
+                productRepository,
+                purchaseRepository,
+                presupuestoRepository,
+                roleCatalog,
+                clock
+        );
         this.clock = clock;
     }
 
@@ -155,7 +105,7 @@ public class AskSchoolAssistant {
         String message = message(command);
         LocalDateTime now = LocalDateTime.now(clock);
         ChatSession session = session(studentId, command, now);
-        return answer(session, message, studentContext(studentId), now);
+        return answer(session, message, contextFactory.studentContext(studentId), now);
     }
 
     public SchoolAssistantAnswer executeForTutor(String cognitoSubject,
@@ -165,7 +115,7 @@ public class AskSchoolAssistant {
         String message = message(command);
         LocalDateTime now = LocalDateTime.now(clock);
         ChatSession session = sessionForUser(user.getId(), command, now);
-        return answer(session, message, tutorContext(user.getId(), tutor), now);
+        return answer(session, message, contextFactory.tutorContext(user.getId(), tutor), now);
     }
 
     public SchoolAssistantAnswer executeForKiosquero(String cognitoSubject,
@@ -175,7 +125,12 @@ public class AskSchoolAssistant {
         String message = message(command);
         LocalDateTime now = LocalDateTime.now(clock);
         ChatSession session = sessionForUser(user.getId(), command, now);
-        return answer(session, message, kiosqueroContext(user.getId(), buffetId), now);
+        return answer(
+                session,
+                message,
+                contextFactory.kiosqueroContext(user.getId(), buffetId),
+                now
+        );
     }
 
     private SchoolAssistantAnswer answer(ChatSession session, String message,
@@ -237,7 +192,8 @@ public class AskSchoolAssistant {
                 .filter(response -> response.answer() != null && !response.answer().isBlank());
         return new SchoolAssistantAnswer(
                 session.id(),
-                draft.map(SchoolAssistantDraft::answer).orElse(fallbackAnswer(context.role())),
+                draft.map(SchoolAssistantDraft::answer)
+                        .orElse(roleCatalog.fallbackAnswer(context.role())),
                 context.capabilities(),
                 now,
                 draft.isPresent(),
@@ -245,7 +201,7 @@ public class AskSchoolAssistant {
                 context.role(),
                 SchoolAssistantIntent.UNKNOWN,
                 null,
-                defaultSuggestions(context.role()),
+                roleCatalog.defaultSuggestions(context.role()),
                 Map.of()
         );
     }
@@ -341,250 +297,6 @@ public class AskSchoolAssistant {
                 .orElseThrow(() -> new ChatSessionNotFoundException(sessionId));
     }
 
-    private SchoolAssistantContext studentContext(UUID studentId) {
-        LocalDate today = LocalDate.now(clock);
-        return new SchoolAssistantContext(
-                studentId,
-                walletRepository.findByStudentId(studentId).map(Billetera::getSaldoCreditos),
-                paymentRepository.findRecentByStudentId(studentId, RECENT_PAYMENT_LIMIT),
-                schoolAssistantPurchaseRepository.findRecentByStudentId(
-                        studentId,
-                        RECENT_PURCHASE_LIMIT
-                ),
-                schoolCalendarRepository.findByStudentIdAndDateRange(
-                        studentId,
-                        today,
-                        today.plusDays(UPCOMING_EVENT_DAYS)
-                ),
-                SchoolAssistantRole.ALUMNO,
-                null,
-                null,
-                List.of(),
-                STUDENT_CAPABILITIES
-        );
-    }
-
-    private SchoolAssistantContext tutorContext(UUID userId, Tutor tutor) {
-        List<Alumno> children = children(tutor);
-        List<Purchase> purchases = purchaseRepository.findHistorialByTutor(tutor.getId());
-        List<String> facts = new ArrayList<>();
-        facts.add("tutorId=" + value(tutor.getId()));
-        children.stream()
-                .map(this::childFact)
-                .forEach(facts::add);
-        purchases.stream()
-                .limit(RECENT_PURCHASE_LIMIT)
-                .map(this::purchaseFact)
-                .map(fact -> "compraTutor=" + fact)
-                .forEach(facts::add);
-
-        return new SchoolAssistantContext(
-                null,
-                Optional.empty(),
-                tutorPayments(children),
-                purchases.stream()
-                        .limit(RECENT_PURCHASE_LIMIT)
-                        .map(this::assistantPurchase)
-                        .toList(),
-                tutorEvents(children),
-                SchoolAssistantRole.TUTOR,
-                userId,
-                null,
-                facts,
-                TUTOR_CAPABILITIES
-        );
-    }
-
-    private SchoolAssistantContext kiosqueroContext(UUID userId, UUID buffetId) {
-        List<String> facts = new ArrayList<>();
-        facts.add("buffetId=" + buffetId);
-        productRepository.findAllActiveWithStock(buffetId)
-                .stream()
-                .limit(PRODUCT_FACT_LIMIT)
-                .map(this::productFact)
-                .map(fact -> "productoBuffet=" + fact)
-                .forEach(facts::add);
-        List<Purchase> pendingOrders = purchaseRepository.findByBuffetAndStatuses(
-                buffetId,
-                List.of(EstadoCompra.PENDIENTE, EstadoCompra.EN_PREPARACION,
-                        EstadoCompra.LISTO),
-                ORDER_FACT_LIMIT
-        );
-        facts.add("pedidosPendientes=" + pendingOrders.size());
-        pendingOrders.stream()
-                .map(this::purchaseFact)
-                .map(fact -> "pedido=" + fact)
-                .forEach(facts::add);
-
-        return new SchoolAssistantContext(
-                null,
-                Optional.empty(),
-                List.of(),
-                purchaseRepository.findRecentByBuffet(buffetId, RECENT_PURCHASE_LIMIT)
-                        .stream()
-                        .map(this::assistantPurchase)
-                        .toList(),
-                List.of(),
-                SchoolAssistantRole.KIOSQUERO,
-                userId,
-                buffetId,
-                facts,
-                KIOSQUERO_CAPABILITIES
-        );
-    }
-
-    private List<Alumno> children(Tutor tutor) {
-        Set<Alumno> children = tutor.getHijos();
-
-        if (children == null) {
-            List<Alumno> emptyChildren = List.of();
-            return emptyChildren;
-        }
-
-        return children.stream().toList();
-    }
-
-    private String childFact(Alumno child) {
-        return "hijo=" + name(child)
-                + "|id=" + value(child.getId())
-                + "|saldo=" + balance(child)
-                + "|grado=" + grade(child)
-                + "|presupuesto=" + budget(child)
-                + "|restriccionesSalud=" + healthRestrictions(child)
-                + "|productosBloqueados=" + blockedProducts(child);
-    }
-
-    private String productFact(Producto product) {
-        return "id=" + value(product.getId())
-                + "|nombre=" + value(product.getNombre())
-                + "|precio=" + value(product.getPrecio())
-                + "|stock=" + value(product.getStockDisponible())
-                + "|requierePreparacion=" + value(product.getRequierePreparacion());
-    }
-
-    private String purchaseFact(Purchase purchase) {
-        return "id=" + value(purchase.getId())
-                + "|alumnoId=" + studentId(purchase)
-                + "|monto=" + value(purchase.getTotalAmount())
-                + "|estado=" + value(purchase.getStatus())
-                + "|medioPago=" + value(purchase.getPaymentMethod())
-                + "|fecha=" + value(purchase.getDate());
-    }
-
-    private SchoolAssistantPurchase assistantPurchase(Purchase purchase) {
-        return new SchoolAssistantPurchase(
-                purchase.getTotalAmount(),
-                purchase.getStatus(),
-                purchase.getPaymentMethod(),
-                purchase.getDate()
-        );
-    }
-
-    private List<SchoolCalendarEvent> tutorEvents(List<Alumno> children) {
-        LocalDate today = LocalDate.now(clock);
-        return children.stream()
-                .flatMap(child -> schoolCalendarRepository.findByStudentIdAndDateRange(
-                                child.getId(),
-                                today,
-                                today.plusDays(UPCOMING_EVENT_DAYS)
-                        )
-                        .stream())
-                .toList();
-    }
-
-    private List<SchoolAssistantPayment> tutorPayments(List<Alumno> children) {
-        return children.stream()
-                .flatMap(child -> paymentRepository.findRecentByStudentId(
-                                child.getId(),
-                                CHILD_PAYMENT_LIMIT
-                        )
-                        .stream())
-                .limit(RECENT_PAYMENT_LIMIT)
-                .toList();
-    }
-
-    private String budget(Alumno child) {
-        return presupuestoRepository.findActivoByAlumnoId(child.getId())
-                .map(this::budgetFact)
-                .orElse("sin_presupuesto");
-    }
-
-    private String budgetFact(PresupuestoAlumno budget) {
-        return "monto=" + value(budget.getMontoLimiteGeneral())
-                + ",periodo=" + value(budget.getPeriodo())
-                + ",fechaInicio=" + value(budget.getFechaInicio());
-    }
-
-    private String name(Alumno child) {
-        if (child.getUsuario() == null) {
-            String missingName = "sin_datos";
-            return missingName;
-        }
-
-        return value(child.getUsuario().getNombre()) + " "
-                + value(child.getUsuario().getApellido());
-    }
-
-    private String balance(Alumno child) {
-        return Optional.ofNullable(child.getBilletera())
-                .map(Billetera::getSaldoCreditos)
-                .map(BigDecimal::toString)
-                .orElse("sin_datos");
-    }
-
-    private String grade(Alumno child) {
-        if (child.getGrado() == null) {
-            String missingGrade = "sin_datos";
-            return missingGrade;
-        }
-
-        return value(child.getGrado().getAnio()) + " "
-                + value(child.getGrado().getDivision());
-    }
-
-    private String healthRestrictions(Alumno child) {
-        if (child.getRestriccionesSalud() == null) {
-            String emptyRestrictions = "[]";
-            return emptyRestrictions;
-        }
-
-        return child.getRestriccionesSalud()
-                .stream()
-                .map(restriction -> value(restriction.getDescripcion()))
-                .toList()
-                .toString();
-    }
-
-    private String blockedProducts(Alumno child) {
-        if (child.getProductosBloqueados() == null) {
-            String emptyProducts = "[]";
-            return emptyProducts;
-        }
-
-        return child.getProductosBloqueados()
-                .stream()
-                .map(product -> value(product.getNombre()))
-                .toList()
-                .toString();
-    }
-
-    private String studentId(Purchase purchase) {
-        if (purchase.getStudent() == null) {
-            String missingStudent = "sin_datos";
-            return missingStudent;
-        }
-
-        return value(purchase.getStudent().getId());
-    }
-
-    private String fallbackAnswer(SchoolAssistantRole role) {
-        return switch (role) {
-            case TUTOR -> TUTOR_FALLBACK;
-            case KIOSQUERO -> KIOSQUERO_FALLBACK;
-            case ALUMNO -> STUDENT_FALLBACK;
-        };
-    }
-
     private void saveUserMessage(
             ChatSession session,
             String message,
@@ -645,47 +357,6 @@ public class AskSchoolAssistant {
         return capabilities.stream()
                 .map(SchoolAssistantCapability::name)
                 .toList();
-    }
-
-    private List<SchoolAssistantSuggestion> defaultSuggestions(SchoolAssistantRole role) {
-        return switch (role) {
-            case ALUMNO -> List.of(
-                    suggestion("Saldo", "cuanto saldo tengo",
-                            SchoolAssistantActionType.CONSULTA_SALDO),
-                    suggestion("Ultimas compras", "mostrame mis ultimas compras",
-                            SchoolAssistantActionType.CONSULTA_COMPRAS),
-                    suggestion("Compra habitual", "comprame lo de siempre",
-                            SchoolAssistantActionType.COMPRA_ANTICIPADA),
-                    suggestion("Eventos", "que eventos escolares tengo",
-                            SchoolAssistantActionType.CONSULTA_EVENTOS)
-            );
-            case TUTOR -> List.of(
-                    suggestion("Mis hijos", "mostrame mis hijos",
-                            SchoolAssistantActionType.CONSULTA_HIJOS),
-                    suggestion("Presupuestos", "ver presupuestos de mis hijos",
-                            SchoolAssistantActionType.CONSULTA_PRESUPUESTOS),
-                    suggestion("Restricciones", "ver restricciones de mis hijos",
-                            SchoolAssistantActionType.CONSULTA_RESTRICCIONES),
-                    suggestion("Eventos", "que eventos escolares tienen mis hijos",
-                            SchoolAssistantActionType.CONSULTA_EVENTOS)
-            );
-            case KIOSQUERO -> List.of(
-                    suggestion("Pedidos", "ver pedidos pendientes",
-                            SchoolAssistantActionType.CONSULTA_PEDIDOS),
-                    suggestion("Stock", "ver stock",
-                            SchoolAssistantActionType.CONSULTA_STOCK),
-                    suggestion("Ventas", "ventas de hoy",
-                            SchoolAssistantActionType.CONSULTA_VENTAS)
-            );
-        };
-    }
-
-    private SchoolAssistantSuggestion suggestion(
-            String label,
-            String message,
-            SchoolAssistantActionType actionType
-    ) {
-        return new SchoolAssistantSuggestion(label, message, actionType);
     }
 
     private Map<String, Object> actionMetadata(SchoolAssistantAction action) {

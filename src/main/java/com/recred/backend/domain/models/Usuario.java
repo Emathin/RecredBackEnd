@@ -25,6 +25,7 @@ public class Usuario {
     private Boolean activo = true;
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
+    private String urlFotoPerfil;
 
     private Alumno alumno;
     private Tutor tutor;
