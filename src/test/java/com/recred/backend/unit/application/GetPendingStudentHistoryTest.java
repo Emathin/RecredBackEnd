@@ -1,5 +1,6 @@
-package com.recred.backend.application;
+package com.recred.backend.unit.application;
 
+import com.recred.backend.application.GetPendingStudentHistory;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import org.junit.jupiter.api.Test;

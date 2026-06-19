@@ -40,42 +40,41 @@ public record ProductChangeRecommendationResponse(
                 stats != null ? ProductSaleStatisticsResponse.fromDomain(stats) : null
         );
     }
-}
-
-record ProductSaleStatisticsResponse(
-        @JsonProperty("productoId") UUID productoId,
-        @JsonProperty("nombre") String nombre,
-        @JsonProperty("categoria") String categoria,
-        @JsonProperty("precioActual") BigDecimal precioActual,
-        @JsonProperty("ventasPeriodo") Long ventasPeriodo,
-        @JsonProperty("participacionVentas") BigDecimal participacionVentas,
-        @JsonProperty("rankingGeneral") Integer rankingGeneral,
-        @JsonProperty("rankingCategoria") Integer rankingCategoria,
-        @JsonProperty("promedioVentasCategoria") BigDecimal promedioVentasCategoria,
-        @JsonProperty("promedioPrecioCategoria") BigDecimal promedioPrecioCategoria,
-        @JsonProperty("diferenciaPrecioCategoria") BigDecimal diferenciaPrecioCategoria,
-        @JsonProperty("diasSinVenta") Long diasSinVenta,
-        @JsonProperty("clientesDistintos") Long clientesDistintos,
-        @JsonProperty("stockActual") Integer stockActual,
-        @JsonProperty("stockPromedioCategoria") BigDecimal stockPromedioCategoria
-) {
-    public static ProductSaleStatisticsResponse fromDomain(ProductSaleStatistics domain) {
-        return new ProductSaleStatisticsResponse(
-                domain.getProductoId(),
-                domain.getNombre(),
-                domain.getCategoria(),
-                domain.getPrecioActual(),
-                domain.getVentasPeriodo(),
-                domain.getParticipacionVentas(),
-                domain.getRankingGeneral(),
-                domain.getRankingCategoria(),
-                domain.getPromedioVentasCategoria(),
-                domain.getPromedioPrecioCategoria(),
-                domain.getDiferenciaPrecioCategoria(),
-                domain.getDiasSinVenta(),
-                domain.getClientesDistintos(),
-                domain.getStockActual(),
-                domain.getStockPromedioCategoria()
-        );
+    public record ProductSaleStatisticsResponse(
+            @JsonProperty("productoId") UUID productoId,
+            @JsonProperty("nombre") String nombre,
+            @JsonProperty("categoria") String categoria,
+            @JsonProperty("precioActual") BigDecimal precioActual,
+            @JsonProperty("ventasPeriodo") Long ventasPeriodo,
+            @JsonProperty("participacionVentas") BigDecimal participacionVentas,
+            @JsonProperty("rankingGeneral") Integer rankingGeneral,
+            @JsonProperty("rankingCategoria") Integer rankingCategoria,
+            @JsonProperty("promedioVentasCategoria") BigDecimal promedioVentasCategoria,
+            @JsonProperty("promedioPrecioCategoria") BigDecimal promedioPrecioCategoria,
+            @JsonProperty("diferenciaPrecioCategoria") BigDecimal diferenciaPrecioCategoria,
+            @JsonProperty("diasSinVenta") Long diasSinVenta,
+            @JsonProperty("clientesDistintos") Long clientesDistintos,
+            @JsonProperty("stockActual") Integer stockActual,
+            @JsonProperty("stockPromedioCategoria") BigDecimal stockPromedioCategoria
+    ) {
+        public static ProductSaleStatisticsResponse fromDomain(ProductSaleStatistics domain) {
+            return new ProductSaleStatisticsResponse(
+                    domain.getProductoId(),
+                    domain.getNombre(),
+                    domain.getCategoria(),
+                    domain.getPrecioActual(),
+                    domain.getVentasPeriodo(),
+                    domain.getParticipacionVentas(),
+                    domain.getRankingGeneral(),
+                    domain.getRankingCategoria(),
+                    domain.getPromedioVentasCategoria(),
+                    domain.getPromedioPrecioCategoria(),
+                    domain.getDiferenciaPrecioCategoria(),
+                    domain.getDiasSinVenta(),
+                    domain.getClientesDistintos(),
+                    domain.getStockActual(),
+                    domain.getStockPromedioCategoria()
+            );
+        }
     }
 }
