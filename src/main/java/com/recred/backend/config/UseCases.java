@@ -26,6 +26,7 @@ import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreatePromotion;
+import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DeleteCarritoFavorito;
@@ -234,11 +235,6 @@ public class UseCases {
     }
 
     @Bean
-    public WithdrawalCodeServiceImpl withdrawalCodeServiceImpl() {
-        return new WithdrawalCodeServiceImpl();
-    }
-
-    @Bean
     public PurchaseValidatorImpl purchaseValidatorImpl(
             ValidadorHorarioService validadorHorarioService,
             ValidacionRestriccionesService validacionRestriccionesService,
@@ -282,8 +278,8 @@ public class UseCases {
     }
 
     @Bean
-    public WithdrawalCodeService withdrawalCodeService() {
-        return new WithdrawalCodeServiceImpl();
+    public WithdrawalCodeService withdrawalCodeService(PurchaseRepository purchaseRepository) {
+        return new WithdrawalCodeServiceImpl(purchaseRepository);
     }
 
     @Bean
@@ -300,6 +296,7 @@ public class UseCases {
             SpringDataBuffetRepository buffetRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
+            PromotionRepository promotionRepository,
             MovimientoBilleteraRepository movimientoBilleteraRepository) {
         return new CreateAdvancePurchase(
                 purchaseValidator,
@@ -314,6 +311,7 @@ public class UseCases {
                 buffetRepository,
                 usuarioRepository,
                 tutorRepository,
+                promotionRepository,
                 movimientoBilleteraRepository);
     }
 
@@ -394,6 +392,14 @@ public class UseCases {
                 alumnoRepository,
                 gradoRepository,
                 cognitoStudentIdentityService);
+    }
+
+    @Bean
+    public ActualizarFotoAlumno actualizarFotoAlumno(
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            AlumnoRepository alumnoRepository) {
+        return new ActualizarFotoAlumno(usuarioRepository, tutorRepository, alumnoRepository);
     }
 
     @Bean
@@ -844,8 +850,13 @@ public class UseCases {
     @Bean
     public CheckBudgetDates checkBudgetDates(
             ProductRepository productRepository,
+            PromotionRepository promotionRepository,
             ValidadorPresupuestoService validadorPresupuestoService) {
-        return new CheckBudgetDates(productRepository, validadorPresupuestoService);
+        return new CheckBudgetDates(
+                productRepository,
+                promotionRepository,
+                validadorPresupuestoService
+        );
     }
 
     @Bean

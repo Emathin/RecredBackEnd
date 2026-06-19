@@ -16,6 +16,8 @@ import java.util.UUID;
 public class Producto {
 
     private UUID id;
+    private UUID promocionId;
+    private String promocionNombre;
     private CategoriaProducto categoria;
     private String nombre;
     private String descripcion;

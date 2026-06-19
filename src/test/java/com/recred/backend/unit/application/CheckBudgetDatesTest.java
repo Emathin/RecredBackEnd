@@ -3,7 +3,9 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import com.recred.backend.infrastructure.web.CheckBudgetDatesRequest;
 import com.recred.backend.infrastructure.web.CheckBudgetDatesResponse;
@@ -33,6 +35,9 @@ class CheckBudgetDatesTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private PromotionRepository promotionRepository;
 
     @Mock
     private ValidadorPresupuestoService budgetValidator;
@@ -154,6 +159,46 @@ class CheckBudgetDatesTest {
         when(budgetValidator.obtenerMotivoBloqueoPresupuesto(
                 eq(studentId),
                 eq(BigDecimal.ZERO),
+                any(),
+                any(LocalDateTime.class)
+        )).thenReturn(Optional.empty());
+
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+
+        assertEquals(1, response.validationResults().size());
+        assertFalse(response.validationResults().get(0).blocked());
+    }
+
+    @Test
+    void execute_WhenCartContainsPromotion_ShouldCalculateDiscountedPricesAndCheckBudget() {
+        UUID studentId = UUID.randomUUID();
+        UUID promotionId = UUID.randomUUID();
+        UUID categoryId = UUID.randomUUID();
+
+        CategoriaProducto categoria = new CategoriaProducto();
+        categoria.setId(categoryId);
+
+        Producto producto = new Producto();
+        producto.setId(UUID.randomUUID());
+        producto.setPrecio(BigDecimal.valueOf(1000));
+        producto.setCategoria(categoria);
+
+        Promotion promotion = new Promotion();
+        promotion.setId(promotionId);
+        promotion.setDiscountPercentage(BigDecimal.valueOf(20));
+        promotion.setProducts(List.of(producto));
+
+        when(productRepository.findById(promotionId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+
+        CheckBudgetDatesRequest request = new CheckBudgetDatesRequest(
+                List.of("2026-06-15"),
+                List.of(new CheckBudgetDatesRequest.CartItemRequest(promotionId, 2))
+        );
+
+        when(budgetValidator.obtenerMotivoBloqueoPresupuesto(
+                eq(studentId),
+                eq(BigDecimal.valueOf(1600).setScale(2)),
                 any(),
                 any(LocalDateTime.class)
         )).thenReturn(Optional.empty());
