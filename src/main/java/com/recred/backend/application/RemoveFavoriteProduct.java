@@ -15,11 +15,11 @@ public class RemoveFavoriteProduct {
     }
 
     @Transactional
-    public void execute(UUID alumnoId, UUID productoId) {
-        Alumno alumno = alumnoRepository.findById(alumnoId)
+    public void execute(UUID studentId, UUID productId) {
+        Alumno student = alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
-        alumno.removeFavoriteProduct(productoId);
-        alumnoRepository.save(alumno);
+        student.removeFavoriteProduct(productId);
+        alumnoRepository.save(student);
     }
 }

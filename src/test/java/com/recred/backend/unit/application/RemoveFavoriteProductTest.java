@@ -31,32 +31,32 @@ class RemoveFavoriteProductTest {
     private RemoveFavoriteProduct removeFavoriteProduct;
 
     @Test
-    void dadoDatosValidos_cuandoExecute_entoncesRemueveFavoritoYGuarda() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        Producto producto = new Producto();
-        producto.setId(productoId);
-        alumno.addFavoriteProduct(producto);
+    void executeWithValidDataShouldRemoveFavoriteAndSave() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Alumno student = new Alumno();
+        student.setId(studentId);
+        Producto product = new Producto();
+        product.setId(productId);
+        student.addFavoriteProduct(product);
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
 
-        removeFavoriteProduct.execute(alumnoId, productoId);
+        removeFavoriteProduct.execute(studentId, productId);
 
-        assertFalse(alumno.getProductosFavoritos().contains(producto));
-        verify(alumnoRepository, times(1)).save(alumno);
+        assertFalse(student.getProductosFavoritos().contains(product));
+        verify(alumnoRepository, times(1)).save(student);
     }
 
     @Test
-    void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
+    void executeWhenStudentDoesNotExistShouldThrowException() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                removeFavoriteProduct.execute(alumnoId, productoId)
+                removeFavoriteProduct.execute(studentId, productId)
         );
 
         verify(alumnoRepository, never()).save(any());

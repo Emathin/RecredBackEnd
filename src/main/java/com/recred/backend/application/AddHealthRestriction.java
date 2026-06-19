@@ -26,7 +26,7 @@ public class AddHealthRestriction {
                 .orElseThrow(() -> new IllegalArgumentException
                         ("La clasificación médica no existe."));
 
-        student.agregarRestriccionSalud(classification);
+        student.addHealthRestriction(classification);
 
         alumnoRepository.save(student);
     }

@@ -34,50 +34,50 @@ class AlumnoTest {
     }
 
     @Test
-    void agregarRestriccionSalud_NuevaRestriccion_DeberiaAgregarse() {
-        alumno.agregarRestriccionSalud(clasificacion);
+    void addHealthRestriction_NewRestriction_ShouldBeAdded() {
+        alumno.addHealthRestriction(clasificacion);
 
         assertEquals(1, alumno.getRestriccionesSalud().size());
         assertTrue(alumno.getRestriccionesSalud().contains(clasificacion));
     }
 
     @Test
-    void agregarRestriccionSalud_RestriccionDuplicada_NoDeberiaAgregarse() {
-        alumno.agregarRestriccionSalud(clasificacion);
+    void addHealthRestriction_DuplicateRestriction_ShouldNotBeAdded() {
+        alumno.addHealthRestriction(clasificacion);
 
-        alumno.agregarRestriccionSalud(clasificacion);
+        alumno.addHealthRestriction(clasificacion);
 
         ClasificacionSalud clasificacionDuplicada = new ClasificacionSalud();
         clasificacionDuplicada.setId(clasificacionId);
         clasificacionDuplicada.setDescripcion("Celíaco Modificado");
 
-        alumno.agregarRestriccionSalud(clasificacionDuplicada);
+        alumno.addHealthRestriction(clasificacionDuplicada);
 
         assertEquals(1, alumno.getRestriccionesSalud().size());
     }
 
     @Test
-    void agregarRestriccionSalud_Nulo_NoDeberiaHacerNada() {
-        alumno.agregarRestriccionSalud(null);
+    void addHealthRestriction_NullRestriction_ShouldDoNothing() {
+        alumno.addHealthRestriction(null);
 
         assertEquals(0, alumno.getRestriccionesSalud().size());
     }
 
     @Test
-    void removerRestriccionSalud_RestriccionExistente_DeberiaRemoverse() {
-        alumno.agregarRestriccionSalud(clasificacion);
+    void removeHealthRestriction_ExistingRestriction_ShouldBeRemoved() {
+        alumno.addHealthRestriction(clasificacion);
         assertEquals(1, alumno.getRestriccionesSalud().size());
 
-        alumno.removerRestriccionSalud(clasificacionId);
+        alumno.removeHealthRestriction(clasificacionId);
 
         assertEquals(0, alumno.getRestriccionesSalud().size());
     }
 
     @Test
-    void removerRestriccionSalud_RestriccionNoExistente_NoDeberiaHacerNada() {
-        alumno.agregarRestriccionSalud(clasificacion);
+    void removeHealthRestriction_MissingRestriction_ShouldDoNothing() {
+        alumno.addHealthRestriction(clasificacion);
 
-        alumno.removerRestriccionSalud(UUID.randomUUID());
+        alumno.removeHealthRestriction(UUID.randomUUID());
 
         assertEquals(1, alumno.getRestriccionesSalud().size());
     }
@@ -88,7 +88,7 @@ class AlumnoTest {
         Producto producto = new Producto();
         producto.setId(UUID.randomUUID());
 
-        alumno.bloquearProducto(producto);
+        alumno.blockProduct(producto);
 
         assertEquals(1, alumno.getProductosBloqueados().size());
         assertTrue(alumno.getProductosBloqueados().contains(producto));
@@ -100,28 +100,28 @@ class AlumnoTest {
         Producto producto = new Producto();
         producto.setId(UUID.randomUUID());
 
-        alumno.bloquearProducto(producto);
-        alumno.bloquearProducto(producto);
+        alumno.blockProduct(producto);
+        alumno.blockProduct(producto);
 
         assertEquals(1, alumno.getProductosBloqueados().size());
     }
 
     @Test
-    void dadoUnProductoBloqueado_cuandoDesbloquearProducto_entoncesSeEliminaDeLaLista() {
+    void givenBlockedProduct_whenUnblockProduct_thenItIsRemovedFromList() {
         Alumno alumno = new Alumno();
         UUID productoId = UUID.randomUUID();
         Producto producto = new Producto();
         producto.setId(productoId);
 
-        alumno.bloquearProducto(producto);
-        alumno.desbloquearProducto(productoId);
+        alumno.blockProduct(producto);
+        alumno.unblockProduct(productoId);
 
         assertTrue(alumno.getProductosBloqueados().isEmpty());
     }
 
     @Test
     void dadoProductoNulo_cuandoBloquearProducto_entoncesNoHaceNada() {
-        alumno.bloquearProducto(null);
+        alumno.blockProduct(null);
 
         assertTrue(alumno.getProductosBloqueados().isEmpty());
     }
@@ -163,18 +163,18 @@ class AlumnoTest {
     }
 
     @Test
-    void dadoRestriccionHoraria_cuandoAgregarYRemover_entoncesActualizaColeccion() {
-        RestriccionHoraria restriccion = new RestriccionHoraria();
+    void givenTimeRestriction_whenAddAndRemove_thenUpdatesCollection() {
+        RestriccionHoraria restriction = new RestriccionHoraria();
 
-        alumno.agregarRestriccionHoraria(restriccion);
-        alumno.removerRestriccionHoraria(restriccion);
+        alumno.addTimeRestriction(restriction);
+        alumno.removeTimeRestriction(restriction);
 
         assertTrue(alumno.getRestriccionesHorarias().isEmpty());
     }
 
     @Test
-    void dadoAlumnoActivo_cuandoDarDeBaja_entoncesQuedaInactivo() {
-        alumno.darDeBaja();
+    void givenActiveStudent_whenDeactivate_thenBecomesInactive() {
+        alumno.deactivate();
 
         assertEquals(false, alumno.getActivo());
     }

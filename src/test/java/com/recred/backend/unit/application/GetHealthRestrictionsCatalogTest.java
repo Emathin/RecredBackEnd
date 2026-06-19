@@ -11,8 +11,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GetHealthRestrictionsCatalogTest {
@@ -24,13 +25,13 @@ class GetHealthRestrictionsCatalogTest {
     private GetHealthRestrictionsCatalog useCase;
 
     @Test
-    void ejecutar_DeberiaRetornarListaDelRepositorio() {
+    void executeShouldReturnRepositoryList() {
         ClasificacionSalud item = new ClasificacionSalud();
         when(repository.findAll()).thenReturn(List.of(item));
 
-        List<ClasificacionSalud> resultado = useCase.ejecutar();
+        List<ClasificacionSalud> result = useCase.execute();
 
-        assertEquals(1, resultado.size());
+        assertEquals(1, result.size());
         verify(repository).findAll();
     }
 }

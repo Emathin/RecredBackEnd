@@ -29,27 +29,27 @@ class UnblockProductManuallyTest {
     private UnblockProductManually unblockProductManually;
 
     @Test
-    void dadoAlumnoValido_cuandoExecute_entoncesDesbloqueaYGuarda() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
+    void executeWithValidStudentShouldUnblockAndSave() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Alumno student = new Alumno();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
 
-        unblockProductManually.execute(alumnoId, productoId);
+        unblockProductManually.execute(studentId, productId);
 
-        verify(alumnoRepository, times(1)).save(alumno);
+        verify(alumnoRepository, times(1)).save(student);
     }
 
     @Test
-    void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
+    void executeWhenStudentDoesNotExistShouldThrowException() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                unblockProductManually.execute(alumnoId, productoId)
+                unblockProductManually.execute(studentId, productId)
         );
 
         verify(alumnoRepository, never()).save(any());

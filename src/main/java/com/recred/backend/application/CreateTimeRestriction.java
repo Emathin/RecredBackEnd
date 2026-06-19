@@ -1,15 +1,14 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.RestriccionHoraria;
-import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
-
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.repositories.UsuarioRepository;
-import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.repositories.UsuarioRepository;
 
 import java.util.List;
 
@@ -36,18 +35,18 @@ public class CreateTimeRestriction {
                 .orElseThrow(() -> new IllegalArgumentException("Alumno no encontrado"));
 
         if (command.classificationId() != null) {
-            boolean saludGlobalActiva = alumno.getRestriccionesSalud().stream()
+            boolean hasGlobalHealthRestriction = alumno.getRestriccionesSalud().stream()
                     .anyMatch(r -> r.getId().equals(command.classificationId()));
-            if (saludGlobalActiva) {
+            if (hasGlobalHealthRestriction) {
                 throw new IllegalArgumentException(
                         "El alumno ya posee esta restricción de salud asignada globalmente.");
             }
         }
 
-        List<RestriccionHoraria> restriccionesActuales = 
+        List<RestriccionHoraria> currentRestrictions =
                 repository.findAllByAlumnoEntityId(command.studentId());
         
-        boolean yaExiste = restriccionesActuales.stream().anyMatch(r -> 
+        boolean alreadyExists = currentRestrictions.stream().anyMatch(r ->
             r.isActiva() &&
             r.getFranjaHoraria() != null && 
             r.getFranjaHoraria().getId().equals(command.timeSlotId()) &&
@@ -59,7 +58,7 @@ public class CreateTimeRestriction {
               r.getClasificacionSalud().getId().equals(command.classificationId())))
         );
 
-        if (yaExiste) {
+        if (alreadyExists) {
             throw new IllegalArgumentException(
                     "El alumno ya posee una restricción activa para esta " +
                     "categoría o tipo en la franja horaria seleccionada.");

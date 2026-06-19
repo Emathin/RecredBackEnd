@@ -16,7 +16,7 @@ public class KiosqueroRepositoryImpl implements KiosqueroRepository {
 
     private final SpringDataKiosqueroRepository springDataKiosqueroRepository;
 
-    public KiosqueroRepositoryImpl(SpringDataKiosqueroRepository springDataKiosqueroRepository){
+    public KiosqueroRepositoryImpl(SpringDataKiosqueroRepository springDataKiosqueroRepository) {
         this.springDataKiosqueroRepository = springDataKiosqueroRepository;
     }
 
@@ -38,9 +38,9 @@ public class KiosqueroRepositoryImpl implements KiosqueroRepository {
     @Override
     @Transactional(readOnly = true)
     public List<Kiosquero> findAll() {
-        List<Kiosquero> kiosqueros = springDataKiosqueroRepository.findAll()
-                .stream().map(KiosqueroEntity::toDomain).collect(toList());
-
-        return kiosqueros;
+        return springDataKiosqueroRepository.findAll()
+                .stream()
+                .map(KiosqueroEntity::toDomain)
+                .collect(toList());
     }
 }

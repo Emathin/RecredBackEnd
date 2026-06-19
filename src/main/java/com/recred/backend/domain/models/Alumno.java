@@ -37,59 +37,59 @@ public class Alumno {
         this.restriccionesSalud = restriccionesSalud != null ? restriccionesSalud : new HashSet<>();
     }
 
-    public void agregarRestriccionSalud(ClasificacionSalud restriccion) {
-        if (restriccion != null) {
-            boolean yaExiste = this.restriccionesSalud.stream()
-                    .anyMatch(r -> r.getId().equals(restriccion.getId()));
+    public void addHealthRestriction(ClasificacionSalud restriction) {
+        if (restriction != null) {
+            boolean alreadyExists = this.restriccionesSalud.stream()
+                    .anyMatch(r -> r.getId().equals(restriction.getId()));
 
-            if (!yaExiste) {
-                this.restriccionesSalud.add(restriccion);
+            if (!alreadyExists) {
+                this.restriccionesSalud.add(restriction);
             }
         }
     }
 
-    public void removerRestriccionSalud(UUID restriccionId) {
-        this.restriccionesSalud.removeIf(r -> r.getId().equals(restriccionId));
+    public void removeHealthRestriction(UUID restrictionId) {
+        this.restriccionesSalud.removeIf(r -> r.getId().equals(restrictionId));
     }
 
-    public void agregarRestriccionHoraria(RestriccionHoraria restriccion) {
-        this.restriccionesHorarias.add(restriccion);
+    public void addTimeRestriction(RestriccionHoraria restriction) {
+        this.restriccionesHorarias.add(restriction);
     }
 
-    public void removerRestriccionHoraria(RestriccionHoraria restriccion) {
-        this.restriccionesHorarias.remove(restriccion);
+    public void removeTimeRestriction(RestriccionHoraria restriction) {
+        this.restriccionesHorarias.remove(restriction);
     }
 
-    public void darDeBaja() {
+    public void deactivate() {
         this.activo = false;
     }
 
-    public void bloquearProducto(Producto producto) {
-        if (producto != null) {
-            boolean yaExiste = this.productosBloqueados.stream()
-                    .anyMatch(p -> p.getId().equals(producto.getId()));
-            if (!yaExiste) {
-                this.productosBloqueados.add(producto);
+    public void blockProduct(Producto product) {
+        if (product != null) {
+            boolean alreadyExists = this.productosBloqueados.stream()
+                    .anyMatch(p -> p.getId().equals(product.getId()));
+            if (!alreadyExists) {
+                this.productosBloqueados.add(product);
             }
         }
     }
 
-    public void desbloquearProducto(UUID productoId) {
-        this.productosBloqueados.removeIf(p -> p.getId().equals(productoId));
+    public void unblockProduct(UUID productId) {
+        this.productosBloqueados.removeIf(p -> p.getId().equals(productId));
     }
 
-    public void addFavoriteProduct(Producto producto) {
-        if (producto != null) {
-            boolean yaExiste = this.productosFavoritos.stream()
-                    .anyMatch(p -> p.getId().equals(producto.getId()));
-            if (!yaExiste) {
-                this.productosFavoritos.add(producto);
+    public void addFavoriteProduct(Producto product) {
+        if (product != null) {
+            boolean alreadyExists = this.productosFavoritos.stream()
+                    .anyMatch(p -> p.getId().equals(product.getId()));
+            if (!alreadyExists) {
+                this.productosFavoritos.add(product);
             }
         }
     }
 
-    public void removeFavoriteProduct(UUID productoId) {
-        this.productosFavoritos.removeIf(p -> p.getId().equals(productoId));
+    public void removeFavoriteProduct(UUID productId) {
+        this.productosFavoritos.removeIf(p -> p.getId().equals(productId));
     }
 
     public void addRewardPoints(int points) {

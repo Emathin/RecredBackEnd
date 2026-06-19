@@ -35,32 +35,32 @@ class AddFavoriteProductTest {
     private AddFavoriteProduct addFavoriteProduct;
 
     @Test
-    void dadoDatosValidos_cuandoExecute_entoncesAgregaFavoritoYGuarda() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        Producto producto = new Producto();
-        producto.setId(productoId);
+    void executeWithValidDataShouldAddFavoriteAndSave() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Alumno student = new Alumno();
+        student.setId(studentId);
+        Producto product = new Producto();
+        product.setId(productId);
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(productRepository.findById(productoId)).thenReturn(Optional.of(producto));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
 
-        addFavoriteProduct.execute(alumnoId, productoId);
+        addFavoriteProduct.execute(studentId, productId);
 
-        assertTrue(alumno.getProductosFavoritos().contains(producto));
-        verify(alumnoRepository, times(1)).save(alumno);
+        assertTrue(student.getProductosFavoritos().contains(product));
+        verify(alumnoRepository, times(1)).save(student);
     }
 
     @Test
-    void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
+    void executeWhenStudentDoesNotExistShouldThrowException() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                addFavoriteProduct.execute(alumnoId, productoId)
+                addFavoriteProduct.execute(studentId, productId)
         );
 
         verify(productRepository, never()).findById(any());
@@ -68,17 +68,17 @@ class AddFavoriteProductTest {
     }
 
     @Test
-    void dadoProductoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
+    void executeWhenProductDoesNotExistShouldThrowException() {
+        UUID studentId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Alumno student = new Alumno();
+        student.setId(studentId);
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(productRepository.findById(productoId)).thenReturn(Optional.empty());
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                addFavoriteProduct.execute(alumnoId, productoId)
+                addFavoriteProduct.execute(studentId, productId)
         );
 
         verify(alumnoRepository, never()).save(any());

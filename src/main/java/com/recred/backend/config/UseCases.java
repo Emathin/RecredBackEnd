@@ -643,26 +643,26 @@ public class UseCases {
     }
 
     @Bean
-    public GetHealthRestrictions obtenerRestriccionesSalud(
+    public GetHealthRestrictions getHealthRestrictions(
             AlumnoRepository alumnoRepository) {
         return new GetHealthRestrictions(alumnoRepository);
     }
 
     @Bean
-    public AddHealthRestriction agregarRestriccionSalud(
+    public AddHealthRestriction addHealthRestriction(
             AlumnoRepository alumnoRepository,
             ClasificacionSaludRepository clasificacionRepository) {
         return new AddHealthRestriction(alumnoRepository, clasificacionRepository);
     }
 
     @Bean
-    public RemoveHealthRestrictions eliminarRestriccionSalud(
+    public RemoveHealthRestrictions removeHealthRestriction(
             AlumnoRepository alumnoRepository) {
         return new RemoveHealthRestrictions(alumnoRepository);
     }
 
     @Bean
-    public GetHealthRestrictionsCatalog obtenerCatalogoRestriccionesSalud(
+    public GetHealthRestrictionsCatalog getHealthRestrictionsCatalog(
             ClasificacionSaludRepository clasificacionSaludRepository) {
         return new GetHealthRestrictionsCatalog(clasificacionSaludRepository);
     }

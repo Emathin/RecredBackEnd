@@ -94,7 +94,7 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void actualizarRestriccionesSalud_DeberiaRetornar200Ok() throws Exception {
+    void updateHealthRestrictionsShouldReturnOk() throws Exception {
         ActualizarRestriccionesDTO dto = new ActualizarRestriccionesDTO();
         dto.setClasificacionesIds(List.of(clasificacionId));
 
@@ -107,12 +107,12 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void obtenerRestriccionesSalud_DeberiaRetornarListaY200Ok() throws Exception {
+    void getHealthRestrictionsShouldReturnListAndOk() throws Exception {
         ClasificacionSalud clasificacion = new ClasificacionSalud();
         clasificacion.setId(clasificacionId);
         clasificacion.setDescripcion("Celíaco");
 
-        when(getHealthRestrictions.ejecutar(alumnoId)).thenReturn(Set.of(clasificacion));
+        when(getHealthRestrictions.execute(alumnoId)).thenReturn(Set.of(clasificacion));
 
         mockMvc.perform(get("/api/v1/control-parental/alumnos/{alumnoId}/obtener-restricciones-salud", alumnoId)
                         .contentType(MediaType.APPLICATION_JSON))
@@ -120,11 +120,11 @@ class ControlParentalControllerTest {
                 .andExpect(jsonPath("$[0].id").value(clasificacionId.toString()))
                 .andExpect(jsonPath("$[0].descripcion").value("Celíaco"));
 
-        verify(getHealthRestrictions).ejecutar(alumnoId);
+        verify(getHealthRestrictions).execute(alumnoId);
     }
 
     @Test
-    void agregarRestriccionSalud_DeberiaRetornar200Ok() throws Exception {
+    void addHealthRestrictionShouldReturnOk() throws Exception {
         mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}", alumnoId, clasificacionId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
@@ -133,12 +133,12 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void removerRestriccionSalud_DeberiaRetornar204NoContent() throws Exception {
+    void removeHealthRestrictionShouldReturnNoContent() throws Exception {
         mockMvc.perform(delete("/api/v1/control-parental/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}", alumnoId, clasificacionId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
 
-        verify(removeHealthRestrictions).ejecutar(alumnoId, clasificacionId);
+        verify(removeHealthRestrictions).execute(alumnoId, clasificacionId);
     }
     @Test
     void returnAcceptedWhenPreferenceAnalysisIsTriggered() throws Exception {
@@ -164,7 +164,7 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void cuandoSeHacePostParaBloquear_entoncesRetorna200Ok() throws Exception {
+    void blockProductShouldReturnOk() throws Exception {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
 
@@ -175,7 +175,7 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void cuandoSeHaceDeleteParaDesbloquear_entoncesRetorna200Ok() throws Exception {
+    void unblockProductShouldReturnOk() throws Exception {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
 

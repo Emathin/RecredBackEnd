@@ -70,7 +70,7 @@ class AlumnoRepositoryImplTest {
         ClasificacionSalud clasificacion = new ClasificacionSalud();
         clasificacion.setId(clasificacionId);
         clasificacion.setDescripcion("Celíaco");
-        alumnoDominio.agregarRestriccionSalud(clasificacion);
+        alumnoDominio.addHealthRestriction(clasificacion);
 
         Producto productoFav = new Producto();
         productoFav.setId(UUID.randomUUID());
@@ -78,7 +78,7 @@ class AlumnoRepositoryImplTest {
 
         Producto productoBloq = new Producto();
         productoBloq.setId(UUID.randomUUID());
-        alumnoDominio.bloquearProducto(productoBloq);
+        alumnoDominio.blockProduct(productoBloq);
 
         when(springDataRepository.save(any(AlumnoEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

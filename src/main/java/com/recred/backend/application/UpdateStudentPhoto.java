@@ -26,7 +26,7 @@ public class UpdateStudentPhoto {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public Alumno execute(String parentCognitoSubject, UUID alumnoId, String urlFotoPerfil) {
+    public Alumno execute(String parentCognitoSubject, UUID studentId, String profilePhotoUrl) {
         Usuario parent = usuarioRepository.findByIdCognito(parentCognitoSubject)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Usuario autenticado no encontrado"));
@@ -39,22 +39,22 @@ public class UpdateStudentPhoto {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Tutor no encontrado para el usuario autenticado"));
 
-        Alumno alumno = alumnoRepository.findById(alumnoId)
-                .orElseThrow(() -> new AlumnoNoEncontradoException(alumnoId));
+        Alumno student = alumnoRepository.findById(studentId)
+                .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
 
-        boolean esHijo = tutor.getHijos().stream()
-                .anyMatch(hijo -> hijo.getId().equals(alumnoId));
+        boolean isChild = tutor.getHijos().stream()
+                .anyMatch(child -> child.getId().equals(studentId));
 
-        if (!esHijo) {
+        if (!isChild) {
             throw new AccessDeniedException(
                     "El alumno no pertenece al tutor autenticado");
         }
 
-        String idCognitoAlumno = alumno.getUsuario().getIdCognito();
-        usuarioRepository.updateFotoPerfil(idCognitoAlumno, urlFotoPerfil);
+        String studentCognitoId = student.getUsuario().getIdCognito();
+        usuarioRepository.updateFotoPerfil(studentCognitoId, profilePhotoUrl);
 
-        alumno.getUsuario().setUrlFotoPerfil(urlFotoPerfil);
+        student.getUsuario().setUrlFotoPerfil(profilePhotoUrl);
 
-        return alumno;
+        return student;
     }
 }

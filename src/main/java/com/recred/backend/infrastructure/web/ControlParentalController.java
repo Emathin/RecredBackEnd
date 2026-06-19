@@ -27,31 +27,31 @@ import java.util.stream.Collectors;
 public class ControlParentalController {
 
     private final ManageRestrictions useCase;
-    private final GetHealthRestrictions obtenerRestriccionesUseCase;
+    private final GetHealthRestrictions getHealthRestrictions;
     private final AddHealthRestriction addHealthRestriction;
     private final RemoveHealthRestrictions removeHealthRestrictions;
-    private final DetectStudentPreferences detectarPreferenciasUseCase;
+    private final DetectStudentPreferences detectStudentPreferences;
     private final BlockProductManually blockProductManually;
     private final UnblockProductManually unblockProductManually;
 
     public ControlParentalController(ManageRestrictions useCase,
-                                     GetHealthRestrictions obtenerRestriccionesUseCase,
+                                     GetHealthRestrictions getHealthRestrictions,
                                      AddHealthRestriction addHealthRestriction,
                                      RemoveHealthRestrictions removeHealthRestrictions,
-                                     DetectStudentPreferences detectarPreferenciasUseCase,
+                                     DetectStudentPreferences detectStudentPreferences,
                                      BlockProductManually blockProductManually,
                                      UnblockProductManually unblockProductManually) {
         this.useCase = useCase;
-        this.obtenerRestriccionesUseCase = obtenerRestriccionesUseCase;
+        this.getHealthRestrictions = getHealthRestrictions;
         this.addHealthRestriction = addHealthRestriction;
         this.removeHealthRestrictions = removeHealthRestrictions;
-        this.detectarPreferenciasUseCase = detectarPreferenciasUseCase;
+        this.detectStudentPreferences = detectStudentPreferences;
         this.blockProductManually = blockProductManually;
         this.unblockProductManually = unblockProductManually;
     }
 
     @PutMapping("/alumnos/{alumnoId}/actualizar-restricciones-salud")
-    public ResponseEntity<Void> actualizarRestriccionesSalud(
+    public ResponseEntity<Void> updateHealthRestrictions(
             @PathVariable UUID alumnoId,
             @RequestBody ActualizarRestriccionesDTO dto) {
 
@@ -60,19 +60,19 @@ public class ControlParentalController {
     }
 
     @GetMapping("/alumnos/{alumnoId}/obtener-restricciones-salud")
-    public ResponseEntity<List<ClasificacionSaludDTO>> obtenerRestriccionesSalud (
+    public ResponseEntity<List<ClasificacionSaludDTO>> getHealthRestrictions(
             @PathVariable UUID alumnoId) {
 
-        var restriccionesDominio = obtenerRestriccionesUseCase.ejecutar(alumnoId);
-        List<ClasificacionSaludDTO> respuesta = restriccionesDominio.stream()
+        var domainRestrictions = getHealthRestrictions.execute(alumnoId);
+        List<ClasificacionSaludDTO> response = domainRestrictions.stream()
                 .map(ClasificacionSaludDTO::fromDomain)
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(respuesta);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}")
-    public ResponseEntity<Void> agregarRestriccionSalud(
+    public ResponseEntity<Void> addHealthRestriction(
             @PathVariable UUID alumnoId,
             @PathVariable UUID clasificacionId) {
 
@@ -81,23 +81,23 @@ public class ControlParentalController {
     }
 
     @DeleteMapping("/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}")
-    public ResponseEntity<Void> removerRestriccionSalud(
+    public ResponseEntity<Void> removeHealthRestriction(
             @PathVariable UUID alumnoId,
             @PathVariable UUID clasificacionId) {
-        removeHealthRestrictions.ejecutar(alumnoId, clasificacionId);
+        removeHealthRestrictions.execute(alumnoId, clasificacionId);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/alumnos/{alumnoId}/analizar-preferencias")
-    public ResponseEntity<Void> analizarPreferencias(
+    public ResponseEntity<Void> analyzePreferences(
             @PathVariable UUID alumnoId,
             @RequestParam UUID buffetId) {
-        detectarPreferenciasUseCase.execute(alumnoId, buffetId);
+        detectStudentPreferences.execute(alumnoId, buffetId);
         return ResponseEntity.accepted().build();
     }
 
     @PostMapping("/alumnos/{alumnoId}/productos-bloqueados/{productoId}")
-    public ResponseEntity<Void> bloquearProducto(
+    public ResponseEntity<Void> blockProduct(
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId) {
 
@@ -106,7 +106,7 @@ public class ControlParentalController {
     }
 
     @DeleteMapping("/alumnos/{alumnoId}/productos-bloqueados/{productoId}")
-    public ResponseEntity<Void> desbloquearProducto(
+    public ResponseEntity<Void> unblockProduct(
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId) {
 

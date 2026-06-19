@@ -15,8 +15,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GetHealthRestrictionsTest {
@@ -27,39 +30,39 @@ class GetHealthRestrictionsTest {
     @InjectMocks
     private GetHealthRestrictions useCase;
 
-    private UUID alumnoId;
-    private Alumno alumno;
+    private UUID studentId;
+    private Alumno student;
 
     @BeforeEach
     void setUp() {
-        alumnoId = UUID.randomUUID();
-        alumno = new Alumno();
-        alumno.setId(alumnoId);
+        studentId = UUID.randomUUID();
+        student = new Alumno();
+        student.setId(studentId);
     }
 
     @Test
-    void ejecutar_CuandoAlumnoExiste_DeberiaRetornarRestricciones() {
-        ClasificacionSalud clasificacion = new ClasificacionSalud();
-        clasificacion.setId(UUID.randomUUID());
-        alumno.getRestriccionesSalud().add(clasificacion);
+    void executeWhenStudentExistsShouldReturnRestrictions() {
+        ClasificacionSalud classification = new ClasificacionSalud();
+        classification.setId(UUID.randomUUID());
+        student.getRestriccionesSalud().add(classification);
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
 
-        Set<ClasificacionSalud> resultado = useCase.ejecutar(alumnoId);
+        Set<ClasificacionSalud> result = useCase.execute(studentId);
 
-        assertNotNull(resultado);
-        assertEquals(1, resultado.size());
-        assertTrue(resultado.contains(clasificacion));
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertTrue(result.contains(classification));
     }
 
     @Test
-    void ejecutar_CuandoAlumnoNoExiste_DeberiaLanzarExcepcion() {
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+    void executeWhenStudentDoesNotExistShouldThrowException() {
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.ejecutar(alumnoId);
+            useCase.execute(studentId);
         });
 
-        assertEquals("El alumno con ID " + alumnoId + " no existe.", exception.getMessage());
+        assertEquals("El alumno con ID " + studentId + " no existe.", exception.getMessage());
     }
 }

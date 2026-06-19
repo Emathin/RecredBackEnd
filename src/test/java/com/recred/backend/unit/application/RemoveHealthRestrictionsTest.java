@@ -13,8 +13,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RemoveHealthRestrictionsTest {
@@ -25,34 +30,34 @@ class RemoveHealthRestrictionsTest {
     @InjectMocks
     private RemoveHealthRestrictions useCase;
 
-    private UUID alumnoId;
-    private UUID clasificacionId;
-    private Alumno alumno;
+    private UUID studentId;
+    private UUID classificationId;
+    private Alumno student;
 
     @BeforeEach
     void setUp() {
-        alumnoId = UUID.randomUUID();
-        clasificacionId = UUID.randomUUID();
+        studentId = UUID.randomUUID();
+        classificationId = UUID.randomUUID();
 
-        alumno = mock(Alumno.class);
+        student = mock(Alumno.class);
     }
 
     @Test
-    void ejecutar_ConDatosValidos_DeberiaRemoverYGuardar() {
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+    void executeWithValidDataShouldRemoveAndSave() {
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
 
-        useCase.ejecutar(alumnoId, clasificacionId);
+        useCase.execute(studentId, classificationId);
 
-        verify(alumno).removerRestriccionSalud(clasificacionId);
-        verify(alumnoRepository).save(alumno);
+        verify(student).removeHealthRestriction(classificationId);
+        verify(alumnoRepository).save(student);
     }
 
     @Test
-    void ejecutar_CuandoAlumnoNoExiste_DeberiaLanzarExcepcion() {
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+    void executeWhenStudentDoesNotExistShouldThrowException() {
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.ejecutar(alumnoId, clasificacionId);
+            useCase.execute(studentId, classificationId);
         });
 
         assertEquals("El alumno no existe.", exception.getMessage());

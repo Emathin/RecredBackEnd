@@ -15,14 +15,12 @@ public class GetHealthRestrictions {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public Set<ClasificacionSalud> ejecutar(UUID alumnoId) {
+    public Set<ClasificacionSalud> execute(UUID alumnoId) {
 
         Alumno alumno = alumnoRepository.findById(alumnoId)
                 .orElseThrow(() -> new IllegalArgumentException("El alumno con ID " + alumnoId +
                         " no existe."));
 
-        Set<ClasificacionSalud> restricciones = alumno.getRestriccionesSalud();
-
-        return restricciones;
+        return alumno.getRestriccionesSalud();
     }
 }

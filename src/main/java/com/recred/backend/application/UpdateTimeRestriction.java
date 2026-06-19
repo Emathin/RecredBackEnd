@@ -1,12 +1,12 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.RestriccionHoraria;
-import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
-import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 
 import java.util.UUID;
 
@@ -30,9 +30,9 @@ public class UpdateTimeRestriction {
                 .orElseThrow(() -> new IllegalArgumentException("Alumno no encontrado"));
 
         if (command.classificationId() != null) {
-            boolean saludGlobalActiva = alumno.getRestriccionesSalud().stream()
+            boolean hasGlobalHealthRestriction = alumno.getRestriccionesSalud().stream()
                     .anyMatch(r -> r.getId().equals(command.classificationId()));
-            if (saludGlobalActiva) {
+            if (hasGlobalHealthRestriction) {
                 throw new IllegalArgumentException(
                         "El alumno ya posee esta restricción de salud asignada globalmente.");
             }

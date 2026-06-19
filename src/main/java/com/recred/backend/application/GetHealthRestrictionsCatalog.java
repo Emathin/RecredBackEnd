@@ -13,7 +13,7 @@ public class GetHealthRestrictionsCatalog {
         this.repository = repository;
     }
 
-    public List<ClasificacionSalud> ejecutar() {
+    public List<ClasificacionSalud> execute() {
         return repository.findAll();
     }
 }

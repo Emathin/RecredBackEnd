@@ -15,11 +15,11 @@ public class UnblockProductManually {
     }
 
     @Transactional
-    public void execute(UUID alumnoId, UUID productoId) {
-        Alumno alumno = alumnoRepository.findById(alumnoId)
+    public void execute(UUID studentId, UUID productId) {
+        Alumno student = alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
-        alumno.desbloquearProducto(productoId);
-        alumnoRepository.save(alumno);
+        student.unblockProduct(productId);
+        alumnoRepository.save(student);
     }
 }

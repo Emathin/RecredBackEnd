@@ -50,7 +50,7 @@ public class AddProductRecommendation {
     public void execute() {
 
         List<Producto> bestSoldProducts = productRepository.findBestSoldProducts();
-        List<Kiosquero> kiosqueros = kiosqueroRepository.findAll();
+        List<Kiosquero> kiosqueroUsers = kiosqueroRepository.findAll();
         LocalDateTime since = LocalDateTime.now().minusMonths(1);
 
         for (Producto product : bestSoldProducts) {
@@ -68,12 +68,12 @@ public class AddProductRecommendation {
                     productStatisticsRepository
                             .calculateTotalRevenueByProduct(product.getId(), since));
             
-            for (Kiosquero kiosquero : kiosqueros) {
+            for (Kiosquero kiosquero : kiosqueroUsers) {
                 UUID buffetId = kiosqueroRepository.findBuffetById(kiosquero.getId());
-                if(buffetId != null && !this.alreadyInStock(product, buffetId)){
+                if (buffetId != null && !this.alreadyInStock(product, buffetId)) {
 
                     aiEventRepository
-                            .registerProductAdditionRecommendation(product, kiosquero,buffetId);
+                            .registerProductAdditionRecommendation(product, kiosquero, buffetId);
 
                     SugerenciaIA suggestion = SugerenciaIA.builder()
                             .tipo(TipoSugerenciaIA.AGREGAR_PRODUCTO)
@@ -94,7 +94,7 @@ public class AddProductRecommendation {
 
     }
 
-    private boolean alreadyInStock(Producto product,UUID buffetId) {
-        return inventoryRepository.checkIfProductIsInStock(product.getId(),buffetId);
+    private boolean alreadyInStock(Producto product, UUID buffetId) {
+        return inventoryRepository.checkIfProductIsInStock(product.getId(), buffetId);
     }
 }

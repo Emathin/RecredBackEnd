@@ -13,15 +13,15 @@ import java.util.List;
 @RequestMapping("/api/v1/clasificaciones-salud")
 public class ClasificacionSaludController {
 
-    private final GetHealthRestrictionsCatalog obtenerCatalogo;
+    private final GetHealthRestrictionsCatalog getHealthRestrictionsCatalog;
 
-    public ClasificacionSaludController(GetHealthRestrictionsCatalog obtenerCatalogo) {
-        this.obtenerCatalogo = obtenerCatalogo;
+    public ClasificacionSaludController(GetHealthRestrictionsCatalog getHealthRestrictionsCatalog) {
+        this.getHealthRestrictionsCatalog = getHealthRestrictionsCatalog;
     }
 
     @GetMapping
-    public ResponseEntity<List<ClasificacionSalud>> obtenerCatalogo() {
-        List<ClasificacionSalud> catalogo = obtenerCatalogo.ejecutar();
-        return ResponseEntity.ok(catalogo);
+    public ResponseEntity<List<ClasificacionSalud>> getCatalog() {
+        List<ClasificacionSalud> catalog = getHealthRestrictionsCatalog.execute();
+        return ResponseEntity.ok(catalog);
     }
 }

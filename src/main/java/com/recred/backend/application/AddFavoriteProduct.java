@@ -14,20 +14,20 @@ public class AddFavoriteProduct {
     private final ProductRepository productRepository;
 
     public AddFavoriteProduct(AlumnoRepository alumnoRepository,
-                                  ProductRepository productRepository) {
+                              ProductRepository productRepository) {
         this.alumnoRepository = alumnoRepository;
         this.productRepository = productRepository;
     }
 
     @Transactional
-    public void execute(UUID alumnoId, UUID productoId) {
-        Alumno alumno = alumnoRepository.findById(alumnoId)
+    public void execute(UUID studentId, UUID productId) {
+        Alumno student = alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
-        Producto producto = productRepository.findById(productoId)
+        Producto product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
-        alumno.addFavoriteProduct(producto);
-        alumnoRepository.save(alumno);
+        student.addFavoriteProduct(product);
+        alumnoRepository.save(student);
     }
 }
