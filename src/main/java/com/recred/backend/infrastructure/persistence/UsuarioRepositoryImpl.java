@@ -63,6 +63,7 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
         entity.setRol(usuario.getRol());
         entity.setAutenticadoConCognito(usuario.getAutenticadoConCognito());
         entity.setActivo(usuario.getActivo());
+        entity.setPlan(usuario.getPlan());
         entity.setUrlFotoPerfil(usuario.getUrlFotoPerfil());
 
         entity.setCreadoEn(usuario.getCreadoEn());

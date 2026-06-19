@@ -5,6 +5,7 @@ import com.recred.backend.domain.models.CarritoFavorito;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.CarritoFavoritoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -71,6 +72,15 @@ public class SaveCarritoFavorito {
                 throw new SecurityException("No autorizado para modificar este carrito");
             }
         } else {
+            if (usuario.getPlan() == TipoPlan.GRATUITO) {
+                var existingCarts = carritoFavoritoRepository
+                        .findByTutorIdAndFilters(tutor.getId(), null, null);
+                if (existingCarts.size() >= 3) {
+                    throw new IllegalArgumentException(
+                            "Límite de carritos favoritos alcanzado "
+                            + "para cuenta gratuita (máximo 3)");
+                }
+            }
             carrito = new CarritoFavorito();
             carrito.setTutor(tutor);
         }

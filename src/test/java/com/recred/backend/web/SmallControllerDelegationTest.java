@@ -67,7 +67,8 @@ class SmallControllerDelegationTest {
                 BigDecimal.TEN,
                 BigDecimal.ZERO,
                 null,
-                List.of()
+                List.of(),
+                "GRATUITO"
         );
         when(getTutorGlobalDashboard.executeByCognitoSubject("sub")).thenReturn(dashboard);
         TutorGlobalDashboardController controller =

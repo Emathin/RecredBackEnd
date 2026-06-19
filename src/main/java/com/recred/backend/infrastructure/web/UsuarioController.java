@@ -56,6 +56,7 @@ public class UsuarioController {
         response.put("nombre", usuario.getNombre());
         response.put("apellido", usuario.getApellido());
         response.put("rol", usuario.getRol() != null ? usuario.getRol().name() : "PENDIENTE");
+        response.put("plan", usuario.getPlan() != null ? usuario.getPlan().name() : "GRATUITO");
 
         if (usuario.getAlumno() != null) {
             response.put("alumnoId", usuario.getAlumno().getId());

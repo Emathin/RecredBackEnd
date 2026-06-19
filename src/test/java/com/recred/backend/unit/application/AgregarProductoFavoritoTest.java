@@ -3,8 +3,12 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.TutorRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,6 +31,9 @@ class AgregarProductoFavoritoTest {
 
     @Mock
     private ProductRepository productRepository;
+ 
+    @Mock
+    private TutorRepository tutorRepository;
 
     @InjectMocks
     private AgregarProductoFavorito agregarProductoFavorito;
@@ -79,5 +86,69 @@ class AgregarProductoFavoritoTest {
         );
 
         verify(alumnoRepository, never()).save(any());
+    }
+
+    @Test
+    void dadoPlanGratuitoYMasDe5Favoritos_cuandoExecute_entoncesLanzaExcepcion() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID productoId = UUID.randomUUID();
+        Alumno alumno = new Alumno();
+        alumno.setId(alumnoId);
+
+        for (int i = 0; i < 5; i++) {
+            Producto p = new Producto();
+            p.setId(UUID.randomUUID());
+            alumno.agregarProductoFavorito(p);
+        }
+
+        Producto nuevoProducto = new Producto();
+        nuevoProducto.setId(productoId);
+
+        Usuario usuario = new Usuario();
+        usuario.setPlan(TipoPlan.GRATUITO);
+        Tutor tutor = new Tutor();
+        tutor.setUsuario(usuario);
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findById(productoId)).thenReturn(Optional.of(nuevoProducto));
+        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(java.util.List.of(tutor));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                agregarProductoFavorito.execute(alumnoId, productoId)
+        );
+        assertEquals("Límite de productos favoritos alcanzado para cuenta gratuita (máximo 5)", exception.getMessage());
+        verify(alumnoRepository, never()).save(any());
+    }
+
+    @Test
+    void dadoPlanPremiumYMasDe5Favoritos_cuandoExecute_entoncesAgregaYGuarda() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID productoId = UUID.randomUUID();
+        Alumno alumno = new Alumno();
+        alumno.setId(alumnoId);
+
+        for (int i = 0; i < 5; i++) {
+            Producto p = new Producto();
+            p.setId(UUID.randomUUID());
+            alumno.agregarProductoFavorito(p);
+        }
+
+        Producto nuevoProducto = new Producto();
+        nuevoProducto.setId(productoId);
+
+        Usuario usuario = new Usuario();
+        usuario.setPlan(TipoPlan.PREMIUM);
+        Tutor tutor = new Tutor();
+        tutor.setUsuario(usuario);
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findById(productoId)).thenReturn(Optional.of(nuevoProducto));
+        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(java.util.List.of(tutor));
+
+        agregarProductoFavorito.execute(alumnoId, productoId);
+
+        assertTrue(alumno.getProductosFavoritos().contains(nuevoProducto));
+        assertEquals(6, alumno.getProductosFavoritos().size());
+        verify(alumnoRepository, times(1)).save(alumno);
     }
 }

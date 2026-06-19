@@ -5,6 +5,7 @@ import com.recred.backend.domain.models.CarritoFavorito;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.CarritoFavoritoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -305,6 +306,35 @@ class SaveCarritoFavoritoTest {
         ArgumentCaptor<CarritoFavorito> captor = ArgumentCaptor.forClass(CarritoFavorito.class);
         verify(carritoFavoritoRepository).save(captor.capture());
         assertEquals(3, captor.getValue().getItems().get(producto));
+    }
+
+    @Test
+    void executeShouldRejectNewCartWhenFreePlanLimitExceeded() {
+        Usuario usuario = usuario();
+        usuario.setPlan(TipoPlan.GRATUITO);
+        Tutor tutor = tutor(usuario.getId());
+        Alumno alumno = alumno();
+        tutor.addHijo(alumno);
+
+        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
+        when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
+        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
+
+        CarritoFavorito cart1 = new CarritoFavorito();
+        CarritoFavorito cart2 = new CarritoFavorito();
+        CarritoFavorito cart3 = new CarritoFavorito();
+        when(carritoFavoritoRepository.findByTutorIdAndFilters(tutor.getId(), null, null))
+                .thenReturn(java.util.List.of(cart1, cart2, cart3));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> saveCarritoFavorito.execute(
+                COGNITO_SUBJECT,
+                null,
+                "Cuarto Carrito",
+                alumno.getId(),
+                Map.of()
+        ));
+        assertEquals("Límite de carritos favoritos alcanzado para cuenta gratuita (máximo 3)", exception.getMessage());
+        verify(carritoFavoritoRepository, never()).save(any());
     }
 
     private Usuario usuario() {
