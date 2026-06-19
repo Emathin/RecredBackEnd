@@ -45,6 +45,7 @@ class CarritoFavoritoControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void saveCartDelegatesWithProductQuantitiesAndReturnsCreatedCart() {
         UUID cartId = UUID.randomUUID();
         UUID alumnoId = UUID.randomUUID();

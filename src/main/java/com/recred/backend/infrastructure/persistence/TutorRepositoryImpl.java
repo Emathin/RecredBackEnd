@@ -62,9 +62,12 @@ public class TutorRepositoryImpl implements TutorRepository {
     }
 
     @Override
+    @Transactional
     public Tutor save(Tutor tutor) {
         TutorEntity entity = springDataTutorRepository.findById(tutor.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Tutor no encontrado"));
+
+        entity.setDashboardConfig(tutor.getDashboardConfig());
 
         entity.getHijos().clear();
         if (tutor.getHijos() != null) {
