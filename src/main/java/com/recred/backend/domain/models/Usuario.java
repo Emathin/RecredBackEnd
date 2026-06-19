@@ -26,6 +26,11 @@ public class Usuario {
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
     private String urlFotoPerfil;
+    private TipoPlan plan = TipoPlan.GRATUITO;
+
+    public TipoPlan getPlan() {
+        return plan != null ? plan : TipoPlan.GRATUITO;
+    }
 
     private Alumno alumno;
     private Tutor tutor;

@@ -6,6 +6,7 @@ import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.TipoPlan;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -82,6 +83,10 @@ public class UsuarioEntity {
     @Column(name = "url_foto_perfil", columnDefinition = "TEXT")
     private String urlFotoPerfil;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_plan", nullable = false)
+    private TipoPlan plan = TipoPlan.GRATUITO;
+
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private AlumnoEntity alumnoEntity;
 
@@ -128,6 +133,7 @@ public class UsuarioEntity {
         usuario.setCreadoEn(this.creadoEn);
         usuario.setActualizadoEn(this.actualizadoEn);
         usuario.setUrlFotoPerfil(this.urlFotoPerfil);
+        usuario.setPlan(this.plan);
 
         if (this.colegioEntity != null) {
             usuario.setColegio(this.colegioEntity.toDomain());

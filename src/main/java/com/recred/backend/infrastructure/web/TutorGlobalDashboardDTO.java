@@ -10,7 +10,8 @@ public record TutorGlobalDashboardDTO(
     BigDecimal totalBalance,
     BigDecimal totalDebt,
     String dashboardConfig,
-    List<ChildDashboardDTO> children
+    List<ChildDashboardDTO> children,
+    String plan
 ) {
     public record ChildDashboardDTO(
         UUID studentId,

@@ -132,9 +132,11 @@ public class GetTutorGlobalDashboard {
 
         Tutor tutor = tutorRepository.findByUsuarioIdCognito(cognitoSubject).orElse(null);
         String dashboardConfig = tutor != null ? tutor.getDashboardConfig() : null;
+        String planStr = tutor != null && tutor.getUsuario() != null
+                ? tutor.getUsuario().getPlan().name() : "GRATUITO";
 
         return new TutorGlobalDashboardDTO("ME", totalBalance, totalDebt, 
-                dashboardConfig, childrenDashboards);
+                dashboardConfig, childrenDashboards, planStr);
     }
 
     private String getPurchaseName(Purchase p) {

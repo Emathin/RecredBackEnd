@@ -355,8 +355,9 @@ public class UseCases {
 
     @Bean
     public AgregarProductoFavorito agregarProductoFavorito(AlumnoRepository alumnoRepository,
-            ProductRepository productRepository) {
-        return new AgregarProductoFavorito(alumnoRepository, productRepository);
+            ProductRepository productRepository,
+            TutorRepository tutorRepository) {
+        return new AgregarProductoFavorito(alumnoRepository, productRepository, tutorRepository);
     }
 
     @Bean
