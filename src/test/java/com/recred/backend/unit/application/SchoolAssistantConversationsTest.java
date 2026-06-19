@@ -137,6 +137,44 @@ class SchoolAssistantConversationsTest {
     }
 
     @Test
+    void studentOperationsResolveStudentFromAuthenticatedUser() {
+        String cognitoSubject = "student-sub";
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID sessionId = UUID.randomUUID();
+        ChatSession session = session(sessionId);
+        ChatMessage message = message(sessionId, "saldo");
+
+        when(usuarioRepository.findByIdCognito(cognitoSubject))
+                .thenReturn(Optional.of(user(userId)));
+        when(alumnoRepository.existsById(userId)).thenReturn(false);
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        when(chatSessionRepository.findByStudentId(studentId, 1, 5))
+                .thenReturn(List.of(session));
+        when(chatSessionRepository.findByIdAndStudentId(sessionId, studentId))
+                .thenReturn(Optional.of(session));
+        when(chatMessageRepository.findBySessionId(sessionId, 0, 20))
+                .thenReturn(List.of(message));
+
+        List<ChatSession> sessions = conversations.findStudentSessions(cognitoSubject, 1, 5);
+        List<ChatMessage> messages = conversations.findStudentMessages(
+                cognitoSubject,
+                sessionId,
+                0,
+                20
+        );
+        conversations.closeStudentSession(cognitoSubject, sessionId);
+        conversations.deleteStudentSession(cognitoSubject, sessionId);
+
+        assertEquals(List.of(session), sessions);
+        assertEquals(List.of(message), messages);
+        verify(chatSessionRepository).findByStudentId(studentId, 1, 5);
+        verify(chatSessionRepository).close(sessionId, NOW);
+        verify(chatMessageRepository).deleteBySessionId(sessionId);
+        verify(chatSessionRepository).deleteById(sessionId);
+    }
+
+    @Test
     void deleteTutorSessionDeletesMessagesThenSession() {
         String cognitoSubject = "tutor-sub";
         UUID userId = UUID.randomUUID();
