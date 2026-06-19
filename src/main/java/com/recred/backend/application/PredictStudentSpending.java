@@ -16,7 +16,6 @@ import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
-import com.recred.backend.domain.services.SpendingPredictionRangeService;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,7 +38,6 @@ public class PredictStudentSpending {
     private final PurchaseSpendingRepository purchaseSpendingRepository;
     private final SpendingPredictionAnalyzer spendingPredictionAnalyzer;
     private final AIEventRepository aiEventRepository;
-    private final SpendingPredictionRangeService spendingPredictionRangeService;
     private final SpendingPredictionCalculator spendingPredictionCalculator;
     private final Clock clock;
 
@@ -49,7 +47,6 @@ public class PredictStudentSpending {
             PurchaseSpendingRepository purchaseSpendingRepository,
             SpendingPredictionAnalyzer spendingPredictionAnalyzer,
             AIEventRepository aiEventRepository,
-            SpendingPredictionRangeService spendingPredictionRangeService,
             SpendingPredictionCalculator spendingPredictionCalculator,
             Clock clock
     ) {
@@ -58,7 +55,6 @@ public class PredictStudentSpending {
         this.purchaseSpendingRepository = purchaseSpendingRepository;
         this.spendingPredictionAnalyzer = spendingPredictionAnalyzer;
         this.aiEventRepository = aiEventRepository;
-        this.spendingPredictionRangeService = spendingPredictionRangeService;
         this.spendingPredictionCalculator = spendingPredictionCalculator;
         this.clock = clock;
     }
@@ -73,7 +69,7 @@ public class PredictStudentSpending {
                 calculationDate
         );
         BudgetPeriod period = resolvePeriod(requestedPeriod, preference);
-        DateRange currentRange = spendingPredictionRangeService.calculate(period, calculationDate);
+        DateRange currentRange = DateRange.fromBudgetPeriod(period, calculationDate);
         DateRange historicalRange = new DateRange(
                 currentRange.startDate().minusDays(HISTORICAL_DAYS),
                 currentRange.startDate().minusDays(1)

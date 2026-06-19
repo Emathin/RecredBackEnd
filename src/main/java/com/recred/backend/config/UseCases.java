@@ -186,7 +186,6 @@ import com.recred.backend.domain.services.RecessTimeSlotResolver;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
-import com.recred.backend.domain.services.SpendingPredictionRangeService;
 import com.recred.backend.domain.services.TutorService;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
@@ -775,7 +774,6 @@ public class UseCases {
             PurchaseSpendingRepository purchaseSpendingRepository,
             SpendingPredictionAnalyzer spendingPredictionAnalyzer,
             AIEventRepository aiEventRepository,
-            SpendingPredictionRangeService spendingPredictionRangeService,
             SpendingPredictionCalculator spendingPredictionCalculator,
             Clock clock) {
         return new PredictStudentSpending(
@@ -784,7 +782,6 @@ public class UseCases {
                 purchaseSpendingRepository,
                 spendingPredictionAnalyzer,
                 aiEventRepository,
-                spendingPredictionRangeService,
                 spendingPredictionCalculator,
                 clock);
     }
