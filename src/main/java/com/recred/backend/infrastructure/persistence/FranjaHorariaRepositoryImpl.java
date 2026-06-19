@@ -5,8 +5,10 @@ import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.infrastructure.entities.ColegioEntity;
 import com.recred.backend.infrastructure.entities.FranjaHorariaEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -20,6 +22,7 @@ public class FranjaHorariaRepositoryImpl implements FranjaHorariaRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<FranjaHoraria> findAllByColegioId(UUID colegioId) {
         return springDataRepository.findByColegioEntityIdAndActivoTrue(colegioId)
                 .stream()
@@ -28,6 +31,13 @@ public class FranjaHorariaRepositoryImpl implements FranjaHorariaRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<FranjaHoraria> findById(UUID id) {
+        return springDataRepository.findById(id).map(FranjaHorariaEntity::toDomain);
+    }
+
+    @Override
+    @Transactional
     public FranjaHoraria save(FranjaHoraria franjaHoraria) {
         FranjaHorariaEntity entityExistente = null;
 
@@ -53,6 +63,8 @@ public class FranjaHorariaRepositoryImpl implements FranjaHorariaRepository {
         entity.setHoraInicio(modelo.getHoraInicio());
         entity.setHoraFin(modelo.getHoraFin());
         entity.setActivo(modelo.isActivo());
+        entity.setCupoMaximo(modelo.getCupoMaximo());
+        entity.setMinutosCorte(modelo.minutosCorteSeguro());
 
         if (modelo.getColegioId() != null) {
             ColegioEntity colegio = new ColegioEntity();

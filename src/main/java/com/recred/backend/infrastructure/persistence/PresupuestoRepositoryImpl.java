@@ -10,6 +10,7 @@ import com.recred.backend.infrastructure.entities.ReglaPresupuestoCategoriaEntit
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +27,7 @@ public class PresupuestoRepositoryImpl implements PresupuestoRepository {
     }
 
     @Override
+    @Transactional
     public PresupuestoAlumno save(PresupuestoAlumno presupuesto) {
         PresupuestoAlumnoEntity entityExistente = null;
 
@@ -50,12 +52,14 @@ public class PresupuestoRepositoryImpl implements PresupuestoRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<PresupuestoAlumno> findActivoByAlumnoId(UUID alumnoId) {
         return springDataRepository.findByAlumnoEntityIdAndActivoTrue(alumnoId)
                 .map(PresupuestoAlumnoEntity::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<PresupuestoAlumno> findById(UUID budgetId) {
         return springDataRepository.findById(budgetId)
                 .map(PresupuestoAlumnoEntity::toDomain);

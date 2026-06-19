@@ -166,7 +166,7 @@ GetCartSuggestions {
     }
 
     private boolean hasPositiveStock(Producto product) {
-        return product.getStockActual() != null && product.getStockActual() > 0;
+        return product.getStockDisponible() != null && product.getStockDisponible() > 0;
     }
 
     private Set<UUID> nullableSet(Set<UUID> values) {

@@ -6,6 +6,8 @@ public enum EstadoCompra {
     LISTO("Listo para retirar"),
     ENTREGADO("Entregado"),
     CANCELADO("Cancelado"),
+    RECHAZADO("Rechazado"),
+    VENCIDO("Vencido"),
     NO_RETIRADO("No retirado");
 
     private final String label;

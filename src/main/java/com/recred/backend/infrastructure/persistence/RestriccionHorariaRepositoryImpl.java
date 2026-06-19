@@ -4,11 +4,12 @@ import com.recred.backend.domain.models.RestriccionHoraria;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
-import com.recred.backend.infrastructure.entities.ClasificacionTipoEntity;
+import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import com.recred.backend.infrastructure.entities.FranjaHorariaEntity;
 import com.recred.backend.infrastructure.entities.RestriccionHorariaEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,7 @@ public class RestriccionHorariaRepositoryImpl implements
     }
 
     @Override
+    @Transactional
     public RestriccionHoraria save(RestriccionHoraria restriccion) {
         RestriccionHorariaEntity entity = restriccion.getId() != null
                 ? springDataRepository.findById(restriccion.getId())
@@ -40,12 +42,14 @@ public class RestriccionHorariaRepositoryImpl implements
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<RestriccionHoraria> findById(UUID id) {
         return springDataRepository.findById(id)
                 .map(RestriccionHorariaEntity::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RestriccionHoraria> findAllByAlumnoIdAndActiva
             (UUID alumnoId, boolean activa) {
         return springDataRepository.findAllByAlumnoEntityIdAndActiva(alumnoId, activa)
@@ -55,13 +59,15 @@ public class RestriccionHorariaRepositoryImpl implements
     }
 
     @Override
-    public List<RestriccionHoraria> findAllByAlumnoId(UUID alumnoId) {
+    @Transactional(readOnly = true)
+    public List<RestriccionHoraria> findAllByAlumnoEntityId(UUID alumnoId) {
         return springDataRepository.findAllByAlumnoEntityId(alumnoId).stream()
                 .map(RestriccionHorariaEntity::toDomain)
                 .collect(Collectors.toList());
     }
 
     @Override
+    @Transactional
     public void deleteById(UUID id) {
         springDataRepository.deleteById(id);
     }
@@ -93,15 +99,19 @@ public class RestriccionHorariaRepositoryImpl implements
             entity.setCategoria(null);
         }
 
-        if (domain.getClasificacion() != null) {
-            ClasificacionTipoEntity tipoEntity = new ClasificacionTipoEntity();
-            tipoEntity.setId(domain.getClasificacion().getId());
-            entity.setClasificacionTipoEntity(tipoEntity);
+        if (domain.getClasificacionSalud() != null) {
+            ClasificacionSaludEntity saludEntity = new ClasificacionSaludEntity();
+            saludEntity.setId(domain.getClasificacionSalud().getId());
+            entity.setClasificacionSaludEntity(saludEntity);
         } else {
-            entity.setClasificacionTipoEntity(null);
+            entity.setClasificacionSaludEntity(null);
         }
 
-        if (entity.getCreadoPorUsuarioEntity() == null) {
+        if (domain.getCreadoPorUsuarioId() != null) {
+            UsuarioEntity usuarioEntity = new UsuarioEntity();
+            usuarioEntity.setId(domain.getCreadoPorUsuarioId());
+            entity.setCreadoPorUsuarioEntity(usuarioEntity);
+        } else if (entity.getCreadoPorUsuarioEntity() == null) {
             UsuarioEntity usuarioDummy = new UsuarioEntity();
             usuarioDummy.setId(UUID.randomUUID());
             entity.setCreadoPorUsuarioEntity(usuarioDummy);

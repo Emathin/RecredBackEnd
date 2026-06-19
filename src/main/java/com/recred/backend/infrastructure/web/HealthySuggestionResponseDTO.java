@@ -19,4 +19,7 @@ public class HealthySuggestionResponseDTO {
     private UUID productoId;
     private String productoNombre;
     private BigDecimal productoPrecio;
+    private MenuProductoDTO producto;
+    private String type;
+    private String rol;
 }

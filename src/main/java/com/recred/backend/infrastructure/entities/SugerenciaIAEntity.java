@@ -78,9 +78,12 @@ public class SugerenciaIAEntity {
         return com.recred.backend.domain.models.SugerenciaIA.builder()
                 .id(this.id)
                 .alumnoId(this.alumnoEntity != null ? this.alumnoEntity.getId() : null)
+                .buffetId(this.buffetEntity != null ? this.buffetEntity.getId() : null)
                 .productoId(this.productoEntity != null ? this.productoEntity.getId() : null)
+                .tipo(this.tipo)
                 .titulo(this.titulo)
                 .mensaje(this.mensaje)
+                .metadata(this.metadata)
                 .build();
     }
 }

@@ -43,8 +43,8 @@ public class RestriccionHorariaEntity {
     private CategoriaProductoEntity categoria;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "clasificacion_tipo_id")
-    private ClasificacionTipoEntity clasificacionTipoEntity;
+    @JoinColumn(name = "clasificacion_salud_id")
+    private ClasificacionSaludEntity clasificacionSaludEntity;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creado_por_usuario_id", nullable = false)
@@ -64,6 +64,10 @@ public class RestriccionHorariaEntity {
         domain.setAlumnoId(this.getAlumnoEntity().getId());
         domain.setActiva(this.getActiva());
 
+        if (this.getCreadoPorUsuarioEntity() != null) {
+            domain.setCreadoPorUsuarioId(this.getCreadoPorUsuarioEntity().getId());
+        }
+
         if (this.getFranjaHorariaEntity() != null) {
             domain.setFranjaHoraria(this.getFranjaHorariaEntity().toDomain());
         }
@@ -72,8 +76,8 @@ public class RestriccionHorariaEntity {
             domain.setCategoria(this.getCategoria().toDomain());
         }
 
-        if (this.getClasificacionTipoEntity() != null) {
-            domain.setClasificacion(this.getClasificacionTipoEntity().toDomain());
+        if (this.getClasificacionSaludEntity() != null) {
+            domain.setClasificacionSalud(this.getClasificacionSaludEntity().toDomain());
         }
 
         return domain;

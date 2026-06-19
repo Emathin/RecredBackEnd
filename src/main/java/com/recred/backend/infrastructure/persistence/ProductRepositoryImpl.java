@@ -2,16 +2,22 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.ClasificacionTipo;
+import com.recred.backend.domain.models.EstadoInventario;
+import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.ProductoMedida;
+import com.recred.backend.domain.models.TipoManejoInventario;
+import com.recred.backend.domain.exceptions.InventoryOperationException;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionTipoEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.ProductoMedidaEntity;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -31,10 +37,13 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Producto> findById(UUID id) {
         return springDataRepository.findById(id).map(ProductoEntity::toDomain);
     }
+
     @Override
+    @Transactional(readOnly = true)
     public List<Producto> findAllActive() {
         return springDataRepository.findAllByActivoTrue()
                 .stream()
@@ -43,34 +52,120 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Producto> findActiveById(UUID id) {
         return springDataRepository.findByIdAndActivoTrue(id)
                 .map(ProductoEntity::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Producto> findAllActiveWithStock(UUID buffetId) {
         return springDataRepository.findAllActiveWithStockParams(buffetId)
                 .stream()
-                .map(this::mapObjectArrayToDomain)
+                .map(this::mapStockResultToDomain)
                 .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Producto> findActiveByIdWithStock(UUID id, UUID buffetId) {
         return springDataRepository.findActiveByIdWithStockParams(id, buffetId)
-                .map(this::mapObjectArrayToDomain);
+                .map(this::mapStockResultToDomain);
     }
 
-    private Producto mapObjectArrayToDomain(Object[] result) {
-        ProductoEntity entity = (ProductoEntity) result[0];
-        Integer stockActual = (Integer) result[1];
+    private Producto mapStockResultToDomain(ProductStockResult result) {
+        validateStockResult(result);
+
+        ProductoEntity entity = result.product();
+        Integer stockActual = integerValue(result.stockActual());
+        Integer stockReservado = integerValue(result.stockReservado());
+        Integer stockMinimo = integerValue(result.stockMinimo());
+        EstadoInventario estado = result.estado();
+        TipoManejoInventario tipoManejo = result.tipoManejo();
+        Integer cupoMaximoDiario = integerValue(result.cupoMaximoDiario());
+        Integer stockDisponible = integerValue(result.stockDisponible());
+
+        Inventario inventario = inventario(
+                stockActual,
+                stockReservado,
+                stockMinimo,
+                estado,
+                tipoManejo
+        );
         Producto domain = entity.toDomain();
         domain.setStockActual(stockActual);
+        domain.setStockReservado(stockReservado);
+        domain.setStockMinimo(stockMinimo(inventario, stockMinimo));
+        domain.setEstadoInventario(inventario == null ? estado : inventario.estadoActual());
+        domain.setTipoManejoInventario(tipoManejo);
+        domain.setCupoMaximoDiario(cupoMaximoDiario);
+        domain.setStockDisponible(stockDisponible);
+        domain.setUrlImagen(result.urlImagen());
         return domain;
     }
 
+    private Integer stockMinimo(Inventario inventario, Integer stockMinimo) {
+        if (inventario == null) {
+            return stockMinimo;
+        }
+
+        return inventario.stockMinimoEfectivo();
+    }
+
+    private void validateStockResult(ProductStockResult result) {
+        if (result == null || result.product() == null) {
+            throw new InventoryOperationException(
+                    "El resultado de inventario del producto tiene un formato invalido");
+        }
+    }
+
+    private Inventario inventario(
+            Integer stockActual,
+            Integer stockReservado,
+            Integer stockMinimo,
+            EstadoInventario estado,
+            TipoManejoInventario tipoManejo
+    ) {
+        return tieneDatosDeInventario(stockActual, stockMinimo, estado, tipoManejo)
+                ? crearInventario(stockActual, stockReservado, stockMinimo, estado, tipoManejo)
+                : null;
+    }
+
+    private Inventario crearInventario(
+            Integer stockActual,
+            Integer stockReservado,
+            Integer stockMinimo,
+            EstadoInventario estado,
+            TipoManejoInventario tipoManejo
+    ) {
+        Inventario inventario = new Inventario();
+        inventario.setStockActual(stockActual);
+        inventario.setStockReservado(stockReservado);
+        inventario.setStockMinimo(stockMinimo);
+        inventario.setEstado(estado);
+        inventario.setTipoManejo(tipoManejo);
+        return inventario;
+    }
+
+    private boolean tieneDatosDeInventario(
+            Integer stockActual,
+            Integer stockMinimo,
+            EstadoInventario estado,
+            TipoManejoInventario tipoManejo
+    ) {
+        return stockActual != null
+                || stockMinimo != null
+                || estado != null
+                || tipoManejo != null;
+    }
+
+    private Integer integerValue(Object value) {
+        return value instanceof Number number ? number.intValue() : null;
+    }
+
     @Override
+    @Transactional(readOnly = true)
     public ProductChangeRecommendation findBuffetLeastSoldProducts(UUID buffetId) {
         ProductoEntity producto = springDataRepository.findBuffetLeastSoldProducts(buffetId);
 
@@ -78,12 +173,35 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ProductChangeRecommendation> findBuffetTop5LeastSoldProducts(UUID buffetId) {
+        List<ProductoEntity> productos =
+                springDataRepository.findBuffetTop5LeastSoldProducts(buffetId);
+
+        return productos.stream()
+                .map(p -> p.toProductRecommendation(buffetId))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Producto> findBestSoldProducts() {
         List<ProductoEntity> productos = springDataRepository.findBestSoldProducts();
         return productos.stream().map(ProductoEntity::toDomain).toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Producto> findBuffetTop3MostSold(UUID buffetId, UUID categoriaId) {
+        return springDataRepository.findBuffetTop3MostSold(
+                buffetId, categoriaId, PageRequest.of(0, 3))
+                .stream()
+                .map(ProductoEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional
     public Producto save(Producto producto) {
         ProductoEntity entityExistente;
 
@@ -100,6 +218,7 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
+    @Transactional
     public void updatePrice(UUID productId, BigDecimal newPrice) {
         springDataRepository.updatePrice(productId, newPrice);
     }

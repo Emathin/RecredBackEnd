@@ -42,6 +42,12 @@ public class ClasificacionSaludRepositoryImpl implements ClasificacionSaludRepos
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public Optional<ClasificacionSalud> findByDescripcion(String descripcion) {
+        return springDataRepository.findByDescripcion(descripcion)
+                .map(ClasificacionSaludEntity::toDomain);
+    }
+
     private ClasificacionSaludEntity toEntity(ClasificacionSalud modelo) {
         ClasificacionSaludEntity entity = new ClasificacionSaludEntity();
 

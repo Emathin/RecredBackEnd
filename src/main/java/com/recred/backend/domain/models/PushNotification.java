@@ -9,4 +9,7 @@ public record PushNotification(
         String message,
         Map<String, String> data
 ) {
+    public static PushNotification dataOnly(UUID userId, Map<String, String> data) {
+        return new PushNotification(userId, null, null, data);
+    }
 }

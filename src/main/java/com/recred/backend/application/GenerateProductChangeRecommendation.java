@@ -24,16 +24,20 @@ public class GenerateProductChangeRecommendation {
     private final ProductChangeAnalyzer productChangeAnalyzer;
     private final AIEventRepository aiEventRepository;
     private final KiosqueroRepository kiosqueroRepository;
+    private final GetProductStatistics getProductStatistics;
+
     public GenerateProductChangeRecommendation(
             ProductRepository productRepository,
             ProductChangeAnalyzer productChangeAnalyzer,
             AIEventRepository aiEventRepository,
-            KiosqueroRepository kiosqueroRepository
+            KiosqueroRepository kiosqueroRepository,
+            GetProductStatistics getProductStatistics
     ) {
         this.productRepository = productRepository;
         this.productChangeAnalyzer = productChangeAnalyzer;
         this.aiEventRepository = aiEventRepository;
         this.kiosqueroRepository = kiosqueroRepository;
+        this.getProductStatistics = getProductStatistics;
     }
 
     @Transactional
@@ -50,35 +54,41 @@ public class GenerateProductChangeRecommendation {
     }
 
     @Transactional
-    public ProductRecommendationResult execute(UUID sellerId) {
+    public List<ProductRecommendationResult> execute(UUID sellerId) {
         UUID buffetId = kiosqueroRepository.findBuffetById(sellerId);
         if (buffetId == null) {
             throw new KiosqueroNotFoundException(sellerId);
         }
-        return generateForBuffet(buffetId);
+        return generateForBuffet(buffetId, sellerId);
     }
 
     @Transactional
-    public ProductRecommendationResult executeByUsuarioId(UUID usuarioId) {
+    public List<ProductRecommendationResult> executeByUsuarioId(UUID usuarioId) {
         UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(usuarioId);
         if (buffetId == null) {
             throw new KiosqueroNotFoundException(usuarioId);
         }
-        return generateForBuffet(buffetId);
+        return generateForBuffet(buffetId, usuarioId);
     }
 
-    private ProductRecommendationResult generateForBuffet(UUID buffetId) {
-        ProductChangeRecommendation leastSoldProduct =
-                productRepository.findBuffetLeastSoldProducts(buffetId);
-        Optional<ProductChangeAnalysis> aiAnalysis = productChangeAnalyzer
-                .analyze(leastSoldProduct);
-        ProductRecommendationResult result = new ProductRecommendationResult(
-                leastSoldProduct,
-                aiAnalysis
-        );
-        aiEventRepository.registerProductChangeRecommendation(result);
-
-        return result;
+    private List<ProductRecommendationResult> generateForBuffet(UUID buffetId, UUID actorId) {
+        List<ProductChangeRecommendation> leastSoldProducts =
+                productRepository.findBuffetTop5LeastSoldProducts(buffetId);
+        
+        return leastSoldProducts.stream()
+                .map(product -> {
+                    product.setSaleStatistics(
+                            getProductStatistics.execute(product.getId(), actorId));
+                    Optional<ProductChangeAnalysis> aiAnalysis = productChangeAnalyzer
+                            .analyze(product);
+                    ProductRecommendationResult result = new ProductRecommendationResult(
+                            product,
+                            aiAnalysis
+                    );
+                    aiEventRepository.registerProductChangeRecommendation(result);
+                    return result;
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -97,6 +107,15 @@ public class GenerateProductChangeRecommendation {
             throw new KiosqueroNotFoundException(usuarioId);
         }
         return aiEventRepository.findLatestProductChangeRecommendation(buffetId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductRecommendationResult> findAllResultsByUsuarioId(UUID usuarioId) {
+        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(usuarioId);
+        if (buffetId == null) {
+            throw new KiosqueroNotFoundException(usuarioId);
+        }
+        return aiEventRepository.findAllProductChangeRecommendations(buffetId);
     }
 
 }

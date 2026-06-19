@@ -5,11 +5,12 @@ import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.models.BuyerType;
+import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.RolUsuario;
-import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
+import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.http.ResponseEntity;
@@ -35,47 +36,36 @@ public class PurchaseSuggestController {
     private final CreateAdvancePurchase createAdvancePurchase;
     private final SugerenciaIARepository sugerenciaIARepository;
     private final UsuarioService usuarioService;
+    private final TutorRepository tutorRepository;
 
     public PurchaseSuggestController(PurchaseSuggestIA purchaseSuggestIA,
                                      NotifyPurchaseSuggestions notifyPurchaseSuggestions,
                                      RespondToAISuggestion respondToAISuggestion,
                                      CreateAdvancePurchase createAdvancePurchase,
                                      SugerenciaIARepository sugerenciaIARepository,
-                                     UsuarioService usuarioService) {
+                                     UsuarioService usuarioService,
+                                     TutorRepository tutorRepository) {
         this.purchaseSuggestIA = purchaseSuggestIA;
         this.notifyPurchaseSuggestions = notifyPurchaseSuggestions;
         this.respondToAISuggestion = respondToAISuggestion;
         this.createAdvancePurchase = createAdvancePurchase;
         this.sugerenciaIARepository = sugerenciaIARepository;
         this.usuarioService = usuarioService;
-    }
-
-    @PostMapping("/activa")
-    public ResponseEntity<HealthySuggestionResponseDTO> obtenerSugerenciaActiva(
-            Authentication authentication,
-            @RequestBody(required = false) TestSuggestionRequest testRequest) {
-        String subject = (testRequest != null && testRequest.testCognitoId() != null) 
-                ? testRequest.testCognitoId() 
-                : cognitoSubject(authentication);
-        
-        Optional<SugerenciaIA> sugerenciaOpt = purchaseSuggestIA.execute(subject);
-
-        return sugerenciaOpt
-                .map(this::toDTO)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.noContent().build());
+        this.tutorRepository = tutorRepository;
     }
 
     @PostMapping("/test-notificacion")
-    public ResponseEntity<Void> testNotificacion(
+    public ResponseEntity<PushNotification> testNotificacion(
             Authentication authentication,
             @RequestBody(required = false) TestSuggestionRequest testRequest) {
         String subject = (testRequest != null && testRequest.testCognitoId() != null) 
                 ? testRequest.testCognitoId() 
                 : cognitoSubject(authentication);
         
-        notifyPurchaseSuggestions.execute(subject);
-        return ResponseEntity.ok().build();
+        PushNotification notification = notifyPurchaseSuggestions.execute(subject);
+        return notification != null 
+                ? ResponseEntity.ok(notification) 
+                : ResponseEntity.noContent().build();
     }
 
     @PostMapping("/comprar")
@@ -93,13 +83,16 @@ public class PurchaseSuggestController {
 
         Usuario usuario = usuarioService.obtenerUsuarioActual(subject);
 
-        // Marcar como aceptada
         respondToAISuggestion.execute(sugerenciaId, true);
 
-        // Concretar la compra anticipada
         UUID alumnoId = sugerencia.getAlumnoEntity().getId();
         UUID productoId = sugerencia.getProductoEntity().getId();
         UUID buffetId = sugerencia.getBuffetEntity().getId();
+
+        UUID tutorId = tutorRepository.findByAlumnoId(alumnoId).stream()
+                .findFirst()
+                .map(t -> t.getId())
+                .orElse(null);
 
         BuyerType buyerType = usuario.getRol() == RolUsuario.ALUMNO
                 ? BuyerType.STUDENT
@@ -112,16 +105,19 @@ public class PurchaseSuggestController {
                 alumnoId,
                 usuario.getId(),
                 buyerType,
+                buffetId,
                 LocalDate.now().toString(),
                 RecessTime.AFTER_HOURS,
                 List.of(item),
                 sugerenciaId,
-                buffetId
+                tutorId
         );
+
+        // TODO: Implementar lógica de código de verificación si fuera necesario
 
         AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
 
-        return ResponseEntity.ok(createAdvancePurchase.execute(request));
+        return ResponseEntity.ok(createAdvancePurchase.execute(request, subject));
     }
 
     private String cognitoSubject(Authentication authentication) {
@@ -129,25 +125,5 @@ public class PurchaseSuggestController {
                 .map(Authentication::getName)
                 .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
                         "Usuario no autenticado"));
-    }
-
-    private HealthySuggestionResponseDTO toDTO(SugerenciaIA sugerencia) {
-        return HealthySuggestionResponseDTO.builder()
-                .sugerenciaId(sugerencia.getId())
-                .titulo(sugerencia.getTitulo())
-                .mensaje(sugerencia.getMensaje())
-                .productoId(sugerencia.getProductoId())
-                .build();
-    }
-
-    private HealthySuggestionResponseDTO toDTO(SugerenciaIAEntity entity) {
-        return HealthySuggestionResponseDTO.builder()
-                .sugerenciaId(entity.getId())
-                .titulo(entity.getTitulo())
-                .mensaje(entity.getMensaje())
-                .productoId(entity.getProductoEntity().getId())
-                .productoNombre(entity.getProductoEntity().getNombre())
-                .productoPrecio(entity.getProductoEntity().getPrecio())
-                .build();
     }
 }

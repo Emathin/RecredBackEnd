@@ -31,7 +31,7 @@ public record SchoolAssistantActionResponse(
         @JsonProperty("total")
         BigDecimal total,
         @JsonProperty("recreo")
-        RecessTime recessTime,
+        String recessTime,
         @JsonProperty("datos")
         Map<String, Object> data
 ) {
@@ -49,8 +49,15 @@ public record SchoolAssistantActionResponse(
                 action.purchaseStatus(),
                 action.withdrawalCode(),
                 action.total(),
-                action.recessTime(),
+                recessLabel(action.recessTime()),
                 action.data()
         );
+    }
+
+    private static String recessLabel(RecessTime recessTime) {
+        if (recessTime == null) {
+            return null;
+        }
+        return recessTime.getLabel();
     }
 }

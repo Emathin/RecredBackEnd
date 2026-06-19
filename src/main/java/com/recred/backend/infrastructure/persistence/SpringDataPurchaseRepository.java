@@ -17,7 +17,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -93,6 +95,110 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             Pageable pageable
     );
 
+    @Query("""
+            select purchase
+            from CompraEntity purchase
+            left join RetiroProgramadoEntity pickup on pickup.compraEntity = purchase
+            where purchase.buffetEntity.id = :buffetId
+            and purchase.estado in :statuses
+            and (
+                :date is null
+                or pickup.fechaProgramada = :date
+                or (pickup.id is null and purchase.fechaHora between :start and :end)
+            )
+            and (:pickupSlotId is null or pickup.franja.id = :pickupSlotId)
+            order by purchase.fechaHora desc
+            """)
+    List<CompraEntity> findKiosqueroOrders(
+            @Param("buffetId") UUID buffetId,
+            @Param("statuses") List<EstadoCompra> statuses,
+            @Param("date") LocalDate date,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("pickupSlotId") UUID pickupSlotId,
+            Pageable pageable
+    );
+
+    @Query("""
+            select purchase
+            from CompraEntity purchase
+            where purchase.buffetEntity.id = :buffetId
+            and purchase.fechaHora between :start and :end
+            order by purchase.fechaHora asc
+            """)
+    List<CompraEntity> findByBuffetIdAndDateRange(
+            @Param("buffetId") UUID buffetId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
+            select purchase
+            from CompraAnticipadaEntity purchase
+            join purchase.retiroProgramadoEntity pickup
+            where purchase.estado in :statuses
+            and (
+                pickup.fechaProgramada < :date
+                or (pickup.fechaProgramada = :date and pickup.franja.horaFin <= :time)
+            )
+            """)
+    List<CompraEntity> findExpiredAdvancePurchases(
+            @Param("date") LocalDate date,
+            @Param("time") LocalTime time,
+            @Param("statuses") List<EstadoCompra> statuses
+    );
+
+    @Query("""
+            select purchase
+            from CompraAnticipadaEntity purchase
+            join purchase.retiroProgramadoEntity pickup
+            where purchase.buffetEntity.id = :buffetId
+            and purchase.estado in :statuses
+            and (
+                pickup.fechaProgramada < :date
+                or (pickup.fechaProgramada = :date and pickup.franja.horaFin <= :time)
+            )
+            """)
+    List<CompraEntity> findExpiredAdvancePurchasesByBuffet(
+            @Param("buffetId") UUID buffetId,
+            @Param("date") LocalDate date,
+            @Param("time") LocalTime time,
+            @Param("statuses") List<EstadoCompra> statuses
+    );
+
+    @Query("""
+            select count(purchase)
+            from CompraAnticipadaEntity purchase
+            join purchase.retiroProgramadoEntity pickup
+            where purchase.buffetEntity.id = :buffetId
+            and pickup.franja.id = :pickupSlotId
+            and pickup.fechaProgramada = :pickupDate
+            and purchase.estado in :statuses
+            """)
+    long countScheduledAdvancePurchases(
+            @Param("buffetId") UUID buffetId,
+            @Param("pickupSlotId") UUID pickupSlotId,
+            @Param("pickupDate") LocalDate pickupDate,
+            @Param("statuses") List<EstadoCompra> statuses
+    );
+
+    @Query("""
+            select coalesce(sum(detail.cantidad), 0)
+            from CompraAnticipadaEntity purchase
+            join purchase.retiroProgramadoEntity pickup
+            join purchase.detalles detail
+            where purchase.buffetEntity.id = :buffetId
+            and detail.productoEntity.id = :productId
+            and pickup.fechaProgramada = :pickupDate
+            and purchase.estado in :statuses
+            """)
+    long sumScheduledProductQuantity(
+            @Param("buffetId") UUID buffetId,
+            @Param("productId") UUID productId,
+            @Param("pickupDate") LocalDate pickupDate,
+            @Param("statuses") List<EstadoCompra> statuses
+    );
+
     @Query("SELECT COALESCE(SUM(c.montoTotal), 0) FROM CompraEntity c " +
             "WHERE c.alumnoEntity.id = :alumnoId " +
             "AND c.estado = :estadoValido " +
@@ -102,6 +208,29 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             @Param("estadoValido") EstadoCompra estadoValido,
             @Param("inicio") LocalDateTime inicio,
             @Param("fin") LocalDateTime fin
+    );
+
+    @Query("SELECT COALESCE(SUM(c.montoTotal), 0) FROM CompraPresencialEntity c " +
+            "WHERE c.alumnoEntity.id = :alumnoId " +
+            "AND c.estado = :estado " +
+            "AND c.fechaHora BETWEEN :inicio AND :fin")
+    BigDecimal sumarGastosPresencialesEnRango(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("estado") EstadoCompra estado,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin
+    );
+
+    @Query("SELECT COALESCE(SUM(c.montoTotal), 0) FROM CompraAnticipadaEntity c " +
+            "JOIN c.retiroProgramadoEntity r " +
+            "WHERE c.alumnoEntity.id = :alumnoId " +
+            "AND c.estado IN :estados " +
+            "AND r.fechaProgramada BETWEEN :inicioDate AND :finDate")
+    BigDecimal sumarGastosAnticipadosEnRango(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("estados") List<EstadoCompra> estados,
+            @Param("inicioDate") LocalDate inicioDate,
+            @Param("finDate") LocalDate finDate
     );
 
     @Query("SELECT COALESCE(SUM(d.subtotal), 0) FROM CompraEntity c " +
@@ -117,6 +246,37 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             @Param("categoriaId") UUID categoriaId,
             @Param("inicio") LocalDateTime inicio,
             @Param("fin") LocalDateTime fin
+    );
+
+    @Query("SELECT COALESCE(SUM(d.subtotal), 0) FROM CompraPresencialEntity c " +
+            "JOIN c.detalles d " +
+            "JOIN d.productoEntity p " +
+            "WHERE c.alumnoEntity.id = :alumnoId " +
+            "AND c.estado = :estado " +
+            "AND c.fechaHora BETWEEN :inicio AND :fin " +
+            "AND p.categoria.id = :categoriaId")
+    BigDecimal sumarGastosPresencialesPorCategoriaEnRango(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("estado") EstadoCompra estado,
+            @Param("categoriaId") UUID categoriaId,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin
+    );
+
+    @Query("SELECT COALESCE(SUM(d.subtotal), 0) FROM CompraAnticipadaEntity c " +
+            "JOIN c.retiroProgramadoEntity r " +
+            "JOIN c.detalles d " +
+            "JOIN d.productoEntity p " +
+            "WHERE c.alumnoEntity.id = :alumnoId " +
+            "AND c.estado IN :estados " +
+            "AND r.fechaProgramada BETWEEN :inicioDate AND :finDate " +
+            "AND p.categoria.id = :categoriaId")
+    BigDecimal sumarGastosAnticipadosPorCategoriaEnRango(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("estados") List<EstadoCompra> estados,
+            @Param("categoriaId") UUID categoriaId,
+            @Param("inicioDate") LocalDate inicioDate,
+            @Param("finDate") LocalDate finDate
     );
 
     @Query(""" 
@@ -195,4 +355,15 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
             @Param("estadoRetiro") EstadoRetiro estadoRetiro,
             @Param("franjaId") UUID franjaId,
             @Param("search") String search);
+
+    @Query("SELECT c FROM CompraEntity c WHERE c.alumnoEntity.id = :alumnoId " +
+            "AND c.estado IN :estados " +
+            "ORDER BY c.fechaHora DESC")
+    List<CompraEntity> findAllByAlumnoIdAndEstadoInOrderByFechaHoraDesc(
+            @Param("alumnoId") UUID alumnoId,
+            @Param("estados") List<EstadoCompra> estados
+    );
+
+    long countByAlumnoEntityIdAndSuggestionIdIsNotNullAndEstadoAndFechaHoraAfter(
+            UUID alumnoId, EstadoCompra estado, LocalDateTime since);
 }

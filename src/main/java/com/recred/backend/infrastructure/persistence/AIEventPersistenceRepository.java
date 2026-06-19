@@ -13,6 +13,7 @@ import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.repositories.AIEventRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.infrastructure.entities.AIEventEntity;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
@@ -36,13 +37,16 @@ public class AIEventPersistenceRepository implements AIEventRepository {
 
     private final AIEventJpaRepository aiEventJpaRepository;
     private final EntityManager entityManager;
+    private final ObjectMapper objectMapper;
 
     public AIEventPersistenceRepository(
             AIEventJpaRepository aiEventJpaRepository,
-            EntityManager entityManager
+            EntityManager entityManager,
+            ObjectMapper objectMapper
     ) {
         this.aiEventJpaRepository = aiEventJpaRepository;
         this.entityManager = entityManager;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -55,6 +59,16 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         ).map(this::mapToResult);
     }
 
+    @Override
+    public List<ProductRecommendationResult> findAllProductChangeRecommendations(
+            UUID buffetId
+    ) {
+        return aiEventJpaRepository.findAllByTypeAndBuffetEntityIdOrderByCreatedAtDesc(
+                AIEventType.PRODUCTO_CAMBIO,
+                buffetId
+        ).stream().map(this::mapToResult).toList();
+    }
+
     private ProductRecommendationResult mapToResult(AIEventEntity entity) {
         ProductChangeRecommendation recommendation = new ProductChangeRecommendation();
         recommendation.setId(entity.getProductoEntity().getId());
@@ -63,6 +77,12 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         Object precio = entity.getInputData().get("precio");
         if (precio instanceof Number) {
             recommendation.setPrecio(BigDecimal.valueOf(((Number) precio).doubleValue()));
+        }
+        
+        Object statsObj = entity.getInputData().get("saleStatistics");
+        if (statsObj instanceof Map) {
+            recommendation.setSaleStatistics(objectMapper.convertValue(statsObj,
+                    com.recred.backend.domain.models.ProductSaleStatistics.class));
         }
 
         Map<String, Object> analysisMap = (Map<String, Object>) entity.getResultData()
@@ -160,8 +180,14 @@ public class AIEventPersistenceRepository implements AIEventRepository {
 
         Map<String, Object> inputData = new LinkedHashMap<>();
         inputData.put("id", result.getProductChangeRecommendation().getId());
+        inputData.put("idBuffet", result.getProductChangeRecommendation().getIdBuffet());
         inputData.put("nombre", result.getProductChangeRecommendation().getNombre());
         inputData.put("precio", result.getProductChangeRecommendation().getPrecio());
+        
+        if (result.getProductChangeRecommendation().getSaleStatistics() != null) {
+            inputData.put("saleStatistics", objectMapper.convertValue(
+                    result.getProductChangeRecommendation().getSaleStatistics(), Map.class));
+        }
 
         aiEventEntity.setInputData(inputData);
 
@@ -207,9 +233,8 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         ));
         aiEventEntity.setInputOrigin("BACKEND PRODUCT ADDITION RECO");
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("resumen", "El producto " + product.getNombre() +
-                " experimenta una gran cantidad de ventas. Te sugerimos " +
-                "que lo agregues a tu stock") ;
+        data.put("resumen", "Te recomendamos agregar " + product.getNombre() +
+                " a tu stock") ;
         aiEventEntity.setResultData(data);
         aiEventJpaRepository.save(aiEventEntity);
     }

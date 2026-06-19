@@ -8,107 +8,114 @@ import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.InventoryAvailabilityService;
+import com.recred.backend.domain.services.PurchaseValidator;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public class ProcessPresentialPurchase {
 
     private final AlumnoRepository studentRepository;
     private final WalletRepository walletRepository;
     private final PurchaseRepository purchaseRepository;
-    private final ValidadorHorarioService timeValidator;
-    private final ValidacionRestriccionesService healthValidator;
-    private final ValidadorPresupuestoService budgetValidator;
+    private final PurchaseValidator purchaseValidator;
+    private final InventoryAvailabilityService inventoryAvailabilityService;
+    private final MovimientoBilleteraRepository movimientoBilleteraRepository;
 
-    public ProcessPresentialPurchase(AlumnoRepository studentRepository,
-                                     WalletRepository walletRepository,
-                                     PurchaseRepository purchaseRepository,
-                                     ValidadorHorarioService timeValidator,
-                                     ValidacionRestriccionesService healthValidator,
-                                     ValidadorPresupuestoService budgetValidator) {
+    public ProcessPresentialPurchase(
+            AlumnoRepository studentRepository,
+            WalletRepository walletRepository,
+            PurchaseRepository purchaseRepository,
+            PurchaseValidator purchaseValidator,
+            InventoryAvailabilityService inventoryAvailabilityService
+    ) {
+        this(studentRepository, walletRepository, purchaseRepository, purchaseValidator,
+                inventoryAvailabilityService, null);
+    }
 
+    public ProcessPresentialPurchase(
+            AlumnoRepository studentRepository,
+            WalletRepository walletRepository,
+            PurchaseRepository purchaseRepository,
+            PurchaseValidator purchaseValidator,
+            InventoryAvailabilityService inventoryAvailabilityService,
+            MovimientoBilleteraRepository movimientoBilleteraRepository
+    ) {
         this.studentRepository = studentRepository;
         this.walletRepository = walletRepository;
         this.purchaseRepository = purchaseRepository;
-        this.timeValidator = timeValidator;
-        this.healthValidator = healthValidator;
-        this.budgetValidator = budgetValidator;
+        this.purchaseValidator = purchaseValidator;
+        this.inventoryAvailabilityService = inventoryAvailabilityService;
+        this.movimientoBilleteraRepository = movimientoBilleteraRepository;
     }
 
-    public Purchase execute(UUID studentId, Map<Producto, Integer> cart) {
-        return execute(studentId, cart, null);
-    }
-
+    @Transactional
     public Purchase execute(UUID studentId, Map<Producto, Integer> cart, UUID buffetId) {
+        if (buffetId == null) {
+            throw new IllegalArgumentException("buffetId is required");
+        }
 
         Alumno student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
-
-        LocalDateTime momentoCompra = LocalDateTime.now();
-
-        timeValidator.validarCompra(student, cart.keySet(), momentoCompra);
-        healthValidator.validarCompra(student, cart.keySet());
-
-        BigDecimal montoTotalCarrito = calculateTotal(cart);
-
-        Map<UUID, BigDecimal> montosPorCategoria = cart.entrySet().stream()
-                .filter(entry -> entry.getKey().getCategoria() != null &&
-                        entry.getKey().getCategoria().getId() != null)
-                .collect(Collectors.groupingBy(
-                        entry -> entry.getKey().getCategoria().getId(),
-                        Collectors.reducing(
-                                BigDecimal.ZERO,
-                                entry -> {
-                                    BigDecimal precio = entry.getKey().getPrecio() != null ?
-                                            entry.getKey().getPrecio() : BigDecimal.ZERO;
-                                    return precio.multiply(new BigDecimal(entry.getValue()));
-                                },
-                                BigDecimal::add
-                        )
-                ));
-
-        budgetValidator.validarPresupuesto(
-                studentId,
-                montoTotalCarrito,
-                montosPorCategoria,
-                momentoCompra
+        Purchase purchase = new Purchase(
+                student,
+                cart,
+                MedioPago.CREDITOS,
+                student.getId(),
+                BuyerType.STUDENT,
+                buffetId
         );
 
+        purchaseValidator.validate(purchase);
+        BigDecimal totalAmount = purchase.getTotalAmount();
         Billetera wallet = walletRepository.findByStudentId(studentId)
                 .orElseThrow(() ->
                         new IllegalStateException("Student wallet not found: " + studentId));
 
-        if (!wallet.hasSufficientBalance(montoTotalCarrito)) {
-            throw new InsufficientBalanceException
-                    ("Insufficient balance for student: " + studentId);
+        if (!wallet.hasSufficientBalance(totalAmount)) {
+            throw new InsufficientBalanceException(
+                    "Insufficient balance for student: " + studentId);
         }
 
-        wallet.debit(montoTotalCarrito);
-
-        Purchase purchase = new Purchase(student, cart, MedioPago.CREDITOS, student.getId(),
-                BuyerType.STUDENT, buffetId);
-
+        inventoryAvailabilityService.consumeDirectly(buffetId, cart);
+        wallet.debit(totalAmount);
         walletRepository.save(wallet);
-        return purchaseRepository.save(purchase);
+        Purchase savedPurchase = purchaseRepository.save(purchase);
+        registerMovement(wallet, student, totalAmount, "Compra presencial en buffet");
+        return savedPurchase;
     }
 
-    private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
-        return cart.entrySet().stream()
-                .map(entry -> {
-                    BigDecimal precio = entry.getKey().getPrecio() != null ?
-                            entry.getKey().getPrecio() : BigDecimal.ZERO;
-                    return precio.multiply(new BigDecimal(entry.getValue()));
-                })
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    private void registerMovement(
+            Billetera wallet,
+            Alumno student,
+            BigDecimal amount,
+            String description) {
+        if (movimientoBilleteraRepository == null) {
+            return;
+        }
+        if (student.getUsuarioId() == null) {
+            movimientoBilleteraRepository.registrarMovimientoSistema(
+                    wallet.getId(),
+                    TipoMovimientoBilletera.COMPRA,
+                    amount.negate(),
+                    description
+            );
+            return;
+        }
+        movimientoBilleteraRepository.registrarMovimiento(
+                wallet.getId(),
+                TipoMovimientoBilletera.COMPRA,
+                amount.negate(),
+                description,
+                student.getUsuarioId()
+        );
     }
 }

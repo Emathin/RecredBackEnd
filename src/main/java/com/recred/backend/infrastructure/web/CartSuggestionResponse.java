@@ -10,7 +10,7 @@ public record CartSuggestionResponse(
         UUID productId,
         String productName,
         BigDecimal price,
-        Integer stockActual,
+        Integer stockDisponible,
         String reason,
         String source,
         int score
@@ -21,7 +21,7 @@ public record CartSuggestionResponse(
                 product.getId(),
                 product.getNombre(),
                 product.getPrecio(),
-                product.getStockActual(),
+                product.getStockDisponible(),
                 suggestion.reason(),
                 suggestion.source(),
                 suggestion.score()

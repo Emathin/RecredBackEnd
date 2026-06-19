@@ -20,13 +20,14 @@ public class GeminiproductChangeAnalyzer implements ProductChangeAnalyzer {
             GeminiSpendingPredictionAnalyzer.class);
     private static final String PROMPT_TEMPLATE = """
             Sos un asistente para quioskeros de una app escolar.
-            Se te brindara un producto y su precio.
+            Se te brindara un producto y una serie de estadisticas de venta.
             Devolveras una sugerencia para cambiar el producto por uno del mismo rubro
              existente en argentina.
             Usa lenguaje simple, claro y accionable para usuario final.
             No menciones modelo, confianza, calidad predictiva ni cantidad
              de datos historicos.
-            Genera alertas solo si hay riesgo real o un punto concreto para revisar.
+            Las alertas generadas deben tener en cuenta comparacion de precios 
+            con promedios que se te brindaran
             El resumen debe tener una sola oracion.
             Devolve como maximo 2 alertas y 2 recomendaciones.
             Cada texto debe tener menos de 140 caracteres.
@@ -40,6 +41,18 @@ public class GeminiproductChangeAnalyzer implements ProductChangeAnalyzer {
             Datos:
             nombreProducto=%s
             precioProducto=%s
+            categoria=%s
+            ventasPeriodo=%d
+            participacionVentas=%s
+            rankingGeneral=%d
+            rankingCategoria=%d
+            promedioVentasCategoria=%s
+            promedioPrecioCategoria=%s
+            diferenciaPrecioCategoria=%s
+            diasSinVenta=%d
+            clientesDistintos=%d
+            stockActual=%d
+            stockPromedioCategoria=%s
             """;
 
     private final GeminiTextClient geminiTextClient;
@@ -60,11 +73,23 @@ public class GeminiproductChangeAnalyzer implements ProductChangeAnalyzer {
     }
 
     private String prompt(
-            ProductChangeRecommendation productChangeRecommendation) {
+            ProductChangeRecommendation recommendation) {
+        var stats = recommendation.getSaleStatistics();
         return PROMPT_TEMPLATE.formatted(
-
-                productChangeRecommendation.getNombre(),
-                productChangeRecommendation.getPrecio()
+                recommendation.getNombre(),
+                recommendation.getPrecio(),
+                stats.getCategoria(),
+                stats.getVentasPeriodo(),
+                stats.getParticipacionVentas(),
+                stats.getRankingGeneral(),
+                stats.getRankingCategoria(),
+                stats.getPromedioVentasCategoria(),
+                stats.getPromedioPrecioCategoria(),
+                stats.getDiferenciaPrecioCategoria(),
+                stats.getDiasSinVenta(),
+                stats.getClientesDistintos(),
+                stats.getStockActual(),
+                stats.getStockPromedioCategoria()
         );
     }
 

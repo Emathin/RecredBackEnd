@@ -52,14 +52,18 @@ public class FirebasePushNotificationSender implements PushNotificationSender {
             return;
         }
 
-        MulticastMessage message = MulticastMessage.builder()
-                .addAllTokens(tokens) 
-                .setNotification(Notification.builder()
-                        .setTitle(notification.title())
-                        .setBody(notification.message())
-                        .build())
-                .putAllData(data(notification))
-                .build();
+        MulticastMessage.Builder builder = MulticastMessage.builder()
+                .addAllTokens(tokens)
+                .putAllData(data(notification));
+
+        if (notification.title() != null || notification.message() != null) {
+            builder.setNotification(Notification.builder()
+                    .setTitle(notification.title())
+                    .setBody(notification.message())
+                    .build());
+        }
+
+        MulticastMessage message = builder.build();
 
         try {
             FirebaseMessaging messaging = FirebaseMessaging.getInstance(firebaseApp.get());

@@ -65,7 +65,6 @@ public class PurchaseSuggestIA {
         return switch (usuario.getRol()) {
             case PADRE -> isVisibleParaPadre(now);
             // TODO: Configurar restricciones horarias reales para ALUMNO antes de producción.
-            // Actualmente omitido para facilitar pruebas y desarrollo.
             case ALUMNO -> true;
             default -> false;
         };

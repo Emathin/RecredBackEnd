@@ -19,6 +19,15 @@ public record ProductResponseDTO(
         LocalDateTime creadoEn,
         LocalDateTime actualizadoEn,
         Integer stockActual,
+        Integer stockReservado,
+        Integer stockMinimo,
+        Integer stockDisponible,
+        String estadoInventario,
+        String tipoManejoInventario,
+        Integer cupoMaximoDiario,
+        Integer cupoDisponibleDia,
+        String urlImagen,
+        String image,
         CategoryDTO categoria,
         Set<ClasificacionDTO> clasificacionesSalud,
         Set<ClasificacionDTO> tipos
@@ -47,6 +56,19 @@ public record ProductResponseDTO(
                 producto.getCreadoEn(),
                 producto.getActualizadoEn(),
                 producto.getStockActual(),
+                producto.getStockReservado(),
+                producto.getStockMinimo(),
+                producto.getStockDisponible(),
+                producto.getEstadoInventario() == null
+                        ? null
+                        : producto.getEstadoInventario().name(),
+                producto.getTipoManejoInventario() == null
+                        ? null
+                        : producto.getTipoManejoInventario().name(),
+                producto.getCupoMaximoDiario(),
+                producto.getCupoDisponibleDia(),
+                producto.getUrlImagen(),
+                producto.getUrlImagen(),
                 categoriaDTO,
                 saludDTOs,
                 tiposDTOs

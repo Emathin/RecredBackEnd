@@ -7,4 +7,5 @@ import java.util.UUID;
 
 public interface NotificationRepository {
     List<Notification> findByUserId(UUID userId, boolean unreadOnly, int page, int size);
+    void markAsRead(UUID notificationId);
 }

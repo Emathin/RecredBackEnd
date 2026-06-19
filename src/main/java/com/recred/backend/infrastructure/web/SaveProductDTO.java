@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.SaveProductCommand;
+import com.recred.backend.domain.models.TipoManejoInventario;
 
 import java.math.BigDecimal;
 import java.util.Set;
@@ -16,9 +17,43 @@ public record SaveProductDTO(
         String nuevaCategoriaNombre,
         UUID buffetId,
         Integer stockActual,
+        TipoManejoInventario tipoManejoInventario,
+        Integer cupoMaximoDiario,
         Set<UUID> clasificacionesSaludIds,
-        Set<UUID> tiposIds
+        Set<UUID> tiposIds,
+        String urlImagen
 ) {
+    public SaveProductDTO(
+            String nombre,
+            String descripcion,
+            BigDecimal precio,
+            BigDecimal peso,
+            boolean requierePreparacion,
+            UUID categoriaId,
+            String nuevaCategoriaNombre,
+            UUID buffetId,
+            Integer stockActual,
+            Set<UUID> clasificacionesSaludIds,
+            Set<UUID> tiposIds
+    ) {
+        this(
+                nombre,
+                descripcion,
+                precio,
+                peso,
+                requierePreparacion,
+                categoriaId,
+                nuevaCategoriaNombre,
+                buffetId,
+                stockActual,
+                stockActual == null ? null : TipoManejoInventario.STOCK_EXACTO,
+                null,
+                clasificacionesSaludIds,
+                tiposIds,
+                null
+        );
+    }
+
     public SaveProductCommand toCommand() {
         return new SaveProductCommand(
                 nombre,
@@ -31,7 +66,10 @@ public record SaveProductDTO(
                 buffetId,
                 stockActual,
                 clasificacionesSaludIds,
-                tiposIds
+                tiposIds,
+                tipoManejoInventario,
+                cupoMaximoDiario,
+                urlImagen
         );
     }
 }

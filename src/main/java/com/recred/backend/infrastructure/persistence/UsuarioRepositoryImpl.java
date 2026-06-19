@@ -8,6 +8,7 @@ import com.recred.backend.infrastructure.entities.TutorEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.entities.KiosqueroEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -22,12 +23,14 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Usuario> findById(UUID id) {
         return springDataUsuarioRepository.findById(id)
                 .map(UsuarioEntity::toDomain);
     }
 
     @Override
+    @Transactional
     public Usuario save(Usuario usuario) {
         UsuarioEntity entity = toEntity(usuario);
         UsuarioEntity guardado = springDataUsuarioRepository.save(entity);
@@ -35,6 +38,7 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Usuario> findByIdCognito(String sub) {
         return springDataUsuarioRepository.findByIdCognito(sub)
                 .map(UsuarioEntity::toDomain);
@@ -59,6 +63,7 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
         entity.setRol(usuario.getRol());
         entity.setAutenticadoConCognito(usuario.getAutenticadoConCognito());
         entity.setActivo(usuario.getActivo());
+        entity.setUrlFotoPerfil(usuario.getUrlFotoPerfil());
 
         entity.setCreadoEn(usuario.getCreadoEn());
         entity.setActualizadoEn(usuario.getActualizadoEn());
@@ -82,5 +87,11 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
         }
 
         return entity;
+    }
+
+    @Override
+    @Transactional
+    public void updateFotoPerfil(String idCognito, String urlFotoPerfil) {
+        springDataUsuarioRepository.updateFotoPerfil(idCognito, urlFotoPerfil);
     }
 }

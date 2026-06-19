@@ -6,6 +6,7 @@ import com.recred.backend.domain.models.ClasificacionTipo;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.repositories.CategoryRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -34,9 +35,15 @@ public class SaveProduct {
         Producto producto = mapToModel(command);
         Producto savedProduct = productRepository.save(producto);
 
-        if (command.buffetId() != null && command.stockActual() != null) {
+        if (hasInventoryData(command)) {
             saveInventory(command, savedProduct);
             savedProduct.setStockActual(command.stockActual());
+            savedProduct.setStockReservado(0);
+            savedProduct.setStockDisponible(command.stockActual() == null
+                    ? null
+                    : command.stockActual());
+            savedProduct.setTipoManejoInventario(tipoManejo(command));
+            savedProduct.setCupoMaximoDiario(command.cupoMaximoDiario());
         }
 
         return savedProduct;
@@ -47,17 +54,37 @@ public class SaveProduct {
                 .findByBuffetAndProduct(command.buffetId(), savedProduct.getId())
                 .orElseGet(() -> createNewInventory(command, savedProduct.getId()));
 
-        inventario.setStockActual(command.stockActual());
+        if (command.stockActual() != null) {
+            inventario.setStockActual(command.stockActual());
+        }
+        inventario.setTipoManejo(tipoManejo(command));
+        inventario.setCupoMaximoDiario(command.cupoMaximoDiario());
+        inventario.setUrlImagen(command.urlImagen());
         inventoryRepository.save(inventario);
+    }
+
+    private boolean hasInventoryData(SaveProductCommand command) {
+        return command.buffetId() != null
+                && (command.stockActual() != null
+                || command.tipoManejoInventario() != null
+                || command.cupoMaximoDiario() != null);
     }
 
     private Inventario createNewInventory(SaveProductCommand command, UUID productoId) {
         Inventario inventario = new Inventario();
         inventario.setBuffetId(command.buffetId());
         inventario.setProductoId(productoId);
-        inventario.setStockMinimo(0);
+        inventario.setStockMinimo(Inventario.STOCK_MINIMO_PREDETERMINADO);
         inventario.setEstado(EstadoInventario.DISPONIBLE);
+        inventario.setStockReservado(0);
+        inventario.setTipoManejo(tipoManejo(command));
         return inventario;
+    }
+
+    private TipoManejoInventario tipoManejo(SaveProductCommand command) {
+        return command.tipoManejoInventario() == null
+                ? TipoManejoInventario.STOCK_EXACTO
+                : command.tipoManejoInventario();
     }
 
     private Producto mapToModel(SaveProductCommand command) {
@@ -67,6 +94,7 @@ public class SaveProduct {
         producto.setPrecio(command.precio());
         producto.setPeso(command.peso());
         producto.setRequierePreparacion(command.requierePreparacion());
+        producto.setUrlImagen(command.urlImagen());
         producto.setActivo(true);
 
         handleCategory(command, producto);

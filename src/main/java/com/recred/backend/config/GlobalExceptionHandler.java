@@ -1,10 +1,19 @@
 package com.recred.backend.config;
 
+import com.recred.backend.domain.exceptions.NotificationNotFoundException;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.BuffetNotFoundException;
 import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
+import com.recred.backend.domain.exceptions.InsufficientStockException;
+import com.recred.backend.domain.exceptions.InventoryNotFoundException;
+import com.recred.backend.domain.exceptions.InventoryOperationException;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
+import com.recred.backend.domain.exceptions.PickupCutoffTimeExceededException;
+import com.recred.backend.domain.exceptions.PickupSlotCapacityExceededException;
+import com.recred.backend.domain.exceptions.PickupSlotRulesNotFoundException;
+import com.recred.backend.domain.exceptions.ProductDailyCapacityExceededException;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
@@ -40,6 +49,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse>
     handleRestriccionHoraria(RestriccionHorariaException ex){
         ErrorResponse error = new ErrorResponse(
+                "TIME_RESTRICTION",
                 "Restricción Horaria",
                 ex.getMessage(),
                 LocalDateTime.now(),
@@ -56,6 +66,7 @@ public class GlobalExceptionHandler {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("code", "BUDGET_RESTRICTION");
         body.put("error", "Límite de Presupuesto Superado");
         body.put("message", ex.getMessage());
         addRequestId(body);
@@ -67,7 +78,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleRestriccionSalud(
             RestriccionSaludException ex) {
         return buildResponse(HttpStatus.CONFLICT, "Conflicto de Restricción Médica",
-                ex.getMessage());
+                ex.getMessage(), "HEALTH_RESTRICTION");
     }
 
     @ExceptionHandler(AlumnoNoEncontradoException.class)
@@ -80,7 +91,30 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse>
     handleInsufficientBalance(InsufficientBalanceException ex){
         return buildResponse(HttpStatus.BAD_REQUEST, "Saldo Insuficiente",
-                ex.getMessage());
+                ex.getMessage(), "INSUFFICIENT_BALANCE");
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientStock(
+            InsufficientStockException ex
+    ) {
+        return buildResponse(HttpStatus.CONFLICT, "Stock insuficiente", ex.getMessage(),
+                "STOCK_INSUFFICIENT");
+    }
+
+    @ExceptionHandler(InventoryNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleInventoryNotFound(
+            InventoryNotFoundException ex
+    ) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Inventario no encontrado", ex.getMessage());
+    }
+
+    @ExceptionHandler(InventoryOperationException.class)
+    public ResponseEntity<ErrorResponse> handleInventoryOperation(
+            InventoryOperationException ex
+    ) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Operacion de inventario invalida",
+                ex.getMessage(), "INVENTORY_OPERATION_INVALID");
     }
 
     @ExceptionHandler(ImageValidationException.class)
@@ -106,7 +140,45 @@ public class GlobalExceptionHandler {
             InvalidPurchaseStatusTransitionException ex
     ) {
         return buildResponse(HttpStatus.BAD_REQUEST, "Estado de compra invalido",
-                ex.getMessage());
+                ex.getMessage(), "INVALID_PURCHASE_STATUS_TRANSITION");
+    }
+
+    @ExceptionHandler(PickupCutoffTimeExceededException.class)
+    public ResponseEntity<ErrorResponse> handlePickupCutoffTimeExceeded(
+            PickupCutoffTimeExceededException ex
+    ) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Horario de corte superado",
+                ex.getMessage(), "CUTOFF_TIME_EXCEEDED");
+    }
+
+    @ExceptionHandler(PickupSlotCapacityExceededException.class)
+    public ResponseEntity<ErrorResponse> handlePickupSlotCapacityExceeded(
+            PickupSlotCapacityExceededException ex
+    ) {
+        return buildResponse(HttpStatus.CONFLICT, "Cupo de recreo agotado",
+                ex.getMessage(), "TIME_SLOT_CAPACITY_EXCEEDED");
+    }
+
+    @ExceptionHandler(PickupSlotRulesNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePickupSlotRulesNotFound(
+            PickupSlotRulesNotFoundException ex
+    ) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Franja horaria no encontrada",
+                ex.getMessage(), "TIME_SLOT_NOT_FOUND");
+    }
+
+    @ExceptionHandler(ProductDailyCapacityExceededException.class)
+    public ResponseEntity<ErrorResponse> handleProductDailyCapacity(
+            ProductDailyCapacityExceededException ex
+    ) {
+        return buildResponse(HttpStatus.CONFLICT, "Cupo diario de producto agotado",
+                ex.getMessage(), "PRODUCT_DAILY_CAPACITY_EXCEEDED");
+    }
+
+    @ExceptionHandler(BuffetNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleBuffetNotFound(BuffetNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Buffet no encontrado",
+                ex.getMessage(), "BUFFET_NOT_FOUND");
     }
 
     @ExceptionHandler(InvalidChatMessageException.class)
@@ -139,6 +211,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleKiosqueroNotFound(
             KiosqueroNotFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Kiosquero no encontrado",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(NotificationNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotificationNotFound(
+            NotificationNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Notificación no encontrada",
                 ex.getMessage());
     }
 
@@ -196,9 +275,29 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status,
                                                         String error, String message) {
-        ErrorResponse response = new ErrorResponse(error, message,
+        return buildResponse(status, error, message, defaultCode(status));
+    }
+
+    private ResponseEntity<ErrorResponse> buildResponse(
+            HttpStatus status,
+            String error,
+            String message,
+            String code
+    ) {
+        ErrorResponse response = new ErrorResponse(code, error, message,
                 LocalDateTime.now(), status.value(), currentRequestId());
         return ResponseEntity.status(status).body(response);
+    }
+
+    private String defaultCode(HttpStatus status) {
+        return switch (status) {
+            case BAD_REQUEST -> "BAD_REQUEST";
+            case CONFLICT -> "CONFLICT";
+            case FORBIDDEN -> "FORBIDDEN";
+            case NOT_FOUND -> "NOT_FOUND";
+            case INTERNAL_SERVER_ERROR -> "INTERNAL_ERROR";
+            default -> "ERROR";
+        };
     }
 
     private String currentRequestId() {

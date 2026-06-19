@@ -1,0 +1,17 @@
+package com.recred.backend.domain.events;
+
+public enum KiosqueroRealtimeEventType {
+    STOCK_CHANGED,
+    PURCHASE_CREATED,
+    NEW_ORDER,
+    ORDER_UPDATED,
+    PRODUCT_SOLD_OUT,
+    LOW_STOCK,
+    MANY_PENDING_ORDERS,
+    ORDER_UPCOMING_PICKUP,
+    ORDER_EXPIRED,
+    DAILY_CAPACITY_LOW,
+    ORDER_ACCUMULATION,
+    DASHBOARD_CHANGED,
+    DAILY_REPORT_CHANGED
+}
