@@ -8,6 +8,8 @@ import com.recred.backend.domain.models.TipoDiaEscolar;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -19,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
+@ExtendWith(MockitoExtension.class)
+@SuppressWarnings("unchecked")
 class SchoolAssistantContentFormatterTest {
 
     private SchoolAssistantContentFormatter formatter;
@@ -27,8 +31,7 @@ class SchoolAssistantContentFormatterTest {
     void setUp() {
         formatter = new SchoolAssistantContentFormatter(
                 mock(ProductRepository.class),
-                new SchoolAssistantReplyFormatter()
-        );
+                new SchoolAssistantReplyFormatter());
     }
 
     @Test
@@ -73,8 +76,7 @@ class SchoolAssistantContentFormatterTest {
         SchoolCalendarEvent event = new SchoolCalendarEvent(
                 null,
                 TipoDiaEscolar.CLASE,
-                "Clase normal"
-        );
+                "Clase normal");
 
         String result = formatter.eventsList(List.of(event));
 
@@ -87,16 +89,14 @@ class SchoolAssistantContentFormatterTest {
                 UUID.randomUUID(),
                 "Jugo",
                 2,
-                new BigDecimal("10.00")
-        );
+                new BigDecimal("10.00"));
 
         Map<String, Object> result = formatter.purchasePlanData(new PurchasePlan(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 List.of(item),
                 1,
-                null
-        ));
+                null));
 
         List<Map<String, Object>> items = (List<Map<String, Object>>) result.get("items");
         assertEquals(new BigDecimal("20.00"), items.get(0).get("subtotal"));
