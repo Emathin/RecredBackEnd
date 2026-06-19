@@ -97,6 +97,68 @@ class PurchaseResponseDTOTest {
         assertEquals(new BigDecimal("500.00"), itemDto.getUnitPrice());
     }
 
+    @Test
+    void constructor_WithPromotionItems_ShouldGroupThem() {
+        UUID promoId = UUID.randomUUID();
+        String promoName = "Promo Coca+Alfajor";
+
+        Producto product1 = new Producto();
+        product1.setId(UUID.randomUUID());
+        product1.setNombre("Coca-Cola");
+        product1.setPrecio(new BigDecimal("300.00"));
+        product1.setRequierePreparacion(false);
+        product1.setPromocionId(promoId);
+        product1.setPromocionNombre(promoName);
+
+        Producto product2 = new Producto();
+        product2.setId(UUID.randomUUID());
+        product2.setNombre("Alfajor");
+        product2.setPrecio(new BigDecimal("200.00"));
+        product2.setRequierePreparacion(true);
+        product2.setPromocionId(promoId);
+        product2.setPromocionNombre(promoName);
+
+        Producto standalone = new Producto();
+        standalone.setId(UUID.randomUUID());
+        standalone.setNombre("Chocolate");
+        standalone.setPrecio(new BigDecimal("150.00"));
+        standalone.setRequierePreparacion(false);
+
+        Purchase purchase = new Purchase();
+        purchase.setId(UUID.randomUUID());
+        purchase.setTotalAmount(new BigDecimal("650.00"));
+        purchase.setStatus(EstadoCompra.PENDIENTE);
+        purchase.setItems(Map.of(
+                product1, 1,
+                product2, 1,
+                standalone, 1
+        ));
+
+        PurchaseResponseDTO response = new PurchaseResponseDTO(purchase);
+
+        assertEquals(2, response.getItems().size());
+
+        // Find promo item
+        PurchaseItemDTO promoItem = response.getItems().stream()
+                .filter(item -> item.getProductId().equals(promoId))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(promoName, promoItem.getProductName());
+        assertEquals(1, promoItem.getQuantity());
+        assertEquals(new BigDecimal("500.00"), promoItem.getUnitPrice());
+        assertEquals(true, promoItem.getRequierePreparacion());
+
+        // Find standalone item
+        PurchaseItemDTO standaloneItem = response.getItems().stream()
+                .filter(item -> item.getProductId().equals(standalone.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("Chocolate", standaloneItem.getProductName());
+        assertEquals(1, standaloneItem.getQuantity());
+        assertEquals(new BigDecimal("150.00"), standaloneItem.getUnitPrice());
+        assertEquals(false, standaloneItem.getRequierePreparacion());
+    }
+
     private Alumno student(UUID studentId) {
         Alumno student = new Alumno();
         student.setId(studentId);

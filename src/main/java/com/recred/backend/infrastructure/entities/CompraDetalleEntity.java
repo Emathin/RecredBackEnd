@@ -36,6 +36,10 @@ public class CompraDetalleEntity {
     @JoinColumn(name = "producto_id", nullable = false)
     private ProductoEntity productoEntity;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promocion_id")
+    private PromotionEntity promotionEntity;
+
     @Column(nullable = false)
     private Integer cantidad;
 

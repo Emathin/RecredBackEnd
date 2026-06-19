@@ -11,13 +11,16 @@ public record StudentDTO(
         Boolean activo,
         String grado,
         UUID colegioId,
-        BigDecimal saldo
+        BigDecimal saldo,
+        String urlFotoPerfil
 ) {
     public static StudentDTO fromDomain(Alumno alumno) {
         String nombre = alumno.getUsuario() != null ?
                 alumno.getUsuario().getNombre() : "Sin nombre";
         String apellido = alumno.getUsuario() != null ?
                 alumno.getUsuario().getApellido() : "Sin apellido";
+        String urlFotoPerfil = alumno.getUsuario() != null ?
+                alumno.getUsuario().getUrlFotoPerfil() : null;
 
         String grado = null;
         UUID colegioId = null;
@@ -38,7 +41,8 @@ public record StudentDTO(
                 alumno.getActivo(),
                 grado,
                 colegioId,
-                saldo
+                saldo,
+                urlFotoPerfil
         );
     }
 }

@@ -1,5 +1,6 @@
-package com.recred.backend.application;
+package com.recred.backend.unit.application;
 
+import com.recred.backend.application.ManagePromotionStatus;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.domain.repositories.PromotionRepository;
@@ -10,7 +11,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,7 +43,8 @@ class ManagePromotionStatusTest {
 
         managePromotionStatus.execute();
 
-        verify(promotionRepository).save(argThat(p -> p.getId().equals(promotionId) && p.getStatus() == PromotionStatus.ACTIVE));
+        verify(promotionRepository)
+                .save(argThat(p -> p.getId().equals(promotionId) && p.getStatus() == PromotionStatus.ACTIVE));
     }
 
     @Test

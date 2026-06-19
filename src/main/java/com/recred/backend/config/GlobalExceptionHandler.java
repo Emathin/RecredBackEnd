@@ -77,6 +77,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RestriccionSaludException.class)
     public ResponseEntity<ErrorResponse> handleRestriccionSalud(
             RestriccionSaludException ex) {
+        LOGGER.error("RestriccionSaludException caught: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.CONFLICT, "Conflicto de Restricción Médica",
                 ex.getMessage(), "HEALTH_RESTRICTION");
     }
@@ -90,6 +91,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InsufficientBalanceException.class)
     public ResponseEntity<ErrorResponse>
     handleInsufficientBalance(InsufficientBalanceException ex){
+        LOGGER.error("InsufficientBalanceException caught: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.BAD_REQUEST, "Saldo Insuficiente",
                 ex.getMessage(), "INSUFFICIENT_BALANCE");
     }
@@ -98,6 +100,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleInsufficientStock(
             InsufficientStockException ex
     ) {
+        LOGGER.error("InsufficientStockException caught: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.CONFLICT, "Stock insuficiente", ex.getMessage(),
                 "STOCK_INSUFFICIENT");
     }
@@ -155,6 +158,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handlePickupSlotCapacityExceeded(
             PickupSlotCapacityExceededException ex
     ) {
+        LOGGER.error("PickupSlotCapacityExceededException caught: {}",
+                ex.getMessage(), ex);
         return buildResponse(HttpStatus.CONFLICT, "Cupo de recreo agotado",
                 ex.getMessage(), "TIME_SLOT_CAPACITY_EXCEEDED");
     }
@@ -171,6 +176,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleProductDailyCapacity(
             ProductDailyCapacityExceededException ex
     ) {
+        LOGGER.error("ProductDailyCapacityExceededException caught: {}",
+                ex.getMessage(), ex);
         return buildResponse(HttpStatus.CONFLICT, "Cupo diario de producto agotado",
                 ex.getMessage(), "PRODUCT_DAILY_CAPACITY_EXCEEDED");
     }
@@ -232,6 +239,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse>
     handleValidation(MethodArgumentNotValidException ex){
+        LOGGER.error("MethodArgumentNotValidException caught: {}",
+                ex.getMessage(), ex);
         String details = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .findFirst().orElse("Datos inválidos");
@@ -240,6 +249,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        LOGGER.error("IllegalArgumentException caught: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.BAD_REQUEST, "Regla de Negocio Inválida",
                 ex.getMessage());
     }
