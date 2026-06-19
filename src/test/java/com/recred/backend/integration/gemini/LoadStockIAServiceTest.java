@@ -61,8 +61,10 @@ class LoadStockIAServiceTest {
 
     @Test
     void analyze_DeberiaRetornarRespuestaVacia_CuandoIAnoGeneraRespuesta() {
-        MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
-        when(geminiTextClient.generateWithImage(anyString(), any())).thenReturn(Optional.empty());
+        MockMultipartFile file = new MockMultipartFile(
+                "image", "test.jpg", "image/jpeg", "content".getBytes());
+        when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
+                .thenReturn(Optional.empty());
 
         LoadStockPredictionDTO result = loadStockIAService.analyze(file);
 
@@ -71,17 +73,26 @@ class LoadStockIAServiceTest {
 
     @Test
     void analyze_DeberiaLanzarExcepcion_CuandoIAFalla() {
-        MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
-        when(geminiTextClient.generateWithImage(anyString(), any())).thenThrow(new RuntimeException("Error"));
+        MockMultipartFile file = new MockMultipartFile(
+                "image", "test.jpg", "image/jpeg", "content".getBytes());
+        when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
+                .thenThrow(new RuntimeException("Error"));
 
         assertThrows(RuntimeException.class, () -> loadStockIAService.analyze(file));
     }
 
     @Test
     void analyze_DeberiaRetornarPrediccion_CuandoIAEsExitosa() {
-        MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
-        GeminiTextResponse geminiResponse = new GeminiTextResponse("{\"nombre\":\"Galleta\",\"descripcion\":\"Pepitos\",\"peso\":\"100g\",\"contiene_azucar\":\"si\",\"contiene_mani\":\"no\",\"contiene_lactosa\":\"si\",\"contiene_tacc\":\"si\"}", "gemini-pro");
-        when(geminiTextClient.generateWithImage(anyString(), any())).thenReturn(Optional.of(geminiResponse));
+        MockMultipartFile file = new MockMultipartFile(
+                "image", "test.jpg", "image/jpeg", "content".getBytes());
+        GeminiTextResponse geminiResponse = new GeminiTextResponse(
+                "{\"nombre\":\"Galleta\",\"descripcion\":\"Pepitos\",\"peso\":\"100g\","
+                        + "\"contiene_azucar\":\"si\",\"contiene_mani\":\"no\","
+                        + "\"contiene_lactosa\":\"si\",\"contiene_tacc\":\"si\"}",
+                "gemini-pro"
+        );
+        when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
+                .thenReturn(Optional.of(geminiResponse));
 
         LoadStockPredictionDTO result = loadStockIAService.analyze(file);
 
@@ -97,9 +108,11 @@ class LoadStockIAServiceTest {
 
     @Test
     void analyze_DeberiaRetornarRespuestaVacia_CuandoJsonEsInvalido() {
-        MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
+        MockMultipartFile file = new MockMultipartFile(
+                "image", "test.jpg", "image/jpeg", "content".getBytes());
         GeminiTextResponse geminiResponse = new GeminiTextResponse("invalid json", "gemini-pro");
-        when(geminiTextClient.generateWithImage(anyString(), any())).thenReturn(Optional.of(geminiResponse));
+        when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
+                .thenReturn(Optional.of(geminiResponse));
 
         LoadStockPredictionDTO result = loadStockIAService.analyze(file);
 

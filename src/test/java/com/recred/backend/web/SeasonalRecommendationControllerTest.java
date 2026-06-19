@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -50,7 +51,7 @@ class SeasonalRecommendationControllerTest {
         respuesta.setSugerences(List.of(
                 new SugerenciaDTO("Helados y Congelados", "AUMENTAR", "Clima caluroso.")));
         respuesta.setPromocionalTip("Promo 2x1 en helados.");
-        when(useCase.execute(anyDouble(), anyDouble())).thenReturn(respuesta);
+        when(useCase.execute(anyDouble(), anyDouble(), any())).thenReturn(respuesta);
 
         mockMvc.perform(get("/api/v1/recomendations/seasonal")
                         .param("latitude", "-34.7")
@@ -80,7 +81,7 @@ class SeasonalRecommendationControllerTest {
 
     @Test
     void dadoQueElCasoDeUsoLanzaExcepcion_cuandoSeLlamaAlEndpoint_entoncesRetorna500() throws Exception {
-        when(useCase.execute(anyDouble(), anyDouble()))
+        when(useCase.execute(anyDouble(), anyDouble(), any()))
                 .thenThrow(new RuntimeException("Weather service is currently unavailable"));
 
         mockMvc.perform(get("/api/v1/recomendations/seasonal")

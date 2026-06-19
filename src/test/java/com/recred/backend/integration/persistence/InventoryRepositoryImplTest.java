@@ -234,6 +234,27 @@ class InventoryRepositoryImplTest {
         assertNull(result.get(0).getCategoria());
     }
 
+    @Test
+    void findAvailableProductsByBuffet_ShouldMapUrlImagen() {
+        UUID buffetId = UUID.randomUUID();
+        String url = "https://example.com/image.png";
+
+        ProductoEntity productoEntity = new ProductoEntity();
+        productoEntity.setId(UUID.randomUUID());
+        productoEntity.setNombre("Jugo");
+
+        InventarioBuffetEntity inventario = new InventarioBuffetEntity();
+        inventario.setProductoEntity(productoEntity);
+        inventario.setUrlImagen(url);
+
+        when(springDataInventoryRepository.findAvailableByBuffetId(buffetId))
+                .thenReturn(List.of(inventario));
+
+        List<Producto> result = inventoryRepository.findAvailableProductsByBuffet(buffetId);
+
+        assertEquals(url, result.get(0).getUrlImagen());
+    }
+
     private InventarioBuffetEntity inventoryEntity(UUID buffetId, UUID productId) {
         BuffetEntity buffetEntity = new BuffetEntity();
         buffetEntity.setId(buffetId);
@@ -248,5 +269,32 @@ class InventoryRepositoryImplTest {
         entity.setEstado(EstadoInventario.DISPONIBLE);
         entity.setTipoManejo(TipoManejoInventario.STOCK_EXACTO);
         return entity;
+    }
+
+    @Test
+    void save_WhenUrlImagenIsNull_ShouldSaveDefaultLogoUrl() {
+        UUID buffetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Inventario inventario = new Inventario();
+        inventario.setBuffetId(buffetId);
+        inventario.setProductoId(productId);
+        inventario.setStockActual(10);
+        inventario.setTipoManejo(TipoManejoInventario.STOCK_EXACTO);
+        inventario.setEstado(EstadoInventario.DISPONIBLE);
+        inventario.setUrlImagen(null);
+
+        when(springDataInventoryRepository.findByBuffetEntityIdAndProductoEntityId(buffetId, productId))
+                .thenReturn(Optional.empty());
+        when(springDataInventoryRepository.save(any(InventarioBuffetEntity.class)))
+                .thenAnswer(i -> i.getArgument(0));
+
+        Inventario saved = inventoryRepository.save(inventario);
+
+        assertEquals(InventarioBuffetEntity.DEFAULT_LOGO_URL, saved.getUrlImagen());
+
+        ArgumentCaptor<InventarioBuffetEntity> captor =
+                ArgumentCaptor.forClass(InventarioBuffetEntity.class);
+        verify(springDataInventoryRepository).save(captor.capture());
+        assertEquals(InventarioBuffetEntity.DEFAULT_LOGO_URL, captor.getValue().getUrlImagen());
     }
 }

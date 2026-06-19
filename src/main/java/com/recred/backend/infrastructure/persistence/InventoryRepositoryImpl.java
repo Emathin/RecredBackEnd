@@ -46,6 +46,12 @@ public class InventoryRepositoryImpl implements InventoryRepository {
         entity.setEstado(safeState(inventario.estadoActual()));
         entity.setTipoManejo(safeType(inventario.getTipoManejo()));
         entity.setCupoMaximoDiario(inventario.getCupoMaximoDiario());
+        
+        String imageToSave = (inventario.getUrlImagen() == null 
+                || inventario.getUrlImagen().isBlank())
+                ? InventarioBuffetEntity.DEFAULT_LOGO_URL
+                : inventario.getUrlImagen();
+        entity.setUrlImagen(imageToSave);
 
         if (entity.getBuffetEntity() == null) {
             BuffetEntity buffet = new BuffetEntity();
@@ -99,6 +105,7 @@ public class InventoryRepositoryImpl implements InventoryRepository {
         producto.setTipoManejoInventario(inventory.getTipoManejo());
         producto.setEstadoInventario(domainInventory.estadoActual());
         producto.setCupoMaximoDiario(inventory.getCupoMaximoDiario());
+        producto.setUrlImagen(inventory.getUrlImagen());
 
         if (entity.getCategoria() != null) {
             com.recred.backend.domain.models.CategoriaProducto category =
@@ -120,5 +127,11 @@ public class InventoryRepositoryImpl implements InventoryRepository {
 
     private EstadoInventario safeState(EstadoInventario state) {
         return state == null ? EstadoInventario.DISPONIBLE : state;
+    }
+
+    @Override
+    @Transactional
+    public void updateUrlImagen(UUID buffetId, UUID productoId, String urlImagen) {
+        springDataInventoryRepository.updateUrlImagen(buffetId, productoId, urlImagen);
     }
 }

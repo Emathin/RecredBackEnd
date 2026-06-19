@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.CreatePromotion;
 import com.recred.backend.application.DeletePromotion;
 import com.recred.backend.application.GetActivePromotions;
+import com.recred.backend.application.GetActivePromotionsByBuffet;
 import com.recred.backend.application.GetPromotionById;
 import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.domain.models.Producto;
@@ -28,6 +29,7 @@ class PromotionControllerTest {
     private UpdatePromotion updatePromotion;
     private DeletePromotion deletePromotion;
     private GetActivePromotions getActivePromotions;
+    private GetActivePromotionsByBuffet getActivePromotionsByBuffet;
     private GetPromotionById getPromotionById;
     private PromotionController controller;
 
@@ -37,12 +39,14 @@ class PromotionControllerTest {
         updatePromotion = mock(UpdatePromotion.class);
         deletePromotion = mock(DeletePromotion.class);
         getActivePromotions = mock(GetActivePromotions.class);
+        getActivePromotionsByBuffet = mock(GetActivePromotionsByBuffet.class);
         getPromotionById = mock(GetPromotionById.class);
         controller = new PromotionController(
                 createPromotion,
                 updatePromotion,
                 deletePromotion,
                 getActivePromotions,
+                getActivePromotionsByBuffet,
                 getPromotionById
         );
     }
@@ -64,6 +68,23 @@ class PromotionControllerTest {
     }
 
     @Test
+    void listActivePromotionsByBuffetReturnsMappedPromotions() {
+        UUID buffetId = UUID.randomUUID();
+        UUID promotionId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Promotion promotion = promotion(promotionId, productId);
+        when(getActivePromotionsByBuffet.execute(buffetId)).thenReturn(List.of(promotion));
+
+        ResponseEntity<List<PromotionResponseDTO>> response =
+                controller.listActivePromotionsByBuffet(buffetId);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(1, response.getBody().size());
+        assertEquals(promotionId, response.getBody().get(0).getId());
+        verify(getActivePromotionsByBuffet).execute(buffetId);
+    }
+
+    @Test
     void getPromotionByIdReturnsMappedPromotion() {
         UUID promotionId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
@@ -82,7 +103,9 @@ class PromotionControllerTest {
     void createPromotionDelegatesRequestAndReturnsResponse() {
         UUID firstProductId = UUID.randomUUID();
         UUID secondProductId = UUID.randomUUID();
+        UUID buffetId = UUID.randomUUID();
         PromotionRequestDTO request = request(List.of(firstProductId, secondProductId));
+        request.setBuffetId(buffetId);
         Promotion promotion = promotion(UUID.randomUUID(), firstProductId);
         when(createPromotion.execute(
                 request.getProductIds(),
@@ -90,6 +113,7 @@ class PromotionControllerTest {
                 request.getName(),
                 request.getStartDate(),
                 request.getEndDate(),
+                request.getBuffetId(),
                 false
         )).thenReturn(promotion);
 
@@ -104,6 +128,7 @@ class PromotionControllerTest {
                 request.getName(),
                 request.getStartDate(),
                 request.getEndDate(),
+                request.getBuffetId(),
                 false
         );
     }

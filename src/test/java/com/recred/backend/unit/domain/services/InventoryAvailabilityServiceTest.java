@@ -4,6 +4,7 @@ import com.recred.backend.domain.events.KiosqueroRealtimeChangeKind;
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventType;
+import com.recred.backend.domain.events.InventoryRealtimePayload;
 import com.recred.backend.domain.exceptions.InventoryNotFoundException;
 import com.recred.backend.domain.exceptions.InventoryOperationException;
 import com.recred.backend.domain.models.EstadoInventario;
@@ -646,7 +647,8 @@ class InventoryAvailabilityServiceTest {
         boolean found = captor.getAllValues().stream()
                 .anyMatch(event -> event.type() == type
                         && event.buffetId().equals(buffetId)
-                        && event.productId().equals(productId));
+                        && event.payload() instanceof InventoryRealtimePayload payload
+                        && payload.productId().equals(productId));
         assertTrue(found);
     }
 

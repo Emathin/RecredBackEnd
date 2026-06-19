@@ -1,0 +1,61 @@
+package com.recred.backend.application;
+
+import com.recred.backend.domain.models.Promotion;
+import com.recred.backend.domain.models.PromotionStatus;
+import com.recred.backend.domain.repositories.PromotionRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class ManagePromotionStatusTest {
+
+    @Mock
+    private PromotionRepository promotionRepository;
+
+    private ManagePromotionStatus managePromotionStatus;
+
+    @BeforeEach
+    void setUp() {
+        managePromotionStatus = new ManagePromotionStatus(promotionRepository);
+    }
+
+    @Test
+    void execute_ShouldActivateDraftPromotions() {
+        UUID promotionId = UUID.randomUUID();
+        Promotion draftPromotion = new Promotion();
+        draftPromotion.setId(promotionId);
+        draftPromotion.setStatus(PromotionStatus.DRAFT);
+        draftPromotion.setStartDate(LocalDateTime.now().minusDays(1));
+
+        when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
+                .thenReturn(List.of(draftPromotion));
+
+        managePromotionStatus.execute();
+
+        verify(promotionRepository).save(argThat(p -> p.getId().equals(promotionId) && p.getStatus() == PromotionStatus.ACTIVE));
+    }
+
+    @Test
+    void execute_ShouldNotActivateAlreadyActivePromotions() {
+        Promotion activePromotion = new Promotion();
+        activePromotion.setStatus(PromotionStatus.ACTIVE);
+
+        when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
+                .thenReturn(List.of(activePromotion));
+
+        managePromotionStatus.execute();
+
+        verify(promotionRepository, never()).save(any(Promotion.class));
+    }
+}

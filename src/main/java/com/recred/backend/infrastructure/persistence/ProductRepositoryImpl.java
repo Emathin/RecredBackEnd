@@ -85,6 +85,7 @@ public class ProductRepositoryImpl implements ProductRepository {
         TipoManejoInventario tipoManejo = result.tipoManejo();
         Integer cupoMaximoDiario = integerValue(result.cupoMaximoDiario());
         Integer stockDisponible = integerValue(result.stockDisponible());
+
         Inventario inventario = inventario(
                 stockActual,
                 stockReservado,
@@ -100,6 +101,7 @@ public class ProductRepositoryImpl implements ProductRepository {
         domain.setTipoManejoInventario(tipoManejo);
         domain.setCupoMaximoDiario(cupoMaximoDiario);
         domain.setStockDisponible(stockDisponible);
+        domain.setUrlImagen(result.urlImagen());
         return domain;
     }
 

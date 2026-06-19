@@ -3,6 +3,7 @@ package com.recred.backend.integration.persistence;
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventType;
+import com.recred.backend.domain.events.PurchaseRealtimePayload;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.CartProductAffinity;
@@ -42,6 +43,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -127,9 +129,13 @@ class PurchaseRepositoryImplTest {
                 .filter(event -> event.type() == type)
                 .findFirst()
                 .orElseThrow();
-        assertEquals(expectedPurchaseId, purchaseEvent.purchaseId());
+        PurchaseRealtimePayload payload = assertInstanceOf(
+                PurchaseRealtimePayload.class,
+                purchaseEvent.payload()
+        );
+        assertEquals(expectedPurchaseId, payload.purchaseId());
         assertEquals(buffetId, purchaseEvent.buffetId());
-        assertEquals(new BigDecimal("12.00"), purchaseEvent.purchaseTotal());
+        assertEquals(new BigDecimal("12.00"), payload.purchaseTotal());
 
         boolean dashboardEventFound = eventCaptor.getAllValues()
                 .stream()

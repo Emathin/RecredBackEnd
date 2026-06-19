@@ -20,6 +20,7 @@ public class PromotionResponseDTO {
     private LocalDateTime endDate;
     private String status;
     private List<UUID> productIds;
+    private UUID buffetId;
 
     public static PromotionResponseDTO fromDomain(Promotion promotion) {
         PromotionResponseDTO dto = new PromotionResponseDTO();
@@ -34,6 +35,10 @@ public class PromotionResponseDTO {
             dto.setProductIds(promotion.getProducts().stream()
                     .map(p -> p.getId())
                     .collect(Collectors.toList()));
+        }
+        
+        if (promotion.getBuffet() != null) {
+            dto.setBuffetId(promotion.getBuffet().getId());
         }
         
         return dto;

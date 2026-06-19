@@ -22,4 +22,6 @@ public class LoadStockPredictionDTO {
     private String contieneLactosa;
     @JsonProperty("contiene-tacc")
     private String contieneTacc;
+    @JsonProperty("url_imagen")
+    private String urlImagen;
 }

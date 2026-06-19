@@ -96,7 +96,8 @@ public record KiosqueroDashboard(
             UUID productId,
             String productName,
             int quantity,
-            BigDecimal total
+            BigDecimal total,
+            String image
     ) {
     }
 
@@ -105,7 +106,8 @@ public record KiosqueroDashboard(
             String productName,
             Integer stockDisponible,
             Integer stockMinimo,
-            String estadoInventario
+            String estadoInventario,
+            String image
     ) {
     }
 

@@ -365,7 +365,8 @@ public class GetKiosqueroDashboard {
                         product.getId(),
                         product.getNombre(),
                         safeQuantity(product.getStockReservado()),
-                        BigDecimal.ZERO
+                        BigDecimal.ZERO,
+                        product.getUrlImagen()
                 ))
                 .sorted(productMetricComparator())
                 .limit(TOP_PRODUCTS_LIMIT)
@@ -666,7 +667,8 @@ public class GetKiosqueroDashboard {
                 product.getStockMinimo(),
                 product.getEstadoInventario() == null
                         ? null
-                        : product.getEstadoInventario().name()
+                        : product.getEstadoInventario().name(),
+                product.getUrlImagen()
         );
     }
 
@@ -685,12 +687,14 @@ public class GetKiosqueroDashboard {
     private static class ProductAccumulator {
         private final UUID productId;
         private final String productName;
+        private final String productImage;
         private int quantity;
         private BigDecimal total = BigDecimal.ZERO;
 
         ProductAccumulator(Producto product) {
             this.productId = product.getId();
             this.productName = product.getNombre();
+            this.productImage = product.getUrlImagen();
         }
 
         void add(int quantityToAdd, BigDecimal unitPrice) {
@@ -699,7 +703,13 @@ public class GetKiosqueroDashboard {
         }
 
         DashboardProductMetric toMetric() {
-            return new DashboardProductMetric(productId, productName, quantity, total);
+            return new DashboardProductMetric(
+                    productId,
+                    productName,
+                    quantity,
+                    total,
+                    productImage
+            );
         }
 
         private BigDecimal price(BigDecimal value) {
