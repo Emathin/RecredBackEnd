@@ -850,8 +850,13 @@ public class UseCases {
     @Bean
     public CheckBudgetDates checkBudgetDates(
             ProductRepository productRepository,
+            PromotionRepository promotionRepository,
             ValidadorPresupuestoService validadorPresupuestoService) {
-        return new CheckBudgetDates(productRepository, validadorPresupuestoService);
+        return new CheckBudgetDates(
+                productRepository,
+                promotionRepository,
+                validadorPresupuestoService
+        );
     }
 
     @Bean

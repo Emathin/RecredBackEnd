@@ -21,6 +21,7 @@ import com.recred.backend.infrastructure.entities.CompraEntity;
 import com.recred.backend.infrastructure.entities.CompraPresencialEntity;
 import com.recred.backend.infrastructure.entities.FranjaHorariaEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.PromotionEntity;
 import com.recred.backend.infrastructure.entities.RetiroProgramadoEntity;
 import com.recred.backend.infrastructure.entities.TutorEntity;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -131,6 +132,12 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
             detalle.setCantidad(cantidad);
             detalle.setPrecioUnitario(producto.getPrecio());
             detalle.setSubtotal(producto.getPrecio().multiply(new BigDecimal(cantidad)));
+
+            if (producto.getPromocionId() != null) {
+                PromotionEntity promotionEntity = new PromotionEntity();
+                promotionEntity.setId(producto.getPromocionId());
+                detalle.setPromotionEntity(promotionEntity);
+            }
 
             entity.addDetalle(detalle);
         });

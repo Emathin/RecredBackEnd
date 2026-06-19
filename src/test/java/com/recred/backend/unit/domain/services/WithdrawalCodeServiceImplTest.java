@@ -41,10 +41,12 @@ class WithdrawalCodeServiceImplTest {
         // Verificamos que el código no sea nulo
         assertNotNull(code);
 
-        // Verificamos el formato esperado (ej. TIGRE-AZUL)
+        // Verificamos el formato esperado (ej. KEVIN-SAXOFON)
         assertTrue(code.contains("-"), "El código generado debe contener un guion separador");
         assertEquals(code, code.toUpperCase(), "El código debe estar completamente en mayúsculas");
         assertFalse(code.contains(" "), "El código no debe contener espacios en blanco");
+        assertTrue(code.matches("^[A-Z0-9]+-[A-Z0-9]+$"),
+                "El código debe ser alfanumérico y coincidir con el patrón WORD-WORD");
 
         // Verificamos que la base de datos fue consultada exactamente 1 vez
         verify(purchaseRepository, times(1))

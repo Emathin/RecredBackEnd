@@ -366,6 +366,8 @@ public class CreateAdvancePurchase {
                                     .multiply(multiplier)
                                     .setScale(2, java.math.RoundingMode.HALF_UP);
                             discountedProduct.setPrecio(discountedPrice);
+                            discountedProduct.setPromocionId(promotion.getId());
+                            discountedProduct.setPromocionNombre(promotion.getName());
 
                             mergeOrPut(items, discountedProduct, itemRequest.quantity());
                         }
@@ -383,7 +385,11 @@ public class CreateAdvancePurchase {
         for (Producto k : items.keySet()) {
             boolean sameId = k.getId().equals(product.getId());
             boolean samePrice = k.getPrecio().compareTo(product.getPrecio()) == 0;
-            if (sameId && samePrice) {
+            boolean samePromotion = java.util.Objects.equals(
+                    k.getPromocionId(),
+                    product.getPromocionId()
+            );
+            if (sameId && samePrice && samePromotion) {
                 existingKey = k;
                 break;
             }
