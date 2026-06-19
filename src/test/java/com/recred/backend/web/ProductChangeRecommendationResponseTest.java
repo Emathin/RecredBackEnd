@@ -1,14 +1,16 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
 
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.ProductRecommendationResult;
 import com.recred.backend.domain.models.ProductSaleStatistics;
+import com.recred.backend.infrastructure.web.ProductChangeRecommendationResponse;
+import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

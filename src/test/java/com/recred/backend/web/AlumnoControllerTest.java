@@ -1,9 +1,11 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.services.UserService;
+import com.recred.backend.infrastructure.web.AlumnoController;
+import com.recred.backend.infrastructure.web.StudentDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;

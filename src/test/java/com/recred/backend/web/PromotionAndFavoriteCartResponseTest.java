@@ -1,16 +1,19 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CarritoFavorito;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
+import com.recred.backend.infrastructure.web.CarritoFavoritoResponse;
+import com.recred.backend.infrastructure.web.PromotionResponseDTO;
+import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

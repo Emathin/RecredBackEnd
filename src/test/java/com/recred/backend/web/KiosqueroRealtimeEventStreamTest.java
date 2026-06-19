@@ -1,16 +1,18 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
 
 import com.recred.backend.domain.events.KiosqueroRealtimeChangeKind;
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
+import com.recred.backend.infrastructure.web.KiosqueroRealtimeEventStream;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
-import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

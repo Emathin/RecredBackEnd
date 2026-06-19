@@ -1,4 +1,4 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
 
 import com.recred.backend.application.GenerateBuffetMenu;
 import com.recred.backend.application.GenerateLowBalanceAlerts;
@@ -12,6 +12,17 @@ import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.infrastructure.push.FirebasePushNotificationSender;
+import com.recred.backend.infrastructure.web.AlumnoBuffetResponseDTO;
+import com.recred.backend.infrastructure.web.CategoryController;
+import com.recred.backend.infrastructure.web.CategoryResponse;
+import com.recred.backend.infrastructure.web.FranjaHorariaController;
+import com.recred.backend.infrastructure.web.LowBalanceAlertController;
+import com.recred.backend.infrastructure.web.MenuBuffetController;
+import com.recred.backend.infrastructure.web.MenuProductoDTO;
+import com.recred.backend.infrastructure.web.NotificationTestController;
+import com.recred.backend.infrastructure.web.TimeSlotResponse;
+import com.recred.backend.infrastructure.web.TutorGlobalDashboardController;
+import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

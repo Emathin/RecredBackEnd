@@ -1,7 +1,9 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
 
 import com.recred.backend.application.GenerateTopUpLink;
 import com.recred.backend.application.TopUpCommand;
+import com.recred.backend.infrastructure.web.TopUpController;
+import com.recred.backend.infrastructure.web.TopUpRequest;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.ResponseEntity;

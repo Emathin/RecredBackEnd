@@ -1,16 +1,21 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
 
 import com.recred.backend.application.GetCartSuggestions;
 import com.recred.backend.domain.models.CartSuggestion;
 import com.recred.backend.domain.models.Producto;
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import com.recred.backend.infrastructure.web.CartSuggestionController;
+import com.recred.backend.infrastructure.web.CartSuggestionRequest;
+import com.recred.backend.infrastructure.web.CartSuggestionResponse;
+import com.recred.backend.infrastructure.web.PurchaseItemDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.ResponseEntity;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;

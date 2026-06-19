@@ -1,4 +1,4 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.EnableSchoolCredit;
@@ -11,6 +11,8 @@ import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.services.UserService;
+import com.recred.backend.infrastructure.web.EnableSchoolCreditRequest;
+import com.recred.backend.infrastructure.web.SchoolCreditController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;

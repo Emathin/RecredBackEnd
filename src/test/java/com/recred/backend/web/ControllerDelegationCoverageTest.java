@@ -1,4 +1,4 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
 
 import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.application.CreateBudget;
@@ -10,6 +10,11 @@ import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.domain.models.ProductSaleStatistics;
 import com.recred.backend.infrastructure.entities.NotificacionEntity;
+import com.recred.backend.infrastructure.web.BudgetController;
+import com.recred.backend.infrastructure.web.CheckBudgetDatesRequest;
+import com.recred.backend.infrastructure.web.CheckBudgetDatesResponse;
+import com.recred.backend.infrastructure.web.PurchaseRecommendationController;
+import com.recred.backend.infrastructure.web.SalesController;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

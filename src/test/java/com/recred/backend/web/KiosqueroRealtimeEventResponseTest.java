@@ -1,4 +1,4 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
 
 import com.recred.backend.domain.events.InventoryRealtimePayload;
 import com.recred.backend.domain.events.KiosqueroRealtimeChangeKind;
@@ -9,6 +9,7 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.models.TipoMovimientoStock;
+import com.recred.backend.infrastructure.web.KiosqueroRealtimeEventResponse;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

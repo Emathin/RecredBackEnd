@@ -1,4 +1,4 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
 
 import com.recred.backend.application.CreatePromotion;
 import com.recred.backend.application.DeletePromotion;
@@ -9,14 +9,18 @@ import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import com.recred.backend.infrastructure.web.PromotionController;
+import com.recred.backend.infrastructure.web.PromotionRequestDTO;
+import com.recred.backend.infrastructure.web.PromotionResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
