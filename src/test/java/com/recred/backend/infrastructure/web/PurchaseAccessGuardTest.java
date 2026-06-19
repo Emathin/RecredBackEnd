@@ -1,4 +1,4 @@
-package com.recred.backend.web;
+package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
@@ -9,8 +9,6 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
-import com.recred.backend.infrastructure.web.KiosqueroAccessGuard;
-import com.recred.backend.infrastructure.web.PurchaseAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

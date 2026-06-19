@@ -1,10 +1,8 @@
-package com.recred.backend.web;
+package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GenerateParentSummary;
 import com.recred.backend.domain.models.Summary;
 import com.recred.backend.domain.repositories.SummaryRepository;
-import com.recred.backend.infrastructure.web.SummaryController;
-import com.recred.backend.infrastructure.web.SummaryResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;

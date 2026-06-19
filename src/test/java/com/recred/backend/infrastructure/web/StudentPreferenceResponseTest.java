@@ -1,4 +1,4 @@
-package com.recred.backend.web;
+package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
@@ -6,7 +6,6 @@ import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
-import com.recred.backend.infrastructure.web.StudentPreferenceResponse;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;

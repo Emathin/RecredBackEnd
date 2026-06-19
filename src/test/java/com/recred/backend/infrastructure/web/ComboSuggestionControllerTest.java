@@ -1,8 +1,7 @@
-package com.recred.backend.web;
+package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GenerateComboSuggestion;
 import com.recred.backend.domain.models.ComboSuggestion;
-import com.recred.backend.infrastructure.web.ComboSuggestionController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

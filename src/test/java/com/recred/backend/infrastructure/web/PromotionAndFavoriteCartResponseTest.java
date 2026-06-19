@@ -1,12 +1,10 @@
-package com.recred.backend.web;
+package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CarritoFavorito;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
-import com.recred.backend.infrastructure.web.CarritoFavoritoResponse;
-import com.recred.backend.infrastructure.web.PromotionResponseDTO;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

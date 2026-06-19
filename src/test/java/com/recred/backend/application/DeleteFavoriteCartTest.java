@@ -1,6 +1,5 @@
-package com.recred.backend.unit.application;
+package com.recred.backend.application;
 
-import com.recred.backend.application.DeleteFavoriteCart;
 import com.recred.backend.domain.models.CarritoFavorito;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;

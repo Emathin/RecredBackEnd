@@ -1,4 +1,4 @@
-package com.recred.backend.web;
+package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.CreatePromotion;
 import com.recred.backend.application.DeletePromotion;
@@ -9,9 +9,6 @@ import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
-import com.recred.backend.infrastructure.web.PromotionController;
-import com.recred.backend.infrastructure.web.PromotionRequestDTO;
-import com.recred.backend.infrastructure.web.PromotionResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;

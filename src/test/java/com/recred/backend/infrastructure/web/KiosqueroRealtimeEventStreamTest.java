@@ -1,8 +1,7 @@
-package com.recred.backend.web;
+package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.events.KiosqueroRealtimeChangeKind;
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
-import com.recred.backend.infrastructure.web.KiosqueroRealtimeEventStream;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;

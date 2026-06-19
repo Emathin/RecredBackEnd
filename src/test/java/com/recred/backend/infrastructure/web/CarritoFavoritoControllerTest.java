@@ -1,4 +1,4 @@
-package com.recred.backend.web;
+package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.DeleteFavoriteCart;
 import com.recred.backend.application.GetFavoriteCartsByTutor;
@@ -6,9 +6,6 @@ import com.recred.backend.application.SaveCarritoFavorito;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CarritoFavorito;
 import com.recred.backend.domain.models.Producto;
-import com.recred.backend.infrastructure.web.CarritoFavoritoController;
-import com.recred.backend.infrastructure.web.CarritoFavoritoResponse;
-import com.recred.backend.infrastructure.web.SaveCarritoFavoritoRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

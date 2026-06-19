@@ -1,14 +1,10 @@
-package com.recred.backend.unit.domain.services;
+package com.recred.backend.domain.services;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.services.BudgetValidatorService;
-import com.recred.backend.domain.services.HealthRestrictionValidatorService;
-import com.recred.backend.domain.services.PurchaseValidatorImpl;
-import com.recred.backend.domain.services.TimeRestrictionValidatorService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;

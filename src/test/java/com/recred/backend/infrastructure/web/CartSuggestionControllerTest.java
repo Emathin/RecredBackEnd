@@ -1,12 +1,8 @@
-package com.recred.backend.web;
+package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetCartSuggestions;
 import com.recred.backend.domain.models.CartSuggestion;
 import com.recred.backend.domain.models.Producto;
-import com.recred.backend.infrastructure.web.CartSuggestionController;
-import com.recred.backend.infrastructure.web.CartSuggestionRequest;
-import com.recred.backend.infrastructure.web.CartSuggestionResponse;
-import com.recred.backend.infrastructure.web.PurchaseItemDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

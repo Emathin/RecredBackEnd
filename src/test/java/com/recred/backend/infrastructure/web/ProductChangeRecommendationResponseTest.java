@@ -1,10 +1,9 @@
-package com.recred.backend.web;
+package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.ProductRecommendationResult;
 import com.recred.backend.domain.models.ProductSaleStatistics;
-import com.recred.backend.infrastructure.web.ProductChangeRecommendationResponse;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

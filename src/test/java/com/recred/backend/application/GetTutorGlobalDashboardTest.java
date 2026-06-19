@@ -1,12 +1,5 @@
-package com.recred.backend.unit.application;
+package com.recred.backend.application;
 
-import com.recred.backend.application.GetActiveBudgetByStudent;
-import com.recred.backend.application.GetChildrenByParent;
-import com.recred.backend.application.GetStudentHistory;
-import com.recred.backend.application.GetStudentRewardStatus;
-import com.recred.backend.application.GetTutorGlobalDashboard;
-import com.recred.backend.application.PredictStudentSpending;
-import com.recred.backend.application.StudentRewardResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.BudgetPeriod;
