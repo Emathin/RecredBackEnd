@@ -22,7 +22,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -54,7 +53,8 @@ class LoadStockIAControllerTest {
     void uploadImage_ConArchivoVacio_LanzaExcepcion() {
         MockMultipartFile file = new MockMultipartFile("image", "", "image/jpeg", new byte[0]);
 
-        ImageValidationException exception = assertThrows(ImageValidationException.class, () -> controller.uploadImage(file));
+        ImageValidationException exception = assertThrows(ImageValidationException.class,
+                () -> controller.uploadImage(file));
         assertEquals("El archivo no puede estar vacío", exception.getMessage());
     }
 
@@ -62,7 +62,8 @@ class LoadStockIAControllerTest {
     void uploadImage_ConTipoInvalido_LanzaExcepcion() {
         MockMultipartFile file = new MockMultipartFile("image", "test.txt", "text/plain", "content".getBytes());
 
-        ImageValidationException exception = assertThrows(ImageValidationException.class, () -> controller.uploadImage(file));
+        ImageValidationException exception = assertThrows(ImageValidationException.class,
+                () -> controller.uploadImage(file));
         assertEquals("Solo se aceptan imágenes JPG, JPEG o PNG", exception.getMessage());
     }
 
@@ -70,7 +71,8 @@ class LoadStockIAControllerTest {
     void uploadImage_ConContentTypeNull_LanzaExcepcion() {
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", null, "content".getBytes());
 
-        ImageValidationException exception = assertThrows(ImageValidationException.class, () -> controller.uploadImage(file));
+        ImageValidationException exception = assertThrows(ImageValidationException.class,
+                () -> controller.uploadImage(file));
         assertEquals("Solo se aceptan imágenes JPG, JPEG o PNG", exception.getMessage());
     }
 
@@ -100,7 +102,8 @@ class LoadStockIAControllerTest {
 
     @Test
     void saveProduct_ConDatosValidos_RetornaCreated() {
-        SaveProductDTO dto = new SaveProductDTO("Prod", "Desc", null, null, false, UUID.randomUUID(), null, UUID.randomUUID(), 10, null, null);
+        SaveProductDTO dto = new SaveProductDTO("Prod", "Desc", null, null, false, UUID.randomUUID(), null,
+                UUID.randomUUID(), 10, null, null);
         Producto savedProduct = new Producto();
         when(saveProduct.execute(any(SaveProductCommand.class))).thenReturn(savedProduct);
 
