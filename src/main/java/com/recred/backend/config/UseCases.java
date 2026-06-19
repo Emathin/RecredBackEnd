@@ -296,6 +296,7 @@ public class UseCases {
             SpringDataBuffetRepository buffetRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
+            PromotionRepository promotionRepository,
             MovimientoBilleteraRepository movimientoBilleteraRepository) {
         return new CreateAdvancePurchase(
                 purchaseValidator,
@@ -310,6 +311,7 @@ public class UseCases {
                 buffetRepository,
                 usuarioRepository,
                 tutorRepository,
+                promotionRepository,
                 movimientoBilleteraRepository);
     }
 

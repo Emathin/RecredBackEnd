@@ -24,6 +24,7 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.domain.services.AdvancePurchaseRulesService;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import com.recred.backend.domain.services.PurchaseValidator;
@@ -88,6 +89,8 @@ class CreateAdvancePurchaseUseCaseTest {
     private UsuarioRepository usuarioRepository;
     @Mock
     private TutorRepository tutorRepository;
+    @Mock
+    private PromotionRepository promotionRepository;
 
     @InjectMocks
     private CreateAdvancePurchase useCase;
@@ -443,7 +446,8 @@ class CreateAdvancePurchaseUseCaseTest {
                 walletRepository,
                 buffetRepository,
                 usuarioRepository,
-                tutorRepository
+                tutorRepository,
+                promotionRepository
         );
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
@@ -469,6 +473,7 @@ class CreateAdvancePurchaseUseCaseTest {
                 buffetRepository,
                 usuarioRepository,
                 tutorRepository,
+                promotionRepository,
                 movementRepository
         );
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
