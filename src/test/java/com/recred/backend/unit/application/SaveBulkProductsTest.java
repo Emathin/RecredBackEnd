@@ -1,5 +1,8 @@
-package com.recred.backend.application;
+package com.recred.backend.unit.application;
 
+import com.recred.backend.application.SaveBulkProducts;
+import com.recred.backend.application.SaveProduct;
+import com.recred.backend.application.SaveProductCommand;
 import com.recred.backend.domain.models.Producto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
