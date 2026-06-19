@@ -3,6 +3,7 @@ package com.recred.backend.unit.domain.services;
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventType;
+import com.recred.backend.domain.events.ProductAlertRealtimePayload;
 import com.recred.backend.domain.exceptions.PickupCutoffTimeExceededException;
 import com.recred.backend.domain.exceptions.PickupSlotCapacityExceededException;
 import com.recred.backend.domain.exceptions.ProductDailyCapacityExceededException;
@@ -24,6 +25,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
@@ -304,7 +306,11 @@ class AdvancePurchaseRulesServiceTest {
         verify(publisher).publish(captor.capture());
         assertEquals(KiosqueroRealtimeEventType.DAILY_CAPACITY_LOW,
                 captor.getValue().type());
-        assertEquals(product.getId(), captor.getValue().productId());
+        ProductAlertRealtimePayload payload = assertInstanceOf(
+                ProductAlertRealtimePayload.class,
+                captor.getValue().payload()
+        );
+        assertEquals(product.getId(), payload.productId());
     }
 
     private AdvancePurchaseRulesService service(

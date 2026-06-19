@@ -1,12 +1,10 @@
 package com.recred.backend.domain.events;
 
-import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.models.TipoMovimientoStock;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -14,34 +12,17 @@ import java.util.UUID;
 public record KiosqueroRealtimeEvent(
         UUID buffetId,
         KiosqueroRealtimeEventType type,
-        UUID productId,
-        UUID inventoryId,
-        UUID purchaseId,
-        EstadoCompra purchaseStatus,
-        BigDecimal purchaseTotal,
-        TipoMovimientoStock movementType,
-        Integer stockActual,
-        Integer stockReservado,
-        Integer stockDisponible,
-        Integer stockMinimo,
-        Integer cupoMaximoDiario,
-        Integer cupoDisponibleDia,
-        Boolean disponible,
-        EstadoInventario estadoInventario,
-        TipoManejoInventario tipoManejoInventario,
         KiosqueroRealtimeChangeKind changeKind,
         String reason,
         LocalDate date,
         LocalDateTime occurredAt,
-        String message
+        String message,
+        KiosqueroRealtimePayload payload
 ) {
     public KiosqueroRealtimeEvent {
-        if (occurredAt == null) {
-            occurredAt = LocalDateTime.now();
-        }
-        if (date == null) {
-            date = occurredAt.toLocalDate();
-        }
+        occurredAt = occurredAt == null ? LocalDateTime.now() : occurredAt;
+        date = date == null ? occurredAt.toLocalDate() : date;
+        payload = payload == null ? new EmptyRealtimePayload() : payload;
     }
 
     public static KiosqueroRealtimeEvent inventory(
@@ -53,14 +34,9 @@ public record KiosqueroRealtimeEvent(
             String message
     ) {
         EstadoInventario currentStatus = inventory.estadoActual();
-        return new KiosqueroRealtimeEvent(
-                inventory.getBuffetId(),
-                type,
+        InventoryRealtimePayload payload = new InventoryRealtimePayload(
                 inventory.getProductoId(),
                 inventory.getId(),
-                null,
-                null,
-                null,
                 movementType,
                 inventory.getStockActual(),
                 inventory.getStockReservado(),
@@ -70,12 +46,17 @@ public record KiosqueroRealtimeEvent(
                 dailyCapacityAvailable(inventory),
                 isAvailable(currentStatus, inventory.stockDisponible()),
                 currentStatus,
-                inventory.getTipoManejo(),
+                inventory.getTipoManejo()
+        );
+        return new KiosqueroRealtimeEvent(
+                inventory.getBuffetId(),
+                type,
                 changeKind,
                 reason,
                 null,
                 null,
-                message
+                message,
+                payload
         );
     }
 
@@ -84,29 +65,20 @@ public record KiosqueroRealtimeEvent(
             Purchase purchase,
             String message
     ) {
+        PurchaseRealtimePayload payload = new PurchaseRealtimePayload(
+                purchase.getId(),
+                purchase.getStatus(),
+                purchase.getTotalAmount()
+        );
         return new KiosqueroRealtimeEvent(
                 purchase.getBuffetId(),
                 type,
-                null,
-                null,
-                purchase.getId(),
-                purchase.getStatus(),
-                purchase.getTotalAmount(),
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
                 KiosqueroRealtimeChangeKind.ORDER_CHANGED,
                 message,
                 purchase.getDate() == null ? null : purchase.getDate().toLocalDate(),
                 purchase.getDate(),
-                message
+                message,
+                payload
         );
     }
 
@@ -119,26 +91,12 @@ public record KiosqueroRealtimeEvent(
         return new KiosqueroRealtimeEvent(
                 buffetId,
                 type,
-                productId,
                 null,
                 null,
                 null,
                 null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                message
+                message,
+                new ProductAlertRealtimePayload(productId)
         );
     }
 
@@ -151,26 +109,12 @@ public record KiosqueroRealtimeEvent(
         return new KiosqueroRealtimeEvent(
                 buffetId,
                 KiosqueroRealtimeEventType.DASHBOARD_CHANGED,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
                 changeKind,
                 reason,
                 date,
                 null,
-                "Dashboard actualizado"
+                "Dashboard actualizado",
+                new EmptyRealtimePayload()
         );
     }
 
@@ -182,26 +126,12 @@ public record KiosqueroRealtimeEvent(
         return new KiosqueroRealtimeEvent(
                 buffetId,
                 KiosqueroRealtimeEventType.DAILY_REPORT_CHANGED,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
                 KiosqueroRealtimeChangeKind.DAILY_REPORT_CHANGED,
                 reason,
                 date,
                 null,
-                "Reporte diario actualizado"
+                "Reporte diario actualizado",
+                new EmptyRealtimePayload()
         );
     }
 
