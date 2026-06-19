@@ -6,7 +6,31 @@ import com.recred.backend.domain.models.InventoryQuickActionType;
 import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.models.TipoManejoInventario;
 
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.Objects;
+
 public class InventoryQuickActionProcessor {
+
+    private final EnumMap<InventoryQuickActionType, QuickAction> actions;
+    private final EnumMap<InventoryQuickActionType, String> defaultReasons;
+    private final EnumSet<InventoryQuickActionType> actionsThatRequireQuantity;
+    private final EnumSet<InventoryQuickActionType> actionsThatRequirePositiveQuantity;
+
+    public InventoryQuickActionProcessor() {
+        this.actions = actions();
+        this.defaultReasons = defaultReasons();
+        this.actionsThatRequireQuantity = EnumSet.of(
+                InventoryQuickActionType.SET_STOCK,
+                InventoryQuickActionType.ADD_STOCK,
+                InventoryQuickActionType.SUBTRACT_STOCK,
+                InventoryQuickActionType.SET_DAILY_CAPACITY
+        );
+        this.actionsThatRequirePositiveQuantity = EnumSet.of(
+                InventoryQuickActionType.ADD_STOCK,
+                InventoryQuickActionType.SUBTRACT_STOCK
+        );
+    }
 
     public void apply(
             Inventario inventory,
@@ -20,15 +44,7 @@ public class InventoryQuickActionProcessor {
             inventory.setStockMinimo(stockMinimo);
         }
 
-        switch (action) {
-            case SET_STOCK -> setExactStock(inventory, quantity);
-            case ADD_STOCK -> addStock(inventory, quantity);
-            case SUBTRACT_STOCK -> subtractStock(inventory, quantity);
-            case MARK_SOLD_OUT -> markSoldOut(inventory);
-            case SET_AVAILABLE -> setAvailable(inventory);
-            case SET_UNAVAILABLE -> setUnavailable(inventory);
-            case SET_DAILY_CAPACITY -> setDailyCapacity(inventory, quantity);
-        }
+        actionFor(action).apply(inventory, quantity);
     }
 
     public String reason(InventoryQuickActionType action, String customReason) {
@@ -36,15 +52,7 @@ public class InventoryQuickActionProcessor {
             return customReason;
         }
 
-        return switch (action) {
-            case SET_STOCK -> "Stock definido";
-            case ADD_STOCK -> "Reposicion de stock";
-            case SUBTRACT_STOCK -> "Descuento manual de stock";
-            case MARK_SOLD_OUT -> "Producto marcado como agotado";
-            case SET_AVAILABLE -> "Producto marcado como disponible";
-            case SET_UNAVAILABLE -> "Producto pausado";
-            case SET_DAILY_CAPACITY -> "Cupo diario definido";
-        };
+        return defaultReasonFor(action);
     }
 
     private void setExactStock(Inventario inventory, int quantity) {
@@ -125,15 +133,11 @@ public class InventoryQuickActionProcessor {
     }
 
     private boolean requiresQuantity(InventoryQuickActionType action) {
-        return action == InventoryQuickActionType.SET_STOCK
-                || action == InventoryQuickActionType.ADD_STOCK
-                || action == InventoryQuickActionType.SUBTRACT_STOCK
-                || action == InventoryQuickActionType.SET_DAILY_CAPACITY;
+        return actionsThatRequireQuantity.contains(action);
     }
 
     private boolean requiresPositiveQuantity(InventoryQuickActionType action) {
-        return action == InventoryQuickActionType.ADD_STOCK
-                || action == InventoryQuickActionType.SUBTRACT_STOCK;
+        return actionsThatRequirePositiveQuantity.contains(action);
     }
 
     private void validateNonNegative(int value, String message) {
@@ -148,5 +152,60 @@ public class InventoryQuickActionProcessor {
 
     private int stockReservado(Inventario inventory) {
         return inventory.getStockReservado() == null ? 0 : inventory.getStockReservado();
+    }
+
+    private QuickAction actionFor(InventoryQuickActionType action) {
+        QuickAction quickAction = actions.get(action);
+        if (quickAction == null) {
+            throw new InventoryOperationException("La accion no esta configurada.");
+        }
+        return quickAction;
+    }
+
+    private String defaultReasonFor(InventoryQuickActionType action) {
+        String reason = defaultReasons.get(Objects.requireNonNull(action));
+        if (reason == null) {
+            throw new InventoryOperationException("La accion no esta configurada.");
+        }
+        return reason;
+    }
+
+    private EnumMap<InventoryQuickActionType, QuickAction> actions() {
+        EnumMap<InventoryQuickActionType, QuickAction> quickActions =
+                new EnumMap<>(InventoryQuickActionType.class);
+        quickActions.put(InventoryQuickActionType.SET_STOCK, this::setExactStock);
+        quickActions.put(InventoryQuickActionType.ADD_STOCK, this::addStock);
+        quickActions.put(InventoryQuickActionType.SUBTRACT_STOCK, this::subtractStock);
+        quickActions.put(InventoryQuickActionType.MARK_SOLD_OUT,
+                (inventory, quantity) -> markSoldOut(inventory));
+        quickActions.put(InventoryQuickActionType.SET_AVAILABLE,
+                (inventory, quantity) -> setAvailable(inventory));
+        quickActions.put(InventoryQuickActionType.SET_UNAVAILABLE,
+                (inventory, quantity) -> setUnavailable(inventory));
+        quickActions.put(InventoryQuickActionType.SET_DAILY_CAPACITY,
+                this::setDailyCapacity);
+        return quickActions;
+    }
+
+    private EnumMap<InventoryQuickActionType, String> defaultReasons() {
+        EnumMap<InventoryQuickActionType, String> reasons =
+                new EnumMap<>(InventoryQuickActionType.class);
+        reasons.put(InventoryQuickActionType.SET_STOCK, "Stock definido");
+        reasons.put(InventoryQuickActionType.ADD_STOCK, "Reposicion de stock");
+        reasons.put(InventoryQuickActionType.SUBTRACT_STOCK,
+                "Descuento manual de stock");
+        reasons.put(InventoryQuickActionType.MARK_SOLD_OUT,
+                "Producto marcado como agotado");
+        reasons.put(InventoryQuickActionType.SET_AVAILABLE,
+                "Producto marcado como disponible");
+        reasons.put(InventoryQuickActionType.SET_UNAVAILABLE, "Producto pausado");
+        reasons.put(InventoryQuickActionType.SET_DAILY_CAPACITY,
+                "Cupo diario definido");
+        return reasons;
+    }
+
+    @FunctionalInterface
+    private interface QuickAction {
+        void apply(Inventario inventory, Integer quantity);
     }
 }

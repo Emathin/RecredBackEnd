@@ -24,9 +24,10 @@ public class SeasonalRecommendationController {
     @GetMapping("/seasonal")
     public ResponseEntity<RecommendationResponseDTO> getSeasonalRecommendations(
             @RequestParam double latitude,
-            @RequestParam double longitude) {
+            @RequestParam double longitude,
+            @RequestParam(required = false) java.util.UUID buffetId) {
 
-        RecommendationResponseDTO response = useCase.execute(latitude, longitude);
+        RecommendationResponseDTO response = useCase.execute(latitude, longitude, buffetId);
 
         return ResponseEntity.ok(response);
     }

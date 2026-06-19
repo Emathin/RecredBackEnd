@@ -75,7 +75,7 @@ public class LoadStockIAService implements LoadStockAnalyzer {
     private LoadStockPredictionDTO consultarIA(MultipartFile image) {
         try {
             Optional<GeminiTextResponse> response = geminiTextClient
-                    .generateWithImage(PROMPT_TEMPLATE, image);
+                    .generateWithFile(PROMPT_TEMPLATE, image.getBytes(), image.getContentType());
 
             if (response.isEmpty()) {
                 LOGGER.warn("La IA no generó una respuesta");

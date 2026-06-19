@@ -192,6 +192,7 @@ public class InventoryController {
             Integer cupoMaximoDiario,
             Integer cupoDisponibleDia,
             String urlImagen,
+            String image,
             Boolean disponible,
             Boolean bajoStock,
             Boolean agotado
@@ -219,6 +220,7 @@ public class InventoryController {
                     product.getStockMinimo(),
                     cupoMaximoDiario,
                     cupoDisponibleDia,
+                    product.getUrlImagen(),
                     product.getUrlImagen(),
                     !soldOut && product.getEstadoInventario() != EstadoInventario.DESACTIVADO,
                     product.getEstadoInventario() == EstadoInventario.BAJO_STOCK,

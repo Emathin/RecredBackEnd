@@ -8,14 +8,12 @@ import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.recred.backend.config.GeminiProperties;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 
 @Component
 public class GoogleGeminiTextClient implements GeminiTextClient {
@@ -23,8 +21,7 @@ public class GoogleGeminiTextClient implements GeminiTextClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(GoogleGeminiTextClient.class);
     private static final String RESPONSE_MIME_TYPE = "application/json";
     private static final float TEMPERATURE = 0.2F;
-    private static final int MAX_OUTPUT_TOKENS = 3000;
-    private static final String VISION_MODEL = "gemini-3.1-flash-lite";
+    private static final int MAX_OUTPUT_TOKENS = 8192;
 
 
     private final GeminiProperties geminiProperties;
@@ -57,50 +54,43 @@ public class GoogleGeminiTextClient implements GeminiTextClient {
     }
 
     @Override
-    public Optional<GeminiTextResponse> generateWithImage(String prompt, MultipartFile image) {
+    public Optional<GeminiTextResponse> generateWithFile(String prompt, 
+                                                         byte[] fileContent, 
+                                                         String mimeType) {
         if (!geminiProperties.isConfigured()) {
             return Optional.empty();
         }
 
-        try {
-            byte[] imageBytes = image.getBytes();
-            String mimeType = Optional.ofNullable(image.getContentType())
-                    .orElse("image/jpeg");
+        try (Client client = Client.builder()
+                .apiKey(geminiProperties.apiKey())
+                .build()) {
 
-            try (Client client = Client.builder()
-                    .apiKey(geminiProperties.apiKey())
-                    .build()) {
+            GenerateContentResponse response = generateVisionContent(
+                    client, prompt, fileContent, mimeType);
 
-                GenerateContentResponse response = generateVisionContent(
-                        client, prompt, imageBytes, mimeType);
-
-                return Optional.ofNullable(response.text())
-                        .filter(text -> !text.isBlank())
-                        .map(text -> new GeminiTextResponse(text, VISION_MODEL));
-            }
-        } catch (IOException ioException) {
-            LOGGER.error("Error reading image file: {}", ioException.getMessage());
-            return Optional.empty();
+            return Optional.ofNullable(response.text())
+                    .filter(text -> !text.isBlank())
+                    .map(text -> new GeminiTextResponse(text, geminiProperties.model()));
         } catch (RuntimeException exception) {
-            LOGGER.warn("Gemini content generation with image failed: {}", exception.getMessage());
+            LOGGER.warn("Gemini content generation with file failed: {}", exception.getMessage());
             return Optional.empty();
         }
     }
 
     private GenerateContentResponse generateVisionContent(
-            Client client, String prompt, byte[] imageBytes, String mimeType) {
+            Client client, String prompt, byte[] fileBytes, String mimeType) {
         return client.models.generateContent(
-                VISION_MODEL,
-                buildMultimodalContent(prompt, imageBytes, mimeType),
+                geminiProperties.model(),
+                buildMultimodalContent(prompt, fileBytes, mimeType),
                 config()
         );
     }
 
 
-    private Content buildMultimodalContent(String prompt, byte[] imageBytes, String mimeType) {
-        Part imagePart = Part.builder()
+    private Content buildMultimodalContent(String prompt, byte[] fileBytes, String mimeType) {
+        Part filePart = Part.builder()
                 .inlineData(Blob.builder()
-                        .data(imageBytes)
+                        .data(fileBytes)
                         .mimeType(mimeType)
                         .build())
                 .build();
@@ -111,7 +101,7 @@ public class GoogleGeminiTextClient implements GeminiTextClient {
 
         return Content.builder()
                 .role("user")
-                .parts(List.of(imagePart, textPart))
+                .parts(List.of(filePart, textPart))
                 .build();
     }
 

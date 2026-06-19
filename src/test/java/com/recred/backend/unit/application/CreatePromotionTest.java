@@ -44,7 +44,7 @@ class CreatePromotionTest {
 
         when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Promotion result = createPromotion.execute(productIds, discount, name, start, end, true);
+        Promotion result = createPromotion.execute(productIds, discount, name, start, end, null, true);
 
         assertNotNull(result);
         assertEquals(name, result.getName());
@@ -69,7 +69,7 @@ class CreatePromotionTest {
 
         when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Promotion result = createPromotion.execute(productIds, discount, name, start, end, false);
+        Promotion result = createPromotion.execute(productIds, discount, name, start, end, null, false);
 
         assertNotNull(result);
         assertEquals(PromotionStatus.ACTIVE, result.getStatus());
@@ -86,7 +86,7 @@ class CreatePromotionTest {
 
         when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Promotion result = createPromotion.execute(productIds, discount, name, start, end, false);
+        Promotion result = createPromotion.execute(productIds, discount, name, start, end, null, false);
 
         assertNotNull(result);
         assertEquals(PromotionStatus.DRAFT, result.getStatus());
@@ -102,7 +102,7 @@ class CreatePromotionTest {
         LocalDateTime end = LocalDateTime.now().plusDays(1);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, discount, name, start, end, false));
+                createPromotion.execute(productIds, discount, name, start, end, null, false));
 
         assertEquals("A promotion requires at least 2 products.", ex.getMessage());
         verify(promotionRepository, never()).save(any());
@@ -116,15 +116,15 @@ class CreatePromotionTest {
         LocalDateTime end = LocalDateTime.now().plusDays(1);
 
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, BigDecimal.ZERO, name, start, end, false));
+                createPromotion.execute(productIds, BigDecimal.ZERO, name, start, end, null, false));
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, new BigDecimal("-5"), name, start, end, false));
+                createPromotion.execute(productIds, new BigDecimal("-5"), name, start, end, null, false));
 
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, new BigDecimal("101"), name, start, end, false));
+                createPromotion.execute(productIds, new BigDecimal("101"), name, start, end, null, false));
 
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, null, name, start, end, false));
+                createPromotion.execute(productIds, null, name, start, end, null, false));
 
         verify(promotionRepository, never()).save(any());
     }
@@ -138,12 +138,12 @@ class CreatePromotionTest {
         LocalDateTime end = LocalDateTime.now().plusDays(2);
 
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, discount, name, start, end, false));
+                createPromotion.execute(productIds, discount, name, start, end, null, false));
 
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, discount, name, null, end, false));
+                createPromotion.execute(productIds, discount, name, null, end, null, false));
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, discount, name, start, null, false));
+                createPromotion.execute(productIds, discount, name, start, null, null, false));
 
         verify(promotionRepository, never()).save(any());
     }

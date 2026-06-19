@@ -16,14 +16,31 @@ import java.util.stream.Collectors;
 public class PromotionRepositoryImpl implements PromotionRepository {
 
     private final PromotionSpringDataRepository repository;
+    private final SpringDataBuffetRepository buffetRepository;
 
-    public PromotionRepositoryImpl(PromotionSpringDataRepository repository) {
+    public PromotionRepositoryImpl(PromotionSpringDataRepository repository,
+                                   SpringDataBuffetRepository buffetRepository) {
         this.repository = repository;
+        this.buffetRepository = buffetRepository;
     }
 
     @Override
     public List<Promotion> findAllActive() {
         return repository.findByStatus(PromotionStatus.ACTIVE).stream()
+                .map(PromotionEntity::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Promotion> findAllActiveByBuffet(UUID buffetId) {
+        return repository.findByStatusAndBuffetEntityId(PromotionStatus.ACTIVE, buffetId).stream()
+                .map(PromotionEntity::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Promotion> findDraftPromotionsByStartDateBefore(java.time.LocalDateTime date) {
+        return repository.findByStatusAndStartDateBefore(PromotionStatus.DRAFT, date).stream()
                 .map(PromotionEntity::toDomain)
                 .collect(Collectors.toList());
     }
@@ -56,6 +73,11 @@ public class PromotionRepositoryImpl implements PromotionRepository {
                 productoEntity.setId(p.getId());
                 return productoEntity;
             }).collect(Collectors.toSet()));
+        }
+        
+        if (promotion.getBuffet() != null) {
+            buffetRepository.findById(promotion.getBuffet().getId())
+                    .ifPresent(entity::setBuffetEntity);
         }
         
         return repository.save(entity).toDomain();
