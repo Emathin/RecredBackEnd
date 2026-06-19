@@ -1,25 +1,19 @@
-package com.recred.backend.unit.domain.services;
+package com.recred.backend.domain.models;
 
-import com.recred.backend.domain.models.BudgetPeriod;
-import com.recred.backend.domain.models.DateRange;
 import java.time.LocalDate;
-
-import com.recred.backend.domain.services.SpendingPredictionRangeService;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class SpendingPredictionRangeServiceTest {
-
-    private final SpendingPredictionRangeService service = new SpendingPredictionRangeService();
+class DateRangeTest {
 
     @Test
-    void calculateDailyRange() {
+    void fromBudgetPeriodShouldCalculateDailyRange() {
         LocalDate date = LocalDate.of(2026, 5, 21);
 
-        DateRange range = service.calculate(BudgetPeriod.DIARIO, date);
+        DateRange range = DateRange.fromBudgetPeriod(BudgetPeriod.DIARIO, date);
 
         assertEquals(date, range.startDate());
         assertEquals(date, range.endDate());
@@ -27,8 +21,8 @@ class SpendingPredictionRangeServiceTest {
     }
 
     @Test
-    void calculateWeeklyRangeFromMondayToSunday() {
-        DateRange range = service.calculate(
+    void fromBudgetPeriodShouldCalculateWeeklyRangeFromMondayToSunday() {
+        DateRange range = DateRange.fromBudgetPeriod(
                 BudgetPeriod.SEMANAL,
                 LocalDate.of(2026, 5, 21)
         );
@@ -38,8 +32,8 @@ class SpendingPredictionRangeServiceTest {
     }
 
     @Test
-    void calculateFirstHalfMonth() {
-        DateRange range = service.calculate(
+    void fromBudgetPeriodShouldCalculateFirstHalfMonth() {
+        DateRange range = DateRange.fromBudgetPeriod(
                 BudgetPeriod.QUINCENAL,
                 LocalDate.of(2026, 5, 15)
         );
@@ -49,8 +43,8 @@ class SpendingPredictionRangeServiceTest {
     }
 
     @Test
-    void calculateSecondHalfMonth() {
-        DateRange range = service.calculate(
+    void fromBudgetPeriodShouldCalculateSecondHalfMonth() {
+        DateRange range = DateRange.fromBudgetPeriod(
                 BudgetPeriod.QUINCENAL,
                 LocalDate.of(2026, 2, 16)
         );
@@ -60,8 +54,8 @@ class SpendingPredictionRangeServiceTest {
     }
 
     @Test
-    void calculateMonthlyRange() {
-        DateRange range = service.calculate(
+    void fromBudgetPeriodShouldCalculateMonthlyRange() {
+        DateRange range = DateRange.fromBudgetPeriod(
                 BudgetPeriod.MENSUAL,
                 LocalDate.of(2026, 2, 10)
         );
@@ -71,7 +65,7 @@ class SpendingPredictionRangeServiceTest {
     }
 
     @Test
-    void detectDatesOutsideRange() {
+    void containsShouldDetectDatesOutsideRange() {
         DateRange range = new DateRange(
                 LocalDate.of(2026, 5, 1),
                 LocalDate.of(2026, 5, 31)
