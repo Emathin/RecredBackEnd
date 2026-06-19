@@ -12,7 +12,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,21 +28,21 @@ class DisableTimeRestrictionTest {
     private DisableTimeRestriction disableTimeRestriction;
 
     @Test
-    void execute_DesactivaLaRestriccion_CuandoExiste() {
+    void executeWhenRestrictionExistsShouldDeactivateAndSave() {
         UUID restrictionId = UUID.randomUUID();
-        RestriccionHoraria restriccion = new RestriccionHoraria();
-        restriccion.setActiva(true);
+        RestriccionHoraria restriction = new RestriccionHoraria();
+        restriction.setActiva(true);
 
-        when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccion));
+        when(repository.findById(restrictionId)).thenReturn(Optional.of(restriction));
 
         disableTimeRestriction.execute(restrictionId);
 
-        assertFalse(restriccion.isActiva());
-        verify(repository).save(restriccion);
+        assertFalse(restriction.isActiva());
+        verify(repository).save(restriction);
     }
 
     @Test
-    void execute_LanzaExcepcion_CuandoNoExiste() {
+    void executeWhenRestrictionDoesNotExistShouldThrowException() {
         UUID restrictionId = UUID.randomUUID();
         when(repository.findById(restrictionId)).thenReturn(Optional.empty());
 

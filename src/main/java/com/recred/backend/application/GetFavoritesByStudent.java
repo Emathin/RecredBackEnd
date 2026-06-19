@@ -17,10 +17,10 @@ public class GetFavoritesByStudent {
     }
 
     @Transactional(readOnly = true)
-    public Set<Producto> execute(UUID alumnoId) {
-        Alumno alumno = alumnoRepository.findById(alumnoId)
+    public Set<Producto> execute(UUID studentId) {
+        Alumno student = alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
-        return alumno.getProductosFavoritos();
+        return student.getProductosFavoritos();
     }
 }

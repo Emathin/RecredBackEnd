@@ -34,21 +34,21 @@ class GetTutorHistoryTest {
     private GetTutorHistory getTutorHistory;
 
     @Test
-    void dadoTutorConComprasDeHijos_cuandoSeEjecuta_entoncesRetornaListaDeCompras() {
+    void executeWhenTutorHasChildPurchasesShouldReturnPurchaseList() {
         UUID tutorId = UUID.randomUUID();
-        Purchase compra = new Purchase();
-        List<Purchase> comprasMock = List.of(compra);
+        Purchase purchase = new Purchase();
+        List<Purchase> mockPurchases = List.of(purchase);
 
-        when(purchaseRepository.findHistorialByTutor(tutorId)).thenReturn(comprasMock);
+        when(purchaseRepository.findHistorialByTutor(tutorId)).thenReturn(mockPurchases);
 
-        List<Purchase> resultado = getTutorHistory.execute(tutorId);
+        List<Purchase> result = getTutorHistory.execute(tutorId);
 
-        assertEquals(1, resultado.size());
+        assertEquals(1, result.size());
         verify(purchaseRepository, times(1)).findHistorialByTutor(tutorId);
     }
 
     @Test
-    void executeByCognitoSubject_CuandoTutorExiste_RetornaHistorial() {
+    void executeByCognitoSubjectWhenTutorExistsShouldReturnHistory() {
         String subject = "cognito-sub";
         UUID tutorId = UUID.randomUUID();
         Tutor tutor = new Tutor();
@@ -64,7 +64,7 @@ class GetTutorHistoryTest {
     }
 
     @Test
-    void executeByCognitoSubject_CuandoTutorNoExiste_LanzaExcepcion() {
+    void executeByCognitoSubjectWhenTutorDoesNotExistShouldThrowException() {
         String subject = "cognito-sub";
         when(tutorRepository.findByUsuarioIdCognito(subject)).thenReturn(Optional.empty());
 

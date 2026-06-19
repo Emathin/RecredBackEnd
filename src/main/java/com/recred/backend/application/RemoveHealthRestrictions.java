@@ -12,12 +12,12 @@ public class RemoveHealthRestrictions {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public void execute(UUID alumnoId, UUID clasificacionId) {
-        Alumno alumno = alumnoRepository.findById(alumnoId)
+    public void execute(UUID studentId, UUID classificationId) {
+        Alumno student = alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
 
-        alumno.removeHealthRestriction(clasificacionId);
+        student.removeHealthRestriction(classificationId);
 
-        alumnoRepository.save(alumno);
+        alumnoRepository.save(student);
     }
 }

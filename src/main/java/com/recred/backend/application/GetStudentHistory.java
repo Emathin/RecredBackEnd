@@ -16,7 +16,7 @@ public class GetStudentHistory {
     }
 
     @Transactional(readOnly = true)
-    public List<Purchase> execute(UUID alumnoId) {
-        return purchaseRepository.findHistorialByAlumno(alumnoId);
+    public List<Purchase> execute(UUID studentId) {
+        return purchaseRepository.findHistorialByAlumno(studentId);
     }
 }

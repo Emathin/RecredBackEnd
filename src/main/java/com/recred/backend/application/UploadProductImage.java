@@ -18,9 +18,9 @@ public class UploadProductImage {
         this.inventoryRepository = inventoryRepository;
     }
 
-    public String execute(UUID buffetId, UUID productoId, MultipartFile imagen) {
-        String urlImagen = cloudinaryService.uploadImage(imagen);
-        inventoryRepository.updateUrlImagen(buffetId, productoId, urlImagen);
-        return urlImagen;
+    public String execute(UUID buffetId, UUID productId, MultipartFile image) {
+        String imageUrl = cloudinaryService.uploadImage(image);
+        inventoryRepository.updateUrlImagen(buffetId, productId, imageUrl);
+        return imageUrl;
     }
 }

@@ -27,7 +27,7 @@ class DisableBudgetTest {
     private DisableBudget disableBudget;
 
     @Test
-    void execute_PresupuestoNoExiste_LanzaExcepcion() {
+    void executeWhenBudgetDoesNotExistShouldThrowException() {
         UUID budgetId = UUID.randomUUID();
         when(repository.findById(budgetId)).thenReturn(Optional.empty());
 
@@ -35,17 +35,17 @@ class DisableBudgetTest {
     }
 
     @Test
-    void execute_PresupuestoExiste_LoDesactivaYGuarda() {
+    void executeWhenBudgetExistsShouldDeactivateAndSave() {
         UUID budgetId = UUID.randomUUID();
-        PresupuestoAlumno presupuesto = new PresupuestoAlumno();
-        presupuesto.setId(budgetId);
-        presupuesto.setActivo(true);
+        PresupuestoAlumno budget = new PresupuestoAlumno();
+        budget.setId(budgetId);
+        budget.setActivo(true);
 
-        when(repository.findById(budgetId)).thenReturn(Optional.of(presupuesto));
+        when(repository.findById(budgetId)).thenReturn(Optional.of(budget));
 
         disableBudget.execute(budgetId);
 
-        assertFalse(presupuesto.isActivo(), "El presupuesto debería haber sido desactivado");
-        verify(repository).save(presupuesto);
+        assertFalse(budget.isActivo(), "The budget should have been deactivated");
+        verify(repository).save(budget);
     }
 }

@@ -16,7 +16,7 @@ public class GetPendingStudentHistory {
     }
 
     @Transactional(readOnly = true)
-    public List<Purchase> execute(UUID alumnoId) {
-        return purchaseRepository.findPendientesByAlumno(alumnoId);
+    public List<Purchase> execute(UUID studentId) {
+        return purchaseRepository.findPendientesByAlumno(studentId);
     }
 }

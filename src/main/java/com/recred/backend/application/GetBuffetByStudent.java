@@ -19,10 +19,10 @@ public class GetBuffetByStudent {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public Optional<Buffet> execute(UUID alumnoId) {
-        if (!alumnoRepository.existsById(alumnoId)) {
-            throw new AlumnoNoEncontradoException(alumnoId);
+    public Optional<Buffet> execute(UUID studentId) {
+        if (!alumnoRepository.existsById(studentId)) {
+            throw new AlumnoNoEncontradoException(studentId);
         }
-        return buffetRepository.findByAlumnoId(alumnoId);
+        return buffetRepository.findByAlumnoId(studentId);
     }
 }

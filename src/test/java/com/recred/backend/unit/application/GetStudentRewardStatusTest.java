@@ -28,15 +28,15 @@ class GetStudentRewardStatusTest {
     private GetStudentRewardStatus getStudentRewardStatus;
 
     @Test
-    void execute_DebeRetornarEstadoBronce_CuandoTienePocosPuntos() {
-        UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        alumno.setPuntosRecompensa(50);
+    void executeWhenStudentHasFewPointsShouldReturnBronzeStatus() {
+        UUID studentId = UUID.randomUUID();
+        Alumno student = new Alumno();
+        student.setId(studentId);
+        student.setPuntosRecompensa(50);
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
 
-        StudentRewardResponse response = getStudentRewardStatus.execute(alumnoId);
+        StudentRewardResponse response = getStudentRewardStatus.execute(studentId);
 
         assertEquals(50, response.totalPoints());
         assertEquals("BRONZE", response.currentLevel());
@@ -45,15 +45,15 @@ class GetStudentRewardStatusTest {
     }
 
     @Test
-    void execute_DebeRetornarEstadoOro_CuandoSuperaElUmbral() {
-        UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        alumno.setPuntosRecompensa(300);
+    void executeWhenStudentPassesGoldThresholdShouldReturnGoldStatus() {
+        UUID studentId = UUID.randomUUID();
+        Alumno student = new Alumno();
+        student.setId(studentId);
+        student.setPuntosRecompensa(300);
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
 
-        StudentRewardResponse response = getStudentRewardStatus.execute(alumnoId);
+        StudentRewardResponse response = getStudentRewardStatus.execute(studentId);
 
         assertEquals(300, response.totalPoints());
         assertEquals("GOLD", response.currentLevel());
@@ -62,15 +62,15 @@ class GetStudentRewardStatusTest {
     }
 
     @Test
-    void execute_DebeRetornarEstadoPlata_CuandoSuperaPrimerUmbral() {
-        UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        alumno.setPuntosRecompensa(150);
+    void executeWhenStudentPassesFirstThresholdShouldReturnSilverStatus() {
+        UUID studentId = UUID.randomUUID();
+        Alumno student = new Alumno();
+        student.setId(studentId);
+        student.setPuntosRecompensa(150);
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
 
-        StudentRewardResponse response = getStudentRewardStatus.execute(alumnoId);
+        StudentRewardResponse response = getStudentRewardStatus.execute(studentId);
 
         assertEquals("SILVER", response.currentLevel());
         assertEquals(100, response.pointsToNextLevel());
@@ -78,12 +78,12 @@ class GetStudentRewardStatusTest {
     }
 
     @Test
-    void execute_CuandoAlumnoNoExiste_DebeLanzarExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
+    void executeWhenStudentDoesNotExistShouldThrowException() {
+        UUID studentId = UUID.randomUUID();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
 
         assertThrows(AlumnoNoEncontradoException.class,
-                () -> getStudentRewardStatus.execute(alumnoId));
+                () -> getStudentRewardStatus.execute(studentId));
     }
 }

@@ -21,20 +21,20 @@ public class UpdateBudgetRules {
 
     @Transactional
     public PresupuestoAlumno execute(UUID budgetId, UpdateBudgetRulesCommand command) {
-        PresupuestoAlumno presupuesto = repository.findById(budgetId)
+        PresupuestoAlumno budget = repository.findById(budgetId)
                 .orElseThrow(() -> new RuntimeException
                         ("Presupuesto no encontrado con ID: " + budgetId));
 
-        List<ReglaPresupuestoCategoria> nuevasReglas = new ArrayList<>();
+        List<ReglaPresupuestoCategoria> newRules = new ArrayList<>();
 
         if (command.rules() != null && !command.rules().isEmpty()) {
-            nuevasReglas = command.rules().stream().map(rule -> {
-                CategoriaProducto categoria = new CategoriaProducto();
-                categoria.setId(rule.categoryId());
+            newRules = command.rules().stream().map(rule -> {
+                CategoriaProducto category = new CategoriaProducto();
+                category.setId(rule.categoryId());
 
                 return new ReglaPresupuestoCategoria(
                         null,
-                        categoria,
+                        category,
                         rule.porcentajeLimite(),
                         null,
                         true
@@ -42,11 +42,11 @@ public class UpdateBudgetRules {
             }).collect(Collectors.toList());
         }
 
-        presupuesto.setReglasCategoria(nuevasReglas);
+        budget.setReglasCategoria(newRules);
 
-        presupuesto.validarPorcentajes();
-        presupuesto.recalcularMontosReglas();
+        budget.validarPorcentajes();
+        budget.recalcularMontosReglas();
 
-        return repository.save(presupuesto);
+        return repository.save(budget);
     }
 }

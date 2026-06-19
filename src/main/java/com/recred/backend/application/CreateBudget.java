@@ -19,23 +19,23 @@ public class CreateBudget {
 
     @Transactional
     public PresupuestoAlumno execute(BudgetCommand command) {
-        List<ReglaPresupuestoCategoria> reglas = null;
+        List<ReglaPresupuestoCategoria> rules = null;
 
         if (command.categoryRules() != null && !command.categoryRules().isEmpty()) {
-            reglas = command.categoryRules().stream().map(rule -> {
-                CategoriaProducto categoria = new CategoriaProducto();
-                categoria.setId(rule.categoryId());
+            rules = command.categoryRules().stream().map(rule -> {
+                CategoriaProducto category = new CategoriaProducto();
+                category.setId(rule.categoryId());
 
                 return new ReglaPresupuestoCategoria(
                         null,
-                        categoria,
+                        category,
                         rule.porcentajeLimite(),
                         null,
                         true);
             }).collect(Collectors.toList());
         }
 
-        PresupuestoAlumno presupuesto = new PresupuestoAlumno(
+        PresupuestoAlumno budget = new PresupuestoAlumno(
                 null,
                 command.studentId(),
                 command.creadorId(),
@@ -43,11 +43,11 @@ public class CreateBudget {
                 command.period(),
                 command.startDate(),
                 true,
-                reglas);
+                rules);
 
-        presupuesto.validarPorcentajes();
-        presupuesto.recalcularMontosReglas();
+        budget.validarPorcentajes();
+        budget.recalcularMontosReglas();
 
-        return repository.save(presupuesto);
+        return repository.save(budget);
     }
 }

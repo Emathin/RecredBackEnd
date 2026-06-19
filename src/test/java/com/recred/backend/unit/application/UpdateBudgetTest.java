@@ -37,17 +37,17 @@ class UpdateBudgetTest {
     private UpdateBudget updateBudget;
 
     private UUID budgetId;
-    private PresupuestoAlumno presupuestoExistente;
+    private PresupuestoAlumno existingBudget;
 
     @BeforeEach
     void setUp() {
         budgetId = UUID.randomUUID();
-        presupuestoExistente = new PresupuestoAlumno();
-        presupuestoExistente.setId(budgetId);
+        existingBudget = new PresupuestoAlumno();
+        existingBudget.setId(budgetId);
     }
 
     @Test
-    void execute_PresupuestoNoExiste_LanzaExcepcion() {
+    void executeWhenBudgetDoesNotExistShouldThrowException() {
         when(repository.findById(budgetId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> {
@@ -56,8 +56,8 @@ class UpdateBudgetTest {
     }
 
     @Test
-    void execute_ActualizaDatosYCalculaPorcentajesCorrectamente() {
-        when(repository.findById(budgetId)).thenReturn(Optional.of(presupuestoExistente));
+    void executeShouldUpdateDataAndCalculatePercentagesCorrectly() {
+        when(repository.findById(budgetId)).thenReturn(Optional.of(existingBudget));
 
         when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> i.getArguments()[0]);
 
@@ -71,19 +71,19 @@ class UpdateBudgetTest {
         when(ruleMock.porcentajeLimite()).thenReturn(new BigDecimal("20.00"));
         when(command.categoryRules()).thenReturn(List.of(ruleMock));
 
-        PresupuestoAlumno resultado = updateBudget.execute(budgetId, command);
+        updateBudget.execute(budgetId, command);
 
         ArgumentCaptor<PresupuestoAlumno> captor = ArgumentCaptor.forClass(PresupuestoAlumno.class);
         verify(repository).save(captor.capture());
-        PresupuestoAlumno guardado = captor.getValue();
+        PresupuestoAlumno saved = captor.getValue();
 
-        assertEquals(new BigDecimal("10000.00"), guardado.getMontoLimiteGeneral());
-        assertEquals(PeriodoPresupuesto.SEMANAL, guardado.getPeriodo());
+        assertEquals(new BigDecimal("10000.00"), saved.getMontoLimiteGeneral());
+        assertEquals(PeriodoPresupuesto.SEMANAL, saved.getPeriodo());
 
-        assertNotNull(guardado.getReglasCategoria());
-        assertEquals(1, guardado.getReglasCategoria().size());
+        assertNotNull(saved.getReglasCategoria());
+        assertEquals(1, saved.getReglasCategoria().size());
 
-        BigDecimal montoCalculado = guardado.getReglasCategoria().get(0).getMontoLimiteCalculado();
-        assertEquals(new BigDecimal("2000.00"), montoCalculado);
+        BigDecimal calculatedAmount = saved.getReglasCategoria().get(0).getMontoLimiteCalculado();
+        assertEquals(new BigDecimal("2000.00"), calculatedAmount);
     }
 }

@@ -35,18 +35,18 @@ class UpdateBudgetRulesTest {
     private UpdateBudgetRules updateBudgetRules;
 
     private UUID budgetId;
-    private PresupuestoAlumno presupuestoExistente;
+    private PresupuestoAlumno existingBudget;
 
     @BeforeEach
     void setUp() {
         budgetId = UUID.randomUUID();
-        presupuestoExistente = new PresupuestoAlumno();
-        presupuestoExistente.setId(budgetId);
-        presupuestoExistente.setMontoLimiteGeneral(new BigDecimal("5000.00"));
+        existingBudget = new PresupuestoAlumno();
+        existingBudget.setId(budgetId);
+        existingBudget.setMontoLimiteGeneral(new BigDecimal("5000.00"));
     }
 
     @Test
-    void execute_PresupuestoNoExiste_LanzaExcepcion() {
+    void executeWhenBudgetDoesNotExistShouldThrowException() {
         when(repository.findById(budgetId)).thenReturn(Optional.empty());
         UpdateBudgetRulesCommand command = new UpdateBudgetRulesCommand(Collections.emptyList());
 
@@ -54,8 +54,8 @@ class UpdateBudgetRulesTest {
     }
 
     @Test
-    void execute_ActualizaReglasYGuarda() {
-        when(repository.findById(budgetId)).thenReturn(Optional.of(presupuestoExistente));
+    void executeShouldUpdateRulesAndSave() {
+        when(repository.findById(budgetId)).thenReturn(Optional.of(existingBudget));
         when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> i.getArguments()[0]);
 
         UpdateBudgetRulesCommand.CategoryRuleCommand ruleCommand =
@@ -66,17 +66,17 @@ class UpdateBudgetRulesTest {
 
         ArgumentCaptor<PresupuestoAlumno> captor = ArgumentCaptor.forClass(PresupuestoAlumno.class);
         verify(repository).save(captor.capture());
-        PresupuestoAlumno guardado = captor.getValue();
+        PresupuestoAlumno saved = captor.getValue();
 
-        assertEquals(1, guardado.getReglasCategoria().size());
-        assertEquals(new BigDecimal("10.00"), guardado.getReglasCategoria().get(0).getPorcentajeLimite());
+        assertEquals(1, saved.getReglasCategoria().size());
+        assertEquals(new BigDecimal("10.00"), saved.getReglasCategoria().get(0).getPorcentajeLimite());
 
-        assertEquals(new BigDecimal("500.00"), guardado.getReglasCategoria().get(0).getMontoLimiteCalculado());
+        assertEquals(new BigDecimal("500.00"), saved.getReglasCategoria().get(0).getMontoLimiteCalculado());
     }
 
     @Test
-    void execute_ListaVacia_LimpiaLasReglas() {
-        when(repository.findById(budgetId)).thenReturn(Optional.of(presupuestoExistente));
+    void executeWithEmptyListShouldClearRules() {
+        when(repository.findById(budgetId)).thenReturn(Optional.of(existingBudget));
         when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> i.getArguments()[0]);
 
         UpdateBudgetRulesCommand command = new UpdateBudgetRulesCommand(Collections.emptyList());
@@ -86,6 +86,6 @@ class UpdateBudgetRulesTest {
         ArgumentCaptor<PresupuestoAlumno> captor = ArgumentCaptor.forClass(PresupuestoAlumno.class);
         verify(repository).save(captor.capture());
 
-        assertTrue(captor.getValue().getReglasCategoria().isEmpty(), "La lista de reglas debería quedar vacía");
+        assertTrue(captor.getValue().getReglasCategoria().isEmpty(), "The rule list should be empty");
     }
 }

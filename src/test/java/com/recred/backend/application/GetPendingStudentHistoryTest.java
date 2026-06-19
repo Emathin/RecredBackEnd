@@ -18,12 +18,12 @@ class GetPendingStudentHistoryTest {
         PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
         GetPendingStudentHistory useCase =
                 new GetPendingStudentHistory(purchaseRepository);
-        UUID alumnoId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
         Purchase purchase = new Purchase();
-        when(purchaseRepository.findPendientesByAlumno(alumnoId))
+        when(purchaseRepository.findPendientesByAlumno(studentId))
                 .thenReturn(List.of(purchase));
 
-        List<Purchase> result = useCase.execute(alumnoId);
+        List<Purchase> result = useCase.execute(studentId);
 
         assertEquals(List.of(purchase), result);
     }

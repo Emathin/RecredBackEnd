@@ -13,9 +13,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DeleteProductTest {
@@ -31,21 +34,21 @@ class DeleteProductTest {
     }
 
     @Test
-    void dadoQueExisteProducto_cuandoExecute_entoncesDesactivaYGuarda() {
+    void executeWhenProductExistsShouldDeactivateAndSave() {
         UUID id = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(id);
-        producto.setActivo(true);
-        when(productRepository.findActiveById(id)).thenReturn(Optional.of(producto));
+        Producto product = new Producto();
+        product.setId(id);
+        product.setActivo(true);
+        when(productRepository.findActiveById(id)).thenReturn(Optional.of(product));
 
         deleteProduct.execute(id);
 
-        assertFalse(producto.getActivo());
-        verify(productRepository).save(producto);
+        assertFalse(product.getActivo());
+        verify(productRepository).save(product);
     }
 
     @Test
-    void dadoQueNoExisteProducto_cuandoExecute_entoncesLanzaExcepcion() {
+    void executeWhenProductDoesNotExistShouldThrowException() {
         UUID id = UUID.randomUUID();
         when(productRepository.findActiveById(id)).thenReturn(Optional.empty());
 

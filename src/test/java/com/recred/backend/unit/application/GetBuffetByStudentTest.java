@@ -36,46 +36,46 @@ class GetBuffetByStudentTest {
     private GetBuffetByStudent getBuffetByStudent;
 
     @Test
-    void dadoAlumnoExistenteYBuffetActivo_cuandoExecute_entoncesRetornaBuffet() {
-        UUID alumnoId = UUID.randomUUID();
+    void executeWhenStudentExistsAndBuffetIsActiveShouldReturnBuffet() {
+        UUID studentId = UUID.randomUUID();
         Buffet buffet = new Buffet();
         buffet.setId(UUID.randomUUID());
         buffet.setNombre("Buffet Central");
 
-        when(alumnoRepository.existsById(alumnoId)).thenReturn(true);
-        when(buffetRepository.findByAlumnoId(alumnoId)).thenReturn(Optional.of(buffet));
+        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+        when(buffetRepository.findByAlumnoId(studentId)).thenReturn(Optional.of(buffet));
 
-        Optional<Buffet> resultado = getBuffetByStudent.execute(alumnoId);
+        Optional<Buffet> result = getBuffetByStudent.execute(studentId);
 
-        assertTrue(resultado.isPresent());
-        assertEquals("Buffet Central", resultado.get().getNombre());
-        verify(alumnoRepository, times(1)).existsById(alumnoId);
-        verify(buffetRepository, times(1)).findByAlumnoId(alumnoId);
+        assertTrue(result.isPresent());
+        assertEquals("Buffet Central", result.get().getNombre());
+        verify(alumnoRepository, times(1)).existsById(studentId);
+        verify(buffetRepository, times(1)).findByAlumnoId(studentId);
     }
 
     @Test
-    void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaAlumnoNoEncontradoException() {
-        UUID alumnoId = UUID.randomUUID();
-        when(alumnoRepository.existsById(alumnoId)).thenReturn(false);
+    void executeWhenStudentDoesNotExistShouldThrowStudentNotFoundException() {
+        UUID studentId = UUID.randomUUID();
+        when(alumnoRepository.existsById(studentId)).thenReturn(false);
 
         assertThrows(AlumnoNoEncontradoException.class, () ->
-                getBuffetByStudent.execute(alumnoId)
+                getBuffetByStudent.execute(studentId)
         );
 
-        verify(alumnoRepository, times(1)).existsById(alumnoId);
+        verify(alumnoRepository, times(1)).existsById(studentId);
         verifyNoInteractions(buffetRepository);
     }
 
     @Test
-    void dadoAlumnoExistentePeroSinBuffet_cuandoExecute_entoncesRetornaVacio() {
-        UUID alumnoId = UUID.randomUUID();
-        when(alumnoRepository.existsById(alumnoId)).thenReturn(true);
-        when(buffetRepository.findByAlumnoId(alumnoId)).thenReturn(Optional.empty());
+    void executeWhenStudentExistsButHasNoBuffetShouldReturnEmpty() {
+        UUID studentId = UUID.randomUUID();
+        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+        when(buffetRepository.findByAlumnoId(studentId)).thenReturn(Optional.empty());
 
-        Optional<Buffet> resultado = getBuffetByStudent.execute(alumnoId);
+        Optional<Buffet> result = getBuffetByStudent.execute(studentId);
 
-        assertFalse(resultado.isPresent());
-        verify(alumnoRepository, times(1)).existsById(alumnoId);
-        verify(buffetRepository, times(1)).findByAlumnoId(alumnoId);
+        assertFalse(result.isPresent());
+        verify(alumnoRepository, times(1)).existsById(studentId);
+        verify(buffetRepository, times(1)).findByAlumnoId(studentId);
     }
 }

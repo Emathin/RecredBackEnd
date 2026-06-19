@@ -31,33 +31,33 @@ class GetFavoritesByStudentTest {
     private GetFavoritesByStudent getFavoritesByStudent;
 
     @Test
-    void dadoAlumnoExistente_cuandoExecute_entoncesRetornaFavoritos() {
-        UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
+    void executeWhenStudentExistsShouldReturnFavorites() {
+        UUID studentId = UUID.randomUUID();
+        Alumno student = new Alumno();
+        student.setId(studentId);
 
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        alumno.addFavoriteProduct(producto);
+        Producto product = new Producto();
+        product.setId(UUID.randomUUID());
+        student.addFavoriteProduct(product);
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
 
-        Set<Producto> resultado = getFavoritesByStudent.execute(alumnoId);
+        Set<Producto> result = getFavoritesByStudent.execute(studentId);
 
-        assertEquals(1, resultado.size());
-        assertTrue(resultado.contains(producto));
-        verify(alumnoRepository, times(1)).findById(alumnoId);
+        assertEquals(1, result.size());
+        assertTrue(result.contains(product));
+        verify(alumnoRepository, times(1)).findById(studentId);
     }
 
     @Test
-    void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+    void executeWhenStudentDoesNotExistShouldThrowException() {
+        UUID studentId = UUID.randomUUID();
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                getFavoritesByStudent.execute(alumnoId)
+                getFavoritesByStudent.execute(studentId)
         );
 
-        verify(alumnoRepository, times(1)).findById(alumnoId);
+        verify(alumnoRepository, times(1)).findById(studentId);
     }
 }

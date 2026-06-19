@@ -15,16 +15,16 @@ public class GetStudentRewardStatus {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public StudentRewardResponse execute(UUID alumnoId) {
-        Alumno alumno = alumnoRepository.findById(alumnoId)
-                .orElseThrow(() -> new AlumnoNoEncontradoException(alumnoId));
+    public StudentRewardResponse execute(UUID studentId) {
+        Alumno student = alumnoRepository.findById(studentId)
+                .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
 
-        RewardLevel currentLevel = alumno.calculateCurrentLevel();
-        Integer nextPoints = alumno.getPointsToNextLevel();
+        RewardLevel currentLevel = student.calculateCurrentLevel();
+        Integer nextPoints = student.getPointsToNextLevel();
         String nextName = determineNextLevelName(currentLevel);
 
         return new StudentRewardResponse(
-                alumno.getPuntosRecompensa(),
+                student.getPuntosRecompensa(),
                 currentLevel.name(),
                 currentLevel.getMessage(),
                 nextPoints,

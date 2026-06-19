@@ -30,10 +30,10 @@ class GetAllProductsTest {
     }
 
     @Test
-    void dadoQueElBuffetIdEsNulo_cuandoExecute_entoncesLlamaBusquedaGlobal() {
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        when(productRepository.findAllActive()).thenReturn(List.of(producto));
+    void executeWhenBuffetIdIsNullShouldCallGlobalSearch() {
+        Producto product = new Producto();
+        product.setId(UUID.randomUUID());
+        when(productRepository.findAllActive()).thenReturn(List.of(product));
 
         List<Producto> result = getAllProducts.execute(null);
 
@@ -42,11 +42,11 @@ class GetAllProductsTest {
     }
 
     @Test
-    void dadoQueElBuffetIdEsValido_cuandoExecute_entoncesLlamaBusquedaConStock() {
+    void executeWhenBuffetIdIsValidShouldCallStockSearch() {
         UUID buffetId = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(producto));
+        Producto product = new Producto();
+        product.setId(UUID.randomUUID());
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
 
         List<Producto> result = getAllProducts.execute(buffetId);
 

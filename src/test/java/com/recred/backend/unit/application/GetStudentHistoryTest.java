@@ -27,17 +27,17 @@ class GetStudentHistoryTest {
     private GetStudentHistory getStudentHistory;
 
     @Test
-    void dadoAlumnoConCompras_cuandoSeEjecuta_entoncesRetornaListaDeCompras() {
-        UUID alumnoId = UUID.randomUUID();
-        Purchase compra1 = new Purchase();
-        Purchase compra2 = new Purchase();
-        List<Purchase> comprasMock = List.of(compra1, compra2);
+    void executeWhenStudentHasPurchasesShouldReturnPurchaseList() {
+        UUID studentId = UUID.randomUUID();
+        Purchase firstPurchase = new Purchase();
+        Purchase secondPurchase = new Purchase();
+        List<Purchase> mockPurchases = List.of(firstPurchase, secondPurchase);
 
-        when(purchaseRepository.findHistorialByAlumno(alumnoId)).thenReturn(comprasMock);
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(mockPurchases);
 
-        List<Purchase> resultado = getStudentHistory.execute(alumnoId);
+        List<Purchase> result = getStudentHistory.execute(studentId);
 
-        assertEquals(2, resultado.size());
-        verify(purchaseRepository, times(1)).findHistorialByAlumno(alumnoId);
+        assertEquals(2, result.size());
+        verify(purchaseRepository, times(1)).findHistorialByAlumno(studentId);
     }
 }
