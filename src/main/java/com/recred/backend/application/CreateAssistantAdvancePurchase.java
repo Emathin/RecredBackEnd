@@ -16,11 +16,11 @@ import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.AdvancePurchaseRulesService;
+import com.recred.backend.domain.services.BudgetValidatorService;
+import com.recred.backend.domain.services.HealthRestrictionValidatorService;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import com.recred.backend.domain.services.RecessTimeSlotResolver;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.TimeRestrictionValidatorService;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,9 +38,9 @@ public class CreateAssistantAdvancePurchase {
     private final WalletRepository walletRepository;
     private final PurchaseRepository purchaseRepository;
     private final RecessTimeSlotResolver recessTimeSlotResolver;
-    private final ValidadorHorarioService timeValidator;
-    private final ValidacionRestriccionesService healthValidator;
-    private final ValidadorPresupuestoService budgetValidator;
+    private final TimeRestrictionValidatorService timeValidator;
+    private final HealthRestrictionValidatorService healthValidator;
+    private final BudgetValidatorService budgetValidator;
     private final WithdrawalCodeService withdrawalCodeService;
     private final Clock clock;
     private final InventoryAvailabilityService inventoryAvailabilityService;
@@ -52,9 +52,9 @@ public class CreateAssistantAdvancePurchase {
             WalletRepository walletRepository,
             PurchaseRepository purchaseRepository,
             RecessTimeSlotResolver recessTimeSlotResolver,
-            ValidadorHorarioService timeValidator,
-            ValidacionRestriccionesService healthValidator,
-            ValidadorPresupuestoService budgetValidator,
+            TimeRestrictionValidatorService timeValidator,
+            HealthRestrictionValidatorService healthValidator,
+            BudgetValidatorService budgetValidator,
             WithdrawalCodeService withdrawalCodeService,
             Clock clock,
             InventoryAvailabilityService inventoryAvailabilityService,
@@ -70,9 +70,9 @@ public class CreateAssistantAdvancePurchase {
             WalletRepository walletRepository,
             PurchaseRepository purchaseRepository,
             RecessTimeSlotResolver recessTimeSlotResolver,
-            ValidadorHorarioService timeValidator,
-            ValidacionRestriccionesService healthValidator,
-            ValidadorPresupuestoService budgetValidator,
+            TimeRestrictionValidatorService timeValidator,
+            HealthRestrictionValidatorService healthValidator,
+            BudgetValidatorService budgetValidator,
             WithdrawalCodeService withdrawalCodeService,
             Clock clock,
             InventoryAvailabilityService inventoryAvailabilityService,
@@ -106,11 +106,11 @@ public class CreateAssistantAdvancePurchase {
         LocalDateTime pickupDateTime = LocalDateTime.of(pickupDate, pickupSlot.getHoraInicio());
 
         advancePurchaseRulesService.validate(buffetId, pickupSlot, pickupDate, cart);
-        timeValidator.validarCompra(student, cart.keySet(), pickupDateTime);
-        healthValidator.validarCompra(student, cart.keySet());
+        timeValidator.validatePurchase(student, cart.keySet(), pickupDateTime);
+        healthValidator.validatePurchase(student, cart.keySet());
 
         BigDecimal total = calculateTotal(cart);
-        budgetValidator.validarPresupuesto(studentId, total, totalsByCategory(cart),
+        budgetValidator.validateBudget(studentId, total, totalsByCategory(cart),
                 pickupDateTime);
 
         Billetera wallet = walletRepository.findByStudentId(studentId)

@@ -13,7 +13,7 @@ import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.services.PushNotificationSender;
-import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.services.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +33,12 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class NotifyPurchaseSuggestionsTest {
@@ -45,7 +50,7 @@ class NotifyPurchaseSuggestionsTest {
     @Mock
     private PushNotificationSender pushNotificationSender;
     @Mock
-    private UsuarioService usuarioService;
+    private UserService userService;
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -73,7 +78,7 @@ class NotifyPurchaseSuggestionsTest {
         usuario.setRol(RolUsuario.ALUMNO);
 
         when(purchaseSuggestIA.execute(cognitoId)).thenReturn(Optional.of(sugerencia));
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
+        when(userService.getCurrentUser(cognitoId)).thenReturn(usuario);
 
 
         useCase.execute(cognitoId);
@@ -118,7 +123,7 @@ class NotifyPurchaseSuggestionsTest {
         Usuario usuario = new Usuario();
         usuario.setId(userId);
         when(purchaseSuggestIA.execute(cognitoId)).thenReturn(Optional.of(sugerencia));
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
+        when(userService.getCurrentUser(cognitoId)).thenReturn(usuario);
 
         PushNotification notification = useCase.execute(cognitoId);
 
@@ -163,7 +168,7 @@ class NotifyPurchaseSuggestionsTest {
                 purchaseSuggestIA,
                 alumnoRepository,
                 pushNotificationSender,
-                usuarioService,
+                userService,
                 failingMapper
         );
         SugerenciaIA sugerencia = SugerenciaIA.builder()

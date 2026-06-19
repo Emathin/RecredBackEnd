@@ -78,7 +78,7 @@ public class Alumno {
         this.productosBloqueados.removeIf(p -> p.getId().equals(productoId));
     }
 
-    public void agregarProductoFavorito(Producto producto) {
+    public void addFavoriteProduct(Producto producto) {
         if (producto != null) {
             boolean yaExiste = this.productosFavoritos.stream()
                     .anyMatch(p -> p.getId().equals(producto.getId()));
@@ -88,7 +88,7 @@ public class Alumno {
         }
     }
 
-    public void removerProductoFavorito(UUID productoId) {
+    public void removeFavoriteProduct(UUID productoId) {
         this.productosFavoritos.removeIf(p -> p.getId().equals(productoId));
     }
 

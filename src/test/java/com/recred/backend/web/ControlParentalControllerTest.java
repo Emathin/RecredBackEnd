@@ -1,12 +1,12 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.AddHealthRestriction;
-import com.recred.backend.application.BloquearProductoManual;
-import com.recred.backend.application.DesbloquearProductoManual;
+import com.recred.backend.application.BlockProductManually;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictions;
+import com.recred.backend.application.UnblockProductManually;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.ClasificacionSalud;
@@ -55,10 +55,10 @@ class ControlParentalControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private BloquearProductoManual bloquearProductoManual;
+    private BlockProductManually blockProductManually;
 
     @MockitoBean
-    private DesbloquearProductoManual desbloquearProductoManual;
+    private UnblockProductManually unblockProductManually;
 
     @MockitoBean
     private ManageRestrictions manageRestrictions;
@@ -168,7 +168,7 @@ class ControlParentalControllerTest {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
 
-        doNothing().when(bloquearProductoManual).execute(alumnoId, productoId);
+        doNothing().when(blockProductManually).execute(alumnoId, productoId);
 
         mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
                 .andExpect(status().isOk());
@@ -179,7 +179,7 @@ class ControlParentalControllerTest {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
 
-        doNothing().when(desbloquearProductoManual).execute(alumnoId, productoId);
+        doNothing().when(unblockProductManually).execute(alumnoId, productoId);
 
         mockMvc.perform(delete("/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
                 .andExpect(status().isOk());

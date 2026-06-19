@@ -7,7 +7,7 @@ import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.services.PushNotificationSender;
-import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.services.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +24,7 @@ public class NotifyPurchaseSuggestions {
     private final PurchaseSuggestIA purchaseSuggestIA;
     private final AlumnoRepository alumnoRepository;
     private final PushNotificationSender pushNotificationSender;
-    private final UsuarioService usuarioService;
+    private final UserService userService;
     private final ObjectMapper objectMapper;
 
     private static final String[] SUGGESTION_MESSAGES = {
@@ -42,12 +42,12 @@ public class NotifyPurchaseSuggestions {
             PurchaseSuggestIA purchaseSuggestIA,
             AlumnoRepository alumnoRepository,
             PushNotificationSender pushNotificationSender,
-            UsuarioService usuarioService,
+            UserService userService,
             ObjectMapper objectMapper) {
         this.purchaseSuggestIA = purchaseSuggestIA;
         this.alumnoRepository = alumnoRepository;
         this.pushNotificationSender = pushNotificationSender;
-        this.usuarioService = usuarioService;
+        this.userService = userService;
         this.objectMapper = objectMapper;
     }
 
@@ -57,7 +57,7 @@ public class NotifyPurchaseSuggestions {
 
         if (sugerenciaOpt.isPresent()) {
             SugerenciaIA sugerencia = sugerenciaOpt.get();
-            Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoId);
+            Usuario usuario = userService.getCurrentUser(cognitoId);
             
             LOGGER.info("Enviando notificación de sugerencia al usuario id: {}",
                     usuario.getId());

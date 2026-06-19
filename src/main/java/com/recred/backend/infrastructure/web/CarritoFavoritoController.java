@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.DeleteCarritoFavorito;
-import com.recred.backend.application.GetCarritosFavoritosByTutor;
+import com.recred.backend.application.DeleteFavoriteCart;
+import com.recred.backend.application.GetFavoriteCartsByTutor;
 import com.recred.backend.application.SaveCarritoFavorito;
 import com.recred.backend.domain.models.CarritoFavorito;
 import org.springframework.http.HttpStatus;
@@ -28,16 +28,16 @@ import java.util.stream.Collectors;
 public class CarritoFavoritoController {
 
     private final SaveCarritoFavorito saveCarritoFavorito;
-    private final GetCarritosFavoritosByTutor getCarritosFavoritosByTutor;
-    private final DeleteCarritoFavorito deleteCarritoFavorito;
+    private final GetFavoriteCartsByTutor getFavoriteCartsByTutor;
+    private final DeleteFavoriteCart deleteFavoriteCart;
 
     public CarritoFavoritoController(
             SaveCarritoFavorito saveCarritoFavorito,
-            GetCarritosFavoritosByTutor getCarritosFavoritosByTutor,
-            DeleteCarritoFavorito deleteCarritoFavorito) {
+            GetFavoriteCartsByTutor getFavoriteCartsByTutor,
+            DeleteFavoriteCart deleteFavoriteCart) {
         this.saveCarritoFavorito = saveCarritoFavorito;
-        this.getCarritosFavoritosByTutor = getCarritosFavoritosByTutor;
-        this.deleteCarritoFavorito = deleteCarritoFavorito;
+        this.getFavoriteCartsByTutor = getFavoriteCartsByTutor;
+        this.deleteFavoriteCart = deleteFavoriteCart;
     }
 
     @PostMapping
@@ -69,7 +69,7 @@ public class CarritoFavoritoController {
             @RequestParam(required = false) UUID alumnoId,
             @RequestParam(required = false) UUID productoId) {
 
-        List<CarritoFavorito> carts = getCarritosFavoritosByTutor.execute(
+        List<CarritoFavorito> carts = getFavoriteCartsByTutor.execute(
                 cognitoSubject(authentication),
                 alumnoId,
                 productoId
@@ -87,7 +87,7 @@ public class CarritoFavoritoController {
             Authentication authentication,
             @PathVariable UUID id) {
 
-        deleteCarritoFavorito.execute(cognitoSubject(authentication), id);
+        deleteFavoriteCart.execute(cognitoSubject(authentication), id);
         return ResponseEntity.noContent().build();
     }
 

@@ -1,7 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.CreateStudentFromParent;
-import com.recred.backend.application.ObtenerHijosPorPadre;
+import com.recred.backend.application.GetChildrenByParent;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.services.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -17,29 +19,25 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.services.UsuarioService;
-import org.springframework.security.core.Authentication;
-
 @RestController
 @RequestMapping("/api/v1/tutores")
 public class TutorController {
 
-    private final ObtenerHijosPorPadre obtenerHijosPorPadre;
-    private final UsuarioService usuarioService;
+    private final GetChildrenByParent getChildrenByParent;
+    private final UserService userService;
     private final CreateStudentFromParent createStudentFromParent;
 
-    public TutorController(ObtenerHijosPorPadre obtenerHijosPorPadre, 
-                           UsuarioService usuarioService,
+    public TutorController(GetChildrenByParent getChildrenByParent, 
+                           UserService userService,
                            CreateStudentFromParent createStudentFromParent) {
-        this.obtenerHijosPorPadre = obtenerHijosPorPadre;
-        this.usuarioService = usuarioService;
+        this.getChildrenByParent = getChildrenByParent;
+        this.userService = userService;
         this.createStudentFromParent = createStudentFromParent;
     }
 
     @GetMapping("/me/hijos")
     public ResponseEntity<List<StudentDTO>> obtenerMisHijos(Authentication authentication) {
-        List<StudentDTO> alumnos = obtenerHijosPorPadre
+        List<StudentDTO> alumnos = getChildrenByParent
                 .executeByCognitoSubject(cognitoSubject(authentication))
                 .stream()
                 .map(StudentDTO::fromDomain)
@@ -72,7 +70,7 @@ public class TutorController {
         UUID id;
         if ("me".equalsIgnoreCase(tutorId)) {
             String cognitoSub = authentication.getName();
-            Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoSub);
+            Usuario usuario = userService.getCurrentUser(cognitoSub);
             if (usuario.getTutor() == null) {
                 return ResponseEntity.ok(List.of());
             }
@@ -81,7 +79,7 @@ public class TutorController {
             id = UUID.fromString(tutorId);
         }
 
-        List<StudentDTO> alumnos = obtenerHijosPorPadre.execute(id)
+        List<StudentDTO> alumnos = getChildrenByParent.execute(id)
                 .stream()
                 .map(StudentDTO::fromDomain)
                 .toList();

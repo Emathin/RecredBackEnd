@@ -18,26 +18,26 @@ import java.util.Set;
 
 public class GetTutorGlobalDashboard {
 
-    private final ObtenerHijosPorPadre obtenerHijosPorPadre;
+    private final GetChildrenByParent getChildrenByParent;
     private final GetActiveBudgetByStudent getActiveBudgetByStudent;
     private final GetStudentRewardStatus getStudentRewardStatus;
     private final PredictStudentSpending predictStudentSpending;
-    private final ObtenerHistorialAlumno obtenerHistorialAlumno;
+    private final GetStudentHistory getStudentHistory;
 
-    public GetTutorGlobalDashboard(ObtenerHijosPorPadre obtenerHijosPorPadre,
+    public GetTutorGlobalDashboard(GetChildrenByParent getChildrenByParent,
                                    GetActiveBudgetByStudent getActiveBudgetByStudent,
                                    GetStudentRewardStatus getStudentRewardStatus,
                                    PredictStudentSpending predictStudentSpending,
-                                   ObtenerHistorialAlumno obtenerHistorialAlumno) {
-        this.obtenerHijosPorPadre = obtenerHijosPorPadre;
+                                   GetStudentHistory getStudentHistory) {
+        this.getChildrenByParent = getChildrenByParent;
         this.getActiveBudgetByStudent = getActiveBudgetByStudent;
         this.getStudentRewardStatus = getStudentRewardStatus;
         this.predictStudentSpending = predictStudentSpending;
-        this.obtenerHistorialAlumno = obtenerHistorialAlumno;
+        this.getStudentHistory = getStudentHistory;
     }
 
     public TutorGlobalDashboardDTO executeByCognitoSubject(String cognitoSubject) {
-        Set<Alumno> hijos = obtenerHijosPorPadre.executeByCognitoSubject(cognitoSubject);
+        Set<Alumno> hijos = getChildrenByParent.executeByCognitoSubject(cognitoSubject);
         BigDecimal totalBalance = BigDecimal.ZERO;
         List<ChildDashboardDTO> childrenDashboards = new ArrayList<>();
 
@@ -79,7 +79,7 @@ public class GetTutorGlobalDashboard {
                 
             }
 
-            List<Purchase> historial = obtenerHistorialAlumno.execute(alumno.getId());
+            List<Purchase> historial = getStudentHistory.execute(alumno.getId());
             List<TransactionSummaryDTO> transactions = historial.stream()
                     .limit(4)
                     .map(p -> new TransactionSummaryDTO(

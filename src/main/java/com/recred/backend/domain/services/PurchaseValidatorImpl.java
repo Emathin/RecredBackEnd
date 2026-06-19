@@ -10,29 +10,29 @@ import java.util.stream.Collectors;
 
 public class PurchaseValidatorImpl implements PurchaseValidator {
 
-    private final ValidadorHorarioService validadorHorarioService;
-    private final ValidacionRestriccionesService validacionRestriccionesService;
-    private final ValidadorPresupuestoService validadorPresupuestoService;
+    private final TimeRestrictionValidatorService timeRestrictionValidatorService;
+    private final HealthRestrictionValidatorService healthRestrictionValidatorService;
+    private final BudgetValidatorService budgetValidatorService;
 
     public PurchaseValidatorImpl(
-            ValidadorHorarioService validadorHorarioService,
-            ValidacionRestriccionesService validacionRestriccionesService,
-            ValidadorPresupuestoService validadorPresupuestoService
+            TimeRestrictionValidatorService timeRestrictionValidatorService,
+            HealthRestrictionValidatorService healthRestrictionValidatorService,
+            BudgetValidatorService budgetValidatorService
     ) {
-        this.validadorHorarioService = validadorHorarioService;
-        this.validacionRestriccionesService = validacionRestriccionesService;
-        this.validadorPresupuestoService = validadorPresupuestoService;
+        this.timeRestrictionValidatorService = timeRestrictionValidatorService;
+        this.healthRestrictionValidatorService = healthRestrictionValidatorService;
+        this.budgetValidatorService = budgetValidatorService;
     }
 
     @Override
     public void validate(Purchase purchase) {
-        validadorHorarioService.validarCompra(
+        timeRestrictionValidatorService.validatePurchase(
                 purchase.getStudent(),
                 purchase.getItems().keySet(),
                 LocalDateTime.now()
         );
 
-        validacionRestriccionesService.validarCompra(
+        healthRestrictionValidatorService.validatePurchase(
                 purchase.getStudent(),
                 purchase.getItems().keySet()
         );
@@ -47,7 +47,7 @@ public class PurchaseValidatorImpl implements PurchaseValidator {
                         )
                 ));
 
-        validadorPresupuestoService.validarPresupuesto(
+        budgetValidatorService.validateBudget(
                 purchase.getStudent().getId(),
                 purchase.getTotalAmount(),
                 amountsByCategory,

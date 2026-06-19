@@ -6,13 +6,13 @@ import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.services.UserService;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,14 +29,17 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PurchaseSuggestIATest {
 
     @Mock
-    private UsuarioService usuarioService;
+    private UserService userService;
     @Mock
     private SugerenciaIARepository sugerenciaIARepository;
     @Mock
@@ -51,7 +54,7 @@ class PurchaseSuggestIATest {
 
     private void setupUseCase(LocalDateTime now) {
         Clock clock = Clock.fixed(now.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
-        useCase = new PurchaseSuggestIA(usuarioService, sugerenciaIARepository, franjaHorariaRepository, clock);
+        useCase = new PurchaseSuggestIA(userService, sugerenciaIARepository, franjaHorariaRepository, clock);
     }
 
     @Test
@@ -74,7 +77,7 @@ class PurchaseSuggestIATest {
         sugerenciaEntity.setTitulo("Test");
         sugerenciaEntity.setMensaje("Mensaje");
 
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
+        when(userService.getCurrentUser(cognitoId)).thenReturn(padre);
         when(sugerenciaIARepository.findByAlumnoIdAndTipo(hijo.getId(), TipoSugerenciaIA.RECOMENDACION_SALUDABLE))
                 .thenReturn(List.of(sugerenciaEntity));
 
@@ -92,7 +95,7 @@ class PurchaseSuggestIATest {
         Usuario padre = new Usuario();
         padre.setRol(RolUsuario.PADRE);
 
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
+        when(userService.getCurrentUser(cognitoId)).thenReturn(padre);
 
         Optional<SugerenciaIA> result = useCase.execute(cognitoId);
 
@@ -107,7 +110,7 @@ class PurchaseSuggestIATest {
         Usuario padre = new Usuario();
         padre.setRol(RolUsuario.PADRE);
 
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
+        when(userService.getCurrentUser(cognitoId)).thenReturn(padre);
 
         Optional<SugerenciaIA> result = useCase.execute(cognitoId);
 
@@ -137,7 +140,7 @@ class PurchaseSuggestIATest {
         sugerenciaEntity.setTitulo("Test");
         sugerenciaEntity.setMensaje("Mensaje");
 
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuarioAlumno);
+        when(userService.getCurrentUser(cognitoId)).thenReturn(usuarioAlumno);
         when(sugerenciaIARepository.findByAlumnoIdAndTipo(alumno.getId(), TipoSugerenciaIA.RECOMENDACION_SALUDABLE))
                 .thenReturn(List.of(sugerenciaEntity));
 
@@ -165,7 +168,7 @@ class PurchaseSuggestIATest {
         sugerenciaEntity.setTitulo("Test");
         sugerenciaEntity.setMensaje("Mensaje");
 
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuarioAlumno);
+        when(userService.getCurrentUser(cognitoId)).thenReturn(usuarioAlumno);
         when(sugerenciaIARepository.findByAlumnoIdAndTipo(alumno.getId(), TipoSugerenciaIA.RECOMENDACION_SALUDABLE))
                 .thenReturn(List.of(sugerenciaEntity));
 
@@ -182,7 +185,7 @@ class PurchaseSuggestIATest {
         Usuario vendedor = new Usuario();
         vendedor.setRol(RolUsuario.VENDEDOR);
 
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(vendedor);
+        when(userService.getCurrentUser(cognitoId)).thenReturn(vendedor);
 
         Optional<SugerenciaIA> result = useCase.execute(cognitoId);
 
@@ -198,7 +201,7 @@ class PurchaseSuggestIATest {
         Usuario padre = new Usuario();
         padre.setRol(RolUsuario.PADRE);
 
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
+        when(userService.getCurrentUser(cognitoId)).thenReturn(padre);
 
         Optional<SugerenciaIA> result = useCase.execute(cognitoId);
 
@@ -214,7 +217,7 @@ class PurchaseSuggestIATest {
         Usuario usuarioAlumno = new Usuario();
         usuarioAlumno.setRol(RolUsuario.ALUMNO);
 
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuarioAlumno);
+        when(userService.getCurrentUser(cognitoId)).thenReturn(usuarioAlumno);
 
         Optional<SugerenciaIA> result = useCase.execute(cognitoId);
 
@@ -240,7 +243,7 @@ class PurchaseSuggestIATest {
         SugerenciaIAEntity olderPending = suggestion(now.minusHours(3));
         SugerenciaIAEntity latestPending = suggestion(now.minusMinutes(30));
 
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
+        when(userService.getCurrentUser(cognitoId)).thenReturn(padre);
         when(sugerenciaIARepository.findByAlumnoIdAndTipo(
                 hijo.getId(),
                 TipoSugerenciaIA.RECOMENDACION_SALUDABLE))

@@ -19,11 +19,11 @@ import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.AdvancePurchaseRulesService;
+import com.recred.backend.domain.services.BudgetValidatorService;
+import com.recred.backend.domain.services.HealthRestrictionValidatorService;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import com.recred.backend.domain.services.RecessTimeSlotResolver;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.TimeRestrictionValidatorService;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,13 +68,13 @@ class CreateAssistantAdvancePurchaseTest {
     private RecessTimeSlotResolver recessTimeSlotResolver;
 
     @Mock
-    private ValidadorHorarioService timeValidator;
+    private TimeRestrictionValidatorService timeValidator;
 
     @Mock
-    private ValidacionRestriccionesService healthValidator;
+    private HealthRestrictionValidatorService healthValidator;
 
     @Mock
-    private ValidadorPresupuestoService budgetValidator;
+    private BudgetValidatorService budgetValidator;
 
     @Mock
     private WithdrawalCodeService withdrawalCodeService;
@@ -154,13 +154,13 @@ class CreateAssistantAdvancePurchaseTest {
         assertEquals(new BigDecimal("70.00"), wallet.getSaldoCreditos());
         assertEquals(savedPurchase, result);
 
-        verify(timeValidator).validarCompra(
+        verify(timeValidator).validatePurchase(
                 eq(student),
                 eq(cart.keySet()),
                 eq(LocalDateTime.of(2026, 5, 27, 10, 0))
         );
-        verify(healthValidator).validarCompra(eq(student), eq(cart.keySet()));
-        verify(budgetValidator).validarPresupuesto(
+        verify(healthValidator).validatePurchase(eq(student), eq(cart.keySet()));
+        verify(budgetValidator).validateBudget(
                 eq(studentId),
                 eq(new BigDecimal("30.00")),
                 eq(Map.of()),
@@ -301,7 +301,7 @@ class CreateAssistantAdvancePurchaseTest {
                 pickupDate
         );
 
-        verify(budgetValidator).validarPresupuesto(
+        verify(budgetValidator).validateBudget(
                 eq(studentId),
                 eq(new BigDecimal("30.00")),
                 eq(Map.of(

@@ -6,18 +6,16 @@ import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
-import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.PurchaseStatus;
+import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.domain.repositories.TutorRepository;
-import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.services.UserService;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
@@ -34,8 +32,8 @@ import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilte
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
@@ -97,7 +95,7 @@ class PurchaseSuggestControllerTest {
     private SugerenciaIARepository sugerenciaIARepository;
 
     @MockitoBean
-    private UsuarioService usuarioService;
+    private UserService userService;
 
     @MockitoBean
     private TutorRepository tutorRepository;
@@ -180,7 +178,7 @@ class PurchaseSuggestControllerTest {
         );
 
         when(sugerenciaIARepository.findById(sugerenciaId)).thenReturn(Optional.of(sugerencia));
-        when(usuarioService.obtenerUsuarioActual(anyString())).thenReturn(usuario);
+        when(userService.getCurrentUser(anyString())).thenReturn(usuario);
         when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class), anyString())).thenReturn(response);
 
         TestSuggestionRequest testRequest = new TestSuggestionRequest("user-123", sugerenciaId);
@@ -247,7 +245,7 @@ class PurchaseSuggestControllerTest {
                 Collections.singletonMap(alumnoId, "CODE123")
         );
         when(sugerenciaIARepository.findById(sugerenciaId)).thenReturn(Optional.of(sugerencia));
-        when(usuarioService.obtenerUsuarioActual("user-123")).thenReturn(usuario);
+        when(userService.getCurrentUser("user-123")).thenReturn(usuario);
         when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(List.of(tutor));
         when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class), anyString()))
                 .thenReturn(response);

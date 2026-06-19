@@ -1,22 +1,22 @@
 package com.recred.backend.web;
 
-import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.services.UsuarioService;
-import java.time.Instant;
-import java.util.Map;
-import java.util.UUID;
-
+import com.recred.backend.domain.services.UserService;
 import com.recred.backend.infrastructure.web.SyncUserRequest;
 import com.recred.backend.infrastructure.web.UsuarioController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
+
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -27,20 +27,20 @@ import static org.mockito.Mockito.when;
 
 class UsuarioControllerTest {
 
-    private UsuarioService usuarioService;
+    private UserService userService;
     private UsuarioController controller;
 
     @BeforeEach
     void setUp() {
-        usuarioService = mock(UsuarioService.class);
-        controller = new UsuarioController(usuarioService);
+        userService = mock(UserService.class);
+        controller = new UsuarioController(userService);
     }
 
     @Test
     void syncUserReturnsBuffetIdForSellerProfile() {
         UUID buffetId = UUID.randomUUID();
         Usuario usuario = sellerUser(buffetId);
-        when(usuarioService.sincronizarUsuarioCognito(any(Jwt.class), isNull()))
+        when(userService.syncCognitoUser(any(Jwt.class), isNull()))
                 .thenReturn(usuario);
 
         ResponseEntity<Map<String, Object>> response = controller.syncUser(jwt(), null);
@@ -48,7 +48,7 @@ class UsuarioControllerTest {
         assertEquals(buffetId, response.getBody().get("buffetId"));
         assertEquals(usuario.getKiosquero().getId(), response.getBody().get("kiosqueroId"));
         assertEquals("VENDEDOR", response.getBody().get("rol"));
-        verify(usuarioService).sincronizarUsuarioCognito(any(Jwt.class), isNull());
+        verify(userService).syncCognitoUser(any(Jwt.class), isNull());
     }
 
     @Test
@@ -71,7 +71,7 @@ class UsuarioControllerTest {
                 null,
                 null
         );
-        when(usuarioService.sincronizarUsuarioCognito(any(Jwt.class), any()))
+        when(userService.syncCognitoUser(any(Jwt.class), any()))
                 .thenReturn(usuario);
 
         ResponseEntity<Map<String, Object>> response = controller.syncUser(jwt(), request);
@@ -87,13 +87,13 @@ class UsuarioControllerTest {
         usuario.setId(UUID.randomUUID());
         usuario.setEmail("padre@example.com");
         usuario.setRol(RolUsuario.PADRE);
-        when(usuarioService.actualizarRol("cognito-sub", "PADRE")).thenReturn(usuario);
+        when(userService.updateRole("cognito-sub", "PADRE")).thenReturn(usuario);
 
         ResponseEntity<Map<String, Object>> response =
                 controller.assignRole(jwt(), Map.of("rol", "PADRE"));
 
         assertEquals("PADRE", response.getBody().get("rol"));
-        verify(usuarioService).actualizarRol("cognito-sub", "PADRE");
+        verify(userService).updateRole("cognito-sub", "PADRE");
     }
 
     private Usuario sellerUser(UUID buffetId) {

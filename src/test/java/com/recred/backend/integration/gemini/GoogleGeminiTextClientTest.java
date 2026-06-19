@@ -6,19 +6,17 @@ import com.recred.backend.infrastructure.gemini.GeminiTextResponse;
 import com.recred.backend.infrastructure.gemini.GoogleGeminiTextClient;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockMultipartFile;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.web.multipart.MultipartFile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class GoogleGeminiTextClientTest {
 
@@ -186,7 +184,7 @@ class GoogleGeminiTextClientTest {
 
     @Test
     void devolverVacioCuandoGeminiFallaConImagen() throws IOException {
-        HttpServer server = iniciarServidorGemini(VISION_PATH, 500, "Error");
+        HttpServer server = iniciarServidorGemini(VISION_PATH, 400, "Error");
 
         try {
             configurarBaseUrl(server);

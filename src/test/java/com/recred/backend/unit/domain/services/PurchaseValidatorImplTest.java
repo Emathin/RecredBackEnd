@@ -5,15 +5,16 @@ import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -24,13 +25,13 @@ import static org.mockito.Mockito.verify;
 class PurchaseValidatorImplTest {
 
     @Mock
-    private ValidadorHorarioService validadorHorarioService;
+    private TimeRestrictionValidatorService timeRestrictionValidatorService;
 
     @Mock
-    private ValidacionRestriccionesService validacionRestriccionesService;
+    private HealthRestrictionValidatorService healthRestrictionValidatorService;
 
     @Mock
-    private ValidadorPresupuestoService validadorPresupuestoService;
+    private BudgetValidatorService budgetValidatorService;
 
     @Test
     void validate_ShouldDelegateRestrictionsAndBudgetWithAmountsByCategory() {
@@ -48,25 +49,25 @@ class PurchaseValidatorImplTest {
         );
         purchase.setTotalAmount(new BigDecimal("600.00"));
         PurchaseValidatorImpl validator = new PurchaseValidatorImpl(
-                validadorHorarioService,
-                validacionRestriccionesService,
-                validadorPresupuestoService
+                timeRestrictionValidatorService,
+                healthRestrictionValidatorService,
+                budgetValidatorService
         );
 
         validator.validate(purchase);
 
-        verify(validadorHorarioService).validarCompra(
+        verify(timeRestrictionValidatorService).validatePurchase(
                 eq(student),
                 eq(purchase.getItems().keySet()),
                 any(LocalDateTime.class)
         );
-        verify(validacionRestriccionesService).validarCompra(
+        verify(healthRestrictionValidatorService).validatePurchase(
                 student,
                 purchase.getItems().keySet()
         );
         ArgumentCaptor<Map<UUID, BigDecimal>> amountsCaptor =
                 ArgumentCaptor.forClass(Map.class);
-        verify(validadorPresupuestoService).validarPresupuesto(
+        verify(budgetValidatorService).validateBudget(
                 eq(studentId),
                 eq(new BigDecimal("600.00")),
                 amountsCaptor.capture(),

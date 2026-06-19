@@ -3,7 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
-import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.services.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,11 +18,11 @@ import java.util.stream.Collectors;
 public class AlumnoController {
 
     private final AlumnoRepository alumnoRepository;
-    private final UsuarioService usuarioService;
+    private final UserService userService;
 
-    public AlumnoController(AlumnoRepository alumnoRepository, UsuarioService usuarioService) {
+    public AlumnoController(AlumnoRepository alumnoRepository, UserService userService) {
         this.alumnoRepository = alumnoRepository;
-        this.usuarioService = usuarioService;
+        this.userService = userService;
     }
 
     @GetMapping
@@ -36,7 +36,7 @@ public class AlumnoController {
     @GetMapping("/me")
     public ResponseEntity<StudentDTO> getMiPerfil(Authentication authentication) {
         String cognitoSub = authentication.getName();
-        Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoSub);
+        Usuario usuario = userService.getCurrentUser(cognitoSub);
         if (usuario.getAlumno() == null) {
             return ResponseEntity.notFound().build();
         }

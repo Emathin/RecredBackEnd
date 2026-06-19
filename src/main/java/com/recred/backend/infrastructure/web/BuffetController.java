@@ -4,7 +4,7 @@ import com.recred.backend.application.GetProductsByBuffetUser;
 import com.recred.backend.application.GetScheduledPickups;
 import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.services.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -23,14 +23,14 @@ import java.util.UUID;
 public class BuffetController {
 
     private final GetProductsByBuffetUser getProductsByBuffetUser;
-    private final UsuarioService usuarioService;
+    private final UserService userService;
     private final GetScheduledPickups getScheduledPickups;
 
     public BuffetController(GetProductsByBuffetUser getProductsByBuffetUser,
-                            UsuarioService usuarioService,
+                            UserService userService,
                             GetScheduledPickups getScheduledPickups) {
         this.getProductsByBuffetUser = getProductsByBuffetUser;
-        this.usuarioService = usuarioService;
+        this.userService = userService;
         this.getScheduledPickups = getScheduledPickups;
     }
 
@@ -54,7 +54,7 @@ public class BuffetController {
             @RequestParam(required = false) String search
     ) {
         String sub = jwt.getSubject();
-        Usuario usuario = usuarioService.obtenerUsuarioActual(sub);
+        Usuario usuario = userService.getCurrentUser(sub);
         if (usuario.getKiosquero() == null || usuario.getKiosquero().getBuffet() == null) {
             throw new RuntimeException("El usuario no está asociado a ningún buffet.");
         }

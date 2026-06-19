@@ -4,7 +4,7 @@ import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.BudgetValidatorService;
 import com.recred.backend.infrastructure.web.CheckBudgetDatesRequest;
 import com.recred.backend.infrastructure.web.CheckBudgetDatesResponse;
 import org.junit.jupiter.api.Test;
@@ -35,7 +35,7 @@ class CheckBudgetDatesTest {
     private ProductRepository productRepository;
 
     @Mock
-    private ValidadorPresupuestoService budgetValidator;
+    private BudgetValidatorService budgetValidator;
 
     @InjectMocks
     private CheckBudgetDates checkBudgetDates;
@@ -48,7 +48,7 @@ class CheckBudgetDatesTest {
                 List.of()
         );
 
-        when(budgetValidator.obtenerMotivoBloqueoPresupuesto(
+        when(budgetValidator.getBudgetBlockReason(
                 eq(studentId),
                 eq(BigDecimal.ZERO),
                 any(),
@@ -103,7 +103,7 @@ class CheckBudgetDatesTest {
         );
 
         String expectedReason = "Supera el límite diario de Gaseosas: disponible $900";
-        when(budgetValidator.obtenerMotivoBloqueoPresupuesto(
+        when(budgetValidator.getBudgetBlockReason(
                 eq(studentId),
                 eq(BigDecimal.valueOf(1000)),
                 any(),
@@ -151,7 +151,7 @@ class CheckBudgetDatesTest {
         );
 
         when(productRepository.findById(productId)).thenReturn(Optional.of(producto));
-        when(budgetValidator.obtenerMotivoBloqueoPresupuesto(
+        when(budgetValidator.getBudgetBlockReason(
                 eq(studentId),
                 eq(BigDecimal.ZERO),
                 any(),

@@ -4,9 +4,9 @@ import com.recred.backend.application.SchedulePickup;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.BudgetValidatorService;
+import com.recred.backend.domain.services.HealthRestrictionValidatorService;
+import com.recred.backend.domain.services.TimeRestrictionValidatorService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,13 +29,13 @@ import static org.mockito.Mockito.verify;
 class SchedulePickupTest {
 
     @Mock
-    private ValidadorHorarioService timeValidator;
+    private TimeRestrictionValidatorService timeValidator;
 
     @Mock
-    private ValidacionRestriccionesService healthValidator;
+    private HealthRestrictionValidatorService healthValidator;
 
     @Mock
-    private ValidadorPresupuestoService budgetValidator;
+    private BudgetValidatorService budgetValidator;
 
     @InjectMocks
     private SchedulePickup schedulePickup;
@@ -53,11 +53,11 @@ class SchedulePickupTest {
 
         LocalDateTime expectedTime = LocalDateTime.of(2026, 6, 1, 10, 0);
 
-        verify(timeValidator).validarCompra(any(), eq(cart), eq(expectedTime));
+        verify(timeValidator).validatePurchase(any(), eq(cart), eq(expectedTime));
 
-        verify(healthValidator).validarCompra(any(), eq(cart));
+        verify(healthValidator).validatePurchase(any(), eq(cart));
 
-        verify(budgetValidator).validarPresupuesto(
+        verify(budgetValidator).validateBudget(
                 eq(studentId),
                 eq(java.math.BigDecimal.ZERO),
                 eq(java.util.Collections.emptyMap()),
@@ -85,7 +85,7 @@ class SchedulePickupTest {
                 pickupDate
         );
 
-        verify(budgetValidator).validarPresupuesto(
+        verify(budgetValidator).validateBudget(
                 eq(studentId),
                 eq(new BigDecimal("15.00")),
                 eq(Map.of(categoryId, new BigDecimal("10.00"))),

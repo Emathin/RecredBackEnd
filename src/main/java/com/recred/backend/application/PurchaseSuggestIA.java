@@ -2,12 +2,12 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.services.UserService;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 
 import java.time.Clock;
@@ -21,23 +21,23 @@ import java.util.UUID;
 
 public class PurchaseSuggestIA {
 
-    private final UsuarioService usuarioService;
+    private final UserService userService;
     private final SugerenciaIARepository sugerenciaIARepository;
     private final FranjaHorariaRepository franjaHorariaRepository;
     private final Clock clock;
 
-    public PurchaseSuggestIA(UsuarioService usuarioService,
+    public PurchaseSuggestIA(UserService userService,
                              SugerenciaIARepository sugerenciaIARepository,
                              FranjaHorariaRepository franjaHorariaRepository,
                              Clock clock) {
-        this.usuarioService = usuarioService;
+        this.userService = userService;
         this.sugerenciaIARepository = sugerenciaIARepository;
         this.franjaHorariaRepository = franjaHorariaRepository;
         this.clock = clock;
     }
 
     public Optional<SugerenciaIA> execute(String cognitoId) {
-        Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoId);
+        Usuario usuario = userService.getCurrentUser(cognitoId);
         LocalDateTime now = LocalDateTime.now(clock);
 
         if (!cumpleReglasVisibilidad(usuario, now)) {

@@ -1,22 +1,12 @@
 package com.recred.backend.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recred.backend.application.AddFavoriteProduct;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
-import com.recred.backend.application.GenerateComboSuggestion;
-import com.recred.backend.application.GetActivePromotionsByBuffet;
-import com.recred.backend.application.GetActiveSchools;
-import com.recred.backend.application.GetTutorGlobalDashboard;
-import com.recred.backend.application.GetSuggestionByNotificationId;
-import com.recred.backend.application.GetSuggestionByType;
-import com.recred.backend.application.EnableSchoolCredit;
-import com.recred.backend.application.GetActiveSchoolCredit;
-import com.recred.backend.application.GetLastRecharge;
-import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
-import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AskSchoolAssistant;
-import com.recred.backend.application.BloquearProductoManual;
+import com.recred.backend.application.BlockProductManually;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.application.CloseDailyBuffet;
@@ -27,15 +17,15 @@ import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreatePromotion;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateTimeRestriction;
-import com.recred.backend.application.DeleteCarritoFavorito;
+import com.recred.backend.application.DeleteFavoriteCart;
 import com.recred.backend.application.DeleteProduct;
 import com.recred.backend.application.DeletePromotion;
-import com.recred.backend.application.DesbloquearProductoManual;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.EnableSchoolCredit;
 import com.recred.backend.application.ExpireAdvancePurchases;
-import com.recred.backend.application.GenerarMenuBuffet;
+import com.recred.backend.application.GenerateBuffetMenu;
 import com.recred.backend.application.GenerateComboSuggestion;
 import com.recred.backend.application.GenerateDailyBuffetReport;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
@@ -49,22 +39,26 @@ import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GenerateTopUpLink;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetActivePromotions;
-
+import com.recred.backend.application.GetActivePromotionsByBuffet;
+import com.recred.backend.application.GetActiveSchoolCredit;
+import com.recred.backend.application.GetActiveSchools;
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetAllProducts;
-import com.recred.backend.application.GetBuffetByAlumno;
+import com.recred.backend.application.GetBuffetByStudent;
 import com.recred.backend.application.GetBuffetTimeSlots;
-import com.recred.backend.application.GetCarritosFavoritosByTutor;
 import com.recred.backend.application.GetCartSuggestions;
+import com.recred.backend.application.GetChildrenByParent;
 import com.recred.backend.application.GetDailyBuffetCloseStatus;
-import com.recred.backend.application.GetFavoritosByAlumno;
+import com.recred.backend.application.GetFavoriteCartsByTutor;
+import com.recred.backend.application.GetFavoritesByStudent;
 import com.recred.backend.application.GetGradesBySchool;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
 import com.recred.backend.application.GetKiosqueroDashboard;
+import com.recred.backend.application.GetLastRecharge;
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
-import com.recred.backend.application.SetNotificationAsAlreadyRead;
 import com.recred.backend.application.GetLoggedUserNotifications;
+import com.recred.backend.application.GetPendingStudentHistory;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetProductById;
 import com.recred.backend.application.GetProductStatistics;
@@ -73,12 +67,16 @@ import com.recred.backend.application.GetPromotionById;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.GetScheduledPickups;
 import com.recred.backend.application.GetStockMovements;
+import com.recred.backend.application.GetStudentHistory;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentRewardStatus;
 import com.recred.backend.application.GetStudentWalletSummary;
+import com.recred.backend.application.GetSuggestionByNotificationId;
+import com.recred.backend.application.GetSuggestionByType;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.GetTutorGlobalDashboard;
+import com.recred.backend.application.GetTutorHistory;
 import com.recred.backend.application.ListDailyBuffetCloses;
 import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
@@ -88,25 +86,22 @@ import com.recred.backend.application.LoadStockIA;
 import com.recred.backend.application.ManagePromotionStatus;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
-import com.recred.backend.application.ObtenerHijosPorPadre;
-import com.recred.backend.application.ObtenerHistorialAlumno;
-import com.recred.backend.application.ObtenerHistorialPendienteAlumno;
-import com.recred.backend.application.ObtenerHistorialTutor;
 import com.recred.backend.application.ParseBulkStock;
 import com.recred.backend.application.PredictStudentSpending;
 import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.PurchaseSuggestIA;
+import com.recred.backend.application.RemoveFavoriteProduct;
 import com.recred.backend.application.RemoveHealthRestrictions;
-import com.recred.backend.application.RemoverProductoFavorito;
 import com.recred.backend.application.RespondToAISuggestion;
-import com.recred.backend.application.SaveCarritoFavorito;
 import com.recred.backend.application.SaveBulkProducts;
+import com.recred.backend.application.SaveCarritoFavorito;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SchoolAssistantConversations;
 import com.recred.backend.application.SchoolAssistantFixedTopics;
 import com.recred.backend.application.SetNotificationAsAlreadyRead;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
+import com.recred.backend.application.UnblockProductManually;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.application.UpdatePickupSlotRules;
@@ -152,10 +147,10 @@ import com.recred.backend.domain.repositories.PurchaseRecommendationNotification
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
-import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPaymentRepository;
 import com.recred.backend.domain.repositories.SchoolAssistantPurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCalendarRepository;
+import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
 import com.recred.backend.domain.repositories.StockMovementRepository;
 import com.recred.backend.domain.repositories.StudentAIProfileRepository;
@@ -167,11 +162,13 @@ import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.AdvancePurchaseRulesService;
+import com.recred.backend.domain.services.BudgetPeriodCalculator;
+import com.recred.backend.domain.services.BudgetValidatorService;
 import com.recred.backend.domain.services.BulkStockAnalyzer;
-import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.CognitoStudentIdentityService;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
 import com.recred.backend.domain.services.ExternalPaymentService;
+import com.recred.backend.domain.services.HealthRestrictionValidatorService;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import com.recred.backend.domain.services.ParentSummaryAnalyzer;
@@ -185,11 +182,9 @@ import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
 import com.recred.backend.domain.services.SpendingPredictionRangeService;
+import com.recred.backend.domain.services.TimeRestrictionValidatorService;
 import com.recred.backend.domain.services.TutorService;
-import com.recred.backend.domain.services.UsuarioService;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.UserService;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.domain.services.WithdrawalCodeServiceImpl;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
@@ -239,11 +234,11 @@ public class UseCases {
 
     @Bean
     public PurchaseValidatorImpl purchaseValidatorImpl(
-            ValidadorHorarioService validadorHorarioService,
-            ValidacionRestriccionesService validacionRestriccionesService,
-            ValidadorPresupuestoService validadorPresupuestoService) {
-        return new PurchaseValidatorImpl(validadorHorarioService,
-                validacionRestriccionesService, validadorPresupuestoService);
+            TimeRestrictionValidatorService timeRestrictionValidatorService,
+            HealthRestrictionValidatorService healthRestrictionValidatorService,
+            BudgetValidatorService budgetValidatorService) {
+        return new PurchaseValidatorImpl(timeRestrictionValidatorService,
+                healthRestrictionValidatorService, budgetValidatorService);
     }
 
     @Bean
@@ -271,13 +266,13 @@ public class UseCases {
 
     @Bean
     public PurchaseValidator purchaseValidator(
-            ValidadorHorarioService validadorHorarioService,
-            ValidacionRestriccionesService validacionRestriccionesService,
-            ValidadorPresupuestoService validadorPresupuestoService) {
+            TimeRestrictionValidatorService timeRestrictionValidatorService,
+            HealthRestrictionValidatorService healthRestrictionValidatorService,
+            BudgetValidatorService budgetValidatorService) {
         return new PurchaseValidatorImpl(
-                validadorHorarioService,
-                validacionRestriccionesService,
-                validadorPresupuestoService);
+                timeRestrictionValidatorService,
+                healthRestrictionValidatorService,
+                budgetValidatorService);
     }
 
     @Bean
@@ -334,40 +329,40 @@ public class UseCases {
     }
 
     @Bean
-    public CalculadorPeriodoPresupuesto calculadorPeriodoPresupuesto() {
-        return new CalculadorPeriodoPresupuesto();
+    public BudgetPeriodCalculator budgetPeriodCalculator() {
+        return new BudgetPeriodCalculator();
     }
 
     @Bean
-    public ValidacionRestriccionesService validacionRestriccionesService() {
-        return new ValidacionRestriccionesService();
+    public HealthRestrictionValidatorService healthRestrictionValidatorService() {
+        return new HealthRestrictionValidatorService();
     }
 
     @Bean
-    public BloquearProductoManual bloquearProductoManual(AlumnoRepository alumnoRepository,
+    public BlockProductManually blockProductManually(AlumnoRepository alumnoRepository,
             ProductRepository productRepository) {
-        return new BloquearProductoManual(alumnoRepository, productRepository);
+        return new BlockProductManually(alumnoRepository, productRepository);
     }
 
     @Bean
-    public DesbloquearProductoManual desbloquearProductoManual(AlumnoRepository alumnoRepository) {
-        return new DesbloquearProductoManual(alumnoRepository);
+    public UnblockProductManually unblockProductManually(AlumnoRepository alumnoRepository) {
+        return new UnblockProductManually(alumnoRepository);
     }
 
     @Bean
-    public AgregarProductoFavorito agregarProductoFavorito(AlumnoRepository alumnoRepository,
+    public AddFavoriteProduct addFavoriteProduct(AlumnoRepository alumnoRepository,
             ProductRepository productRepository) {
-        return new AgregarProductoFavorito(alumnoRepository, productRepository);
+        return new AddFavoriteProduct(alumnoRepository, productRepository);
     }
 
     @Bean
-    public RemoverProductoFavorito removerProductoFavorito(AlumnoRepository alumnoRepository) {
-        return new RemoverProductoFavorito(alumnoRepository);
+    public RemoveFavoriteProduct removeFavoriteProduct(AlumnoRepository alumnoRepository) {
+        return new RemoveFavoriteProduct(alumnoRepository);
     }
 
     @Bean
-    public GetFavoritosByAlumno getFavoritosByAlumno(AlumnoRepository alumnoRepository) {
-        return new GetFavoritosByAlumno(alumnoRepository);
+    public GetFavoritesByStudent getFavoritesByStudent(AlumnoRepository alumnoRepository) {
+        return new GetFavoritesByStudent(alumnoRepository);
     }
 
     @Bean
@@ -376,8 +371,8 @@ public class UseCases {
     }
 
     @Bean
-    public ObtenerHijosPorPadre obtenerHijosPorPadre(TutorRepository tutorRepository) {
-        return new ObtenerHijosPorPadre(tutorRepository);
+    public GetChildrenByParent getChildrenByParent(TutorRepository tutorRepository) {
+        return new GetChildrenByParent(tutorRepository);
     }
 
     @Bean
@@ -396,24 +391,24 @@ public class UseCases {
     }
 
     @Bean
-    public ValidadorHorarioService validadorHorarioService() {
-        return new ValidadorHorarioService();
+    public TimeRestrictionValidatorService timeRestrictionValidatorService() {
+        return new TimeRestrictionValidatorService();
     }
 
     @Bean
-    public ValidadorPresupuestoService validadorPresupuestoService(
+    public BudgetValidatorService budgetValidatorService(
             PresupuestoRepository presupuestoRepository,
             PurchaseRepository purchaseRepository,
-            CalculadorPeriodoPresupuesto calculadorPeriodo) {
-        return new ValidadorPresupuestoService(
+            BudgetPeriodCalculator budgetPeriodCalculator) {
+        return new BudgetValidatorService(
                 presupuestoRepository,
                 purchaseRepository,
-                calculadorPeriodo);
+                budgetPeriodCalculator);
     }
 
     @Bean
-    public UsuarioService usuarioService(UsuarioRepository usuarioRepository) {
-        return new UsuarioService(usuarioRepository);
+    public UserService userService(UsuarioRepository usuarioRepository) {
+        return new UserService(usuarioRepository);
     }
 
     @Bean
@@ -559,9 +554,9 @@ public class UseCases {
             WalletRepository walletRepository,
             PurchaseRepository purchaseRepository,
             RecessTimeSlotResolver recessTimeSlotResolver,
-            ValidadorHorarioService timeValidator,
-            ValidacionRestriccionesService healthValidator,
-            ValidadorPresupuestoService budgetValidator,
+            TimeRestrictionValidatorService timeValidator,
+            HealthRestrictionValidatorService healthValidator,
+            BudgetValidatorService budgetValidator,
             WithdrawalCodeService withdrawalCodeService,
             Clock clock,
             InventoryAvailabilityService inventoryAvailabilityService,
@@ -702,33 +697,33 @@ public class UseCases {
     }
 
     @Bean
-    public ObtenerHistorialAlumno obtenerHistorialAlumno(PurchaseRepository purchaseRepository) {
-        return new ObtenerHistorialAlumno(purchaseRepository);
+    public GetStudentHistory getStudentHistory(PurchaseRepository purchaseRepository) {
+        return new GetStudentHistory(purchaseRepository);
     }
 
     @Bean
-    public ObtenerHistorialPendienteAlumno obtenerHistorialPendienteAlumno(
+    public GetPendingStudentHistory getPendingStudentHistory(
             PurchaseRepository purchaseRepository) {
-        return new ObtenerHistorialPendienteAlumno(purchaseRepository);
+        return new GetPendingStudentHistory(purchaseRepository);
     }
 
     @Bean
-    public ObtenerHistorialTutor obtenerHistorialTutor(PurchaseRepository purchaseRepository,
+    public GetTutorHistory getTutorHistory(PurchaseRepository purchaseRepository,
             TutorRepository tutorRepository) {
-        return new ObtenerHistorialTutor(purchaseRepository, tutorRepository);
+        return new GetTutorHistory(purchaseRepository, tutorRepository);
     }
 
     @Bean
-    public GenerarMenuBuffet generarMenuBuffet(AlumnoRepository alumnoRepository,
+    public GenerateBuffetMenu generateBuffetMenu(AlumnoRepository alumnoRepository,
             ProductRepository productRepository,
             PresupuestoRepository presupuestoRepository,
             PurchaseRepository purchaseRepository,
-            CalculadorPeriodoPresupuesto calculadorPeriodo) {
-        return new GenerarMenuBuffet(alumnoRepository,
+            BudgetPeriodCalculator budgetPeriodCalculator) {
+        return new GenerateBuffetMenu(alumnoRepository,
                 productRepository,
                 presupuestoRepository,
                 purchaseRepository,
-                calculadorPeriodo);
+                budgetPeriodCalculator);
     }
 
     @Bean
@@ -843,8 +838,8 @@ public class UseCases {
     @Bean
     public CheckBudgetDates checkBudgetDates(
             ProductRepository productRepository,
-            ValidadorPresupuestoService validadorPresupuestoService) {
-        return new CheckBudgetDates(productRepository, validadorPresupuestoService);
+            BudgetValidatorService budgetValidatorService) {
+        return new CheckBudgetDates(productRepository, budgetValidatorService);
     }
 
     @Bean
@@ -1125,19 +1120,19 @@ public class UseCases {
     }
 
     @Bean
-    public GetBuffetByAlumno getBuffetByAlumno(
+    public GetBuffetByStudent getBuffetByStudent(
             BuffetRepository buffetRepository,
             AlumnoRepository alumnoRepository) {
-        return new GetBuffetByAlumno(buffetRepository, alumnoRepository);
+        return new GetBuffetByStudent(buffetRepository, alumnoRepository);
     }
 
     @Bean
     public PurchaseSuggestIA purchaseSuggestIA(
-            UsuarioService usuarioService,
+            UserService userService,
             SugerenciaIARepository sugerenciaIARepository,
             FranjaHorariaRepository franjaHorariaRepository,
             Clock clock) {
-        return new PurchaseSuggestIA(usuarioService, sugerenciaIARepository,
+        return new PurchaseSuggestIA(userService, sugerenciaIARepository,
                 franjaHorariaRepository, clock);
     }
 
@@ -1146,10 +1141,10 @@ public class UseCases {
             PurchaseSuggestIA purchaseSuggestIA,
             AlumnoRepository alumnoRepository,
             PushNotificationSender pushNotificationSender,
-            UsuarioService usuarioService,
+            UserService userService,
             ObjectMapper objectMapper) {
         return new NotifyPurchaseSuggestions(purchaseSuggestIA, alumnoRepository,
-                pushNotificationSender, usuarioService, objectMapper);
+                pushNotificationSender, userService, objectMapper);
     }
 
     @Bean
@@ -1224,22 +1219,22 @@ public class UseCases {
     }
 
     @Bean
-    public GetCarritosFavoritosByTutor getCarritosFavoritosByTutor(
+    public GetFavoriteCartsByTutor getFavoriteCartsByTutor(
             CarritoFavoritoRepository carritoFavoritoRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository) {
-        return new GetCarritosFavoritosByTutor(
+        return new GetFavoriteCartsByTutor(
                 carritoFavoritoRepository,
                 usuarioRepository,
                 tutorRepository);
     }
 
     @Bean
-    public DeleteCarritoFavorito deleteCarritoFavorito(
+    public DeleteFavoriteCart deleteFavoriteCart(
             CarritoFavoritoRepository carritoFavoritoRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository) {
-        return new DeleteCarritoFavorito(
+        return new DeleteFavoriteCart(
                 carritoFavoritoRepository,
                 usuarioRepository,
                 tutorRepository);
@@ -1272,17 +1267,17 @@ public class UseCases {
 
     @Bean
     public GetTutorGlobalDashboard getTutorGlobalDashboard(
-            ObtenerHijosPorPadre obtenerHijosPorPadre,
+            GetChildrenByParent getChildrenByParent,
             GetActiveBudgetByStudent getActiveBudgetByStudent,
             GetStudentRewardStatus getStudentRewardStatus,
             PredictStudentSpending predictStudentSpending,
-            ObtenerHistorialAlumno obtenerHistorialAlumno) {
+            GetStudentHistory getStudentHistory) {
         return new GetTutorGlobalDashboard(
-                obtenerHijosPorPadre,
+                getChildrenByParent,
                 getActiveBudgetByStudent,
                 getStudentRewardStatus,
                 predictStudentSpending,
-                obtenerHistorialAlumno);
+                getStudentHistory);
     }
 
     @Bean

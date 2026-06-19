@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.services.UserService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,19 +24,19 @@ import java.util.Optional;
 @RequestMapping("/api/v1/users")
 public class UserProfileController {
 
-    private final UsuarioService usuarioService;
+    private final UserService userService;
     private final CloudinaryService cloudinaryService;
 
-    public UserProfileController(UsuarioService usuarioService,
+    public UserProfileController(UserService userService,
             CloudinaryService cloudinaryService) {
-        this.usuarioService = usuarioService;
+        this.userService = userService;
         this.cloudinaryService = cloudinaryService;
     }
 
     @GetMapping("/me")
     public ResponseEntity<Map<String, Object>> getMyUser(Authentication authentication) {
         String sub = cognitoSubject(authentication);
-        Usuario usuario = usuarioService.obtenerUsuarioActual(sub);
+        Usuario usuario = userService.getCurrentUser(sub);
 
         return ResponseEntity.ok(buildUserSessionResponse(usuario));
     }
@@ -44,7 +44,7 @@ public class UserProfileController {
     @GetMapping("/me/profile")
     public ResponseEntity<Map<String, Object>> getMyProfile(Authentication authentication) {
         String sub = cognitoSubject(authentication);
-        Usuario usuario = usuarioService.obtenerUsuarioActual(sub);
+        Usuario usuario = userService.getCurrentUser(sub);
 
         return ResponseEntity.ok(buildUserProfileResponse(usuario));
     }
@@ -55,7 +55,7 @@ public class UserProfileController {
             @RequestBody UpdateUserProfileRequest request) {
         String sub = cognitoSubject(authentication);
 
-        Usuario usuario = usuarioService.updateProfile(
+        Usuario usuario = userService.updateProfile(
                 sub,
                 request.firstName(),
                 request.lastName(),
@@ -72,7 +72,7 @@ public class UserProfileController {
             @RequestParam("foto") MultipartFile foto) {
         String sub = cognitoSubject(authentication);
         String url = cloudinaryService.uploadImage(foto);
-        Usuario usuario = usuarioService.actualizarFotoPerfil(sub, url);
+        Usuario usuario = userService.updateProfilePhoto(sub, url);
         return ResponseEntity.ok(buildUserProfileResponse(usuario));
     }
 

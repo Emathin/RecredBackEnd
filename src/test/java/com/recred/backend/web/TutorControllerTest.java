@@ -1,7 +1,7 @@
 package com.recred.backend.web;
 
-import com.recred.backend.application.ObtenerHijosPorPadre;
 import com.recred.backend.application.CreateStudentFromParent;
+import com.recred.backend.application.GetChildrenByParent;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.Alumno;
@@ -9,9 +9,9 @@ import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.infrastructure.web.TutorController;
-import com.recred.backend.infrastructure.web.StudentDTO;
 import com.recred.backend.infrastructure.web.CreateChildRequest;
+import com.recred.backend.infrastructure.web.StudentDTO;
+import com.recred.backend.infrastructure.web.TutorController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
@@ -25,8 +25,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.List;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -49,7 +49,7 @@ class TutorControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ObtenerHijosPorPadre obtenerHijosPorPadre;
+    private GetChildrenByParent getChildrenByParent;
 
     @MockitoBean
     private CreateStudentFromParent createStudentFromParent;
@@ -58,7 +58,7 @@ class TutorControllerTest {
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
 
     @MockitoBean
-    private com.recred.backend.domain.services.UsuarioService usuarioService;
+    private com.recred.backend.domain.services.UserService userService;
 
     @MockitoBean
     private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
@@ -94,7 +94,7 @@ class TutorControllerTest {
         alumno.setGrado(grado);
         alumno.setBilletera(billetera);
 
-        when(obtenerHijosPorPadre.execute(tutorId)).thenReturn(Set.of(alumno));
+        when(getChildrenByParent.execute(tutorId)).thenReturn(Set.of(alumno));
 
         mockMvc.perform(get("/api/v1/tutores/{tutorId}/hijos", tutorId)
                         .contentType(MediaType.APPLICATION_JSON))
@@ -113,7 +113,7 @@ class TutorControllerTest {
             throws Exception {
         UUID alumnoId = UUID.randomUUID();
         Alumno alumno = alumno(alumnoId, "Ana", "Lopez");
-        when(obtenerHijosPorPadre.executeByCognitoSubject("tutor-sub"))
+        when(getChildrenByParent.executeByCognitoSubject("tutor-sub"))
                 .thenReturn(Set.of(alumno));
 
         mockMvc.perform(get("/api/v1/tutores/me/hijos")
@@ -123,7 +123,7 @@ class TutorControllerTest {
                 .andExpect(jsonPath("$[0].id").value(alumnoId.toString()))
                 .andExpect(jsonPath("$[0].nombre").value("Ana"));
 
-        verify(obtenerHijosPorPadre).executeByCognitoSubject("tutor-sub");
+        verify(getChildrenByParent).executeByCognitoSubject("tutor-sub");
     }
 
     @Test
@@ -174,8 +174,8 @@ class TutorControllerTest {
         UUID tutorId = UUID.randomUUID();
         UUID alumnoId = UUID.randomUUID();
         TutorController controller = new TutorController(
-                obtenerHijosPorPadre,
-                usuarioService,
+                getChildrenByParent,
+                userService,
                 createStudentFromParent
         );
         Usuario usuario = new Usuario();
@@ -183,8 +183,8 @@ class TutorControllerTest {
                 new com.recred.backend.domain.models.Tutor();
         tutor.setId(tutorId);
         usuario.setTutor(tutor);
-        when(usuarioService.obtenerUsuarioActual("tutor-sub")).thenReturn(usuario);
-        when(obtenerHijosPorPadre.execute(tutorId))
+        when(userService.getCurrentUser("tutor-sub")).thenReturn(usuario);
+        when(getChildrenByParent.execute(tutorId))
                 .thenReturn(Set.of(alumno(alumnoId, "Sofia", "Diaz")));
 
         ResponseEntity<List<StudentDTO>> response = controller.obtenerHijos(
@@ -194,19 +194,19 @@ class TutorControllerTest {
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(alumnoId, response.getBody().get(0).id());
-        verify(usuarioService).obtenerUsuarioActual("tutor-sub");
-        verify(obtenerHijosPorPadre).execute(tutorId);
+        verify(userService).getCurrentUser("tutor-sub");
+        verify(getChildrenByParent).execute(tutorId);
     }
 
     @Test
     void obtenerHijosConTutorMeSinPerfilRetornaListaVacia() {
         TutorController controller = new TutorController(
-                obtenerHijosPorPadre,
-                usuarioService,
+                getChildrenByParent,
+                userService,
                 createStudentFromParent
         );
         Usuario usuario = new Usuario();
-        when(usuarioService.obtenerUsuarioActual("tutor-sub")).thenReturn(usuario);
+        when(userService.getCurrentUser("tutor-sub")).thenReturn(usuario);
 
         ResponseEntity<List<StudentDTO>> response = controller.obtenerHijos(
                 "me",
@@ -220,8 +220,8 @@ class TutorControllerTest {
     @Test
     void crearHijoSinAutenticacionLanzaCredentialsException() {
         TutorController controller = new TutorController(
-                obtenerHijosPorPadre,
-                usuarioService,
+                getChildrenByParent,
+                userService,
                 createStudentFromParent
         );
         CreateChildRequest request = new CreateChildRequest(

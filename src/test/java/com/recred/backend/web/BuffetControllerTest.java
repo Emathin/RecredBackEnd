@@ -3,12 +3,12 @@ package com.recred.backend.web;
 import com.recred.backend.application.GetProductsByBuffetUser;
 import com.recred.backend.application.GetScheduledPickups;
 import com.recred.backend.domain.models.Buffet;
+import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.EstadoRetiro;
-import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.services.UserService;
 import com.recred.backend.infrastructure.web.BuffetController;
 import com.recred.backend.infrastructure.web.ProductResponseDTO;
 import com.recred.backend.infrastructure.web.ScheduledPickupResponseDTO;
@@ -28,7 +28,11 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class BuffetControllerTest {
@@ -37,7 +41,7 @@ class BuffetControllerTest {
     private GetProductsByBuffetUser getProductsByBuffetUser;
 
     @Mock
-    private UsuarioService usuarioService;
+    private UserService userService;
 
     @Mock
     private GetScheduledPickups getScheduledPickups;
@@ -48,7 +52,7 @@ class BuffetControllerTest {
     void setUp() {
         buffetController = new BuffetController(
                 getProductsByBuffetUser,
-                usuarioService,
+                userService,
                 getScheduledPickups
         );
     }
@@ -93,7 +97,7 @@ class BuffetControllerTest {
         Purchase purchase = new Purchase();
         purchase.setId(UUID.randomUUID());
 
-        when(usuarioService.obtenerUsuarioActual(sub)).thenReturn(usuario);
+        when(userService.getCurrentUser(sub)).thenReturn(usuario);
         when(getScheduledPickups.execute(buffetId, fecha, estado, franjaId, search))
                 .thenReturn(List.of(purchase));
 
@@ -104,7 +108,7 @@ class BuffetControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
-        verify(usuarioService, times(1)).obtenerUsuarioActual(sub);
+        verify(userService, times(1)).getCurrentUser(sub);
         verify(getScheduledPickups, times(1)).execute(buffetId, fecha, estado, franjaId, search);
     }
 
@@ -116,13 +120,13 @@ class BuffetControllerTest {
 
         Usuario usuario = new Usuario();
 
-        when(usuarioService.obtenerUsuarioActual(sub)).thenReturn(usuario);
+        when(userService.getCurrentUser(sub)).thenReturn(usuario);
 
         assertThrows(RuntimeException.class, () ->
                 buffetController.getScheduledPickups(jwt, null, null, null, null)
         );
 
-        verify(usuarioService, times(1)).obtenerUsuarioActual(sub);
+        verify(userService, times(1)).getCurrentUser(sub);
         verifyNoInteractions(getScheduledPickups);
     }
 }

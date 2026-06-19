@@ -3,9 +3,9 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.services.ValidacionRestriccionesService;
-import com.recred.backend.domain.services.ValidadorHorarioService;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.BudgetValidatorService;
+import com.recred.backend.domain.services.HealthRestrictionValidatorService;
+import com.recred.backend.domain.services.TimeRestrictionValidatorService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,15 +17,15 @@ import java.util.stream.Collectors;
 
 public class SchedulePickup {
 
-    private final ValidadorHorarioService timeValidator;
-    private final ValidacionRestriccionesService validacionRestriccionesService;
-    private final ValidadorPresupuestoService budgetValidator;
+    private final TimeRestrictionValidatorService timeValidator;
+    private final HealthRestrictionValidatorService healthRestrictionValidatorService;
+    private final BudgetValidatorService budgetValidator;
 
-    public SchedulePickup(ValidadorHorarioService timeValidator,
-                          ValidacionRestriccionesService validacionRestriccionesService,
-                          ValidadorPresupuestoService budgetValidator) {
+    public SchedulePickup(TimeRestrictionValidatorService timeValidator,
+                          HealthRestrictionValidatorService healthRestrictionValidatorService,
+                          BudgetValidatorService budgetValidator) {
         this.timeValidator = timeValidator;
-        this.validacionRestriccionesService = validacionRestriccionesService;
+        this.healthRestrictionValidatorService = healthRestrictionValidatorService;
         this.budgetValidator = budgetValidator;
     }
 
@@ -39,8 +39,8 @@ public class SchedulePickup {
         LocalDateTime projectedPickupTime = LocalDateTime.of(pickupDate,
                 pickupSlot.getHoraInicio());
 
-        timeValidator.validarCompra(student, cart, projectedPickupTime);
-        validacionRestriccionesService.validarCompra(student, cart);
+        timeValidator.validatePurchase(student, cart, projectedPickupTime);
+        healthRestrictionValidatorService.validatePurchase(student, cart);
 
         BigDecimal montoTotalCarrito = cart.stream()
                 .map(p -> p.getPrecio() != null ? p.getPrecio() :
@@ -60,7 +60,7 @@ public class SchedulePickup {
                         )
                 ));
 
-        budgetValidator.validarPresupuesto(
+        budgetValidator.validateBudget(
                 studentId,
                 montoTotalCarrito,
                 montosPorCategoria,

@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.services.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -19,17 +19,17 @@ import java.util.Optional;
 @RequestMapping("/api/v1/usuarios")
 public class UsuarioController {
 
-    private final UsuarioService usuarioService;
+    private final UserService userService;
 
-    public UsuarioController(UsuarioService usuarioService) {
-        this.usuarioService = usuarioService;
+    public UsuarioController(UserService userService) {
+        this.userService = userService;
     }
 
     @PostMapping("/sync")
     public ResponseEntity<Map<String, Object>> syncUser
             (@AuthenticationPrincipal Jwt jwt,
              @RequestBody(required = false) SyncUserRequest request) {
-        Usuario usuario = usuarioService.sincronizarUsuarioCognito(
+        Usuario usuario = userService.syncCognitoUser(
                 jwt,
                 request != null ? request.toProfile() : null
         );
@@ -44,7 +44,7 @@ public class UsuarioController {
         String sub = jwt.getSubject();
         String nuevoRol = requestBody.get("rol");
 
-        Usuario usuarioActualizado = usuarioService.actualizarRol(sub, nuevoRol);
+        Usuario usuarioActualizado = userService.updateRole(sub, nuevoRol);
 
         return ResponseEntity.ok(buildUserResponse(usuarioActualizado));
     }

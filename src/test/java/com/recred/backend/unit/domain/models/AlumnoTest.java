@@ -1,13 +1,20 @@
 package com.recred.backend.unit.domain.models;
 
-import com.recred.backend.domain.models.*;
+import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.models.Grado;
+import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.RestriccionHoraria;
+import com.recred.backend.domain.models.RewardLevel;
+import com.recred.backend.domain.models.Usuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AlumnoTest {
 
@@ -120,37 +127,37 @@ class AlumnoTest {
     }
 
     @Test
-    void dadoProductoFavoritoNuevo_cuandoAgregarProductoFavorito_entoncesLoAgrega() {
+    void dadoProductoFavoritoNuevo_cuandoAddFavoriteProduct_entoncesLoAgrega() {
         Producto producto = new Producto();
         producto.setId(UUID.randomUUID());
 
-        alumno.agregarProductoFavorito(producto);
+        alumno.addFavoriteProduct(producto);
 
         assertEquals(1, alumno.getProductosFavoritos().size());
     }
 
     @Test
-    void dadoProductoFavoritoDuplicado_cuandoAgregarProductoFavorito_entoncesNoDuplica() {
+    void dadoProductoFavoritoDuplicado_cuandoAddFavoriteProduct_entoncesNoDuplica() {
         UUID productoId = UUID.randomUUID();
         Producto producto = new Producto();
         producto.setId(productoId);
         Producto duplicado = new Producto();
         duplicado.setId(productoId);
 
-        alumno.agregarProductoFavorito(producto);
-        alumno.agregarProductoFavorito(duplicado);
+        alumno.addFavoriteProduct(producto);
+        alumno.addFavoriteProduct(duplicado);
 
         assertEquals(1, alumno.getProductosFavoritos().size());
     }
 
     @Test
-    void dadoProductoFavorito_cuandoRemoverProductoFavorito_entoncesLoRemueve() {
+    void dadoProductoFavorito_cuandoRemoveFavoriteProduct_entoncesLoRemueve() {
         UUID productoId = UUID.randomUUID();
         Producto producto = new Producto();
         producto.setId(productoId);
-        alumno.agregarProductoFavorito(producto);
+        alumno.addFavoriteProduct(producto);
 
-        alumno.removerProductoFavorito(productoId);
+        alumno.removeFavoriteProduct(productoId);
 
         assertTrue(alumno.getProductosFavoritos().isEmpty());
     }

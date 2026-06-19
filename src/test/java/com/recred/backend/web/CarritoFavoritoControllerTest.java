@@ -1,15 +1,11 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.DeleteCarritoFavorito;
-import com.recred.backend.application.GetCarritosFavoritosByTutor;
+import com.recred.backend.application.DeleteFavoriteCart;
+import com.recred.backend.application.GetFavoriteCartsByTutor;
 import com.recred.backend.application.SaveCarritoFavorito;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CarritoFavorito;
 import com.recred.backend.domain.models.Producto;
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -17,6 +13,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,19 +29,19 @@ import static org.mockito.Mockito.when;
 class CarritoFavoritoControllerTest {
 
     private SaveCarritoFavorito saveCarritoFavorito;
-    private GetCarritosFavoritosByTutor getCarritosFavoritosByTutor;
-    private DeleteCarritoFavorito deleteCarritoFavorito;
+    private GetFavoriteCartsByTutor getFavoriteCartsByTutor;
+    private DeleteFavoriteCart deleteFavoriteCart;
     private CarritoFavoritoController controller;
 
     @BeforeEach
     void setUp() {
         saveCarritoFavorito = mock(SaveCarritoFavorito.class);
-        getCarritosFavoritosByTutor = mock(GetCarritosFavoritosByTutor.class);
-        deleteCarritoFavorito = mock(DeleteCarritoFavorito.class);
+        getFavoriteCartsByTutor = mock(GetFavoriteCartsByTutor.class);
+        deleteFavoriteCart = mock(DeleteFavoriteCart.class);
         controller = new CarritoFavoritoController(
                 saveCarritoFavorito,
-                getCarritosFavoritosByTutor,
-                deleteCarritoFavorito
+                getFavoriteCartsByTutor,
+                deleteFavoriteCart
         );
     }
 
@@ -94,7 +95,7 @@ class CarritoFavoritoControllerTest {
         UUID cartId = UUID.randomUUID();
         UUID alumnoId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        when(getCarritosFavoritosByTutor.execute("tutor-sub", alumnoId, productId))
+        when(getFavoriteCartsByTutor.execute("tutor-sub", alumnoId, productId))
                 .thenReturn(List.of(cart(cartId, alumnoId, productId)));
 
         ResponseEntity<List<CarritoFavoritoResponse>> response = controller.getCarts(
@@ -106,7 +107,7 @@ class CarritoFavoritoControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(cartId, response.getBody().get(0).id());
         assertEquals("Alvarez", response.getBody().get(0).alumnoApellido());
-        verify(getCarritosFavoritosByTutor).execute("tutor-sub", alumnoId, productId);
+        verify(getFavoriteCartsByTutor).execute("tutor-sub", alumnoId, productId);
     }
 
     @Test
@@ -119,7 +120,7 @@ class CarritoFavoritoControllerTest {
         );
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        verify(deleteCarritoFavorito).execute("tutor-sub", cartId);
+        verify(deleteFavoriteCart).execute("tutor-sub", cartId);
     }
 
     @Test

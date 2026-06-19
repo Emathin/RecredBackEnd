@@ -1,11 +1,11 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.AgregarProductoFavorito;
+import com.recred.backend.application.AddFavoriteProduct;
 import com.recred.backend.application.DetectStudentPreferences;
-import com.recred.backend.application.GetFavoritosByAlumno;
+import com.recred.backend.application.GetFavoritesByStudent;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
-import com.recred.backend.application.RemoverProductoFavorito;
+import com.recred.backend.application.RemoveFavoriteProduct;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -30,25 +30,25 @@ public class StudentPreferenceController {
     private final GetStudentPreferences getStudentPreferences;
     private final RespondToAISuggestion respondToAISuggestion;
     private final AlumnoRepository alumnoRepository;
-    private final AgregarProductoFavorito agregarProductoFavorito;
-    private final RemoverProductoFavorito removerProductoFavorito;
-    private final GetFavoritosByAlumno getFavoritosByAlumno;
+    private final AddFavoriteProduct addFavoriteProduct;
+    private final RemoveFavoriteProduct removeFavoriteProduct;
+    private final GetFavoritesByStudent getFavoritesByStudent;
 
     public StudentPreferenceController(
             DetectStudentPreferences detectStudentPreferences,
             GetStudentPreferences getStudentPreferences,
             RespondToAISuggestion respondToAISuggestion,
             AlumnoRepository alumnoRepository,
-            AgregarProductoFavorito agregarProductoFavorito,
-            RemoverProductoFavorito removerProductoFavorito,
-            GetFavoritosByAlumno getFavoritosByAlumno) {
+            AddFavoriteProduct addFavoriteProduct,
+            RemoveFavoriteProduct removeFavoriteProduct,
+            GetFavoritesByStudent getFavoritesByStudent) {
         this.detectStudentPreferences = detectStudentPreferences;
         this.getStudentPreferences = getStudentPreferences;
         this.respondToAISuggestion = respondToAISuggestion;
         this.alumnoRepository = alumnoRepository;
-        this.agregarProductoFavorito = agregarProductoFavorito;
-        this.removerProductoFavorito = removerProductoFavorito;
-        this.getFavoritosByAlumno = getFavoritosByAlumno;
+        this.addFavoriteProduct = addFavoriteProduct;
+        this.removeFavoriteProduct = removeFavoriteProduct;
+        this.getFavoritesByStudent = getFavoritesByStudent;
     }
 
     @PostMapping("/usuarios/{userId}/preferencias/detectar")
@@ -105,7 +105,7 @@ public class StudentPreferenceController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId
     ) {
-        agregarProductoFavorito.execute(alumnoId, productoId);
+        addFavoriteProduct.execute(alumnoId, productoId);
         return ResponseEntity.ok().build();
     }
 
@@ -114,7 +114,7 @@ public class StudentPreferenceController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId
     ) {
-        removerProductoFavorito.execute(alumnoId, productoId);
+        removeFavoriteProduct.execute(alumnoId, productoId);
         return ResponseEntity.ok().build();
     }
 
@@ -122,7 +122,7 @@ public class StudentPreferenceController {
     public ResponseEntity<List<ProductResponseDTO>> obtenerFavoritos(
             @PathVariable UUID alumnoId
     ) {
-        List<ProductResponseDTO> favoritos = getFavoritosByAlumno.execute(alumnoId)
+        List<ProductResponseDTO> favoritos = getFavoritesByStudent.execute(alumnoId)
                 .stream()
                 .map(ProductResponseDTO::fromDomain)
                 .toList();

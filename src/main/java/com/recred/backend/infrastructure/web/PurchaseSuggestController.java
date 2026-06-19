@@ -11,13 +11,13 @@ import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.domain.repositories.TutorRepository;
-import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.services.UserService;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,7 +35,7 @@ public class PurchaseSuggestController {
     private final RespondToAISuggestion respondToAISuggestion;
     private final CreateAdvancePurchase createAdvancePurchase;
     private final SugerenciaIARepository sugerenciaIARepository;
-    private final UsuarioService usuarioService;
+    private final UserService userService;
     private final TutorRepository tutorRepository;
 
     public PurchaseSuggestController(PurchaseSuggestIA purchaseSuggestIA,
@@ -43,14 +43,14 @@ public class PurchaseSuggestController {
                                      RespondToAISuggestion respondToAISuggestion,
                                      CreateAdvancePurchase createAdvancePurchase,
                                      SugerenciaIARepository sugerenciaIARepository,
-                                     UsuarioService usuarioService,
+                                     UserService userService,
                                      TutorRepository tutorRepository) {
         this.purchaseSuggestIA = purchaseSuggestIA;
         this.notifyPurchaseSuggestions = notifyPurchaseSuggestions;
         this.respondToAISuggestion = respondToAISuggestion;
         this.createAdvancePurchase = createAdvancePurchase;
         this.sugerenciaIARepository = sugerenciaIARepository;
-        this.usuarioService = usuarioService;
+        this.userService = userService;
         this.tutorRepository = tutorRepository;
     }
 
@@ -81,7 +81,7 @@ public class PurchaseSuggestController {
         SugerenciaIAEntity sugerencia = sugerenciaIARepository.findById(sugerenciaId)
                 .orElseThrow(() -> new RuntimeException("Sugerencia no encontrada"));
 
-        Usuario usuario = usuarioService.obtenerUsuarioActual(subject);
+        Usuario usuario = userService.getCurrentUser(subject);
 
         respondToAISuggestion.execute(sugerenciaId, true);
 

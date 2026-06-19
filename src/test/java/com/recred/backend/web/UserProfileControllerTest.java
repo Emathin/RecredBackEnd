@@ -2,7 +2,7 @@ package com.recred.backend.web;
 
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.services.UserService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.infrastructure.web.UserProfileController;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,16 +30,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class UserProfileControllerTest {
 
-    private UsuarioService usuarioService;
+    private UserService userService;
     private CloudinaryService cloudinaryService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        usuarioService = mock(UsuarioService.class);
+        userService = mock(UserService.class);
         cloudinaryService = mock(CloudinaryService.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new UserProfileController(usuarioService, cloudinaryService))
+                .standaloneSetup(new UserProfileController(userService, cloudinaryService))
                 .build();
     }
 
@@ -47,7 +47,7 @@ class UserProfileControllerTest {
     void getMyUserReturnsMinimalSessionData() throws Exception {
         UUID userId = UUID.randomUUID();
         Usuario usuario = usuario(userId);
-        when(usuarioService.obtenerUsuarioActual("cognito-sub")).thenReturn(usuario);
+        when(userService.getCurrentUser("cognito-sub")).thenReturn(usuario);
 
         mockMvc.perform(get("/api/v1/users/me")
                         .principal(authentication()))
@@ -60,14 +60,14 @@ class UserProfileControllerTest {
                 .andExpect(jsonPath("$.phone").doesNotExist())
                 .andExpect(jsonPath("$.documentNumber").doesNotExist());
 
-        verify(usuarioService).obtenerUsuarioActual("cognito-sub");
+        verify(userService).getCurrentUser("cognito-sub");
     }
 
     @Test
     void getMyProfileReturnsFullProfileData() throws Exception {
         UUID userId = UUID.randomUUID();
         Usuario usuario = usuario(userId);
-        when(usuarioService.obtenerUsuarioActual("cognito-sub")).thenReturn(usuario);
+        when(userService.getCurrentUser("cognito-sub")).thenReturn(usuario);
 
         mockMvc.perform(get("/api/v1/users/me/profile")
                         .principal(authentication()))
@@ -80,14 +80,14 @@ class UserProfileControllerTest {
                 .andExpect(jsonPath("$.documentNumber").value("45238796"))
                 .andExpect(jsonPath("$.role").value("PADRE"));
 
-        verify(usuarioService).obtenerUsuarioActual("cognito-sub");
+        verify(userService).getCurrentUser("cognito-sub");
     }
 
     @Test
     void updateMyProfileDelegatesToServiceAndReturnsUpdatedUser() throws Exception {
         UUID userId = UUID.randomUUID();
         Usuario usuario = usuario(userId);
-        when(usuarioService.updateProfile(
+        when(userService.updateProfile(
                 eq("cognito-sub"),
                 eq("Mateo"),
                 eq("Fortuna"),
@@ -114,7 +114,7 @@ class UserProfileControllerTest {
                 .andExpect(jsonPath("$.documentNumber").value("45238796"));
 
         ArgumentCaptor<String> subjectCaptor = ArgumentCaptor.forClass(String.class);
-        verify(usuarioService).updateProfile(
+        verify(userService).updateProfile(
                 subjectCaptor.capture(),
                 eq("Mateo"),
                 eq("Fortuna"),

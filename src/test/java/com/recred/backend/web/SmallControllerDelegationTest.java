@@ -1,9 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.GenerarMenuBuffet;
+import com.recred.backend.application.GenerateBuffetMenu;
 import com.recred.backend.application.GenerateLowBalanceAlerts;
 import com.recred.backend.application.GetAllCategories;
-import com.recred.backend.application.GetBuffetByAlumno;
+import com.recred.backend.application.GetBuffetByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.domain.models.Buffet;
@@ -49,9 +49,9 @@ class SmallControllerDelegationTest {
     @Mock
     private GetAllCategories getAllCategories;
     @Mock
-    private GenerarMenuBuffet generarMenuBuffet;
+    private GenerateBuffetMenu generateBuffetMenu;
     @Mock
-    private GetBuffetByAlumno getBuffetByAlumno;
+    private GetBuffetByStudent getBuffetByStudent;
     @Mock
     private FirebasePushNotificationSender pushNotificationSender;
 
@@ -147,11 +147,11 @@ class SmallControllerDelegationTest {
         Buffet buffet = new Buffet();
         buffet.setId(buffetId);
         buffet.setNombre("Buffet");
-        when(generarMenuBuffet.execute(alumnoId, buffetId, dateTime)).thenReturn(List.of(item));
-        when(getBuffetByAlumno.execute(alumnoId)).thenReturn(Optional.of(buffet));
+        when(generateBuffetMenu.execute(alumnoId, buffetId, dateTime)).thenReturn(List.of(item));
+        when(getBuffetByStudent.execute(alumnoId)).thenReturn(Optional.of(buffet));
         MenuBuffetController controller = new MenuBuffetController(
-                generarMenuBuffet,
-                getBuffetByAlumno
+                generateBuffetMenu,
+                getBuffetByStudent
         );
 
         ResponseEntity<List<MenuProductoDTO>> menu =
@@ -166,12 +166,12 @@ class SmallControllerDelegationTest {
     void menuBuffetControllerShouldUseNowWhenDateIsMissingAndReturnNotFoundBuffet() {
         UUID alumnoId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        when(generarMenuBuffet.execute(eq(alumnoId), eq(buffetId), any(LocalDateTime.class)))
+        when(generateBuffetMenu.execute(eq(alumnoId), eq(buffetId), any(LocalDateTime.class)))
                 .thenReturn(List.of());
-        when(getBuffetByAlumno.execute(alumnoId)).thenReturn(Optional.empty());
+        when(getBuffetByStudent.execute(alumnoId)).thenReturn(Optional.empty());
         MenuBuffetController controller = new MenuBuffetController(
-                generarMenuBuffet,
-                getBuffetByAlumno
+                generateBuffetMenu,
+                getBuffetByStudent
         );
 
         ResponseEntity<List<MenuProductoDTO>> menu =

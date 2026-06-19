@@ -32,14 +32,13 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GetTutorGlobalDashboardTest {
 
     @Mock
-    private ObtenerHijosPorPadre obtenerHijosPorPadre;
+    private GetChildrenByParent getChildrenByParent;
 
     @Mock
     private GetActiveBudgetByStudent getActiveBudgetByStudent;
@@ -51,18 +50,18 @@ class GetTutorGlobalDashboardTest {
     private PredictStudentSpending predictStudentSpending;
 
     @Mock
-    private ObtenerHistorialAlumno obtenerHistorialAlumno;
+    private GetStudentHistory getStudentHistory;
 
     private GetTutorGlobalDashboard getTutorGlobalDashboard;
 
     @BeforeEach
     void setUp() {
         getTutorGlobalDashboard = new GetTutorGlobalDashboard(
-                obtenerHijosPorPadre,
+                getChildrenByParent,
                 getActiveBudgetByStudent,
                 getStudentRewardStatus,
                 predictStudentSpending,
-                obtenerHistorialAlumno
+                getStudentHistory
         );
     }
 
@@ -81,7 +80,7 @@ class GetTutorGlobalDashboardTest {
         );
         Purchase emptyPurchase = purchase(Map.of(), "0.00");
 
-        when(obtenerHijosPorPadre.executeByCognitoSubject(cognitoSubject)).thenReturn(children);
+        when(getChildrenByParent.executeByCognitoSubject(cognitoSubject)).thenReturn(children);
         when(getActiveBudgetByStudent.execute(firstChild.getId())).thenReturn(Optional.of(
                 budget(firstChild.getId())
         ));
@@ -96,10 +95,10 @@ class GetTutorGlobalDashboardTest {
                 .thenThrow(new RuntimeException("sin datos"));
         when(predictStudentSpending.execute(thirdChild.getId(), null))
                 .thenReturn(predictionWithoutAnalysis(thirdChild.getId()));
-        when(obtenerHistorialAlumno.execute(firstChild.getId()))
+        when(getStudentHistory.execute(firstChild.getId()))
                 .thenReturn(List.of(multipleProductsPurchase));
-        when(obtenerHistorialAlumno.execute(secondChild.getId())).thenReturn(List.of());
-        when(obtenerHistorialAlumno.execute(thirdChild.getId())).thenReturn(List.of(emptyPurchase));
+        when(getStudentHistory.execute(secondChild.getId())).thenReturn(List.of());
+        when(getStudentHistory.execute(thirdChild.getId())).thenReturn(List.of(emptyPurchase));
 
         TutorGlobalDashboardDTO result = getTutorGlobalDashboard
                 .executeByCognitoSubject(cognitoSubject);

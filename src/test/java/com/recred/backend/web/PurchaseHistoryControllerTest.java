@@ -1,8 +1,8 @@
 package com.recred.backend.web;
 
-import com.recred.backend.application.ObtenerHistorialAlumno;
-import com.recred.backend.application.ObtenerHistorialPendienteAlumno;
-import com.recred.backend.application.ObtenerHistorialTutor;
+import com.recred.backend.application.GetPendingStudentHistory;
+import com.recred.backend.application.GetStudentHistory;
+import com.recred.backend.application.GetTutorHistory;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.EstadoCompra;
@@ -42,13 +42,13 @@ class PurchaseHistoryControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ObtenerHistorialAlumno obtenerHistorialAlumno;
+    private GetStudentHistory getStudentHistory;
 
     @MockitoBean
-    private ObtenerHistorialTutor obtenerHistorialTutor;
+    private GetTutorHistory getTutorHistory;
 
     @MockitoBean
-    private ObtenerHistorialPendienteAlumno obtenerHistorialPendienteAlumno;
+    private GetPendingStudentHistory getPendingStudentHistory;
 
     @MockitoBean
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
@@ -70,7 +70,7 @@ class PurchaseHistoryControllerTest {
         compra.setStatus(EstadoCompra.ENTREGADO);
         compra.setDate(LocalDateTime.now());
 
-        when(obtenerHistorialAlumno.execute(alumnoId)).thenReturn(List.of(compra));
+        when(getStudentHistory.execute(alumnoId)).thenReturn(List.of(compra));
 
         mockMvc.perform(get("/api/v1/purchases/alumno/{alumnoId}", alumnoId)
                 .contentType(MediaType.APPLICATION_JSON))
@@ -91,7 +91,7 @@ class PurchaseHistoryControllerTest {
         compra.setStatus(EstadoCompra.EN_PREPARACION);
         compra.setDate(LocalDateTime.now());
 
-        when(obtenerHistorialTutor.execute(tutorId)).thenReturn(List.of(compra));
+        when(getTutorHistory.execute(tutorId)).thenReturn(List.of(compra));
 
         mockMvc.perform(get("/api/v1/purchases/tutor/{tutorId}", tutorId)
                 .contentType(MediaType.APPLICATION_JSON))
@@ -112,7 +112,7 @@ class PurchaseHistoryControllerTest {
          compra.setStatus(EstadoCompra.PENDIENTE);
          compra.setDate(LocalDateTime.now());
 
-         when(obtenerHistorialPendienteAlumno.execute(alumnoId)).thenReturn(List.of(compra));
+         when(getPendingStudentHistory.execute(alumnoId)).thenReturn(List.of(compra));
 
          mockMvc.perform(get("/api/v1/purchases/alumno/{alumnoId}/pendientes", alumnoId)
                  .contentType(MediaType.APPLICATION_JSON))
@@ -132,11 +132,11 @@ class PurchaseHistoryControllerTest {
         compra.setStatus(EstadoCompra.ENTREGADO);
         compra.setDate(LocalDateTime.now());
         PurchaseHistoryController controller = new PurchaseHistoryController(
-                obtenerHistorialAlumno,
-                obtenerHistorialTutor,
-                obtenerHistorialPendienteAlumno
+                getStudentHistory,
+                getTutorHistory,
+                getPendingStudentHistory
         );
-        when(obtenerHistorialTutor.executeByCognitoSubject(cognitoSubject))
+        when(getTutorHistory.executeByCognitoSubject(cognitoSubject))
                 .thenReturn(List.of(compra));
 
         ResponseEntity<List<PurchaseResponseDTO>> response = controller.getMyHistorial(
@@ -150,9 +150,9 @@ class PurchaseHistoryControllerTest {
     @Test
     void cuandoPideMiHistorialTutorSinAutenticacion_entoncesFalla() {
         PurchaseHistoryController controller = new PurchaseHistoryController(
-                obtenerHistorialAlumno,
-                obtenerHistorialTutor,
-                obtenerHistorialPendienteAlumno
+                getStudentHistory,
+                getTutorHistory,
+                getPendingStudentHistory
         );
 
         assertThrows(AuthenticationCredentialsNotFoundException.class,

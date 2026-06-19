@@ -2,7 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
-import com.recred.backend.domain.services.ValidadorPresupuestoService;
+import com.recred.backend.domain.services.BudgetValidatorService;
 import com.recred.backend.infrastructure.web.CheckBudgetDatesRequest;
 import com.recred.backend.infrastructure.web.CheckBudgetDatesResponse;
 
@@ -20,10 +20,10 @@ import java.util.UUID;
 public class CheckBudgetDates {
 
     private final ProductRepository productRepository;
-    private final ValidadorPresupuestoService budgetValidator;
+    private final BudgetValidatorService budgetValidator;
 
     public CheckBudgetDates(ProductRepository productRepository,
-                            ValidadorPresupuestoService budgetValidator) {
+                            BudgetValidatorService budgetValidator) {
         this.productRepository = productRepository;
         this.budgetValidator = budgetValidator;
     }
@@ -68,7 +68,7 @@ public class CheckBudgetDates {
 
                 LocalDateTime momentoCompra = LocalDateTime.of(date, LocalTime.of(8, 0));
 
-                Optional<String> blockReason = budgetValidator.obtenerMotivoBloqueoPresupuesto(
+                Optional<String> blockReason = budgetValidator.getBudgetBlockReason(
                         studentId,
                         totalCartAmount,
                         amountsByCategory,

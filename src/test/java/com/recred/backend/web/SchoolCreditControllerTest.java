@@ -7,19 +7,19 @@ import com.recred.backend.application.GetLastRecharge;
 import com.recred.backend.domain.exceptions.ActiveCreditExistsException;
 import com.recred.backend.domain.models.CreditStatus;
 import com.recred.backend.domain.models.SchoolCredit;
+import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.repositories.UsuarioRepository;
+import com.recred.backend.domain.services.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import com.recred.backend.domain.services.UsuarioService;
-import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.Tutor;
-import com.recred.backend.domain.repositories.UsuarioRepository;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -51,7 +51,7 @@ public class SchoolCreditControllerTest {
     private GetActiveSchoolCredit getActiveSchoolCredit;
 
     @MockitoBean
-    private UsuarioService usuarioService;
+    private UserService userService;
 
     @MockitoBean
     private UsuarioRepository usuarioRepository;
@@ -78,7 +78,7 @@ public class SchoolCreditControllerTest {
         mockTutor.setId(UUID.randomUUID());
         mockUsuario.setTutor(mockTutor);
 
-        when(usuarioService.obtenerUsuarioActual("test-user")).thenReturn(mockUsuario);
+        when(userService.getCurrentUser("test-user")).thenReturn(mockUsuario);
         when(enableSchoolCredit.execute(any(UUID.class), any(UUID.class), any(BigDecimal.class), any(Integer.class)))
                 .thenReturn(credit);
 
@@ -105,7 +105,7 @@ public class SchoolCreditControllerTest {
         mockTutor.setId(UUID.randomUUID());
         mockUsuario.setTutor(mockTutor);
 
-        when(usuarioService.obtenerUsuarioActual("test-user")).thenReturn(mockUsuario);
+        when(userService.getCurrentUser("test-user")).thenReturn(mockUsuario);
         when(enableSchoolCredit.execute(any(UUID.class), any(UUID.class), any(), any()))
                 .thenThrow(new ActiveCreditExistsException("Already has active credit"));
 

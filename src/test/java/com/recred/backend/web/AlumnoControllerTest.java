@@ -3,14 +3,15 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
-import com.recred.backend.domain.services.UsuarioService;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.recred.backend.domain.services.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.TestingAuthenticationToken;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -19,14 +20,14 @@ import static org.mockito.Mockito.when;
 class AlumnoControllerTest {
 
     private AlumnoRepository alumnoRepository;
-    private UsuarioService usuarioService;
+    private UserService userService;
     private AlumnoController controller;
 
     @BeforeEach
     void setUp() {
         alumnoRepository = mock(AlumnoRepository.class);
-        usuarioService = mock(UsuarioService.class);
-        controller = new AlumnoController(alumnoRepository, usuarioService);
+        userService = mock(UserService.class);
+        controller = new AlumnoController(alumnoRepository, userService);
     }
 
     @Test
@@ -68,7 +69,7 @@ class AlumnoControllerTest {
         perfil.setId(alumnoId);
         usuario.setAlumno(perfil);
         Alumno alumno = alumno(alumnoId, "Ana", "Lopez", "12345678");
-        when(usuarioService.obtenerUsuarioActual("student-sub")).thenReturn(usuario);
+        when(userService.getCurrentUser("student-sub")).thenReturn(usuario);
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
         ResponseEntity<StudentDTO> response = controller.getMiPerfil(
@@ -82,7 +83,7 @@ class AlumnoControllerTest {
 
     @Test
     void getMiPerfilReturnsNotFoundWhenUserHasNoAlumno() {
-        when(usuarioService.obtenerUsuarioActual("student-sub")).thenReturn(new Usuario());
+        when(userService.getCurrentUser("student-sub")).thenReturn(new Usuario());
 
         ResponseEntity<StudentDTO> response = controller.getMiPerfil(
                 new TestingAuthenticationToken("student-sub", "")
@@ -98,7 +99,7 @@ class AlumnoControllerTest {
         Alumno perfil = new Alumno();
         perfil.setId(alumnoId);
         usuario.setAlumno(perfil);
-        when(usuarioService.obtenerUsuarioActual("student-sub")).thenReturn(usuario);
+        when(userService.getCurrentUser("student-sub")).thenReturn(usuario);
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         ResponseEntity<StudentDTO> response = controller.getMiPerfil(

@@ -1,12 +1,12 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AddHealthRestriction;
-import com.recred.backend.application.BloquearProductoManual;
-import com.recred.backend.application.DesbloquearProductoManual;
+import com.recred.backend.application.BlockProductManually;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictions;
+import com.recred.backend.application.UnblockProductManually;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,23 +31,23 @@ public class ControlParentalController {
     private final AddHealthRestriction addHealthRestriction;
     private final RemoveHealthRestrictions removeHealthRestrictions;
     private final DetectStudentPreferences detectarPreferenciasUseCase;
-    private final BloquearProductoManual bloquearProductoManual;
-    private final DesbloquearProductoManual desbloquearProductoManual;
+    private final BlockProductManually blockProductManually;
+    private final UnblockProductManually unblockProductManually;
 
     public ControlParentalController(ManageRestrictions useCase,
                                      GetHealthRestrictions obtenerRestriccionesUseCase,
                                      AddHealthRestriction addHealthRestriction,
                                      RemoveHealthRestrictions removeHealthRestrictions,
                                      DetectStudentPreferences detectarPreferenciasUseCase,
-                                     BloquearProductoManual bloquearProductoManual,
-                                     DesbloquearProductoManual desbloquearProductoManual) {
+                                     BlockProductManually blockProductManually,
+                                     UnblockProductManually unblockProductManually) {
         this.useCase = useCase;
         this.obtenerRestriccionesUseCase = obtenerRestriccionesUseCase;
         this.addHealthRestriction = addHealthRestriction;
         this.removeHealthRestrictions = removeHealthRestrictions;
         this.detectarPreferenciasUseCase = detectarPreferenciasUseCase;
-        this.bloquearProductoManual = bloquearProductoManual;
-        this.desbloquearProductoManual = desbloquearProductoManual;
+        this.blockProductManually = blockProductManually;
+        this.unblockProductManually = unblockProductManually;
     }
 
     @PutMapping("/alumnos/{alumnoId}/actualizar-restricciones-salud")
@@ -101,7 +101,7 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId) {
 
-        bloquearProductoManual.execute(alumnoId, productoId);
+        blockProductManually.execute(alumnoId, productoId);
         return ResponseEntity.ok().build();
     }
 
@@ -110,7 +110,7 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId) {
 
-        desbloquearProductoManual.execute(alumnoId, productoId);
+        unblockProductManually.execute(alumnoId, productoId);
         return ResponseEntity.ok().build();
     }
 }
