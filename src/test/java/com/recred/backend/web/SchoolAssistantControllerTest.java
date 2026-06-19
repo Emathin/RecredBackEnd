@@ -17,24 +17,24 @@ import com.recred.backend.domain.models.SchoolAssistantCapability;
 import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolAssistantRole;
 import com.recred.backend.domain.models.SchoolAssistantSuggestion;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
 import com.recred.backend.infrastructure.web.SchoolAssistantController;
 import com.recred.backend.infrastructure.web.SchoolAssistantMessageResponse;
 import com.recred.backend.infrastructure.web.SchoolAssistantSessionResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -69,7 +69,8 @@ class SchoolAssistantControllerTest {
 
     @Test
     void askDelegatesMessageToUseCase() throws Exception {
-        UUID studentId = UUID.randomUUID();
+        TestingAuthenticationToken authentication =
+                new TestingAuthenticationToken("student-sub", "");
         UUID sessionId = UUID.randomUUID();
         LocalDateTime dateTime = LocalDateTime.of(2026, 5, 27, 12, 0);
         SchoolAssistantAnswer answer = new SchoolAssistantAnswer(
@@ -92,10 +93,14 @@ class SchoolAssistantControllerTest {
                 )),
                 Map.of("saldo", "500.00")
         );
-        when(askSchoolAssistant.execute(eq(studentId), org.mockito.ArgumentMatchers.any()))
+        when(askSchoolAssistant.executeForStudent(
+                eq("student-sub"),
+                org.mockito.ArgumentMatchers.any()
+        ))
                 .thenReturn(answer);
 
-        mockMvc.perform(post("/api/v1/ia/alumnos/{alumnoId}/asistente/mensajes", studentId)
+        mockMvc.perform(post("/api/v1/ia/alumnos/me/asistente/mensajes")
+                        .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -120,7 +125,7 @@ class SchoolAssistantControllerTest {
 
         ArgumentCaptor<SchoolAssistantCommand> commandCaptor = ArgumentCaptor
                 .forClass(SchoolAssistantCommand.class);
-        verify(askSchoolAssistant).execute(eq(studentId), commandCaptor.capture());
+        verify(askSchoolAssistant).executeForStudent(eq("student-sub"), commandCaptor.capture());
         SchoolAssistantCommand command = commandCaptor.getValue();
         assertEquals("saldo", command.message());
         assertEquals(Optional.of(sessionId), command.sessionId());
@@ -129,7 +134,8 @@ class SchoolAssistantControllerTest {
 
     @Test
     void askReturnsReadableRecessLabelForAdvancePurchaseAction() throws Exception {
-        UUID studentId = UUID.randomUUID();
+        TestingAuthenticationToken authentication =
+                new TestingAuthenticationToken("student-sub", "");
         UUID sessionId = UUID.randomUUID();
         UUID purchaseId = UUID.randomUUID();
         SchoolAssistantAction action = new SchoolAssistantAction(
@@ -157,10 +163,14 @@ class SchoolAssistantControllerTest {
                 List.of(),
                 Map.of()
         );
-        when(askSchoolAssistant.execute(eq(studentId), org.mockito.ArgumentMatchers.any()))
+        when(askSchoolAssistant.executeForStudent(
+                eq("student-sub"),
+                org.mockito.ArgumentMatchers.any()
+        ))
                 .thenReturn(answer);
 
-        mockMvc.perform(post("/api/v1/ia/alumnos/{alumnoId}/asistente/mensajes", studentId)
+        mockMvc.perform(post("/api/v1/ia/alumnos/me/asistente/mensajes")
+                        .principal(authentication)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -245,7 +255,8 @@ class SchoolAssistantControllerTest {
 
     @Test
     void studentSessionsReturnsSessions() throws Exception {
-        UUID studentId = UUID.randomUUID();
+        TestingAuthenticationToken authentication =
+                new TestingAuthenticationToken("student-sub", "");
         UUID sessionId = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.of(2026, 5, 27, 12, 0);
         ChatSession session = new ChatSession(
@@ -254,10 +265,11 @@ class SchoolAssistantControllerTest {
                 now.minusMinutes(5),
                 now
         );
-        when(conversations.findStudentSessions(studentId, 0, 20))
+        when(conversations.findStudentSessions("student-sub", 0, 20))
                 .thenReturn(List.of(session));
 
-        mockMvc.perform(get("/api/v1/ia/alumnos/{alumnoId}/asistente/sesiones", studentId))
+        mockMvc.perform(get("/api/v1/ia/alumnos/me/asistente/sesiones")
+                        .principal(authentication))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].sesionId").value(sessionId.toString()))
                 .andExpect(jsonPath("$[0].estado").value("ABIERTA"));
@@ -265,7 +277,8 @@ class SchoolAssistantControllerTest {
 
     @Test
     void studentMessagesReturnsMessages() throws Exception {
-        UUID studentId = UUID.randomUUID();
+        TestingAuthenticationToken authentication =
+                new TestingAuthenticationToken("student-sub", "");
         UUID sessionId = UUID.randomUUID();
         UUID messageId = UUID.randomUUID();
         ChatMessage message = new ChatMessage(
@@ -276,14 +289,13 @@ class SchoolAssistantControllerTest {
                 null,
                 LocalDateTime.of(2026, 5, 27, 12, 0)
         );
-        when(conversations.findStudentMessages(studentId, sessionId, 0, 20))
+        when(conversations.findStudentMessages("student-sub", sessionId, 0, 20))
                 .thenReturn(List.of(message));
 
         mockMvc.perform(get(
-                        "/api/v1/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}/mensajes",
-                        studentId,
+                        "/api/v1/ia/alumnos/me/asistente/sesiones/{sesionId}/mensajes",
                         sessionId
-                ))
+                ).principal(authentication))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(messageId.toString()))
                 .andExpect(jsonPath("$[0].contenido").value("saldo"));
@@ -291,25 +303,24 @@ class SchoolAssistantControllerTest {
 
     @Test
     void closeAndDeleteStudentSessionReturnNoContent() throws Exception {
-        UUID studentId = UUID.randomUUID();
+        TestingAuthenticationToken authentication =
+                new TestingAuthenticationToken("student-sub", "");
         UUID sessionId = UUID.randomUUID();
 
         mockMvc.perform(patch(
-                        "/api/v1/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}/cerrar",
-                        studentId,
+                        "/api/v1/ia/alumnos/me/asistente/sesiones/{sesionId}/cerrar",
                         sessionId
-                ))
+                ).principal(authentication))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(delete(
-                        "/api/v1/ia/alumnos/{alumnoId}/asistente/sesiones/{sesionId}",
-                        studentId,
+                        "/api/v1/ia/alumnos/me/asistente/sesiones/{sesionId}",
                         sessionId
-                ))
+                ).principal(authentication))
                 .andExpect(status().isNoContent());
 
-        verify(conversations).closeStudentSession(studentId, sessionId);
-        verify(conversations).deleteStudentSession(studentId, sessionId);
+        verify(conversations).closeStudentSession("student-sub", sessionId);
+        verify(conversations).deleteStudentSession("student-sub", sessionId);
     }
 
     @Test

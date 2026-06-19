@@ -6,6 +6,7 @@ import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.PromotionEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,6 +26,7 @@ public class PromotionRepositoryImpl implements PromotionRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Promotion> findAllActive() {
         return repository.findByStatus(PromotionStatus.ACTIVE).stream()
                 .map(PromotionEntity::toDomain)
@@ -32,6 +34,7 @@ public class PromotionRepositoryImpl implements PromotionRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Promotion> findAllActiveByBuffet(UUID buffetId) {
         return repository.findByStatusAndBuffetEntityId(PromotionStatus.ACTIVE, buffetId).stream()
                 .map(PromotionEntity::toDomain)
@@ -39,6 +42,7 @@ public class PromotionRepositoryImpl implements PromotionRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Promotion> findDraftPromotionsByStartDateBefore(java.time.LocalDateTime date) {
         return repository.findByStatusAndStartDateBefore(PromotionStatus.DRAFT, date).stream()
                 .map(PromotionEntity::toDomain)
@@ -46,12 +50,14 @@ public class PromotionRepositoryImpl implements PromotionRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Promotion> findById(UUID id) {
         return repository.findById(id)
                 .map(PromotionEntity::toDomain);
     }
 
     @Override
+    @Transactional
     public Promotion save(Promotion promotion) {
         PromotionEntity entity;
         

@@ -18,6 +18,7 @@ import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,9 @@ class GetTutorGlobalDashboardTest {
     @Mock
     private GetStudentHistory getStudentHistory;
 
+    @Mock
+    private TutorRepository tutorRepository;
+
     private GetTutorGlobalDashboard getTutorGlobalDashboard;
 
     @BeforeEach
@@ -68,7 +72,8 @@ class GetTutorGlobalDashboardTest {
                 getActiveBudgetByStudent,
                 getStudentRewardStatus,
                 predictStudentSpending,
-                getStudentHistory
+                getStudentHistory,
+                tutorRepository
         );
     }
 

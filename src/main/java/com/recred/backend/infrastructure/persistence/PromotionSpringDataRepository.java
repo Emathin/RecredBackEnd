@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -28,5 +29,9 @@ public interface PromotionSpringDataRepository extends JpaRepository<PromotionEn
     List<PromotionEntity> findByStatusAndStartDateBefore(
             PromotionStatus status, LocalDateTime startDate);
 
-
+    @EntityGraph(attributePaths =
+            {"products", "products.categoria", "products.tipos",
+                    "products.clasificacionesSalud", "buffetEntity"})
+    @Override
+    Optional<PromotionEntity> findById(UUID id);
 }

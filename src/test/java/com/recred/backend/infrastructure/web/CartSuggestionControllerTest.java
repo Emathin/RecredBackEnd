@@ -34,6 +34,7 @@ class CartSuggestionControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void suggestMapsRequestItemsAndResponse() {
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -78,6 +79,7 @@ class CartSuggestionControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void suggestUsesEmptySetWhenRequestItemsAreNull() {
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();

@@ -101,7 +101,19 @@ public class AskSchoolAssistant {
     }
 
     public SchoolAssistantAnswer execute(UUID studentIdOrUserId, SchoolAssistantCommand command) {
-        UUID studentId = resolvedStudentId(studentIdOrUserId);
+        return executeForResolvedStudent(resolvedStudentId(studentIdOrUserId), command);
+    }
+
+    public SchoolAssistantAnswer executeForStudent(String cognitoSubject,
+                                                   SchoolAssistantCommand command) {
+        Usuario user = authenticatedUser(cognitoSubject);
+        return executeForResolvedStudent(resolvedStudentId(user.getId()), command);
+    }
+
+    private SchoolAssistantAnswer executeForResolvedStudent(
+            UUID studentId,
+            SchoolAssistantCommand command
+    ) {
         String message = message(command);
         LocalDateTime now = LocalDateTime.now(clock);
         ChatSession session = session(studentId, command, now);

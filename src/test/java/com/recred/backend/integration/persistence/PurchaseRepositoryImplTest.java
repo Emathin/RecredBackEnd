@@ -8,10 +8,10 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.CartProductAffinity;
 import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.models.PurchaseResume;
 import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
@@ -296,6 +296,31 @@ class PurchaseRepositoryImplTest {
         verify(springDataRepository).save(entityCaptor.capture());
         CompraAnticipadaEntity entity = (CompraAnticipadaEntity) entityCaptor.getValue();
         assertEquals(EstadoRetiro.LISTO, entity.getRetiroProgramadoEntity().getEstado());
+    }
+
+    @Test
+    void save_WhenProductHasPromotionId_ShouldSetPromotionEntityInDetail() {
+        UUID promoId = UUID.randomUUID();
+        Producto prod = product();
+        prod.setPromocionId(promoId);
+        purchase.setItems(Map.of(prod, 1));
+
+        when(springDataRepository.save(any(CompraEntity.class)))
+                .thenAnswer(invocation -> {
+                    CompraEntity entity = invocation.getArgument(0);
+                    entity.setId(UUID.randomUUID());
+                    return entity;
+                });
+
+        repository.save(purchase);
+
+        ArgumentCaptor<CompraEntity> entityCaptor = ArgumentCaptor.forClass(CompraEntity.class);
+        verify(springDataRepository).save(entityCaptor.capture());
+        CompraEntity savedEntity = entityCaptor.getValue();
+        assertEquals(1, savedEntity.getDetalles().size());
+        CompraDetalleEntity detail = savedEntity.getDetalles().get(0);
+        assertTrue(detail.getPromotionEntity() != null);
+        assertEquals(promoId, detail.getPromotionEntity().getId());
     }
 
     @Test

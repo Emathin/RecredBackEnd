@@ -1,8 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.CreateAdvancePurchase;
-import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
@@ -20,6 +20,7 @@ import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
@@ -88,6 +89,8 @@ class CreateAdvancePurchaseUseCaseTest {
     private UsuarioRepository usuarioRepository;
     @Mock
     private TutorRepository tutorRepository;
+    @Mock
+    private PromotionRepository promotionRepository;
 
     @InjectMocks
     private CreateAdvancePurchase useCase;
@@ -443,7 +446,8 @@ class CreateAdvancePurchaseUseCaseTest {
                 walletRepository,
                 buffetRepository,
                 usuarioRepository,
-                tutorRepository
+                tutorRepository,
+                promotionRepository
         );
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
@@ -469,6 +473,7 @@ class CreateAdvancePurchaseUseCaseTest {
                 buffetRepository,
                 usuarioRepository,
                 tutorRepository,
+                promotionRepository,
                 movementRepository
         );
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));

@@ -50,6 +50,9 @@ public class TutorEntity {
     @Column(name = "actualizado_en", updatable = false)
     private LocalDateTime actualizadoEn;
 
+    @Column(name = "dashboard_config", columnDefinition = "TEXT")
+    private String dashboardConfig;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "tutores_alumnos",
@@ -75,6 +78,7 @@ public class TutorEntity {
         tutor.setActiva(this.activa);
         tutor.setCreadoEn(this.creadoEn);
         tutor.setActualizadoEn(this.actualizadoEn);
+        tutor.setDashboardConfig(this.dashboardConfig);
 
         if (this.usuario != null) {
             tutor.setUsuario(this.usuario.toDomain());
@@ -99,6 +103,7 @@ public class TutorEntity {
         entity.setActiva(tutor.getActiva());
         entity.setCreadoEn(tutor.getCreadoEn());
         entity.setActualizadoEn(tutor.getActualizadoEn());
+        entity.setDashboardConfig(tutor.getDashboardConfig());
 
         if (tutor.getHijos() != null && !tutor.getHijos().isEmpty()) {
             tutor.getHijos().forEach(alumno -> {

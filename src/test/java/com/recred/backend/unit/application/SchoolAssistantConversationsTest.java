@@ -17,6 +17,12 @@ import com.recred.backend.domain.repositories.ChatSessionRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -24,11 +30,6 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -134,6 +135,44 @@ class SchoolAssistantConversationsTest {
         assertEquals(1, sessions.size());
         assertEquals(sessionId, sessions.get(0).id());
         verify(chatSessionRepository).findByStudentId(studentId, 0, 20);
+    }
+
+    @Test
+    void studentOperationsResolveStudentFromAuthenticatedUser() {
+        String cognitoSubject = "student-sub";
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID sessionId = UUID.randomUUID();
+        ChatSession session = session(sessionId);
+        ChatMessage message = message(sessionId, "saldo");
+
+        when(usuarioRepository.findByIdCognito(cognitoSubject))
+                .thenReturn(Optional.of(user(userId)));
+        when(alumnoRepository.existsById(userId)).thenReturn(false);
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        when(chatSessionRepository.findByStudentId(studentId, 1, 5))
+                .thenReturn(List.of(session));
+        when(chatSessionRepository.findByIdAndStudentId(sessionId, studentId))
+                .thenReturn(Optional.of(session));
+        when(chatMessageRepository.findBySessionId(sessionId, 0, 20))
+                .thenReturn(List.of(message));
+
+        List<ChatSession> sessions = conversations.findStudentSessions(cognitoSubject, 1, 5);
+        List<ChatMessage> messages = conversations.findStudentMessages(
+                cognitoSubject,
+                sessionId,
+                0,
+                20
+        );
+        conversations.closeStudentSession(cognitoSubject, sessionId);
+        conversations.deleteStudentSession(cognitoSubject, sessionId);
+
+        assertEquals(List.of(session), sessions);
+        assertEquals(List.of(message), messages);
+        verify(chatSessionRepository).findByStudentId(studentId, 1, 5);
+        verify(chatSessionRepository).close(sessionId, NOW);
+        verify(chatMessageRepository).deleteBySessionId(sessionId);
+        verify(chatSessionRepository).deleteById(sessionId);
     }
 
     @Test

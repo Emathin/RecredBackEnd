@@ -2,11 +2,11 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.UsuarioRepository;
-import com.recred.backend.infrastructure.entities.ColegioEntity;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.ColegioEntity;
+import com.recred.backend.infrastructure.entities.KiosqueroEntity;
 import com.recred.backend.infrastructure.entities.TutorEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
-import com.recred.backend.infrastructure.entities.KiosqueroEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -93,5 +93,11 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
     @Transactional
     public void updateFotoPerfil(String idCognito, String urlFotoPerfil) {
         springDataUsuarioRepository.updateFotoPerfil(idCognito, urlFotoPerfil);
+    }
+
+    @Override
+    @Transactional
+    public void updateFotoPerfilByUsuarioId(UUID usuarioId, String urlFotoPerfil) {
+        springDataUsuarioRepository.updateFotoPerfilByUsuarioId(usuarioId, urlFotoPerfil);
     }
 }

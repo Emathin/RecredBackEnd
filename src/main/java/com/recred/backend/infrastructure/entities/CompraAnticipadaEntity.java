@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToOne;
@@ -16,7 +16,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class CompraAnticipadaEntity extends CompraEntity {
 
-    @Column(name = "codigo_verificacion", length = 10)
+    @Column(name = "codigo_verificacion", length = 50)
     private String codigoVerificacion;
 
     @OneToOne(mappedBy = "compraEntity", cascade = CascadeType.ALL, orphanRemoval = true)

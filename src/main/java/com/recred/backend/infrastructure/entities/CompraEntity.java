@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.entities;
 
-import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.BuyerType;
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoCompra;
@@ -155,7 +155,15 @@ public abstract class CompraEntity {
         if (this.detalles != null) {
             domain.setItems(this.detalles.stream()
                     .collect(Collectors.toMap(
-                            d -> d.getProductoEntity().toDomain(),
+                            d -> {
+                                com.recred.backend.domain.models.Producto p =
+                                        d.getProductoEntity().toDomain();
+                                if (d.getPromotionEntity() != null) {
+                                    p.setPromocionId(d.getPromotionEntity().getId());
+                                    p.setPromocionNombre(d.getPromotionEntity().getName());
+                                }
+                                return p;
+                            },
                             CompraDetalleEntity::getCantidad
                     )));
         }

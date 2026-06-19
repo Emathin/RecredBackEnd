@@ -3,6 +3,8 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.BudgetSummaryDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.ChildDashboardDTO;
@@ -23,28 +25,39 @@ public class GetTutorGlobalDashboard {
     private final GetStudentRewardStatus getStudentRewardStatus;
     private final PredictStudentSpending predictStudentSpending;
     private final GetStudentHistory getStudentHistory;
+    private final TutorRepository tutorRepository;
 
     public GetTutorGlobalDashboard(GetChildrenByParent getChildrenByParent,
                                    GetActiveBudgetByStudent getActiveBudgetByStudent,
                                    GetStudentRewardStatus getStudentRewardStatus,
                                    PredictStudentSpending predictStudentSpending,
-                                   GetStudentHistory getStudentHistory) {
+                                   GetStudentHistory getStudentHistory,
+                                   TutorRepository tutorRepository) {
         this.getChildrenByParent = getChildrenByParent;
         this.getActiveBudgetByStudent = getActiveBudgetByStudent;
         this.getStudentRewardStatus = getStudentRewardStatus;
         this.predictStudentSpending = predictStudentSpending;
         this.getStudentHistory = getStudentHistory;
+        this.tutorRepository = tutorRepository;
     }
 
     public TutorGlobalDashboardDTO executeByCognitoSubject(String cognitoSubject) {
         Set<Alumno> hijos = getChildrenByParent.executeByCognitoSubject(cognitoSubject);
         BigDecimal totalBalance = BigDecimal.ZERO;
+        BigDecimal totalDebt = BigDecimal.ZERO;
         List<ChildDashboardDTO> childrenDashboards = new ArrayList<>();
 
         for (Alumno alumno : hijos) {
             BigDecimal balance = alumno.getBilletera() != null 
                     ? alumno.getBilletera().getSaldoCreditos() : BigDecimal.ZERO;
             totalBalance = totalBalance.add(balance);
+
+            BigDecimal debt = alumno.getBilletera() != null 
+                    ? alumno.getBilletera().getSaldoDeudaInterno() : BigDecimal.ZERO;
+            if (debt == null) {
+                debt = BigDecimal.ZERO;
+            }
+            totalDebt = totalDebt.add(debt);
 
             Optional<PresupuestoAlumno> presupuestoOpt = getActiveBudgetByStudent
                     .execute(alumno.getId());
@@ -107,6 +120,7 @@ public class GetTutorGlobalDashboard {
                     alumno.getId(),
                     stuName,
                     balance,
+                    debt,
                     predictionMsg,
                     budgetDto,
                     healthDto,
@@ -116,7 +130,11 @@ public class GetTutorGlobalDashboard {
             ));
         }
 
-        return new TutorGlobalDashboardDTO("ME", totalBalance, childrenDashboards);
+        Tutor tutor = tutorRepository.findByUsuarioIdCognito(cognitoSubject).orElse(null);
+        String dashboardConfig = tutor != null ? tutor.getDashboardConfig() : null;
+
+        return new TutorGlobalDashboardDTO("ME", totalBalance, totalDebt, 
+                dashboardConfig, childrenDashboards);
     }
 
     private String getPurchaseName(Purchase p) {

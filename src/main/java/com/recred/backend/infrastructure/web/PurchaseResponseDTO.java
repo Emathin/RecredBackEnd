@@ -55,9 +55,45 @@ public class PurchaseResponseDTO {
         }
 
         if (purchase.getItems() != null) {
-            this.items = purchase.getItems().entrySet().stream()
-                    .map(entry -> purchaseItem(entry.getKey(), entry.getValue()))
-                    .collect(Collectors.toList());
+            this.items = new java.util.ArrayList<>();
+
+            java.util.Map<UUID, java.util.List<java.util.Map.Entry<
+                    com.recred.backend.domain.models.Producto, Integer>>> promoGroups =
+                purchase.getItems().entrySet().stream()
+                    .filter(entry -> entry.getKey().getPromocionId() != null)
+                    .collect(Collectors.groupingBy(entry -> entry.getKey().getPromocionId()));
+
+            purchase.getItems().entrySet().stream()
+                .filter(entry -> entry.getKey().getPromocionId() == null)
+                .forEach(entry -> {
+                    this.items.add(purchaseItem(entry.getKey(), entry.getValue()));
+                });
+
+            promoGroups.forEach((promoId, entries) -> {
+                if (!entries.isEmpty()) {
+                    String promoName = entries.get(0).getKey().getPromocionNombre();
+                    int quantity = entries.get(0).getValue();
+
+                    BigDecimal unitPrice = entries.stream()
+                        .map(entry -> entry.getKey().getPrecio())
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    PurchaseItemDTO promoItem = new PurchaseItemDTO(
+                        promoId,
+                        promoName,
+                        quantity,
+                        unitPrice
+                    );
+
+                    boolean requierePrep = entries.stream()
+                        .anyMatch(entry -> Boolean.TRUE.equals(
+                                entry.getKey().getRequierePreparacion()
+                        ));
+                    promoItem.setRequierePreparacion(requierePrep);
+
+                    this.items.add(promoItem);
+                }
+            });
         }
     }
 

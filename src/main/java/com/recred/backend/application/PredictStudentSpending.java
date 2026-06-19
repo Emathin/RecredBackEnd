@@ -1,22 +1,23 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.BudgetPeriod;
-import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.models.BudgetPeriod;
 import com.recred.backend.domain.models.ConsumptionCategory;
-import com.recred.backend.domain.models.PurchaseSpending;
-import com.recred.backend.domain.models.SpendingPrediction;
-import com.recred.backend.domain.models.SpendingPredictionResult;
-import com.recred.backend.domain.models.SpendingPeriodPreference;
 import com.recred.backend.domain.models.DateRange;
+import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.PurchaseSpending;
+import com.recred.backend.domain.models.SpendingPeriodPreference;
+import com.recred.backend.domain.models.SpendingPrediction;
+import com.recred.backend.domain.models.SpendingPredictionAnalysis;
+import com.recred.backend.domain.models.SpendingPredictionResult;
+import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
-import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
-import com.recred.backend.domain.services.SpendingPredictionRangeService;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,7 +26,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.transaction.annotation.Transactional;
 
 public class PredictStudentSpending {
 
@@ -39,7 +39,6 @@ public class PredictStudentSpending {
     private final PurchaseSpendingRepository purchaseSpendingRepository;
     private final SpendingPredictionAnalyzer spendingPredictionAnalyzer;
     private final AIEventRepository aiEventRepository;
-    private final SpendingPredictionRangeService spendingPredictionRangeService;
     private final SpendingPredictionCalculator spendingPredictionCalculator;
     private final Clock clock;
 
@@ -49,7 +48,6 @@ public class PredictStudentSpending {
             PurchaseSpendingRepository purchaseSpendingRepository,
             SpendingPredictionAnalyzer spendingPredictionAnalyzer,
             AIEventRepository aiEventRepository,
-            SpendingPredictionRangeService spendingPredictionRangeService,
             SpendingPredictionCalculator spendingPredictionCalculator,
             Clock clock
     ) {
@@ -58,7 +56,6 @@ public class PredictStudentSpending {
         this.purchaseSpendingRepository = purchaseSpendingRepository;
         this.spendingPredictionAnalyzer = spendingPredictionAnalyzer;
         this.aiEventRepository = aiEventRepository;
-        this.spendingPredictionRangeService = spendingPredictionRangeService;
         this.spendingPredictionCalculator = spendingPredictionCalculator;
         this.clock = clock;
     }
@@ -73,7 +70,7 @@ public class PredictStudentSpending {
                 calculationDate
         );
         BudgetPeriod period = resolvePeriod(requestedPeriod, preference);
-        DateRange currentRange = spendingPredictionRangeService.calculate(period, calculationDate);
+        DateRange currentRange = DateRange.fromBudgetPeriod(period, calculationDate);
         DateRange historicalRange = new DateRange(
                 currentRange.startDate().minusDays(HISTORICAL_DAYS),
                 currentRange.startDate().minusDays(1)

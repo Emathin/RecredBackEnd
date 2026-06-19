@@ -31,14 +31,14 @@ import com.recred.backend.domain.models.SchoolAssistantActionType;
 import com.recred.backend.domain.models.SchoolAssistantAnswer;
 import com.recred.backend.domain.models.SchoolAssistantCapability;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
+import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
 import com.recred.backend.domain.models.SchoolAssistantPurchase;
 import com.recred.backend.domain.models.SchoolAssistantRequiredInput;
-import com.recred.backend.domain.models.SchoolAssistantIntent;
-import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.models.SchoolAssistantRole;
 import com.recred.backend.domain.models.SchoolAssistantSuggestion;
+import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.models.TipoDiaEscolar;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
@@ -56,6 +56,13 @@ import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -67,12 +74,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -327,6 +328,35 @@ class AskSchoolAssistantTest {
         assertEquals(sessionId, answer.sessionId());
         verify(chatSessionRepository).startForStudent(studentId, NOW);
         verify(walletRepository).findByStudentId(studentId);
+    }
+
+    @Test
+    void executeForStudentResolvesStudentIdFromAuthenticatedUser() {
+        String cognitoSubject = "student-sub";
+        UUID userId = UUID.randomUUID();
+
+        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(user(userId)));
+        when(alumnoRepository.existsById(userId)).thenReturn(false);
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
+        when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
+        when(paymentRepository.findRecentByStudentId(studentId, 5)).thenReturn(List.of());
+        when(purchaseRepository.findRecentByStudentId(studentId, 10)).thenReturn(List.of());
+        when(schoolCalendarRepository.findByStudentIdAndDateRange(
+                studentId,
+                LocalDate.of(2026, 5, 27),
+                LocalDate.of(2026, 6, 26)
+        )).thenReturn(List.of());
+        when(schoolAssistantResponder.respond(any())).thenReturn(Optional.empty());
+
+        SchoolAssistantAnswer answer = askSchoolAssistant.executeForStudent(
+                cognitoSubject,
+                new SchoolAssistantCommand(Optional.empty(), "saldo")
+        );
+
+        assertEquals(sessionId, answer.sessionId());
+        verify(chatSessionRepository).startForStudent(studentId, NOW);
     }
 
     @Test

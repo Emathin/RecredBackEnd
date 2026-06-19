@@ -1,5 +1,6 @@
 package com.recred.backend.infrastructure.persistence;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.models.AIEventType;
 import com.recred.backend.domain.models.ConsumptionCategory;
 import com.recred.backend.domain.models.Kiosquero;
@@ -13,12 +14,12 @@ import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.repositories.AIEventRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.infrastructure.entities.AIEventEntity;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import jakarta.persistence.EntityManager;
+import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -27,8 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-
-import org.springframework.stereotype.Component;
 
 @Component
 public class AIEventPersistenceRepository implements AIEventRepository {
@@ -69,6 +68,7 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         ).stream().map(this::mapToResult).toList();
     }
 
+    @SuppressWarnings("unchecked")
     private ProductRecommendationResult mapToResult(AIEventEntity entity) {
         ProductChangeRecommendation recommendation = new ProductChangeRecommendation();
         recommendation.setId(entity.getProductoEntity().getId());
@@ -165,6 +165,7 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         return data;
     }
     @Override
+    @SuppressWarnings("unchecked")
     public void registerProductChangeRecommendation(ProductRecommendationResult result) {
         AIEventEntity aiEventEntity = new AIEventEntity();
         aiEventEntity.setType(AIEventType.PRODUCTO_CAMBIO);

@@ -1,21 +1,26 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.PredictStudentSpending;
+import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.models.BudgetPeriod;
-import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
+import com.recred.backend.domain.models.ConsumptionCategory;
+import com.recred.backend.domain.models.PurchaseSpending;
+import com.recred.backend.domain.models.SpendingPeriodPreference;
+import com.recred.backend.domain.models.SpendingPredictionAnalysis;
+import com.recred.backend.domain.models.SpendingPredictionResult;
+import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PurchaseSpendingRepository;
 import com.recred.backend.domain.repositories.SpendingPreferenceRepository;
-import com.recred.backend.domain.repositories.AIEventRepository;
-import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
-import com.recred.backend.domain.models.SpendingPredictionAnalysis;
-import com.recred.backend.domain.models.ConsumptionCategory;
-import com.recred.backend.domain.models.PurchaseSpending;
-import com.recred.backend.domain.models.SpendingPrediction;
-import com.recred.backend.domain.models.SpendingPredictionResult;
-import com.recred.backend.domain.models.SpendingPeriodPreference;
+import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
-import com.recred.backend.domain.services.SpendingPredictionRangeService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -25,12 +30,6 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -74,7 +73,6 @@ class PredictStudentSpendingTest {
                 purchaseSpendingRepository,
                 spendingPredictionAnalyzer,
                 aiEventRepository,
-                new SpendingPredictionRangeService(),
                 new SpendingPredictionCalculator(),
                 CLOCK
         );

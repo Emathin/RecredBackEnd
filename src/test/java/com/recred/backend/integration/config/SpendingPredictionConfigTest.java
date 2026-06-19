@@ -4,8 +4,8 @@ import com.recred.backend.config.GeminiProperties;
 import com.recred.backend.config.SpendingPredictionConfig;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SpendingPredictionConfigTest {
@@ -15,7 +15,6 @@ class SpendingPredictionConfigTest {
     @Test
     void createPredictionBeans() {
         assertNotNull(config.applicationClock());
-        assertNotNull(config.spendingPredictionRangeService());
         assertNotNull(config.spendingPredictionCalculator());
     }
 

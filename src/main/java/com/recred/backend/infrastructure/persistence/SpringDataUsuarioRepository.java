@@ -29,4 +29,15 @@ public interface SpringDataUsuarioRepository extends
             @Param("urlFotoPerfil") String urlFotoPerfil
     );
 
+    @Modifying
+    @Query("""
+            UPDATE UsuarioEntity u
+            SET u.urlFotoPerfil = :urlFotoPerfil
+            WHERE u.id = :usuarioId
+            """)
+    void updateFotoPerfilByUsuarioId(
+            @Param("usuarioId") java.util.UUID usuarioId,
+            @Param("urlFotoPerfil") String urlFotoPerfil
+    );
+
 }

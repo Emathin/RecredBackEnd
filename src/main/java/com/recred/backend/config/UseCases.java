@@ -1,6 +1,7 @@
 package com.recred.backend.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.AddFavoriteProduct;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
@@ -110,6 +111,7 @@ import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePurchaseStatus;
 import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.application.UploadProductImage;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
 import com.recred.backend.domain.events.ProductPriceChangedPublisher;
@@ -181,7 +183,6 @@ import com.recred.backend.domain.services.RecessTimeSlotResolver;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
-import com.recred.backend.domain.services.SpendingPredictionRangeService;
 import com.recred.backend.domain.services.TimeRestrictionValidatorService;
 import com.recred.backend.domain.services.TutorService;
 import com.recred.backend.domain.services.UserService;
@@ -228,11 +229,6 @@ public class UseCases {
     }
 
     @Bean
-    public WithdrawalCodeServiceImpl withdrawalCodeServiceImpl() {
-        return new WithdrawalCodeServiceImpl();
-    }
-
-    @Bean
     public PurchaseValidatorImpl purchaseValidatorImpl(
             TimeRestrictionValidatorService timeRestrictionValidatorService,
             HealthRestrictionValidatorService healthRestrictionValidatorService,
@@ -276,8 +272,8 @@ public class UseCases {
     }
 
     @Bean
-    public WithdrawalCodeService withdrawalCodeService() {
-        return new WithdrawalCodeServiceImpl();
+    public WithdrawalCodeService withdrawalCodeService(PurchaseRepository purchaseRepository) {
+        return new WithdrawalCodeServiceImpl(purchaseRepository);
     }
 
     @Bean
@@ -294,6 +290,7 @@ public class UseCases {
             SpringDataBuffetRepository buffetRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
+            PromotionRepository promotionRepository,
             MovimientoBilleteraRepository movimientoBilleteraRepository) {
         return new CreateAdvancePurchase(
                 purchaseValidator,
@@ -308,6 +305,7 @@ public class UseCases {
                 buffetRepository,
                 usuarioRepository,
                 tutorRepository,
+                promotionRepository,
                 movimientoBilleteraRepository);
     }
 
@@ -388,6 +386,14 @@ public class UseCases {
                 alumnoRepository,
                 gradoRepository,
                 cognitoStudentIdentityService);
+    }
+
+    @Bean
+    public ActualizarFotoAlumno actualizarFotoAlumno(
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            AlumnoRepository alumnoRepository) {
+        return new ActualizarFotoAlumno(usuarioRepository, tutorRepository, alumnoRepository);
     }
 
     @Bean
@@ -763,7 +769,6 @@ public class UseCases {
             PurchaseSpendingRepository purchaseSpendingRepository,
             SpendingPredictionAnalyzer spendingPredictionAnalyzer,
             AIEventRepository aiEventRepository,
-            SpendingPredictionRangeService spendingPredictionRangeService,
             SpendingPredictionCalculator spendingPredictionCalculator,
             Clock clock) {
         return new PredictStudentSpending(
@@ -772,7 +777,6 @@ public class UseCases {
                 purchaseSpendingRepository,
                 spendingPredictionAnalyzer,
                 aiEventRepository,
-                spendingPredictionRangeService,
                 spendingPredictionCalculator,
                 clock);
     }
@@ -838,8 +842,13 @@ public class UseCases {
     @Bean
     public CheckBudgetDates checkBudgetDates(
             ProductRepository productRepository,
+            PromotionRepository promotionRepository,
             BudgetValidatorService budgetValidatorService) {
-        return new CheckBudgetDates(productRepository, budgetValidatorService);
+        return new CheckBudgetDates(
+                productRepository,
+                promotionRepository,
+                budgetValidatorService
+        );
     }
 
     @Bean
@@ -1271,13 +1280,16 @@ public class UseCases {
             GetActiveBudgetByStudent getActiveBudgetByStudent,
             GetStudentRewardStatus getStudentRewardStatus,
             PredictStudentSpending predictStudentSpending,
-            GetStudentHistory getStudentHistory) {
+            GetStudentHistory getStudentHistory,
+            TutorRepository tutorRepository) {
         return new GetTutorGlobalDashboard(
                 getChildrenByParent,
                 getActiveBudgetByStudent,
                 getStudentRewardStatus,
                 predictStudentSpending,
-                getStudentHistory);
+                getStudentHistory,
+                tutorRepository
+        );
     }
 
     @Bean
@@ -1285,6 +1297,11 @@ public class UseCases {
             com.recred.backend.infrastructure.cloudinary.CloudinaryService cloudinaryService,
             InventoryRepository inventoryRepository) {
         return new UploadProductImage(cloudinaryService, inventoryRepository);
+    }
+
+    @Bean
+    public UpdateTutorDashboardConfig updateTutorDashboardConfig(TutorRepository tutorRepository) {
+        return new UpdateTutorDashboardConfig(tutorRepository);
     }
 
     @Bean

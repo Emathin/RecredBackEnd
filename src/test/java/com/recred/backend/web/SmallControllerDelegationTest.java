@@ -6,6 +6,7 @@ import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetBuffetByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.GetTutorGlobalDashboard;
+import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.FranjaHoraria;
@@ -45,6 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -53,6 +55,8 @@ class SmallControllerDelegationTest {
 
     @Mock
     private GetTutorGlobalDashboard getTutorGlobalDashboard;
+    @Mock
+    private UpdateTutorDashboardConfig updateTutorDashboardConfig;
     @Mock
     private GetTimeSlotsBySchool getTimeSlotsBySchool;
     @Mock
@@ -71,11 +75,13 @@ class SmallControllerDelegationTest {
         TutorGlobalDashboardDTO dashboard = new TutorGlobalDashboardDTO(
                 UUID.randomUUID().toString(),
                 BigDecimal.TEN,
+                BigDecimal.ZERO,
+                null,
                 List.of()
         );
         when(getTutorGlobalDashboard.executeByCognitoSubject("sub")).thenReturn(dashboard);
         TutorGlobalDashboardController controller =
-                new TutorGlobalDashboardController(getTutorGlobalDashboard);
+                new TutorGlobalDashboardController(getTutorGlobalDashboard, updateTutorDashboardConfig);
 
         ResponseEntity<TutorGlobalDashboardDTO> response = controller.getGlobalDashboard(
                 new UsernamePasswordAuthenticationToken("sub", null)
@@ -87,8 +93,8 @@ class SmallControllerDelegationTest {
 
     @Test
     void tutorGlobalDashboardWithoutAuthenticationShouldThrow() {
-        TutorGlobalDashboardController controller =
-                new TutorGlobalDashboardController(getTutorGlobalDashboard);
+        UpdateTutorDashboardConfig updateConfig = mock(UpdateTutorDashboardConfig.class);
+        TutorGlobalDashboardController controller = new TutorGlobalDashboardController(getTutorGlobalDashboard, updateConfig);
 
         assertThrows(AuthenticationCredentialsNotFoundException.class,
                 () -> controller.getGlobalDashboard(null));
