@@ -222,11 +222,6 @@ public class UseCases {
     }
 
     @Bean
-    public WithdrawalCodeServiceImpl withdrawalCodeServiceImpl() {
-        return new WithdrawalCodeServiceImpl();
-    }
-
-    @Bean
     public PurchaseValidatorImpl purchaseValidatorImpl(
             ValidadorHorarioService validadorHorarioService,
             ValidacionRestriccionesService validacionRestriccionesService,
@@ -270,8 +265,8 @@ public class UseCases {
     }
 
     @Bean
-    public WithdrawalCodeService withdrawalCodeService() {
-        return new WithdrawalCodeServiceImpl();
+    public WithdrawalCodeService withdrawalCodeService(PurchaseRepository purchaseRepository) {
+        return new WithdrawalCodeServiceImpl(purchaseRepository);
     }
 
     @Bean

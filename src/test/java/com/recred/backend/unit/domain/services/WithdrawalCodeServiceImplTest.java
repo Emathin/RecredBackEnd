@@ -1,50 +1,96 @@
 package com.recred.backend.unit.domain.services;
 
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.WithdrawalCodeServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
-import java.util.Arrays;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 class WithdrawalCodeServiceImplTest {
 
-    private final WithdrawalCodeServiceImpl service = new WithdrawalCodeServiceImpl();
+    @Mock
+    private PurchaseRepository purchaseRepository;
 
-    private static final List<String> PALABRAS_VALIDAS = Arrays.asList(
-        "GATO", "PERRO", "LEON", "TIGRE", "OSO", "PATO", "SAPO", "LOBO", "ZORRO", "MONO",
-        "VACA", "TORO", "PUMA", "FOCA", "LORO", "CABRA", "CEBRA", "JIRAFA", "RATON", "CONEJO",
-        "OVEJA", "CERDO", "GALLO", "PULPO", "BALLENA", "DELFIN", "TIBURON", "TORTUGA", "RANA",
-        "AGUILA", "LAMA", "PANDA", "KOALA", "CISNE", "BUHO", "ERIZO",
-        "ROJO", "AZUL", "VERDE", "AMARILLO", "ROSA", "GRIS", "MARRON", "NEGRO", "BLANCO",
-        "NARANJA", "VIOLETA", "PURPURA", "CELESTE", "DORADO", "PLATEADO", "TURQUESA", "FUCSIA",
-        "BEIGE", "LILA", "SALMON", "CREMA", "OLIVA", "CORAL", "ARENA",
-        "MATEO", "LUCAS", "SOFIA", "JUAN", "MARIA", "PEDRO", "ANA", "LUIS", "DIEGO", "PABLO",
-        "TOMAS", "ENZO", "LOLA", "EMMA", "HUGO", "LEO", "VALEN", "SANTI", "BAUTI", "JOACO",
-        "COTI", "MARTU", "MILI", "JULI", "FRAN", "NACHO", "TOBI", "BRUNO", "CLARA", "DANTE",
-        "ELENA", "FELIPE", "GASTON", "IVAN", "LAURA", "MANUEL", "OLIVIA", "ROQUE", "SIMON",
-        "SOL", "LUNA", "ESTRELLA", "NUBE", "RIO", "MAR", "FLOR", "ARBOL", "CASA", "MESA",
-        "SILLA", "LAPIZ", "LIBRO", "TAZA", "PLATO", "MANZANA", "PLATANO", "LIMON", "QUESO",
-        "PAN", "LECHE", "AGUA", "MIEL", "DULCE", "TORTA", "PIZZA", "PASTA", "ARROZ", "VIENTO",
-        "FUEGO", "TIERRA", "MONTAÑA", "BOSQUE", "PIEDRA", "ISLA", "LAGO", "CIELO"
-    );
+    @InjectMocks
+    private WithdrawalCodeServiceImpl service;
 
-    @Test
-    void shouldGenerateCodeFromPredefinedList() {
-        Purchase purchase = new Purchase();
-        
-        for (int i = 0; i < 100; i++) {
-            String code = service.generateCode(purchase);
-            assertNotNull(code);
-            assertTrue(PALABRAS_VALIDAS.contains(code), "Generated code " + code + " is not in the predefined list");
-            assertEquals(code, code.toUpperCase(), "Generated code " + code + " must be uppercase");
-        }
+    @BeforeEach
+    void setUp() {
+        // Inicializamos los mocks antes de cada test
+        MockitoAnnotations.openMocks(this);
     }
 
-    private void assertEquals(String expected, String actual, String message) {
-        org.junit.jupiter.api.Assertions.assertEquals(expected, actual, message);
+    @Test
+    void shouldGenerateCodeSuccessfullyFirstTry() {
+        Purchase purchase = new Purchase();
+
+        // Simulamos que el código generado NO está en uso
+        when(purchaseRepository.existsByVerificationCodeAndStatusIn(anyString(), anyList()))
+                .thenReturn(false);
+
+        String code = service.generateCode(purchase);
+
+        // Verificamos que el código no sea nulo
+        assertNotNull(code);
+
+        // Verificamos el formato esperado (ej. TIGRE-AZUL)
+        assertTrue(code.contains("-"), "El código generado debe contener un guion separador");
+        assertEquals(code, code.toUpperCase(), "El código debe estar completamente en mayúsculas");
+        assertFalse(code.contains(" "), "El código no debe contener espacios en blanco");
+
+        // Verificamos que la base de datos fue consultada exactamente 1 vez
+        verify(purchaseRepository, times(1))
+                .existsByVerificationCodeAndStatusIn(anyString(), anyList());
+    }
+
+    @Test
+    void shouldRetryWhenCodeIsInUse() {
+        Purchase purchase = new Purchase();
+
+        // Simulamos que el primer código generado SÍ está en uso, pero el segundo está
+        // libre
+        when(purchaseRepository.existsByVerificationCodeAndStatusIn(anyString(), anyList()))
+                .thenReturn(true) // Intento 1: Falla
+                .thenReturn(false); // Intento 2: Pasa
+
+        String code = service.generateCode(purchase);
+
+        assertNotNull(code);
+
+        // Verificamos que la base de datos fue consultada exactamente 2 veces por el
+        // bucle do-while
+        verify(purchaseRepository, times(2))
+                .existsByVerificationCodeAndStatusIn(anyString(), anyList());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenMaxRetriesExceeded() {
+        Purchase purchase = new Purchase();
+
+        // Simulamos el peor escenario: TODOS los códigos generados siempre están en uso
+        when(purchaseRepository.existsByVerificationCodeAndStatusIn(anyString(), anyList()))
+                .thenReturn(true);
+
+        // Verificamos que al pasarse del límite salte el error esperado
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            service.generateCode(purchase);
+        });
+
+        // Verificamos el mensaje de la excepción para confirmar que es nuestra
+        // validación
+        assertTrue(exception.getMessage().contains("No se pudo generar un código único"));
+
+        // Verificamos que la base de datos fue consultada 11 veces (el límite que le
+        // pusimos al contador)
+        verify(purchaseRepository, times(11))
+                .existsByVerificationCodeAndStatusIn(anyString(), anyList());
     }
 }

@@ -1,37 +1,47 @@
 package com.recred.backend.domain.services;
 
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
-import java.util.Random;
+import com.recred.backend.domain.repositories.PurchaseRepository;
+import net.datafaker.Faker;
+
+import java.util.List;
+import java.util.Locale;
 
 public class WithdrawalCodeServiceImpl implements WithdrawalCodeService {
 
-    private static final Random RANDOM = new Random();
+    private final Faker faker = new Faker(new Locale("es", "AR"));
+    private final PurchaseRepository purchaseRepository;
 
-    private static final String[] PALABRAS = {
-        "GATO", "PERRO", "LEON", "TIGRE", "OSO", "PATO", "SAPO", "LOBO", "ZORRO", "MONO",
-        "VACA", "TORO", "PUMA", "FOCA", "LORO", "CABRA", "CEBRA", "JIRAFA", "RATON", "CONEJO",
-        "OVEJA", "CERDO", "GALLO", "PULPO", "BALLENA", "DELFIN", "TIBURON", "TORTUGA", "RANA",
-        "AGUILA", "LAMA", "PANDA", "KOALA", "CISNE", "BUHO", "ERIZO",
-        "ROJO", "AZUL", "VERDE", "AMARILLO", "ROSA", "GRIS", "MARRON", "NEGRO", "BLANCO",
-        "NARANJA", "VIOLETA", "PURPURA", "CELESTE", "DORADO", "PLATEADO", "TURQUESA", "FUCSIA",
-        "BEIGE", "LILA", "SALMON", "CREMA", "OLIVA", "CORAL", "ARENA",
-        "MATEO", "LUCAS", "SOFIA", "JUAN", "MARIA", "PEDRO", "ANA", "LUIS", "DIEGO", "PABLO",
-        "TOMAS", "ENZO", "LOLA", "EMMA", "HUGO", "LEO", "VALEN", "SANTI", "BAUTI", "JOACO",
-        "COTI", "MARTU", "MILI", "JULI", "FRAN", "NACHO", "TOBI", "BRUNO", "CLARA", "DANTE",
-        "ELENA", "FELIPE", "GASTON", "IVAN", "LAURA", "MANUEL", "OLIVIA", "ROQUE", "SIMON",
-        "SOL", "LUNA", "ESTRELLA", "NUBE", "RIO", "MAR", "FLOR", "ARBOL", "CASA", "MESA",
-        "SILLA", "LAPIZ", "LIBRO", "TAZA", "PLATO", "MANZANA", "PLATANO", "LIMON", "QUESO",
-        "PAN", "LECHE", "AGUA", "MIEL", "DULCE", "TORTA", "PIZZA", "PASTA", "ARROZ", "VIENTO",
-        "FUEGO", "TIERRA", "MONTAÑA", "BOSQUE", "PIEDRA", "ISLA", "LAGO", "CIELO"
-    };
+    public WithdrawalCodeServiceImpl(PurchaseRepository purchaseRepository) {
+        this.purchaseRepository = purchaseRepository;
+    }
 
     @Override
     public String generateCode(Purchase purchase) {
-        int index = RANDOM.nextInt(PALABRAS.length);
-        return PALABRAS[index];
-    }
+        String code;
+        boolean codigoEnUso;
+        int intentos = 0;
 
-    public WithdrawalCodeServiceImpl() {
+        do {
+            String animal = faker.animal().name().toUpperCase().replace(" ", "");
+            String color = faker.color().name().toUpperCase().replace(" ", "");
+
+            code = animal + "-" + color;
+
+            codigoEnUso = purchaseRepository.existsByVerificationCodeAndStatusIn(
+                    code,
+                    List.of(EstadoCompra.PENDIENTE,
+                            EstadoCompra.EN_PREPARACION, EstadoCompra.LISTO));
+
+            intentos++;
+            if (intentos > 10) {
+                throw new RuntimeException
+                        ("No se pudo generar un código único de retiro temporal.");
+            }
+
+        } while (codigoEnUso);
+
+        return code;
     }
 }
-

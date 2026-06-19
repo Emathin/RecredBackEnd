@@ -52,8 +52,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     @Autowired
     public PurchaseRepositoryImpl(
             SpringDataPurchaseRepository springDataRepository,
-            KiosqueroRealtimeEventPublisher realtimeEventPublisher
-    ) {
+            KiosqueroRealtimeEventPublisher realtimeEventPublisher) {
         this.springDataRepository = springDataRepository;
         this.realtimeEventPublisher = realtimeEventPublisher;
     }
@@ -162,8 +161,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
                 purchase.getBuffetId(),
                 purchaseDate(purchase),
                 KiosqueroRealtimeChangeKind.ORDER_CHANGED,
-                reason
-        ));
+                reason));
     }
 
     private LocalDate purchaseDate(Purchase purchase) {
@@ -196,7 +194,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         }
 
         RetiroProgramadoEntity retiro = Optional.ofNullable(
-                        compraAnticipadaEntity.getRetiroProgramadoEntity())
+                compraAnticipadaEntity.getRetiroProgramadoEntity())
                 .orElseGet(RetiroProgramadoEntity::new);
         FranjaHorariaEntity franja = new FranjaHorariaEntity();
         franja.setId(purchase.getPickupSlotId());
@@ -237,8 +235,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
                 EstadoCompra.ENTREGADO,
                 EstadoCompra.PENDIENTE,
                 EstadoCompra.EN_PREPARACION,
-                EstadoCompra.LISTO
-        );
+                EstadoCompra.LISTO);
         BigDecimal anticipadas = springDataRepository.sumarGastosAnticipadosEnRango(
                 alumnoId, estadosAnticipados, inicio.toLocalDate(), fin.toLocalDate());
 
@@ -255,8 +252,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
                 EstadoCompra.ENTREGADO,
                 EstadoCompra.PENDIENTE,
                 EstadoCompra.EN_PREPARACION,
-                EstadoCompra.LISTO
-        );
+                EstadoCompra.LISTO);
         BigDecimal anticipadas = springDataRepository.sumarGastosAnticipadosPorCategoriaEnRango(
                 alumnoId, estadosAnticipados, categoriaId, inicio.toLocalDate(), fin.toLocalDate());
 
@@ -267,8 +263,8 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     @Transactional(readOnly = true)
     public List<PreferenceAIRepository.CompraResumen> findLastPurchasesByAlumno(
             UUID alumnoId, int limit) {
-        List<CompraEntity> compras =
-                springDataRepository.findLastByAlumno(alumnoId, PageRequest.of(0, limit));
+        List<CompraEntity> compras = springDataRepository.findLastByAlumno(alumnoId,
+                PageRequest.of(0, limit));
 
         return compras.stream()
                 .flatMap(c -> c.getDetalles().stream())
@@ -280,8 +276,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
                     return new PreferenceAIRepository.CompraResumen(
                             d.getProductoEntity().getNombre(),
                             categoryName,
-                            d.getCompra().getFechaHora()
-                    );
+                            d.getCompra().getFechaHora());
                 })
                 .limit(limit)
                 .collect(Collectors.toList());
@@ -305,13 +300,12 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     @Override
     @Transactional(readOnly = true)
     public List<Purchase> findByBuffetAndStatuses(UUID buffetId,
-                                                  List<EstadoCompra> statuses,
-                                                  int limit) {
+            List<EstadoCompra> statuses,
+            int limit) {
         return springDataRepository.findByBuffetIdAndStatuses(
-                        buffetId,
-                        statuses,
-                        PageRequest.of(0, limit)
-                )
+                buffetId,
+                statuses,
+                PageRequest.of(0, limit))
                 .stream()
                 .map(CompraEntity::toDomain)
                 .toList();
@@ -320,23 +314,23 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     @Override
     @Transactional(readOnly = true)
     public List<Purchase> findKiosqueroOrders(UUID buffetId,
-                                              List<EstadoCompra> statuses,
-                                              LocalDate date,
-                                              UUID pickupSlotId,
-                                              int limit) {
+            List<EstadoCompra> statuses,
+            LocalDate date,
+            UUID pickupSlotId,
+            int limit) {
         LocalDateTime start = date == null ? null : date.atStartOfDay();
-        LocalDateTime end = date == null ? null : date.plusDays(1)
-                .atStartOfDay()
-                .minusNanos(1);
+        LocalDateTime end = date == null ? null
+                : date.plusDays(1)
+                        .atStartOfDay()
+                        .minusNanos(1);
         return springDataRepository.findKiosqueroOrders(
-                        buffetId,
-                        statuses,
-                        date,
-                        start,
-                        end,
-                        pickupSlotId,
-                        PageRequest.of(0, limit)
-                )
+                buffetId,
+                statuses,
+                date,
+                start,
+                end,
+                pickupSlotId,
+                PageRequest.of(0, limit))
                 .stream()
                 .map(CompraEntity::toDomain)
                 .toList();
@@ -345,8 +339,8 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     @Override
     @Transactional(readOnly = true)
     public List<Purchase> findByBuffetAndDateRange(UUID buffetId,
-                                                   LocalDateTime start,
-                                                   LocalDateTime end) {
+            LocalDateTime start,
+            LocalDateTime end) {
         return springDataRepository.findByBuffetIdAndDateRange(buffetId, start, end)
                 .stream()
                 .map(CompraEntity::toDomain)
@@ -356,8 +350,8 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     @Override
     @Transactional(readOnly = true)
     public List<Purchase> findExpiredAdvancePurchases(LocalDate date,
-                                                      LocalTime time,
-                                                      List<EstadoCompra> statuses) {
+            LocalTime time,
+            List<EstadoCompra> statuses) {
         return springDataRepository.findExpiredAdvancePurchases(date, time, statuses)
                 .stream()
                 .map(CompraEntity::toDomain)
@@ -367,15 +361,14 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     @Override
     @Transactional(readOnly = true)
     public List<Purchase> findExpiredAdvancePurchases(UUID buffetId,
-                                                      LocalDate date,
-                                                      LocalTime time,
-                                                      List<EstadoCompra> statuses) {
+            LocalDate date,
+            LocalTime time,
+            List<EstadoCompra> statuses) {
         return springDataRepository.findExpiredAdvancePurchasesByBuffet(
-                        buffetId,
-                        date,
-                        time,
-                        statuses
-                )
+                buffetId,
+                date,
+                time,
+                statuses)
                 .stream()
                 .map(CompraEntity::toDomain)
                 .toList();
@@ -383,9 +376,9 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
 
     @Override
     public long countScheduledAdvancePurchases(UUID buffetId,
-                                               UUID pickupSlotId,
-                                               LocalDate pickupDate,
-                                               List<EstadoCompra> statuses) {
+            UUID pickupSlotId,
+            LocalDate pickupDate,
+            List<EstadoCompra> statuses) {
         return springDataRepository.countScheduledAdvancePurchases(
                 buffetId,
                 pickupSlotId,
@@ -395,9 +388,9 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
 
     @Override
     public long sumScheduledProductQuantity(UUID buffetId,
-                                            UUID productId,
-                                            LocalDate pickupDate,
-                                            List<EstadoCompra> statuses) {
+            UUID productId,
+            LocalDate pickupDate,
+            List<EstadoCompra> statuses) {
         return springDataRepository.sumScheduledProductQuantity(
                 buffetId,
                 productId,
@@ -459,12 +452,18 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         List<EstadoCompra> estadosPendientes = List.of(
                 EstadoCompra.PENDIENTE,
                 EstadoCompra.EN_PREPARACION,
-                EstadoCompra.LISTO
-        );
+                EstadoCompra.LISTO);
         return springDataRepository
                 .findAllByAlumnoIdAndEstadoInOrderByFechaHoraDesc(alumnoId, estadosPendientes)
                 .stream()
                 .map(CompraEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public boolean existsByVerificationCodeAndStatusIn(String codigoVerificacion,
+                                                       List<EstadoCompra> estados) {
+        return springDataRepository.existsByCodigoVerificacionAndEstadoIn
+                (codigoVerificacion, estados);
     }
 }
