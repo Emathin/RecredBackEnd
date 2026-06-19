@@ -2,7 +2,7 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.DeleteFavoriteCart;
 import com.recred.backend.application.GetFavoriteCartsByTutor;
-import com.recred.backend.application.SaveCarritoFavorito;
+import com.recred.backend.application.SaveFavoriteCart;
 import com.recred.backend.domain.models.CarritoFavorito;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,15 +27,15 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/carritos-favoritos")
 public class CarritoFavoritoController {
 
-    private final SaveCarritoFavorito saveCarritoFavorito;
+    private final SaveFavoriteCart saveFavoriteCart;
     private final GetFavoriteCartsByTutor getFavoriteCartsByTutor;
     private final DeleteFavoriteCart deleteFavoriteCart;
 
     public CarritoFavoritoController(
-            SaveCarritoFavorito saveCarritoFavorito,
+            SaveFavoriteCart saveFavoriteCart,
             GetFavoriteCartsByTutor getFavoriteCartsByTutor,
             DeleteFavoriteCart deleteFavoriteCart) {
-        this.saveCarritoFavorito = saveCarritoFavorito;
+        this.saveFavoriteCart = saveFavoriteCart;
         this.getFavoriteCartsByTutor = getFavoriteCartsByTutor;
         this.deleteFavoriteCart = deleteFavoriteCart;
     }
@@ -43,15 +43,15 @@ public class CarritoFavoritoController {
     @PostMapping
     public ResponseEntity<CarritoFavoritoResponse> saveCart(
             Authentication authentication,
-            @RequestBody SaveCarritoFavoritoRequest request) {
+            @RequestBody SaveFavoriteCartRequest request) {
 
         Map<UUID, Integer> productQuantities = request.items().stream()
                 .collect(Collectors.toMap(
-                        SaveCarritoFavoritoRequest.ItemRequest::productId,
-                        SaveCarritoFavoritoRequest.ItemRequest::quantity
+                        SaveFavoriteCartRequest.ItemRequest::productId,
+                        SaveFavoriteCartRequest.ItemRequest::quantity
                 ));
 
-        CarritoFavorito cart = saveCarritoFavorito.execute(
+        CarritoFavorito cart = saveFavoriteCart.execute(
                 cognitoSubject(authentication),
                 request.id(),
                 request.nombre(),

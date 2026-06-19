@@ -2,7 +2,7 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.DeleteFavoriteCart;
 import com.recred.backend.application.GetFavoriteCartsByTutor;
-import com.recred.backend.application.SaveCarritoFavorito;
+import com.recred.backend.application.SaveFavoriteCart;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CarritoFavorito;
 import com.recred.backend.domain.models.Producto;
@@ -28,18 +28,18 @@ import static org.mockito.Mockito.when;
 
 class CarritoFavoritoControllerTest {
 
-    private SaveCarritoFavorito saveCarritoFavorito;
+    private SaveFavoriteCart saveFavoriteCart;
     private GetFavoriteCartsByTutor getFavoriteCartsByTutor;
     private DeleteFavoriteCart deleteFavoriteCart;
     private CarritoFavoritoController controller;
 
     @BeforeEach
     void setUp() {
-        saveCarritoFavorito = mock(SaveCarritoFavorito.class);
+        saveFavoriteCart = mock(SaveFavoriteCart.class);
         getFavoriteCartsByTutor = mock(GetFavoriteCartsByTutor.class);
         deleteFavoriteCart = mock(DeleteFavoriteCart.class);
         controller = new CarritoFavoritoController(
-                saveCarritoFavorito,
+                saveFavoriteCart,
                 getFavoriteCartsByTutor,
                 deleteFavoriteCart
         );
@@ -51,14 +51,14 @@ class CarritoFavoritoControllerTest {
         UUID cartId = UUID.randomUUID();
         UUID alumnoId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        SaveCarritoFavoritoRequest request = new SaveCarritoFavoritoRequest(
+        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
                 cartId,
                 "Merienda",
                 alumnoId,
-                List.of(new SaveCarritoFavoritoRequest.ItemRequest(productId, 2))
+                List.of(new SaveFavoriteCartRequest.ItemRequest(productId, 2))
         );
         CarritoFavorito cart = cart(cartId, alumnoId, productId);
-        when(saveCarritoFavorito.execute(
+        when(saveFavoriteCart.execute(
                 eq("tutor-sub"),
                 eq(cartId),
                 eq("Merienda"),
@@ -81,7 +81,7 @@ class CarritoFavoritoControllerTest {
 
         ArgumentCaptor<Map<UUID, Integer>> quantitiesCaptor =
                 ArgumentCaptor.forClass(Map.class);
-        verify(saveCarritoFavorito).execute(
+        verify(saveFavoriteCart).execute(
                 eq("tutor-sub"),
                 eq(cartId),
                 eq("Merienda"),
@@ -126,11 +126,11 @@ class CarritoFavoritoControllerTest {
 
     @Test
     void saveCartWithoutAuthenticationThrowsCredentialsException() {
-        SaveCarritoFavoritoRequest request = new SaveCarritoFavoritoRequest(
+        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
                 UUID.randomUUID(),
                 "Merienda",
                 UUID.randomUUID(),
-                List.of(new SaveCarritoFavoritoRequest.ItemRequest(UUID.randomUUID(), 1))
+                List.of(new SaveFavoriteCartRequest.ItemRequest(UUID.randomUUID(), 1))
         );
 
         assertThrows(AuthenticationCredentialsNotFoundException.class,

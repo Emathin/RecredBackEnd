@@ -1,8 +1,8 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.GetChildrenByParent;
+import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.UserService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
@@ -31,18 +31,18 @@ public class TutorController {
     private final GetChildrenByParent getChildrenByParent;
     private final UserService userService;
     private final CreateStudentFromParent createStudentFromParent;
-    private final ActualizarFotoAlumno actualizarFotoAlumno;
+    private final UpdateStudentPhoto updateStudentPhoto;
     private final CloudinaryService cloudinaryService;
 
     public TutorController(GetChildrenByParent getChildrenByParent, 
                            UserService userService,
                            CreateStudentFromParent createStudentFromParent,
-                           ActualizarFotoAlumno actualizarFotoAlumno,
+                           UpdateStudentPhoto updateStudentPhoto,
                            CloudinaryService cloudinaryService) {
         this.getChildrenByParent = getChildrenByParent;
         this.userService = userService;
         this.createStudentFromParent = createStudentFromParent;
-        this.actualizarFotoAlumno = actualizarFotoAlumno;
+        this.updateStudentPhoto = updateStudentPhoto;
         this.cloudinaryService = cloudinaryService;
     }
 
@@ -108,7 +108,7 @@ public class TutorController {
         String cognitoSub = cognitoSubject(authentication);
         String url = cloudinaryService.uploadImage(foto);
         com.recred.backend.domain.models.Alumno alumno =
-                actualizarFotoAlumno.execute(cognitoSub, alumnoId, url);
+                updateStudentPhoto.execute(cognitoSub, alumnoId, url);
         return ResponseEntity.ok(StudentDTO.fromDomain(alumno));
     }
 

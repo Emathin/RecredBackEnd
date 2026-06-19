@@ -3,7 +3,7 @@ package com.recred.backend.infrastructure.web;
 import java.util.List;
 import java.util.UUID;
 
-public record SaveCarritoFavoritoRequest(
+public record SaveFavoriteCartRequest(
         UUID id,
         String nombre,
         UUID alumnoId,

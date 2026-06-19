@@ -1,7 +1,6 @@
 package com.recred.backend.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.AddFavoriteProduct;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
@@ -96,7 +95,7 @@ import com.recred.backend.application.RemoveFavoriteProduct;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveBulkProducts;
-import com.recred.backend.application.SaveCarritoFavorito;
+import com.recred.backend.application.SaveFavoriteCart;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SchoolAssistantConversations;
 import com.recred.backend.application.SchoolAssistantFixedTopics;
@@ -110,6 +109,7 @@ import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePurchaseStatus;
+import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.application.UploadProductImage;
@@ -389,11 +389,11 @@ public class UseCases {
     }
 
     @Bean
-    public ActualizarFotoAlumno actualizarFotoAlumno(
+    public UpdateStudentPhoto updateStudentPhoto(
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             AlumnoRepository alumnoRepository) {
-        return new ActualizarFotoAlumno(usuarioRepository, tutorRepository, alumnoRepository);
+        return new UpdateStudentPhoto(usuarioRepository, tutorRepository, alumnoRepository);
     }
 
     @Bean
@@ -1213,13 +1213,13 @@ public class UseCases {
     }
 
     @Bean
-    public SaveCarritoFavorito saveCarritoFavorito(
+    public SaveFavoriteCart saveFavoriteCart(
             CarritoFavoritoRepository carritoFavoritoRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             AlumnoRepository alumnoRepository,
             ProductRepository productRepository) {
-        return new SaveCarritoFavorito(
+        return new SaveFavoriteCart(
                 carritoFavoritoRepository,
                 usuarioRepository,
                 tutorRepository,

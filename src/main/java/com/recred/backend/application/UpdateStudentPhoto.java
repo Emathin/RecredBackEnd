@@ -12,15 +12,15 @@ import org.springframework.security.access.AccessDeniedException;
 
 import java.util.UUID;
 
-public class ActualizarFotoAlumno {
+public class UpdateStudentPhoto {
 
     private final UsuarioRepository usuarioRepository;
     private final TutorRepository tutorRepository;
     private final AlumnoRepository alumnoRepository;
 
-    public ActualizarFotoAlumno(UsuarioRepository usuarioRepository,
-                                TutorRepository tutorRepository,
-                                AlumnoRepository alumnoRepository) {
+    public UpdateStudentPhoto(UsuarioRepository usuarioRepository,
+                              TutorRepository tutorRepository,
+                              AlumnoRepository alumnoRepository) {
         this.usuarioRepository = usuarioRepository;
         this.tutorRepository = tutorRepository;
         this.alumnoRepository = alumnoRepository;

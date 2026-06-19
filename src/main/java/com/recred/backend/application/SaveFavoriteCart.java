@@ -16,7 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class SaveCarritoFavorito {
+public class SaveFavoriteCart {
 
     private final CarritoFavoritoRepository carritoFavoritoRepository;
     private final UsuarioRepository usuarioRepository;
@@ -24,7 +24,7 @@ public class SaveCarritoFavorito {
     private final AlumnoRepository alumnoRepository;
     private final ProductRepository productRepository;
 
-    public SaveCarritoFavorito(
+    public SaveFavoriteCart(
             CarritoFavoritoRepository carritoFavoritoRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,

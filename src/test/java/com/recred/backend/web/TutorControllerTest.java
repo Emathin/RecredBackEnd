@@ -1,8 +1,8 @@
 package com.recred.backend.web;
 
-import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.GetChildrenByParent;
+import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.Alumno;
@@ -69,7 +69,7 @@ class TutorControllerTest {
     private JwtDecoder jwtDecoder;
 
     @MockitoBean
-    private ActualizarFotoAlumno actualizarFotoAlumno;
+    private UpdateStudentPhoto updateStudentPhoto;
 
     @MockitoBean
     private CloudinaryService cloudinaryService;
@@ -187,7 +187,7 @@ class TutorControllerTest {
                 getChildrenByParent,
                 userService,
                 createStudentFromParent,
-                actualizarFotoAlumno,
+                updateStudentPhoto,
                 cloudinaryService
         );
         Usuario usuario = new Usuario();
@@ -216,7 +216,7 @@ class TutorControllerTest {
                 getChildrenByParent,
                 userService,
                 createStudentFromParent,
-                actualizarFotoAlumno,
+                updateStudentPhoto,
                 cloudinaryService
         );
         Usuario usuario = new Usuario();
@@ -237,7 +237,7 @@ class TutorControllerTest {
                 getChildrenByParent,
                 userService,
                 createStudentFromParent,
-                actualizarFotoAlumno,
+                updateStudentPhoto,
                 cloudinaryService
         );
         CreateChildRequest request = new CreateChildRequest(
