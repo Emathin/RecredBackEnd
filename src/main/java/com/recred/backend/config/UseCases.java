@@ -5,6 +5,8 @@ import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.GenerateComboSuggestion;
+import com.recred.backend.application.GetActivePromotionsByBuffet;
+import com.recred.backend.application.GetActiveSchools;
 import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.GetSuggestionByNotificationId;
 import com.recred.backend.application.GetSuggestionByType;
@@ -47,7 +49,7 @@ import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GenerateTopUpLink;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetActivePromotions;
-import com.recred.backend.application.GetActiveSchools;
+
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetAllProducts;
 import com.recred.backend.application.GetBuffetByAlumno;
@@ -83,6 +85,7 @@ import com.recred.backend.application.ListKiosqueroOperationalAlerts;
 import com.recred.backend.application.ListKiosqueroOrders;
 import com.recred.backend.application.LoadBalanceToChild;
 import com.recred.backend.application.LoadStockIA;
+import com.recred.backend.application.ManagePromotionStatus;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.ObtenerHijosPorPadre;
@@ -1195,6 +1198,12 @@ public class UseCases {
     }
 
     @Bean
+    public GetActivePromotionsByBuffet getActivePromotionsByBuffet(
+            PromotionRepository promotionRepository) {
+        return new GetActivePromotionsByBuffet(promotionRepository);
+    }
+
+    @Bean
     public GetPromotionById getPromotionById(PromotionRepository promotionRepository) {
         return new GetPromotionById(promotionRepository);
     }
@@ -1248,6 +1257,11 @@ public class UseCases {
                                          ClasificacionTipoRepository tipoRepository) {
         return new ParseBulkStock(bulkStockAnalyzer, categoryRepository,
                 saludRepository, tipoRepository);
+    }
+
+    @Bean
+    public ManagePromotionStatus managePromotionStatus(PromotionRepository promotionRepository) {
+        return new ManagePromotionStatus(promotionRepository);
     }
 
     @Bean
@@ -1317,6 +1331,3 @@ public class UseCases {
         return new GetSuggestionByType(suggestionAiRepository, kiosqueroRepository);
     }
 }
-
-
-

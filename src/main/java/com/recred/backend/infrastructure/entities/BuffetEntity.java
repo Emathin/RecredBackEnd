@@ -68,11 +68,13 @@ public class BuffetEntity {
         buffet.setCreadoEn(this.creadoEn);
         buffet.setActualizadoEn(this.actualizadoEn);
 
-        if (this.colegioEntity != null) {
+        if (this.colegioEntity != null
+                && org.hibernate.Hibernate.isInitialized(this.colegioEntity)) {
             buffet.setColegio(this.colegioEntity.toDomain());
         }
 
-        if (this.vendedor != null) {
+        if (this.vendedor != null
+                && org.hibernate.Hibernate.isInitialized(this.vendedor)) {
 
             Kiosquero kiosqueroDominio = new Kiosquero();
             kiosqueroDominio.setId(this.vendedor.getId());

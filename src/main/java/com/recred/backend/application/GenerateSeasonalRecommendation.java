@@ -9,7 +9,6 @@ import com.recred.backend.infrastructure.web.SuggestedPromotionDTO;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
-import com.recred.backend.application.CreatePromotion;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -36,7 +35,7 @@ public class GenerateSeasonalRecommendation {
         this.createPromotion = createPromotion;
     }
 
-    public RecommendationResponseDTO execute(Double latitud, Double longitud) {
+    public RecommendationResponseDTO execute(Double latitud, Double longitud, UUID buffetId) {
         WeatherDTO currentWeather = climaService.getCurrentWeather(latitud, longitud);
         String monthName = LocalDate.now()
                 .getMonth()
@@ -76,6 +75,7 @@ public class GenerateSeasonalRecommendation {
                         suggested.getName(),
                         LocalDateTime.now(),
                         LocalDateTime.now().plusDays(7),
+                        buffetId,
                         true
                 );
                 

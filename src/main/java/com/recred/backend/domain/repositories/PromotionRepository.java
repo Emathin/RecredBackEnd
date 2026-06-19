@@ -7,6 +7,8 @@ import java.util.UUID;
 
 public interface PromotionRepository {
     List<Promotion> findAllActive();
+    List<Promotion> findAllActiveByBuffet(UUID buffetId);
+    List<Promotion> findDraftPromotionsByStartDateBefore(java.time.LocalDateTime date);
     Optional<Promotion> findById(UUID id);
     Promotion save(Promotion promotion);
 }
