@@ -7,8 +7,10 @@ import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.SchoolCreditEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 public class SchoolCreditRepositoryImpl implements SchoolCreditRepository {
@@ -24,9 +26,21 @@ public class SchoolCreditRepositoryImpl implements SchoolCreditRepository {
     }
 
     @Override
+    public Optional<SchoolCredit> findById(UUID id) {
+        return repository.findById(id).map(SchoolCreditEntity::toDomain);
+    }
+
+    @Override
     public Optional<SchoolCredit> findByStudentIdAndStatus(UUID studentId, CreditStatus status) {
         return repository.findByAlumnoIdAndStatus(studentId, status)
                 .map(SchoolCreditEntity::toDomain);
+    }
+
+    @Override
+    public List<SchoolCredit> findAllByStudentIdOrderByCreatedAtDesc(UUID studentId) {
+        return repository.findAllByAlumnoIdOrderByCreatedAtDesc(studentId).stream()
+                .map(SchoolCreditEntity::toDomain)
+                .collect(Collectors.toList());
     }
 
     @Override

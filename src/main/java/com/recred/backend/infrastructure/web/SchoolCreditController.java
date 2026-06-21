@@ -3,6 +3,8 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.EnableSchoolCredit;
 import com.recred.backend.application.GetActiveSchoolCredit;
 import com.recred.backend.application.GetLastRecharge;
+import com.recred.backend.application.PaySchoolCredit;
+import com.recred.backend.application.GetSchoolCreditHistory;
 import com.recred.backend.domain.exceptions.ActiveCreditExistsException;
 import com.recred.backend.domain.models.SchoolCredit;
 import org.springframework.http.HttpStatus;
@@ -17,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.domain.models.Usuario;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -26,15 +29,21 @@ public class SchoolCreditController {
     private final EnableSchoolCredit enableSchoolCredit;
     private final GetLastRecharge getLastRecharge;
     private final GetActiveSchoolCredit getActiveSchoolCredit;
+    private final PaySchoolCredit paySchoolCredit;
+    private final GetSchoolCreditHistory getSchoolCreditHistory;
     private final UsuarioService usuarioService;
 
     public SchoolCreditController(EnableSchoolCredit enableSchoolCredit,
                                   GetLastRecharge getLastRecharge,
                                   GetActiveSchoolCredit getActiveSchoolCredit,
+                                  PaySchoolCredit paySchoolCredit,
+                                  GetSchoolCreditHistory getSchoolCreditHistory,
                                   UsuarioService usuarioService) {
         this.enableSchoolCredit = enableSchoolCredit;
         this.getLastRecharge = getLastRecharge;
         this.getActiveSchoolCredit = getActiveSchoolCredit;
+        this.paySchoolCredit = paySchoolCredit;
+        this.getSchoolCreditHistory = getSchoolCreditHistory;
         this.usuarioService = usuarioService;
     }
 
@@ -87,6 +96,28 @@ public class SchoolCreditController {
                     .orElse(ResponseEntity.notFound().build());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{creditId}/pay")
+    public ResponseEntity<?> payCredit(@PathVariable UUID creditId) {
+        try {
+            SchoolCredit credit = paySchoolCredit.execute(creditId);
+            return ResponseEntity.ok(credit);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/alumno/{studentId}")
+    public ResponseEntity<List<SchoolCredit>> getHistory(@PathVariable UUID studentId) {
+        try {
+            List<SchoolCredit> history = getSchoolCreditHistory.execute(studentId);
+            return ResponseEntity.ok(history);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
