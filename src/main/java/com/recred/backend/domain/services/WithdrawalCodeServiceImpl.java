@@ -28,6 +28,11 @@ public class WithdrawalCodeServiceImpl implements WithdrawalCodeService {
         do {
             String name = cleanWord(faker.name().firstName());
             String instrument = cleanWord(faker.music().instrument());
+            while (instrument.equals("VIOLIN")
+                    || instrument.equals("VIOLONCELO")
+                    || instrument.equals("VIOLONCHELO")) {
+                instrument = cleanWord(faker.music().instrument());
+            }
 
             code = name + "-" + instrument;
 

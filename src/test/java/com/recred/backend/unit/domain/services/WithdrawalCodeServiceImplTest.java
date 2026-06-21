@@ -95,4 +95,19 @@ class WithdrawalCodeServiceImplTest {
         verify(purchaseRepository, times(11))
                 .existsByVerificationCodeAndStatusIn(anyString(), anyList());
     }
+
+    @Test
+    void shouldNeverGenerateViolinOrViolonceloOrViolonchelo() {
+        Purchase purchase = new Purchase();
+        when(purchaseRepository.existsByVerificationCodeAndStatusIn(anyString(), anyList()))
+                .thenReturn(false);
+
+        for (int i = 0; i < 200; i++) {
+            String code = service.generateCode(purchase);
+            String instrument = code.split("-")[1];
+            assertNotEquals("VIOLIN", instrument);
+            assertNotEquals("VIOLONCELO", instrument);
+            assertNotEquals("VIOLONCHELO", instrument);
+        }
+    }
 }
