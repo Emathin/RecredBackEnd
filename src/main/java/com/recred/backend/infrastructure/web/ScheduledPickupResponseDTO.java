@@ -30,9 +30,13 @@ public class ScheduledPickupResponseDTO {
     private String pickupSlotDescription;
     private LocalDate pickupDate;
     private List<PurchaseItemDTO> items;
+    private String tipo;
 
     public ScheduledPickupResponseDTO(Purchase purchase) {
         this.id = purchase.getId();
+        if (purchase.getTipo() != null) {
+            this.tipo = purchase.getTipo().name();
+        }
         if (purchase.getStudent() != null) {
             this.studentId = purchase.getStudent().getId();
             this.studentName = purchase.getStudent().getNombre() + " "

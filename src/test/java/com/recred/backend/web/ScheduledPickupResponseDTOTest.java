@@ -60,6 +60,7 @@ class ScheduledPickupResponseDTOTest {
         ScheduledPickupResponseDTO dto = new ScheduledPickupResponseDTO(purchase);
 
         assertEquals(purchaseId, dto.getId());
+        assertEquals("PRESENCIAL", dto.getTipo());
         assertEquals(studentId, dto.getStudentId());
         assertEquals("John Doe", dto.getStudentName());
         assertEquals(new BigDecimal("20.00"), dto.getTotalAmount());
