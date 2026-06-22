@@ -43,10 +43,18 @@ class GeminiSeasonalSuggesterTest {
                     {
                       "categoria": "Bebidas Calientes",
                       "accion": "AUMENTAR",
-                      "motivo": "Hace mucho frío."
+                      "motivo": "Hace mucho frío.",
+                      "prioridad": "Alta",
+                      "icono": "☕"
                     }
                   ],
-                  "tip_promocional": "Combo café y alfajor."
+                  "tip_promocional": "Combo café y alfajor.",
+                  "promocion_sugerida": {
+                    "nombre": "Promo Invierno",
+                    "descuento": 15.0,
+                    "categorias_destino": ["Bebidas Calientes"],
+                    "imagen": "cafe.jpg"
+                  }
                 }
                 """;
 
@@ -54,7 +62,7 @@ class GeminiSeasonalSuggesterTest {
         when(geminiTextClientMock.generate(anyString())).thenReturn(Optional.of(respuestaSimulada));
 
         RecommendationResponseDTO resultado = service.getSeasonalRecommendations(
-                "Julio", 5.0, "Frío");
+                "Julio", 5.0, "Frío", "Bebidas Calientes");
 
         assertNotNull(resultado);
         assertEquals("Combo café y alfajor.", resultado.getPromocionalTip());
@@ -71,7 +79,7 @@ class GeminiSeasonalSuggesterTest {
         when(geminiTextClientMock.generate(anyString())).thenReturn(Optional.of(respuestaInvalida));
 
         RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
-            service.getSeasonalRecommendations("Julio", 5.0, "Frío");
+            service.getSeasonalRecommendations("Julio", 5.0, "Frío", "");
         });
 
         assertTrue(excepcion.getMessage().contains("Data parsing error"));
@@ -82,7 +90,7 @@ class GeminiSeasonalSuggesterTest {
         when(geminiTextClientMock.generate(anyString())).thenReturn(Optional.empty());
 
         RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
-            service.getSeasonalRecommendations("Julio", 5.0, "Frío");
+            service.getSeasonalRecommendations("Julio", 5.0, "Frío", "");
         });
 
         assertEquals("Failed to generate seasonal recommendations from AI.", excepcion.getMessage());
@@ -94,7 +102,7 @@ class GeminiSeasonalSuggesterTest {
         when(geminiTextClientMock.generate(anyString())).thenReturn(Optional.of(respuestaVacia));
 
         RecommendationResponseDTO resultado = service.getSeasonalRecommendations(
-                "Julio", 5.0, "Frío");
+                "Julio", 5.0, "Frío", "");
 
         assertNotNull(resultado);
         assertNull(resultado.getSugerences());
@@ -107,7 +115,7 @@ class GeminiSeasonalSuggesterTest {
         when(geminiTextClientMock.generate(anyString())).thenReturn(Optional.of(respuestaBlanca));
 
         RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
-            service.getSeasonalRecommendations("Julio", 5.0, "Frío");
+            service.getSeasonalRecommendations("Julio", 5.0, "Frío", "");
         });
 
         assertEquals("Failed to generate seasonal recommendations from AI.", excepcion.getMessage());

@@ -19,9 +19,10 @@ public class GeminiSeasonalSuggester {
   public RecommendationResponseDTO getSeasonalRecommendations(
       String month,
       Double temperature,
-      String weatherCondition) {
+      String weatherCondition,
+      String availableCategories) {
 
-    String prompt = buildPrompt(month, temperature, weatherCondition);
+    String prompt = buildPrompt(month, temperature, weatherCondition, availableCategories);
 
     return geminiTextClient.generate(prompt)
         .filter(this::isValidResponse)
@@ -49,7 +50,8 @@ public class GeminiSeasonalSuggester {
   private String buildPrompt(
       String month,
       Double temperature,
-      String weatherCondition) {
+      String weatherCondition,
+      String availableCategories) {
     return """
         ROL:
         Eres un sistema experto en retail y análisis comercial para kioscos escolares.
@@ -60,12 +62,11 @@ public class GeminiSeasonalSuggester {
         - Fecha actual: %s
         - Clima actual: %s°C, %s
         - Tipo de establecimiento: Kiosco en escuela Primaria (solo venta de alimentos y bebidas).
+        - Categorías disponibles: %s
+        
         REGLAS DE NEGOCIO:
-        1. Evalúa el contexto y selecciona productos de las siguientes categorías predefinidas:
-           - Alta Sensibilidad: Chocolates y Alfajores, Helados y Congelados, Panificados y
-           Horneados, Bebidas Frías, Bebidas Calientes.
-           - Resistencia: Golosinas de Azúcar/Frutales, Snacks Salados.
-           - Cuidado Especial: Lácteos y Frescos.
+        1. Evalúa el contexto y selecciona productos estrictamente de las
+           categorías disponibles mencionadas arriba.
         2. Identifica 2 categorías cuyo stock se deba AUMENTAR por el clima/época.
         3. Identifica 1 categoría cuyo stock se deba REDUCIR por el clima/época.
         4. Las justificaciones deben ser comerciales, breves (máximo 15 palabras) y lógicas.
@@ -77,20 +78,23 @@ public class GeminiSeasonalSuggester {
         {
           "sugerencias": [
             {
-              "categoria": "Nombre de la categoría",
-              "accion": "AUMENTAR",
-              "motivo": "Justificación comercial breve."
+              "categoria": "Nombre de la categoría (debe existir en las disponibles)",
+              "accion": "AUMENTAR o REDUCIR",
+              "motivo": "Justificación comercial breve.",
+              "prioridad": "Alta, Media o Baja",
+              "icono": "emoji representativo, ej: 🍦, 🥤, 🍫"
             }
           ],
           "tip_promocional": "Idea breve de promo cruzada.",
           "promocion_sugerida": {
             "nombre": "Nombre comercial atractivo para la promoción",
             "descuento": 15.0,
-            "categorias_destino": ["Nombre Categoria 1", "Nombre Categoria 2"]
+            "categorias_destino": ["Nombre Categoria 1", "Nombre Categoria 2"],
+            "imagen": "URL de imagen placeholder (ej. https://via.placeholder.com/150) o un emoji muy descriptivo."
           }
         }
         """
-        .formatted(month, temperature, weatherCondition);
+        .formatted(month, temperature, weatherCondition, availableCategories);
   }
 
 }

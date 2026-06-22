@@ -15,6 +15,12 @@ public class RecommendationResponseDTO {
     
     @JsonProperty("promocion_creada")
     private PromotionResponseDTO createdPromotion;
+    
+    @JsonProperty("info_estacion")
+    private SeasonInfoDTO seasonInfo;
+
+    @JsonProperty("clima_actual")
+    private WeatherDTO currentWeather;
 
     public RecommendationResponseDTO() {
     }
@@ -49,5 +55,21 @@ public class RecommendationResponseDTO {
 
     public void setCreatedPromotion(PromotionResponseDTO createdPromotion) {
         this.createdPromotion = createdPromotion;
+    }
+
+    public SeasonInfoDTO getSeasonInfo() {
+        return seasonInfo;
+    }
+
+    public void setSeasonInfo(SeasonInfoDTO seasonInfo) {
+        this.seasonInfo = seasonInfo;
+    }
+
+    public WeatherDTO getCurrentWeather() {
+        return currentWeather;
+    }
+
+    public void setCurrentWeather(WeatherDTO currentWeather) {
+        this.currentWeather = currentWeather;
     }
 }
