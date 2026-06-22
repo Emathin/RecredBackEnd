@@ -199,6 +199,7 @@ import com.recred.backend.infrastructure.gemini.GeminiParentSummaryAnalyzer;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.gemini.GeminiTextClient;
 import com.recred.backend.infrastructure.gemini.LoadStockIAService;
+import com.recred.backend.infrastructure.openMeteo.NominatimGeocodingClient;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
 import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
 import org.springframework.context.annotation.Bean;
@@ -1032,15 +1033,17 @@ public class UseCases {
 
     @Bean
     public GenerateSeasonalRecommendation generateSeasonalRecommendation(
-            GeminiSeasonalSuggester seasonalSuggester,
-            OpenMeteoWeatherClient weatherClient,
+            OpenMeteoWeatherClient climaService,
+            NominatimGeocodingClient geocodingClient,
+            GeminiSeasonalSuggester geminiSeasonalSuggesterService,
             ProductRepository productRepository,
-            CreatePromotion createPromotion){
+            CategoryRepository categoryRepository) {
         return new GenerateSeasonalRecommendation(
-                weatherClient,
-                seasonalSuggester,
-                productRepository,
-                createPromotion);
+                climaService, 
+                geocodingClient, 
+                geminiSeasonalSuggesterService, 
+                productRepository, 
+                categoryRepository);
     }
 
     @Bean

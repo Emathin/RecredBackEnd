@@ -14,6 +14,12 @@ public class SuggestedPromotionDTO {
     
     @JsonProperty("categorias_destino")
     private List<String> targetCategories;
+    
+    @JsonProperty("imagen")
+    private String imagen;
+
+    @JsonProperty("productIds")
+    private List<String> productIds;
 
     public SuggestedPromotionDTO() {
     }
@@ -40,5 +46,21 @@ public class SuggestedPromotionDTO {
 
     public void setTargetCategories(List<String> targetCategories) {
         this.targetCategories = targetCategories;
+    }
+
+    public String getImagen() {
+        return imagen;
+    }
+
+    public void setImagen(String imagen) {
+        this.imagen = imagen;
+    }
+
+    public List<String> getProductIds() {
+        return productIds;
+    }
+
+    public void setProductIds(List<String> productIds) {
+        this.productIds = productIds;
     }
 }
