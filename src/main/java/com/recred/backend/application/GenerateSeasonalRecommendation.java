@@ -70,7 +70,7 @@ public class GenerateSeasonalRecommendation {
         response.setSeasonInfo(seasonInfo);
         response.setCurrentWeather(currentWeather);
 
-        List<Producto> allActiveProducts = productRepository.findAllActive();
+        List<Producto> allActiveProducts = productRepository.findAllActiveWithStock(buffetId);
 
         if (response.getSugerences() != null) {
             for (var sugerencia : response.getSugerences()) {

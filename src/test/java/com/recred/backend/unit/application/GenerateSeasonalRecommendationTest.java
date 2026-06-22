@@ -145,7 +145,7 @@ class GenerateSeasonalRecommendationTest {
         when(categoryRepository.getAllCategories()).thenReturn(List.of());
         when(geminiSuggesterMock.getSeasonalRecommendations(anyString(), eq(28.0),
                 eq("Caluroso"), anyString())).thenReturn(recomendacion);
-        when(productRepository.findAllActive()).thenReturn(List.of(
+        when(productRepository.findAllActiveWithStock(any())).thenReturn(List.of(
                 product(productId, "Bebidas frias"),
                 product(secondProductId, "Bebidas frias")
         ));
@@ -173,7 +173,7 @@ class GenerateSeasonalRecommendationTest {
         when(categoryRepository.getAllCategories()).thenReturn(List.of());
         when(geminiSuggesterMock.getSeasonalRecommendations(anyString(), eq(10.0),
                 eq("Frio"), anyString())).thenReturn(recomendacion);
-        when(productRepository.findAllActive()).thenReturn(List.of(
+        when(productRepository.findAllActiveWithStock(any())).thenReturn(List.of(
                 product(matchedProductId, "Bebidas calientes"),
                 product(fallbackProductId, "Snacks")
         ));
