@@ -9,6 +9,7 @@ import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.BudgetSummaryDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.ChildDashboardDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.HealthSummaryDTO;
+import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.ScheduledPickupDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.SmartActionDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.TransactionSummaryDTO;
 
@@ -116,6 +117,29 @@ public class GetTutorGlobalDashboard {
             String stuName = alumno.getUsuario() != null 
                     ? alumno.getUsuario().getNombre() : "Alumno";
             
+            List<ScheduledPickupDTO> todayPickups = new ArrayList<>();
+            java.time.LocalDate today = java.time.LocalDate.now();
+            for (Purchase p : historial) {
+                var tipo = p.getTipo();
+                var ws = p.getWithdrawalStatus();
+                boolean isToday = p.getPickupDate() != null 
+                        && p.getPickupDate().equals(today);
+                boolean isActive = ws == com.recred.backend.domain.models.EstadoRetiro.PROGRAMADO
+                        || ws == com.recred.backend.domain.models.EstadoRetiro.EN_PREPARACION
+                        || ws == com.recred.backend.domain.models.EstadoRetiro.LISTO;
+
+                if (tipo == com.recred.backend.domain.models.TipoCompra.ANTICIPADA 
+                        && isToday && isActive) {
+                    String desc = p.getPickupSlotDescription() != null 
+                            ? p.getPickupSlotDescription() : "";
+                    todayPickups.add(new ScheduledPickupDTO(
+                            p.getId().toString(),
+                            getPurchaseName(p),
+                            desc
+                    ));
+                }
+            }
+
             childrenDashboards.add(new ChildDashboardDTO(
                     alumno.getId(),
                     stuName,
@@ -124,7 +148,7 @@ public class GetTutorGlobalDashboard {
                     predictionMsg,
                     budgetDto,
                     healthDto,
-                    List.of(),
+                    todayPickups,
                     transactions,
                     smartAction
             ));
