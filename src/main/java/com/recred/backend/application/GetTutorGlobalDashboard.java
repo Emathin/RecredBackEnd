@@ -13,6 +13,9 @@ import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.ScheduledPi
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.SmartActionDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.TransactionSummaryDTO;
 
+import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
+import com.recred.backend.domain.models.RangoFechas;
+import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,14 +63,32 @@ public class GetTutorGlobalDashboard {
             }
             totalDebt = totalDebt.add(debt);
 
+            List<Purchase> historial = obtenerHistorialAlumno.execute(alumno.getId());
+
             Optional<PresupuestoAlumno> presupuestoOpt = getActiveBudgetByStudent
                     .execute(alumno.getId());
             BudgetSummaryDTO budgetDto = null;
             if (presupuestoOpt.isPresent()) {
                 PresupuestoAlumno p = presupuestoOpt.get();
+                BigDecimal spent = BigDecimal.ZERO;
+                try {
+                    CalculadorPeriodoPresupuesto calculador = new CalculadorPeriodoPresupuesto();
+                    LocalDateTime now = LocalDateTime.now();
+                    RangoFechas rango = calculador.calcularRango(p.getPeriodo(), now);
+                    for (Purchase purchase : historial) {
+                        LocalDateTime purchaseDate = purchase.getDate();
+                        if (purchaseDate != null 
+                                && !purchaseDate.isBefore(rango.inicio()) 
+                                && !purchaseDate.isAfter(rango.fin())) {
+                            spent = spent.add(purchase.getTotalAmount());
+                        }
+                    }
+                } catch (Exception e) {
+                    // Fallback to ZERO in case of any calculation issues
+                }
                 budgetDto = new BudgetSummaryDTO(
                         p.getPeriodo().name(),
-                        BigDecimal.ZERO,
+                        spent,
                         p.getMontoLimiteGeneral()
                 );
             }
@@ -92,8 +113,6 @@ public class GetTutorGlobalDashboard {
             } catch (Exception e) {
                 
             }
-
-            List<Purchase> historial = obtenerHistorialAlumno.execute(alumno.getId());
             List<TransactionSummaryDTO> transactions = historial.stream()
                     .limit(4)
                     .map(p -> new TransactionSummaryDTO(
@@ -116,6 +135,8 @@ public class GetTutorGlobalDashboard {
 
             String stuName = alumno.getUsuario() != null 
                     ? alumno.getUsuario().getNombre() : "Alumno";
+            String urlFotoPerfil = alumno.getUsuario() != null
+                    ? alumno.getUsuario().getUrlFotoPerfil() : null;
             
             List<ScheduledPickupDTO> todayPickups = new ArrayList<>();
             java.time.LocalDate today = java.time.LocalDate.now();
@@ -145,6 +166,7 @@ public class GetTutorGlobalDashboard {
                     stuName,
                     balance,
                     debt,
+                    urlFotoPerfil,
                     predictionMsg,
                     budgetDto,
                     healthDto,

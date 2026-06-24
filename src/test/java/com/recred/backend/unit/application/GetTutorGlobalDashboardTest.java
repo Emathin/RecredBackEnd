@@ -250,7 +250,7 @@ class GetTutorGlobalDashboardTest {
     private Purchase purchase(Map<Producto, Integer> items, String amount) {
         Purchase purchase = new Purchase();
         purchase.setId(UUID.randomUUID());
-        purchase.setDate(LocalDateTime.of(2026, 6, 10, 10, 0));
+        purchase.setDate(LocalDateTime.of(2020, 6, 10, 10, 0));
         purchase.setTotalAmount(new BigDecimal(amount));
         purchase.setItems(items);
         return purchase;

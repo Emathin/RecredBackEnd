@@ -18,6 +18,7 @@ public record TutorGlobalDashboardDTO(
         String studentName,
         BigDecimal balance,
         BigDecimal debt,
+        String urlFotoPerfil,
         String spendingPredictionMessage,
         BudgetSummaryDTO budget,
         HealthSummaryDTO health,

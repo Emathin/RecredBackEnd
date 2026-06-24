@@ -15,8 +15,12 @@ public class WithdrawalCodeServiceImpl implements WithdrawalCodeService {
     private final Faker faker;
 
     public WithdrawalCodeServiceImpl(PurchaseRepository purchaseRepository) {
+        this(purchaseRepository, new Faker(new Locale("es", "AR")));
+    }
+
+    public WithdrawalCodeServiceImpl(PurchaseRepository purchaseRepository, Faker faker) {
         this.purchaseRepository = purchaseRepository;
-        this.faker = new Faker(new Locale("es", "AR"));
+        this.faker = faker;
     }
 
     @Override
@@ -31,10 +35,15 @@ public class WithdrawalCodeServiceImpl implements WithdrawalCodeService {
 
             code = name + "-" + instrument;
 
+            boolean containsForbidden = code.contains("VIOLIN")
+                    || code.contains("VIOLA")
+                    || code.contains("CORNETA");
+
             codigoEnUso = purchaseRepository.existsByVerificationCodeAndStatusIn(
                     code,
                     List.of(EstadoCompra.PENDIENTE,
-                            EstadoCompra.EN_PREPARACION, EstadoCompra.LISTO));
+                            EstadoCompra.EN_PREPARACION, EstadoCompra.LISTO))
+                    || containsForbidden;
 
             intentos++;
             if (intentos > 10) {
