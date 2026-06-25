@@ -1,4 +1,6 @@
-package com.recred.backend.domain.models;
+package com.recred.backend.unit.domain.models;
+
+import com.recred.backend.domain.models.*;
 
 import org.junit.jupiter.api.Test;
 

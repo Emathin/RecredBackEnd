@@ -1,4 +1,6 @@
-package com.recred.backend.infrastructure.gemini;
+package com.recred.backend.unit.infrastructure.gemini;
+
+import com.recred.backend.infrastructure.gemini.*;
 
 import org.junit.jupiter.api.Test;
 

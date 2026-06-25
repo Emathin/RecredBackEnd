@@ -1,4 +1,6 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
+
+import com.recred.backend.infrastructure.web.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.EnableSchoolCredit;

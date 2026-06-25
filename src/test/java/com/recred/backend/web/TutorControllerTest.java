@@ -1,9 +1,11 @@
 package com.recred.backend.web;
 
+import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.ObtenerHijosPorPadre;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
+import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.Colegio;
@@ -65,6 +67,12 @@ class TutorControllerTest {
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private ActualizarFotoAlumno actualizarFotoAlumno;
+
+    @MockitoBean
+    private CloudinaryService cloudinaryService;
 
     @Test
     void dadoUnTutorConHijos_cuandoConsultaEndpoint_entoncesRetorna200YListaDeEstudiantes() throws Exception {
@@ -138,7 +146,8 @@ class TutorControllerTest {
                 "Gomez",
                 "mateo@test.com",
                 "12345678",
-                gradoId
+                gradoId,
+                null
         )).thenReturn(alumno);
 
         mockMvc.perform(post("/api/v1/tutores/me/hijos")
@@ -165,7 +174,8 @@ class TutorControllerTest {
                 "Gomez",
                 "mateo@test.com",
                 "12345678",
-                gradoId
+                gradoId,
+                null
         );
     }
 
@@ -176,7 +186,9 @@ class TutorControllerTest {
         TutorController controller = new TutorController(
                 obtenerHijosPorPadre,
                 usuarioService,
-                createStudentFromParent
+                createStudentFromParent,
+                actualizarFotoAlumno,
+                cloudinaryService
         );
         Usuario usuario = new Usuario();
         com.recred.backend.domain.models.Tutor tutor =
@@ -203,7 +215,9 @@ class TutorControllerTest {
         TutorController controller = new TutorController(
                 obtenerHijosPorPadre,
                 usuarioService,
-                createStudentFromParent
+                createStudentFromParent,
+                actualizarFotoAlumno,
+                cloudinaryService
         );
         Usuario usuario = new Usuario();
         when(usuarioService.obtenerUsuarioActual("tutor-sub")).thenReturn(usuario);
@@ -222,7 +236,9 @@ class TutorControllerTest {
         TutorController controller = new TutorController(
                 obtenerHijosPorPadre,
                 usuarioService,
-                createStudentFromParent
+                createStudentFromParent,
+                actualizarFotoAlumno,
+                cloudinaryService
         );
         CreateChildRequest request = new CreateChildRequest(
                 "mateo",
@@ -230,7 +246,8 @@ class TutorControllerTest {
                 "Gomez",
                 "mateo@test.com",
                 "12345678",
-                UUID.randomUUID()
+                UUID.randomUUID(),
+                null
         );
 
         assertThrows(AuthenticationCredentialsNotFoundException.class,

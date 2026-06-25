@@ -1,4 +1,6 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
+
+import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.application.CreateBudget;

@@ -330,6 +330,35 @@ class AskSchoolAssistantTest {
     }
 
     @Test
+    void executeForStudentResolvesStudentIdFromAuthenticatedUser() {
+        String cognitoSubject = "student-sub";
+        UUID userId = UUID.randomUUID();
+
+        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(user(userId)));
+        when(alumnoRepository.existsById(userId)).thenReturn(false);
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);
+        when(chatMessageRepository.findRecentBySessionId(sessionId, 6)).thenReturn(List.of());
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
+        when(paymentRepository.findRecentByStudentId(studentId, 5)).thenReturn(List.of());
+        when(purchaseRepository.findRecentByStudentId(studentId, 10)).thenReturn(List.of());
+        when(schoolCalendarRepository.findByStudentIdAndDateRange(
+                studentId,
+                LocalDate.of(2026, 5, 27),
+                LocalDate.of(2026, 6, 26)
+        )).thenReturn(List.of());
+        when(schoolAssistantResponder.respond(any())).thenReturn(Optional.empty());
+
+        SchoolAssistantAnswer answer = askSchoolAssistant.executeForStudent(
+                cognitoSubject,
+                new SchoolAssistantCommand(Optional.empty(), "saldo")
+        );
+
+        assertEquals(sessionId, answer.sessionId());
+        verify(chatSessionRepository).startForStudent(studentId, NOW);
+    }
+
+    @Test
     void executeUsesFallbackWhenGeminiDoesNotReturnAnswer() {
         when(alumnoRepository.existsById(studentId)).thenReturn(true);
         when(chatSessionRepository.startForStudent(studentId, NOW)).thenReturn(session);

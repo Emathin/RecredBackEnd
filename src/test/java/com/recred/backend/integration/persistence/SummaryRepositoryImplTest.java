@@ -1,4 +1,6 @@
-package com.recred.backend.infrastructure.persistence;
+package com.recred.backend.integration.persistence;
+
+import com.recred.backend.infrastructure.persistence.*;
 
 import com.recred.backend.domain.models.Summary;
 import com.recred.backend.domain.models.Usuario;

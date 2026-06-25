@@ -1,4 +1,6 @@
-package com.recred.backend.infrastructure.events;
+package com.recred.backend.unit.infrastructure.events;
+
+import com.recred.backend.infrastructure.events.*;
 
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventType;

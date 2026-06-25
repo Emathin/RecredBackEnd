@@ -18,78 +18,84 @@ import java.util.UUID;
 
 public interface PurchaseRepository {
 
-    List<Purchase> findHistorialByAlumno(UUID alumnoId);
-    List<Purchase> findByAlumnoAndDateRange(UUID alumnoId, LocalDateTime start, LocalDateTime end);
-    List<Purchase> findHistorialByTutor(UUID tutorId);
+        List<Purchase> findHistorialByAlumno(UUID alumnoId);
 
-    Purchase save(Purchase purchase);
+        List<Purchase> findByAlumnoAndDateRange(UUID alumnoId,
+                        LocalDateTime start, LocalDateTime end);
 
-    Optional<Purchase> findById(UUID id);
+        List<Purchase> findHistorialByTutor(UUID tutorId);
 
-    BigDecimal sumarGastosPorAlumnoEnRango(UUID alumnoId,
-                                           LocalDateTime inicio, LocalDateTime fin);
+        Purchase save(Purchase purchase);
 
-    BigDecimal sumarGastosPorCategoriaEnRango(UUID alumnoId,
-                                              UUID categoriaId, LocalDateTime inicio,
-                                              LocalDateTime fin);
+        Optional<Purchase> findById(UUID id);
 
-    List<PreferenceAIRepository.CompraResumen> findLastPurchasesByAlumno(
-            UUID alumnoId, int limit);
+        BigDecimal sumarGastosPorAlumnoEnRango(UUID alumnoId,
+                        LocalDateTime inicio, LocalDateTime fin);
 
-    List<PurchaseResume> findPurchasesByAlumno(UUID alumnoId);
+        BigDecimal sumarGastosPorCategoriaEnRango(UUID alumnoId,
+                        UUID categoriaId, LocalDateTime inicio,
+                        LocalDateTime fin);
 
-    List<Purchase> findRecentByBuffet(UUID buffetId, int limit);
+        List<PreferenceAIRepository.CompraResumen> findLastPurchasesByAlumno(
+                        UUID alumnoId, int limit);
 
-    List<Purchase> findByBuffetAndStatuses(UUID buffetId,
-                                           List<EstadoCompra> statuses,
-                                           int limit);
+        List<PurchaseResume> findPurchasesByAlumno(UUID alumnoId);
 
-    List<Purchase> findKiosqueroOrders(UUID buffetId,
-                                       List<EstadoCompra> statuses,
-                                       LocalDate date,
-                                       UUID pickupSlotId,
-                                       int limit);
+        List<Purchase> findRecentByBuffet(UUID buffetId, int limit);
 
-    List<Purchase> findByBuffetAndDateRange(UUID buffetId,
-                                            LocalDateTime start,
-                                            LocalDateTime end);
+        List<Purchase> findByBuffetAndStatuses(UUID buffetId,
+                        List<EstadoCompra> statuses,
+                        int limit);
 
-    List<Purchase> findExpiredAdvancePurchases(LocalDate date,
-                                               LocalTime time,
-                                               List<EstadoCompra> statuses);
+        List<Purchase> findKiosqueroOrders(UUID buffetId,
+                        List<EstadoCompra> statuses,
+                        LocalDate date,
+                        UUID pickupSlotId,
+                        int limit);
 
-    List<Purchase> findExpiredAdvancePurchases(UUID buffetId,
-                                               LocalDate date,
-                                               LocalTime time,
-                                               List<EstadoCompra> statuses);
+        List<Purchase> findByBuffetAndDateRange(UUID buffetId,
+                        LocalDateTime start,
+                        LocalDateTime end);
 
-    long countScheduledAdvancePurchases(UUID buffetId,
-                                        UUID pickupSlotId,
-                                        LocalDate pickupDate,
-                                        List<EstadoCompra> statuses);
+        List<Purchase> findExpiredAdvancePurchases(LocalDate date,
+                        LocalTime time,
+                        List<EstadoCompra> statuses);
 
-    long sumScheduledProductQuantity(UUID buffetId,
-                                     UUID productId,
-                                     LocalDate pickupDate,
-                                     List<EstadoCompra> statuses);
+        List<Purchase> findExpiredAdvancePurchases(UUID buffetId,
+                        LocalDate date,
+                        LocalTime time,
+                        List<EstadoCompra> statuses);
 
-    List<CartProductAffinity> findStudentCartAffinities(
-            UUID alumnoId,
-            UUID buffetId,
-            Set<UUID> cartProductIds);
+        long countScheduledAdvancePurchases(UUID buffetId,
+                        UUID pickupSlotId,
+                        LocalDate pickupDate,
+                        List<EstadoCompra> statuses);
 
-    List<CartProductAffinity> findBuffetCartAffinities(
-            UUID buffetId,
-            Set<UUID> cartProductIds);
+        long sumScheduledProductQuantity(UUID buffetId,
+                        UUID productId,
+                        LocalDate pickupDate,
+                        List<EstadoCompra> statuses);
 
-    List<Purchase> findScheduledPickups(
-            UUID buffetId,
-            LocalDate fecha,
-            EstadoRetiro estadoRetiro,
-            UUID franjaId,
-            String search);
+        List<CartProductAffinity> findStudentCartAffinities(
+                        UUID alumnoId,
+                        UUID buffetId,
+                        Set<UUID> cartProductIds);
 
-    long countHealthyPurchasesByAlumno(UUID alumnoId, LocalDateTime since);
+        List<CartProductAffinity> findBuffetCartAffinities(
+                        UUID buffetId,
+                        Set<UUID> cartProductIds);
 
-    List<Purchase> findPendientesByAlumno(UUID alumnoId);
+        List<Purchase> findScheduledPickups(
+                        UUID buffetId,
+                        LocalDate fecha,
+                        EstadoRetiro estadoRetiro,
+                        UUID franjaId,
+                        String search);
+
+        long countHealthyPurchasesByAlumno(UUID alumnoId, LocalDateTime since);
+
+        List<Purchase> findPendientesByAlumno(UUID alumnoId);
+
+        boolean existsByVerificationCodeAndStatusIn(String codigoVerificacion,
+                                                    List<EstadoCompra> estados);
 }

@@ -15,7 +15,6 @@ class SpendingPredictionConfigTest {
     @Test
     void createPredictionBeans() {
         assertNotNull(config.applicationClock());
-        assertNotNull(config.spendingPredictionRangeService());
         assertNotNull(config.spendingPredictionCalculator());
     }
 

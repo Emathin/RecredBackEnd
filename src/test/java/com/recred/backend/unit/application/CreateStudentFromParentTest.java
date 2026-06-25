@@ -105,7 +105,7 @@ class CreateStudentFromParentTest {
 
         AccessDeniedException exception = assertThrows(AccessDeniedException.class, () ->
                 createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", "juan@example.com", null, null));
+                        "Perez", "juan@example.com", null, null, null));
 
         assertEquals("El usuario autenticado no tiene rol PADRE", exception.getMessage());
         verify(cognitoStudentIdentityService, never())
@@ -120,7 +120,7 @@ class CreateStudentFromParentTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", "juan@example.com", null, null));
+                        "Perez", "juan@example.com", null, null, null));
 
         assertEquals("Usuario autenticado no encontrado", exception.getMessage());
         verify(cognitoStudentIdentityService, never())
@@ -137,7 +137,7 @@ class CreateStudentFromParentTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", "juan@example.com", null, null));
+                        "Perez", "juan@example.com", null, null, null));
 
         assertEquals("Tutor no encontrado para el usuario autenticado", exception.getMessage());
         verify(cognitoStudentIdentityService, never())
@@ -158,7 +158,7 @@ class CreateStudentFromParentTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", " juan@example.com ", null, null));
+                        "Perez", " juan@example.com ", null, null, null));
 
         assertEquals("Ya existe un usuario con el email indicado", exception.getMessage());
         verify(cognitoStudentIdentityService, never())
@@ -183,7 +183,7 @@ class CreateStudentFromParentTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", "juan@example.com", null, gradoId));
+                        "Perez", "juan@example.com", null, gradoId, null));
 
         assertEquals("No se encontro el grado indicado", exception.getMessage());
         verify(cognitoStudentIdentityService, never())
@@ -196,7 +196,7 @@ class CreateStudentFromParentTest {
     void emailLikeUsernameIsRejected() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 createStudentFromParent.execute(PARENT_SUB, "juan@example.com", "Juan",
-                        "Perez", "juan@example.com", null, null));
+                        "Perez", "juan@example.com", null, null, null));
 
         assertEquals("El username no puede tener formato de email", exception.getMessage());
         verify(usuarioRepository, never()).findByIdCognito(any());
@@ -208,13 +208,13 @@ class CreateStudentFromParentTest {
     void blankRequiredFieldsAreRejected() {
         assertThrows(IllegalArgumentException.class, () ->
                 createStudentFromParent.execute(PARENT_SUB, "juan", " ",
-                        "Perez", "juan@example.com", null, null));
+                        "Perez", "juan@example.com", null, null, null));
         assertThrows(IllegalArgumentException.class, () ->
                 createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        " ", "juan@example.com", null, null));
+                        " ", "juan@example.com", null, null, null));
         assertThrows(IllegalArgumentException.class, () ->
                 createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", " ", null, null));
+                        "Perez", " ", null, null, null));
     }
 
     @Test
@@ -240,7 +240,7 @@ class CreateStudentFromParentTest {
                 " juan.perez@example.com ",
                 " ",
                 null
-        );
+        , null);
 
         verify(usuarioRepository).save(usuarioCaptor.capture());
         verify(alumnoRepository).save(alumnoCaptor.capture());
@@ -265,7 +265,7 @@ class CreateStudentFromParentTest {
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
                 createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", "juan@example.com", null, null));
+                        "Perez", "juan@example.com", null, null, null));
 
         assertEquals("No se pudo crear el usuario en Cognito", exception.getMessage());
         verify(usuarioRepository, never()).save(any());
@@ -319,7 +319,7 @@ class CreateStudentFromParentTest {
                 " Perez ",
                 " juan.perez@example.com ",
                 " 12345678 ",
-                gradoId);
+                gradoId, null);
     }
 
     private void assertCreatedUser(Usuario savedUser) {
@@ -343,3 +343,4 @@ class CreateStudentFromParentTest {
         assertSame(grado, savedAlumno.getGrado());
     }
 }
+

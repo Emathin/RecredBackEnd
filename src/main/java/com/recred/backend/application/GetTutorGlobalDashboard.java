@@ -3,13 +3,19 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.BudgetSummaryDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.ChildDashboardDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.HealthSummaryDTO;
+import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.ScheduledPickupDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.SmartActionDTO;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.TransactionSummaryDTO;
 
+import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
+import com.recred.backend.domain.models.RangoFechas;
+import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,22 +29,26 @@ public class GetTutorGlobalDashboard {
     private final GetStudentRewardStatus getStudentRewardStatus;
     private final PredictStudentSpending predictStudentSpending;
     private final ObtenerHistorialAlumno obtenerHistorialAlumno;
+    private final TutorRepository tutorRepository;
 
     public GetTutorGlobalDashboard(ObtenerHijosPorPadre obtenerHijosPorPadre,
                                    GetActiveBudgetByStudent getActiveBudgetByStudent,
                                    GetStudentRewardStatus getStudentRewardStatus,
                                    PredictStudentSpending predictStudentSpending,
-                                   ObtenerHistorialAlumno obtenerHistorialAlumno) {
+                                   ObtenerHistorialAlumno obtenerHistorialAlumno,
+                                   TutorRepository tutorRepository) {
         this.obtenerHijosPorPadre = obtenerHijosPorPadre;
         this.getActiveBudgetByStudent = getActiveBudgetByStudent;
         this.getStudentRewardStatus = getStudentRewardStatus;
         this.predictStudentSpending = predictStudentSpending;
         this.obtenerHistorialAlumno = obtenerHistorialAlumno;
+        this.tutorRepository = tutorRepository;
     }
 
     public TutorGlobalDashboardDTO executeByCognitoSubject(String cognitoSubject) {
         Set<Alumno> hijos = obtenerHijosPorPadre.executeByCognitoSubject(cognitoSubject);
         BigDecimal totalBalance = BigDecimal.ZERO;
+        BigDecimal totalDebt = BigDecimal.ZERO;
         List<ChildDashboardDTO> childrenDashboards = new ArrayList<>();
 
         for (Alumno alumno : hijos) {
@@ -46,14 +56,39 @@ public class GetTutorGlobalDashboard {
                     ? alumno.getBilletera().getSaldoCreditos() : BigDecimal.ZERO;
             totalBalance = totalBalance.add(balance);
 
+            BigDecimal debt = alumno.getBilletera() != null 
+                    ? alumno.getBilletera().getSaldoDeudaInterno() : BigDecimal.ZERO;
+            if (debt == null) {
+                debt = BigDecimal.ZERO;
+            }
+            totalDebt = totalDebt.add(debt);
+
+            List<Purchase> historial = obtenerHistorialAlumno.execute(alumno.getId());
+
             Optional<PresupuestoAlumno> presupuestoOpt = getActiveBudgetByStudent
                     .execute(alumno.getId());
             BudgetSummaryDTO budgetDto = null;
             if (presupuestoOpt.isPresent()) {
                 PresupuestoAlumno p = presupuestoOpt.get();
+                BigDecimal spent = BigDecimal.ZERO;
+                try {
+                    CalculadorPeriodoPresupuesto calculador = new CalculadorPeriodoPresupuesto();
+                    LocalDateTime now = LocalDateTime.now();
+                    RangoFechas rango = calculador.calcularRango(p.getPeriodo(), now);
+                    for (Purchase purchase : historial) {
+                        LocalDateTime purchaseDate = purchase.getDate();
+                        if (purchaseDate != null 
+                                && !purchaseDate.isBefore(rango.inicio()) 
+                                && !purchaseDate.isAfter(rango.fin())) {
+                            spent = spent.add(purchase.getTotalAmount());
+                        }
+                    }
+                } catch (Exception e) {
+                    // Fallback to ZERO in case of any calculation issues
+                }
                 budgetDto = new BudgetSummaryDTO(
                         p.getPeriodo().name(),
-                        BigDecimal.ZERO,
+                        spent,
                         p.getMontoLimiteGeneral()
                 );
             }
@@ -78,8 +113,6 @@ public class GetTutorGlobalDashboard {
             } catch (Exception e) {
                 
             }
-
-            List<Purchase> historial = obtenerHistorialAlumno.execute(alumno.getId());
             List<TransactionSummaryDTO> transactions = historial.stream()
                     .limit(4)
                     .map(p -> new TransactionSummaryDTO(
@@ -102,21 +135,54 @@ public class GetTutorGlobalDashboard {
 
             String stuName = alumno.getUsuario() != null 
                     ? alumno.getUsuario().getNombre() : "Alumno";
+            String urlFotoPerfil = alumno.getUsuario() != null
+                    ? alumno.getUsuario().getUrlFotoPerfil() : null;
             
+            List<ScheduledPickupDTO> todayPickups = new ArrayList<>();
+            java.time.LocalDate today = java.time.LocalDate.now();
+            for (Purchase p : historial) {
+                var tipo = p.getTipo();
+                var ws = p.getWithdrawalStatus();
+                boolean isToday = p.getPickupDate() != null 
+                        && p.getPickupDate().equals(today);
+                boolean isActive = ws == com.recred.backend.domain.models.EstadoRetiro.PROGRAMADO
+                        || ws == com.recred.backend.domain.models.EstadoRetiro.EN_PREPARACION
+                        || ws == com.recred.backend.domain.models.EstadoRetiro.LISTO;
+
+                if (tipo == com.recred.backend.domain.models.TipoCompra.ANTICIPADA 
+                        && isToday && isActive) {
+                    String desc = p.getPickupSlotDescription() != null 
+                            ? p.getPickupSlotDescription() : "";
+                    todayPickups.add(new ScheduledPickupDTO(
+                            p.getId().toString(),
+                            getPurchaseName(p),
+                            desc
+                    ));
+                }
+            }
+
             childrenDashboards.add(new ChildDashboardDTO(
                     alumno.getId(),
                     stuName,
                     balance,
+                    debt,
+                    urlFotoPerfil,
                     predictionMsg,
                     budgetDto,
                     healthDto,
-                    List.of(),
+                    todayPickups,
                     transactions,
                     smartAction
             ));
         }
 
-        return new TutorGlobalDashboardDTO("ME", totalBalance, childrenDashboards);
+        Tutor tutor = tutorRepository.findByUsuarioIdCognito(cognitoSubject).orElse(null);
+        String dashboardConfig = tutor != null ? tutor.getDashboardConfig() : null;
+        String planStr = tutor != null && tutor.getUsuario() != null
+                ? tutor.getUsuario().getPlan().name() : "GRATUITO";
+
+        return new TutorGlobalDashboardDTO("ME", totalBalance, totalDebt, 
+                dashboardConfig, childrenDashboards, planStr);
     }
 
     private String getPurchaseName(Purchase p) {

@@ -1,9 +1,12 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
+
+import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.ProductRecommendationResult;
 import com.recred.backend.domain.models.ProductSaleStatistics;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -11,6 +14,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ProductChangeRecommendationResponseTest {
@@ -36,9 +40,11 @@ class ProductChangeRecommendationResponseTest {
         assertEquals(List.of("Alerta"), response.alertas());
         assertEquals(List.of("Recomendacion"), response.productosSugeridos());
         assertEquals("gemini-test", response.modeloIA());
-        assertEquals(productId, response.estadisticasVenta().productoId());
+        Object saleStatistics = response.estadisticasVenta();
+        assertNotNull(saleStatistics);
+        assertEquals(productId, readAccessor(saleStatistics, "productoId"));
         assertEquals(new BigDecimal("100.00"),
-                response.estadisticasVenta().precioActual());
+                readAccessor(saleStatistics, "precioActual"));
     }
 
     @Test
@@ -83,5 +89,15 @@ class ProductChangeRecommendationResponseTest {
                 .stockActual(5)
                 .stockPromedioCategoria(new BigDecimal("10.00"))
                 .build();
+    }
+
+    private Object readAccessor(Object target, String methodName) {
+        try {
+            Method method = target.getClass().getDeclaredMethod(methodName);
+            method.setAccessible(true);
+            return method.invoke(target);
+        } catch (ReflectiveOperationException exception) {
+            throw new AssertionError(exception);
+        }
     }
 }

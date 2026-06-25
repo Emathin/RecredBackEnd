@@ -8,6 +8,7 @@ import com.recred.backend.application.GenerateComboSuggestion;
 import com.recred.backend.application.GetActivePromotionsByBuffet;
 import com.recred.backend.application.GetActiveSchools;
 import com.recred.backend.application.GetTutorGlobalDashboard;
+import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.application.GetSuggestionByNotificationId;
 import com.recred.backend.application.GetSuggestionByType;
 import com.recred.backend.application.EnableSchoolCredit;
@@ -25,6 +26,7 @@ import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreatePromotion;
+import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DeleteCarritoFavorito;
@@ -184,7 +186,6 @@ import com.recred.backend.domain.services.RecessTimeSlotResolver;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
-import com.recred.backend.domain.services.SpendingPredictionRangeService;
 import com.recred.backend.domain.services.TutorService;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.domain.services.ValidacionRestriccionesService;
@@ -198,6 +199,7 @@ import com.recred.backend.infrastructure.gemini.GeminiParentSummaryAnalyzer;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.gemini.GeminiTextClient;
 import com.recred.backend.infrastructure.gemini.LoadStockIAService;
+import com.recred.backend.infrastructure.openMeteo.NominatimGeocodingClient;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
 import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
 import org.springframework.context.annotation.Bean;
@@ -230,11 +232,6 @@ public class UseCases {
     @Bean
     public ParentSummaryAnalyzer parentSummaryAnalyzer(GeminiTextClient geminiTextClient) {
         return new GeminiParentSummaryAnalyzer(geminiTextClient);
-    }
-
-    @Bean
-    public WithdrawalCodeServiceImpl withdrawalCodeServiceImpl() {
-        return new WithdrawalCodeServiceImpl();
     }
 
     @Bean
@@ -281,8 +278,8 @@ public class UseCases {
     }
 
     @Bean
-    public WithdrawalCodeService withdrawalCodeService() {
-        return new WithdrawalCodeServiceImpl();
+    public WithdrawalCodeService withdrawalCodeService(PurchaseRepository purchaseRepository) {
+        return new WithdrawalCodeServiceImpl(purchaseRepository);
     }
 
     @Bean
@@ -299,6 +296,7 @@ public class UseCases {
             SpringDataBuffetRepository buffetRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
+            PromotionRepository promotionRepository,
             MovimientoBilleteraRepository movimientoBilleteraRepository) {
         return new CreateAdvancePurchase(
                 purchaseValidator,
@@ -313,6 +311,7 @@ public class UseCases {
                 buffetRepository,
                 usuarioRepository,
                 tutorRepository,
+                promotionRepository,
                 movimientoBilleteraRepository);
     }
 
@@ -356,8 +355,9 @@ public class UseCases {
 
     @Bean
     public AgregarProductoFavorito agregarProductoFavorito(AlumnoRepository alumnoRepository,
-            ProductRepository productRepository) {
-        return new AgregarProductoFavorito(alumnoRepository, productRepository);
+            ProductRepository productRepository,
+            TutorRepository tutorRepository) {
+        return new AgregarProductoFavorito(alumnoRepository, productRepository, tutorRepository);
     }
 
     @Bean
@@ -393,6 +393,14 @@ public class UseCases {
                 alumnoRepository,
                 gradoRepository,
                 cognitoStudentIdentityService);
+    }
+
+    @Bean
+    public ActualizarFotoAlumno actualizarFotoAlumno(
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            AlumnoRepository alumnoRepository) {
+        return new ActualizarFotoAlumno(usuarioRepository, tutorRepository, alumnoRepository);
     }
 
     @Bean
@@ -768,7 +776,6 @@ public class UseCases {
             PurchaseSpendingRepository purchaseSpendingRepository,
             SpendingPredictionAnalyzer spendingPredictionAnalyzer,
             AIEventRepository aiEventRepository,
-            SpendingPredictionRangeService spendingPredictionRangeService,
             SpendingPredictionCalculator spendingPredictionCalculator,
             Clock clock) {
         return new PredictStudentSpending(
@@ -777,7 +784,6 @@ public class UseCases {
                 purchaseSpendingRepository,
                 spendingPredictionAnalyzer,
                 aiEventRepository,
-                spendingPredictionRangeService,
                 spendingPredictionCalculator,
                 clock);
     }
@@ -843,8 +849,13 @@ public class UseCases {
     @Bean
     public CheckBudgetDates checkBudgetDates(
             ProductRepository productRepository,
+            PromotionRepository promotionRepository,
             ValidadorPresupuestoService validadorPresupuestoService) {
-        return new CheckBudgetDates(productRepository, validadorPresupuestoService);
+        return new CheckBudgetDates(
+                productRepository,
+                promotionRepository,
+                validadorPresupuestoService
+        );
     }
 
     @Bean
@@ -1022,15 +1033,17 @@ public class UseCases {
 
     @Bean
     public GenerateSeasonalRecommendation generateSeasonalRecommendation(
-            GeminiSeasonalSuggester seasonalSuggester,
-            OpenMeteoWeatherClient weatherClient,
+            OpenMeteoWeatherClient climaService,
+            NominatimGeocodingClient geocodingClient,
+            GeminiSeasonalSuggester geminiSeasonalSuggesterService,
             ProductRepository productRepository,
-            CreatePromotion createPromotion){
+            CategoryRepository categoryRepository) {
         return new GenerateSeasonalRecommendation(
-                weatherClient,
-                seasonalSuggester,
-                productRepository,
-                createPromotion);
+                climaService, 
+                geocodingClient, 
+                geminiSeasonalSuggesterService, 
+                productRepository, 
+                categoryRepository);
     }
 
     @Bean
@@ -1276,13 +1289,16 @@ public class UseCases {
             GetActiveBudgetByStudent getActiveBudgetByStudent,
             GetStudentRewardStatus getStudentRewardStatus,
             PredictStudentSpending predictStudentSpending,
-            ObtenerHistorialAlumno obtenerHistorialAlumno) {
+            ObtenerHistorialAlumno obtenerHistorialAlumno,
+            TutorRepository tutorRepository) {
         return new GetTutorGlobalDashboard(
                 obtenerHijosPorPadre,
                 getActiveBudgetByStudent,
                 getStudentRewardStatus,
                 predictStudentSpending,
-                obtenerHistorialAlumno);
+                obtenerHistorialAlumno,
+                tutorRepository
+        );
     }
 
     @Bean
@@ -1290,6 +1306,11 @@ public class UseCases {
             com.recred.backend.infrastructure.cloudinary.CloudinaryService cloudinaryService,
             InventoryRepository inventoryRepository) {
         return new UploadProductImage(cloudinaryService, inventoryRepository);
+    }
+
+    @Bean
+    public UpdateTutorDashboardConfig updateTutorDashboardConfig(TutorRepository tutorRepository) {
+        return new UpdateTutorDashboardConfig(tutorRepository);
     }
 
     @Bean

@@ -8,6 +8,7 @@ import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.SchoolCredit;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
@@ -83,6 +84,7 @@ class TransferBalanceBetweenChildrenTest {
         parentUser.setId(UUID.randomUUID());
         parentUser.setRol(RolUsuario.PADRE);
         parentUser.setTutor(tutor);
+        parentUser.setPlan(TipoPlan.PREMIUM);
 
         fromWallet = new Billetera();
         fromWallet.setId(UUID.randomUUID());
@@ -270,6 +272,18 @@ class TransferBalanceBetweenChildrenTest {
 
         assertThrows(RuntimeException.class, () ->
                 transferUseCase.execute(cognitoSub, fromId, toId, new BigDecimal("30.00")));
+
+        verify(walletRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldThrowException_whenUserHasFreePlan() {
+        parentUser.setPlan(TipoPlan.GRATUITO);
+        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                transferUseCase.execute(cognitoSub, fromId, toId, new BigDecimal("30.00")));
+        assertEquals("La transferencia entre hijos no está permitida en cuentas gratuitas", exception.getMessage());
 
         verify(walletRepository, never()).save(any());
     }

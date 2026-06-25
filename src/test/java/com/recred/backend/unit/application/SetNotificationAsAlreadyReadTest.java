@@ -1,4 +1,6 @@
-package com.recred.backend.application;
+package com.recred.backend.unit.application;
+
+import com.recred.backend.application.*;
 
 import com.recred.backend.domain.exceptions.NotificationNotFoundException;
 import com.recred.backend.domain.repositories.NotificationRepository;

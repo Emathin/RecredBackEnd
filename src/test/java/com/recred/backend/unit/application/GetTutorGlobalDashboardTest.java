@@ -1,4 +1,6 @@
-package com.recred.backend.application;
+package com.recred.backend.unit.application;
+
+import com.recred.backend.application.*;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
@@ -11,6 +13,7 @@ import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +56,9 @@ class GetTutorGlobalDashboardTest {
     @Mock
     private ObtenerHistorialAlumno obtenerHistorialAlumno;
 
+    @Mock
+    private TutorRepository tutorRepository;
+
     private GetTutorGlobalDashboard getTutorGlobalDashboard;
 
     @BeforeEach
@@ -62,7 +68,8 @@ class GetTutorGlobalDashboardTest {
                 getActiveBudgetByStudent,
                 getStudentRewardStatus,
                 predictStudentSpending,
-                obtenerHistorialAlumno
+                obtenerHistorialAlumno,
+                tutorRepository
         );
     }
 
@@ -243,7 +250,7 @@ class GetTutorGlobalDashboardTest {
     private Purchase purchase(Map<Producto, Integer> items, String amount) {
         Purchase purchase = new Purchase();
         purchase.setId(UUID.randomUUID());
-        purchase.setDate(LocalDateTime.of(2026, 6, 10, 10, 0));
+        purchase.setDate(LocalDateTime.of(2020, 6, 10, 10, 0));
         purchase.setTotalAmount(new BigDecimal(amount));
         purchase.setItems(items);
         return purchase;

@@ -1,4 +1,6 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
+
+import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.TipoSugerenciaIA;

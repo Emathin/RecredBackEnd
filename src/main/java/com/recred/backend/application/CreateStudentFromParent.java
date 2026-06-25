@@ -40,7 +40,7 @@ public class CreateStudentFromParent {
     @Transactional
     public Alumno execute(String parentCognitoSubject, String username, String nombre,
                           String apellido,
-                          String email, String dni, UUID gradoId) {
+                          String email, String dni, UUID gradoId, String urlFotoPerfil) {
         validate(username, nombre, apellido, email);
 
         Usuario parent = usuarioRepository.findByIdCognito(parentCognitoSubject)
@@ -75,7 +75,8 @@ public class CreateStudentFromParent {
                 apellido.trim()
         );
 
-        Usuario childUser = buildChildUser(nombre, apellido, email, dni, cognitoUser);
+        Usuario childUser = buildChildUser(nombre, apellido, email, dni, cognitoUser,
+                urlFotoPerfil);
         Usuario savedChildUser = usuarioRepository.save(childUser);
 
         Alumno child = new Alumno();
@@ -92,7 +93,7 @@ public class CreateStudentFromParent {
     }
 
     private Usuario buildChildUser(String nombre, String apellido, String email, String dni,
-                                   CreatedCognitoUser cognitoUser) {
+                                   CreatedCognitoUser cognitoUser, String urlFotoPerfil) {
         LocalDateTime now = LocalDateTime.now();
 
         Usuario childUser = new Usuario();
@@ -106,6 +107,7 @@ public class CreateStudentFromParent {
         childUser.setActivo(true);
         childUser.setCreadoEn(now);
         childUser.setActualizadoEn(now);
+        childUser.setUrlFotoPerfil(urlFotoPerfil);
         return childUser;
     }
 

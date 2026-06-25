@@ -15,7 +15,6 @@ import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.models.SpendingPeriodPreference;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
-import com.recred.backend.domain.services.SpendingPredictionRangeService;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -74,7 +73,6 @@ class PredictStudentSpendingTest {
                 purchaseSpendingRepository,
                 spendingPredictionAnalyzer,
                 aiEventRepository,
-                new SpendingPredictionRangeService(),
                 new SpendingPredictionCalculator(),
                 CLOCK
         );

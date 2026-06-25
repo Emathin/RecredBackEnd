@@ -1,4 +1,6 @@
-package com.recred.backend.application;
+package com.recred.backend.unit.application;
+
+import com.recred.backend.application.*;
 
 import com.recred.backend.domain.models.Producto;
 import org.junit.jupiter.api.BeforeEach;

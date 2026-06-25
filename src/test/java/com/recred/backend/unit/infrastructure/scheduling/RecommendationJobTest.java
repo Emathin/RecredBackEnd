@@ -1,4 +1,6 @@
-package com.recred.backend.infrastructure.scheduling;
+package com.recred.backend.unit.infrastructure.scheduling;
+
+import com.recred.backend.infrastructure.scheduling.*;
 
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.GeneratePurchaseRecommendation;

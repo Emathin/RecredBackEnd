@@ -1,4 +1,6 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
+
+import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.application.DeleteCarritoFavorito;
 import com.recred.backend.application.GetCarritosFavoritosByTutor;
@@ -45,6 +47,7 @@ class CarritoFavoritoControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void saveCartDelegatesWithProductQuantitiesAndReturnsCreatedCart() {
         UUID cartId = UUID.randomUUID();
         UUID alumnoId = UUID.randomUUID();

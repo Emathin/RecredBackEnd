@@ -6,6 +6,7 @@ import com.recred.backend.domain.models.CreditStatus;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
@@ -54,6 +55,11 @@ public class TransferBalanceBetweenChildren {
 
         Usuario padre = usuarioRepository.findByIdCognito(cognitoSub)
                 .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
+
+        if (padre.getPlan() == TipoPlan.GRATUITO) {
+            throw new IllegalArgumentException(
+                    "La transferencia entre hijos no está permitida en cuentas gratuitas");
+        }
 
         if (padre.getRol() != RolUsuario.PADRE) {
             throw new SecurityException("Solo un padre puede transferir saldo");

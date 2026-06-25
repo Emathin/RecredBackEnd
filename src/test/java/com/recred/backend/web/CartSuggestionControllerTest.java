@@ -1,4 +1,6 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.web;
+
+import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.application.GetCartSuggestions;
 import com.recred.backend.domain.models.CartSuggestion;
@@ -29,6 +31,7 @@ class CartSuggestionControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void suggestMapsRequestItemsAndResponse() {
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -73,6 +76,7 @@ class CartSuggestionControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void suggestUsesEmptySetWhenRequestItemsAreNull() {
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
