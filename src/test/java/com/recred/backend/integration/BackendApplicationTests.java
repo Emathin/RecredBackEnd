@@ -21,16 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
 
-@SpringBootTest(properties = {"COGNITO_ISSUER_URI=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_dummy"})
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class BackendApplicationTests {
-
-	@MockitoBean
-	private JwtDecoder jwtDecoder;
-
-	@MockitoBean
-	private OpenMeteoWeatherClient openMeteoWeatherClient;
+class BackendApplicationTests extends AbstractIntegrationTest {
 
 	@Test
 	void contextLoads() {

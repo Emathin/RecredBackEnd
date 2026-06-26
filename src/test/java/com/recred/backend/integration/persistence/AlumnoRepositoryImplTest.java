@@ -2,300 +2,224 @@ package com.recred.backend.integration.persistence;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.ClasificacionSalud;
-import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
-import com.recred.backend.infrastructure.entities.GradoEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.persistence.AlumnoRepositoryImpl;
 import com.recred.backend.infrastructure.persistence.SpringDataAlumnoRepository;
-import com.recred.backend.infrastructure.persistence.SpringDataGradoRepository;
+import com.recred.backend.infrastructure.persistence.SpringDataCategoryRepository;
+import com.recred.backend.infrastructure.persistence.SpringDataClasificacionSaludRepository;
+import com.recred.backend.infrastructure.persistence.SpringDataProductRepository;
 import com.recred.backend.infrastructure.persistence.SpringDataUsuarioRepository;
+import com.recred.backend.integration.AbstractIntegrationTest;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-class AlumnoRepositoryImplTest {
+@Transactional
+class AlumnoRepositoryImplTest extends AbstractIntegrationTest {
 
-    @Mock
+    @Autowired
     private SpringDataAlumnoRepository springDataRepository;
 
-    @Mock
+    @Autowired
     private SpringDataUsuarioRepository usuarioRepository;
 
-    @Mock
-    private SpringDataGradoRepository gradoRepository;
+    @Autowired
+    private SpringDataClasificacionSaludRepository clasificacionSaludRepository;
 
-    @InjectMocks
+    @Autowired
+    private SpringDataCategoryRepository categoryRepository;
+
+    @Autowired
+    private SpringDataProductRepository productoRepository;
+
+    @Autowired
     private AlumnoRepositoryImpl alumnoRepositoryImpl;
 
-    @Captor
-    private ArgumentCaptor<AlumnoEntity> entityCaptor;
-
-    private UUID alumnoId;
+    private UUID usuarioId;
     private UUID clasificacionId;
+    private UUID productoFavId;
+    private UUID productoBloqId;
 
     @BeforeEach
     void setUp() {
-        alumnoId = UUID.randomUUID();
-        clasificacionId = UUID.randomUUID();
+        UsuarioEntity usuarioEntity = generateTestUsuario();
+        usuarioId = usuarioEntity.getId();
+
+        ClasificacionSaludEntity clasificacion = generateClasificacionSaludEntity();
+        clasificacionId = clasificacion.getId();
+
+        CategoriaProductoEntity categoria = createAndSaveCategoriaProductoEntity();
+
+        ProductoEntity productoFav = createProductFav(categoria);
+        productoFavId = productoFav.getId();
+
+        ProductoEntity productoBloq = createProductBloq(categoria);
+        productoBloqId = productoBloq.getId();
     }
 
     @Test
-    void save_DeberiaMapearADominioYLlamarAlSpringData() {
-        Alumno alumnoDominio = new Alumno();
-        alumnoDominio.setId(alumnoId);
+    void save_DeberiaGuardarEnBaseDeDatosRealYGenerarId() {
 
-        ClasificacionSalud clasificacion = new ClasificacionSalud();
-        clasificacion.setId(clasificacionId);
-        clasificacion.setDescripcion("Celíaco");
-        alumnoDominio.agregarRestriccionSalud(clasificacion);
+        Alumno domainAlumno = prepareDomainModelAlumno();
 
-        Producto productoFav = new Producto();
-        productoFav.setId(UUID.randomUUID());
-        alumnoDominio.agregarProductoFavorito(productoFav);
+        Alumno savedAlumno = alumnoRepositoryImpl.save(domainAlumno);
 
-        Producto productoBloq = new Producto();
-        productoBloq.setId(UUID.randomUUID());
-        alumnoDominio.bloquearProducto(productoBloq);
+        assertNotNull(savedAlumno.getId(), "PostgreSQL debería haber generado el UUID del Alumno");
 
-        when(springDataRepository.save(any(AlumnoEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        Optional<AlumnoEntity> alumnoInDB = springDataRepository.findById(savedAlumno.getId());
+        assertTrue(alumnoInDB.isPresent(), "El alumno debe existir realmente en PostgreSQL");
+        
+        AlumnoEntity entidadReal = alumnoInDB.get();
 
-        alumnoRepositoryImpl.save(alumnoDominio);
-
-        verify(springDataRepository).save(entityCaptor.capture());
-        AlumnoEntity entidadAtrapada = entityCaptor.getValue();
-
-        assertNotNull(entidadAtrapada, "La entidad generada no debe ser nula");
-        assertEquals(alumnoId, entidadAtrapada.getId());
-
-        assertNotNull(entidadAtrapada.getRestriccionesSalud(), "La lista de entidades no debe ser nula");
-        assertEquals(1, entidadAtrapada.getRestriccionesSalud().size(), "Debe haber mapeado 1 restricción");
-        assertEquals(clasificacionId, entidadAtrapada.getRestriccionesSalud().iterator().next().getId(), "El ID de la restricción debe coincidir");
-
-        assertNotNull(entidadAtrapada.getProductosFavoritos(), "La lista de favoritos no debe ser nula");
-        assertEquals(1, entidadAtrapada.getProductosFavoritos().size(), "Debe haber mapeado 1 favorito");
-        assertEquals(productoFav.getId(), entidadAtrapada.getProductosFavoritos().iterator().next().getId());
-
-        assertNotNull(entidadAtrapada.getProductosBloqueados(), "La lista de bloqueados no debe ser nula");
-        assertEquals(1, entidadAtrapada.getProductosBloqueados().size(), "Debe haber mapeado 1 bloqueado");
-        assertEquals(productoBloq.getId(), entidadAtrapada.getProductosBloqueados().iterator().next().getId());
+        assertEquals(usuarioId, entidadReal.getUsuario().getId(), "El foreign key a Usuario debe coincidir");
+        assertEquals(1, entidadReal.getRestriccionesSalud().size(), "Debe haber insertado la relación ManyToMany de restricciones");
+        assertEquals(1, entidadReal.getProductosFavoritos().size(), "Debe haber insertado la relación ManyToMany de favoritos");
+        assertEquals(1, entidadReal.getProductosBloqueados().size(), "Debe haber insertado la relación ManyToMany de bloqueados");
     }
 
     @Test
-    void findById_CuandoExiste_DeberiaMapearADominioYRetornar() {
-        AlumnoEntity entidadFalsa = new AlumnoEntity();
-        entidadFalsa.setId(alumnoId);
+    void findById_DeberiaMapearADominioDesdeBdReal() {
 
-        ClasificacionSaludEntity clasificacionEntity = new ClasificacionSaludEntity();
-        clasificacionEntity.setId(clasificacionId);
-        clasificacionEntity.setDescripcion("Diabético");
-        entidadFalsa.setRestriccionesSalud(Set.of(clasificacionEntity));
+        AlumnoEntity entity = springDataRepository.saveAndFlush(createAlumnoEntityWithHealthClasifyAndFavProduct());
 
-        UUID productoId = UUID.randomUUID();
-        ProductoEntity productoEntity = new ProductoEntity();
-        productoEntity.setId(productoId);
-        productoEntity.setNombre("Galletitas");
-        entidadFalsa.setProductosFavoritos(Set.of(productoEntity));
+        Optional<Alumno> foundStudent = alumnoRepositoryImpl.findById(entity.getId());
 
-        UUID productoBloqId = UUID.randomUUID();
-        ProductoEntity productoBloqEntity = new ProductoEntity();
-        productoBloqEntity.setId(productoBloqId);
-        productoBloqEntity.setNombre("Alfajor");
-        entidadFalsa.setProductosBloqueados(Set.of(productoBloqEntity));
-
-        when(springDataRepository.findById(alumnoId)).thenReturn(Optional.of(entidadFalsa));
-
-        Optional<Alumno> resultado = alumnoRepositoryImpl.findById(alumnoId);
-
-        assertTrue(resultado.isPresent(), "El alumno debe estar presente");
-        Alumno alumnoMapeado = resultado.get();
-
-        assertEquals(alumnoId, alumnoMapeado.getId());
-        assertNotNull(alumnoMapeado.getRestriccionesSalud());
-        assertEquals(1, alumnoMapeado.getRestriccionesSalud().size());
-
-        ClasificacionSalud restriccionMapeada = alumnoMapeado.getRestriccionesSalud().iterator().next();
-        assertEquals(clasificacionId, restriccionMapeada.getId());
-        assertEquals("Diabético", restriccionMapeada.getDescripcion());
-
-        assertNotNull(alumnoMapeado.getProductosFavoritos());
-        assertEquals(1, alumnoMapeado.getProductosFavoritos().size());
-        assertEquals(productoId, alumnoMapeado.getProductosFavoritos().iterator().next().getId());
-
-        assertNotNull(alumnoMapeado.getProductosBloqueados());
-        assertEquals(1, alumnoMapeado.getProductosBloqueados().size());
-        assertEquals(productoBloqId, alumnoMapeado.getProductosBloqueados().iterator().next().getId());
-
-        verify(springDataRepository).findById(alumnoId);
+        assertTrue(foundStudent.isPresent());
+        Alumno mappedStudent = foundStudent.get();
+        assertEquals(entity.getId(), mappedStudent.getId());
+        assertEquals(1, mappedStudent.getRestriccionesSalud().size());
+        assertEquals(clasificacionId, mappedStudent.getRestriccionesSalud().iterator().next().getId());
     }
 
     @Test
-    void findById_CuandoNoExiste_DeberiaRetornarVacio() {
-        when(springDataRepository.findById(alumnoId)).thenReturn(Optional.empty());
+    void findStudentIdByUserId_DeberiaHacerSelectPorUserIdYRetornarIdAlumno() {
 
-        Optional<Alumno> resultado = alumnoRepositoryImpl.findById(alumnoId);
-
-        assertTrue(resultado.isEmpty());
-        verify(springDataRepository).findById(alumnoId);
-    }
-
-    @Test
-    void findStudentIdByUserId_CuandoExiste_DeberiaRetornarIdAlumno() {
-        UUID usuarioId = UUID.randomUUID();
-        when(springDataRepository.findStudentIdByUserId(usuarioId))
-                .thenReturn(Optional.of(alumnoId));
+        AlumnoEntity studentEntity = springDataRepository.saveAndFlush(createAlumnoEntityWithHealthClasifyAndFavProduct());
 
         Optional<UUID> resultado = alumnoRepositoryImpl.findStudentIdByUserId(usuarioId);
 
-        assertEquals(Optional.of(alumnoId), resultado);
-        verify(springDataRepository).findStudentIdByUserId(usuarioId);
+        assertTrue(resultado.isPresent());
+        assertEquals(studentEntity.getId(), resultado.get());
     }
 
     @Test
-    void findAllMapsEntitiesToDomain() {
-        AlumnoEntity entity = new AlumnoEntity();
-        entity.setId(alumnoId);
-        when(springDataRepository.findAll()).thenReturn(java.util.List.of(entity));
+    void findAll_DeberiaTraerTodosDeLaBd() {
+        AlumnoEntity studentEntity = springDataRepository.saveAndFlush(createAlumnoEntityWithHealthClasifyAndFavProduct());
 
-        java.util.List<Alumno> result = alumnoRepositoryImpl.findAll();
+        List<Alumno> result = alumnoRepositoryImpl.findAll();
 
-        assertEquals(1, result.size());
-        assertEquals(alumnoId, result.get(0).getId());
+        assertFalse(result.isEmpty());
+        assertTrue(result.stream().anyMatch(a -> a.getId().equals(studentEntity.getId())));
     }
 
     @Test
-    void existsByIdDelegatesToSpringDataRepository() {
-        when(springDataRepository.existsById(alumnoId)).thenReturn(true);
+    void existsById_DeberiaEjecutarExistsQueryEnPostgreSQL() {
+        AlumnoEntity studentEntity = springDataRepository.saveAndFlush(createAlumnoEntityWithHealthClasifyAndFavProduct());
 
-        boolean result = alumnoRepositoryImpl.existsById(alumnoId);
+        boolean result = alumnoRepositoryImpl.existsById(studentEntity.getId());
 
         assertTrue(result);
-        verify(springDataRepository).existsById(alumnoId);
     }
 
-    @Test
-    void findUserIDDelegatesToSpringDataRepository() {
-        UUID userId = UUID.randomUUID();
-        when(springDataRepository.findUserId(alumnoId)).thenReturn(userId);
-
-        UUID result = alumnoRepositoryImpl.findUserID(alumnoId);
-
-        assertEquals(userId, result);
-        verify(springDataRepository).findUserId(alumnoId);
+    @NotNull
+    private ProductoEntity createProductBloq(CategoriaProductoEntity categoria) {
+        ProductoEntity productoBloq = new ProductoEntity();
+        productoBloq.setNombre("Caramelos");
+        productoBloq.setDescripcion("Golosina con azúcar");
+        productoBloq.setPrecio(BigDecimal.valueOf(50));
+        productoBloq.setCategoria(categoria);
+        productoBloq.setRequierePreparacion(false);
+        productoBloq = productoRepository.saveAndFlush(productoBloq);
+        return productoBloq;
     }
 
-    @Test
-    void saveWithoutIdCreatesNewEntityWithDefaultActiveStatus() {
-        Alumno alumno = new Alumno();
-        alumno.setActivo(null);
-        when(springDataRepository.save(any(AlumnoEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        alumnoRepositoryImpl.save(alumno);
-
-        verify(springDataRepository).save(entityCaptor.capture());
-        assertTrue(entityCaptor.getValue().getActivo());
-        verify(springDataRepository, never()).findById(any());
+    @NotNull
+    private ProductoEntity createProductFav(CategoriaProductoEntity categoria) {
+        ProductoEntity productoFav = new ProductoEntity();
+        productoFav.setNombre("Alfajor de Arroz");
+        productoFav.setDescripcion("Alfajor sin TACC");
+        productoFav.setPrecio(BigDecimal.valueOf(100));
+        productoFav.setCategoria(categoria);
+        productoFav.setRequierePreparacion(false);
+        productoFav = productoRepository.saveAndFlush(productoFav);
+        return productoFav;
     }
 
-    @Test
-    void saveMapsUserAndGradeReferences() {
-        UUID userId = UUID.randomUUID();
-        UUID gradeId = UUID.randomUUID();
-        Usuario usuario = new Usuario();
-        usuario.setId(userId);
-        Grado grado = new Grado();
-        grado.setId(gradeId);
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        alumno.setUsuario(usuario);
-        alumno.setGrado(grado);
+    @NotNull
+    private CategoriaProductoEntity createAndSaveCategoriaProductoEntity() {
+        CategoriaProductoEntity categoria = new CategoriaProductoEntity();
+        categoria.setDescripcion("Snacks " + UUID.randomUUID());
+        categoria = categoryRepository.saveAndFlush(categoria);
+        return categoria;
+    }
+
+    @NotNull
+    private ClasificacionSaludEntity generateClasificacionSaludEntity() {
+        ClasificacionSaludEntity clasificacion = new ClasificacionSaludEntity();
+        clasificacion.setDescripcion("Celíaco " + UUID.randomUUID());
+        clasificacion = clasificacionSaludRepository.saveAndFlush(clasificacion);
+        return clasificacion;
+    }
+
+    @NotNull
+    private UsuarioEntity generateTestUsuario() {
         UsuarioEntity usuarioEntity = new UsuarioEntity();
-        usuarioEntity.setId(userId);
-        GradoEntity gradoEntity = new GradoEntity();
-        gradoEntity.setId(gradeId);
-
-        when(springDataRepository.findById(alumnoId)).thenReturn(Optional.of(new AlumnoEntity()));
-        when(usuarioRepository.getReferenceById(userId)).thenReturn(usuarioEntity);
-        when(gradoRepository.getReferenceById(gradeId)).thenReturn(gradoEntity);
-        when(springDataRepository.save(any(AlumnoEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        alumnoRepositoryImpl.save(alumno);
-
-        verify(springDataRepository).save(entityCaptor.capture());
-        AlumnoEntity entity = entityCaptor.getValue();
-        assertEquals(usuarioEntity, entity.getUsuario());
-        assertEquals(gradoEntity, entity.getGradoEntity());
+        usuarioEntity.setIdCognito("cognito_sub_" + UUID.randomUUID());
+        usuarioEntity.setNombre("Juan");
+        usuarioEntity.setApellido("Perez");
+        usuarioEntity.setEmail("juan" + UUID.randomUUID() + "@test.com");
+        usuarioEntity.setRol(RolUsuario.ALUMNO);
+        usuarioEntity.setAutenticadoConCognito(true);
+        usuarioEntity = usuarioRepository.saveAndFlush(usuarioEntity);
+        return usuarioEntity;
     }
 
-    @Test
-    void saveClearsExistingCollectionsWhenDomainCollectionsAreEmpty() {
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        alumno.setRestriccionesSalud(Set.of());
-        alumno.setProductosFavoritos(Set.of());
-        alumno.setProductosBloqueados(Set.of());
-        AlumnoEntity entity = new AlumnoEntity();
-        entity.getRestriccionesSalud().add(new ClasificacionSaludEntity());
-        entity.getProductosFavoritos().add(new ProductoEntity());
-        entity.getProductosBloqueados().add(new ProductoEntity());
+    @NotNull
+    private Alumno prepareDomainModelAlumno() {
+        Alumno alumnoDominio = new Alumno();
 
-        when(springDataRepository.findById(alumnoId)).thenReturn(Optional.of(entity));
-        when(springDataRepository.save(any(AlumnoEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        Usuario usuarioDominio = new Usuario();
+        usuarioDominio.setId(usuarioId);
+        alumnoDominio.setUsuario(usuarioDominio);
+        alumnoDominio.setActivo(true);
 
-        alumnoRepositoryImpl.save(alumno);
+        ClasificacionSalud clasifDominio = new ClasificacionSalud();
+        clasifDominio.setId(clasificacionId);
+        alumnoDominio.agregarRestriccionSalud(clasifDominio);
 
-        assertTrue(entity.getRestriccionesSalud().isEmpty());
-        assertTrue(entity.getProductosFavoritos().isEmpty());
-        assertTrue(entity.getProductosBloqueados().isEmpty());
+        Producto prodFavDominio = new Producto();
+        prodFavDominio.setId(productoFavId);
+        alumnoDominio.agregarProductoFavorito(prodFavDominio);
+
+        Producto prodBloqDominio = new Producto();
+        prodBloqDominio.setId(productoBloqId);
+        alumnoDominio.bloquearProducto(prodBloqDominio);
+        return alumnoDominio;
     }
 
-    @Test
-    void saveFiltersFavoriteAndBlockedProductsWithoutId() {
-        UUID favoriteId = UUID.randomUUID();
-        UUID blockedId = UUID.randomUUID();
-        Producto favoriteWithoutId = new Producto();
-        Producto favoriteWithId = new Producto();
-        favoriteWithId.setId(favoriteId);
-        Producto blockedWithoutId = new Producto();
-        Producto blockedWithId = new Producto();
-        blockedWithId.setId(blockedId);
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        alumno.setProductosFavoritos(Set.of(favoriteWithoutId, favoriteWithId));
-        alumno.setProductosBloqueados(Set.of(blockedWithoutId, blockedWithId));
-
-        when(springDataRepository.findById(alumnoId)).thenReturn(Optional.of(new AlumnoEntity()));
-        when(springDataRepository.save(any(AlumnoEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        alumnoRepositoryImpl.save(alumno);
-
-        verify(springDataRepository).save(entityCaptor.capture());
-        AlumnoEntity entity = entityCaptor.getValue();
-        assertEquals(1, entity.getProductosFavoritos().size());
-        assertEquals(favoriteId, entity.getProductosFavoritos().iterator().next().getId());
-        assertEquals(1, entity.getProductosBloqueados().size());
-        assertEquals(blockedId, entity.getProductosBloqueados().iterator().next().getId());
+    @NotNull
+    private AlumnoEntity createAlumnoEntityWithHealthClasifyAndFavProduct() {
+        AlumnoEntity entidad = new AlumnoEntity();
+        entidad.setUsuario(usuarioRepository.getReferenceById(usuarioId));
+        entidad.getRestriccionesSalud().add(clasificacionSaludRepository.getReferenceById(clasificacionId));
+        entidad.getProductosFavoritos().add(productoRepository.getReferenceById(productoFavId));
+        return entidad;
     }
+
 }
