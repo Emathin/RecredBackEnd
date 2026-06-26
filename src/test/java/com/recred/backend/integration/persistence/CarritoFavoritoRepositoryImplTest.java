@@ -1,22 +1,18 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.infrastructure.persistence.*;
-
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CarritoFavorito;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Tutor;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
-import com.recred.backend.infrastructure.entities.CarritoFavoritoEntity;
-import com.recred.backend.infrastructure.entities.CarritoFavoritoItemEntity;
-import com.recred.backend.infrastructure.entities.ProductoEntity;
-import com.recred.backend.infrastructure.entities.TutorEntity;
+import com.recred.backend.infrastructure.entities.*;
+import com.recred.backend.infrastructure.persistence.*;
+import com.recred.backend.integration.AbstractIntegrationTest;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -26,131 +22,102 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-class CarritoFavoritoRepositoryImplTest {
+@Transactional
+class CarritoFavoritoRepositoryImplTest extends AbstractIntegrationTest {
 
-    @Mock
+    @Autowired
     private SpringDataCarritoFavoritoRepository springDataRepository;
 
-    @Mock
+    @Autowired
     private SpringDataTutorRepository springDataTutorRepository;
 
-    @Mock
+    @Autowired
     private SpringDataAlumnoRepository springDataAlumnoRepository;
 
-    @Mock
+    @Autowired
     private SpringDataProductRepository springDataProductRepository;
 
+    @Autowired
+    private SpringDataUsuarioRepository usuarioRepository;
+
+    @Autowired
+    private SpringDataColegioRepository colegioRepository;
+
+    @Autowired
+    private SpringDataGradoRepository gradoRepository;
+
+    @Autowired
+    private SpringDataCategoryRepository categoryRepository;
+
+    @Autowired
     private CarritoFavoritoRepositoryImpl repository;
+
+    private UUID tutorId;
+    private UUID alumnoId;
+    private UUID productId;
+    private UUID cartId;
+    private CategoriaProductoEntity cachedCategory;
 
     @BeforeEach
     void setUp() {
-        repository = new CarritoFavoritoRepositoryImpl(
-                springDataRepository,
-                springDataTutorRepository,
-                springDataAlumnoRepository,
-                springDataProductRepository
-        );
+        prepareRelationalEnvironment();
     }
 
     @Test
     void saveShouldCreateEntityWithReferencesAndItems() {
-        UUID tutorId = UUID.randomUUID();
-        UUID alumnoId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        CarritoFavorito cart = cart(null, tutorId, alumnoId, productId, 2);
-        TutorEntity tutorEntity = tutorEntity(tutorId);
-        AlumnoEntity alumnoEntity = alumnoEntity(alumnoId);
-        ProductoEntity productEntity = productEntity(productId);
-
-        when(springDataTutorRepository.getReferenceById(tutorId)).thenReturn(tutorEntity);
-        when(springDataAlumnoRepository.getReferenceById(alumnoId)).thenReturn(alumnoEntity);
-        when(springDataProductRepository.getReferenceById(productId)).thenReturn(productEntity);
-        when(springDataRepository.save(any(CarritoFavoritoEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        CarritoFavorito cart = buildCartDomain(null, tutorId, alumnoId, productId, 2);
 
         CarritoFavorito result = repository.save(cart);
 
-        ArgumentCaptor<CarritoFavoritoEntity> captor = ArgumentCaptor.forClass(
-                CarritoFavoritoEntity.class
-        );
-        verify(springDataRepository).save(captor.capture());
-        CarritoFavoritoEntity saved = captor.getValue();
+        Optional<CarritoFavoritoEntity> savedEntity = springDataRepository.findById(result.getId());
+        assertTrue(savedEntity.isPresent());
+        CarritoFavoritoEntity saved = savedEntity.get();
         assertEquals("Merienda", saved.getNombre());
         assertEquals(tutorId, saved.getTutor().getId());
         assertEquals(alumnoId, saved.getAlumno().getId());
         assertEquals(1, saved.getItems().size());
         assertEquals(productId, saved.getItems().get(0).getProductoEntity().getId());
         assertEquals(2, saved.getItems().get(0).getCantidad());
-        assertEquals("Merienda", result.getNombre());
-        assertEquals(1, result.getItems().size());
     }
 
     @Test
     void saveShouldUpdateExistingEntityAndClearOldItems() {
-        UUID cartId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        CarritoFavoritoEntity existing = new CarritoFavoritoEntity();
-        existing.setId(cartId);
-        existing.setNombre("Viejo");
-        existing.addItem(new CarritoFavoritoItemEntity());
-        CarritoFavorito cart = cart(cartId, null, null, productId, 3);
-        ProductoEntity productEntity = productEntity(productId);
-
-        when(springDataRepository.findById(cartId)).thenReturn(Optional.of(existing));
-        when(springDataProductRepository.getReferenceById(productId)).thenReturn(productEntity);
-        when(springDataRepository.save(existing)).thenReturn(existing);
+        UUID newProductId = generateProduct().getId();
+        CarritoFavorito cart = buildCartDomain(cartId, tutorId, alumnoId, newProductId, 3);
 
         CarritoFavorito result = repository.save(cart);
 
-        assertEquals("Merienda", result.getNombre());
+        Optional<CarritoFavoritoEntity> updatedEntity = springDataRepository.findById(cartId);
+        assertTrue(updatedEntity.isPresent());
+        CarritoFavoritoEntity existing = updatedEntity.get();
+        assertEquals("Merienda", existing.getNombre());
         assertEquals(1, existing.getItems().size());
-        assertEquals(productId, existing.getItems().get(0).getProductoEntity().getId());
-        verify(springDataRepository).save(existing);
+        assertEquals(newProductId, existing.getItems().get(0).getProductoEntity().getId());
+        assertEquals(3, existing.getItems().get(0).getCantidad());
     }
 
     @Test
     void saveShouldIgnoreItemsWithoutProductId() {
-        CarritoFavorito cart = new CarritoFavorito();
-        cart.setNombre("Merienda");
-        cart.setItems(Map.of(new Producto(), 1));
-        when(springDataRepository.save(any(CarritoFavoritoEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        CarritoFavorito result = repository.save(cart);
+        CarritoFavorito result = repository.save(createFavCart());
 
-        assertTrue(result.getItems().isEmpty());
+        Optional<CarritoFavoritoEntity> savedEntity = springDataRepository.findById(result.getId());
+        assertTrue(savedEntity.isPresent());
+        assertTrue(savedEntity.get().getItems().isEmpty());
     }
+
 
     @Test
     void findByIdShouldMapEntityWhenPresent() {
-        UUID cartId = UUID.randomUUID();
-        CarritoFavoritoEntity entity = new CarritoFavoritoEntity();
-        entity.setId(cartId);
-        entity.setNombre("Merienda");
-        when(springDataRepository.findById(cartId)).thenReturn(Optional.of(entity));
-
         Optional<CarritoFavorito> result = repository.findById(cartId);
 
         assertTrue(result.isPresent());
-        assertEquals(cartId, result.orElseThrow().getId());
+        assertEquals(cartId, result.get().getId());
     }
 
     @Test
     void findByTutorIdAndFiltersShouldMapEntities() {
-        UUID tutorId = UUID.randomUUID();
-        UUID alumnoId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        CarritoFavoritoEntity entity = new CarritoFavoritoEntity();
-        entity.setId(UUID.randomUUID());
-        entity.setNombre("Merienda");
-        when(springDataRepository.findByTutorIdAndFilters(tutorId, alumnoId, productId))
-                .thenReturn(List.of(entity));
-
         List<CarritoFavorito> result = repository.findByTutorIdAndFilters(
                 tutorId,
                 alumnoId,
@@ -158,25 +125,130 @@ class CarritoFavoritoRepositoryImplTest {
         );
 
         assertEquals(1, result.size());
-        assertEquals(entity.getId(), result.get(0).getId());
+        assertEquals(cartId, result.get(0).getId());
     }
 
     @Test
     void deleteShouldDelegateToSpringDataRepository() {
-        UUID id = UUID.randomUUID();
+        repository.delete(cartId);
 
-        repository.delete(id);
-
-        verify(springDataRepository).deleteById(id);
+        Optional<CarritoFavoritoEntity> deletedEntity = springDataRepository.findById(cartId);
+        assertTrue(deletedEntity.isEmpty());
     }
 
-    private CarritoFavorito cart(
-            UUID cartId,
-            UUID tutorId,
-            UUID alumnoId,
-            UUID productId,
-            int quantity
-    ) {
+    @NotNull
+    private CarritoFavorito createFavCart() {
+        CarritoFavorito cart = new CarritoFavorito();
+        cart.setNombre("Merienda");
+        Tutor tutor = new Tutor();
+        tutor.setId(tutorId);
+        Alumno alumno = new Alumno();
+        alumno.setId(alumnoId);
+        cart.setTutor(tutor);
+        cart.setAlumno(alumno);
+        cart.setItems(Map.of(new Producto(), 1));
+        return cart;
+    }
+
+    private void prepareRelationalEnvironment() {
+        TutorEntity tutor = generateTutor();
+        this.tutorId = tutor.getId();
+
+        ColegioEntity school = generateSchool();
+        GradoEntity grade = generateGrade(school);
+        AlumnoEntity student = generateStudent(grade);
+        this.alumnoId = student.getId();
+
+        ProductoEntity product = generateProduct();
+        this.productId = product.getId();
+
+        CarritoFavoritoEntity cartEntity = generateCart(tutor, student, product);
+        this.cartId = cartEntity.getId();
+    }
+
+    private TutorEntity generateTutor() {
+        UsuarioEntity user = new UsuarioEntity();
+        user.setIdCognito("tutor_" + UUID.randomUUID());
+        user.setNombre("Tutor");
+        user.setApellido("Test");
+        user.setEmail("tutor_" + UUID.randomUUID() + "@test.com");
+        user.setRol(RolUsuario.PADRE);
+        user.setAutenticadoConCognito(true);
+        user = usuarioRepository.saveAndFlush(user);
+
+        TutorEntity tutor = new TutorEntity();
+        tutor.setUsuario(user);
+        return springDataTutorRepository.saveAndFlush(tutor);
+    }
+
+    private ColegioEntity generateSchool() {
+        ColegioEntity school = new ColegioEntity();
+        school.setNombre("Colegio " + UUID.randomUUID());
+        school.setCue("12345678");
+        return colegioRepository.saveAndFlush(school);
+    }
+
+    private GradoEntity generateGrade(ColegioEntity school) {
+        GradoEntity grade = new GradoEntity();
+        grade.setColegioEntity(school);
+        grade.setAnio("5to");
+        grade.setDivision("A");
+        return gradoRepository.saveAndFlush(grade);
+    }
+
+    private AlumnoEntity generateStudent(GradoEntity grade) {
+        UsuarioEntity user = new UsuarioEntity();
+        user.setIdCognito("alumno_" + UUID.randomUUID());
+        user.setNombre("Alumno");
+        user.setApellido("Test");
+        user.setEmail("alumno_" + UUID.randomUUID() + "@test.com");
+        user.setRol(RolUsuario.ALUMNO);
+        user.setAutenticadoConCognito(true);
+        user = usuarioRepository.saveAndFlush(user);
+
+        AlumnoEntity student = new AlumnoEntity();
+        student.setUsuario(user);
+        student.setGradoEntity(grade);
+        return springDataAlumnoRepository.saveAndFlush(student);
+    }
+
+    private CategoriaProductoEntity getCategory() {
+        if (cachedCategory == null) {
+            cachedCategory = new CategoriaProductoEntity();
+            cachedCategory.setDescripcion("Snacks");
+            cachedCategory = categoryRepository.saveAndFlush(cachedCategory);
+        }
+        return cachedCategory;
+    }
+
+    private ProductoEntity generateProduct() {
+        CategoriaProductoEntity category = getCategory();
+
+        ProductoEntity product = new ProductoEntity();
+        product.setNombre("Alfajor");
+        product.setDescripcion("Alfajor simple");
+        product.setPrecio(new BigDecimal("40.00"));
+        product.setActivo(true);
+        product.setRequierePreparacion(false);
+        product.setCategoria(category);
+        return springDataProductRepository.saveAndFlush(product);
+    }
+
+    private CarritoFavoritoEntity generateCart(TutorEntity tutor, AlumnoEntity student, ProductoEntity product) {
+        CarritoFavoritoEntity cart = new CarritoFavoritoEntity();
+        cart.setNombre("Viejo");
+        cart.setTutor(tutor);
+        cart.setAlumno(student);
+
+        CarritoFavoritoItemEntity item = new CarritoFavoritoItemEntity();
+        item.setProductoEntity(product);
+        item.setCantidad(1);
+        cart.addItem(item);
+
+        return springDataRepository.saveAndFlush(cart);
+    }
+
+    private CarritoFavorito buildCartDomain(UUID cartId, UUID tutorId, UUID alumnoId, UUID productId, int quantity) {
         Tutor tutor = new Tutor();
         tutor.setId(tutorId);
         Alumno alumno = new Alumno();
@@ -191,28 +263,5 @@ class CarritoFavoritoRepositoryImplTest {
         cart.setAlumno(alumno);
         cart.setItems(Map.of(product, quantity));
         return cart;
-    }
-
-    private TutorEntity tutorEntity(UUID id) {
-        TutorEntity entity = new TutorEntity();
-        entity.setId(id);
-        return entity;
-    }
-
-    private AlumnoEntity alumnoEntity(UUID id) {
-        AlumnoEntity entity = new AlumnoEntity();
-        entity.setId(id);
-        return entity;
-    }
-
-    private ProductoEntity productEntity(UUID id) {
-        ProductoEntity entity = new ProductoEntity();
-        entity.setId(id);
-        entity.setNombre("Alfajor");
-        entity.setDescripcion("Alfajor simple");
-        entity.setPrecio(new BigDecimal("40.00"));
-        entity.setActivo(true);
-        entity.setRequierePreparacion(false);
-        return entity;
     }
 }
