@@ -39,11 +39,11 @@ public class WithdrawalCodeServiceImpl implements WithdrawalCodeService {
                     || code.contains("VIOLA")
                     || code.contains("CORNETA");
 
-            codigoEnUso = purchaseRepository.existsByVerificationCodeAndStatusIn(
-                    code,
-                    List.of(EstadoCompra.PENDIENTE,
-                            EstadoCompra.EN_PREPARACION, EstadoCompra.LISTO))
-                    || containsForbidden;
+            codigoEnUso = containsForbidden 
+                    || purchaseRepository.existsByVerificationCodeAndStatusIn(
+                            code,
+                            List.of(EstadoCompra.PENDIENTE,
+                            EstadoCompra.EN_PREPARACION, EstadoCompra.LISTO));
 
             intentos++;
             if (intentos > 10) {
