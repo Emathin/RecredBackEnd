@@ -5,6 +5,8 @@ import com.recred.backend.domain.models.*;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
@@ -209,6 +211,82 @@ class PurchaseTest {
         Purchase purchase = purchaseWithStatus(EstadoCompra.LISTO);
 
         assertThrows(IllegalStateException.class, purchase::cancel);
+    }
+
+    @Test
+    void dashboardStatusQueries_ShouldExposePurchaseBusinessState() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.ENTREGADO);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+
+        assertEquals(true, purchase.hasStatus(EstadoCompra.ENTREGADO));
+        assertEquals(true, purchase.hasType(TipoCompra.ANTICIPADA));
+        assertEquals(true, purchase.isDelivered());
+        assertEquals(true, purchase.isAdvancePurchase());
+    }
+
+    @Test
+    void refundsCredits_ShouldReturnTrueForCancelledAndRejectedPurchases() {
+        Purchase cancelled = purchaseWithStatus(EstadoCompra.CANCELADO);
+        Purchase rejected = purchaseWithStatus(EstadoCompra.RECHAZADO);
+        Purchase delivered = purchaseWithStatus(EstadoCompra.ENTREGADO);
+
+        assertEquals(true, cancelled.refundsCredits());
+        assertEquals(true, rejected.refundsCredits());
+        assertEquals(false, delivered.refundsCredits());
+    }
+
+    @Test
+    void happenedBetween_ShouldUsePurchaseDateOnlyWhenDateExists() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.ENTREGADO);
+        purchase.setDate(LocalDateTime.of(2026, 6, 10, 9, 0));
+
+        assertEquals(true, purchase.hasDate());
+        assertEquals(LocalDate.of(2026, 6, 10), purchase.purchaseDate());
+        assertEquals(true, purchase.happenedBetween(
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 30)
+        ));
+        assertEquals(false, purchase.happenedBetween(
+                LocalDate.of(2026, 6, 11),
+                LocalDate.of(2026, 6, 30)
+        ));
+    }
+
+    @Test
+    void happenedBetween_ShouldReturnFalseWhenDateDoesNotExist() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.ENTREGADO);
+
+        assertEquals(false, purchase.hasDate());
+        assertEquals(false, purchase.happenedBetween(
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 30)
+        ));
+    }
+
+    @Test
+    void totalAmountOrZero_ShouldReturnZeroWhenTotalIsNull() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.ENTREGADO);
+
+        assertEquals(BigDecimal.ZERO, purchase.totalAmountOrZero());
+
+        purchase.setTotalAmount(new BigDecimal("25.00"));
+
+        assertEquals(new BigDecimal("25.00"), purchase.totalAmountOrZero());
+    }
+
+    @Test
+    void hasPickupSlotDescription_ShouldRejectNullOrBlankDescriptions() {
+        Purchase purchase = new Purchase();
+
+        assertEquals(false, purchase.hasPickupSlotDescription());
+
+        purchase.setPickupSlotDescription(" ");
+
+        assertEquals(false, purchase.hasPickupSlotDescription());
+
+        purchase.setPickupSlotDescription("Primer recreo");
+
+        assertEquals(true, purchase.hasPickupSlotDescription());
     }
 
     private Purchase purchaseWithStatus(EstadoCompra status) {

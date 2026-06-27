@@ -5,6 +5,8 @@ import com.recred.backend.application.GenerateDailyBuffetReport;
 import com.recred.backend.application.GetDailyBuffetCloseStatus;
 import com.recred.backend.application.GetBuffetTimeSlots;
 import com.recred.backend.application.GetKiosqueroDashboard;
+import com.recred.backend.application.GetKiosqueroDashboardRequest;
+import com.recred.backend.application.GetKiosqueroDashboardResponse;
 import com.recred.backend.application.ListDailyBuffetCloses;
 import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListKiosqueroOrders;
@@ -16,7 +18,6 @@ import com.recred.backend.domain.models.DailyCloseResult;
 import com.recred.backend.domain.models.DailyCloseStatus;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.FranjaHoraria;
-import com.recred.backend.domain.models.KiosqueroDashboard;
 import com.recred.backend.domain.models.Producto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -124,7 +125,7 @@ public class KiosqueroOperationsController {
     }
 
     @GetMapping("/{buffetId}/dashboard")
-    public ResponseEntity<KiosqueroDashboard> dashboard(
+    public ResponseEntity<GetKiosqueroDashboardResponse> dashboard(
             @PathVariable UUID buffetId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -138,7 +139,9 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(getKiosqueroDashboard.execute(buffetId, date, from, to));
+        GetKiosqueroDashboardRequest request =
+                new GetKiosqueroDashboardRequest(buffetId, date, from, to);
+        return ResponseEntity.ok(getKiosqueroDashboard.execute(request));
     }
 
     @GetMapping("/{buffetId}/time-slots")

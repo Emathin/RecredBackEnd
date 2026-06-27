@@ -5,6 +5,8 @@ import com.recred.backend.application.GenerateDailyBuffetReport;
 import com.recred.backend.application.GetBuffetTimeSlots;
 import com.recred.backend.application.GetDailyBuffetCloseStatus;
 import com.recred.backend.application.GetKiosqueroDashboard;
+import com.recred.backend.application.GetKiosqueroDashboardRequest;
+import com.recred.backend.application.GetKiosqueroDashboardResponse;
 import com.recred.backend.application.ListDailyBuffetCloses;
 import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListKiosqueroOrders;
@@ -17,7 +19,6 @@ import com.recred.backend.domain.models.DailyCloseResult;
 import com.recred.backend.domain.models.DailyCloseStatus;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.FranjaHoraria;
-import com.recred.backend.domain.models.KiosqueroDashboard;
 import com.recred.backend.domain.models.KiosqueroOperationalAlert;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.OperationalAlertSeverity;
@@ -201,11 +202,13 @@ class KiosqueroOperationsControllerTest {
     void dashboard_ShouldDelegateToUseCase() {
         UUID buffetId = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 6, 10);
-        KiosqueroDashboard dashboard = dashboard(buffetId, date);
+        GetKiosqueroDashboardRequest request =
+                new GetKiosqueroDashboardRequest(buffetId, date, null, null);
+        GetKiosqueroDashboardResponse dashboard = dashboard(buffetId, date);
 
-        when(getKiosqueroDashboard.execute(buffetId, date, null, null)).thenReturn(dashboard);
+        when(getKiosqueroDashboard.execute(request)).thenReturn(dashboard);
 
-        ResponseEntity<KiosqueroDashboard> response = controller.dashboard(
+        ResponseEntity<GetKiosqueroDashboardResponse> response = controller.dashboard(
                 buffetId,
                 date,
                 null,
@@ -214,7 +217,7 @@ class KiosqueroOperationsControllerTest {
         );
 
         assertEquals(dashboard, response.getBody());
-        verify(getKiosqueroDashboard).execute(buffetId, date, null, null);
+        verify(getKiosqueroDashboard).execute(request);
     }
 
     @Test
@@ -222,11 +225,13 @@ class KiosqueroOperationsControllerTest {
         UUID buffetId = UUID.randomUUID();
         LocalDate from = LocalDate.of(2026, 6, 1);
         LocalDate to = LocalDate.of(2026, 6, 14);
-        KiosqueroDashboard dashboard = dashboard(buffetId, to);
+        GetKiosqueroDashboardRequest request =
+                new GetKiosqueroDashboardRequest(buffetId, null, from, to);
+        GetKiosqueroDashboardResponse dashboard = dashboard(buffetId, to);
 
-        when(getKiosqueroDashboard.execute(buffetId, null, from, to)).thenReturn(dashboard);
+        when(getKiosqueroDashboard.execute(request)).thenReturn(dashboard);
 
-        ResponseEntity<KiosqueroDashboard> response = controller.dashboard(
+        ResponseEntity<GetKiosqueroDashboardResponse> response = controller.dashboard(
                 buffetId,
                 null,
                 from,
@@ -235,7 +240,7 @@ class KiosqueroOperationsControllerTest {
         );
 
         assertEquals(dashboard, response.getBody());
-        verify(getKiosqueroDashboard).execute(buffetId, null, from, to);
+        verify(getKiosqueroDashboard).execute(request);
     }
 
     @Test
@@ -376,11 +381,11 @@ class KiosqueroOperationsControllerTest {
         );
     }
 
-    private KiosqueroDashboard dashboard(UUID buffetId, LocalDate date) {
-        return new KiosqueroDashboard(
+    private GetKiosqueroDashboardResponse dashboard(UUID buffetId, LocalDate date) {
+        return new GetKiosqueroDashboardResponse(
                 buffetId,
                 date,
-                new KiosqueroDashboard.DashboardSummary(
+                new GetKiosqueroDashboardResponse.DashboardSummary(
                         BigDecimal.ZERO,
                         0,
                         0,
@@ -388,19 +393,19 @@ class KiosqueroOperationsControllerTest {
                         0,
                         0
                 ),
-                new KiosqueroDashboard.DashboardActivity(
+                new GetKiosqueroDashboardResponse.DashboardActivity(
                         List.of(),
                         List.of(),
                         List.of(),
                         List.of()
                 ),
-                new KiosqueroDashboard.DashboardProducts(
+                new GetKiosqueroDashboardResponse.DashboardProducts(
                         List.of(),
                         List.of(),
                         List.of(),
                         List.of()
                 ),
-                new KiosqueroDashboard.DashboardAlerts(
+                new GetKiosqueroDashboardResponse.DashboardAlerts(
                         0,
                         0,
                         BigDecimal.ZERO,
@@ -409,7 +414,7 @@ class KiosqueroOperationsControllerTest {
                         0,
                         List.of()
                 ),
-                new KiosqueroDashboard.DashboardTrends(List.of())
+                new GetKiosqueroDashboardResponse.DashboardTrends(List.of())
         );
     }
 

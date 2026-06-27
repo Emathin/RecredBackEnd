@@ -1,4 +1,4 @@
-package com.recred.backend.domain.models;
+package com.recred.backend.application;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -6,7 +6,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
-public record KiosqueroDashboard(
+public record GetKiosqueroDashboardResponse(
         UUID buffetId,
         LocalDate date,
         DashboardSummary summary,
@@ -80,14 +80,14 @@ public record KiosqueroDashboard(
     }
 
     public record DashboardStatusOrders(
-            EstadoCompra status,
+            String status,
             String label,
             int orders
     ) {
     }
 
     public record DashboardTypeOrders(
-            TipoCompra type,
+            String type,
             int orders
     ) {
     }
