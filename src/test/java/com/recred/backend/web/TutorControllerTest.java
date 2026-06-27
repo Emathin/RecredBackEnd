@@ -1,19 +1,21 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.ActualizarFotoAlumno;
-import com.recred.backend.application.ObtenerHijosPorPadre;
 import com.recred.backend.application.CreateStudentFromParent;
+import com.recred.backend.application.CreateStudentFromParentRequest;
+import com.recred.backend.application.CreateStudentFromParentResponse;
+import com.recred.backend.application.ObtenerHijosPorPadre;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
-import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.infrastructure.web.TutorController;
-import com.recred.backend.infrastructure.web.StudentDTO;
+import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.infrastructure.web.CreateChildRequest;
+import com.recred.backend.infrastructure.web.StudentDTO;
+import com.recred.backend.infrastructure.web.TutorController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
@@ -27,8 +29,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.List;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -138,8 +140,18 @@ class TutorControllerTest {
     void dadoUnTutorAutenticado_cuandoCreaHijo_entoncesRetornaCreated() throws Exception {
         UUID alumnoId = UUID.randomUUID();
         UUID gradoId = UUID.randomUUID();
-        Alumno alumno = alumno(alumnoId, "Mateo", "Gomez");
-        when(createStudentFromParent.execute(
+        CreateStudentFromParentResponse alumno = new CreateStudentFromParentResponse(
+                alumnoId,
+                "Mateo",
+                "Gomez",
+                true,
+                null,
+                null,
+                null,
+                BigDecimal.ZERO,
+                null
+        );
+        when(createStudentFromParent.execute(new CreateStudentFromParentRequest(
                 "tutor-sub",
                 "mateo",
                 "Mateo",
@@ -148,7 +160,7 @@ class TutorControllerTest {
                 "12345678",
                 gradoId,
                 null
-        )).thenReturn(alumno);
+        ))).thenReturn(alumno);
 
         mockMvc.perform(post("/api/v1/tutores/me/hijos")
                         .principal(new TestingAuthenticationToken("tutor-sub", ""))
@@ -167,7 +179,7 @@ class TutorControllerTest {
                 .andExpect(jsonPath("$.id").value(alumnoId.toString()))
                 .andExpect(jsonPath("$.nombre").value("Mateo"));
 
-        verify(createStudentFromParent).execute(
+        verify(createStudentFromParent).execute(new CreateStudentFromParentRequest(
                 "tutor-sub",
                 "mateo",
                 "Mateo",
@@ -176,7 +188,7 @@ class TutorControllerTest {
                 "12345678",
                 gradoId,
                 null
-        );
+        ));
     }
 
     @Test

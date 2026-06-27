@@ -2,7 +2,11 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.CreateStudentFromParent;
+import com.recred.backend.application.CreateStudentFromParentRequest;
+import com.recred.backend.application.CreateStudentFromParentResponse;
 import com.recred.backend.application.ObtenerHijosPorPadre;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -21,9 +25,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.services.UsuarioService;
 
 
 @RestController
@@ -62,16 +63,17 @@ public class TutorController {
     @PostMapping("/me/hijos")
     public ResponseEntity<StudentDTO> crearHijo(Authentication authentication,
                                                @RequestBody CreateChildRequest request) {
-        StudentDTO alumno = StudentDTO.fromDomain(createStudentFromParent.execute(
-                cognitoSubject(authentication),
-                request.username(),
-                request.nombre(),
-                request.apellido(),
-                request.email(),
-                request.dni(),
-                request.gradoId(),
-                request.urlFotoPerfil()
-        ));
+        StudentDTO alumno = toStudentDTO(createStudentFromParent.execute(
+                new CreateStudentFromParentRequest(
+                        cognitoSubject(authentication),
+                        request.username(),
+                        request.nombre(),
+                        request.apellido(),
+                        request.email(),
+                        request.dni(),
+                        request.gradoId(),
+                        request.urlFotoPerfil()
+                )));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(alumno);
     }
@@ -119,5 +121,19 @@ public class TutorController {
                 .map(Authentication::getName)
                 .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
                         "Usuario no autenticado"));
+    }
+
+    private StudentDTO toStudentDTO(CreateStudentFromParentResponse response) {
+        return StudentDTO.fromStudentData(
+                response.id(),
+                response.nombre(),
+                response.apellido(),
+                response.activo(),
+                response.gradoAnio(),
+                response.gradoDivision(),
+                response.colegioId(),
+                response.saldo(),
+                response.urlFotoPerfil()
+        );
     }
 }

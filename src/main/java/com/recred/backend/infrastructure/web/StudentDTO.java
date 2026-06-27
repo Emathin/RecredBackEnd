@@ -45,4 +45,33 @@ public record StudentDTO(
                 urlFotoPerfil
         );
     }
+
+    public static StudentDTO fromStudentData(UUID id, String nombre, String apellido,
+                                             Boolean activo, String gradoAnio,
+                                             String gradoDivision, UUID colegioId,
+                                             BigDecimal saldo, String urlFotoPerfil) {
+        return new StudentDTO(
+                id,
+                nombre != null ? nombre : "Sin nombre",
+                apellido != null ? apellido : "Sin apellido",
+                activo,
+                formatGrade(gradoAnio, gradoDivision),
+                colegioId,
+                saldo != null ? saldo : BigDecimal.ZERO,
+                urlFotoPerfil
+        );
+    }
+
+    private static String formatGrade(String anio, String division) {
+        if (anio == null && division == null) {
+            return null;
+        }
+        if (anio == null) {
+            return division;
+        }
+        if (division == null) {
+            return anio;
+        }
+        return anio + " " + division;
+    }
 }

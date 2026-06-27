@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.CreateStudentFromParent;
+import com.recred.backend.application.CreateStudentFromParentRequest;
+import com.recred.backend.application.CreateStudentFromParentResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.RolUsuario;
@@ -84,7 +86,7 @@ class CreateStudentFromParentTest {
         givenCognitoCreatesStudent("juan.perez", "juan.perez@example.com");
         persistSavedEntities(savedUserId, savedAlumnoId);
 
-        Alumno result = executeValidRequest(gradoId);
+        CreateStudentFromParentResponse result = executeValidRequest(gradoId);
 
         verify(usuarioRepository).save(usuarioCaptor.capture());
         verify(alumnoRepository).save(alumnoCaptor.capture());
@@ -93,9 +95,9 @@ class CreateStudentFromParentTest {
         assertCreatedUser(usuarioCaptor.getValue());
         assertCreatedStudent(alumnoCaptor.getValue(), usuarioCaptor.getValue(), savedUserId,
                 grado);
-        assertTrue(tutorCaptor.getValue().getHijos().contains(result));
-        assertTrue(result.getTutores().contains(tutorCaptor.getValue()));
-        assertEquals(savedAlumnoId, result.getId());
+        assertTrue(tutorCaptor.getValue().getHijos().contains(alumnoCaptor.getValue()));
+        assertTrue(alumnoCaptor.getValue().getTutores().contains(tutorCaptor.getValue()));
+        assertEquals(savedAlumnoId, result.id());
     }
 
     @Test
@@ -104,8 +106,8 @@ class CreateStudentFromParentTest {
         when(usuarioRepository.findByIdCognito(PARENT_SUB)).thenReturn(Optional.of(parent));
 
         AccessDeniedException exception = assertThrows(AccessDeniedException.class, () ->
-                createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", "juan@example.com", null, null, null));
+                createStudentFromParent.execute(request("juan", "Juan",
+                        "Perez", "juan@example.com", null, null, null)));
 
         assertEquals("El usuario autenticado no tiene rol PADRE", exception.getMessage());
         verify(cognitoStudentIdentityService, never())
@@ -119,8 +121,8 @@ class CreateStudentFromParentTest {
         when(usuarioRepository.findByIdCognito(PARENT_SUB)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", "juan@example.com", null, null, null));
+                createStudentFromParent.execute(request("juan", "Juan",
+                        "Perez", "juan@example.com", null, null, null)));
 
         assertEquals("Usuario autenticado no encontrado", exception.getMessage());
         verify(cognitoStudentIdentityService, never())
@@ -136,8 +138,8 @@ class CreateStudentFromParentTest {
         when(tutorRepository.findByUsuarioId(parentUserId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", "juan@example.com", null, null, null));
+                createStudentFromParent.execute(request("juan", "Juan",
+                        "Perez", "juan@example.com", null, null, null)));
 
         assertEquals("Tutor no encontrado para el usuario autenticado", exception.getMessage());
         verify(cognitoStudentIdentityService, never())
@@ -157,8 +159,8 @@ class CreateStudentFromParentTest {
                 .thenReturn(Optional.of(user(UUID.randomUUID(), RolUsuario.ALUMNO)));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", " juan@example.com ", null, null, null));
+                createStudentFromParent.execute(request("juan", "Juan",
+                        "Perez", " juan@example.com ", null, null, null)));
 
         assertEquals("Ya existe un usuario con el email indicado", exception.getMessage());
         verify(cognitoStudentIdentityService, never())
@@ -182,8 +184,8 @@ class CreateStudentFromParentTest {
         when(gradoRepository.findById(gradoId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", "juan@example.com", null, gradoId, null));
+                createStudentFromParent.execute(request("juan", "Juan",
+                        "Perez", "juan@example.com", null, gradoId, null)));
 
         assertEquals("No se encontro el grado indicado", exception.getMessage());
         verify(cognitoStudentIdentityService, never())
@@ -195,8 +197,8 @@ class CreateStudentFromParentTest {
     @Test
     void emailLikeUsernameIsRejected() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                createStudentFromParent.execute(PARENT_SUB, "juan@example.com", "Juan",
-                        "Perez", "juan@example.com", null, null, null));
+                createStudentFromParent.execute(request("juan@example.com", "Juan",
+                        "Perez", "juan@example.com", null, null, null)));
 
         assertEquals("El username no puede tener formato de email", exception.getMessage());
         verify(usuarioRepository, never()).findByIdCognito(any());
@@ -207,14 +209,14 @@ class CreateStudentFromParentTest {
     @Test
     void blankRequiredFieldsAreRejected() {
         assertThrows(IllegalArgumentException.class, () ->
-                createStudentFromParent.execute(PARENT_SUB, "juan", " ",
-                        "Perez", "juan@example.com", null, null, null));
+                createStudentFromParent.execute(request("juan", " ",
+                        "Perez", "juan@example.com", null, null, null)));
         assertThrows(IllegalArgumentException.class, () ->
-                createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        " ", "juan@example.com", null, null, null));
+                createStudentFromParent.execute(request("juan", "Juan",
+                        " ", "juan@example.com", null, null, null)));
         assertThrows(IllegalArgumentException.class, () ->
-                createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", " ", null, null, null));
+                createStudentFromParent.execute(request("juan", "Juan",
+                        "Perez", " ", null, null, null)));
     }
 
     @Test
@@ -232,15 +234,15 @@ class CreateStudentFromParentTest {
         )).thenReturn(new CreatedCognitoUser("student-sub", "generated"));
         persistSavedEntities(savedUserId, savedAlumnoId);
 
-        createStudentFromParent.execute(
+        createStudentFromParent.execute(new CreateStudentFromParentRequest(
                 PARENT_SUB,
                 " ",
                 " Juan ",
                 " Perez ",
                 " juan.perez@example.com ",
                 " ",
-                null
-        , null);
+                null,
+                null));
 
         verify(usuarioRepository).save(usuarioCaptor.capture());
         verify(alumnoRepository).save(alumnoCaptor.capture());
@@ -264,8 +266,8 @@ class CreateStudentFromParentTest {
                 .thenThrow(new IllegalStateException("No se pudo crear el usuario en Cognito"));
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
-                createStudentFromParent.execute(PARENT_SUB, "juan", "Juan",
-                        "Perez", "juan@example.com", null, null, null));
+                createStudentFromParent.execute(request("juan", "Juan",
+                        "Perez", "juan@example.com", null, null, null)));
 
         assertEquals("No se pudo crear el usuario en Cognito", exception.getMessage());
         verify(usuarioRepository, never()).save(any());
@@ -311,15 +313,31 @@ class CreateStudentFromParentTest {
                 invocation.getArgument(0));
     }
 
-    private Alumno executeValidRequest(UUID gradoId) {
-        return createStudentFromParent.execute(
+    private CreateStudentFromParentResponse executeValidRequest(UUID gradoId) {
+        return createStudentFromParent.execute(new CreateStudentFromParentRequest(
                 PARENT_SUB,
                 " juan.perez ",
                 " Juan ",
                 " Perez ",
                 " juan.perez@example.com ",
                 " 12345678 ",
-                gradoId, null);
+                gradoId,
+                null));
+    }
+
+    private CreateStudentFromParentRequest request(String username, String nombre,
+                                                   String apellido, String email, String dni,
+                                                   UUID gradoId, String urlFotoPerfil) {
+        return new CreateStudentFromParentRequest(
+                PARENT_SUB,
+                username,
+                nombre,
+                apellido,
+                email,
+                dni,
+                gradoId,
+                urlFotoPerfil
+        );
     }
 
     private void assertCreatedUser(Usuario savedUser) {
