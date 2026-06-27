@@ -4,6 +4,8 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 
 public class DeleteFavoriteProduct {
 
@@ -15,10 +17,13 @@ public class DeleteFavoriteProduct {
 
     @Transactional
     public void execute(DeleteFavoriteProductRequest request) {
-        Alumno alumno = alumnoRepository.findById(request.alumnoId())
-                .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
-
+        Alumno alumno = this.findAlumnoById(request.alumnoId());
         alumno.removerProductoFavorito(request.productoId());
         alumnoRepository.save(alumno);
+    }
+
+    private Alumno findAlumnoById(UUID alumnoId) {
+        return alumnoRepository.findById(alumnoId)
+                .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
     }
 }

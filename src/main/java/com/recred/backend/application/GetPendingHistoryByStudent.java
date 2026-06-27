@@ -19,7 +19,15 @@ public class GetPendingHistoryByStudent {
     @Transactional(readOnly = true)
     public List<GetPendingHistoryByStudentResponse> execute(
             GetPendingHistoryByStudentRequest request) {
-        List<Purchase> purchases = purchaseRepository.findPendientesByAlumno(request.alumnoId());
+        List<Purchase> purchases = this.findPendingHistoryByStudent(request.alumnoId());
+        return this.mapToResponse(purchases);
+    }
+
+    private List<Purchase> findPendingHistoryByStudent(UUID studentId) {
+        return purchaseRepository.findPendientesByAlumno(studentId);
+    }
+
+    private List<GetPendingHistoryByStudentResponse> mapToResponse(List<Purchase> purchases) {
         return purchases.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -39,21 +47,7 @@ public class GetPendingHistoryByStudent {
         String withdrawalStatus = purchase.getWithdrawalStatus() != null
                 ? purchase.getWithdrawalStatus().name() : null;
 
-        List<GetPendingHistoryByStudentResponse.Item> items = null;
-        if (purchase.getItems() != null) {
-            items = purchase.getItems().entrySet().stream()
-                    .map(entry -> new GetPendingHistoryByStudentResponse.Item(
-                            entry.getKey().getId(),
-                            entry.getKey().getNombre(),
-                            entry.getValue(),
-                            entry.getKey().getPrecio(),
-                            entry.getKey().getRequierePreparacion(),
-                            entry.getKey().getCupoMaximoDiario(),
-                            entry.getKey().getPromocionId(),
-                            entry.getKey().getPromocionNombre()
-                    ))
-                    .collect(Collectors.toList());
-        }
+        List<GetPendingHistoryByStudentResponse.Item> items = this.mapToResponseItems(purchase);
 
         return new GetPendingHistoryByStudentResponse(
                 purchase.getId(),
@@ -71,6 +65,24 @@ public class GetPendingHistoryByStudent {
                 purchase.getPickupSlotStartTime(),
                 withdrawalStatus
         );
+    }
+
+    private List<GetPendingHistoryByStudentResponse.Item> mapToResponseItems(Purchase purchase) {
+        if (purchase.getItems() == null) {
+            return null;
+        }
+        return purchase.getItems().entrySet().stream()
+                .map(entry -> new GetPendingHistoryByStudentResponse.Item(
+                        entry.getKey().getId(),
+                        entry.getKey().getNombre(),
+                        entry.getValue(),
+                        entry.getKey().getPrecio(),
+                        entry.getKey().getRequierePreparacion(),
+                        entry.getKey().getCupoMaximoDiario(),
+                        entry.getKey().getPromocionId(),
+                        entry.getKey().getPromocionNombre()
+                ))
+                .collect(Collectors.toList());
     }
 }
 
