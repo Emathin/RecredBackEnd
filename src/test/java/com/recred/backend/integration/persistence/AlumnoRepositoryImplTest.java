@@ -17,7 +17,6 @@ import com.recred.backend.infrastructure.persistence.SpringDataClasificacionSalu
 import com.recred.backend.infrastructure.persistence.SpringDataProductRepository;
 import com.recred.backend.infrastructure.persistence.SpringDataUsuarioRepository;
 import com.recred.backend.integration.AbstractIntegrationTest;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,52 +50,44 @@ class AlumnoRepositoryImplTest extends AbstractIntegrationTest {
     @Autowired
     private AlumnoRepositoryImpl alumnoRepositoryImpl;
 
-    private UUID usuarioId;
-    private UUID clasificacionId;
-    private UUID productoFavId;
-    private UUID productoBloqId;
+    private UsuarioEntity cachedUser;
+    private ClasificacionSaludEntity cachedHealthClassification;
+    private CategoriaProductoEntity cachedProductCategory;
+    private ProductoEntity cachedFavProduct;
+    private ProductoEntity cachedBlockedProduct;
 
     @BeforeEach
     void setUp() {
-        UsuarioEntity usuarioEntity = generateTestUsuario();
-        usuarioId = usuarioEntity.getId();
 
-        ClasificacionSaludEntity clasificacion = generateClasificacionSaludEntity();
-        clasificacionId = clasificacion.getId();
-
-        CategoriaProductoEntity categoria = createAndSaveCategoriaProductoEntity();
-
-        ProductoEntity productoFav = createProductFav(categoria);
-        productoFavId = productoFav.getId();
-
-        ProductoEntity productoBloq = createProductBloq(categoria);
-        productoBloqId = productoBloq.getId();
+        generateTestUser();
+        generateHealthClassificationEntity();
+        generateProductCategoryEntity();
+        generateFavoriteProduct();
+        generateBlockedProduct();
     }
 
     @Test
-    void save_DeberiaGuardarEnBaseDeDatosRealYGenerarId() {
+    void save_ShouldSaveInRealDatabaseAndGenerateId() {
+        Alumno domainStudent = prepareDomainModelStudent();
 
-        Alumno domainAlumno = prepareDomainModelAlumno();
+        Alumno savedStudent = alumnoRepositoryImpl.save(domainStudent);
 
-        Alumno savedAlumno = alumnoRepositoryImpl.save(domainAlumno);
+        assertNotNull(savedStudent.getId(), "Database should have generated the Student UUID");
 
-        assertNotNull(savedAlumno.getId(), "PostgreSQL debería haber generado el UUID del Alumno");
+        Optional<AlumnoEntity> studentInDb = springDataRepository.findById(savedStudent.getId());
+        assertTrue(studentInDb.isPresent(), "Student should exist in database");
 
-        Optional<AlumnoEntity> alumnoInDB = springDataRepository.findById(savedAlumno.getId());
-        assertTrue(alumnoInDB.isPresent(), "El alumno debe existir realmente en PostgreSQL");
-        
-        AlumnoEntity entidadReal = alumnoInDB.get();
+        AlumnoEntity realEntity = studentInDb.get();
 
-        assertEquals(usuarioId, entidadReal.getUsuario().getId(), "El foreign key a Usuario debe coincidir");
-        assertEquals(1, entidadReal.getRestriccionesSalud().size(), "Debe haber insertado la relación ManyToMany de restricciones");
-        assertEquals(1, entidadReal.getProductosFavoritos().size(), "Debe haber insertado la relación ManyToMany de favoritos");
-        assertEquals(1, entidadReal.getProductosBloqueados().size(), "Debe haber insertado la relación ManyToMany de bloqueados");
+        assertEquals(cachedUser.getId(), realEntity.getUsuario().getId(), "Foreign key to User must match");
+        assertEquals(1, realEntity.getRestriccionesSalud().size(), "Should have inserted the ManyToMany relationship for health classifications");
+        assertEquals(1, realEntity.getProductosFavoritos().size(), "Should have inserted the ManyToMany relationship for favorite products");
+        assertEquals(1, realEntity.getProductosBloqueados().size(), "Should have inserted the ManyToMany relationship for blocked products");
     }
 
     @Test
-    void findById_DeberiaMapearADominioDesdeBdReal() {
-
-        AlumnoEntity entity = springDataRepository.saveAndFlush(createAlumnoEntityWithHealthClasifyAndFavProduct());
+    void findById_ShouldMapToDomainFromRealDb() {
+        AlumnoEntity entity = springDataRepository.saveAndFlush(createStudentEntityWithHealthClassificationAndFavProduct());
 
         Optional<Alumno> foundStudent = alumnoRepositoryImpl.findById(entity.getId());
 
@@ -104,23 +95,22 @@ class AlumnoRepositoryImplTest extends AbstractIntegrationTest {
         Alumno mappedStudent = foundStudent.get();
         assertEquals(entity.getId(), mappedStudent.getId());
         assertEquals(1, mappedStudent.getRestriccionesSalud().size());
-        assertEquals(clasificacionId, mappedStudent.getRestriccionesSalud().iterator().next().getId());
+        assertEquals(cachedHealthClassification.getId(), mappedStudent.getRestriccionesSalud().iterator().next().getId());
     }
 
     @Test
-    void findStudentIdByUserId_DeberiaHacerSelectPorUserIdYRetornarIdAlumno() {
+    void findStudentIdByUserId_ShouldSelectByUserIdAndReturnStudentId() {
+        AlumnoEntity studentEntity = springDataRepository.saveAndFlush(createStudentEntityWithHealthClassificationAndFavProduct());
 
-        AlumnoEntity studentEntity = springDataRepository.saveAndFlush(createAlumnoEntityWithHealthClasifyAndFavProduct());
+        Optional<UUID> result = alumnoRepositoryImpl.findStudentIdByUserId(cachedUser.getId());
 
-        Optional<UUID> resultado = alumnoRepositoryImpl.findStudentIdByUserId(usuarioId);
-
-        assertTrue(resultado.isPresent());
-        assertEquals(studentEntity.getId(), resultado.get());
+        assertTrue(result.isPresent());
+        assertEquals(studentEntity.getId(), result.get());
     }
 
     @Test
-    void findAll_DeberiaTraerTodosDeLaBd() {
-        AlumnoEntity studentEntity = springDataRepository.saveAndFlush(createAlumnoEntityWithHealthClasifyAndFavProduct());
+    void findAll_ShouldFetchAllFromDb() {
+        AlumnoEntity studentEntity = springDataRepository.saveAndFlush(createStudentEntityWithHealthClassificationAndFavProduct());
 
         List<Alumno> result = alumnoRepositoryImpl.findAll();
 
@@ -129,97 +119,100 @@ class AlumnoRepositoryImplTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void existsById_DeberiaEjecutarExistsQueryEnPostgreSQL() {
-        AlumnoEntity studentEntity = springDataRepository.saveAndFlush(createAlumnoEntityWithHealthClasifyAndFavProduct());
+    void existsById_ShouldExecuteExistsQueryInDatabase() {
+        AlumnoEntity studentEntity = springDataRepository.saveAndFlush(createStudentEntityWithHealthClassificationAndFavProduct());
 
         boolean result = alumnoRepositoryImpl.existsById(studentEntity.getId());
 
         assertTrue(result);
     }
 
-    @NotNull
-    private ProductoEntity createProductBloq(CategoriaProductoEntity categoria) {
-        ProductoEntity productoBloq = new ProductoEntity();
-        productoBloq.setNombre("Caramelos");
-        productoBloq.setDescripcion("Golosina con azúcar");
-        productoBloq.setPrecio(BigDecimal.valueOf(50));
-        productoBloq.setCategoria(categoria);
-        productoBloq.setRequierePreparacion(false);
-        productoBloq = productoRepository.saveAndFlush(productoBloq);
-        return productoBloq;
+    private ProductoEntity generateBlockedProduct() {
+        if (this.cachedBlockedProduct == null) {
+            ProductoEntity blockedProduct = new ProductoEntity();
+            blockedProduct.setNombre("Candies");
+            blockedProduct.setDescripcion("Candy with sugar");
+            blockedProduct.setPrecio(BigDecimal.valueOf(50));
+            blockedProduct.setCategoria(generateProductCategoryEntity());
+            blockedProduct.setRequierePreparacion(false);
+            this.cachedBlockedProduct = productoRepository.saveAndFlush(blockedProduct);
+        }
+        return this.cachedBlockedProduct;
     }
 
-    @NotNull
-    private ProductoEntity createProductFav(CategoriaProductoEntity categoria) {
-        ProductoEntity productoFav = new ProductoEntity();
-        productoFav.setNombre("Alfajor de Arroz");
-        productoFav.setDescripcion("Alfajor sin TACC");
-        productoFav.setPrecio(BigDecimal.valueOf(100));
-        productoFav.setCategoria(categoria);
-        productoFav.setRequierePreparacion(false);
-        productoFav = productoRepository.saveAndFlush(productoFav);
-        return productoFav;
+    private ProductoEntity generateFavoriteProduct() {
+        if (this.cachedFavProduct == null) {
+            ProductoEntity favProduct = new ProductoEntity();
+            favProduct.setNombre("Rice Cookie");
+            favProduct.setDescripcion("Gluten-free cookie");
+            favProduct.setPrecio(BigDecimal.valueOf(100));
+            favProduct.setCategoria(generateProductCategoryEntity());
+            favProduct.setRequierePreparacion(false);
+            this.cachedFavProduct = productoRepository.saveAndFlush(favProduct);
+        }
+        return this.cachedFavProduct;
     }
 
-    @NotNull
-    private CategoriaProductoEntity createAndSaveCategoriaProductoEntity() {
-        CategoriaProductoEntity categoria = new CategoriaProductoEntity();
-        categoria.setDescripcion("Snacks " + UUID.randomUUID());
-        categoria = categoryRepository.saveAndFlush(categoria);
-        return categoria;
+    private CategoriaProductoEntity generateProductCategoryEntity() {
+        if (this.cachedProductCategory == null) {
+            CategoriaProductoEntity category = new CategoriaProductoEntity();
+            category.setDescripcion("Snacks");
+            this.cachedProductCategory = categoryRepository.saveAndFlush(category);
+        }
+        return this.cachedProductCategory;
     }
 
-    @NotNull
-    private ClasificacionSaludEntity generateClasificacionSaludEntity() {
-        ClasificacionSaludEntity clasificacion = new ClasificacionSaludEntity();
-        clasificacion.setDescripcion("Celíaco " + UUID.randomUUID());
-        clasificacion = clasificacionSaludRepository.saveAndFlush(clasificacion);
-        return clasificacion;
+    private ClasificacionSaludEntity generateHealthClassificationEntity() {
+        if (this.cachedHealthClassification == null) {
+            ClasificacionSaludEntity classification = new ClasificacionSaludEntity();
+            classification.setDescripcion("Celiac");
+            this.cachedHealthClassification = clasificacionSaludRepository.saveAndFlush(classification);
+        }
+        return this.cachedHealthClassification;
     }
 
-    @NotNull
-    private UsuarioEntity generateTestUsuario() {
-        UsuarioEntity usuarioEntity = new UsuarioEntity();
-        usuarioEntity.setIdCognito("cognito_sub_" + UUID.randomUUID());
-        usuarioEntity.setNombre("Juan");
-        usuarioEntity.setApellido("Perez");
-        usuarioEntity.setEmail("juan" + UUID.randomUUID() + "@test.com");
-        usuarioEntity.setRol(RolUsuario.ALUMNO);
-        usuarioEntity.setAutenticadoConCognito(true);
-        usuarioEntity = usuarioRepository.saveAndFlush(usuarioEntity);
-        return usuarioEntity;
+    private UsuarioEntity generateTestUser() {
+        if (this.cachedUser == null) {
+            UsuarioEntity userEntity = new UsuarioEntity();
+            userEntity.setIdCognito("cognito_sub_test");
+            userEntity.setNombre("John");
+            userEntity.setApellido("Doe");
+            userEntity.setEmail("john.doe@test.com");
+            userEntity.setRol(RolUsuario.ALUMNO);
+            userEntity.setAutenticadoConCognito(true);
+            this.cachedUser = usuarioRepository.saveAndFlush(userEntity);
+        }
+        return this.cachedUser;
     }
 
-    @NotNull
-    private Alumno prepareDomainModelAlumno() {
-        Alumno alumnoDominio = new Alumno();
+    private Alumno prepareDomainModelStudent() {
+        Alumno domainStudent = new Alumno();
 
-        Usuario usuarioDominio = new Usuario();
-        usuarioDominio.setId(usuarioId);
-        alumnoDominio.setUsuario(usuarioDominio);
-        alumnoDominio.setActivo(true);
+        Usuario domainUser = new Usuario();
+        domainUser.setId(cachedUser.getId());
+        domainStudent.setUsuario(domainUser);
+        domainStudent.setActivo(true);
 
-        ClasificacionSalud clasifDominio = new ClasificacionSalud();
-        clasifDominio.setId(clasificacionId);
-        alumnoDominio.agregarRestriccionSalud(clasifDominio);
+        ClasificacionSalud domainClassification = new ClasificacionSalud();
+        domainClassification.setId(cachedHealthClassification.getId());
+        domainStudent.agregarRestriccionSalud(domainClassification);
 
-        Producto prodFavDominio = new Producto();
-        prodFavDominio.setId(productoFavId);
-        alumnoDominio.agregarProductoFavorito(prodFavDominio);
+        Producto domainFavProduct = new Producto();
+        domainFavProduct.setId(cachedFavProduct.getId());
+        domainStudent.agregarProductoFavorito(domainFavProduct);
 
-        Producto prodBloqDominio = new Producto();
-        prodBloqDominio.setId(productoBloqId);
-        alumnoDominio.bloquearProducto(prodBloqDominio);
-        return alumnoDominio;
+        Producto domainBlockedProduct = new Producto();
+        domainBlockedProduct.setId(cachedBlockedProduct.getId());
+        domainStudent.bloquearProducto(domainBlockedProduct);
+        return domainStudent;
     }
 
-    @NotNull
-    private AlumnoEntity createAlumnoEntityWithHealthClasifyAndFavProduct() {
-        AlumnoEntity entidad = new AlumnoEntity();
-        entidad.setUsuario(usuarioRepository.getReferenceById(usuarioId));
-        entidad.getRestriccionesSalud().add(clasificacionSaludRepository.getReferenceById(clasificacionId));
-        entidad.getProductosFavoritos().add(productoRepository.getReferenceById(productoFavId));
-        return entidad;
+    private AlumnoEntity createStudentEntityWithHealthClassificationAndFavProduct() {
+        AlumnoEntity entity = new AlumnoEntity();
+        entity.setUsuario(usuarioRepository.getReferenceById(cachedUser.getId()));
+        entity.getRestriccionesSalud().add(clasificacionSaludRepository.getReferenceById(cachedHealthClassification.getId()));
+        entity.getProductosFavoritos().add(productoRepository.getReferenceById(cachedFavProduct.getId()));
+        return entity;
     }
 
 }

@@ -3,231 +3,204 @@ package com.recred.backend.integration.persistence;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.models.ChatSession;
 import com.recred.backend.domain.models.EstadoChatSesion;
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.TipoPlan;
+import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.ChatSesionEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.persistence.ChatSessionPersistenceRepository;
-import com.recred.backend.infrastructure.persistence.SpringDataAlumnoRepository;
 import com.recred.backend.infrastructure.persistence.SpringDataChatSessionRepository;
+import com.recred.backend.integration.AbstractIntegrationTest;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.data.domain.PageRequest;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(MockitoExtension.class)
-class ChatSessionPersistenceRepositoryTest {
+@Transactional
+class ChatSessionPersistenceRepositoryTest extends AbstractIntegrationTest {
 
-    @Mock
+    @Autowired
     private SpringDataChatSessionRepository chatSessionRepository;
 
-    @Mock
-    private SpringDataAlumnoRepository alumnoRepository;
+    @Autowired
+    private ChatSessionPersistenceRepository repository;
 
-    @Mock
+    @Autowired
     private EntityManager entityManager;
 
+    private UsuarioEntity cachedUser;
+    private AlumnoEntity cachedStudent;
+    private ChatSesionEntity cachedSession;
+
     @Test
-    void startForStudentCreatesOpenSessionForStudentUser() {
-        UUID studentId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        UUID sessionId = UUID.randomUUID();
-        LocalDateTime now = LocalDateTime.of(2026, 5, 27, 12, 0);
-        UsuarioEntity user = new UsuarioEntity();
-        ChatSessionPersistenceRepository repository = repository();
+    void startForStudent_ShouldCreateOpenSession_WhenStudentExists() {
+        AlumnoEntity student = generateStudentEntity();
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
 
-        when(alumnoRepository.findUserIdByStudentId(studentId)).thenReturn(Optional.of(userId));
-        when(entityManager.getReference(UsuarioEntity.class, userId)).thenReturn(user);
-        when(chatSessionRepository.save(org.mockito.ArgumentMatchers.any()))
-                .thenAnswer(invocation -> {
-                    ChatSesionEntity entity = invocation.getArgument(0);
-                    entity.setId(sessionId);
-                    return entity;
-                });
+        ChatSession session = repository.startForStudent(student.getId(), now);
 
-        ChatSession session = repository.startForStudent(studentId, now);
-
-        assertEquals(sessionId, session.id());
-        assertEquals(EstadoChatSesion.ABIERTA, session.status());
-        ArgumentCaptor<ChatSesionEntity> captor = ArgumentCaptor
-                .forClass(ChatSesionEntity.class);
-        verify(chatSessionRepository).save(captor.capture());
-        ChatSesionEntity saved = captor.getValue();
-        assertSame(user, saved.getUsuarioEntity());
-        assertEquals(now, saved.getFechaInicio());
-        assertEquals(now, saved.getFechaUltimaActividad());
+        Optional<ChatSesionEntity> savedOpt = chatSessionRepository.findById(session.id());
+        assertTrue(savedOpt.isPresent());
+        ChatSesionEntity savedEntity = savedOpt.get();
+        assertEquals(EstadoChatSesion.ABIERTA, savedEntity.getEstado());
+        assertEquals(student.getUsuario().getId(), savedEntity.getUsuarioEntity().getId());
     }
 
     @Test
-    void findOpenByIdAndStudentIdMapsEntityToDomain() {
-        UUID studentId = UUID.randomUUID();
-        UUID sessionId = UUID.randomUUID();
-        LocalDateTime now = LocalDateTime.of(2026, 5, 27, 12, 0);
-        ChatSesionEntity entity = entity(sessionId, EstadoChatSesion.ABIERTA, now);
-        ChatSessionPersistenceRepository repository = repository();
+    void findOpenByIdAndStudentId_ShouldMapEntity_WhenExists() {
+        AlumnoEntity student = generateStudentEntity();
+        ChatSesionEntity sessionEntity = generateSessionEntity();
 
-        when(chatSessionRepository.findOpenByIdAndStudentId(
-                sessionId,
-                studentId,
-                EstadoChatSesion.ABIERTA
-        )).thenReturn(Optional.of(entity));
+        Optional<ChatSession> result = repository.findOpenByIdAndStudentId(sessionEntity.getId(), student.getId());
 
-        Optional<ChatSession> session = repository.findOpenByIdAndStudentId(
-                sessionId,
-                studentId
-        );
-
-        assertEquals(sessionId, session.orElseThrow().id());
-        assertEquals(now, session.orElseThrow().lastActivityAt());
+        assertTrue(result.isPresent());
+        assertEquals(sessionEntity.getId(), result.get().id());
     }
 
     @Test
-    void findOpenByIdAndUserIdMapsEntityToDomain() {
-        UUID userId = UUID.randomUUID();
-        UUID sessionId = UUID.randomUUID();
-        LocalDateTime now = LocalDateTime.of(2026, 5, 27, 12, 0);
-        ChatSesionEntity entity = entity(sessionId, EstadoChatSesion.ABIERTA, now);
-        ChatSessionPersistenceRepository repository = repository();
+    void findOpenByIdAndUserId_ShouldMapEntity_WhenExists() {
+        UsuarioEntity user = generateUserEntity();
+        ChatSesionEntity sessionEntity = generateSessionEntity();
 
-        when(chatSessionRepository.findOpenByIdAndUserId(
-                sessionId,
-                userId,
-                EstadoChatSesion.ABIERTA
-        )).thenReturn(Optional.of(entity));
+        Optional<ChatSession> result = repository.findOpenByIdAndUserId(sessionEntity.getId(), user.getId());
 
-        Optional<ChatSession> session = repository.findOpenByIdAndUserId(sessionId, userId);
-
-        assertTrue(session.isPresent());
-        assertEquals(sessionId, session.orElseThrow().id());
+        assertTrue(result.isPresent());
+        assertEquals(sessionEntity.getId(), result.get().id());
     }
 
     @Test
-    void findByIdMethodsMapEntitiesToDomain() {
-        UUID studentId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        UUID sessionId = UUID.randomUUID();
-        ChatSesionEntity entity = entity(
-                sessionId,
-                EstadoChatSesion.CERRADA,
-                LocalDateTime.now()
-        );
-        ChatSessionPersistenceRepository repository = repository();
-        when(chatSessionRepository.findByIdAndStudentId(sessionId, studentId))
-                .thenReturn(Optional.of(entity));
-        when(chatSessionRepository.findByIdAndUserId(sessionId, userId))
-                .thenReturn(Optional.of(entity));
+    void findById_ShouldMapEntities_WhenExist() {
+        AlumnoEntity student = generateStudentEntity();
+        UsuarioEntity user = generateUserEntity();
+        ChatSesionEntity sessionEntity = generateSessionEntity();
 
-        assertEquals(EstadoChatSesion.CERRADA,
-                repository.findByIdAndStudentId(sessionId, studentId).orElseThrow().status());
-        assertEquals(EstadoChatSesion.CERRADA,
-                repository.findByIdAndUserId(sessionId, userId).orElseThrow().status());
+        sessionEntity.setEstado(EstadoChatSesion.CERRADA);
+        entityManager.merge(sessionEntity);
+        entityManager.flush();
+
+        Optional<ChatSession> resultByStudent = repository.findByIdAndStudentId(sessionEntity.getId(), student.getId());
+        Optional<ChatSession> resultByUser = repository.findByIdAndUserId(sessionEntity.getId(), user.getId());
+
+        assertTrue(resultByStudent.isPresent());
+        assertEquals(EstadoChatSesion.CERRADA, resultByStudent.get().status());
+        assertTrue(resultByUser.isPresent());
+        assertEquals(EstadoChatSesion.CERRADA, resultByUser.get().status());
     }
 
     @Test
-    void findByStudentIdAndUserIdShouldUsePageRequest() {
-        UUID studentId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        ChatSesionEntity entity = entity(
-                UUID.randomUUID(),
-                EstadoChatSesion.ABIERTA,
-                LocalDateTime.now()
-        );
-        ChatSessionPersistenceRepository repository = repository();
-        when(chatSessionRepository.findByStudentId(studentId, PageRequest.of(1, 5)))
-                .thenReturn(List.of(entity));
-        when(chatSessionRepository.findByUserId(userId, PageRequest.of(0, 10)))
-                .thenReturn(List.of(entity));
+    void findByStudentIdAndUserId_ShouldReturnPagedResults() {
+        AlumnoEntity student = generateStudentEntity();
+        UsuarioEntity user = generateUserEntity();
+        generateSessionEntity();
 
-        assertEquals(1, repository.findByStudentId(studentId, 1, 5).size());
-        assertEquals(1, repository.findByUserId(userId, 0, 10).size());
+        List<ChatSession> studentSessions = repository.findByStudentId(student.getId(), 0, 5);
+        List<ChatSession> userSessions = repository.findByUserId(user.getId(), 0, 10);
+
+        assertFalse(studentSessions.isEmpty());
+        assertFalse(userSessions.isEmpty());
     }
 
     @Test
-    void startForStudent_WhenStudentDoesNotExist_ShouldFail() {
-        UUID studentId = UUID.randomUUID();
-        ChatSessionPersistenceRepository repository = repository();
-        when(alumnoRepository.findUserIdByStudentId(studentId)).thenReturn(Optional.empty());
+    void startForStudent_ShouldFail_WhenStudentDoesNotExist() {
+        UUID randomStudentId = UUID.randomUUID();
 
         assertThrows(AlumnoNoEncontradoException.class,
-                () -> repository.startForStudent(studentId, LocalDateTime.now()));
+                () -> repository.startForStudent(randomStudentId, LocalDateTime.now()));
     }
 
     @Test
-    void updateLastActivity_WhenSessionExists_ShouldSaveUpdatedEntity() {
-        UUID sessionId = UUID.randomUUID();
-        LocalDateTime lastActivity = LocalDateTime.of(2026, 6, 15, 13, 0);
-        ChatSesionEntity entity = entity(
-                sessionId,
-                EstadoChatSesion.ABIERTA,
-                lastActivity.minusHours(1)
-        );
-        ChatSessionPersistenceRepository repository = repository();
-        when(chatSessionRepository.findById(sessionId)).thenReturn(Optional.of(entity));
+    void updateLastActivity_ShouldUpdateDate_WhenSessionExists() {
+        ChatSesionEntity sessionEntity = generateSessionEntity();
+        LocalDateTime newActivity = LocalDateTime.now().plusHours(1).truncatedTo(ChronoUnit.MILLIS);
 
-        repository.updateLastActivity(sessionId, lastActivity);
+        repository.updateLastActivity(sessionEntity.getId(), newActivity);
+        entityManager.flush();
+        entityManager.clear();
 
-        assertEquals(lastActivity, entity.getFechaUltimaActividad());
-        verify(chatSessionRepository).save(entity);
+        Optional<ChatSesionEntity> updatedOpt = chatSessionRepository.findById(sessionEntity.getId());
+        assertTrue(updatedOpt.isPresent());
+        assertEquals(newActivity, updatedOpt.get().getFechaUltimaActividad());
     }
 
     @Test
-    void close_WhenSessionExists_ShouldCloseAndSaveEntity() {
-        UUID sessionId = UUID.randomUUID();
-        LocalDateTime closedAt = LocalDateTime.of(2026, 6, 15, 13, 0);
-        ChatSesionEntity entity = entity(
-                sessionId,
-                EstadoChatSesion.ABIERTA,
-                closedAt.minusHours(1)
-        );
-        ChatSessionPersistenceRepository repository = repository();
-        when(chatSessionRepository.findById(sessionId)).thenReturn(Optional.of(entity));
+    void close_ShouldUpdateStatus_WhenSessionExists() {
+        ChatSesionEntity sessionEntity = generateSessionEntity();
+        LocalDateTime closedAt = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
 
-        repository.close(sessionId, closedAt);
+        repository.close(sessionEntity.getId(), closedAt);
+        entityManager.flush();
+        entityManager.clear();
 
-        assertEquals(EstadoChatSesion.CERRADA, entity.getEstado());
-        assertEquals(closedAt, entity.getFechaUltimaActividad());
-        verify(chatSessionRepository).save(entity);
+        Optional<ChatSesionEntity> updatedOpt = chatSessionRepository.findById(sessionEntity.getId());
+        assertTrue(updatedOpt.isPresent());
+        assertEquals(EstadoChatSesion.CERRADA, updatedOpt.get().getEstado());
+        assertEquals(closedAt, updatedOpt.get().getFechaUltimaActividad());
     }
 
     @Test
-    void deleteById_ShouldDelegate() {
-        UUID sessionId = UUID.randomUUID();
+    void deleteById_ShouldRemoveEntity_WhenExists() {
+        ChatSesionEntity sessionToDelete = new ChatSesionEntity();
+        sessionToDelete.setUsuarioEntity(generateUserEntity());
+        sessionToDelete.setEstado(EstadoChatSesion.ABIERTA);
+        entityManager.persist(sessionToDelete);
+        entityManager.flush();
 
-        repository().deleteById(sessionId);
+        repository.deleteById(sessionToDelete.getId());
 
-        verify(chatSessionRepository).deleteById(sessionId);
+        assertTrue(chatSessionRepository.findById(sessionToDelete.getId()).isEmpty());
     }
 
-    private ChatSessionPersistenceRepository repository() {
-        return new ChatSessionPersistenceRepository(
-                chatSessionRepository,
-                alumnoRepository,
-                entityManager
-        );
+    private UsuarioEntity generateUserEntity() {
+        if (this.cachedUser == null) {
+            UsuarioEntity user = new UsuarioEntity();
+            user.setIdCognito("cognito-chat-session");
+            user.setNombre("John");
+            user.setApellido("Doe");
+            user.setEmail("john.doe@chat.com");
+            user.setRol(RolUsuario.ALUMNO);
+            user.setAutenticadoConCognito(false);
+            user.setActivo(true);
+            user.setPlan(TipoPlan.GRATUITO);
+            entityManager.persist(user);
+            entityManager.flush();
+            this.cachedUser = user;
+        }
+        return this.cachedUser;
     }
 
-    private ChatSesionEntity entity(
-            UUID sessionId,
-            EstadoChatSesion status,
-            LocalDateTime lastActivity
-    ) {
-        ChatSesionEntity entity = new ChatSesionEntity();
-        entity.setId(sessionId);
-        entity.setEstado(status);
-        entity.setFechaInicio(lastActivity.minusMinutes(5));
-        entity.setFechaUltimaActividad(lastActivity);
-        return entity;
+    private AlumnoEntity generateStudentEntity() {
+        if (this.cachedStudent == null) {
+            UsuarioEntity user = generateUserEntity();
+            AlumnoEntity student = new AlumnoEntity();
+            student.setUsuario(user);
+            student.setActivo(true);
+            entityManager.persist(student);
+            entityManager.flush();
+            this.cachedStudent = student;
+        }
+        return this.cachedStudent;
+    }
+
+    private ChatSesionEntity generateSessionEntity() {
+        if (this.cachedSession == null) {
+            UsuarioEntity user = generateUserEntity();
+            ChatSesionEntity session = new ChatSesionEntity();
+            session.setUsuarioEntity(user);
+            session.setEstado(EstadoChatSesion.ABIERTA);
+            session.setFechaInicio(LocalDateTime.now().minusHours(1));
+            session.setFechaUltimaActividad(LocalDateTime.now().minusMinutes(30));
+            entityManager.persist(session);
+            entityManager.flush();
+            this.cachedSession = session;
+        }
+        return this.cachedSession;
     }
 }

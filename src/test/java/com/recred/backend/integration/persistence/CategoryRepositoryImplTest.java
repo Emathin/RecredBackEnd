@@ -4,93 +4,96 @@ import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.persistence.CategoryRepositoryImpl;
 import com.recred.backend.infrastructure.persistence.SpringDataCategoryRepository;
-import org.junit.jupiter.api.BeforeEach;
+import com.recred.backend.integration.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-class CategoryRepositoryImplTest {
+@Transactional
+class CategoryRepositoryImplTest extends AbstractIntegrationTest {
 
-    @Mock
+    @Autowired
     private SpringDataCategoryRepository springDataRepository;
 
+    @Autowired
     private CategoryRepositoryImpl categoryRepository;
 
-    @BeforeEach
-    void setUp() {
-        categoryRepository = new CategoryRepositoryImpl(springDataRepository);
+    private CategoriaProductoEntity cachedCategory;
+
+    @Test
+    void findById_ShouldReturnCategory_WhenExists() {
+        CategoriaProductoEntity entity = generateCategoryEntity();
+
+        Optional<CategoriaProducto> result = categoryRepository.findById(entity.getId());
+
+        assertTrue(result.isPresent());
+        assertEquals(entity.getId(), result.get().getId());
+        assertEquals(entity.getDescripcion(), result.get().getDescripcion());
     }
 
     @Test
-    void findById_DeberiaLlamarAlSpringData() {
-        UUID id = UUID.randomUUID();
-        categoryRepository.findById(id);
-        verify(springDataRepository).findById(id);
+    void findByDescription_ShouldReturnCategory_WhenExists() {
+        CategoriaProductoEntity entity = generateCategoryEntity();
+
+        Optional<CategoriaProducto> result = categoryRepository.findByDescription(entity.getDescripcion());
+
+        assertTrue(result.isPresent());
+        assertEquals(entity.getDescripcion(), result.get().getDescripcion());
     }
 
     @Test
-    void findByDescription_DeberiaLlamarAlSpringData() {
-        String desc = "Test";
-        categoryRepository.findByDescription(desc);
-        verify(springDataRepository).findByDescripcion(desc);
+    void save_ShouldCreateNewEntity_WhenIdIsNull() {
+        CategoriaProducto category = createCategoryDomain("New_Category");
+
+        CategoriaProducto savedCategory = categoryRepository.save(category);
+
+        Optional<CategoriaProductoEntity> entityOpt = springDataRepository.findById(savedCategory.getId());
+        assertTrue(entityOpt.isPresent());
+        assertEquals("New_Category", entityOpt.get().getDescripcion());
     }
 
     @Test
-    void save_DeberiaCrearNuevaEntidad_CuandoNoTieneId() {
-        CategoriaProducto category = new CategoriaProducto();
-        category.setDescripcion("Nueva");
-        
-        CategoriaProductoEntity savedEntity = new CategoriaProductoEntity();
-        savedEntity.setId(UUID.randomUUID());
-        savedEntity.setDescripcion("Nueva");
-        when(springDataRepository.save(any(CategoriaProductoEntity.class))).thenReturn(savedEntity);
+    void save_ShouldUpdateEntity_WhenIdExists() {
+        CategoriaProductoEntity existingEntity = generateCategoryEntity();
+        CategoriaProducto category = createCategoryDomain("Updated_Category");
+        category.setId(existingEntity.getId());
 
         categoryRepository.save(category);
 
-        verify(springDataRepository).save(any(CategoriaProductoEntity.class));
+        Optional<CategoriaProductoEntity> entityOpt = springDataRepository.findById(existingEntity.getId());
+        assertTrue(entityOpt.isPresent());
+        assertEquals("Updated_Category", entityOpt.get().getDescripcion());
     }
 
     @Test
-    void save_DeberiaActualizarEntidad_CuandoYaExiste() {
-        UUID id = UUID.randomUUID();
-        CategoriaProducto category = new CategoriaProducto();
-        category.setId(id);
-        category.setDescripcion("Actualizada");
-
-        CategoriaProductoEntity existingEntity = new CategoriaProductoEntity();
-        existingEntity.setDescripcion("Vieja");
-
-        when(springDataRepository.findById(id)).thenReturn(Optional.of(existingEntity));
-        when(springDataRepository.save(any(CategoriaProductoEntity.class))).thenAnswer(i -> i.getArgument(0));
-
-        categoryRepository.save(category);
-
-        assertEquals("Actualizada", existingEntity.getDescripcion());
-    }
-
-    @Test
-    void getAllCategories_DeberiaMapearTodasLasEntidades() {
-        CategoriaProductoEntity entity = new CategoriaProductoEntity();
-        entity.setId(UUID.randomUUID());
-        entity.setDescripcion("Bebidas");
-        entity.setActivo(true);
-        when(springDataRepository.findAll()).thenReturn(List.of(entity));
+    void getAllCategories_ShouldMapAllEntities() {
+        generateCategoryEntity();
 
         List<CategoriaProducto> result = categoryRepository.getAllCategories();
 
-        assertEquals(1, result.size());
-        assertEquals(entity.getId(), result.get(0).getId());
-        assertEquals("Bebidas", result.get(0).getDescripcion());
-        assertEquals(true, result.get(0).getActivo());
+        assertFalse(result.isEmpty());
+        assertTrue(result.stream().anyMatch(c -> c.getDescripcion().equals(cachedCategory.getDescripcion())));
+    }
+
+    private CategoriaProductoEntity generateCategoryEntity() {
+        if (this.cachedCategory == null) {
+            CategoriaProductoEntity entity = new CategoriaProductoEntity();
+            entity.setDescripcion("Beverages");
+            entity.setActivo(true);
+            this.cachedCategory = springDataRepository.saveAndFlush(entity);
+        }
+        return this.cachedCategory;
+    }
+
+    private CategoriaProducto createCategoryDomain(String description) {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setDescripcion(description);
+        category.setActivo(true);
+        return category;
     }
 }
