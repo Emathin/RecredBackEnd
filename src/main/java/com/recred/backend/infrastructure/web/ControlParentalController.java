@@ -10,6 +10,7 @@ import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsRequest;
 import com.recred.backend.application.ManageRestrictions;
+import com.recred.backend.application.ManageRestrictionsRequest;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -59,7 +60,7 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @RequestBody ActualizarRestriccionesDTO dto) {
 
-        useCase.execute(alumnoId, dto.getClasificacionesIds());
+        useCase.execute(new ManageRestrictionsRequest(alumnoId, dto.getClasificacionesIds()));
         return ResponseEntity.ok().build();
     }
 

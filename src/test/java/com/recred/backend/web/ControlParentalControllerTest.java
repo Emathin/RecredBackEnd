@@ -11,6 +11,7 @@ import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsRequest;
 import com.recred.backend.application.GetHealthRestrictionsResponse;
 import com.recred.backend.application.ManageRestrictions;
+import com.recred.backend.application.ManageRestrictionsRequest;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
@@ -108,7 +109,7 @@ class ControlParentalControllerTest {
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk());
 
-        verify(manageRestrictions).execute(alumnoId, dto.getClasificacionesIds());
+        verify(manageRestrictions).execute(new ManageRestrictionsRequest(alumnoId, dto.getClasificacionesIds()));
     }
 
     @Test

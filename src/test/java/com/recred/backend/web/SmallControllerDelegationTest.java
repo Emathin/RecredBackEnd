@@ -8,6 +8,8 @@ import com.recred.backend.application.GetBuffetByAlumno;
 import com.recred.backend.application.GetBuffetByAlumnoRequest;
 import com.recred.backend.application.GetBuffetByAlumnoResponse;
 import com.recred.backend.application.GetTimeSlotsBySchool;
+import com.recred.backend.application.GetTimeSlotsBySchoolRequest;
+import com.recred.backend.application.GetTimeSlotsBySchoolResponse;
 import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.domain.models.CategoriaProducto;
@@ -95,22 +97,23 @@ class SmallControllerDelegationTest {
     @Test
     void franjaHorariaControllerShouldMapTimeSlots() {
         UUID schoolId = UUID.randomUUID();
-        FranjaHoraria slot = new FranjaHoraria();
-        slot.setId(UUID.randomUUID());
-        slot.setColegioId(schoolId);
-        slot.setDescripcion("Primer recreo");
-        slot.setHoraInicio(LocalTime.of(9, 0));
-        slot.setHoraFin(LocalTime.of(9, 20));
-        slot.setActivo(true);
-        slot.setCupoMaximo(100);
-        slot.setMinutosCorte(10);
-        when(getTimeSlotsBySchool.execute(schoolId)).thenReturn(List.of(slot));
+        GetTimeSlotsBySchoolResponse slot = new GetTimeSlotsBySchoolResponse(
+                UUID.randomUUID(),
+                schoolId,
+                "Primer recreo",
+                LocalTime.of(9, 0),
+                LocalTime.of(9, 20),
+                true,
+                100,
+                10
+        );
+        when(getTimeSlotsBySchool.execute(new GetTimeSlotsBySchoolRequest(schoolId))).thenReturn(List.of(slot));
         FranjaHorariaController controller = new FranjaHorariaController(getTimeSlotsBySchool);
 
         ResponseEntity<List<TimeSlotResponse>> response = controller.obtenerFranjas(schoolId);
 
         assertEquals(1, response.getBody().size());
-        assertEquals(slot.getId(), response.getBody().get(0).id());
+        assertEquals(slot.id(), response.getBody().get(0).id());
     }
 
     @Test
