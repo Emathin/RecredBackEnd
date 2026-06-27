@@ -1,17 +1,14 @@
 package com.recred.backend.web;
 
-import com.recred.backend.application.UpdateStudentPhoto;
-import com.recred.backend.application.GetChildrenByTutor;
-import com.recred.backend.application.GetChildrenByTutorRequest;
-import com.recred.backend.application.GetChildrenByTutorResponse;
-import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateStudentFromParentRequest;
 import com.recred.backend.application.CreateStudentFromParentResponse;
-import com.recred.backend.application.ObtenerHijosPorPadre;
+import com.recred.backend.application.GetChildrenByTutor;
+import com.recred.backend.application.GetChildrenByTutorRequest;
+import com.recred.backend.application.GetChildrenByTutorResponse;
+import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
-import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.Colegio;
@@ -21,8 +18,6 @@ import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.infrastructure.web.CreateChildRequest;
 import com.recred.backend.infrastructure.web.StudentDTO;
 import com.recred.backend.infrastructure.web.TutorController;
-import com.recred.backend.infrastructure.web.StudentDTO;
-import com.recred.backend.infrastructure.web.CreateChildRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
@@ -38,8 +33,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Set;
-import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
