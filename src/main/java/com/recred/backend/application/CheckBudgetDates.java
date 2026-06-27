@@ -5,8 +5,8 @@ import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
-import com.recred.backend.infrastructure.web.CheckBudgetDatesRequest;
-import com.recred.backend.infrastructure.web.CheckBudgetDatesResponse;
+import com.recred.backend.application.CheckBudgetDatesRequest;
+import com.recred.backend.application.CheckBudgetDatesResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

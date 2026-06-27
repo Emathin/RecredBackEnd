@@ -1,19 +1,14 @@
 package com.recred.backend.web;
 
-import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.application.GetScheduledPickupsResponse;
 import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.MedioPago;
-import com.recred.backend.domain.models.EstadoRetiro;
-import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.infrastructure.web.ScheduledPickupResponseDTO;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,39 +20,33 @@ class ScheduledPickupResponseDTOTest {
         UUID purchaseId = UUID.randomUUID();
         UUID studentId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
+        UUID pickupSlotId = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.now();
         LocalDate today = LocalDate.now();
 
-        Producto product = new Producto();
-        product.setId(productId);
-        product.setNombre("Product 1");
-        product.setPrecio(new BigDecimal("10.00"));
+        GetScheduledPickupsResponse response = new GetScheduledPickupsResponse(
+                purchaseId,
+                studentId,
+                "John Doe",
+                new BigDecimal("20.00"),
+                "PENDIENTE",
+                EstadoCompra.PENDIENTE.getLabel(),
+                "PROGRAMADO",
+                "CREDITOS",
+                now,
+                "1234",
+                pickupSlotId,
+                "Recreo 1",
+                today,
+                List.of(new GetScheduledPickupsResponse.PurchaseItemResponse(
+                        productId,
+                        "Product 1",
+                        2,
+                        new BigDecimal("10.00")
+                ))
+        );
 
-        Usuario user = new Usuario();
-        user.setNombre("John");
-        user.setApellido("Doe");
-
-        Alumno student = new Alumno();
-        student.setId(studentId);
-        student.setNombre("John");
-        student.setApellido("Doe");
-        student.setUsuario(user);
-
-        Purchase purchase = new Purchase();
-        purchase.setId(purchaseId);
-        purchase.setStudent(student);
-        purchase.setTotalAmount(new BigDecimal("20.00"));
-        purchase.setStatus(EstadoCompra.PENDIENTE);
-        purchase.setWithdrawalStatus(EstadoRetiro.PROGRAMADO);
-        purchase.setPaymentMethod(MedioPago.CREDITOS);
-        purchase.setDate(now);
-        purchase.setWithdrawalCode("1234");
-        purchase.setPickupSlotId(UUID.randomUUID());
-        purchase.setPickupSlotDescription("Recreo 1");
-        purchase.setPickupDate(today);
-        purchase.setItems(Map.of(product, 2));
-
-        ScheduledPickupResponseDTO dto = new ScheduledPickupResponseDTO(purchase);
+        ScheduledPickupResponseDTO dto = new ScheduledPickupResponseDTO(response);
 
         assertEquals(purchaseId, dto.getId());
         assertEquals(studentId, dto.getStudentId());
@@ -69,7 +58,7 @@ class ScheduledPickupResponseDTOTest {
         assertEquals("CREDITOS", dto.getPaymentMethod());
         assertEquals(now, dto.getDate());
         assertEquals("1234", dto.getWithdrawalCode());
-        assertNotNull(dto.getPickupSlotId());
+        assertEquals(pickupSlotId, dto.getPickupSlotId());
         assertEquals("Recreo 1", dto.getPickupSlotDescription());
         assertEquals(today, dto.getPickupDate());
         assertEquals(1, dto.getItems().size());
@@ -78,15 +67,24 @@ class ScheduledPickupResponseDTOTest {
 
     @Test
     void constructor_ShouldHandleNullFields() {
-        Purchase purchase = new Purchase();
-        purchase.setId(UUID.randomUUID());
-        purchase.setStudent(null);
-        purchase.setStatus(null);
-        purchase.setWithdrawalStatus(null);
-        purchase.setPaymentMethod(null);
-        purchase.setItems(null);
+        GetScheduledPickupsResponse response = new GetScheduledPickupsResponse(
+                UUID.randomUUID(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
 
-        ScheduledPickupResponseDTO dto = new ScheduledPickupResponseDTO(purchase);
+        ScheduledPickupResponseDTO dto = new ScheduledPickupResponseDTO(response);
 
         assertNull(dto.getStudentId());
         assertNull(dto.getStatus());

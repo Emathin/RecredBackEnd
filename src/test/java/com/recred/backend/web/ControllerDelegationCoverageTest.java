@@ -3,6 +3,8 @@ package com.recred.backend.web;
 import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.application.CheckBudgetDates;
+import com.recred.backend.application.CheckBudgetDatesRequest;
+import com.recred.backend.application.CheckBudgetDatesResponse;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.GeneratePurchaseRecommendation;

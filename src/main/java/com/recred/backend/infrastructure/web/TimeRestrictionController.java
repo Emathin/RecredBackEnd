@@ -4,9 +4,14 @@ import com.recred.backend.domain.models.RestriccionHoraria;
 
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.DisableTimeRestrictionRequest;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
+import com.recred.backend.application.GetTimeRestrictionsByStudentRequest;
+import com.recred.backend.application.GetTimeRestrictionsByStudentResponse;
 import com.recred.backend.application.TimeRestrictionCommand;
 import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.application.UpdateTimeRestrictionRequest;
+import com.recred.backend.application.UpdateTimeRestrictionResponse;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
@@ -51,24 +56,31 @@ public class TimeRestrictionController {
     }
 
     @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<RestriccionHoraria>>
+    public ResponseEntity<List<GetTimeRestrictionsByStudentResponse>>
     getByStudent(@PathVariable UUID studentId) {
-        List<RestriccionHoraria> restrictions =
-                getTimeRestrictionsByStudent.execute(studentId);
+        List<GetTimeRestrictionsByStudentResponse> restrictions =
+                getTimeRestrictionsByStudent.execute(
+                        new GetTimeRestrictionsByStudentRequest(studentId));
         return ResponseEntity.ok(restrictions);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<RestriccionHoraria> update(
+    public ResponseEntity<UpdateTimeRestrictionResponse> update(
             @PathVariable UUID id,
-            @RequestBody TimeRestrictionCommand command) {
-        RestriccionHoraria updated = updateTimeRestriction.execute(id, command);
+            @RequestBody UpdateTimeRestrictionRequest requestBody) {
+        UpdateTimeRestrictionRequest request = new UpdateTimeRestrictionRequest(
+                id,
+                requestBody.timeSlotId(),
+                requestBody.categoryId(),
+                requestBody.classificationId()
+        );
+        UpdateTimeRestrictionResponse updated = updateTimeRestriction.execute(request);
         return ResponseEntity.ok(updated);
     }
 
     @PatchMapping("/{id}/disable")
     public ResponseEntity<Void> disable(@PathVariable UUID id) {
-        disableTimeRestriction.execute(id);
+        disableTimeRestriction.execute(new DisableTimeRestrictionRequest(id));
         return ResponseEntity.noContent().build();
     }
 }

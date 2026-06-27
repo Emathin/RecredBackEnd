@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.AddHealthRestriction;
+import com.recred.backend.application.AddHealthRestrictionRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -52,7 +53,7 @@ class AddHealthRestrictionTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(clasificacionRepository.findById(clasificacionId)).thenReturn(Optional.of(clasificacion));
 
-        useCase.execute(alumnoId, clasificacionId);
+        useCase.execute(new AddHealthRestrictionRequest(alumnoId, clasificacionId));
 
         assertTrue(alumno.getRestriccionesSalud().contains(clasificacion));
         verify(alumnoRepository).save(alumno);
@@ -63,7 +64,7 @@ class AddHealthRestrictionTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.execute(alumnoId, clasificacionId);
+            useCase.execute(new AddHealthRestrictionRequest(alumnoId, clasificacionId));
         });
 
         assertEquals("El alumno no existe.", exception.getMessage());
@@ -77,7 +78,7 @@ class AddHealthRestrictionTest {
         when(clasificacionRepository.findById(clasificacionId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.execute(alumnoId, clasificacionId);
+            useCase.execute(new AddHealthRestrictionRequest(alumnoId, clasificacionId));
         });
 
         assertEquals("La clasificación médica no existe.", exception.getMessage());

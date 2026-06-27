@@ -15,9 +15,9 @@ import com.recred.backend.application.EnableSchoolCredit;
 import com.recred.backend.application.GetActiveSchoolCredit;
 import com.recred.backend.application.GetLastRecharge;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
-import com.recred.backend.application.AgregarProductoFavorito;
+import com.recred.backend.application.AddFavoriteProduct;
 import com.recred.backend.application.AskSchoolAssistant;
-import com.recred.backend.application.BloquearProductoManual;
+import com.recred.backend.application.ManualProductLock;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.application.CloseDailyBuffet;
@@ -26,19 +26,18 @@ import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreatePromotion;
-import com.recred.backend.application.ActualizarFotoAlumno;
+import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateTimeRestriction;
-import com.recred.backend.application.DeleteCarritoFavorito;
+import com.recred.backend.application.DeleteFavoriteCart;
 import com.recred.backend.application.DeleteProduct;
 import com.recred.backend.application.DeletePromotion;
-import com.recred.backend.application.DesbloquearProductoManual;
+import com.recred.backend.application.ManualProductUnlock;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.ExpireAdvancePurchases;
 import com.recred.backend.application.GenerarMenuBuffet;
-import com.recred.backend.application.GenerateComboSuggestion;
 import com.recred.backend.application.GenerateDailyBuffetReport;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
 import com.recred.backend.application.GenerateLowBalanceAlerts;
@@ -54,12 +53,12 @@ import com.recred.backend.application.GetActivePromotions;
 
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetAllProducts;
-import com.recred.backend.application.GetBuffetByAlumno;
+import com.recred.backend.application.GetBuffetByStudent;
 import com.recred.backend.application.GetBuffetTimeSlots;
-import com.recred.backend.application.GetCarritosFavoritosByTutor;
+import com.recred.backend.application.GetFavoriteCartsByTutor;
 import com.recred.backend.application.GetCartSuggestions;
 import com.recred.backend.application.GetDailyBuffetCloseStatus;
-import com.recred.backend.application.GetFavoritosByAlumno;
+import com.recred.backend.application.GetFavoritesByStudent;
 import com.recred.backend.application.GetGradesBySchool;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
@@ -80,7 +79,6 @@ import com.recred.backend.application.GetStudentRewardStatus;
 import com.recred.backend.application.GetStudentWalletSummary;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeSlotsBySchool;
-import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.ListDailyBuffetCloses;
 import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
@@ -90,9 +88,9 @@ import com.recred.backend.application.LoadStockIA;
 import com.recred.backend.application.ManagePromotionStatus;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
-import com.recred.backend.application.ObtenerHijosPorPadre;
-import com.recred.backend.application.ObtenerHistorialAlumno;
-import com.recred.backend.application.ObtenerHistorialPendienteAlumno;
+import com.recred.backend.application.GetChildrenByTutor;
+import com.recred.backend.application.GetHistoryByStudent;
+import com.recred.backend.application.GetPendingHistoryByStudent;
 import com.recred.backend.application.ObtenerHistorialTutor;
 import com.recred.backend.application.ParseBulkStock;
 import com.recred.backend.application.PredictStudentSpending;
@@ -100,14 +98,13 @@ import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RemoveHealthRestrictions;
-import com.recred.backend.application.RemoverProductoFavorito;
+import com.recred.backend.application.DeleteFavoriteProduct;
 import com.recred.backend.application.RespondToAISuggestion;
-import com.recred.backend.application.SaveCarritoFavorito;
+import com.recred.backend.application.SaveFavoriteCart;
 import com.recred.backend.application.SaveBulkProducts;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SchoolAssistantConversations;
 import com.recred.backend.application.SchoolAssistantFixedTopics;
-import com.recred.backend.application.SetNotificationAsAlreadyRead;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
@@ -141,7 +138,6 @@ import com.recred.backend.domain.repositories.HealthyRecommendationNotificationR
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
-import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.NotificationRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
@@ -343,31 +339,31 @@ public class UseCases {
     }
 
     @Bean
-    public BloquearProductoManual bloquearProductoManual(AlumnoRepository alumnoRepository,
-            ProductRepository productRepository) {
-        return new BloquearProductoManual(alumnoRepository, productRepository);
+    public ManualProductLock bloquearProductoManual(AlumnoRepository alumnoRepository,
+                                                    ProductRepository productRepository) {
+        return new ManualProductLock(alumnoRepository, productRepository);
     }
 
     @Bean
-    public DesbloquearProductoManual desbloquearProductoManual(AlumnoRepository alumnoRepository) {
-        return new DesbloquearProductoManual(alumnoRepository);
+    public ManualProductUnlock desbloquearProductoManual(AlumnoRepository alumnoRepository) {
+        return new ManualProductUnlock(alumnoRepository);
     }
 
     @Bean
-    public AgregarProductoFavorito agregarProductoFavorito(AlumnoRepository alumnoRepository,
-            ProductRepository productRepository,
-            TutorRepository tutorRepository) {
-        return new AgregarProductoFavorito(alumnoRepository, productRepository, tutorRepository);
+    public AddFavoriteProduct agregarProductoFavorito(AlumnoRepository alumnoRepository,
+                                                      ProductRepository productRepository,
+                                                      TutorRepository tutorRepository) {
+        return new AddFavoriteProduct(alumnoRepository, productRepository, tutorRepository);
     }
 
     @Bean
-    public RemoverProductoFavorito removerProductoFavorito(AlumnoRepository alumnoRepository) {
-        return new RemoverProductoFavorito(alumnoRepository);
+    public DeleteFavoriteProduct removerProductoFavorito(AlumnoRepository alumnoRepository) {
+        return new DeleteFavoriteProduct(alumnoRepository);
     }
 
     @Bean
-    public GetFavoritosByAlumno getFavoritosByAlumno(AlumnoRepository alumnoRepository) {
-        return new GetFavoritosByAlumno(alumnoRepository);
+    public GetFavoritesByStudent getFavoritosByAlumno(AlumnoRepository alumnoRepository) {
+        return new GetFavoritesByStudent(alumnoRepository);
     }
 
     @Bean
@@ -376,8 +372,8 @@ public class UseCases {
     }
 
     @Bean
-    public ObtenerHijosPorPadre obtenerHijosPorPadre(TutorRepository tutorRepository) {
-        return new ObtenerHijosPorPadre(tutorRepository);
+    public GetChildrenByTutor obtenerHijosPorPadre(TutorRepository tutorRepository) {
+        return new GetChildrenByTutor(tutorRepository);
     }
 
     @Bean
@@ -396,11 +392,11 @@ public class UseCases {
     }
 
     @Bean
-    public ActualizarFotoAlumno actualizarFotoAlumno(
+    public UpdateStudentPhoto actualizarFotoAlumno(
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             AlumnoRepository alumnoRepository) {
-        return new ActualizarFotoAlumno(usuarioRepository, tutorRepository, alumnoRepository);
+        return new UpdateStudentPhoto(usuarioRepository, tutorRepository, alumnoRepository);
     }
 
     @Bean
@@ -710,14 +706,14 @@ public class UseCases {
     }
 
     @Bean
-    public ObtenerHistorialAlumno obtenerHistorialAlumno(PurchaseRepository purchaseRepository) {
-        return new ObtenerHistorialAlumno(purchaseRepository);
+    public GetHistoryByStudent obtenerHistorialAlumno(PurchaseRepository purchaseRepository) {
+        return new GetHistoryByStudent(purchaseRepository);
     }
 
     @Bean
-    public ObtenerHistorialPendienteAlumno obtenerHistorialPendienteAlumno(
+    public GetPendingHistoryByStudent obtenerHistorialPendienteAlumno(
             PurchaseRepository purchaseRepository) {
-        return new ObtenerHistorialPendienteAlumno(purchaseRepository);
+        return new GetPendingHistoryByStudent(purchaseRepository);
     }
 
     @Bean
@@ -1138,10 +1134,10 @@ public class UseCases {
     }
 
     @Bean
-    public GetBuffetByAlumno getBuffetByAlumno(
+    public GetBuffetByStudent getBuffetByAlumno(
             BuffetRepository buffetRepository,
             AlumnoRepository alumnoRepository) {
-        return new GetBuffetByAlumno(buffetRepository, alumnoRepository);
+        return new GetBuffetByStudent(buffetRepository, alumnoRepository);
     }
 
     @Bean
@@ -1222,13 +1218,13 @@ public class UseCases {
     }
 
     @Bean
-    public SaveCarritoFavorito saveCarritoFavorito(
+    public SaveFavoriteCart saveCarritoFavorito(
             CarritoFavoritoRepository carritoFavoritoRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             AlumnoRepository alumnoRepository,
             ProductRepository productRepository) {
-        return new SaveCarritoFavorito(
+        return new SaveFavoriteCart(
                 carritoFavoritoRepository,
                 usuarioRepository,
                 tutorRepository,
@@ -1237,22 +1233,22 @@ public class UseCases {
     }
 
     @Bean
-    public GetCarritosFavoritosByTutor getCarritosFavoritosByTutor(
+    public GetFavoriteCartsByTutor getCarritosFavoritosByTutor(
             CarritoFavoritoRepository carritoFavoritoRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository) {
-        return new GetCarritosFavoritosByTutor(
+        return new GetFavoriteCartsByTutor(
                 carritoFavoritoRepository,
                 usuarioRepository,
                 tutorRepository);
     }
 
     @Bean
-    public DeleteCarritoFavorito deleteCarritoFavorito(
+    public DeleteFavoriteCart deleteCarritoFavorito(
             CarritoFavoritoRepository carritoFavoritoRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository) {
-        return new DeleteCarritoFavorito(
+        return new DeleteFavoriteCart(
                 carritoFavoritoRepository,
                 usuarioRepository,
                 tutorRepository);
@@ -1285,18 +1281,16 @@ public class UseCases {
 
     @Bean
     public GetTutorGlobalDashboard getTutorGlobalDashboard(
-            ObtenerHijosPorPadre obtenerHijosPorPadre,
             GetActiveBudgetByStudent getActiveBudgetByStudent,
             GetStudentRewardStatus getStudentRewardStatus,
             PredictStudentSpending predictStudentSpending,
-            ObtenerHistorialAlumno obtenerHistorialAlumno,
+            GetHistoryByStudent getHistoryByStudent,
             TutorRepository tutorRepository) {
         return new GetTutorGlobalDashboard(
-                obtenerHijosPorPadre,
                 getActiveBudgetByStudent,
                 getStudentRewardStatus,
                 predictStudentSpending,
-                obtenerHistorialAlumno,
+                getHistoryByStudent,
                 tutorRepository
         );
     }

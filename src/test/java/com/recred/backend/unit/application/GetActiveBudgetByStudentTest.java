@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetActiveBudgetByStudent;
+import com.recred.backend.application.GetActiveBudgetByStudentRequest;
+import com.recred.backend.application.GetActiveBudgetByStudentResponse;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import org.junit.jupiter.api.Test;
@@ -30,13 +32,17 @@ class GetActiveBudgetByStudentTest {
     void execute_DelegaLaConsultaAlRepositorio() {
         UUID studentId = UUID.randomUUID();
         PresupuestoAlumno presupuesto = new PresupuestoAlumno();
+        presupuesto.setId(UUID.randomUUID());
+        presupuesto.setAlumnoId(studentId);
+        presupuesto.setActivo(true);
 
         when(repository.findActivoByAlumnoId(studentId)).thenReturn(Optional.of(presupuesto));
 
-        Optional<PresupuestoAlumno> resultado = getActiveBudgetByStudent.execute(studentId);
+        Optional<GetActiveBudgetByStudentResponse> resultado = getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId));
 
         assertTrue(resultado.isPresent());
-        assertEquals(presupuesto, resultado.get());
+        assertEquals(presupuesto.getId(), resultado.get().id());
+        assertEquals(presupuesto.getAlumnoId(), resultado.get().alumnoId());
         verify(repository).findActivoByAlumnoId(studentId);
     }
 }

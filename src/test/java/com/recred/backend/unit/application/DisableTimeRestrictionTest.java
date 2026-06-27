@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.DisableTimeRestrictionRequest;
 import com.recred.backend.domain.models.RestriccionHoraria;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,7 @@ class DisableTimeRestrictionTest {
 
         when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccion));
 
-        disableTimeRestriction.execute(restrictionId);
+        disableTimeRestriction.execute(new DisableTimeRestrictionRequest(restrictionId));
 
         assertFalse(restriccion.isActiva());
         verify(repository).save(restriccion);
@@ -45,7 +46,7 @@ class DisableTimeRestrictionTest {
         when(repository.findById(restrictionId)).thenReturn(Optional.empty());
 
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> disableTimeRestriction.execute(restrictionId));
+                () -> disableTimeRestriction.execute(new DisableTimeRestrictionRequest(restrictionId)));
 
         assertEquals("Time restriction not found", exception.getMessage());
     }

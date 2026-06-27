@@ -1,5 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.GetFavoriteCartsByTutorResponse;
+import com.recred.backend.application.SaveFavoriteCartResponse;
 import com.recred.backend.domain.models.CarritoFavorito;
 
 import java.util.List;
@@ -31,6 +33,50 @@ public record CarritoFavoritoResponse(
                 domain.getAlumno() != null ? domain.getAlumno().getId() : null,
                 domain.getAlumno() != null ? domain.getAlumno().getNombre() : null,
                 domain.getAlumno() != null ? domain.getAlumno().getApellido() : null,
+                itemResponses
+        );
+    }
+
+    public static CarritoFavoritoResponse fromDto(GetFavoriteCartsByTutorResponse dto) {
+        List<CarritoFavoritoItemResponse> itemResponses = dto.items() != null
+                ? dto.items().stream()
+                        .map(item -> new CarritoFavoritoItemResponse(
+                                item.productId(),
+                                item.productoNombre(),
+                                item.productoPrecio(),
+                                item.quantity()
+                        ))
+                        .toList()
+                : List.of();
+
+        return new CarritoFavoritoResponse(
+                dto.id(),
+                dto.nombre(),
+                dto.alumnoId(),
+                dto.alumnoNombre(),
+                dto.alumnoApellido(),
+                itemResponses
+        );
+    }
+
+    public static CarritoFavoritoResponse fromUseCaseResponse(SaveFavoriteCartResponse dto) {
+        List<CarritoFavoritoItemResponse> itemResponses = dto.items() != null
+                ? dto.items().stream()
+                        .map(item -> new CarritoFavoritoItemResponse(
+                                item.productId(),
+                                item.productoNombre(),
+                                item.productoPrecio(),
+                                item.quantity()
+                        ))
+                        .toList()
+                : List.of();
+
+        return new CarritoFavoritoResponse(
+                dto.id(),
+                dto.nombre(),
+                dto.alumnoId(),
+                dto.alumnoNombre(),
+                dto.alumnoApellido(),
                 itemResponses
         );
     }

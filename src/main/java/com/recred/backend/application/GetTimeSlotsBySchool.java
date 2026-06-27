@@ -1,10 +1,8 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 
 import java.util.List;
-import java.util.UUID;
 
 public class GetTimeSlotsBySchool {
 
@@ -14,7 +12,18 @@ public class GetTimeSlotsBySchool {
         this.repository = repository;
     }
 
-    public List<FranjaHoraria> execute(UUID colegioId) {
-        return repository.findAllByColegioId(colegioId);
+    public List<GetTimeSlotsBySchoolResponse> execute(GetTimeSlotsBySchoolRequest request) {
+        return repository.findAllByColegioId(request.colegioId()).stream()
+                .map(slot -> new GetTimeSlotsBySchoolResponse(
+                        slot.getId(),
+                        slot.getColegioId(),
+                        slot.getDescripcion(),
+                        slot.getHoraInicio(),
+                        slot.getHoraFin(),
+                        slot.isActivo(),
+                        slot.getCupoMaximo(),
+                        slot.getMinutosCorte()
+                ))
+                .toList();
     }
 }

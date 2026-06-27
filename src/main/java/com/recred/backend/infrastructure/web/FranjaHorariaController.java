@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetTimeSlotsBySchool;
+import com.recred.backend.application.GetTimeSlotsBySchoolRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,9 +26,10 @@ public class FranjaHorariaController {
 
     @GetMapping
     public ResponseEntity<List<TimeSlotResponse>> obtenerFranjas(@PathVariable UUID colegioId) {
-        List<TimeSlotResponse> franjas = getTimeSlotsBySchool.execute(colegioId)
+        List<TimeSlotResponse> franjas = getTimeSlotsBySchool.execute(
+                        new GetTimeSlotsBySchoolRequest(colegioId))
                 .stream()
-                .map(TimeSlotResponse::fromDomain)
+                .map(TimeSlotResponse::fromUseCaseResponse)
                 .toList();
         return ResponseEntity.ok(franjas);
     }

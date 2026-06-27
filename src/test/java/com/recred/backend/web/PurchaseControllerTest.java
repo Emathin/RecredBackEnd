@@ -1,6 +1,8 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.CreateAdvancePurchase;
+import com.recred.backend.application.CreateAdvancePurchaseRequest;
+import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.GetPresentialPurchase;
@@ -191,14 +193,14 @@ class PurchaseControllerTest {
 
     @Test
     void createAdvancePurchase_WithValidRequest_ShouldReturnOk() throws Exception {
-        AdvancePurchaseResponse advancePurchaseResponse = new AdvancePurchaseResponse(
+        CreateAdvancePurchaseResponse advancePurchaseResponse = new CreateAdvancePurchaseResponse(
                 purchaseId.toString(),
                 new PurchaseStatus(purchaseId, studentId, EstadoCompra.PENDIENTE, "A preparar", LocalDateTime.now()),
                 500.00,
                 Collections.singletonMap(studentId, "ABC-123")
         );
 
-        when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class), eq("test-user"))).thenReturn(advancePurchaseResponse);
+        when(createAdvancePurchase.execute(any(CreateAdvancePurchaseRequest.class), eq("test-user"))).thenReturn(advancePurchaseResponse);
 
         TestingAuthenticationToken authentication = new TestingAuthenticationToken("test-user", "");
 
@@ -209,7 +211,7 @@ class PurchaseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").value(purchaseId.toString()));
 
-        verify(createAdvancePurchase).execute(any(AdvancePurchaseRequest.class), eq("test-user"));
+        verify(createAdvancePurchase).execute(any(CreateAdvancePurchaseRequest.class), eq("test-user"));
     }
 
     @Test

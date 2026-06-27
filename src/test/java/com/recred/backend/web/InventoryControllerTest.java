@@ -7,6 +7,8 @@ import com.recred.backend.application.GetStockMovements;
 import com.recred.backend.application.InventoryQuickActionCommand;
 import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.UploadProductImage;
+import com.recred.backend.application.UploadProductImageRequest;
+import com.recred.backend.application.UploadProductImageResponse;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.InventoryQuickActionType;
 import com.recred.backend.domain.models.Inventario;
@@ -36,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -307,6 +310,28 @@ class InventoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estadoInventario").doesNotExist())
                 .andExpect(jsonPath("$.tipoManejoInventario").doesNotExist());
+    }
+
+    @Test
+    void subirImagen_ShouldReturnImageUrl() throws Exception {
+        UUID buffetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        String expectedUrl = "http://cloudinary.com/image.jpg";
+
+        when(uploadProductImage.execute(any(UploadProductImageRequest.class)))
+                .thenReturn(new UploadProductImageResponse(expectedUrl));
+
+        mockMvc.perform(multipart(
+                        "/api/v1/inventory/{buffetId}/products/{productId}/imagen",
+                        buffetId,
+                        productId
+                )
+                .file("imagen", "fake-image-content".getBytes())
+        )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.urlImagen").value(expectedUrl));
+
+        verify(uploadProductImage).execute(any(UploadProductImageRequest.class));
     }
 
     @Test

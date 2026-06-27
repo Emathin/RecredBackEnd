@@ -29,9 +29,11 @@ public class SchedulePickup {
         this.budgetValidator = budgetValidator;
     }
 
-    public void execute(UUID studentId, Set<Producto> cart,
-                        FranjaHoraria pickupSlot,
-                        LocalDate pickupDate) {
+    public void execute(SchedulePickupRequest request) {
+        UUID studentId = request.studentId();
+        Set<Producto> cart = request.cart();
+        FranjaHoraria pickupSlot = request.pickupSlot();
+        LocalDate pickupDate = request.pickupDate();
 
         Alumno student = new Alumno();
         student.setId(studentId);
