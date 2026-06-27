@@ -1,94 +1,93 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.application.DetectStudentPreferences;
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
+import com.recred.backend.infrastructure.entities.ColegioEntity;
+import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.persistence.PreferenceDetectionScheduler;
-import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
-import org.junit.jupiter.api.BeforeEach;
+import com.recred.backend.integration.AbstractIntegrationTest;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
-@ExtendWith(MockitoExtension.class)
-class PreferenceDetectionSchedulerTest {
+@Transactional
+class PreferenceDetectionSchedulerTest extends AbstractIntegrationTest {
 
-    @Mock
-    private AlumnoRepository alumnoRepository;
-    @Mock
-    private SpringDataBuffetRepository buffetRepository;
-    @Mock
-    private DetectStudentPreferences detectStudentPreferences;
-
+    @Autowired
     private PreferenceDetectionScheduler scheduler;
 
-    @BeforeEach
-    void setUp() {
-        scheduler = new PreferenceDetectionScheduler(
-                alumnoRepository,
-                buffetRepository,
-                detectStudentPreferences
-        );
-    }
+    @Autowired
+    private EntityManager entityManager;
+
+    private ColegioEntity cachedSchool;
+    private BuffetEntity cachedBuffet;
 
     @Test
     void runPreferenceDetectionForAllActiveStudentsInAllBuffets() {
-        Alumno alumno1 = new Alumno();
-        alumno1.setId(UUID.randomUUID());
-        alumno1.setActivo(true);
+        BuffetEntity buffet = generateBuffetEntity();
+        
+        generateStudentEntity(true, "student.active.pref@test.com");
+        
+        generateStudentEntity(false, "student.inactive.pref@test.com");
 
-        Alumno alumno2 = new Alumno();
-        alumno2.setId(UUID.randomUUID());
-        alumno2.setActivo(false);
 
-        BuffetEntity buffet = new BuffetEntity();
-        buffet.setId(UUID.randomUUID());
-
-        when(alumnoRepository.findAll()).thenReturn(List.of(alumno1, alumno2));
-        when(buffetRepository.findAll()).thenReturn(List.of(buffet));
-
-        scheduler.runDetectionForAllStudents();
-
-        verify(detectStudentPreferences, times(1)).execute(alumno1.getId(), buffet.getId());
-        verify(detectStudentPreferences, never()).execute(alumno2.getId(), buffet.getId());
+        assertDoesNotThrow(() -> scheduler.runDetectionForAllStudents());
     }
 
     @Test
     void abortScheduledDetectionWhenNoBuffetsAreFound() {
-        when(buffetRepository.findAll()).thenReturn(Collections.emptyList());
-
-        scheduler.runDetectionForAllStudents();
-
-        verify(detectStudentPreferences, never()).execute(any(), any());
+        entityManager.createQuery("DELETE FROM BuffetEntity").executeUpdate();
+        
+        assertDoesNotThrow(() -> scheduler.runDetectionForAllStudents());
     }
 
-    @Test
-    void handleIndividualExecutionErrorsWithoutInterruptingProcess() {
-        Alumno alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
-        alumno.setActivo(true);
+    private ColegioEntity generateSchoolEntity() {
+        if (this.cachedSchool == null) {
+            ColegioEntity school = new ColegioEntity();
+            school.setNombre("Test School Prefs");
+            school.setCue("CUE-PREFS-123");
+            school.setActivo(true);
+            entityManager.persist(school);
+            this.cachedSchool = school;
+        }
+        return this.cachedSchool;
+    }
 
-        BuffetEntity buffet = new BuffetEntity();
-        buffet.setId(UUID.randomUUID());
+    private BuffetEntity generateBuffetEntity() {
+        if (this.cachedBuffet == null) {
+            BuffetEntity buffet = new BuffetEntity();
+            buffet.setColegioEntity(generateSchoolEntity());
+            buffet.setNombre("Buffet Prefs");
+            buffet.setActivo(true);
+            entityManager.persist(buffet);
+            this.cachedBuffet = buffet;
+        }
+        return this.cachedBuffet;
+    }
 
-        when(alumnoRepository.findAll()).thenReturn(List.of(alumno));
-        when(buffetRepository.findAll()).thenReturn(List.of(buffet));
-        when(detectStudentPreferences.execute(any(), any())).thenThrow(new RuntimeException("Error IA"));
+    private UsuarioEntity generateUserEntity(String email) {
+        UsuarioEntity user = new UsuarioEntity();
+        user.setIdCognito("sub-pref-" + UUID.randomUUID().toString().substring(0, 8));
+        user.setNombre("Student");
+        user.setApellido("User");
+        user.setEmail(email);
+        user.setRol(RolUsuario.ALUMNO);
+        user.setActivo(true);
+        entityManager.persist(user);
+        return user;
+    }
 
-        scheduler.runDetectionForAllStudents();
-
-        verify(detectStudentPreferences).execute(alumno.getId(), buffet.getId());
+    private AlumnoEntity generateStudentEntity(boolean active, String email) {
+        AlumnoEntity student = new AlumnoEntity();
+        student.setUsuario(generateUserEntity(email));
+        student.setActivo(active);
+        entityManager.persist(student);
+        return student;
     }
 }

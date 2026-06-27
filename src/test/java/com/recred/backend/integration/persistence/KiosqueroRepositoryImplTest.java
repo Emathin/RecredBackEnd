@@ -1,85 +1,123 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.infrastructure.persistence.*;
-
 import com.recred.backend.domain.models.Kiosquero;
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.infrastructure.entities.BuffetEntity;
+import com.recred.backend.infrastructure.entities.ColegioEntity;
 import com.recred.backend.infrastructure.entities.KiosqueroEntity;
-import org.junit.jupiter.api.BeforeEach;
+import com.recred.backend.infrastructure.entities.UsuarioEntity;
+import com.recred.backend.infrastructure.persistence.KiosqueroRepositoryImpl;
+import com.recred.backend.infrastructure.persistence.SpringDataKiosqueroRepository;
+import com.recred.backend.integration.AbstractIntegrationTest;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(MockitoExtension.class)
-class KiosqueroRepositoryImplTest {
+@Transactional
+class KiosqueroRepositoryImplTest extends AbstractIntegrationTest {
 
-    @Mock
-    private SpringDataKiosqueroRepository springDataKiosqueroRepository;
-
+    @Autowired
     private KiosqueroRepositoryImpl repository;
 
-    @BeforeEach
-    void setUp() {
-        repository = new KiosqueroRepositoryImpl(springDataKiosqueroRepository);
+    @Autowired
+    private SpringDataKiosqueroRepository springDataKiosqueroRepository;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    private ColegioEntity cachedSchool;
+    private BuffetEntity cachedBuffet;
+    private UsuarioEntity cachedUser;
+
+    @Test
+    void findBuffetById_ShouldReturnBuffetId() {
+        KiosqueroEntity kiosquero = generateKiosqueroEntity("20-12345678-9", "vendor1.test@recred.com");
+
+        UUID result = repository.findBuffetById(kiosquero.getId());
+
+        assertEquals(kiosquero.getBuffetEntity().getId(), result);
     }
 
     @Test
-    void findBuffetById_ShouldDelegateToSpringDataRepository() {
-        UUID kiosqueroId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        when(springDataKiosqueroRepository.findBuffet(kiosqueroId)).thenReturn(buffetId);
+    void findBuffetByUsuarioId_ShouldReturnBuffetId() {
+        KiosqueroEntity kiosquero = generateKiosqueroEntity("20-12345678-9", "vendor2.test@recred.com");
 
-        UUID result = repository.findBuffetById(kiosqueroId);
+        UUID result = repository.findBuffetByUsuarioId(kiosquero.getUsuario().getId());
 
-        assertEquals(buffetId, result);
+        assertEquals(kiosquero.getBuffetEntity().getId(), result);
     }
 
     @Test
-    void findBuffetByUsuarioId_ShouldDelegateToSpringDataRepository() {
-        UUID usuarioId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        when(springDataKiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(buffetId);
-
-        UUID result = repository.findBuffetByUsuarioId(usuarioId);
-
-        assertEquals(buffetId, result);
-    }
-
-    @Test
-    void findAllIds_ShouldDelegateToSpringDataRepository() {
-        List<UUID> ids = List.of(UUID.randomUUID(), UUID.randomUUID());
-        when(springDataKiosqueroRepository.findAllIds()).thenReturn(ids);
+    void findAllIds_ShouldReturnAllKiosqueroIds() {
+        KiosqueroEntity first = generateKiosqueroEntity("20-12345678-9", "vendor3.test@recred.com");
+        KiosqueroEntity second = generateKiosqueroEntity("20-87654321-9", "vendor4.test@recred.com");
 
         List<UUID> result = repository.findAllIds();
 
-        assertEquals(ids, result);
+        assertTrue(result.contains(first.getId()));
+        assertTrue(result.contains(second.getId()));
     }
 
     @Test
     void findAll_ShouldMapEntitiesToDomain() {
-        KiosqueroEntity first = kiosqueroEntity(UUID.randomUUID(), "20-12345678-9");
-        KiosqueroEntity second = kiosqueroEntity(UUID.randomUUID(), "20-87654321-9");
-        when(springDataKiosqueroRepository.findAll()).thenReturn(List.of(first, second));
+        KiosqueroEntity first = generateKiosqueroEntity("20-12345678-9", "vendor5.test@recred.com");
+        KiosqueroEntity second = generateKiosqueroEntity("20-87654321-9", "vendor6.test@recred.com");
 
         List<Kiosquero> result = repository.findAll();
 
-        assertEquals(2, result.size());
-        assertEquals(first.getId(), result.get(0).getId());
-        assertEquals(first.getCuit(), result.get(0).getCuit());
-        assertEquals(second.getId(), result.get(1).getId());
-        assertEquals(second.getCuit(), result.get(1).getCuit());
+        assertTrue(result.size() >= 2);
+        assertTrue(result.stream().anyMatch(k -> k.getId().equals(first.getId()) && k.getCuit().equals("20-12345678-9")));
+        assertTrue(result.stream().anyMatch(k -> k.getId().equals(second.getId()) && k.getCuit().equals("20-87654321-9")));
     }
 
-    private KiosqueroEntity kiosqueroEntity(UUID id, String cuit) {
+    private ColegioEntity generateSchoolEntity() {
+        if (this.cachedSchool == null) {
+            ColegioEntity school = new ColegioEntity();
+            school.setNombre("Test School");
+            school.setCue("CUE-KIOSQUERO-123");
+            school.setActivo(true);
+            entityManager.persist(school);
+            this.cachedSchool = school;
+        }
+        return this.cachedSchool;
+    }
+
+    private BuffetEntity generateBuffetEntity() {
+        if (this.cachedBuffet == null) {
+            BuffetEntity buffet = new BuffetEntity();
+            buffet.setColegioEntity(generateSchoolEntity());
+            buffet.setNombre("Buffet Kiosquero");
+            buffet.setActivo(true);
+            entityManager.persist(buffet);
+            this.cachedBuffet = buffet;
+        }
+        return this.cachedBuffet;
+    }
+
+    private UsuarioEntity generateUserEntity(String email) {
+        UsuarioEntity user = new UsuarioEntity();
+        user.setIdCognito("sub-kiosquero-" + UUID.randomUUID().toString().substring(0, 8));
+        user.setNombre("Vendor");
+        user.setApellido("User");
+        user.setEmail(email);
+        user.setRol(RolUsuario.VENDEDOR);
+        user.setActivo(true);
+        entityManager.persist(user);
+        return user;
+    }
+
+    private KiosqueroEntity generateKiosqueroEntity(String cuit, String email) {
         KiosqueroEntity entity = new KiosqueroEntity();
-        entity.setId(id);
+        entity.setUsuario(generateUserEntity(email));
         entity.setCuit(cuit);
-        return entity;
+        entity.setBuffetEntity(generateBuffetEntity());
+        return springDataKiosqueroRepository.save(entity);
     }
 }

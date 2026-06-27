@@ -1,66 +1,81 @@
 package com.recred.backend.integration.persistence;
 
 import com.recred.backend.domain.models.Notification;
+import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.TipoNotificacion;
 import com.recred.backend.infrastructure.entities.NotificacionEntity;
+import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.persistence.NotificacionJpaRepository;
 import com.recred.backend.infrastructure.persistence.NotificationRepositoryImpl;
+import com.recred.backend.integration.AbstractIntegrationTest;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
-class NotificationRepositoryImplTest {
+@Transactional
+class NotificationRepositoryImplTest extends AbstractIntegrationTest {
+
+    @Autowired
+    private NotificationRepositoryImpl repository;
+
+    @Autowired
+    private NotificacionJpaRepository springDataRepository;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    private UsuarioEntity cachedUser;
 
     @Test
     void findByUserIdMapsEntitiesToDomainAndUsesPagination() {
-        UUID userId = UUID.randomUUID();
-        UUID notificationId = UUID.randomUUID();
-        NotificacionEntity entity = notificationEntity(notificationId);
-        NotificacionJpaRepository jpaRepository = mock(NotificacionJpaRepository.class);
-        when(jpaRepository.findByUserId(
-                org.mockito.ArgumentMatchers.eq(userId),
-                org.mockito.ArgumentMatchers.eq(true),
-                org.mockito.ArgumentMatchers.any(Pageable.class)
-        )).thenReturn(List.of(entity));
-        NotificationRepositoryImpl repository = new NotificationRepositoryImpl(jpaRepository);
+        UsuarioEntity user = generateUserEntity();
+        
+        generateNotificationEntity(user, "Unread 1", false, LocalDateTime.now().minusDays(1));
+        generateNotificationEntity(user, "Read 1", true, LocalDateTime.now().minusDays(2));
+        generateNotificationEntity(user, "Unread 2", false, LocalDateTime.now().minusDays(3));
+        
+        List<Notification> unreadResults = repository.findByUserId(user.getId(), true, 0, 5);
 
-        List<Notification> result = repository.findByUserId(userId, true, 1, 5);
-
-        assertEquals(1, result.size());
-        assertEquals(notificationId, result.get(0).id());
-        assertEquals(TipoNotificacion.SISTEMA, result.get(0).type());
-        assertEquals("Title", result.get(0).title());
-        assertEquals("Message", result.get(0).message());
-        assertEquals(false, result.get(0).read());
-        assertEquals(LocalDateTime.of(2026, 6, 2, 14, 30), result.get(0).createdAt());
-
-        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(jpaRepository).findByUserId(
-                org.mockito.ArgumentMatchers.eq(userId),
-                org.mockito.ArgumentMatchers.eq(true),
-                pageableCaptor.capture()
-        );
-        assertEquals(1, pageableCaptor.getValue().getPageNumber());
-        assertEquals(5, pageableCaptor.getValue().getPageSize());
+        assertEquals(2, unreadResults.size());
+        assertFalse(unreadResults.get(0).read());
+        assertEquals("Unread 1", unreadResults.get(0).title());
+        
+        List<Notification> allResults = repository.findByUserId(user.getId(), false, 0, 5);
+        assertEquals(3, allResults.size());
     }
 
-    private NotificacionEntity notificationEntity(UUID notificationId) {
+    private UsuarioEntity generateUserEntity() {
+        if (this.cachedUser == null) {
+            UsuarioEntity user = new UsuarioEntity();
+            user.setIdCognito("sub-notif-" + UUID.randomUUID().toString().substring(0, 8));
+            user.setNombre("Notif");
+            user.setApellido("User");
+            user.setEmail("notif.user@test.com");
+            user.setRol(RolUsuario.PADRE);
+            user.setActivo(true);
+            entityManager.persist(user);
+            this.cachedUser = user;
+        }
+        return this.cachedUser;
+    }
+
+    private NotificacionEntity generateNotificationEntity(UsuarioEntity user, String title, boolean leida, LocalDateTime date) {
         NotificacionEntity entity = new NotificacionEntity();
-        entity.setId(notificationId);
+        entity.setUsuarioEntity(user);
         entity.setTipo(TipoNotificacion.SISTEMA);
-        entity.setTitulo("Title");
-        entity.setMensaje("Message");
-        entity.setLeida(false);
-        entity.setCreadoEn(LocalDateTime.of(2026, 6, 2, 14, 30));
-        return entity;
+        entity.setTitulo(title);
+        entity.setMensaje("Message body for " + title);
+        entity.setLeida(leida);
+        entity.setCreadoEn(date);
+        
+        return springDataRepository.save(entity);
     }
 }

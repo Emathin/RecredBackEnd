@@ -1,18 +1,19 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.infrastructure.persistence.*;
-
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
+import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.PromotionEntity;
-import org.junit.jupiter.api.BeforeEach;
+import com.recred.backend.infrastructure.persistence.PromotionRepositoryImpl;
+import com.recred.backend.infrastructure.persistence.PromotionSpringDataRepository;
+import com.recred.backend.infrastructure.persistence.SpringDataProductRepository;
+import com.recred.backend.integration.AbstractIntegrationTest;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,130 +23,136 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-class PromotionRepositoryImplTest {
+@Transactional
+class PromotionRepositoryImplTest extends AbstractIntegrationTest {
 
-    @Mock
-    private PromotionSpringDataRepository springDataRepository;
-
-    @Mock
-    private SpringDataBuffetRepository buffetRepository;
-
+    @Autowired
     private PromotionRepositoryImpl repository;
 
-    @BeforeEach
-    void setUp() {
-        repository = new PromotionRepositoryImpl(springDataRepository, buffetRepository);
-    }
+    @Autowired
+    private PromotionSpringDataRepository springDataRepository;
+
+    @Autowired
+    private SpringDataProductRepository productRepository;
+    
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void findAllActiveShouldMapEntities() {
-        PromotionEntity entity = entity(UUID.randomUUID());
-        when(springDataRepository.findByStatus(PromotionStatus.ACTIVE))
-                .thenReturn(List.of(entity));
+        ProductoEntity product = generateProductEntity("Alfajor");
+        PromotionEntity entity = generatePromotionEntity("Active Promo", PromotionStatus.ACTIVE, product);
+        generatePromotionEntity("Inactive Promo", PromotionStatus.EXPIRED, product);
 
         List<Promotion> result = repository.findAllActive();
 
-        assertEquals(1, result.size());
-        assertEquals(entity.getId(), result.get(0).getId());
+        assertTrue(result.size() >= 1);
+        assertTrue(result.stream().anyMatch(p -> p.getId().equals(entity.getId())));
     }
 
     @Test
     void findByIdShouldMapEntityWhenPresent() {
-        UUID id = UUID.randomUUID();
-        PromotionEntity entity = entity(id);
-        when(springDataRepository.findById(id)).thenReturn(Optional.of(entity));
+        ProductoEntity product = generateProductEntity("Juice");
+        PromotionEntity entity = generatePromotionEntity("Juice Promo", PromotionStatus.ACTIVE, product);
 
-        Optional<Promotion> result = repository.findById(id);
+        Optional<Promotion> result = repository.findById(entity.getId());
 
         assertTrue(result.isPresent());
-        assertEquals(id, result.orElseThrow().getId());
+        assertEquals(entity.getId(), result.get().getId());
+        assertEquals("Juice Promo", result.get().getName());
     }
 
     @Test
     void saveShouldCreatePromotionWithProducts() {
-        UUID productId = UUID.randomUUID();
-        Promotion promotion = promotion(null, productId);
-        when(springDataRepository.save(any(PromotionEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        ProductoEntity product = generateProductEntity("Cookie");
+        
+        Promotion promotion = createDomainPromotion(null, "New Promo", "15.00", LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(10), PromotionStatus.ACTIVE, product.getId());
 
         Promotion result = repository.save(promotion);
+        entityManager.flush();
+        entityManager.clear();
 
-        ArgumentCaptor<PromotionEntity> captor = ArgumentCaptor.forClass(PromotionEntity.class);
-        verify(springDataRepository).save(captor.capture());
-        PromotionEntity saved = captor.getValue();
-        assertEquals("Promo", saved.getName());
+        assertTrue(springDataRepository.findById(result.getId()).isPresent());
+        PromotionEntity saved = springDataRepository.findById(result.getId()).get();
+        assertEquals("New Promo", saved.getName());
         assertEquals(new BigDecimal("15.00"), saved.getDiscountPercentage());
         assertEquals(PromotionStatus.ACTIVE, saved.getStatus());
-        assertEquals(productId, saved.getProducts().iterator().next().getId());
-        assertEquals("Promo", result.getName());
+        assertEquals(product.getId(), saved.getProducts().iterator().next().getId());
+        assertEquals("New Promo", result.getName());
     }
 
     @Test
     void saveShouldUpdateExistingPromotion() {
-        UUID promotionId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        Promotion promotion = promotion(promotionId, productId);
-        PromotionEntity existing = entity(promotionId);
-        when(springDataRepository.findById(promotionId)).thenReturn(Optional.of(existing));
-        when(springDataRepository.save(existing)).thenReturn(existing);
+        ProductoEntity product = generateProductEntity("Yogurt");
+        PromotionEntity existing = generatePromotionEntity("Old Promo", PromotionStatus.ACTIVE, product);
+        
+        Promotion promotion = createDomainPromotion(existing.getId(), "Updated Promo", "20.00", existing.getStartDate(), existing.getEndDate(), existing.getStatus(), product.getId());
 
         Promotion result = repository.save(promotion);
+        entityManager.flush();
+        entityManager.clear();
 
-        assertEquals("Promo", existing.getName());
-        assertEquals(productId, existing.getProducts().iterator().next().getId());
-        assertEquals(promotionId, result.getId());
-        verify(springDataRepository).save(existing);
+        PromotionEntity updated = springDataRepository.findById(existing.getId()).get();
+        assertEquals("Updated Promo", updated.getName());
+        assertEquals(new BigDecimal("20.00"), updated.getDiscountPercentage());
+        assertEquals(product.getId(), updated.getProducts().iterator().next().getId());
+        assertEquals(existing.getId(), result.getId());
     }
 
     @Test
     void saveShouldHandleNullProducts() {
-        Promotion promotion = promotion(null, UUID.randomUUID());
-        promotion.setProducts(null);
-        when(springDataRepository.save(any(PromotionEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        Promotion promotion = createDomainPromotion(null, "Promo Without Products", "10.00", LocalDateTime.now(), LocalDateTime.now().plusDays(5), PromotionStatus.ACTIVE, null);
 
         Promotion result = repository.save(promotion);
+        entityManager.flush();
+        entityManager.clear();
 
-        assertEquals("Promo", result.getName());
+        assertEquals("Promo Without Products", result.getName());
+        PromotionEntity saved = springDataRepository.findById(result.getId()).get();
+        assertTrue(saved.getProducts().isEmpty());
     }
 
-    private Promotion promotion(UUID id, UUID productId) {
-        Producto product = new Producto();
-        product.setId(productId);
+    private ProductoEntity generateProductEntity(String name) {
+        CategoriaProductoEntity category = new CategoriaProductoEntity();
+        category.setDescripcion("Cat 1");
+        category.setActivo(true);
+        entityManager.persist(category);
 
+        ProductoEntity productEntity = new ProductoEntity();
+        productEntity.setCategoria(category);
+        productEntity.setNombre(name);
+        productEntity.setDescripcion("Desc");
+        productEntity.setPrecio(new BigDecimal("40.00"));
+        productEntity.setActivo(true);
+        productEntity.setRequierePreparacion(false);
+        return productRepository.save(productEntity);
+    }
+
+    private PromotionEntity generatePromotionEntity(String name, PromotionStatus status, ProductoEntity product) {
+        PromotionEntity entity = new PromotionEntity();
+        entity.setName(name);
+        entity.setDiscountPercentage(new BigDecimal("10.00"));
+        entity.setStartDate(LocalDateTime.now().minusDays(5));
+        entity.setEndDate(LocalDateTime.now().plusDays(15));
+        entity.setStatus(status);
+        entity.setProducts(new java.util.HashSet<>(List.of(product)));
+        return springDataRepository.save(entity);
+    }
+
+    private Promotion createDomainPromotion(UUID id, String name, String discount, LocalDateTime start, LocalDateTime end, PromotionStatus status, UUID productId) {
         Promotion promotion = new Promotion();
         promotion.setId(id);
-        promotion.setName("Promo");
-        promotion.setDiscountPercentage(new BigDecimal("15.00"));
-        promotion.setStartDate(LocalDateTime.of(2026, 6, 1, 0, 0));
-        promotion.setEndDate(LocalDateTime.of(2026, 6, 15, 23, 59));
-        promotion.setStatus(PromotionStatus.ACTIVE);
-        promotion.setProducts(List.of(product));
+        promotion.setName(name);
+        promotion.setDiscountPercentage(new BigDecimal(discount));
+        promotion.setStartDate(start);
+        promotion.setEndDate(end);
+        promotion.setStatus(status);
+        if (productId != null) {
+            Producto domainProduct = new Producto();
+            domainProduct.setId(productId);
+            promotion.setProducts(List.of(domainProduct));
+        }
         return promotion;
-    }
-
-    private PromotionEntity entity(UUID id) {
-        ProductoEntity product = new ProductoEntity();
-        product.setId(UUID.randomUUID());
-        product.setNombre("Alfajor");
-        product.setDescripcion("Alfajor simple");
-        product.setPrecio(new BigDecimal("40.00"));
-        product.setActivo(true);
-        product.setRequierePreparacion(false);
-
-        PromotionEntity entity = new PromotionEntity();
-        entity.setId(id);
-        entity.setName("Promo vieja");
-        entity.setDiscountPercentage(new BigDecimal("10.00"));
-        entity.setStartDate(LocalDateTime.of(2026, 6, 1, 0, 0));
-        entity.setEndDate(LocalDateTime.of(2026, 6, 15, 23, 59));
-        entity.setStatus(PromotionStatus.ACTIVE);
-        entity.setProducts(new java.util.HashSet<>(List.of(product)));
-        return entity;
     }
 }

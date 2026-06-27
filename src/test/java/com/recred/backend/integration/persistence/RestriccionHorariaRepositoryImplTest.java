@@ -1,122 +1,120 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.infrastructure.persistence.*;
-
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.RestriccionHoraria;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
-import com.recred.backend.infrastructure.entities.FranjaHorariaEntity;
-import com.recred.backend.infrastructure.entities.RestriccionHorariaEntity;
-import org.junit.jupiter.api.BeforeEach;
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.infrastructure.entities.*;
+import com.recred.backend.infrastructure.persistence.RestriccionHorariaRepositoryImpl;
+import com.recred.backend.infrastructure.persistence.SpringDataRestriccionHorariaRepository;
+import com.recred.backend.integration.AbstractIntegrationTest;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(MockitoExtension.class)
-class RestriccionHorariaRepositoryImplTest {
+@Transactional
+class RestriccionHorariaRepositoryImplTest extends AbstractIntegrationTest {
 
-    @Mock
-    private SpringDataRestriccionHorariaRepository springDataRepository;
-
+    @Autowired
     private RestriccionHorariaRepositoryImpl repository;
 
-    @BeforeEach
-    void setUp() {
-        repository = new RestriccionHorariaRepositoryImpl(springDataRepository);
-    }
+    @Autowired
+    private SpringDataRestriccionHorariaRepository springDataRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void saveShouldCreateEntityWithAllReferences() {
-        RestriccionHoraria domain = restriction(true, true, true, true);
-        when(springDataRepository.save(any(RestriccionHorariaEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        AlumnoEntity student = generateStudent();
+        FranjaHorariaEntity timeSlot = generateTimeSlot();
+        CategoriaProductoEntity category = generateCategory();
+        ClasificacionSaludEntity health = generateHealth();
+        UsuarioEntity user = generateUser(RolUsuario.PADRE);
+
+        RestriccionHoraria domain = createDomainRestriction(null, student.getId(), timeSlot.getId(), category.getId(), health.getId(), user.getId(), true);
 
         RestriccionHoraria result = repository.save(domain);
+        entityManager.flush();
+        entityManager.clear();
 
-        ArgumentCaptor<RestriccionHorariaEntity> captor = ArgumentCaptor.forClass(
-                RestriccionHorariaEntity.class
-        );
-        verify(springDataRepository).save(captor.capture());
-        RestriccionHorariaEntity saved = captor.getValue();
-        assertEquals(domain.getId(), saved.getId());
-        assertEquals(domain.getAlumnoId(), saved.getAlumnoEntity().getId());
-        assertEquals(domain.getFranjaHoraria().getId(), saved.getFranjaHorariaEntity().getId());
-        assertEquals(domain.getCategoria().getId(), saved.getCategoria().getId());
-        assertEquals(
-                domain.getClasificacionSalud().getId(),
-                saved.getClasificacionSaludEntity().getId()
-        );
-        assertEquals(domain.getCreadoPorUsuarioId(), saved.getCreadoPorUsuarioEntity().getId());
-        assertEquals(domain.getId(), result.getId());
+        assertNotNull(result.getId());
+        RestriccionHorariaEntity saved = springDataRepository.findById(result.getId()).orElseThrow();
+        
+        assertEquals(student.getId(), saved.getAlumnoEntity().getId());
+        assertEquals(timeSlot.getId(), saved.getFranjaHorariaEntity().getId());
+        assertEquals(category.getId(), saved.getCategoria().getId());
+        assertEquals(health.getId(), saved.getClasificacionSaludEntity().getId());
+        assertEquals(user.getId(), saved.getCreadoPorUsuarioEntity().getId());
     }
 
     @Test
     void saveShouldUpdateExistingEntityAndClearOptionalReferences() {
-        RestriccionHoraria domain = restriction(false, false, false, false);
-        RestriccionHorariaEntity existing = entity(domain.getId());
-        when(springDataRepository.findById(domain.getId())).thenReturn(Optional.of(existing));
-        when(springDataRepository.save(existing)).thenReturn(existing);
+        AlumnoEntity student = generateStudent();
+        FranjaHorariaEntity timeSlot = generateTimeSlot();
+        CategoriaProductoEntity category = generateCategory();
+        ClasificacionSaludEntity health = generateHealth();
+        UsuarioEntity user = generateUser(RolUsuario.PADRE);
 
-        RestriccionHoraria result = repository.save(domain);
+        RestriccionHorariaEntity existing = generateRestrictionEntity(student, timeSlot, category, health, user, true);
+        entityManager.flush();
 
-        assertEquals(false, existing.getActiva());
-        assertNull(existing.getCategoria());
-        assertNull(existing.getClasificacionSaludEntity());
-        assertNotNull(existing.getCreadoPorUsuarioEntity());
-        assertEquals(domain.getId(), result.getId());
-        verify(springDataRepository).save(existing);
+        RestriccionHoraria domain = createDomainRestriction(existing.getId(), student.getId(), timeSlot.getId(), null, null, user.getId(), false);
+
+        repository.save(domain);
+        entityManager.flush();
+        entityManager.clear();
+
+        RestriccionHorariaEntity updated = springDataRepository.findById(existing.getId()).orElseThrow();
+        assertFalse(updated.getActiva());
+        assertNull(updated.getCategoria());
+        assertNull(updated.getClasificacionSaludEntity());
+        assertNotNull(updated.getCreadoPorUsuarioEntity());
     }
 
     @Test
     void findByIdShouldMapEntity() {
-        UUID id = UUID.randomUUID();
-        RestriccionHorariaEntity entity = entity(id);
-        when(springDataRepository.findById(id)).thenReturn(Optional.of(entity));
+        RestriccionHorariaEntity existing = generateRestrictionEntity(generateStudent(), generateTimeSlot(), null, null, generateUser(RolUsuario.PADRE), true);
+        entityManager.flush();
 
-        Optional<RestriccionHoraria> result = repository.findById(id);
+        Optional<RestriccionHoraria> result = repository.findById(existing.getId());
 
-        assertEquals(id, result.orElseThrow().getId());
+        assertTrue(result.isPresent());
+        assertEquals(existing.getId(), result.get().getId());
     }
 
     @Test
     void findAllByAlumnoIdAndActivaShouldMapEntities() {
-        UUID alumnoId = UUID.randomUUID();
-        RestriccionHorariaEntity entity = entity(UUID.randomUUID());
-        when(springDataRepository.findAllByAlumnoEntityIdAndActiva(alumnoId, true))
-                .thenReturn(List.of(entity));
+        AlumnoEntity student = generateStudent();
+        FranjaHorariaEntity timeSlot = generateTimeSlot();
+        UsuarioEntity user = generateUser(RolUsuario.PADRE);
+        
+        RestriccionHorariaEntity active = generateRestrictionEntity(student, timeSlot, null, null, user, true);
+        RestriccionHorariaEntity inactive = generateRestrictionEntity(student, timeSlot, null, null, user, false);
+        entityManager.flush();
 
-        List<RestriccionHoraria> result = repository.findAllByAlumnoIdAndActiva(
-                alumnoId,
-                true
-        );
+        List<RestriccionHoraria> result = repository.findAllByAlumnoIdAndActiva(student.getId(), true);
 
         assertEquals(1, result.size());
-        assertEquals(entity.getId(), result.get(0).getId());
+        assertEquals(active.getId(), result.get(0).getId());
     }
 
     @Test
     void findAllByAlumnoEntityIdShouldMapEntities() {
-        UUID alumnoId = UUID.randomUUID();
-        RestriccionHorariaEntity entity = entity(UUID.randomUUID());
-        when(springDataRepository.findAllByAlumnoEntityId(alumnoId)).thenReturn(List.of(entity));
+        AlumnoEntity student = generateStudent();
+        RestriccionHorariaEntity entity = generateRestrictionEntity(student, generateTimeSlot(), null, null, generateUser(RolUsuario.PADRE), true);
+        entityManager.flush();
 
-        List<RestriccionHoraria> result = repository.findAllByAlumnoEntityId(alumnoId);
+        List<RestriccionHoraria> result = repository.findAllByAlumnoEntityId(student.getId());
 
         assertEquals(1, result.size());
         assertEquals(entity.getId(), result.get(0).getId());
@@ -124,61 +122,105 @@ class RestriccionHorariaRepositoryImplTest {
 
     @Test
     void deleteByIdShouldDelegateToSpringDataRepository() {
-        UUID id = UUID.randomUUID();
+        RestriccionHorariaEntity entity = generateRestrictionEntity(generateStudent(), generateTimeSlot(), null, null, generateUser(RolUsuario.PADRE), true);
+        entityManager.flush();
 
-        repository.deleteById(id);
+        repository.deleteById(entity.getId());
+        entityManager.flush();
+        entityManager.clear();
 
-        verify(springDataRepository).deleteById(id);
+        assertTrue(springDataRepository.findById(entity.getId()).isEmpty());
     }
 
-    private RestriccionHoraria restriction(
-            boolean withCategory,
-            boolean withHealth,
-            boolean withUser,
-            boolean active
-    ) {
-        RestriccionHoraria restriction = new RestriccionHoraria();
-        restriction.setId(UUID.randomUUID());
-        restriction.setAlumnoId(UUID.randomUUID());
-        restriction.setFranjaHoraria(timeSlot());
-        restriction.setActiva(active);
-        if (withCategory) {
-            CategoriaProducto category = new CategoriaProducto();
-            category.setId(UUID.randomUUID());
-            restriction.setCategoria(category);
-        }
-        if (withHealth) {
-            ClasificacionSalud health = new ClasificacionSalud();
-            health.setId(UUID.randomUUID());
-            restriction.setClasificacionSalud(health);
-        }
-        if (withUser) {
-            restriction.setCreadoPorUsuarioId(UUID.randomUUID());
-        }
-        return restriction;
+    private RestriccionHorariaEntity generateRestrictionEntity(AlumnoEntity student, FranjaHorariaEntity timeSlot, CategoriaProductoEntity category, ClasificacionSaludEntity health, UsuarioEntity user, boolean active) {
+        RestriccionHorariaEntity entity = new RestriccionHorariaEntity();
+        entity.setAlumnoEntity(student);
+        entity.setFranjaHorariaEntity(timeSlot);
+        entity.setCategoria(category);
+        entity.setClasificacionSaludEntity(health);
+        entity.setCreadoPorUsuarioEntity(user);
+        entity.setActiva(active);
+        springDataRepository.save(entity);
+        return entity;
     }
 
-    private FranjaHoraria timeSlot() {
-        FranjaHoraria timeSlot = new FranjaHoraria();
-        timeSlot.setId(UUID.randomUUID());
-        return timeSlot;
+    private UsuarioEntity generateUser(RolUsuario role) {
+        UsuarioEntity user = new UsuarioEntity();
+        user.setIdCognito("sub-" + UUID.randomUUID().toString().substring(0, 8));
+        user.setNombre("Test");
+        user.setApellido("User");
+        user.setEmail("user" + UUID.randomUUID().toString().substring(0, 5) + "@test.com");
+        user.setRol(role);
+        user.setActivo(true);
+        entityManager.persist(user);
+        return user;
     }
 
-    private RestriccionHorariaEntity entity(UUID id) {
-        AlumnoEntity alumno = new AlumnoEntity();
-        alumno.setId(UUID.randomUUID());
+    private AlumnoEntity generateStudent() {
+        UsuarioEntity user = generateUser(RolUsuario.ALUMNO);
+        AlumnoEntity student = new AlumnoEntity();
+        student.setUsuario(user);
+        student.setActivo(true);
+        entityManager.persist(student);
+        return student;
+    }
+
+    private FranjaHorariaEntity generateTimeSlot() {
+        ColegioEntity school = new ColegioEntity();
+        school.setNombre("School " + UUID.randomUUID().toString().substring(0, 5));
+        school.setCue("CUE-" + UUID.randomUUID().toString().substring(0, 5));
+        school.setActivo(true);
+        entityManager.persist(school);
+
         FranjaHorariaEntity timeSlot = new FranjaHorariaEntity();
-        timeSlot.setId(UUID.randomUUID());
-        timeSlot.setDescripcion("Primer recreo");
+        timeSlot.setColegioEntity(school);
+        timeSlot.setDescripcion("Recess");
         timeSlot.setHoraInicio(LocalTime.of(10, 0));
         timeSlot.setHoraFin(LocalTime.of(10, 15));
         timeSlot.setActivo(true);
+        entityManager.persist(timeSlot);
+        return timeSlot;
+    }
 
-        RestriccionHorariaEntity entity = new RestriccionHorariaEntity();
-        entity.setId(id);
-        entity.setAlumnoEntity(alumno);
-        entity.setFranjaHorariaEntity(timeSlot);
-        entity.setActiva(true);
-        return entity;
+    private CategoriaProductoEntity generateCategory() {
+        CategoriaProductoEntity category = new CategoriaProductoEntity();
+        category.setDescripcion("Sweets");
+        category.setActivo(true);
+        entityManager.persist(category);
+        return category;
+    }
+
+    private ClasificacionSaludEntity generateHealth() {
+        ClasificacionSaludEntity health = new ClasificacionSaludEntity();
+        health.setDescripcion("High Sugar");
+        entityManager.persist(health);
+        return health;
+    }
+
+    private RestriccionHoraria createDomainRestriction(UUID id, UUID studentId, UUID timeSlotId, UUID categoryId, UUID healthId, UUID userId, boolean active) {
+        RestriccionHoraria domain = new RestriccionHoraria();
+        domain.setId(id);
+        domain.setAlumnoId(studentId);
+        
+        FranjaHoraria franja = new FranjaHoraria();
+        franja.setId(timeSlotId);
+        domain.setFranjaHoraria(franja);
+        
+        domain.setActiva(active);
+        
+        if (categoryId != null) {
+            CategoriaProducto cat = new CategoriaProducto();
+            cat.setId(categoryId);
+            domain.setCategoria(cat);
+        }
+        
+        if (healthId != null) {
+            ClasificacionSalud cs = new ClasificacionSalud();
+            cs.setId(healthId);
+            domain.setClasificacionSalud(cs);
+        }
+        
+        domain.setCreadoPorUsuarioId(userId);
+        return domain;
     }
 }
