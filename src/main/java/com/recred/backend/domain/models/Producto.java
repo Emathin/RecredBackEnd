@@ -68,6 +68,44 @@ public class Producto {
         this.activo = false;
     }
 
+    public boolean hasInventoryData() {
+        return stockActual != null
+                || stockReservado != null
+                || stockMinimo != null
+                || cupoMaximoDiario != null
+                || estadoInventario != null
+                || tipoManejoInventario != null;
+    }
+
+    public boolean needsRestock() {
+        return isSoldOut()
+                || estadoInventario == EstadoInventario.BAJO_STOCK
+                || hasLowStock();
+    }
+
+    public boolean hasLowStock() {
+        return getStockDisponible() != null
+                && stockMinimo != null
+                && getStockDisponible() <= stockMinimo;
+    }
+
+    public boolean isSoldOut() {
+        if (estadoInventario == EstadoInventario.SIN_STOCK
+                || estadoInventario == EstadoInventario.DESACTIVADO) {
+            return true;
+        }
+
+        return getStockDisponible() != null && getStockDisponible() <= 0;
+    }
+
+    public int reservedStockOrZero() {
+        return stockReservado == null ? 0 : stockReservado;
+    }
+
+    public BigDecimal priceOrZero() {
+        return precio == null ? BigDecimal.ZERO : precio;
+    }
+
     public Integer getStockDisponible() {
         if (stockDisponible != null) {
             return stockDisponible;
