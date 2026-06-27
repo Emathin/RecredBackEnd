@@ -38,30 +38,30 @@ class GeminiPriceAlertAIAdapterTest {
     }
 
     @Test
-    void analyzeImpactSuccessfullyWhenGeminiRespondsWithValidJson() {
+    void analyzeImpact_SuccessfullyWhenGeminiRespondsWithValidJson() {
         givenGeminiResponse(validJsonResponse());
 
         Optional<PriceAlertAIRepository.PriceAlertResult> result =
                 adapter.analyzeImpact(
-                        student(),
-                        product(),
+                        createStudentDomain(),
+                        createProductDomain(),
                         new BigDecimal("100.00"),
                         new BigDecimal("120.00")
                 );
 
         assertTrue(result.isPresent());
-        assertEquals("Ajuste de precio", result.get().titulo());
-        assertEquals("Cambio del 20%", result.get().razonIA());
+        assertEquals("Price adjustment", result.get().titulo());
+        assertEquals("20% change", result.get().razonIA());
     }
 
     @Test
-    void returnFallbackWhenGeminiRespondsWithInvalidJson() {
+    void returnFallback_WhenGeminiRespondsWithInvalidJson() {
         givenGeminiResponse("invalid");
 
         Optional<PriceAlertAIRepository.PriceAlertResult> result =
                 adapter.analyzeImpact(
-                        student(),
-                        product(),
+                        createStudentDomain(),
+                        createProductDomain(),
                         new BigDecimal("100.00"),
                         new BigDecimal("120.00")
                 );
@@ -73,13 +73,13 @@ class GeminiPriceAlertAIAdapterTest {
     }
 
     @Test
-    void returnFallbackWhenGeminiDoesNotGenerateResponse() {
+    void returnFallback_WhenGeminiDoesNotGenerateResponse() {
         when(geminiTextClient.generate(anyString())).thenReturn(Optional.empty());
 
         Optional<PriceAlertAIRepository.PriceAlertResult> result =
                 adapter.analyzeImpact(
-                        student(),
-                        product(),
+                        createStudentDomain(),
+                        createProductDomain(),
                         new BigDecimal("120.00"),
                         new BigDecimal("100.00")
                 );
@@ -91,23 +91,23 @@ class GeminiPriceAlertAIAdapterTest {
     }
 
     @Test
-    void returnFallbackWhenGeminiResponseHasBlankFieldsAndOldPriceIsZero() {
-        Alumno alumno = student();
-        Grado grado = new Grado();
-        grado.setAnio("1");
-        grado.setDivision("A");
-        alumno.setGrado(grado);
+    void returnFallback_WhenGeminiResponseHasBlankFieldsAndOldPriceIsZero() {
+        Alumno student = createStudentDomain();
+        Grado grade = new Grado();
+        grade.setAnio("1");
+        grade.setDivision("A");
+        student.setGrado(grade);
         givenGeminiResponse("""
                 {
-                  "mensaje": "Mensaje",
-                  "razonIA": "Razon"
+                  "mensaje": "Message",
+                  "razonIA": "Reason"
                 }
                 """);
 
         Optional<PriceAlertAIRepository.PriceAlertResult> result =
                 adapter.analyzeImpact(
-                        alumno,
-                        product(),
+                        student,
+                        createProductDomain(),
                         BigDecimal.ZERO,
                         new BigDecimal("10.00")
                 );
@@ -126,22 +126,22 @@ class GeminiPriceAlertAIAdapterTest {
     private String validJsonResponse() {
         return """
                 {
-                  "titulo": "Ajuste de precio",
-                  "mensaje": "Notamos que el alfajor subio",
-                  "razonIA": "Cambio del 20%"
+                  "titulo": "Price adjustment",
+                  "mensaje": "We noticed the cookie price increased",
+                  "razonIA": "20% change"
                 }
                 """;
     }
 
-    private Alumno student() {
-        Alumno alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
-        return alumno;
+    private Alumno createStudentDomain() {
+        Alumno student = new Alumno();
+        student.setId(UUID.randomUUID());
+        return student;
     }
 
-    private Producto product() {
-        Producto producto = new Producto();
-        producto.setNombre("Alfajor");
-        return producto;
+    private Producto createProductDomain() {
+        Producto product = new Producto();
+        product.setNombre("Alfajor");
+        return product;
     }
 }
