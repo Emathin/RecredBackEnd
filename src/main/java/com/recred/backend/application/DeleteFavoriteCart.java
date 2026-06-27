@@ -30,20 +30,35 @@ public class DeleteFavoriteCart {
         String cognitoSub = request.cognitoSub();
         UUID cartId = request.cartId();
 
-        Usuario usuario = usuarioRepository.findByIdCognito(cognitoSub)
-                .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
+        Usuario usuario = this.findUsuarioByCognito(cognitoSub);
+        Tutor tutor = this.findTutorByUsuarioId(usuario.getId());
 
-        Tutor tutor = tutorRepository.findByUsuarioId(usuario.getId())
+        CarritoFavorito carrito = this.findCarritoFavoritoById(cartId);
+
+        analizarAutorizacionParaEliminarCarrito(tutor, carrito);
+
+        carritoFavoritoRepository.delete(cartId);
+    }
+
+    private Usuario findUsuarioByCognito(String cognitoSub) {
+        return usuarioRepository.findByIdCognito(cognitoSub)
+                .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
+    }
+
+    private Tutor findTutorByUsuarioId(UUID usuarioId) {
+        return tutorRepository.findByUsuarioId(usuarioId)
                 .orElseThrow(() -> new SecurityException(
                         "No se encontró perfil de tutor para el usuario"));
+    }
 
-        CarritoFavorito carrito = carritoFavoritoRepository.findById(cartId)
+    private CarritoFavorito findCarritoFavoritoById(UUID id) {
+        return carritoFavoritoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Carrito no encontrado"));
+    }
 
+    private void analizarAutorizacionParaEliminarCarrito(Tutor tutor, CarritoFavorito carrito) {
         if (!carrito.getTutor().getId().equals(tutor.getId())) {
             throw new SecurityException("No autorizado para eliminar este carrito");
         }
-
-        carritoFavoritoRepository.delete(cartId);
     }
 }

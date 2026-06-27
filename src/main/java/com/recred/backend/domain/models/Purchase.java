@@ -107,6 +107,51 @@ public class Purchase {
         }
     }
 
+    public boolean hasStatus(EstadoCompra status) {
+        return this.status == status;
+    }
+
+    public boolean hasType(TipoCompra type) {
+        return this.tipo == type;
+    }
+
+    public boolean isDelivered() {
+        return hasStatus(EstadoCompra.ENTREGADO);
+    }
+
+    public boolean isAdvancePurchase() {
+        return hasType(TipoCompra.ANTICIPADA);
+    }
+
+    public boolean refundsCredits() {
+        return hasStatus(EstadoCompra.CANCELADO) || hasStatus(EstadoCompra.RECHAZADO);
+    }
+
+    public boolean happenedBetween(LocalDate from, LocalDate to) {
+        if (date == null) {
+            return false;
+        }
+
+        LocalDate purchaseDate = date.toLocalDate();
+        return !purchaseDate.isBefore(from) && !purchaseDate.isAfter(to);
+    }
+
+    public boolean hasDate() {
+        return date != null;
+    }
+
+    public LocalDate purchaseDate() {
+        return date.toLocalDate();
+    }
+
+    public BigDecimal totalAmountOrZero() {
+        return totalAmount == null ? BigDecimal.ZERO : totalAmount;
+    }
+
+    public boolean hasPickupSlotDescription() {
+        return pickupSlotDescription != null && !pickupSlotDescription.isBlank();
+    }
+
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
         return cart.entrySet().stream()
                 .map(entry -> productPrice(entry.getKey())

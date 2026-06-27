@@ -1,10 +1,12 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.BuffetRepository;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public class GetBuffetByStudent {
 
@@ -17,20 +19,32 @@ public class GetBuffetByStudent {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public Optional<GetBuffetByStudentResponse> execute(GetBuffetByStudentRequest request) {
-        if (!alumnoRepository.existsById(request.alumnoId())) {
-            throw new AlumnoNoEncontradoException(request.alumnoId());
+    public boolean existsById(UUID id) {
+        return alumnoRepository.existsById(id);
+    }
+
+    private void analizarExcepcionAlumnoNoEncontrado(UUID alumnoId) {
+        if (!existsById(alumnoId)) {
+            throw new AlumnoNoEncontradoException(alumnoId);
         }
+    }
+
+    public Optional<GetBuffetByStudentResponse> execute(GetBuffetByStudentRequest request) {
+        analizarExcepcionAlumnoNoEncontrado(request.alumnoId());
         return buffetRepository.findByAlumnoId(request.alumnoId())
-                .map(buffet -> new GetBuffetByStudentResponse(
-                        buffet.getId(),
-                        buffet.getNombre(),
-                        buffet.getColegio() != null ? buffet.getColegio().getId() : null,
-                        buffet.getVendedor() != null ? buffet.getVendedor().getId() : null,
-                        buffet.getFechaVencimientoHabilitacion(),
-                        buffet.getActivo(),
-                        buffet.getCreadoEn(),
-                        buffet.getActualizadoEn()
-                ));
+                .map(this::mapToResponse);
+    }
+
+    private GetBuffetByStudentResponse mapToResponse(Buffet buffet) {
+        return new GetBuffetByStudentResponse(
+                buffet.getId(),
+                buffet.getNombre(),
+                buffet.getColegio() != null ? buffet.getColegio().getId() : null,
+                buffet.getVendedor() != null ? buffet.getVendedor().getId() : null,
+                buffet.getFechaVencimientoHabilitacion(),
+                buffet.getActivo(),
+                buffet.getCreadoEn(),
+                buffet.getActualizadoEn()
+        );
     }
 }

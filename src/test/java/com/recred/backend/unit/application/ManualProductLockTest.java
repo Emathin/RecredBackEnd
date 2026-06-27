@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
@@ -53,11 +54,29 @@ class ManualProductLockTest {
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () ->
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 manualProductLock.execute(new ManualProductLockRequest(alumnoId, productoId))
         );
+        assertEquals("Alumno no encontrado", exception.getMessage());
 
         verify(productRepository, never()).findById(any());
+        verify(alumnoRepository, never()).save(any());
+    }
+
+    @Test
+    void dadoProductoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID productoId = UUID.randomUUID();
+        Alumno alumno = new Alumno();
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findById(productoId)).thenReturn(Optional.empty());
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+                manualProductLock.execute(new ManualProductLockRequest(alumnoId, productoId))
+        );
+        assertEquals("Producto no encontrado", exception.getMessage());
+
         verify(alumnoRepository, never()).save(any());
     }
 }

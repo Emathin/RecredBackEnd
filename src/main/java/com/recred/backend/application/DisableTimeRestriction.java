@@ -14,11 +14,13 @@ public class DisableTimeRestriction {
     }
 
     public void execute(DisableTimeRestrictionRequest request) {
-        UUID restrictionId = request.restrictionId();
-        RestriccionHoraria restriction = repository.findById(restrictionId)
-                .orElseThrow(() -> new RuntimeException("Time restriction not found"));
-
+        RestriccionHoraria restriction = findRestriccionHorariaById(request.restrictionId());
         restriction.setActiva(false);
         repository.save(restriction);
+    }
+
+    private RestriccionHoraria findRestriccionHorariaById(UUID id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Time restriction not found"));
     }
 }

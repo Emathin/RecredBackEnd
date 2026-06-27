@@ -3,6 +3,8 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 
+import java.util.UUID;
+
 public class RemoveHealthRestrictions {
     private final AlumnoRepository alumnoRepository;
 
@@ -11,12 +13,14 @@ public class RemoveHealthRestrictions {
     }
 
     public void execute(RemoveHealthRestrictionsRequest request) {
-        Alumno alumno = alumnoRepository.findById(request.alumnoId())
-                .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
-
+        Alumno alumno = this.findAlumnoById(request.alumnoId());
         alumno.removerRestriccionSalud(request.clasificacionId());
-
         alumnoRepository.save(alumno);
+    }
+
+    private Alumno findAlumnoById(UUID id) {
+        return alumnoRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
     }
 }
 

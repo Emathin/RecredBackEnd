@@ -5,7 +5,9 @@ import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 public class ManageRestrictions {
 
@@ -21,17 +23,21 @@ public class ManageRestrictions {
     }
 
     public void execute(ManageRestrictionsRequest request) {
-        Alumno student = studentRepository.findById(request.studentId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "El alumno con ID " + request.studentId() + " no existe."
-                ));
-
-        Set<ClasificacionSalud> newRestrictions = new HashSet<>(
-                healthClassificationRepository.findAllById(request.newClassificationIds())
-        );
-
+        Alumno student = this.findStudentById(request.studentId());
+        Set<ClasificacionSalud> newRestrictions =
+                getRestrictionsByIds(request.newClassificationIds());
         student.setRestriccionesSalud(newRestrictions);
-
         studentRepository.save(student);
+    }
+
+    private Alumno findStudentById(UUID studentId) {
+        return studentRepository.findById(studentId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El alumno con ID " + studentId + " no existe."
+                ));
+    }
+
+    private Set<ClasificacionSalud> getRestrictionsByIds(List<UUID> classificationIds) {
+        return new HashSet<>(healthClassificationRepository.findAllById(classificationIds));
     }
 }

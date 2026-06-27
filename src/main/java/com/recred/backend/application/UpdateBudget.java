@@ -20,38 +20,60 @@ public class UpdateBudget {
 
     @Transactional
     public UpdateBudgetResponse execute(UpdateBudgetRequest request) {
-        UUID budgetId = request.budgetId();
-        PresupuestoAlumno presupuesto = repository.findById(budgetId)
-                .orElseThrow(() -> new RuntimeException
-                        ("Presupuesto no encontrado con ID: " + budgetId));
+        PresupuestoAlumno presupuesto = this.findPresupuesto(request.budgetId());
 
+        this.updateBasicFields(presupuesto, request);
+        this.applyCategoryRules(presupuesto, request.categoryRules());
+        this.validateAndRecalculateBudget(presupuesto);
+
+        PresupuestoAlumno saved = this.savePresupuesto(presupuesto);
+        return mapToResponse(saved);
+    }
+
+    private PresupuestoAlumno findPresupuesto(UUID budgetId) {
+        return repository.findById(budgetId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Presupuesto no encontrado con ID: " + budgetId));
+    }
+
+    private void updateBasicFields(PresupuestoAlumno presupuesto, UpdateBudgetRequest request) {
         presupuesto.setMontoLimiteGeneral(request.limitAmount());
         presupuesto.setPeriodo(request.period());
         presupuesto.setFechaInicio(request.startDate());
+    }
 
-        if (request.categoryRules() != null && !request.categoryRules().isEmpty()) {
-            List<ReglaPresupuestoCategoria> nuevasReglas =
-                    request.categoryRules().stream().map(rule -> {
-                CategoriaProducto categoria = new CategoriaProducto();
-                categoria.setId(rule.categoryId());
-
-                return new ReglaPresupuestoCategoria(
-                        null,
-                        categoria,
-                        rule.porcentajeLimite(),
-                        null,
-                        true
-                );
-            }).collect(Collectors.toList());
+    private void applyCategoryRules(
+            PresupuestoAlumno presupuesto,
+            List<UpdateBudgetRequest.CategoryRuleRequest> categoryRules) {
+        if (categoryRules != null && !categoryRules.isEmpty()) {
+            List<ReglaPresupuestoCategoria> nuevasReglas = categoryRules.stream()
+                    .map(this::mapToRegla)
+                    .collect(Collectors.toList());
 
             presupuesto.setReglasCategoria(nuevasReglas);
         }
+    }
 
+    private ReglaPresupuestoCategoria mapToRegla(UpdateBudgetRequest.CategoryRuleRequest rule) {
+        CategoriaProducto categoria = new CategoriaProducto();
+        categoria.setId(rule.categoryId());
+
+        return new ReglaPresupuestoCategoria(
+                null,
+                categoria,
+                rule.porcentajeLimite(),
+                null,
+                true
+        );
+    }
+
+    private void validateAndRecalculateBudget(PresupuestoAlumno presupuesto) {
         presupuesto.validarPorcentajes();
         presupuesto.recalcularMontosReglas();
+    }
 
-        PresupuestoAlumno saved = repository.save(presupuesto);
-        return mapToResponse(saved);
+    private PresupuestoAlumno savePresupuesto(PresupuestoAlumno presupuesto) {
+        return repository.save(presupuesto);
     }
 
     private UpdateBudgetResponse mapToResponse(PresupuestoAlumno domain) {
