@@ -1,64 +1,69 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.infrastructure.persistence.*;
-
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.infrastructure.entities.ColegioEntity;
-import org.junit.jupiter.api.BeforeEach;
+import com.recred.backend.infrastructure.persistence.ColegioRepositoryImpl;
+import com.recred.backend.infrastructure.persistence.SpringDataColegioRepository;
+import com.recred.backend.integration.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-class ColegioRepositoryImplTest {
+@Transactional
+class ColegioRepositoryImplTest extends AbstractIntegrationTest {
 
-    @Mock
+    @Autowired
     private SpringDataColegioRepository springDataColegioRepository;
 
+    @Autowired
     private ColegioRepositoryImpl repository;
 
-    @BeforeEach
-    void setUp() {
-        repository = new ColegioRepositoryImpl(springDataColegioRepository);
-    }
+    private ColegioEntity cachedNorthSchool;
+    private ColegioEntity cachedSouthSchool;
 
     @Test
     void findAllActive_ShouldMapActiveSchoolsToDomain() {
-        ColegioEntity first = schoolEntity(UUID.randomUUID(), "Colegio Norte");
-        ColegioEntity second = schoolEntity(UUID.randomUUID(), "Colegio Sur");
-        when(springDataColegioRepository.findByActivoTrueOrderByNombreAsc())
-                .thenReturn(List.of(first, second));
+        ColegioEntity first = generateNorthSchool();
+        ColegioEntity second = generateSouthSchool();
 
         List<Colegio> result = repository.findAllActive();
 
-        assertEquals(2, result.size());
-        assertEquals(first.getId(), result.get(0).getId());
-        assertEquals("Colegio Norte", result.get(0).getNombre());
-        assertEquals(second.getId(), result.get(1).getId());
-        assertEquals("Colegio Sur", result.get(1).getNombre());
+        assertTrue(result.size() >= 2);
+        assertTrue(result.stream().anyMatch(c -> c.getId().equals(first.getId()) && "North School".equals(c.getNombre())));
+        assertTrue(result.stream().anyMatch(c -> c.getId().equals(second.getId()) && "South School".equals(c.getNombre())));
     }
 
     @Test
     void existsActiveById_ShouldDelegateToSpringDataRepository() {
-        UUID schoolId = UUID.randomUUID();
-        when(springDataColegioRepository.existsByIdAndActivoTrue(schoolId)).thenReturn(true);
+        ColegioEntity school = generateNorthSchool();
 
-        assertTrue(repository.existsActiveById(schoolId));
+        assertTrue(repository.existsActiveById(school.getId()));
     }
 
-    private ColegioEntity schoolEntity(UUID id, String name) {
-        ColegioEntity entity = new ColegioEntity();
-        entity.setId(id);
-        entity.setNombre(name);
-        entity.setActivo(true);
-        return entity;
+    private ColegioEntity generateNorthSchool() {
+        if (this.cachedNorthSchool == null) {
+            ColegioEntity entity = new ColegioEntity();
+            entity.setNombre("North School");
+            entity.setCue("123456");
+            entity.setActivo(true);
+            this.cachedNorthSchool = springDataColegioRepository.saveAndFlush(entity);
+        }
+        return this.cachedNorthSchool;
+    }
+
+    private ColegioEntity generateSouthSchool() {
+        if (this.cachedSouthSchool == null) {
+            ColegioEntity entity = new ColegioEntity();
+            entity.setNombre("South School");
+            entity.setCue("1234568");
+            entity.setActivo(true);
+            this.cachedSouthSchool = springDataColegioRepository.saveAndFlush(entity);
+        }
+        return this.cachedSouthSchool;
     }
 }

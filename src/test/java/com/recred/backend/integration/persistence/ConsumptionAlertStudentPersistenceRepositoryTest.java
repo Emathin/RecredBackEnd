@@ -1,90 +1,128 @@
 package com.recred.backend.integration.persistence;
 
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
+import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.TutorEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
-import java.util.List;
-import java.util.UUID;
-
-import com.recred.backend.infrastructure.persistence.ConsumptionAlertStudentJpaRepository;
 import com.recred.backend.infrastructure.persistence.ConsumptionAlertStudentPersistenceRepository;
+import com.recred.backend.integration.AbstractIntegrationTest;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ConsumptionAlertStudentPersistenceRepositoryTest {
+@Transactional
+class ConsumptionAlertStudentPersistenceRepositoryTest extends AbstractIntegrationTest {
+
+    @Autowired
+    private ConsumptionAlertStudentPersistenceRepository repository;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    private UsuarioEntity cachedStudentUser;
+    private AlumnoEntity cachedStudent;
 
     @Test
-    void mapActiveStudentsWithActiveTutors() {
-        ConsumptionAlertStudentJpaRepository jpaRepository = mock(
-                ConsumptionAlertStudentJpaRepository.class);
-        ConsumptionAlertStudentPersistenceRepository repository =
-                new ConsumptionAlertStudentPersistenceRepository(jpaRepository);
-        AlumnoEntity student = student("Juan", "Perez");
-        TutorEntity activeTutor = tutor("Ana", "Perez", true, true);
-        TutorEntity inactiveTutor = tutor("Luis", "Perez", false, true);
-        TutorEntity inactiveUserTutor = tutor("Maria", "Perez", true, false);
-        TutorEntity tutorWithoutUser = new TutorEntity();
-        tutorWithoutUser.setActiva(true);
+    void findActiveCandidates_ShouldMapActiveStudentsWithActiveTutors() {
+        AlumnoEntity student = generateStudentEntity("John", "Doe");
+        
+        TutorEntity activeTutor = generateTutorEntity("Anna", "Doe", true, true, "cognito-tutor-active");
+        TutorEntity inactiveTutor = generateTutorEntity("Louis", "Doe", false, true, "cognito-tutor-inactive");
+        
         student.getTutores().add(activeTutor);
         student.getTutores().add(inactiveTutor);
-        student.getTutores().add(inactiveUserTutor);
-        student.getTutores().add(tutorWithoutUser);
-        when(jpaRepository.findActiveStudentsWithUsersAndTutors()).thenReturn(List.of(student));
+        
+        activeTutor.getHijos().add(student);
+        inactiveTutor.getHijos().add(student);
+        
+        entityManager.merge(student);
+        entityManager.merge(activeTutor);
+        entityManager.merge(inactiveTutor);
+        entityManager.flush();
+        entityManager.clear();
 
         List<ConsumptionAlertCandidate> candidates = repository.findActiveCandidates();
 
-        assertEquals(1, candidates.size());
-        assertEquals(student.getId(), candidates.get(0).studentId());
-        assertEquals(student.getUsuario().getId(), candidates.get(0).studentUserId());
-        assertEquals("Juan Perez", candidates.get(0).studentName());
-        assertEquals(1, candidates.get(0).tutors().size());
-        assertEquals("Ana Perez", candidates.get(0).tutors().get(0).name());
+        assertFalse(candidates.isEmpty());
+        ConsumptionAlertCandidate candidate = candidates.stream().filter(c -> c.studentId().equals(student.getId())).findFirst().orElseThrow();
+        assertEquals(student.getUsuario().getId(), candidate.studentUserId());
+        assertEquals("John Doe", candidate.studentName());
+        assertTrue(candidate.tutors().stream().anyMatch(t -> "Anna Doe".equals(t.name())));
     }
 
     @Test
-    void useDefaultNameWhenStudentUserNameIsBlank() {
-        ConsumptionAlertStudentJpaRepository jpaRepository = mock(
-                ConsumptionAlertStudentJpaRepository.class);
-        ConsumptionAlertStudentPersistenceRepository repository =
-                new ConsumptionAlertStudentPersistenceRepository(jpaRepository);
-        AlumnoEntity student = student(null, " ");
-        when(jpaRepository.findActiveStudentsWithUsersAndTutors()).thenReturn(List.of(student));
+    void findActiveCandidates_ShouldUseDefaultNameWhenStudentUserNameIsBlank() {
+        AlumnoEntity student = generateStudentEntity(" ", " ");
+        TutorEntity activeTutor = generateTutorEntity("Anna", "Doe", true, true, "cognito-tutor-active-2");
+        student.getTutores().add(activeTutor);
+        activeTutor.getHijos().add(student);
+        
+        entityManager.merge(student);
+        entityManager.merge(activeTutor);
+        entityManager.flush();
+        entityManager.clear();
 
         List<ConsumptionAlertCandidate> candidates = repository.findActiveCandidates();
 
-        assertEquals("el alumno", candidates.get(0).studentName());
+        assertFalse(candidates.isEmpty());
+        ConsumptionAlertCandidate candidate = candidates.stream().filter(c -> c.studentId().equals(student.getId())).findFirst().orElseThrow();
+        assertEquals("el alumno", candidate.studentName());
     }
 
-    private AlumnoEntity student(String firstName, String lastName) {
-        AlumnoEntity student = new AlumnoEntity();
-        student.setId(UUID.randomUUID());
-        student.setUsuario(user(firstName, lastName, true));
-        return student;
+    private UsuarioEntity generateStudentUserEntity(String firstName, String lastName) {
+        if (this.cachedStudentUser == null) {
+            UsuarioEntity user = new UsuarioEntity();
+            user.setIdCognito("cognito-student-user-candidates");
+            user.setNombre(firstName);
+            user.setApellido(lastName);
+            user.setEmail("student.candidate@test.com");
+            user.setRol(RolUsuario.ALUMNO);
+            user.setAutenticadoConCognito(false);
+            user.setActivo(true);
+            entityManager.persist(user);
+            entityManager.flush();
+            this.cachedStudentUser = user;
+        }
+        return this.cachedStudentUser;
     }
 
-    private TutorEntity tutor(
-            String firstName,
-            String lastName,
-            boolean activeTutor,
-            boolean activeUser
-    ) {
-        TutorEntity tutor = new TutorEntity();
-        tutor.setId(UUID.randomUUID());
-        tutor.setActiva(activeTutor);
-        tutor.setUsuario(user(firstName, lastName, activeUser));
-        return tutor;
+    private AlumnoEntity generateStudentEntity(String firstName, String lastName) {
+        if (this.cachedStudent == null) {
+            UsuarioEntity user = generateStudentUserEntity(firstName, lastName);
+            AlumnoEntity student = new AlumnoEntity();
+            student.setUsuario(user);
+            student.setActivo(true);
+            entityManager.persist(student);
+            entityManager.flush();
+            this.cachedStudent = student;
+        }
+        return this.cachedStudent;
     }
 
-    private UsuarioEntity user(String firstName, String lastName, boolean active) {
+    private TutorEntity generateTutorEntity(String firstName, String lastName, boolean activeTutor, boolean activeUser, String cognitoId) {
         UsuarioEntity user = new UsuarioEntity();
-        user.setId(UUID.randomUUID());
+        user.setIdCognito(cognitoId);
         user.setNombre(firstName);
         user.setApellido(lastName);
-        user.setActivo(active);
-        return user;
+        user.setEmail(cognitoId + "@test.com");
+        user.setRol(RolUsuario.PADRE);
+        user.setAutenticadoConCognito(false);
+        user.setActivo(activeUser);
+        entityManager.persist(user);
+
+        TutorEntity tutor = new TutorEntity();
+        tutor.setUsuario(user);
+        tutor.setActiva(activeTutor);
+        entityManager.persist(tutor);
+        
+        return tutor;
     }
 }

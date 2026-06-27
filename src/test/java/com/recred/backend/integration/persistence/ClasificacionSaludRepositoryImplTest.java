@@ -4,135 +4,130 @@ import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import com.recred.backend.infrastructure.persistence.ClasificacionSaludRepositoryImpl;
 import com.recred.backend.infrastructure.persistence.SpringDataClasificacionSaludRepository;
-import org.junit.jupiter.api.BeforeEach;
+import com.recred.backend.integration.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-class ClasificacionSaludRepositoryImplTest {
+@Transactional
+class ClasificacionSaludRepositoryImplTest extends AbstractIntegrationTest {
 
-    @Mock
+    @Autowired
     private SpringDataClasificacionSaludRepository springDataRepository;
 
-    @InjectMocks
+    @Autowired
     private ClasificacionSaludRepositoryImpl repositoryImpl;
 
-    private UUID id1;
-    private UUID id2;
+    private ClasificacionSaludEntity cachedCeliac;
+    private ClasificacionSaludEntity cachedDiabetic;
+    private ClasificacionSaludEntity cachedLactoseIntolerant;
 
-    @BeforeEach
-    void setUp() {
-        id1 = UUID.randomUUID();
-        id2 = UUID.randomUUID();
+    @Test
+    void findAllById_ShouldMapEntitiesToDomainAndReturn() {
+        ClasificacionSaludEntity entity1 = generateCeliac();
+        ClasificacionSaludEntity entity2 = generateDiabetic();
+
+        List<java.util.UUID> searchIds = List.of(entity1.getId(), entity2.getId());
+
+        List<ClasificacionSalud> result = repositoryImpl.findAllById(searchIds);
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+
+        assertTrue(result.stream().anyMatch(c -> c.getId().equals(entity1.getId()) && "Celiac".equals(c.getDescripcion())));
+        assertTrue(result.stream().anyMatch(c -> c.getId().equals(entity2.getId()) && "Diabetic".equals(c.getDescripcion())));
     }
 
     @Test
-    void findAllById_DeberiaMapearListaDeEntidadesADominioYRetornar() {
-        ClasificacionSaludEntity entity1 = new ClasificacionSaludEntity();
-        entity1.setId(id1);
-        entity1.setDescripcion("Celíaco");
+    void findById_ShouldMapAndReturn_WhenExists() {
+        ClasificacionSaludEntity entity = generateLactoseIntolerant();
 
-        ClasificacionSaludEntity entity2 = new ClasificacionSaludEntity();
-        entity2.setId(id2);
-        entity2.setDescripcion("Diabético");
+        Optional<ClasificacionSalud> result = repositoryImpl.findById(entity.getId());
 
-        List<UUID> idsBuscados = List.of(id1, id2);
-        when(springDataRepository.findAllById(idsBuscados)).thenReturn(List.of(entity1, entity2));
-
-        List<ClasificacionSalud> resultado = repositoryImpl.findAllById(idsBuscados);
-
-        assertNotNull(resultado);
-        assertEquals(2, resultado.size());
-
-        assertEquals(id1, resultado.get(0).getId());
-        assertEquals("Celíaco", resultado.get(0).getDescripcion());
-
-        assertEquals(id2, resultado.get(1).getId());
-        assertEquals("Diabético", resultado.get(1).getDescripcion());
-
-        verify(springDataRepository).findAllById(idsBuscados);
+        assertTrue(result.isPresent());
+        assertEquals(entity.getId(), result.get().getId());
+        assertEquals("Lactose Intolerant", result.get().getDescripcion());
     }
 
     @Test
-    void findById_CuandoExiste_DeberiaMapearYRetornar() {
-        ClasificacionSaludEntity entity = new ClasificacionSaludEntity();
-        entity.setId(id1);
-        entity.setDescripcion("Intolerante a la Lactosa");
+    void findById_ShouldReturnEmpty_WhenDoesNotExist() {
+        Optional<ClasificacionSalud> result = repositoryImpl.findById(java.util.UUID.randomUUID());
 
-        when(springDataRepository.findById(id1)).thenReturn(Optional.of(entity));
-
-        Optional<ClasificacionSalud> resultado = repositoryImpl.findById(id1);
-
-        assertTrue(resultado.isPresent());
-        assertEquals(id1, resultado.get().getId());
-        assertEquals("Intolerante a la Lactosa", resultado.get().getDescripcion());
-
-        verify(springDataRepository).findById(id1);
+        assertTrue(result.isEmpty());
     }
 
     @Test
-    void findById_CuandoNoExiste_DeberiaRetornarVacio() {
-        when(springDataRepository.findById(id1)).thenReturn(Optional.empty());
+    void findAll_ShouldMapAllEntitiesToDomain() {
+        generateCeliac();
 
-        Optional<ClasificacionSalud> resultado = repositoryImpl.findById(id1);
+        List<ClasificacionSalud> result = repositoryImpl.findAll();
 
-        assertTrue(resultado.isEmpty());
-        verify(springDataRepository).findById(id1);
+        assertFalse(result.isEmpty());
+        assertTrue(result.stream().anyMatch(c -> "Celiac".equals(c.getDescripcion())));
     }
 
     @Test
-    void findAll_DeberiaMapearTodasLasEntidadesADominio() {
-        ClasificacionSaludEntity entity1 = new ClasificacionSaludEntity();
-        entity1.setId(UUID.randomUUID());
-        entity1.setDescripcion("Sin TACC");
+    void findAll_ShouldReturnEmptyList_WhenNoDataExists() {
+        springDataRepository.deleteAll();
 
-        when(springDataRepository.findAll()).thenReturn(List.of(entity1));
+        List<ClasificacionSalud> result = repositoryImpl.findAll();
 
-        List<ClasificacionSalud> resultado = repositoryImpl.findAll();
-
-        assertEquals(1, resultado.size());
-        assertEquals("Sin TACC", resultado.get(0).getDescripcion());
-        verify(springDataRepository).findAll();
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
     }
 
     @Test
-    void findAll_CuandoNoHayDatos_DeberiaRetornarListaVacia() {
-        when(springDataRepository.findAll()).thenReturn(List.of());
-
-        List<ClasificacionSalud> resultado = repositoryImpl.findAll();
-
-        assertNotNull(resultado, "El repositorio nunca debería retornar null");
-        assertTrue(resultado.isEmpty(), "La lista debería estar vacía");
-
-        verify(springDataRepository).findAll();
-    }
-
-    @Test
-    void toEntity_DeberiaMapearModeloAEntidad() {
-        ClasificacionSalud modelo = new ClasificacionSalud();
-        modelo.setId(id1);
-        modelo.setDescripcion("Sin azÃºcar");
-        modelo.setActivo(true);
+    void toEntity_ShouldMapModelToEntity() {
+        ClasificacionSalud model = new ClasificacionSalud();
+        model.setId(java.util.UUID.randomUUID());
+        model.setDescripcion("Sugar Free");
+        model.setActivo(true);
 
         ClasificacionSaludEntity entity = ReflectionTestUtils.invokeMethod(
                 repositoryImpl,
                 "toEntity",
-                modelo
+                model
         );
 
-        assertEquals(id1, entity.getId());
-        assertEquals("Sin azÃºcar", entity.getDescripcion());
+        assertNotNull(entity);
+        assertEquals(model.getId(), entity.getId());
+        assertEquals("Sugar Free", entity.getDescripcion());
         assertTrue(entity.getActivo());
+    }
+
+    private ClasificacionSaludEntity generateCeliac() {
+        if (this.cachedCeliac == null) {
+            ClasificacionSaludEntity entity = new ClasificacionSaludEntity();
+            entity.setDescripcion("Celiac");
+            entity.setActivo(true);
+            this.cachedCeliac = springDataRepository.saveAndFlush(entity);
+        }
+        return this.cachedCeliac;
+    }
+
+    private ClasificacionSaludEntity generateDiabetic() {
+        if (this.cachedDiabetic == null) {
+            ClasificacionSaludEntity entity = new ClasificacionSaludEntity();
+            entity.setDescripcion("Diabetic");
+            entity.setActivo(true);
+            this.cachedDiabetic = springDataRepository.saveAndFlush(entity);
+        }
+        return this.cachedDiabetic;
+    }
+
+    private ClasificacionSaludEntity generateLactoseIntolerant() {
+        if (this.cachedLactoseIntolerant == null) {
+            ClasificacionSaludEntity entity = new ClasificacionSaludEntity();
+            entity.setDescripcion("Lactose Intolerant");
+            entity.setActivo(true);
+            this.cachedLactoseIntolerant = springDataRepository.saveAndFlush(entity);
+        }
+        return this.cachedLactoseIntolerant;
     }
 }
