@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AddHealthRestriction;
+import com.recred.backend.application.AddHealthRestrictionRequest;
 import com.recred.backend.application.BloquearProductoManual;
 import com.recred.backend.application.DesbloquearProductoManual;
 import com.recred.backend.application.DetectStudentPreferences;
@@ -76,7 +77,7 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID clasificacionId) {
 
-        addHealthRestriction.execute(alumnoId, clasificacionId);
+        addHealthRestriction.execute(new AddHealthRestrictionRequest(alumnoId, clasificacionId));
         return ResponseEntity.ok().build();
     }
 

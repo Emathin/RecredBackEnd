@@ -1,6 +1,8 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.ActualizarFotoAlumno;
+import com.recred.backend.application.ActualizarFotoAlumnoRequest;
+import com.recred.backend.application.ActualizarFotoAlumnoResponse;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.ObtenerHijosPorPadre;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
@@ -109,9 +111,23 @@ public class TutorController {
             @RequestParam("foto") MultipartFile foto) {
         String cognitoSub = cognitoSubject(authentication);
         String url = cloudinaryService.uploadImage(foto);
-        com.recred.backend.domain.models.Alumno alumno =
-                actualizarFotoAlumno.execute(cognitoSub, alumnoId, url);
-        return ResponseEntity.ok(StudentDTO.fromDomain(alumno));
+        ActualizarFotoAlumnoRequest request =
+                new ActualizarFotoAlumnoRequest(cognitoSub, alumnoId, url);
+        ActualizarFotoAlumnoResponse response = actualizarFotoAlumno.execute(request);
+        return ResponseEntity.ok(toStudentDTO(response));
+    }
+
+    private StudentDTO toStudentDTO(ActualizarFotoAlumnoResponse response) {
+        return new StudentDTO(
+                response.id(),
+                response.nombre(),
+                response.apellido(),
+                response.activo(),
+                response.grado(),
+                response.colegioId(),
+                response.saldo(),
+                response.urlFotoPerfil()
+        );
     }
 
     private String cognitoSubject(Authentication authentication) {

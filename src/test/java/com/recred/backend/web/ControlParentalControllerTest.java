@@ -1,6 +1,7 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.AddHealthRestriction;
+import com.recred.backend.application.AddHealthRestrictionRequest;
 import com.recred.backend.application.BloquearProductoManual;
 import com.recred.backend.application.DesbloquearProductoManual;
 import com.recred.backend.application.DetectStudentPreferences;
@@ -129,7 +130,7 @@ class ControlParentalControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
-        verify(addHealthRestriction).execute(alumnoId, clasificacionId);
+        verify(addHealthRestriction).execute(new AddHealthRestrictionRequest(alumnoId, clasificacionId));
     }
 
     @Test
