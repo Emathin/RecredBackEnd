@@ -18,7 +18,15 @@ public class GetHistoryByStudent {
 
     @Transactional(readOnly = true)
     public List<GetHistoryByStudentResponse> execute(GetHistoryByStudentRequest request) {
-        List<Purchase> purchases = purchaseRepository.findHistorialByAlumno(request.alumnoId());
+        List<Purchase> purchases = this.findHistoryByStudent(request.alumnoId());
+        return this.mapToResponse(purchases);
+    }
+
+    private List<Purchase> findHistoryByStudent(UUID studentId) {
+        return purchaseRepository.findHistorialByAlumno(studentId);
+    }
+
+    private List<GetHistoryByStudentResponse> mapToResponse(List<Purchase> purchases) {
         return purchases.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -38,21 +46,7 @@ public class GetHistoryByStudent {
         String withdrawalStatus = purchase.getWithdrawalStatus() != null
                 ? purchase.getWithdrawalStatus().name() : null;
 
-        List<GetHistoryByStudentResponse.Item> items = null;
-        if (purchase.getItems() != null) {
-            items = purchase.getItems().entrySet().stream()
-                    .map(entry -> new GetHistoryByStudentResponse.Item(
-                            entry.getKey().getId(),
-                            entry.getKey().getNombre(),
-                            entry.getValue(),
-                            entry.getKey().getPrecio(),
-                            entry.getKey().getRequierePreparacion(),
-                            entry.getKey().getCupoMaximoDiario(),
-                            entry.getKey().getPromocionId(),
-                            entry.getKey().getPromocionNombre()
-                    ))
-                    .collect(Collectors.toList());
-        }
+        List<GetHistoryByStudentResponse.Item> items = this.mapToResponseItems(purchase);
 
         return new GetHistoryByStudentResponse(
                 purchase.getId(),
@@ -70,5 +64,23 @@ public class GetHistoryByStudent {
                 purchase.getPickupSlotStartTime(),
                 withdrawalStatus
         );
+    }
+
+    private List<GetHistoryByStudentResponse.Item> mapToResponseItems(Purchase purchase) {
+        if (purchase.getItems() == null) {
+            return null;
+        }
+        return purchase.getItems().entrySet().stream()
+                .map(entry -> new GetHistoryByStudentResponse.Item(
+                        entry.getKey().getId(),
+                        entry.getKey().getNombre(),
+                        entry.getValue(),
+                        entry.getKey().getPrecio(),
+                        entry.getKey().getRequierePreparacion(),
+                        entry.getKey().getCupoMaximoDiario(),
+                        entry.getKey().getPromocionId(),
+                        entry.getKey().getPromocionNombre()
+                ))
+                .collect(Collectors.toList());
     }
 }

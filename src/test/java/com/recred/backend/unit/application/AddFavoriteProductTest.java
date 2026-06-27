@@ -64,9 +64,10 @@ class AddFavoriteProductTest {
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () ->
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId))
         );
+        assertEquals("Alumno no encontrado", exception.getMessage());
 
         verify(productRepository, never()).findById(any());
         verify(alumnoRepository, never()).save(any());
@@ -82,9 +83,10 @@ class AddFavoriteProductTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(productRepository.findById(productoId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () ->
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId))
         );
+        assertEquals("Producto no encontrado", exception.getMessage());
 
         verify(alumnoRepository, never()).save(any());
     }

@@ -5,6 +5,8 @@ import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 
+import java.util.UUID;
+
 public class AddHealthRestriction {
 
     private final AlumnoRepository alumnoRepository;
@@ -17,16 +19,25 @@ public class AddHealthRestriction {
     }
 
     public void execute(AddHealthRestrictionRequest request) {
-        Alumno student = alumnoRepository.findById(request.studentId())
-                .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
+        Alumno student = this.findAlumnoById(request.studentId());
 
-        ClasificacionSalud classification = clasificacionRepository
-                .findById(request.classificationId())
-                .orElseThrow(() -> new IllegalArgumentException
-                        ("La clasificación médica no existe."));
+        ClasificacionSalud classification =
+                this.findClasificacionSaludById(request.classificationId());
 
         student.agregarRestriccionSalud(classification);
 
         alumnoRepository.save(student);
+    }
+
+    private Alumno findAlumnoById(UUID id) {
+        return alumnoRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
+    }
+
+    private ClasificacionSalud findClasificacionSaludById(UUID id) {
+        return clasificacionRepository
+                .findById(id)
+                .orElseThrow(() -> new IllegalArgumentException
+                        ("La clasificación médica no existe."));
     }
 }

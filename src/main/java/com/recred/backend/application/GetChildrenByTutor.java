@@ -19,21 +19,35 @@ public class GetChildrenByTutor {
 
     @Transactional(readOnly = true)
     public List<GetChildrenByTutorResponse> execute(GetChildrenByTutorRequest request) {
-        Set<Alumno> hijos;
-        if (request.tutorId() != null) {
-            hijos = tutorRepository.findById(request.tutorId())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Tutor no encontrado con ID: " + request.tutorId()))
-                    .getHijos();
-        } else if (request.cognitoSubject() != null) {
-            hijos = tutorRepository.findByUsuarioIdCognito(request.cognitoSubject())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Tutor no encontrado para el usuario autenticado"))
-                    .getHijos();
-        } else {
-            throw new IllegalArgumentException("Debe proporcionar tutorId o cognitoSubject");
-        }
+        Set<Alumno> hijos = this.findHijos(request);
+        return this.toResponseList(hijos);
+    }
 
+    private Set<Alumno> findHijos(GetChildrenByTutorRequest request) {
+        if (request.tutorId() != null) {
+            return this.findHijosByTutorId(request.tutorId());
+        }
+        if (request.cognitoSubject() != null) {
+            return this.findHijosByCognitoSubject(request.cognitoSubject());
+        }
+        throw new IllegalArgumentException("Debe proporcionar tutorId o cognitoSubject");
+    }
+
+    private Set<Alumno> findHijosByTutorId(UUID tutorId) {
+        return tutorRepository.findById(tutorId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Tutor no encontrado con ID: " + tutorId))
+                .getHijos();
+    }
+
+    private Set<Alumno> findHijosByCognitoSubject(String cognitoSubject) {
+        return tutorRepository.findByUsuarioIdCognito(cognitoSubject)
+                .orElseThrow(() -> new RuntimeException(
+                        "Tutor no encontrado para el usuario autenticado"))
+                .getHijos();
+    }
+
+    private List<GetChildrenByTutorResponse> toResponseList(Set<Alumno> hijos) {
         return hijos.stream()
                 .map(this::toResponse)
                 .toList();

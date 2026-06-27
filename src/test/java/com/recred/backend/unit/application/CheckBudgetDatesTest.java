@@ -132,12 +132,15 @@ class CheckBudgetDatesTest {
         );
 
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(productId)).thenReturn(Optional.empty());
 
-        assertThrows(
+        IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> checkBudgetDates.execute(studentId, request)
         );
+        assertEquals("Product or Promotion not found: " + productId, exception.getMessage());
     }
+
 
     @Test
     void execute_WhenProductPriceIsNull_ShouldUseZeroAsItemTotal() {

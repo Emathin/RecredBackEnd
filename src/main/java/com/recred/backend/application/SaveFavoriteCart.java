@@ -41,71 +41,109 @@ public class SaveFavoriteCart {
 
     @Transactional
     public SaveFavoriteCartResponse execute(SaveFavoriteCartRequest request) {
+        Usuario usuario = this.findUsuario(request.cognitoSub());
+        Tutor tutor = this.findTutor(usuario.getId());
+        Alumno student = this.findStudent(request.alumnoId());
 
-        Usuario usuario = usuarioRepository.findByIdCognito(request.cognitoSub())
+        this.validateStudentBelongsToTutor(tutor, request.alumnoId());
+
+        CarritoFavorito carrito = this.resolveCarritoFavorito(request.cartId(), tutor, usuario);
+        carrito.setNombre(request.nombre());
+        carrito.setAlumno(student);
+
+        Map<Producto, Integer> items = this.resolveCartItems(request.productQuantities());
+        carrito.setItems(items);
+
+        CarritoFavorito saved = carritoFavoritoRepository.save(carrito);
+        return toResponse(saved);
+    }
+
+    private Usuario findUsuario(String cognitoSub) {
+        return usuarioRepository.findByIdCognito(cognitoSub)
                 .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
+    }
 
-        Tutor tutor = tutorRepository.findByUsuarioId(usuario.getId())
+    private Tutor findTutor(UUID usuarioId) {
+        return tutorRepository.findByUsuarioId(usuarioId)
                 .orElseThrow(() -> new SecurityException(
                         "No se encontró perfil de tutor para el usuario"));
+    }
 
-        Alumno student = alumnoRepository.findById(request.alumnoId())
+    private Alumno findStudent(UUID studentId) {
+        return alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("Hijo no encontrado"));
+    }
 
+    private void validateStudentBelongsToTutor(Tutor tutor, UUID studentId) {
         boolean isChildOfTutor = tutor.getHijos().stream()
-                .anyMatch(h -> h.getId().equals(request.alumnoId()));
+                .anyMatch(h -> h.getId().equals(studentId));
         if (!isChildOfTutor) {
             throw new SecurityException(
                     "No autorizado: el alumno seleccionado no es hijo del tutor");
         }
+    }
 
-        CarritoFavorito carrito;
-        if (request.cartId() != null) {
-            carrito = carritoFavoritoRepository.findById(request.cartId())
+    private CarritoFavorito resolveCarritoFavorito(UUID cartId, Tutor tutor, Usuario usuario) {
+        if (cartId != null) {
+            CarritoFavorito carrito = carritoFavoritoRepository.findById(cartId)
                     .orElseThrow(() -> new IllegalArgumentException("Carrito no encontrado"));
 
             if (!carrito.getTutor().getId().equals(tutor.getId())) {
                 throw new SecurityException("No autorizado para modificar este carrito");
             }
-        } else {
-            if (usuario.getPlan() == TipoPlan.GRATUITO) {
-                var existingCarts = carritoFavoritoRepository
-                        .findByTutorIdAndFilters(tutor.getId(), null, null);
-                if (existingCarts.size() >= 3) {
-                    throw new IllegalArgumentException(
-                            "Límite de carritos favoritos alcanzado "
-                            + "para cuenta gratuita (máximo 3)");
-                }
-            }
-            carrito = new CarritoFavorito();
-            carrito.setTutor(tutor);
+            return carrito;
         }
 
-        carrito.setNombre(request.nombre());
-        carrito.setAlumno(student);
+        this.validateCartLimitForFreePlan(tutor, usuario);
 
+        CarritoFavorito newCarrito = new CarritoFavorito();
+        newCarrito.setTutor(tutor);
+        return newCarrito;
+    }
+
+    private void validateCartLimitForFreePlan(Tutor tutor, Usuario usuario) {
+        if (usuario.getPlan() == TipoPlan.GRATUITO) {
+            var existingCarts = carritoFavoritoRepository
+                    .findByTutorIdAndFilters(tutor.getId(), null, null);
+            if (existingCarts.size() >= 3) {
+                throw new IllegalArgumentException(
+                        "Límite de carritos favoritos alcanzado "
+                        + "para cuenta gratuita (máximo 3)");
+            }
+        }
+    }
+
+    private Map<Producto, Integer> resolveCartItems(Map<UUID, Integer> productQuantities) {
         Map<Producto, Integer> items = new HashMap<>();
-        if (request.productQuantities() != null) {
-            for (var entry : request.productQuantities().entrySet()) {
+        if (productQuantities != null) {
+            for (var entry : productQuantities.entrySet()) {
                 UUID prodId = entry.getKey();
                 Integer quantity = entry.getValue();
-                if (quantity == null || quantity <= 0) {
-                    throw new IllegalArgumentException("La cantidad debe ser mayor a cero");
-                }
-                Producto product = productRepository.findById(prodId)
-                        .orElseThrow(() -> new IllegalArgumentException(
-                                "Producto no encontrado: " + prodId));
-                if (!product.isActive()) {
-                    throw new IllegalArgumentException(
-                            "El producto no está activo: " + product.getNombre());
-                }
+                
+                this.validateProductQuantity(quantity);
+                Producto product = this.findAndValidateActiveProduct(prodId);
+                
                 items.put(product, quantity);
             }
         }
-        carrito.setItems(items);
+        return items;
+    }
 
-        CarritoFavorito saved = carritoFavoritoRepository.save(carrito);
-        return toResponse(saved);
+    private void validateProductQuantity(Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("La cantidad debe ser mayor a cero");
+        }
+    }
+
+    private Producto findAndValidateActiveProduct(UUID prodId) {
+        Producto product = productRepository.findById(prodId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Producto no encontrado: " + prodId));
+        if (!product.isActive()) {
+            throw new IllegalArgumentException(
+                    "El producto no está activo: " + product.getNombre());
+        }
+        return product;
     }
 
     private SaveFavoriteCartResponse toResponse(CarritoFavorito domain) {
