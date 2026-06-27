@@ -9,6 +9,7 @@ import com.recred.backend.application.GetFavoritosByAlumnoResponse;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
 import com.recred.backend.application.RemoverProductoFavorito;
+import com.recred.backend.application.RemoverProductoFavoritoRequest;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
@@ -202,7 +203,7 @@ class StudentPreferenceControllerTest {
         ResponseEntity<Void> response = controller.removerFavorito(studentId, productoId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(removerProductoFavorito).execute(studentId, productoId);
+        verify(removerProductoFavorito).execute(new RemoverProductoFavoritoRequest(studentId, productoId));
     }
 
     @Test

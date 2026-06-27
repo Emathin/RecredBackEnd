@@ -8,6 +8,7 @@ import com.recred.backend.application.GetFavoritosByAlumnoRequest;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
 import com.recred.backend.application.RemoverProductoFavorito;
+import com.recred.backend.application.RemoverProductoFavoritoRequest;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -116,7 +117,7 @@ public class StudentPreferenceController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId
     ) {
-        removerProductoFavorito.execute(alumnoId, productoId);
+        removerProductoFavorito.execute(new RemoverProductoFavoritoRequest(alumnoId, productoId));
         return ResponseEntity.ok().build();
     }
 

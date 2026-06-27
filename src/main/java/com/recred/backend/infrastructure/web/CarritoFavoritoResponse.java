@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetCarritosFavoritosByTutorResponse;
+import com.recred.backend.application.SaveCarritoFavoritoResponse;
 import com.recred.backend.domain.models.CarritoFavorito;
 
 import java.util.List;
@@ -37,6 +38,28 @@ public record CarritoFavoritoResponse(
     }
 
     public static CarritoFavoritoResponse fromDto(GetCarritosFavoritosByTutorResponse dto) {
+        List<CarritoFavoritoItemResponse> itemResponses = dto.items() != null
+                ? dto.items().stream()
+                        .map(item -> new CarritoFavoritoItemResponse(
+                                item.productId(),
+                                item.productoNombre(),
+                                item.productoPrecio(),
+                                item.quantity()
+                        ))
+                        .toList()
+                : List.of();
+
+        return new CarritoFavoritoResponse(
+                dto.id(),
+                dto.nombre(),
+                dto.alumnoId(),
+                dto.alumnoNombre(),
+                dto.alumnoApellido(),
+                itemResponses
+        );
+    }
+
+    public static CarritoFavoritoResponse fromUseCaseResponse(SaveCarritoFavoritoResponse dto) {
         List<CarritoFavoritoItemResponse> itemResponses = dto.items() != null
                 ? dto.items().stream()
                         .map(item -> new CarritoFavoritoItemResponse(

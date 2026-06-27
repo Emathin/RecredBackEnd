@@ -6,7 +6,7 @@ import com.recred.backend.application.GetCarritosFavoritosByTutor;
 import com.recred.backend.application.GetCarritosFavoritosByTutorRequest;
 import com.recred.backend.application.GetCarritosFavoritosByTutorResponse;
 import com.recred.backend.application.SaveCarritoFavorito;
-import com.recred.backend.domain.models.CarritoFavorito;
+import com.recred.backend.application.SaveCarritoFavoritoResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -54,16 +54,18 @@ public class CarritoFavoritoController {
                         SaveCarritoFavoritoRequest.ItemRequest::quantity
                 ));
 
-        CarritoFavorito cart = saveCarritoFavorito.execute(
-                cognitoSubject(authentication),
-                request.id(),
-                request.nombre(),
-                request.alumnoId(),
-                productQuantities
+        SaveCarritoFavoritoResponse cart = saveCarritoFavorito.execute(
+                new com.recred.backend.application.SaveCarritoFavoritoRequest(
+                        cognitoSubject(authentication),
+                        request.id(),
+                        request.nombre(),
+                        request.alumnoId(),
+                        productQuantities
+                )
         );
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(CarritoFavoritoResponse.fromDomain(cart));
+                .body(CarritoFavoritoResponse.fromUseCaseResponse(cart));
     }
 
     @GetMapping

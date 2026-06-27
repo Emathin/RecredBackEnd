@@ -25,7 +25,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -80,18 +79,18 @@ class SaveCarritoFavoritoTest {
         when(carritoFavoritoRepository.save(any(CarritoFavorito.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        CarritoFavorito result = saveCarritoFavorito.execute(
+        SaveCarritoFavoritoResponse result = saveCarritoFavorito.execute(new SaveCarritoFavoritoRequest(
                 COGNITO_SUBJECT,
                 null,
                 "Merienda",
                 alumno.getId(),
                 Map.of(producto.getId(), 2)
-        );
+        ));
 
-        assertEquals("Merienda", result.getNombre());
-        assertSame(tutor, result.getTutor());
-        assertSame(alumno, result.getAlumno());
-        assertEquals(2, result.getItems().get(producto));
+        assertEquals("Merienda", result.nombre());
+        assertEquals(tutor.getId(), result.tutorId());
+        assertEquals(alumno.getId(), result.alumnoId());
+        assertEquals(2, result.items().get(0).quantity());
         verify(carritoFavoritoRepository, never()).findById(any());
     }
 
@@ -112,18 +111,17 @@ class SaveCarritoFavoritoTest {
         when(carritoFavoritoRepository.findById(cartId)).thenReturn(Optional.of(existing));
         when(carritoFavoritoRepository.save(existing)).thenReturn(existing);
 
-        CarritoFavorito result = saveCarritoFavorito.execute(
+        SaveCarritoFavoritoResponse result = saveCarritoFavorito.execute(new SaveCarritoFavoritoRequest(
                 COGNITO_SUBJECT,
                 cartId,
                 "Almuerzo",
                 alumno.getId(),
                 null
-        );
+        ));
 
-        assertSame(existing, result);
-        assertEquals("Almuerzo", result.getNombre());
-        assertSame(alumno, result.getAlumno());
-        assertEquals(0, result.getItems().size());
+        assertEquals("Almuerzo", result.nombre());
+        assertEquals(alumno.getId(), result.alumnoId());
+        assertEquals(0, result.items().size());
         verify(carritoFavoritoRepository).save(existing);
     }
 
@@ -137,13 +135,13 @@ class SaveCarritoFavoritoTest {
         when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
         when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
 
-        assertThrows(SecurityException.class, () -> saveCarritoFavorito.execute(
+        assertThrows(SecurityException.class, () -> saveCarritoFavorito.execute(new SaveCarritoFavoritoRequest(
                 COGNITO_SUBJECT,
                 null,
                 "Merienda",
                 alumno.getId(),
                 Map.of()
-        ));
+        )));
         verify(carritoFavoritoRepository, never()).save(any());
     }
 
@@ -163,13 +161,13 @@ class SaveCarritoFavoritoTest {
         when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
         when(carritoFavoritoRepository.findById(existing.getId())).thenReturn(Optional.of(existing));
 
-        assertThrows(SecurityException.class, () -> saveCarritoFavorito.execute(
+        assertThrows(SecurityException.class, () -> saveCarritoFavorito.execute(new SaveCarritoFavoritoRequest(
                 COGNITO_SUBJECT,
                 existing.getId(),
                 "Merienda",
                 alumno.getId(),
                 Map.of()
-        ));
+        )));
         verify(carritoFavoritoRepository, never()).save(any());
     }
 
@@ -185,13 +183,13 @@ class SaveCarritoFavoritoTest {
         when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
         when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
 
-        assertThrows(IllegalArgumentException.class, () -> saveCarritoFavorito.execute(
+        assertThrows(IllegalArgumentException.class, () -> saveCarritoFavorito.execute(new SaveCarritoFavoritoRequest(
                 COGNITO_SUBJECT,
                 null,
                 "Merienda",
                 alumno.getId(),
                 Map.of(productId, 0)
-        ));
+        )));
         verify(productRepository, never()).findById(any());
         verify(carritoFavoritoRepository, never()).save(any());
     }
@@ -210,13 +208,13 @@ class SaveCarritoFavoritoTest {
         when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
         when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
 
-        assertThrows(IllegalArgumentException.class, () -> saveCarritoFavorito.execute(
+        assertThrows(IllegalArgumentException.class, () -> saveCarritoFavorito.execute(new SaveCarritoFavoritoRequest(
                 COGNITO_SUBJECT,
                 null,
                 "Merienda",
                 alumno.getId(),
                 products
-        ));
+        )));
         verify(productRepository, never()).findById(any());
     }
 
@@ -233,13 +231,13 @@ class SaveCarritoFavoritoTest {
         when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
         when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
 
-        assertThrows(IllegalArgumentException.class, () -> saveCarritoFavorito.execute(
+        assertThrows(IllegalArgumentException.class, () -> saveCarritoFavorito.execute(new SaveCarritoFavoritoRequest(
                 COGNITO_SUBJECT,
                 null,
                 "Merienda",
                 alumno.getId(),
                 Map.of(product.getId(), 1)
-        ));
+        )));
         verify(carritoFavoritoRepository, never()).save(any());
     }
 
@@ -256,13 +254,13 @@ class SaveCarritoFavoritoTest {
         when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> saveCarritoFavorito.execute(
+        assertThrows(IllegalArgumentException.class, () -> saveCarritoFavorito.execute(new SaveCarritoFavoritoRequest(
                 COGNITO_SUBJECT,
                 null,
                 "Merienda",
                 alumno.getId(),
                 Map.of(productId, 1)
-        ));
+        )));
         verify(carritoFavoritoRepository, never()).save(any());
     }
 
@@ -271,13 +269,13 @@ class SaveCarritoFavoritoTest {
         UUID alumnoId = UUID.randomUUID();
         when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.empty());
 
-        assertThrows(SecurityException.class, () -> saveCarritoFavorito.execute(
+        assertThrows(SecurityException.class, () -> saveCarritoFavorito.execute(new SaveCarritoFavoritoRequest(
                 COGNITO_SUBJECT,
                 null,
                 "Merienda",
                 alumnoId,
                 Map.of()
-        ));
+        )));
         verify(tutorRepository, never()).findByUsuarioId(any());
     }
 
@@ -296,13 +294,13 @@ class SaveCarritoFavoritoTest {
         when(carritoFavoritoRepository.save(any(CarritoFavorito.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        saveCarritoFavorito.execute(
+        saveCarritoFavorito.execute(new SaveCarritoFavoritoRequest(
                 COGNITO_SUBJECT,
                 null,
                 "Merienda",
                 alumno.getId(),
                 Map.of(producto.getId(), 3)
-        );
+        ));
 
         ArgumentCaptor<CarritoFavorito> captor = ArgumentCaptor.forClass(CarritoFavorito.class);
         verify(carritoFavoritoRepository).save(captor.capture());

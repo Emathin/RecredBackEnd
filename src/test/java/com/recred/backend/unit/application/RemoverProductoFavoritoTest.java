@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.RemoverProductoFavorito;
+import com.recred.backend.application.RemoverProductoFavoritoRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -38,7 +39,7 @@ class RemoverProductoFavoritoTest {
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        removerProductoFavorito.execute(alumnoId, productoId);
+        removerProductoFavorito.execute(new RemoverProductoFavoritoRequest(alumnoId, productoId));
 
         assertFalse(alumno.getProductosFavoritos().contains(producto));
         verify(alumnoRepository, times(1)).save(alumno);
@@ -52,7 +53,7 @@ class RemoverProductoFavoritoTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                removerProductoFavorito.execute(alumnoId, productoId)
+                removerProductoFavorito.execute(new RemoverProductoFavoritoRequest(alumnoId, productoId))
         );
 
         verify(alumnoRepository, never()).save(any());
