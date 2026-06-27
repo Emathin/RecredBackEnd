@@ -23,10 +23,9 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateBudgetTest {
@@ -106,5 +105,34 @@ class UpdateBudgetTest {
         assertNotNull(response.reglasCategoria());
         assertEquals(1, response.reglasCategoria().size());
         assertEquals(new BigDecimal("2000.00"), response.reglasCategoria().get(0).montoLimiteCalculado());
+    }
+
+    @Test
+    void execute_CuandoSumaPorcentajesSupera100_LanzaIllegalArgumentException() {
+        when(repository.findById(budgetId)).thenReturn(Optional.of(presupuestoExistente));
+
+        UpdateBudgetRequest.CategoryRuleRequest rule1 = new UpdateBudgetRequest.CategoryRuleRequest(
+                UUID.randomUUID(),
+                new BigDecimal("60.00")
+        );
+        UpdateBudgetRequest.CategoryRuleRequest rule2 = new UpdateBudgetRequest.CategoryRuleRequest(
+                UUID.randomUUID(),
+                new BigDecimal("50.00")
+        );
+
+        UpdateBudgetRequest request = new UpdateBudgetRequest(
+                budgetId,
+                new BigDecimal("10000.00"),
+                PeriodoPresupuesto.SEMANAL,
+                LocalDate.now(),
+                List.of(rule1, rule2)
+        );
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            updateBudget.execute(request);
+        });
+
+        assertTrue(exception.getMessage().contains("La suma de los porcentajes no puede superar el 100%"));
+        verify(repository, never()).save(any());
     }
 }

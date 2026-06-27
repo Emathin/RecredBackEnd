@@ -17,6 +17,9 @@ import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.Promotion;
+import com.recred.backend.domain.models.PromotionStatus;
+import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -45,6 +48,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -525,5 +529,108 @@ class CreateAdvancePurchaseUseCaseTest {
         Grado grade = new Grado();
         grade.setColegio(school);
         return grade;
+    }
+
+    @Test
+    void execute_WhenPromotionIsNotActive_ShouldThrowIllegalArgumentException() {
+        UUID promotionId = UUID.randomUUID();
+        Promotion promotion = new Promotion();
+        promotion.setId(promotionId);
+        promotion.setStatus(PromotionStatus.DRAFT);
+
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(productRepository.findActiveByIdWithStock(promotionId, buffetId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+        assertEquals("La promocion no esta activa", exception.getMessage());
+    }
+
+    @Test
+    void execute_WhenPromotionDoesNotBelongToBuffet_ShouldThrowIllegalArgumentException() {
+        UUID promotionId = UUID.randomUUID();
+        Promotion promotion = new Promotion();
+        promotion.setId(promotionId);
+        promotion.setStatus(PromotionStatus.ACTIVE);
+        Buffet otherBuffet = new Buffet();
+        otherBuffet.setId(UUID.randomUUID());
+        promotion.setBuffet(otherBuffet);
+
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(productRepository.findActiveByIdWithStock(promotionId, buffetId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+        assertEquals("La promocion no pertenece a este buffet", exception.getMessage());
+    }
+
+    @Test
+    void execute_WhenPromotionNotStarted_ShouldThrowIllegalArgumentException() {
+        UUID promotionId = UUID.randomUUID();
+        Promotion promotion = new Promotion();
+        promotion.setId(promotionId);
+        promotion.setStatus(PromotionStatus.ACTIVE);
+        Buffet promoBuffet = new Buffet();
+        promoBuffet.setId(buffetId);
+        promotion.setBuffet(promoBuffet);
+        promotion.setStartDate(LocalDateTime.now().plusDays(1));
+
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(productRepository.findActiveByIdWithStock(promotionId, buffetId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+        assertEquals("La promocion aun no ha comenzado", exception.getMessage());
+    }
+
+    @Test
+    void execute_WhenPromotionHasEnded_ShouldThrowIllegalArgumentException() {
+        UUID promotionId = UUID.randomUUID();
+        Promotion promotion = new Promotion();
+        promotion.setId(promotionId);
+        promotion.setStatus(PromotionStatus.ACTIVE);
+        Buffet promoBuffet = new Buffet();
+        promoBuffet.setId(buffetId);
+        promotion.setBuffet(promoBuffet);
+        promotion.setStartDate(LocalDateTime.now().minusDays(2));
+        promotion.setEndDate(LocalDateTime.now().minusDays(1));
+
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(productRepository.findActiveByIdWithStock(promotionId, buffetId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+        assertEquals("La promocion ha finalizado", exception.getMessage());
+    }
+
+    @Test
+    void execute_WhenPromotionContainsInactiveProduct_ShouldThrowProductNotFoundException() {
+        UUID promotionId = UUID.randomUUID();
+        Promotion promotion = new Promotion();
+        promotion.setId(promotionId);
+        promotion.setStatus(PromotionStatus.ACTIVE);
+        Buffet promoBuffet = new Buffet();
+        promoBuffet.setId(buffetId);
+        promotion.setBuffet(promoBuffet);
+        promotion.setStartDate(LocalDateTime.now().minusDays(1));
+        promotion.setEndDate(LocalDateTime.now().plusDays(1));
+        promotion.setProducts(List.of(product));
+        promotion.setDiscountPercentage(new BigDecimal("10.00"));
+
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(productRepository.findActiveByIdWithStock(promotionId, buffetId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+        when(productRepository.findActiveByIdWithStock(productId, buffetId)).thenReturn(Optional.empty());
+
+        assertThrows(ProductNotFoundException.class,
+                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+    }
+
+    private CreateAdvancePurchaseRequest promotionRequest(UUID requestBuffetId, UUID promotionId) {
+        return request(requestBuffetId, null, "2026-06-20", List.of(new CreateAdvancePurchaseRequest.ItemRequest(promotionId, 1)));
     }
 }

@@ -22,9 +22,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SchedulePickupTest {
@@ -99,5 +100,55 @@ class SchedulePickupTest {
         product.setPrecio(price);
         product.setCategoria(category);
         return product;
+    }
+
+    @Test
+    void execute_CuandoTimeValidatorFalla_LanzaExcepcion() {
+        UUID studentId = UUID.randomUUID();
+        Set<Producto> cart = Set.of(new Producto());
+        LocalDate pickupDate = LocalDate.of(2026, 6, 1);
+        FranjaHoraria pickupSlot = new FranjaHoraria();
+        pickupSlot.setHoraInicio(LocalTime.of(10, 0));
+        LocalDateTime expectedTime = LocalDateTime.of(2026, 6, 1, 10, 0);
+
+        doThrow(new RuntimeException("Time invalid"))
+                .when(timeValidator).validarCompra(any(), eq(cart), eq(expectedTime));
+
+        assertThrows(RuntimeException.class, () ->
+                schedulePickup.execute(new SchedulePickupRequest(studentId, cart, pickupSlot, pickupDate))
+        );
+    }
+
+    @Test
+    void execute_CuandoHealthValidatorFalla_LanzaExcepcion() {
+        UUID studentId = UUID.randomUUID();
+        Set<Producto> cart = Set.of(new Producto());
+        LocalDate pickupDate = LocalDate.of(2026, 6, 1);
+        FranjaHoraria pickupSlot = new FranjaHoraria();
+        pickupSlot.setHoraInicio(LocalTime.of(10, 0));
+
+        doThrow(new RuntimeException("Health restrictions violated"))
+                .when(healthValidator).validarCompra(any(), eq(cart));
+
+        assertThrows(RuntimeException.class, () ->
+                schedulePickup.execute(new SchedulePickupRequest(studentId, cart, pickupSlot, pickupDate))
+        );
+    }
+
+    @Test
+    void execute_CuandoBudgetValidatorFalla_LanzaExcepcion() {
+        UUID studentId = UUID.randomUUID();
+        Set<Producto> cart = Set.of(new Producto());
+        LocalDate pickupDate = LocalDate.of(2026, 6, 1);
+        FranjaHoraria pickupSlot = new FranjaHoraria();
+        pickupSlot.setHoraInicio(LocalTime.of(10, 0));
+        LocalDateTime expectedTime = LocalDateTime.of(2026, 6, 1, 10, 0);
+
+        doThrow(new RuntimeException("Budget exceeded"))
+                .when(budgetValidator).validarPresupuesto(eq(studentId), any(), any(), eq(expectedTime));
+
+        assertThrows(RuntimeException.class, () ->
+                schedulePickup.execute(new SchedulePickupRequest(studentId, cart, pickupSlot, pickupDate))
+        );
     }
 }

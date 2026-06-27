@@ -53,4 +53,16 @@ class GetTimeSlotsBySchoolTest {
 
         verify(repository).findAllByColegioId(colegioId);
     }
+
+    @Test
+    void execute_CuandoNoHayFranjas_RetornaListaVacia() {
+        UUID colegioId = UUID.randomUUID();
+        when(repository.findAllByColegioId(colegioId)).thenReturn(List.of());
+
+        List<GetTimeSlotsBySchoolResponse> resultado =
+                getTimeSlotsBySchool.execute(new GetTimeSlotsBySchoolRequest(colegioId));
+
+        assertEquals(0, resultado.size());
+        verify(repository).findAllByColegioId(colegioId);
+    }
 }
