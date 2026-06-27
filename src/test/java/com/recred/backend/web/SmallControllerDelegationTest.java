@@ -4,16 +4,15 @@ import com.recred.backend.infrastructure.web.*;
 import com.recred.backend.application.GenerarMenuBuffet;
 import com.recred.backend.application.GenerateLowBalanceAlerts;
 import com.recred.backend.application.GetAllCategories;
-import com.recred.backend.application.GetBuffetByAlumno;
-import com.recred.backend.application.GetBuffetByAlumnoRequest;
-import com.recred.backend.application.GetBuffetByAlumnoResponse;
+import com.recred.backend.application.GetBuffetByStudent;
+import com.recred.backend.application.GetBuffetByStudentRequest;
+import com.recred.backend.application.GetBuffetByStudentResponse;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.GetTimeSlotsBySchoolRequest;
 import com.recred.backend.application.GetTimeSlotsBySchoolResponse;
 import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.domain.models.CategoriaProducto;
-import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.infrastructure.push.FirebasePushNotificationSender;
@@ -59,7 +58,7 @@ class SmallControllerDelegationTest {
     @Mock
     private GenerarMenuBuffet generarMenuBuffet;
     @Mock
-    private GetBuffetByAlumno getBuffetByAlumno;
+    private GetBuffetByStudent getBuffetByStudent;
     @Mock
     private FirebasePushNotificationSender pushNotificationSender;
 
@@ -156,7 +155,7 @@ class SmallControllerDelegationTest {
         MenuProductoDTO item = MenuProductoDTO.permitido(
                 product("Jugo", new BigDecimal("10.00"))
         );
-        GetBuffetByAlumnoResponse responseBuffet = new GetBuffetByAlumnoResponse(
+        GetBuffetByStudentResponse responseBuffet = new GetBuffetByStudentResponse(
                 buffetId,
                 "Buffet",
                 null,
@@ -167,10 +166,10 @@ class SmallControllerDelegationTest {
                 null
         );
         when(generarMenuBuffet.execute(alumnoId, buffetId, dateTime)).thenReturn(List.of(item));
-        when(getBuffetByAlumno.execute(new GetBuffetByAlumnoRequest(alumnoId))).thenReturn(Optional.of(responseBuffet));
+        when(getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId))).thenReturn(Optional.of(responseBuffet));
         MenuBuffetController controller = new MenuBuffetController(
                 generarMenuBuffet,
-                getBuffetByAlumno
+                getBuffetByStudent
         );
 
         ResponseEntity<List<MenuProductoDTO>> menu =
@@ -187,10 +186,10 @@ class SmallControllerDelegationTest {
         UUID buffetId = UUID.randomUUID();
         when(generarMenuBuffet.execute(eq(alumnoId), eq(buffetId), any(LocalDateTime.class)))
                 .thenReturn(List.of());
-        when(getBuffetByAlumno.execute(new GetBuffetByAlumnoRequest(alumnoId))).thenReturn(Optional.empty());
+        when(getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId))).thenReturn(Optional.empty());
         MenuBuffetController controller = new MenuBuffetController(
                 generarMenuBuffet,
-                getBuffetByAlumno
+                getBuffetByStudent
         );
 
         ResponseEntity<List<MenuProductoDTO>> menu =

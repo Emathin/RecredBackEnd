@@ -1,8 +1,8 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.application.ObtenerHistorialAlumnoResponse;
-import com.recred.backend.application.ObtenerHistorialPendienteAlumnoResponse;
+import com.recred.backend.application.GetHistoryByStudentResponse;
+import com.recred.backend.application.GetPendingHistoryByStudentResponse;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -31,7 +31,7 @@ public class PurchaseResponseDTO {
     private java.time.LocalDate pickupDate;
     private String pickupSlotStartTime;
 
-    public PurchaseResponseDTO(ObtenerHistorialAlumnoResponse response) {
+    public PurchaseResponseDTO(GetHistoryByStudentResponse response) {
         this.id = response.id();
         this.studentId = response.studentId();
         this.totalAmount = response.totalAmount();
@@ -54,7 +54,7 @@ public class PurchaseResponseDTO {
             var promoGroups = response.items().stream()
                     .filter(item -> item.promocionId() != null)
                     .collect(Collectors.groupingBy(
-                            ObtenerHistorialAlumnoResponse.Item::promocionId));
+                            GetHistoryByStudentResponse.Item::promocionId));
 
             response.items().stream()
                 .filter(item -> item.promocionId() == null)
@@ -68,7 +68,7 @@ public class PurchaseResponseDTO {
                     int quantity = promoItems.get(0).quantity();
 
                     BigDecimal unitPrice = promoItems.stream()
-                        .map(ObtenerHistorialAlumnoResponse.Item::precio)
+                        .map(GetHistoryByStudentResponse.Item::precio)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                     PurchaseItemDTO promoItem = new PurchaseItemDTO(
@@ -88,7 +88,7 @@ public class PurchaseResponseDTO {
         }
     }
 
-    private PurchaseItemDTO purchaseItem(ObtenerHistorialAlumnoResponse.Item item) {
+    private PurchaseItemDTO purchaseItem(GetHistoryByStudentResponse.Item item) {
         PurchaseItemDTO itemDTO = new PurchaseItemDTO(
                 item.productId(),
                 item.nombre(),
@@ -100,7 +100,7 @@ public class PurchaseResponseDTO {
         return itemDTO;
     }
 
-    public PurchaseResponseDTO(ObtenerHistorialPendienteAlumnoResponse response) {
+    public PurchaseResponseDTO(GetPendingHistoryByStudentResponse response) {
         this.id = response.id();
         this.studentId = response.studentId();
         this.totalAmount = response.totalAmount();
@@ -123,7 +123,7 @@ public class PurchaseResponseDTO {
             var promoGroups = response.items().stream()
                     .filter(item -> item.promocionId() != null)
                     .collect(Collectors.groupingBy(
-                            ObtenerHistorialPendienteAlumnoResponse.Item::promocionId));
+                            GetPendingHistoryByStudentResponse.Item::promocionId));
 
             response.items().stream()
                 .filter(item -> item.promocionId() == null)
@@ -137,7 +137,7 @@ public class PurchaseResponseDTO {
                     int quantity = promoItems.get(0).quantity();
 
                     BigDecimal unitPrice = promoItems.stream()
-                        .map(ObtenerHistorialPendienteAlumnoResponse.Item::precio)
+                        .map(GetPendingHistoryByStudentResponse.Item::precio)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                     PurchaseItemDTO promoItem = new PurchaseItemDTO(
@@ -157,7 +157,7 @@ public class PurchaseResponseDTO {
         }
     }
 
-    private PurchaseItemDTO purchaseItem(ObtenerHistorialPendienteAlumnoResponse.Item item) {
+    private PurchaseItemDTO purchaseItem(GetPendingHistoryByStudentResponse.Item item) {
         PurchaseItemDTO itemDTO = new PurchaseItemDTO(
                 item.productId(),
                 item.nombre(),

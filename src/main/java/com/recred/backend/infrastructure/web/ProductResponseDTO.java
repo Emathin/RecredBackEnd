@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.GetFavoritosByAlumnoResponse;
+import com.recred.backend.application.GetFavoritesByStudentResponse;
 import com.recred.backend.domain.models.Producto;
 
 import java.math.BigDecimal;
@@ -34,7 +34,7 @@ public record ProductResponseDTO(
         Set<ClasificacionDTO> tipos
 ) {
 
-    public static ProductResponseDTO fromUseCaseResponse(GetFavoritosByAlumnoResponse response) {
+    public static ProductResponseDTO fromUseCaseResponse(GetFavoritesByStudentResponse response) {
         CategoryDTO categoriaDTO = null;
         if (response.categoria() != null) {
             categoriaDTO = new CategoryDTO(

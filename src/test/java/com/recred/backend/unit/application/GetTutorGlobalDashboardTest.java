@@ -36,7 +36,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,7 +51,7 @@ class GetTutorGlobalDashboardTest {
     private PredictStudentSpending predictStudentSpending;
 
     @Mock
-    private ObtenerHistorialAlumno obtenerHistorialAlumno;
+    private GetHistoryByStudent getHistoryByStudent;
 
     @Mock
     private TutorRepository tutorRepository;
@@ -65,7 +64,7 @@ class GetTutorGlobalDashboardTest {
                 getActiveBudgetByStudent,
                 getStudentRewardStatus,
                 predictStudentSpending,
-                obtenerHistorialAlumno,
+                getHistoryByStudent,
                 tutorRepository
         );
     }
@@ -103,10 +102,10 @@ class GetTutorGlobalDashboardTest {
                 .thenThrow(new RuntimeException("sin datos"));
         when(predictStudentSpending.execute(thirdChild.getId(), null))
                 .thenReturn(predictionWithoutAnalysis(thirdChild.getId()));
-        when(obtenerHistorialAlumno.execute(new ObtenerHistorialAlumnoRequest(firstChild.getId())))
+        when(getHistoryByStudent.execute(new GetHistoryByStudentRequest(firstChild.getId())))
                 .thenReturn(List.of(toResponse(multipleProductsPurchase, firstChild.getId())));
-        when(obtenerHistorialAlumno.execute(new ObtenerHistorialAlumnoRequest(secondChild.getId()))).thenReturn(List.of());
-        when(obtenerHistorialAlumno.execute(new ObtenerHistorialAlumnoRequest(thirdChild.getId())))
+        when(getHistoryByStudent.execute(new GetHistoryByStudentRequest(secondChild.getId()))).thenReturn(List.of());
+        when(getHistoryByStudent.execute(new GetHistoryByStudentRequest(thirdChild.getId())))
                 .thenReturn(List.of(toResponse(emptyPurchase, thirdChild.getId())));
 
         TutorGlobalDashboardDTO result = getTutorGlobalDashboard
@@ -271,9 +270,9 @@ class GetTutorGlobalDashboardTest {
         return purchase;
     }
 
-    private ObtenerHistorialAlumnoResponse toResponse(Purchase p, UUID studentId) {
-        List<ObtenerHistorialAlumnoResponse.Item> items = p.getItems().entrySet().stream()
-                .map(entry -> new ObtenerHistorialAlumnoResponse.Item(
+    private GetHistoryByStudentResponse toResponse(Purchase p, UUID studentId) {
+        List<GetHistoryByStudentResponse.Item> items = p.getItems().entrySet().stream()
+                .map(entry -> new GetHistoryByStudentResponse.Item(
                         entry.getKey().getId(),
                         entry.getKey().getNombre(),
                         entry.getValue(),
@@ -285,7 +284,7 @@ class GetTutorGlobalDashboardTest {
                 ))
                 .toList();
 
-        return new ObtenerHistorialAlumnoResponse(
+        return new GetHistoryByStudentResponse(
                 p.getId(),
                 studentId,
                 p.getTotalAmount(),

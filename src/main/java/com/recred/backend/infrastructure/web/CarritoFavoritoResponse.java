@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.GetCarritosFavoritosByTutorResponse;
-import com.recred.backend.application.SaveCarritoFavoritoResponse;
+import com.recred.backend.application.GetFavoriteCartsByTutorResponse;
+import com.recred.backend.application.SaveFavoriteCartResponse;
 import com.recred.backend.domain.models.CarritoFavorito;
 
 import java.util.List;
@@ -37,7 +37,7 @@ public record CarritoFavoritoResponse(
         );
     }
 
-    public static CarritoFavoritoResponse fromDto(GetCarritosFavoritosByTutorResponse dto) {
+    public static CarritoFavoritoResponse fromDto(GetFavoriteCartsByTutorResponse dto) {
         List<CarritoFavoritoItemResponse> itemResponses = dto.items() != null
                 ? dto.items().stream()
                         .map(item -> new CarritoFavoritoItemResponse(
@@ -59,7 +59,7 @@ public record CarritoFavoritoResponse(
         );
     }
 
-    public static CarritoFavoritoResponse fromUseCaseResponse(SaveCarritoFavoritoResponse dto) {
+    public static CarritoFavoritoResponse fromUseCaseResponse(SaveFavoriteCartResponse dto) {
         List<CarritoFavoritoItemResponse> itemResponses = dto.items() != null
                 ? dto.items().stream()
                         .map(item -> new CarritoFavoritoItemResponse(

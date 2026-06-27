@@ -1,9 +1,9 @@
 package com.recred.backend.web;
 
-import com.recred.backend.application.ActualizarFotoAlumno;
-import com.recred.backend.application.ObtenerHijosPorPadre;
-import com.recred.backend.application.ObtenerHijosPorPadreRequest;
-import com.recred.backend.application.ObtenerHijosPorPadreResponse;
+import com.recred.backend.application.UpdateStudentPhoto;
+import com.recred.backend.application.GetChildrenByTutor;
+import com.recred.backend.application.GetChildrenByTutorRequest;
+import com.recred.backend.application.GetChildrenByTutorResponse;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
@@ -31,7 +31,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.math.BigDecimal;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -53,7 +52,7 @@ class TutorControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ObtenerHijosPorPadre obtenerHijosPorPadre;
+    private GetChildrenByTutor getChildrenByTutor;
 
     @MockitoBean
     private CreateStudentFromParent createStudentFromParent;
@@ -71,7 +70,7 @@ class TutorControllerTest {
     private JwtDecoder jwtDecoder;
 
     @MockitoBean
-    private ActualizarFotoAlumno actualizarFotoAlumno;
+    private UpdateStudentPhoto updateStudentPhoto;
 
     @MockitoBean
     private CloudinaryService cloudinaryService;
@@ -104,7 +103,7 @@ class TutorControllerTest {
         alumno.setGrado(grado);
         alumno.setBilletera(billetera);
 
-        ObtenerHijosPorPadreResponse childResponse = new ObtenerHijosPorPadreResponse(
+        GetChildrenByTutorResponse childResponse = new GetChildrenByTutorResponse(
                 alumnoId,
                 "Lucas",
                 "Pérez",
@@ -114,7 +113,7 @@ class TutorControllerTest {
                 new BigDecimal("150.50"),
                 null
         );
-        when(obtenerHijosPorPadre.execute(ObtenerHijosPorPadreRequest.byTutorId(tutorId)))
+        when(getChildrenByTutor.execute(GetChildrenByTutorRequest.byTutorId(tutorId)))
                 .thenReturn(List.of(childResponse));
 
         mockMvc.perform(get("/api/v1/tutores/{tutorId}/hijos", tutorId)
@@ -133,7 +132,7 @@ class TutorControllerTest {
     void dadoUnTutorAutenticado_cuandoConsultaMisHijos_entoncesUsaCognitoSubject()
             throws Exception {
         UUID alumnoId = UUID.randomUUID();
-        ObtenerHijosPorPadreResponse response = new ObtenerHijosPorPadreResponse(
+        GetChildrenByTutorResponse response = new GetChildrenByTutorResponse(
                 alumnoId,
                 "Ana",
                 "Lopez",
@@ -143,7 +142,7 @@ class TutorControllerTest {
                 BigDecimal.ZERO,
                 null
         );
-        when(obtenerHijosPorPadre.execute(ObtenerHijosPorPadreRequest.byCognitoSubject("tutor-sub")))
+        when(getChildrenByTutor.execute(GetChildrenByTutorRequest.byCognitoSubject("tutor-sub")))
                 .thenReturn(List.of(response));
 
         mockMvc.perform(get("/api/v1/tutores/me/hijos")
@@ -153,7 +152,7 @@ class TutorControllerTest {
                 .andExpect(jsonPath("$[0].id").value(alumnoId.toString()))
                 .andExpect(jsonPath("$[0].nombre").value("Ana"));
 
-        verify(obtenerHijosPorPadre).execute(ObtenerHijosPorPadreRequest.byCognitoSubject("tutor-sub"));
+        verify(getChildrenByTutor).execute(GetChildrenByTutorRequest.byCognitoSubject("tutor-sub"));
     }
 
     @Test
@@ -206,10 +205,10 @@ class TutorControllerTest {
         UUID tutorId = UUID.randomUUID();
         UUID alumnoId = UUID.randomUUID();
         TutorController controller = new TutorController(
-                obtenerHijosPorPadre,
+                getChildrenByTutor,
                 usuarioService,
                 createStudentFromParent,
-                actualizarFotoAlumno,
+                updateStudentPhoto,
                 cloudinaryService
         );
         Usuario usuario = new Usuario();
@@ -218,7 +217,7 @@ class TutorControllerTest {
         tutor.setId(tutorId);
         usuario.setTutor(tutor);
         
-        ObtenerHijosPorPadreResponse responseChild = new ObtenerHijosPorPadreResponse(
+        GetChildrenByTutorResponse responseChild = new GetChildrenByTutorResponse(
                 alumnoId,
                 "Sofia",
                 "Diaz",
@@ -230,7 +229,7 @@ class TutorControllerTest {
         );
         
         when(usuarioService.obtenerUsuarioActual("tutor-sub")).thenReturn(usuario);
-        when(obtenerHijosPorPadre.execute(ObtenerHijosPorPadreRequest.byTutorId(tutorId)))
+        when(getChildrenByTutor.execute(GetChildrenByTutorRequest.byTutorId(tutorId)))
                 .thenReturn(List.of(responseChild));
 
         ResponseEntity<List<StudentDTO>> response = controller.obtenerHijos(
@@ -241,16 +240,16 @@ class TutorControllerTest {
         assertEquals(200, response.getStatusCode().value());
         assertEquals(alumnoId, response.getBody().get(0).id());
         verify(usuarioService).obtenerUsuarioActual("tutor-sub");
-        verify(obtenerHijosPorPadre).execute(ObtenerHijosPorPadreRequest.byTutorId(tutorId));
+        verify(getChildrenByTutor).execute(GetChildrenByTutorRequest.byTutorId(tutorId));
     }
 
     @Test
     void obtenerHijosConTutorMeSinPerfilRetornaListaVacia() {
         TutorController controller = new TutorController(
-                obtenerHijosPorPadre,
+                getChildrenByTutor,
                 usuarioService,
                 createStudentFromParent,
-                actualizarFotoAlumno,
+                updateStudentPhoto,
                 cloudinaryService
         );
         Usuario usuario = new Usuario();
@@ -268,10 +267,10 @@ class TutorControllerTest {
     @Test
     void crearHijoSinAutenticacionLanzaCredentialsException() {
         TutorController controller = new TutorController(
-                obtenerHijosPorPadre,
+                getChildrenByTutor,
                 usuarioService,
                 createStudentFromParent,
-                actualizarFotoAlumno,
+                updateStudentPhoto,
                 cloudinaryService
         );
         CreateChildRequest request = new CreateChildRequest(
