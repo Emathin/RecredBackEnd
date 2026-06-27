@@ -1,15 +1,18 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.application;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.recred.backend.domain.models.BudgetPeriod;
+import com.recred.backend.domain.models.ConsumptionCategory;
 import com.recred.backend.domain.models.SpendingPrediction;
+import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.SpendingPredictionResult;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-public record SpendingPredictionResponse(
+public record PredictStudentSpendingResponse(
         @JsonProperty("alumnoId")
         UUID studentId,
         @JsonProperty("periodo")
@@ -42,9 +45,9 @@ public record SpendingPredictionResponse(
         SpendingPredictionAnalysisResponse aiAnalysis
 ) {
 
-    public static SpendingPredictionResponse fromDomain(SpendingPredictionResult result) {
+    static PredictStudentSpendingResponse fromDomain(SpendingPredictionResult result) {
         SpendingPrediction spendingPrediction = result.spendingPrediction();
-        return new SpendingPredictionResponse(
+        return new PredictStudentSpendingResponse(
                 spendingPrediction.studentId(),
                 spendingPrediction.period(),
                 spendingPrediction.calculationDate(),
@@ -65,5 +68,43 @@ public record SpendingPredictionResponse(
                         .map(SpendingPredictionAnalysisResponse::fromDomain)
                         .orElse(null)
         );
+    }
+
+    public record ConsumptionCategoryResponse(
+            @JsonProperty("descripcion")
+            String description,
+            @JsonProperty("montoTotal")
+            BigDecimal totalAmount
+    ) {
+
+        static ConsumptionCategoryResponse fromDomain(ConsumptionCategory consumptionCategory) {
+            return new ConsumptionCategoryResponse(
+                    consumptionCategory.description(),
+                    consumptionCategory.totalAmount()
+            );
+        }
+    }
+
+    public record SpendingPredictionAnalysisResponse(
+            @JsonProperty("resumen")
+            String summary,
+            @JsonProperty("alertas")
+            List<String> alerts,
+            @JsonProperty("recomendaciones")
+            List<String> recommendations,
+            @JsonProperty("modelo")
+            String model
+    ) {
+
+        static SpendingPredictionAnalysisResponse fromDomain(
+                SpendingPredictionAnalysis analysis
+        ) {
+            return new SpendingPredictionAnalysisResponse(
+                    analysis.summary(),
+                    analysis.alerts(),
+                    analysis.recommendations(),
+                    analysis.model()
+            );
+        }
     }
 }

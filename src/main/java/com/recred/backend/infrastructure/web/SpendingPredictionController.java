@@ -1,6 +1,8 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.PredictStudentSpending;
+import com.recred.backend.application.PredictStudentSpendingRequest;
+import com.recred.backend.application.PredictStudentSpendingResponse;
 import com.recred.backend.domain.models.BudgetPeriod;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,11 +22,11 @@ public class SpendingPredictionController {
     }
 
     @GetMapping
-    public SpendingPredictionResponse predict(
+    public PredictStudentSpendingResponse predict(
             @PathVariable("alumnoId") UUID studentId,
             @RequestParam(name = "periodo", required = false) BudgetPeriod period
     ) {
-        return SpendingPredictionResponse.fromDomain(predictStudentSpending.execute(
+        return predictStudentSpending.execute(new PredictStudentSpendingRequest(
                 studentId,
                 period
         ));

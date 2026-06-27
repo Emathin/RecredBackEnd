@@ -1,16 +1,13 @@
 package com.recred.backend.web;
 
-import com.recred.backend.domain.models.BudgetPeriod;
 import com.recred.backend.application.PredictStudentSpending;
-import com.recred.backend.domain.models.SpendingPredictionAnalysis;
-import com.recred.backend.domain.models.SpendingPrediction;
-import com.recred.backend.domain.models.SpendingPredictionResult;
+import com.recred.backend.application.PredictStudentSpendingRequest;
+import com.recred.backend.application.PredictStudentSpendingResponse;
+import com.recred.backend.domain.models.BudgetPeriod;
 import com.recred.backend.infrastructure.web.SpendingPredictionController;
-import com.recred.backend.infrastructure.web.SpendingPredictionResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -26,18 +23,18 @@ class SpendingPredictionControllerTest {
         PredictStudentSpending predictStudentSpending = mock(PredictStudentSpending.class);
         SpendingPredictionController controller = new SpendingPredictionController(predictStudentSpending);
         UUID studentId = UUID.randomUUID();
-        SpendingPredictionResult result = result(studentId, BudgetPeriod.MENSUAL);
-        when(predictStudentSpending.execute(studentId, BudgetPeriod.MENSUAL)).thenReturn(result);
+        PredictStudentSpendingRequest request = request(studentId, BudgetPeriod.MENSUAL);
+        PredictStudentSpendingResponse response = response(studentId, BudgetPeriod.MENSUAL);
+        givenPrediction(predictStudentSpending, request, response);
 
-        SpendingPredictionResponse obtenido = controller.predict(
+        PredictStudentSpendingResponse result = whenPredictionIsRequested(
+                controller,
                 studentId,
                 BudgetPeriod.MENSUAL
         );
 
-        assertEquals(studentId, obtenido.studentId());
-        assertEquals(BudgetPeriod.MENSUAL, obtenido.period());
-        assertEquals("Resumen IA.", obtenido.aiAnalysis().summary());
-        verify(predictStudentSpending).execute(studentId, BudgetPeriod.MENSUAL);
+        thenRequestedPeriodResponseMatches(result, studentId);
+        thenUseCaseWasCalledWith(predictStudentSpending, request);
     }
 
     @Test
@@ -45,29 +42,62 @@ class SpendingPredictionControllerTest {
         PredictStudentSpending predictStudentSpending = mock(PredictStudentSpending.class);
         SpendingPredictionController controller = new SpendingPredictionController(predictStudentSpending);
         UUID studentId = UUID.randomUUID();
-        SpendingPredictionResult result = result(studentId, BudgetPeriod.QUINCENAL);
-        when(predictStudentSpending.execute(studentId, null)).thenReturn(result);
+        PredictStudentSpendingRequest request = request(studentId, null);
+        PredictStudentSpendingResponse response = response(studentId, BudgetPeriod.QUINCENAL);
+        givenPrediction(predictStudentSpending, request, response);
 
-        SpendingPredictionResponse obtenido = controller.predict(studentId, null);
-
-        assertEquals(BudgetPeriod.QUINCENAL, obtenido.period());
-        verify(predictStudentSpending).execute(studentId, null);
-    }
-
-    private SpendingPredictionResult result(UUID studentId, BudgetPeriod period) {
-        return new SpendingPredictionResult(
-                prediction(studentId, period),
-                Optional.of(new SpendingPredictionAnalysis(
-                        "Resumen IA.",
-                        List.of(),
-                        List.of(),
-                        "gemini-test"
-                ))
+        PredictStudentSpendingResponse result = whenPredictionIsRequested(
+                controller,
+                studentId,
+                null
         );
+
+        thenDefaultPeriodResponseMatches(result);
+        thenUseCaseWasCalledWith(predictStudentSpending, request);
     }
 
-    private SpendingPrediction prediction(UUID studentId, BudgetPeriod period) {
-        return new SpendingPrediction(
+    private void givenPrediction(
+            PredictStudentSpending predictStudentSpending,
+            PredictStudentSpendingRequest request,
+            PredictStudentSpendingResponse response
+    ) {
+        when(predictStudentSpending.execute(request)).thenReturn(response);
+    }
+
+    private PredictStudentSpendingResponse whenPredictionIsRequested(
+            SpendingPredictionController controller,
+            UUID studentId,
+            BudgetPeriod period
+    ) {
+        return controller.predict(studentId, period);
+    }
+
+    private void thenRequestedPeriodResponseMatches(
+            PredictStudentSpendingResponse response,
+            UUID studentId
+    ) {
+        assertEquals(studentId, response.studentId());
+        assertEquals(BudgetPeriod.MENSUAL, response.period());
+        assertEquals("Resumen IA.", response.aiAnalysis().summary());
+    }
+
+    private void thenDefaultPeriodResponseMatches(PredictStudentSpendingResponse response) {
+        assertEquals(BudgetPeriod.QUINCENAL, response.period());
+    }
+
+    private void thenUseCaseWasCalledWith(
+            PredictStudentSpending predictStudentSpending,
+            PredictStudentSpendingRequest request
+    ) {
+        verify(predictStudentSpending).execute(request);
+    }
+
+    private PredictStudentSpendingRequest request(UUID studentId, BudgetPeriod period) {
+        return new PredictStudentSpendingRequest(studentId, period);
+    }
+
+    private PredictStudentSpendingResponse response(UUID studentId, BudgetPeriod period) {
+        return new PredictStudentSpendingResponse(
                 studentId,
                 period,
                 LocalDate.of(2026, 5, 21),
@@ -81,7 +111,13 @@ class SpendingPredictionControllerTest {
                 BigDecimal.ONE,
                 0,
                 0,
-                List.of()
+                List.of(),
+                new PredictStudentSpendingResponse.SpendingPredictionAnalysisResponse(
+                        "Resumen IA.",
+                        List.of(),
+                        List.of(),
+                        "gemini-test"
+                )
         );
     }
 }
