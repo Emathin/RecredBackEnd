@@ -27,14 +27,13 @@ public class Usuario {
     private LocalDateTime actualizadoEn;
     private String urlFotoPerfil;
     private TipoPlan plan = TipoPlan.GRATUITO;
+    private Alumno alumno;
+    private Tutor tutor;
+    private Kiosquero kiosquero;
 
     public TipoPlan getPlan() {
         return plan != null ? plan : TipoPlan.GRATUITO;
     }
-
-    private Alumno alumno;
-    private Tutor tutor;
-    private Kiosquero kiosquero;
 
     public void asignarTutor(Tutor tutor) {
         this.tutor = tutor;
