@@ -10,6 +10,8 @@ import com.recred.backend.application.GetTimeRestrictionsByStudentRequest;
 import com.recred.backend.application.GetTimeRestrictionsByStudentResponse;
 import com.recred.backend.application.TimeRestrictionCommand;
 import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.application.UpdateTimeRestrictionRequest;
+import com.recred.backend.application.UpdateTimeRestrictionResponse;
 import com.recred.backend.domain.models.RestriccionHoraria;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -89,14 +91,33 @@ class TimeRestrictionControllerTest {
     @Test
     void update_ShouldReturnUpdatedRestriction() {
         UUID restrictionId = UUID.randomUUID();
-        TimeRestrictionCommand command = command();
-        RestriccionHoraria restriction = restriction();
-        when(updateTimeRestriction.execute(restrictionId, command)).thenReturn(restriction);
+        UpdateTimeRestrictionRequest requestBody = new UpdateTimeRestrictionRequest(
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID()
+        );
+        UpdateTimeRestrictionRequest expectedRequest = new UpdateTimeRestrictionRequest(
+                restrictionId,
+                requestBody.timeSlotId(),
+                requestBody.categoryId(),
+                requestBody.classificationId()
+        );
+        UpdateTimeRestrictionResponse responseMock = new UpdateTimeRestrictionResponse(
+                restrictionId,
+                UUID.randomUUID(),
+                null,
+                null,
+                null,
+                true,
+                UUID.randomUUID()
+        );
+        when(updateTimeRestriction.execute(expectedRequest)).thenReturn(responseMock);
 
-        ResponseEntity<RestriccionHoraria> response = controller.update(restrictionId, command);
+        ResponseEntity<UpdateTimeRestrictionResponse> response = controller.update(restrictionId, requestBody);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(restriction, response.getBody());
+        assertEquals(responseMock, response.getBody());
     }
 
     @Test

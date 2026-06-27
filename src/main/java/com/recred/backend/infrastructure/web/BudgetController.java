@@ -1,6 +1,5 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.BudgetCommand;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateBudgetRequest;
 import com.recred.backend.application.CreateBudgetResponse;
@@ -10,12 +9,14 @@ import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetActiveBudgetByStudentRequest;
 import com.recred.backend.application.GetActiveBudgetByStudentResponse;
 import com.recred.backend.application.UpdateBudget;
+import com.recred.backend.application.UpdateBudgetRequest;
+import com.recred.backend.application.UpdateBudgetResponse;
 import com.recred.backend.application.UpdateBudgetRules;
-import com.recred.backend.application.UpdateBudgetRulesCommand;
+import com.recred.backend.application.UpdateBudgetRulesRequest;
+import com.recred.backend.application.UpdateBudgetRulesResponse;
 import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.application.CheckBudgetDatesRequest;
 import com.recred.backend.application.CheckBudgetDatesResponse;
-import com.recred.backend.domain.models.PresupuestoAlumno;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -77,10 +78,17 @@ public class BudgetController {
     }
 
     @PutMapping("/{budgetId}")
-    public ResponseEntity<PresupuestoAlumno> update(@PathVariable UUID budgetId,
-                                                    @RequestBody BudgetCommand command) {
-        PresupuestoAlumno presupuesto = updateBudget.execute(budgetId, command);
-        return ResponseEntity.ok(presupuesto);
+    public ResponseEntity<UpdateBudgetResponse> update(@PathVariable UUID budgetId,
+                                                    @RequestBody UpdateBudgetRequest requestBody) {
+        UpdateBudgetRequest request = new UpdateBudgetRequest(
+                budgetId,
+                requestBody.limitAmount(),
+                requestBody.period(),
+                requestBody.startDate(),
+                requestBody.categoryRules()
+        );
+        UpdateBudgetResponse response = updateBudget.execute(request);
+        return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{budgetId}/disable")
@@ -90,11 +98,15 @@ public class BudgetController {
     }
 
     @PutMapping("/{budgetId}/rules")
-    public ResponseEntity<PresupuestoAlumno> updateCategoryRules(
+    public ResponseEntity<UpdateBudgetRulesResponse> updateCategoryRules(
             @PathVariable UUID budgetId,
-            @RequestBody UpdateBudgetRulesCommand command) {
+            @RequestBody UpdateBudgetRulesRequest requestBody) {
 
-        PresupuestoAlumno actualizado = updateBudgetRules.execute(budgetId, command);
+        UpdateBudgetRulesRequest request = new UpdateBudgetRulesRequest(
+                budgetId,
+                requestBody.rules()
+        );
+        UpdateBudgetRulesResponse actualizado = updateBudgetRules.execute(request);
         return ResponseEntity.ok(actualizado);
     }
 }

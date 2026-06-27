@@ -10,6 +10,8 @@ import com.recred.backend.application.GetTimeRestrictionsByStudentRequest;
 import com.recred.backend.application.GetTimeRestrictionsByStudentResponse;
 import com.recred.backend.application.TimeRestrictionCommand;
 import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.application.UpdateTimeRestrictionRequest;
+import com.recred.backend.application.UpdateTimeRestrictionResponse;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
@@ -63,10 +65,16 @@ public class TimeRestrictionController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<RestriccionHoraria> update(
+    public ResponseEntity<UpdateTimeRestrictionResponse> update(
             @PathVariable UUID id,
-            @RequestBody TimeRestrictionCommand command) {
-        RestriccionHoraria updated = updateTimeRestriction.execute(id, command);
+            @RequestBody UpdateTimeRestrictionRequest requestBody) {
+        UpdateTimeRestrictionRequest request = new UpdateTimeRestrictionRequest(
+                id,
+                requestBody.timeSlotId(),
+                requestBody.categoryId(),
+                requestBody.classificationId()
+        );
+        UpdateTimeRestrictionResponse updated = updateTimeRestriction.execute(request);
         return ResponseEntity.ok(updated);
     }
 

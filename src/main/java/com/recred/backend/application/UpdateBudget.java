@@ -19,18 +19,19 @@ public class UpdateBudget {
     }
 
     @Transactional
-    public PresupuestoAlumno execute(UUID budgetId, BudgetCommand command) {
+    public UpdateBudgetResponse execute(UpdateBudgetRequest request) {
+        UUID budgetId = request.budgetId();
         PresupuestoAlumno presupuesto = repository.findById(budgetId)
                 .orElseThrow(() -> new RuntimeException
                         ("Presupuesto no encontrado con ID: " + budgetId));
 
-        presupuesto.setMontoLimiteGeneral(command.limitAmount());
-        presupuesto.setPeriodo(command.period());
-        presupuesto.setFechaInicio(command.startDate());
+        presupuesto.setMontoLimiteGeneral(request.limitAmount());
+        presupuesto.setPeriodo(request.period());
+        presupuesto.setFechaInicio(request.startDate());
 
-        if (command.categoryRules() != null && !command.categoryRules().isEmpty()) {
+        if (request.categoryRules() != null && !request.categoryRules().isEmpty()) {
             List<ReglaPresupuestoCategoria> nuevasReglas =
-                    command.categoryRules().stream().map(rule -> {
+                    request.categoryRules().stream().map(rule -> {
                 CategoriaProducto categoria = new CategoriaProducto();
                 categoria.setId(rule.categoryId());
 
@@ -49,6 +50,42 @@ public class UpdateBudget {
         presupuesto.validarPorcentajes();
         presupuesto.recalcularMontosReglas();
 
-        return repository.save(presupuesto);
+        PresupuestoAlumno saved = repository.save(presupuesto);
+        return mapToResponse(saved);
+    }
+
+    private UpdateBudgetResponse mapToResponse(PresupuestoAlumno domain) {
+        List<UpdateBudgetResponse.ReglaPresupuestoCategoriaResponse> rules = null;
+        if (domain.getReglasCategoria() != null) {
+            rules = domain.getReglasCategoria().stream().map(rule -> {
+                UpdateBudgetResponse.CategoriaProductoResponse catResponse = null;
+                if (rule.getCategoria() != null) {
+                    catResponse = new UpdateBudgetResponse.CategoriaProductoResponse(
+                            rule.getCategoria().getId(),
+                            rule.getCategoria().getDescripcion(),
+                            rule.getCategoria().getActivo()
+                    );
+                }
+                return new UpdateBudgetResponse.ReglaPresupuestoCategoriaResponse(
+                        rule.getId(),
+                        catResponse,
+                        rule.getPorcentajeLimite(),
+                        rule.getMontoLimiteCalculado(),
+                        rule.isActivo()
+                );
+            }).collect(Collectors.toList());
+        }
+
+        return new UpdateBudgetResponse(
+                domain.getId(),
+                domain.getAlumnoId(),
+                domain.getCreadoPorUsuarioId(),
+                domain.getMontoLimiteGeneral(),
+                domain.getPeriodo(),
+                domain.getFechaInicio(),
+                domain.isActivo(),
+                rules,
+                domain.getMontoLimite()
+        );
     }
 }

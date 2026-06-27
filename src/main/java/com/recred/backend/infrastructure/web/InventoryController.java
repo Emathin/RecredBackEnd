@@ -6,6 +6,8 @@ import com.recred.backend.application.GetStockMovements;
 import com.recred.backend.application.InventoryQuickActionCommand;
 import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.UploadProductImage;
+import com.recred.backend.application.UploadProductImageRequest;
+import com.recred.backend.application.UploadProductImageResponse;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.InventoryQuickActionType;
 import com.recred.backend.domain.models.Inventario;
@@ -152,8 +154,10 @@ public class InventoryController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        String url = uploadProductImage.execute(buffetId, productId, imagen);
-        return ResponseEntity.ok(new ImagenUploadResponse(url));
+        UploadProductImageResponse response = uploadProductImage.execute(
+                new UploadProductImageRequest(buffetId, productId, imagen)
+        );
+        return ResponseEntity.ok(new ImagenUploadResponse(response.urlImagen()));
     }
 
     public record ImagenUploadResponse(String urlImagen) {}

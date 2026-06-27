@@ -8,7 +8,11 @@ import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetActiveBudgetByStudentRequest;
 import com.recred.backend.application.GetActiveBudgetByStudentResponse;
 import com.recred.backend.application.UpdateBudget;
+import com.recred.backend.application.UpdateBudgetRequest;
+import com.recred.backend.application.UpdateBudgetResponse;
 import com.recred.backend.application.UpdateBudgetRules;
+import com.recred.backend.application.UpdateBudgetRulesRequest;
+import com.recred.backend.application.UpdateBudgetRulesResponse;
 import com.recred.backend.domain.models.PeriodoPresupuesto;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.infrastructure.web.BudgetController;
@@ -143,7 +147,18 @@ class BudgetControllerTest {
 
     @Test
     void update_Retorna200Ok() throws Exception {
-        when(updateBudget.execute(eq(budgetId), any())).thenReturn(presupuestoMock);
+        UpdateBudgetResponse responseMock = new UpdateBudgetResponse(
+                budgetId,
+                studentId,
+                UUID.randomUUID(),
+                new BigDecimal("10000.00"),
+                PeriodoPresupuesto.SEMANAL,
+                LocalDate.now(),
+                true,
+                List.of(),
+                new BigDecimal("10000.00")
+        );
+        when(updateBudget.execute(any(UpdateBudgetRequest.class))).thenReturn(responseMock);
 
         String jsonBody = "{\"limitAmount\": 10000}";
 
@@ -151,9 +166,10 @@ class BudgetControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonBody))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(budgetId.toString()));
+                .andExpect(jsonPath("$.id").value(budgetId.toString()))
+                .andExpect(jsonPath("$.montoLimiteGeneral").value(10000.00));
 
-        verify(updateBudget).execute(eq(budgetId), any());
+        verify(updateBudget).execute(any(UpdateBudgetRequest.class));
     }
 
     @Test
@@ -170,7 +186,18 @@ class BudgetControllerTest {
 
     @Test
     void updateCategoryRules_Retorna200Ok() throws Exception {
-        when(updateBudgetRules.execute(eq(budgetId), any())).thenReturn(presupuestoMock);
+        UpdateBudgetRulesResponse responseMock = new UpdateBudgetRulesResponse(
+                budgetId,
+                studentId,
+                UUID.randomUUID(),
+                new BigDecimal("5000.00"),
+                PeriodoPresupuesto.SEMANAL,
+                LocalDate.now(),
+                true,
+                List.of(),
+                new BigDecimal("5000.00")
+        );
+        when(updateBudgetRules.execute(any(UpdateBudgetRulesRequest.class))).thenReturn(responseMock);
 
         String jsonBody = """
                 {
@@ -189,6 +216,6 @@ class BudgetControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(budgetId.toString()));
 
-        verify(updateBudgetRules).execute(eq(budgetId), any());
+        verify(updateBudgetRules).execute(any(UpdateBudgetRulesRequest.class));
     }
 }

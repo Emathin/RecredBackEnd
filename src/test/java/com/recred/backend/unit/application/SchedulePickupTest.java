@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.SchedulePickup;
+import com.recred.backend.application.SchedulePickupRequest;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Producto;
@@ -49,7 +50,7 @@ class SchedulePickupTest {
         FranjaHoraria pickupSlot = new FranjaHoraria();
         pickupSlot.setHoraInicio(LocalTime.of(10, 0));
 
-        schedulePickup.execute(studentId, cart, pickupSlot, pickupDate);
+        schedulePickup.execute(new SchedulePickupRequest(studentId, cart, pickupSlot, pickupDate));
 
         LocalDateTime expectedTime = LocalDateTime.of(2026, 6, 1, 10, 0);
 
@@ -78,12 +79,12 @@ class SchedulePickupTest {
         FranjaHoraria pickupSlot = new FranjaHoraria();
         pickupSlot.setHoraInicio(LocalTime.of(10, 0));
 
-        schedulePickup.execute(
+        schedulePickup.execute(new SchedulePickupRequest(
                 studentId,
                 Set.of(productWithCategory, freeProductWithCategory, productWithoutCategory),
                 pickupSlot,
                 pickupDate
-        );
+        ));
 
         verify(budgetValidator).validarPresupuesto(
                 eq(studentId),
