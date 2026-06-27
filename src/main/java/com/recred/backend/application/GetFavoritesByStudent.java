@@ -6,6 +6,7 @@ import com.recred.backend.domain.repositories.AlumnoRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class GetFavoritesByStudent {
@@ -18,12 +19,16 @@ public class GetFavoritesByStudent {
 
     @Transactional(readOnly = true)
     public Set<GetFavoritesByStudentResponse> execute(GetFavoritesByStudentRequest request) {
-        Alumno alumno = alumnoRepository.findById(request.alumnoId())
-                .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
+        Alumno alumno = this.getAlumnoById(request.alumnoId());
 
         return alumno.getProductosFavoritos().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toSet());
+    }
+
+    private Alumno getAlumnoById(UUID id) {
+        return alumnoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
     }
 
     private GetFavoritesByStudentResponse toResponse(Producto producto) {
