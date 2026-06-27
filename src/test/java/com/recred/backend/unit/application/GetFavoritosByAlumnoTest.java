@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetFavoritosByAlumno;
+import com.recred.backend.application.GetFavoritosByAlumnoRequest;
+import com.recred.backend.application.GetFavoritosByAlumnoResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -16,7 +18,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,10 +41,11 @@ class GetFavoritosByAlumnoTest {
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        Set<Producto> resultado = getFavoritosByAlumno.execute(alumnoId);
+        Set<GetFavoritosByAlumnoResponse> resultado = getFavoritosByAlumno.execute(new GetFavoritosByAlumnoRequest(alumnoId));
 
         assertEquals(1, resultado.size());
-        assertTrue(resultado.contains(producto));
+        GetFavoritosByAlumnoResponse response = resultado.iterator().next();
+        assertEquals(producto.getId(), response.id());
         verify(alumnoRepository, times(1)).findById(alumnoId);
     }
 
@@ -53,7 +55,7 @@ class GetFavoritosByAlumnoTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                getFavoritosByAlumno.execute(alumnoId)
+                getFavoritosByAlumno.execute(new GetFavoritosByAlumnoRequest(alumnoId))
         );
 
         verify(alumnoRepository, times(1)).findById(alumnoId);

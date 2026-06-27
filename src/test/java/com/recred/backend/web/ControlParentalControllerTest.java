@@ -1,11 +1,17 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.AddHealthRestriction;
+import com.recred.backend.application.AddHealthRestrictionRequest;
 import com.recred.backend.application.BloquearProductoManual;
+import com.recred.backend.application.BloquearProductoManualRequest;
 import com.recred.backend.application.DesbloquearProductoManual;
+import com.recred.backend.application.DesbloquearProductoManualRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.GetHealthRestrictionsRequest;
+import com.recred.backend.application.GetHealthRestrictionsResponse;
 import com.recred.backend.application.ManageRestrictions;
+import com.recred.backend.application.ManageRestrictionsRequest;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
@@ -103,16 +109,17 @@ class ControlParentalControllerTest {
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk());
 
-        verify(manageRestrictions).execute(alumnoId, dto.getClasificacionesIds());
+        verify(manageRestrictions).execute(new ManageRestrictionsRequest(alumnoId, dto.getClasificacionesIds()));
     }
 
     @Test
     void obtenerRestriccionesSalud_DeberiaRetornarListaY200Ok() throws Exception {
-        ClasificacionSalud clasificacion = new ClasificacionSalud();
-        clasificacion.setId(clasificacionId);
-        clasificacion.setDescripcion("Celíaco");
+        GetHealthRestrictionsResponse responseItem = new GetHealthRestrictionsResponse(
+                clasificacionId, "Celíaco", true
+        );
 
-        when(getHealthRestrictions.ejecutar(alumnoId)).thenReturn(Set.of(clasificacion));
+        when(getHealthRestrictions.ejecutar(new GetHealthRestrictionsRequest(alumnoId)))
+                .thenReturn(Set.of(responseItem));
 
         mockMvc.perform(get("/api/v1/control-parental/alumnos/{alumnoId}/obtener-restricciones-salud", alumnoId)
                         .contentType(MediaType.APPLICATION_JSON))
@@ -120,7 +127,7 @@ class ControlParentalControllerTest {
                 .andExpect(jsonPath("$[0].id").value(clasificacionId.toString()))
                 .andExpect(jsonPath("$[0].descripcion").value("Celíaco"));
 
-        verify(getHealthRestrictions).ejecutar(alumnoId);
+        verify(getHealthRestrictions).ejecutar(new GetHealthRestrictionsRequest(alumnoId));
     }
 
     @Test
@@ -129,7 +136,7 @@ class ControlParentalControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
-        verify(addHealthRestriction).execute(alumnoId, clasificacionId);
+        verify(addHealthRestriction).execute(new AddHealthRestrictionRequest(alumnoId, clasificacionId));
     }
 
     @Test
@@ -168,7 +175,7 @@ class ControlParentalControllerTest {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
 
-        doNothing().when(bloquearProductoManual).execute(alumnoId, productoId);
+        doNothing().when(bloquearProductoManual).execute(new BloquearProductoManualRequest(alumnoId, productoId));
 
         mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
                 .andExpect(status().isOk());
@@ -179,9 +186,11 @@ class ControlParentalControllerTest {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
 
-        doNothing().when(desbloquearProductoManual).execute(alumnoId, productoId);
+        doNothing().when(desbloquearProductoManual).execute(new DesbloquearProductoManualRequest(alumnoId, productoId));
 
         mockMvc.perform(delete("/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
                 .andExpect(status().isOk());
+
+        verify(desbloquearProductoManual).execute(new DesbloquearProductoManualRequest(alumnoId, productoId));
     }
 }

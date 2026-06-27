@@ -1,7 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.ObtenerHistorialAlumno;
+import com.recred.backend.application.ObtenerHistorialAlumnoRequest;
 import com.recred.backend.application.ObtenerHistorialPendienteAlumno;
+import com.recred.backend.application.ObtenerHistorialPendienteAlumnoRequest;
 import com.recred.backend.application.ObtenerHistorialTutor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -36,7 +38,9 @@ public class PurchaseHistoryController {
     @GetMapping("/alumno/{alumnoId}")
     public ResponseEntity<List<PurchaseResponseDTO>> getHistorialAlumno(
             @PathVariable UUID alumnoId) {
-        List<PurchaseResponseDTO> historial = obtenerHistorialAlumno.execute(alumnoId)
+        List<PurchaseResponseDTO> historial = obtenerHistorialAlumno.execute(
+                new ObtenerHistorialAlumnoRequest(alumnoId)
+        )
                 .stream()
                 .map(PurchaseResponseDTO::new)
                 .collect(Collectors.toList());
@@ -47,7 +51,9 @@ public class PurchaseHistoryController {
     @GetMapping("/alumno/{alumnoId}/pendientes")
     public ResponseEntity<List<PurchaseResponseDTO>> getPendientesAlumno(
             @PathVariable UUID alumnoId) {
-        List<PurchaseResponseDTO> pendientes = obtenerHistorialPendienteAlumno.execute(alumnoId)
+        List<PurchaseResponseDTO> pendientes = obtenerHistorialPendienteAlumno.execute(
+                new ObtenerHistorialPendienteAlumnoRequest(alumnoId)
+        )
                 .stream()
                 .map(PurchaseResponseDTO::new)
                 .collect(Collectors.toList());

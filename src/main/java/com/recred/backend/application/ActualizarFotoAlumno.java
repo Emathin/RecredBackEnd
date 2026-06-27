@@ -10,7 +10,7 @@ import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.springframework.security.access.AccessDeniedException;
 
-import java.util.UUID;
+import java.math.BigDecimal;
 
 public class ActualizarFotoAlumno {
 
@@ -26,8 +26,8 @@ public class ActualizarFotoAlumno {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public Alumno execute(String parentCognitoSubject, UUID alumnoId, String urlFotoPerfil) {
-        Usuario parent = usuarioRepository.findByIdCognito(parentCognitoSubject)
+    public ActualizarFotoAlumnoResponse execute(ActualizarFotoAlumnoRequest request) {
+        Usuario parent = usuarioRepository.findByIdCognito(request.parentCognitoSubject())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Usuario autenticado no encontrado"));
 
@@ -39,11 +39,11 @@ public class ActualizarFotoAlumno {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Tutor no encontrado para el usuario autenticado"));
 
-        Alumno alumno = alumnoRepository.findById(alumnoId)
-                .orElseThrow(() -> new AlumnoNoEncontradoException(alumnoId));
+        Alumno alumno = alumnoRepository.findById(request.alumnoId())
+                .orElseThrow(() -> new AlumnoNoEncontradoException(request.alumnoId()));
 
         boolean esHijo = tutor.getHijos().stream()
-                .anyMatch(hijo -> hijo.getId().equals(alumnoId));
+                .anyMatch(hijo -> hijo.getId().equals(request.alumnoId()));
 
         if (!esHijo) {
             throw new AccessDeniedException(
@@ -51,10 +51,42 @@ public class ActualizarFotoAlumno {
         }
 
         String idCognitoAlumno = alumno.getUsuario().getIdCognito();
-        usuarioRepository.updateFotoPerfil(idCognitoAlumno, urlFotoPerfil);
+        usuarioRepository.updateFotoPerfil(idCognitoAlumno, request.urlFotoPerfil());
 
-        alumno.getUsuario().setUrlFotoPerfil(urlFotoPerfil);
+        alumno.getUsuario().setUrlFotoPerfil(request.urlFotoPerfil());
 
-        return alumno;
+        return toResponse(alumno);
+    }
+
+    private ActualizarFotoAlumnoResponse toResponse(Alumno alumno) {
+        String nombre = alumno.getUsuario() != null ?
+                alumno.getUsuario().getNombre() : "Sin nombre";
+        String apellido = alumno.getUsuario() != null ?
+                alumno.getUsuario().getApellido() : "Sin apellido";
+        String urlFotoPerfil = alumno.getUsuario() != null ?
+                alumno.getUsuario().getUrlFotoPerfil() : null;
+
+        String grado = null;
+        java.util.UUID colegioId = null;
+        if (alumno.getGrado() != null) {
+            grado = alumno.getGrado().getAnio() + " " + alumno.getGrado().getDivision();
+            if (alumno.getGrado().getColegio() != null) {
+                colegioId = alumno.getGrado().getColegio().getId();
+            }
+        }
+
+        BigDecimal saldo = alumno.getBilletera() != null ?
+                alumno.getBilletera().getSaldoCreditos() : BigDecimal.ZERO;
+
+        return new ActualizarFotoAlumnoResponse(
+                alumno.getId(),
+                nombre,
+                apellido,
+                alumno.getActivo(),
+                grado,
+                colegioId,
+                saldo,
+                urlFotoPerfil
+        );
     }
 }

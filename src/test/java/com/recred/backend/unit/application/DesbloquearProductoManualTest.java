@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.DesbloquearProductoManual;
+import com.recred.backend.application.DesbloquearProductoManualRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,7 @@ class DesbloquearProductoManualTest {
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        desbloquearProductoManual.execute(alumnoId, productoId);
+        desbloquearProductoManual.execute(new DesbloquearProductoManualRequest(alumnoId, productoId));
 
         verify(alumnoRepository, times(1)).save(alumno);
     }
@@ -45,7 +46,7 @@ class DesbloquearProductoManualTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                desbloquearProductoManual.execute(alumnoId, productoId)
+                desbloquearProductoManual.execute(new DesbloquearProductoManualRequest(alumnoId, productoId))
         );
 
         verify(alumnoRepository, never()).save(any());

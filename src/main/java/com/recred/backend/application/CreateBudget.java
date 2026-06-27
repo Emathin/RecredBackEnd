@@ -18,11 +18,11 @@ public class CreateBudget {
     }
 
     @Transactional
-    public PresupuestoAlumno execute(BudgetCommand command) {
+    public CreateBudgetResponse execute(CreateBudgetRequest request) {
         List<ReglaPresupuestoCategoria> reglas = null;
 
-        if (command.categoryRules() != null && !command.categoryRules().isEmpty()) {
-            reglas = command.categoryRules().stream().map(rule -> {
+        if (request.categoryRules() != null && !request.categoryRules().isEmpty()) {
+            reglas = request.categoryRules().stream().map(rule -> {
                 CategoriaProducto categoria = new CategoriaProducto();
                 categoria.setId(rule.categoryId());
 
@@ -37,17 +37,53 @@ public class CreateBudget {
 
         PresupuestoAlumno presupuesto = new PresupuestoAlumno(
                 null,
-                command.studentId(),
-                command.creadorId(),
-                command.limitAmount(),
-                command.period(),
-                command.startDate(),
+                request.studentId(),
+                request.creadorId(),
+                request.limitAmount(),
+                request.period(),
+                request.startDate(),
                 true,
                 reglas);
 
         presupuesto.validarPorcentajes();
         presupuesto.recalcularMontosReglas();
 
-        return repository.save(presupuesto);
+        PresupuestoAlumno saved = repository.save(presupuesto);
+        return mapToResponse(saved);
+    }
+
+    private CreateBudgetResponse mapToResponse(PresupuestoAlumno domain) {
+        List<CreateBudgetResponse.ReglaPresupuestoCategoriaResponse> rules = null;
+        if (domain.getReglasCategoria() != null) {
+            rules = domain.getReglasCategoria().stream().map(rule -> {
+                CreateBudgetResponse.CategoriaProductoResponse catResponse = null;
+                if (rule.getCategoria() != null) {
+                    catResponse = new CreateBudgetResponse.CategoriaProductoResponse(
+                            rule.getCategoria().getId(),
+                            rule.getCategoria().getDescripcion(),
+                            rule.getCategoria().getActivo()
+                    );
+                }
+                return new CreateBudgetResponse.ReglaPresupuestoCategoriaResponse(
+                        rule.getId(),
+                        catResponse,
+                        rule.getPorcentajeLimite(),
+                        rule.getMontoLimiteCalculado(),
+                        rule.isActivo()
+                );
+            }).collect(Collectors.toList());
+        }
+
+        return new CreateBudgetResponse(
+                domain.getId(),
+                domain.getAlumnoId(),
+                domain.getCreadoPorUsuarioId(),
+                domain.getMontoLimiteGeneral(),
+                domain.getPeriodo(),
+                domain.getFechaInicio(),
+                domain.isActivo(),
+                rules,
+                domain.getMontoLimite()
+        );
     }
 }

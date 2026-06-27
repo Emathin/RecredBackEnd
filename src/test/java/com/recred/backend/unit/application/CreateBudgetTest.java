@@ -1,7 +1,8 @@
 package com.recred.backend.unit.application;
 
-import com.recred.backend.application.BudgetCommand;
 import com.recred.backend.application.CreateBudget;
+import com.recred.backend.application.CreateBudgetRequest;
+import com.recred.backend.application.CreateBudgetResponse;
 import com.recred.backend.domain.models.PeriodoPresupuesto;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
@@ -21,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,20 +37,29 @@ class CreateBudgetTest {
     @Test
     void execute_CreaPresupuesto_CalculaReglas_YLoGuarda() {
 
-        when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> {
+            PresupuestoAlumno p = (PresupuestoAlumno) i.getArguments()[0];
+            p.setId(UUID.randomUUID());
+            if (p.getReglasCategoria() != null) {
+                p.getReglasCategoria().forEach(r -> r.setId(UUID.randomUUID()));
+            }
+            return p;
+        });
 
-        BudgetCommand command = mock(BudgetCommand.class);
-        when(command.studentId()).thenReturn(UUID.randomUUID());
-        when(command.limitAmount()).thenReturn(new BigDecimal("5000.00"));
-        when(command.period()).thenReturn(PeriodoPresupuesto.MENSUAL);
-        when(command.startDate()).thenReturn(LocalDate.now());
+        UUID studentId = UUID.randomUUID();
+        UUID creadorId = UUID.randomUUID();
+        UUID categoryId = UUID.randomUUID();
 
-        var ruleMock = mock(BudgetCommand.CategoryRuleCommand.class);
-        when(ruleMock.categoryId()).thenReturn(UUID.randomUUID());
-        when(ruleMock.porcentajeLimite()).thenReturn(new BigDecimal("10.00"));
-        when(command.categoryRules()).thenReturn(List.of(ruleMock));
+        CreateBudgetRequest request = new CreateBudgetRequest(
+                studentId,
+                creadorId,
+                new BigDecimal("5000.00"),
+                PeriodoPresupuesto.MENSUAL,
+                LocalDate.now(),
+                List.of(new CreateBudgetRequest.CategoryRuleRequest(categoryId, new BigDecimal("10.00")))
+        );
 
-        PresupuestoAlumno resultado = createBudget.execute(command);
+        CreateBudgetResponse resultado = createBudget.execute(request);
 
         ArgumentCaptor<PresupuestoAlumno> captor = ArgumentCaptor.forClass(PresupuestoAlumno.class);
         verify(repository).save(captor.capture());
@@ -63,5 +72,15 @@ class CreateBudgetTest {
 
         assertEquals(1, guardado.getReglasCategoria().size());
         assertEquals(new BigDecimal("500.00"), guardado.getReglasCategoria().get(0).getMontoLimiteCalculado());
+
+        assertNotNull(resultado);
+        assertEquals(guardado.getId(), resultado.id());
+        assertEquals(studentId, resultado.alumnoId());
+        assertEquals(creadorId, resultado.creadoPorUsuarioId());
+        assertEquals(new BigDecimal("5000.00"), resultado.montoLimiteGeneral());
+        assertEquals(PeriodoPresupuesto.MENSUAL, resultado.periodo());
+        assertTrue(resultado.activo());
+        assertEquals(1, resultado.reglasCategoria().size());
+        assertEquals(new BigDecimal("500.00"), resultado.reglasCategoria().get(0).montoLimiteCalculado());
     }
 }

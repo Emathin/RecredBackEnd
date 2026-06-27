@@ -12,6 +12,7 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.SpendingPredictionResult;
+import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO;
@@ -42,9 +43,6 @@ import static org.mockito.Mockito.when;
 class GetTutorGlobalDashboardTest {
 
     @Mock
-    private ObtenerHijosPorPadre obtenerHijosPorPadre;
-
-    @Mock
     private GetActiveBudgetByStudent getActiveBudgetByStudent;
 
     @Mock
@@ -64,7 +62,6 @@ class GetTutorGlobalDashboardTest {
     @BeforeEach
     void setUp() {
         getTutorGlobalDashboard = new GetTutorGlobalDashboard(
-                obtenerHijosPorPadre,
                 getActiveBudgetByStudent,
                 getStudentRewardStatus,
                 predictStudentSpending,
@@ -88,12 +85,15 @@ class GetTutorGlobalDashboardTest {
         );
         Purchase emptyPurchase = purchase(Map.of(), "0.00");
 
-        when(obtenerHijosPorPadre.executeByCognitoSubject(cognitoSubject)).thenReturn(children);
-        when(getActiveBudgetByStudent.execute(firstChild.getId())).thenReturn(Optional.of(
-                budget(firstChild.getId())
+        Tutor tutor = new Tutor();
+        tutor.setId(UUID.randomUUID());
+        tutor.setHijos(children);
+        when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.of(tutor));
+        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(firstChild.getId()))).thenReturn(Optional.of(
+                budgetResponse(firstChild.getId())
         ));
-        when(getActiveBudgetByStudent.execute(secondChild.getId())).thenReturn(Optional.empty());
-        when(getActiveBudgetByStudent.execute(thirdChild.getId())).thenReturn(Optional.empty());
+        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(secondChild.getId()))).thenReturn(Optional.empty());
+        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(thirdChild.getId()))).thenReturn(Optional.empty());
         when(getStudentRewardStatus.execute(firstChild.getId())).thenReturn(reward("SILVER", 120));
         when(getStudentRewardStatus.execute(secondChild.getId())).thenReturn(reward("BRONZE", 20));
         when(getStudentRewardStatus.execute(thirdChild.getId())).thenReturn(reward("GOLD", 300));
@@ -103,10 +103,11 @@ class GetTutorGlobalDashboardTest {
                 .thenThrow(new RuntimeException("sin datos"));
         when(predictStudentSpending.execute(thirdChild.getId(), null))
                 .thenReturn(predictionWithoutAnalysis(thirdChild.getId()));
-        when(obtenerHistorialAlumno.execute(firstChild.getId()))
-                .thenReturn(List.of(multipleProductsPurchase));
-        when(obtenerHistorialAlumno.execute(secondChild.getId())).thenReturn(List.of());
-        when(obtenerHistorialAlumno.execute(thirdChild.getId())).thenReturn(List.of(emptyPurchase));
+        when(obtenerHistorialAlumno.execute(new ObtenerHistorialAlumnoRequest(firstChild.getId())))
+                .thenReturn(List.of(toResponse(multipleProductsPurchase, firstChild.getId())));
+        when(obtenerHistorialAlumno.execute(new ObtenerHistorialAlumnoRequest(secondChild.getId()))).thenReturn(List.of());
+        when(obtenerHistorialAlumno.execute(new ObtenerHistorialAlumnoRequest(thirdChild.getId())))
+                .thenReturn(List.of(toResponse(emptyPurchase, thirdChild.getId())));
 
         TutorGlobalDashboardDTO result = getTutorGlobalDashboard
                 .executeByCognitoSubject(cognitoSubject);
@@ -190,6 +191,20 @@ class GetTutorGlobalDashboardTest {
         );
     }
 
+    private GetActiveBudgetByStudentResponse budgetResponse(UUID studentId) {
+        return new GetActiveBudgetByStudentResponse(
+                UUID.randomUUID(),
+                studentId,
+                UUID.randomUUID(),
+                new BigDecimal("500.00"),
+                PeriodoPresupuesto.MENSUAL,
+                LocalDate.of(2026, 6, 1),
+                true,
+                List.of(),
+                new BigDecimal("500.00")
+        );
+    }
+
     private StudentRewardResponse reward(String level, int points) {
         return new StudentRewardResponse(points, level, "Buen progreso", 30, "GOLD");
     }
@@ -254,5 +269,37 @@ class GetTutorGlobalDashboardTest {
         purchase.setTotalAmount(new BigDecimal(amount));
         purchase.setItems(items);
         return purchase;
+    }
+
+    private ObtenerHistorialAlumnoResponse toResponse(Purchase p, UUID studentId) {
+        List<ObtenerHistorialAlumnoResponse.Item> items = p.getItems().entrySet().stream()
+                .map(entry -> new ObtenerHistorialAlumnoResponse.Item(
+                        entry.getKey().getId(),
+                        entry.getKey().getNombre(),
+                        entry.getValue(),
+                        entry.getKey().getPrecio(),
+                        entry.getKey().getRequierePreparacion(),
+                        entry.getKey().getCupoMaximoDiario(),
+                        entry.getKey().getPromocionId(),
+                        entry.getKey().getPromocionNombre()
+                ))
+                .toList();
+
+        return new ObtenerHistorialAlumnoResponse(
+                p.getId(),
+                studentId,
+                p.getTotalAmount(),
+                p.getStatus() != null ? p.getStatus().name() : null,
+                p.getStatus() != null ? p.getStatus().getLabel() : null,
+                p.getPaymentMethod() != null ? p.getPaymentMethod().name() : null,
+                p.getDate(),
+                items,
+                p.getTipo() != null ? p.getTipo().name() : null,
+                p.getWithdrawalCode(),
+                p.getPickupSlotDescription(),
+                p.getPickupDate(),
+                p.getPickupSlotStartTime(),
+                p.getWithdrawalStatus() != null ? p.getWithdrawalStatus().name() : null
+        );
     }
 }

@@ -4,9 +4,14 @@ import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.DisableTimeRestrictionRequest;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
+import com.recred.backend.application.GetTimeRestrictionsByStudentRequest;
+import com.recred.backend.application.GetTimeRestrictionsByStudentResponse;
 import com.recred.backend.application.TimeRestrictionCommand;
 import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.application.UpdateTimeRestrictionRequest;
+import com.recred.backend.application.UpdateTimeRestrictionResponse;
 import com.recred.backend.domain.models.RestriccionHoraria;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,26 +70,54 @@ class TimeRestrictionControllerTest {
     @Test
     void getByStudent_ShouldReturnRestrictions() {
         UUID studentId = UUID.randomUUID();
-        RestriccionHoraria restriction = restriction();
-        when(getTimeRestrictionsByStudent.execute(studentId)).thenReturn(List.of(restriction));
+        GetTimeRestrictionsByStudentResponse responseDto = new GetTimeRestrictionsByStudentResponse(
+                UUID.randomUUID(),
+                studentId,
+                null,
+                null,
+                null,
+                true,
+                UUID.randomUUID()
+        );
+        when(getTimeRestrictionsByStudent.execute(new GetTimeRestrictionsByStudentRequest(studentId)))
+                .thenReturn(List.of(responseDto));
 
-        ResponseEntity<List<RestriccionHoraria>> response = controller.getByStudent(studentId);
+        ResponseEntity<List<GetTimeRestrictionsByStudentResponse>> response = controller.getByStudent(studentId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(List.of(restriction), response.getBody());
+        assertEquals(List.of(responseDto), response.getBody());
     }
 
     @Test
     void update_ShouldReturnUpdatedRestriction() {
         UUID restrictionId = UUID.randomUUID();
-        TimeRestrictionCommand command = command();
-        RestriccionHoraria restriction = restriction();
-        when(updateTimeRestriction.execute(restrictionId, command)).thenReturn(restriction);
+        UpdateTimeRestrictionRequest requestBody = new UpdateTimeRestrictionRequest(
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID()
+        );
+        UpdateTimeRestrictionRequest expectedRequest = new UpdateTimeRestrictionRequest(
+                restrictionId,
+                requestBody.timeSlotId(),
+                requestBody.categoryId(),
+                requestBody.classificationId()
+        );
+        UpdateTimeRestrictionResponse responseMock = new UpdateTimeRestrictionResponse(
+                restrictionId,
+                UUID.randomUUID(),
+                null,
+                null,
+                null,
+                true,
+                UUID.randomUUID()
+        );
+        when(updateTimeRestriction.execute(expectedRequest)).thenReturn(responseMock);
 
-        ResponseEntity<RestriccionHoraria> response = controller.update(restrictionId, command);
+        ResponseEntity<UpdateTimeRestrictionResponse> response = controller.update(restrictionId, requestBody);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(restriction, response.getBody());
+        assertEquals(responseMock, response.getBody());
     }
 
     @Test
@@ -95,7 +128,7 @@ class TimeRestrictionControllerTest {
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         assertNull(response.getBody());
-        verify(disableTimeRestriction).execute(restrictionId);
+        verify(disableTimeRestriction).execute(new DisableTimeRestrictionRequest(restrictionId));
     }
 
     private TimeRestrictionCommand command() {

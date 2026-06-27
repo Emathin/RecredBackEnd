@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.AgregarProductoFavorito;
+import com.recred.backend.application.AgregarProductoFavoritoRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Tutor;
@@ -50,7 +51,7 @@ class AgregarProductoFavoritoTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(productRepository.findById(productoId)).thenReturn(Optional.of(producto));
 
-        agregarProductoFavorito.execute(alumnoId, productoId);
+        agregarProductoFavorito.execute(new AgregarProductoFavoritoRequest(alumnoId, productoId));
 
         assertTrue(alumno.getProductosFavoritos().contains(producto));
         verify(alumnoRepository, times(1)).save(alumno);
@@ -64,7 +65,7 @@ class AgregarProductoFavoritoTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                agregarProductoFavorito.execute(alumnoId, productoId)
+                agregarProductoFavorito.execute(new AgregarProductoFavoritoRequest(alumnoId, productoId))
         );
 
         verify(productRepository, never()).findById(any());
@@ -82,7 +83,7 @@ class AgregarProductoFavoritoTest {
         when(productRepository.findById(productoId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                agregarProductoFavorito.execute(alumnoId, productoId)
+                agregarProductoFavorito.execute(new AgregarProductoFavoritoRequest(alumnoId, productoId))
         );
 
         verify(alumnoRepository, never()).save(any());
@@ -114,7 +115,7 @@ class AgregarProductoFavoritoTest {
         when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(java.util.List.of(tutor));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                agregarProductoFavorito.execute(alumnoId, productoId)
+                agregarProductoFavorito.execute(new AgregarProductoFavoritoRequest(alumnoId, productoId))
         );
         assertEquals("Límite de productos favoritos alcanzado para cuenta gratuita (máximo 5)", exception.getMessage());
         verify(alumnoRepository, never()).save(any());
@@ -145,7 +146,7 @@ class AgregarProductoFavoritoTest {
         when(productRepository.findById(productoId)).thenReturn(Optional.of(nuevoProducto));
         when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(java.util.List.of(tutor));
 
-        agregarProductoFavorito.execute(alumnoId, productoId);
+        agregarProductoFavorito.execute(new AgregarProductoFavoritoRequest(alumnoId, productoId));
 
         assertTrue(alumno.getProductosFavoritos().contains(nuevoProducto));
         assertEquals(6, alumno.getProductosFavoritos().size());

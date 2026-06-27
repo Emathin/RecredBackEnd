@@ -1,11 +1,14 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AgregarProductoFavorito;
+import com.recred.backend.application.AgregarProductoFavoritoRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetFavoritosByAlumno;
+import com.recred.backend.application.GetFavoritosByAlumnoRequest;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
 import com.recred.backend.application.RemoverProductoFavorito;
+import com.recred.backend.application.RemoverProductoFavoritoRequest;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -105,7 +108,7 @@ public class StudentPreferenceController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId
     ) {
-        agregarProductoFavorito.execute(alumnoId, productoId);
+        agregarProductoFavorito.execute(new AgregarProductoFavoritoRequest(alumnoId, productoId));
         return ResponseEntity.ok().build();
     }
 
@@ -114,7 +117,7 @@ public class StudentPreferenceController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId
     ) {
-        removerProductoFavorito.execute(alumnoId, productoId);
+        removerProductoFavorito.execute(new RemoverProductoFavoritoRequest(alumnoId, productoId));
         return ResponseEntity.ok().build();
     }
 
@@ -122,10 +125,11 @@ public class StudentPreferenceController {
     public ResponseEntity<List<ProductResponseDTO>> obtenerFavoritos(
             @PathVariable UUID alumnoId
     ) {
-        List<ProductResponseDTO> favoritos = getFavoritosByAlumno.execute(alumnoId)
-                .stream()
-                .map(ProductResponseDTO::fromDomain)
-                .toList();
+        List<ProductResponseDTO> favoritos =
+                getFavoritosByAlumno.execute(new GetFavoritosByAlumnoRequest(alumnoId))
+                        .stream()
+                        .map(ProductResponseDTO::fromUseCaseResponse)
+                        .toList();
         return ResponseEntity.ok(favoritos);
     }
 

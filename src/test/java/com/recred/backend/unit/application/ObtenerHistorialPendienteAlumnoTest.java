@@ -6,6 +6,7 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,11 +23,18 @@ class ObtenerHistorialPendienteAlumnoTest {
                 new ObtenerHistorialPendienteAlumno(purchaseRepository);
         UUID alumnoId = UUID.randomUUID();
         Purchase purchase = new Purchase();
+        purchase.setId(UUID.randomUUID());
+        purchase.setTotalAmount(new BigDecimal("1200.00"));
+        
         when(purchaseRepository.findPendientesByAlumno(alumnoId))
                 .thenReturn(List.of(purchase));
 
-        List<Purchase> result = useCase.execute(alumnoId);
+        List<ObtenerHistorialPendienteAlumnoResponse> result = useCase.execute(
+                new ObtenerHistorialPendienteAlumnoRequest(alumnoId)
+        );
 
-        assertEquals(List.of(purchase), result);
+        assertEquals(1, result.size());
+        assertEquals(purchase.getId(), result.get(0).id());
+        assertEquals(purchase.getTotalAmount(), result.get(0).totalAmount());
     }
 }

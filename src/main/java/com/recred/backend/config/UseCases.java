@@ -1285,14 +1285,12 @@ public class UseCases {
 
     @Bean
     public GetTutorGlobalDashboard getTutorGlobalDashboard(
-            ObtenerHijosPorPadre obtenerHijosPorPadre,
             GetActiveBudgetByStudent getActiveBudgetByStudent,
             GetStudentRewardStatus getStudentRewardStatus,
             PredictStudentSpending predictStudentSpending,
             ObtenerHistorialAlumno obtenerHistorialAlumno,
             TutorRepository tutorRepository) {
         return new GetTutorGlobalDashboard(
-                obtenerHijosPorPadre,
                 getActiveBudgetByStudent,
                 getStudentRewardStatus,
                 predictStudentSpending,

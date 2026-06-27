@@ -4,8 +4,6 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 public class DesbloquearProductoManual {
 
     private final AlumnoRepository alumnoRepository;
@@ -15,11 +13,11 @@ public class DesbloquearProductoManual {
     }
 
     @Transactional
-    public void execute(UUID alumnoId, UUID productoId) {
-        Alumno alumno = alumnoRepository.findById(alumnoId)
+    public void execute(DesbloquearProductoManualRequest request) {
+        Alumno alumno = alumnoRepository.findById(request.alumnoId())
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
-        alumno.desbloquearProducto(productoId);
+        alumno.desbloquearProducto(request.productoId());
         alumnoRepository.save(alumno);
     }
 }

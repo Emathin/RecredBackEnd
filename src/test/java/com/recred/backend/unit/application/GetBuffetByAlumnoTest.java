@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetBuffetByAlumno;
+import com.recred.backend.application.GetBuffetByAlumnoRequest;
+import com.recred.backend.application.GetBuffetByAlumnoResponse;
 import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.BuffetRepository;
@@ -42,10 +44,10 @@ class GetBuffetByAlumnoTest {
         when(alumnoRepository.existsById(alumnoId)).thenReturn(true);
         when(buffetRepository.findByAlumnoId(alumnoId)).thenReturn(Optional.of(buffet));
 
-        Optional<Buffet> resultado = getBuffetByAlumno.execute(alumnoId);
+        Optional<GetBuffetByAlumnoResponse> resultado = getBuffetByAlumno.execute(new GetBuffetByAlumnoRequest(alumnoId));
 
         assertTrue(resultado.isPresent());
-        assertEquals("Buffet Central", resultado.get().getNombre());
+        assertEquals("Buffet Central", resultado.get().nombre());
         verify(alumnoRepository, times(1)).existsById(alumnoId);
         verify(buffetRepository, times(1)).findByAlumnoId(alumnoId);
     }
@@ -56,7 +58,7 @@ class GetBuffetByAlumnoTest {
         when(alumnoRepository.existsById(alumnoId)).thenReturn(false);
 
         assertThrows(AlumnoNoEncontradoException.class, () ->
-                getBuffetByAlumno.execute(alumnoId)
+                getBuffetByAlumno.execute(new GetBuffetByAlumnoRequest(alumnoId))
         );
 
         verify(alumnoRepository, times(1)).existsById(alumnoId);
@@ -69,7 +71,7 @@ class GetBuffetByAlumnoTest {
         when(alumnoRepository.existsById(alumnoId)).thenReturn(true);
         when(buffetRepository.findByAlumnoId(alumnoId)).thenReturn(Optional.empty());
 
-        Optional<Buffet> resultado = getBuffetByAlumno.execute(alumnoId);
+        Optional<GetBuffetByAlumnoResponse> resultado = getBuffetByAlumno.execute(new GetBuffetByAlumnoRequest(alumnoId));
 
         assertFalse(resultado.isPresent());
         verify(alumnoRepository, times(1)).existsById(alumnoId);

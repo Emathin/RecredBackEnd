@@ -2,6 +2,8 @@ package com.recred.backend.web;
 
 import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.ObtenerHijosPorPadre;
+import com.recred.backend.application.ObtenerHijosPorPadreRequest;
+import com.recred.backend.application.ObtenerHijosPorPadreResponse;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
@@ -102,7 +104,18 @@ class TutorControllerTest {
         alumno.setGrado(grado);
         alumno.setBilletera(billetera);
 
-        when(obtenerHijosPorPadre.execute(tutorId)).thenReturn(Set.of(alumno));
+        ObtenerHijosPorPadreResponse childResponse = new ObtenerHijosPorPadreResponse(
+                alumnoId,
+                "Lucas",
+                "Pérez",
+                true,
+                "1 A",
+                colegioId,
+                new BigDecimal("150.50"),
+                null
+        );
+        when(obtenerHijosPorPadre.execute(ObtenerHijosPorPadreRequest.byTutorId(tutorId)))
+                .thenReturn(List.of(childResponse));
 
         mockMvc.perform(get("/api/v1/tutores/{tutorId}/hijos", tutorId)
                         .contentType(MediaType.APPLICATION_JSON))
@@ -120,9 +133,18 @@ class TutorControllerTest {
     void dadoUnTutorAutenticado_cuandoConsultaMisHijos_entoncesUsaCognitoSubject()
             throws Exception {
         UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = alumno(alumnoId, "Ana", "Lopez");
-        when(obtenerHijosPorPadre.executeByCognitoSubject("tutor-sub"))
-                .thenReturn(Set.of(alumno));
+        ObtenerHijosPorPadreResponse response = new ObtenerHijosPorPadreResponse(
+                alumnoId,
+                "Ana",
+                "Lopez",
+                true,
+                null,
+                null,
+                BigDecimal.ZERO,
+                null
+        );
+        when(obtenerHijosPorPadre.execute(ObtenerHijosPorPadreRequest.byCognitoSubject("tutor-sub")))
+                .thenReturn(List.of(response));
 
         mockMvc.perform(get("/api/v1/tutores/me/hijos")
                         .principal(new TestingAuthenticationToken("tutor-sub", ""))
@@ -131,7 +153,7 @@ class TutorControllerTest {
                 .andExpect(jsonPath("$[0].id").value(alumnoId.toString()))
                 .andExpect(jsonPath("$[0].nombre").value("Ana"));
 
-        verify(obtenerHijosPorPadre).executeByCognitoSubject("tutor-sub");
+        verify(obtenerHijosPorPadre).execute(ObtenerHijosPorPadreRequest.byCognitoSubject("tutor-sub"));
     }
 
     @Test
@@ -195,9 +217,21 @@ class TutorControllerTest {
                 new com.recred.backend.domain.models.Tutor();
         tutor.setId(tutorId);
         usuario.setTutor(tutor);
+        
+        ObtenerHijosPorPadreResponse responseChild = new ObtenerHijosPorPadreResponse(
+                alumnoId,
+                "Sofia",
+                "Diaz",
+                true,
+                null,
+                null,
+                BigDecimal.ZERO,
+                null
+        );
+        
         when(usuarioService.obtenerUsuarioActual("tutor-sub")).thenReturn(usuario);
-        when(obtenerHijosPorPadre.execute(tutorId))
-                .thenReturn(Set.of(alumno(alumnoId, "Sofia", "Diaz")));
+        when(obtenerHijosPorPadre.execute(ObtenerHijosPorPadreRequest.byTutorId(tutorId)))
+                .thenReturn(List.of(responseChild));
 
         ResponseEntity<List<StudentDTO>> response = controller.obtenerHijos(
                 "me",
@@ -207,7 +241,7 @@ class TutorControllerTest {
         assertEquals(200, response.getStatusCode().value());
         assertEquals(alumnoId, response.getBody().get(0).id());
         verify(usuarioService).obtenerUsuarioActual("tutor-sub");
-        verify(obtenerHijosPorPadre).execute(tutorId);
+        verify(obtenerHijosPorPadre).execute(ObtenerHijosPorPadreRequest.byTutorId(tutorId));
     }
 
     @Test

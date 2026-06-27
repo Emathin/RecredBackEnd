@@ -1,8 +1,12 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.ActualizarFotoAlumno;
+import com.recred.backend.application.ActualizarFotoAlumnoRequest;
+import com.recred.backend.application.ActualizarFotoAlumnoResponse;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.ObtenerHijosPorPadre;
+import com.recred.backend.application.ObtenerHijosPorPadreRequest;
+import com.recred.backend.application.ObtenerHijosPorPadreResponse;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -50,10 +54,11 @@ public class TutorController {
 
     @GetMapping("/me/hijos")
     public ResponseEntity<List<StudentDTO>> obtenerMisHijos(Authentication authentication) {
+        var request = ObtenerHijosPorPadreRequest.byCognitoSubject(cognitoSubject(authentication));
         List<StudentDTO> alumnos = obtenerHijosPorPadre
-                .executeByCognitoSubject(cognitoSubject(authentication))
+                .execute(request)
                 .stream()
-                .map(StudentDTO::fromDomain)
+                .map(this::toStudentDTO)
                 .toList();
 
         return ResponseEntity.ok(alumnos);
@@ -93,9 +98,10 @@ public class TutorController {
             id = UUID.fromString(tutorId);
         }
 
-        List<StudentDTO> alumnos = obtenerHijosPorPadre.execute(id)
+        var request = ObtenerHijosPorPadreRequest.byTutorId(id);
+        List<StudentDTO> alumnos = obtenerHijosPorPadre.execute(request)
                 .stream()
-                .map(StudentDTO::fromDomain)
+                .map(this::toStudentDTO)
                 .toList();
 
         return ResponseEntity.ok(alumnos);
@@ -109,9 +115,36 @@ public class TutorController {
             @RequestParam("foto") MultipartFile foto) {
         String cognitoSub = cognitoSubject(authentication);
         String url = cloudinaryService.uploadImage(foto);
-        com.recred.backend.domain.models.Alumno alumno =
-                actualizarFotoAlumno.execute(cognitoSub, alumnoId, url);
-        return ResponseEntity.ok(StudentDTO.fromDomain(alumno));
+        ActualizarFotoAlumnoRequest request =
+                new ActualizarFotoAlumnoRequest(cognitoSub, alumnoId, url);
+        ActualizarFotoAlumnoResponse response = actualizarFotoAlumno.execute(request);
+        return ResponseEntity.ok(toStudentDTO(response));
+    }
+
+    private StudentDTO toStudentDTO(ActualizarFotoAlumnoResponse response) {
+        return new StudentDTO(
+                response.id(),
+                response.nombre(),
+                response.apellido(),
+                response.activo(),
+                response.grado(),
+                response.colegioId(),
+                response.saldo(),
+                response.urlFotoPerfil()
+        );
+    }
+
+    private StudentDTO toStudentDTO(ObtenerHijosPorPadreResponse response) {
+        return new StudentDTO(
+                response.id(),
+                response.nombre(),
+                response.apellido(),
+                response.activo(),
+                response.grado(),
+                response.colegioId(),
+                response.saldo(),
+                response.urlFotoPerfil()
+        );
     }
 
     private String cognitoSubject(Authentication authentication) {

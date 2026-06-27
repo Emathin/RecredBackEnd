@@ -1,9 +1,12 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.DeleteCarritoFavorito;
+import com.recred.backend.application.DeleteCarritoFavoritoRequest;
 import com.recred.backend.application.GetCarritosFavoritosByTutor;
+import com.recred.backend.application.GetCarritosFavoritosByTutorRequest;
+import com.recred.backend.application.GetCarritosFavoritosByTutorResponse;
 import com.recred.backend.application.SaveCarritoFavorito;
-import com.recred.backend.domain.models.CarritoFavorito;
+import com.recred.backend.application.SaveCarritoFavoritoResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -51,16 +54,18 @@ public class CarritoFavoritoController {
                         SaveCarritoFavoritoRequest.ItemRequest::quantity
                 ));
 
-        CarritoFavorito cart = saveCarritoFavorito.execute(
-                cognitoSubject(authentication),
-                request.id(),
-                request.nombre(),
-                request.alumnoId(),
-                productQuantities
+        SaveCarritoFavoritoResponse cart = saveCarritoFavorito.execute(
+                new com.recred.backend.application.SaveCarritoFavoritoRequest(
+                        cognitoSubject(authentication),
+                        request.id(),
+                        request.nombre(),
+                        request.alumnoId(),
+                        productQuantities
+                )
         );
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(CarritoFavoritoResponse.fromDomain(cart));
+                .body(CarritoFavoritoResponse.fromUseCaseResponse(cart));
     }
 
     @GetMapping
@@ -69,14 +74,16 @@ public class CarritoFavoritoController {
             @RequestParam(required = false) UUID alumnoId,
             @RequestParam(required = false) UUID productoId) {
 
-        List<CarritoFavorito> carts = getCarritosFavoritosByTutor.execute(
-                cognitoSubject(authentication),
-                alumnoId,
-                productoId
+        List<GetCarritosFavoritosByTutorResponse> carts = getCarritosFavoritosByTutor.execute(
+                new GetCarritosFavoritosByTutorRequest(
+                        cognitoSubject(authentication),
+                        alumnoId,
+                        productoId
+                )
         );
 
         List<CarritoFavoritoResponse> response = carts.stream()
-                .map(CarritoFavoritoResponse::fromDomain)
+                .map(CarritoFavoritoResponse::fromDto)
                 .toList();
 
         return ResponseEntity.ok(response);
@@ -87,7 +94,9 @@ public class CarritoFavoritoController {
             Authentication authentication,
             @PathVariable UUID id) {
 
-        deleteCarritoFavorito.execute(cognitoSubject(authentication), id);
+        deleteCarritoFavorito.execute(
+                new DeleteCarritoFavoritoRequest(cognitoSubject(authentication), id)
+        );
         return ResponseEntity.noContent().build();
     }
 

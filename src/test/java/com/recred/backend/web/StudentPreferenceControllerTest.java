@@ -1,11 +1,15 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.AgregarProductoFavorito;
+import com.recred.backend.application.AgregarProductoFavoritoRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetFavoritosByAlumno;
+import com.recred.backend.application.GetFavoritosByAlumnoRequest;
+import com.recred.backend.application.GetFavoritosByAlumnoResponse;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
 import com.recred.backend.application.RemoverProductoFavorito;
+import com.recred.backend.application.RemoverProductoFavoritoRequest;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
@@ -188,7 +192,7 @@ class StudentPreferenceControllerTest {
         ResponseEntity<Void> response = controller.agregarFavorito(studentId, productoId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(agregarProductoFavorito).execute(studentId, productoId);
+        verify(agregarProductoFavorito).execute(new AgregarProductoFavoritoRequest(studentId, productoId));
     }
 
     @Test
@@ -199,23 +203,44 @@ class StudentPreferenceControllerTest {
         ResponseEntity<Void> response = controller.removerFavorito(studentId, productoId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(removerProductoFavorito).execute(studentId, productoId);
+        verify(removerProductoFavorito).execute(new RemoverProductoFavoritoRequest(studentId, productoId));
     }
 
     @Test
     void obtenerFavoritosSuccessfully() {
         UUID studentId = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        producto.setNombre("Test");
+        UUID productId = UUID.randomUUID();
+        GetFavoritosByAlumnoResponse responseDTO = new GetFavoritosByAlumnoResponse(
+                productId,
+                "Test",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
 
-        when(getFavoritosByAlumno.execute(studentId)).thenReturn(Set.of(producto));
+        when(getFavoritosByAlumno.execute(new GetFavoritosByAlumnoRequest(studentId))).thenReturn(Set.of(responseDTO));
 
         ResponseEntity<List<ProductResponseDTO>> response = controller.obtenerFavoritos(studentId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
-        assertEquals(producto.getId(), response.getBody().get(0).id());
-        verify(getFavoritosByAlumno).execute(studentId);
+        assertEquals(productId, response.getBody().get(0).id());
+        verify(getFavoritosByAlumno).execute(new GetFavoritosByAlumnoRequest(studentId));
     }
 }

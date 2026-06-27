@@ -1,11 +1,16 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AddHealthRestriction;
+import com.recred.backend.application.AddHealthRestrictionRequest;
 import com.recred.backend.application.BloquearProductoManual;
+import com.recred.backend.application.BloquearProductoManualRequest;
 import com.recred.backend.application.DesbloquearProductoManual;
+import com.recred.backend.application.DesbloquearProductoManualRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.GetHealthRestrictionsRequest;
 import com.recred.backend.application.ManageRestrictions;
+import com.recred.backend.application.ManageRestrictionsRequest;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -55,7 +60,7 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @RequestBody ActualizarRestriccionesDTO dto) {
 
-        useCase.execute(alumnoId, dto.getClasificacionesIds());
+        useCase.execute(new ManageRestrictionsRequest(alumnoId, dto.getClasificacionesIds()));
         return ResponseEntity.ok().build();
     }
 
@@ -63,9 +68,11 @@ public class ControlParentalController {
     public ResponseEntity<List<ClasificacionSaludDTO>> obtenerRestriccionesSalud (
             @PathVariable UUID alumnoId) {
 
-        var restriccionesDominio = obtenerRestriccionesUseCase.ejecutar(alumnoId);
-        List<ClasificacionSaludDTO> respuesta = restriccionesDominio.stream()
-                .map(ClasificacionSaludDTO::fromDomain)
+        var restriccionesResponse = obtenerRestriccionesUseCase.ejecutar(
+                new GetHealthRestrictionsRequest(alumnoId)
+        );
+        List<ClasificacionSaludDTO> respuesta = restriccionesResponse.stream()
+                .map(res -> new ClasificacionSaludDTO(res.id(), res.descripcion()))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(respuesta);
@@ -76,7 +83,7 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID clasificacionId) {
 
-        addHealthRestriction.execute(alumnoId, clasificacionId);
+        addHealthRestriction.execute(new AddHealthRestrictionRequest(alumnoId, clasificacionId));
         return ResponseEntity.ok().build();
     }
 
@@ -101,7 +108,7 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId) {
 
-        bloquearProductoManual.execute(alumnoId, productoId);
+        bloquearProductoManual.execute(new BloquearProductoManualRequest(alumnoId, productoId));
         return ResponseEntity.ok().build();
     }
 
@@ -110,7 +117,9 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId) {
 
-        desbloquearProductoManual.execute(alumnoId, productoId);
+        desbloquearProductoManual.execute(
+                new DesbloquearProductoManualRequest(alumnoId, productoId)
+        );
         return ResponseEntity.ok().build();
     }
 }

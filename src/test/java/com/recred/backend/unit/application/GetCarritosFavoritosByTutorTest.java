@@ -63,9 +63,21 @@ class GetCarritosFavoritosByTutorTest {
         when(carritoFavoritoRepository.findByTutorIdAndFilters(tutorId, alumnoId, productoId))
                 .thenReturn(List.of(cart));
 
-        List<CarritoFavorito> result = useCase.execute(cognitoSub, alumnoId, productoId);
+        List<GetCarritosFavoritosByTutorResponse> result = useCase.execute(
+                new GetCarritosFavoritosByTutorRequest(cognitoSub, alumnoId, productoId)
+        );
 
-        assertEquals(List.of(cart), result);
+        GetCarritosFavoritosByTutorResponse expected = new GetCarritosFavoritosByTutorResponse(
+                cart.getId(),
+                cart.getNombre(),
+                null,
+                null,
+                null,
+                null,
+                List.of()
+        );
+
+        assertEquals(List.of(expected), result);
     }
 
     @Test
@@ -74,7 +86,7 @@ class GetCarritosFavoritosByTutorTest {
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.empty());
 
         assertThrows(SecurityException.class,
-                () -> useCase.execute(cognitoSub, UUID.randomUUID(), UUID.randomUUID()));
+                () -> useCase.execute(new GetCarritosFavoritosByTutorRequest(cognitoSub, UUID.randomUUID(), UUID.randomUUID())));
 
         verifyNoInteractions(tutorRepository, carritoFavoritoRepository);
     }
@@ -89,7 +101,7 @@ class GetCarritosFavoritosByTutorTest {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
 
         assertThrows(SecurityException.class,
-                () -> useCase.execute(cognitoSub, UUID.randomUUID(), UUID.randomUUID()));
+                () -> useCase.execute(new GetCarritosFavoritosByTutorRequest(cognitoSub, UUID.randomUUID(), UUID.randomUUID())));
 
         verifyNoInteractions(carritoFavoritoRepository);
     }

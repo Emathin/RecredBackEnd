@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.GetHealthRestrictionsRequest;
+import com.recred.backend.application.GetHealthRestrictionsResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -41,15 +43,18 @@ class GetHealthRestrictionsTest {
     void ejecutar_CuandoAlumnoExiste_DeberiaRetornarRestricciones() {
         ClasificacionSalud clasificacion = new ClasificacionSalud();
         clasificacion.setId(UUID.randomUUID());
+        clasificacion.setDescripcion("Celíaco");
         alumno.getRestriccionesSalud().add(clasificacion);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        Set<ClasificacionSalud> resultado = useCase.ejecutar(alumnoId);
+        Set<GetHealthRestrictionsResponse> resultado = useCase.ejecutar(new GetHealthRestrictionsRequest(alumnoId));
 
         assertNotNull(resultado);
         assertEquals(1, resultado.size());
-        assertTrue(resultado.contains(clasificacion));
+        GetHealthRestrictionsResponse responseItem = resultado.iterator().next();
+        assertEquals(clasificacion.getId(), responseItem.id());
+        assertEquals("Celíaco", responseItem.descripcion());
     }
 
     @Test
@@ -57,7 +62,7 @@ class GetHealthRestrictionsTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.ejecutar(alumnoId);
+            useCase.ejecutar(new GetHealthRestrictionsRequest(alumnoId));
         });
 
         assertEquals("El alumno con ID " + alumnoId + " no existe.", exception.getMessage());

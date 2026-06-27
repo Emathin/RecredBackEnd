@@ -1,5 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.GetFavoritosByAlumnoResponse;
 import com.recred.backend.domain.models.Producto;
 
 import java.math.BigDecimal;
@@ -32,6 +33,53 @@ public record ProductResponseDTO(
         Set<ClasificacionDTO> clasificacionesSalud,
         Set<ClasificacionDTO> tipos
 ) {
+
+    public static ProductResponseDTO fromUseCaseResponse(GetFavoritosByAlumnoResponse response) {
+        CategoryDTO categoriaDTO = null;
+        if (response.categoria() != null) {
+            categoriaDTO = new CategoryDTO(
+                    response.categoria().id(),
+                    response.categoria().descripcion()
+            );
+        }
+
+        Set<ClasificacionDTO> saludDTOs = response.clasificacionesSalud() == null
+                ? Set.of()
+                : response.clasificacionesSalud().stream()
+                        .map(cs -> new ClasificacionDTO(cs.id(), cs.descripcion()))
+                        .collect(Collectors.toSet());
+
+        Set<ClasificacionDTO> tiposDTOs = response.tipos() == null
+                ? Set.of()
+                : response.tipos().stream()
+                        .map(ct -> new ClasificacionDTO(ct.id(), ct.descripcion()))
+                        .collect(Collectors.toSet());
+
+        return new ProductResponseDTO(
+                response.id(),
+                response.nombre(),
+                response.descripcion(),
+                response.precio(),
+                response.peso(),
+                response.requierePreparacion(),
+                response.activo(),
+                response.creadoEn(),
+                response.actualizadoEn(),
+                response.stockActual(),
+                response.stockReservado(),
+                response.stockMinimo(),
+                response.stockDisponible(),
+                response.estadoInventario(),
+                response.tipoManejoInventario(),
+                response.cupoMaximoDiario(),
+                response.cupoDisponibleDia(),
+                response.urlImagen(),
+                response.urlImagen(),
+                categoriaDTO,
+                saludDTOs,
+                tiposDTOs
+        );
+    }
 
     public static ProductResponseDTO fromDomain(Producto producto) {
         CategoryDTO categoriaDTO = null;

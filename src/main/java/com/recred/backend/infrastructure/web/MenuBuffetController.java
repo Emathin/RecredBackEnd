@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GenerarMenuBuffet;
 import com.recred.backend.application.GetBuffetByAlumno;
+import com.recred.backend.application.GetBuffetByAlumnoRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -48,8 +49,8 @@ public class MenuBuffetController {
     @GetMapping("/{alumnoId}/buffet")
     public ResponseEntity<AlumnoBuffetResponseDTO> obtenerBuffet(
             @PathVariable UUID alumnoId) {
-        return getBuffetByAlumno.execute(alumnoId)
-                .map(AlumnoBuffetResponseDTO::fromDomain)
+        return getBuffetByAlumno.execute(new GetBuffetByAlumnoRequest(alumnoId))
+                .map(AlumnoBuffetResponseDTO::fromResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
