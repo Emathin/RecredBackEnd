@@ -1,6 +1,6 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.infrastructure.persistence.*;
+import com.recred.backend.infrastructure.persistence.InfrastructureMapper;
 
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
