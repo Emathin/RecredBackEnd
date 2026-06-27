@@ -8,6 +8,8 @@ import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.application.UpdateBudgetRulesCommand;
 import com.recred.backend.application.CheckBudgetDates;
+import com.recred.backend.application.CheckBudgetDatesRequest;
+import com.recred.backend.application.CheckBudgetDatesResponse;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
