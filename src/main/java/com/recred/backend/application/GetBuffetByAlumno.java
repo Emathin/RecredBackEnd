@@ -1,12 +1,10 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.BuffetRepository;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 
 import java.util.Optional;
-import java.util.UUID;
 
 public class GetBuffetByAlumno {
 
@@ -18,10 +16,20 @@ public class GetBuffetByAlumno {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public Optional<Buffet> execute(UUID alumnoId) {
-        if (!alumnoRepository.existsById(alumnoId)) {
-            throw new AlumnoNoEncontradoException(alumnoId);
+    public Optional<GetBuffetByAlumnoResponse> execute(GetBuffetByAlumnoRequest request) {
+        if (!alumnoRepository.existsById(request.alumnoId())) {
+            throw new AlumnoNoEncontradoException(request.alumnoId());
         }
-        return buffetRepository.findByAlumnoId(alumnoId);
+        return buffetRepository.findByAlumnoId(request.alumnoId())
+                .map(buffet -> new GetBuffetByAlumnoResponse(
+                        buffet.getId(),
+                        buffet.getNombre(),
+                        buffet.getColegio() != null ? buffet.getColegio().getId() : null,
+                        buffet.getVendedor() != null ? buffet.getVendedor().getId() : null,
+                        buffet.getFechaVencimientoHabilitacion(),
+                        buffet.getActivo(),
+                        buffet.getCreadoEn(),
+                        buffet.getActualizadoEn()
+                ));
     }
 }

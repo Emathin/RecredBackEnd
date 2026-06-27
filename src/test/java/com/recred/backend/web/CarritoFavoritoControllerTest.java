@@ -5,6 +5,8 @@ import com.recred.backend.infrastructure.web.*;
 import com.recred.backend.application.DeleteCarritoFavorito;
 import com.recred.backend.application.DeleteCarritoFavoritoRequest;
 import com.recred.backend.application.GetCarritosFavoritosByTutor;
+import com.recred.backend.application.GetCarritosFavoritosByTutorRequest;
+import com.recred.backend.application.GetCarritosFavoritosByTutorResponse;
 import com.recred.backend.application.SaveCarritoFavorito;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CarritoFavorito;
@@ -98,8 +100,23 @@ class CarritoFavoritoControllerTest {
         UUID cartId = UUID.randomUUID();
         UUID alumnoId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        when(getCarritosFavoritosByTutor.execute("tutor-sub", alumnoId, productId))
-                .thenReturn(List.of(cart(cartId, alumnoId, productId)));
+        GetCarritosFavoritosByTutorResponse responseDto = new GetCarritosFavoritosByTutorResponse(
+                cartId,
+                "Merienda",
+                null,
+                alumnoId,
+                "Lucia",
+                "Alvarez",
+                List.of(new GetCarritosFavoritosByTutorResponse.CarritoFavoritoItemResponse(
+                        productId,
+                        "Yogur",
+                        new BigDecimal("120.00"),
+                        2
+                ))
+        );
+
+        when(getCarritosFavoritosByTutor.execute(new GetCarritosFavoritosByTutorRequest("tutor-sub", alumnoId, productId)))
+                .thenReturn(List.of(responseDto));
 
         ResponseEntity<List<CarritoFavoritoResponse>> response = controller.getCarts(
                 new TestingAuthenticationToken("tutor-sub", ""),
@@ -110,7 +127,7 @@ class CarritoFavoritoControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(cartId, response.getBody().get(0).id());
         assertEquals("Alvarez", response.getBody().get(0).alumnoApellido());
-        verify(getCarritosFavoritosByTutor).execute("tutor-sub", alumnoId, productId);
+        verify(getCarritosFavoritosByTutor).execute(new GetCarritosFavoritosByTutorRequest("tutor-sub", alumnoId, productId));
     }
 
     @Test

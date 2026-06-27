@@ -3,6 +3,8 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.DeleteCarritoFavorito;
 import com.recred.backend.application.DeleteCarritoFavoritoRequest;
 import com.recred.backend.application.GetCarritosFavoritosByTutor;
+import com.recred.backend.application.GetCarritosFavoritosByTutorRequest;
+import com.recred.backend.application.GetCarritosFavoritosByTutorResponse;
 import com.recred.backend.application.SaveCarritoFavorito;
 import com.recred.backend.domain.models.CarritoFavorito;
 import org.springframework.http.HttpStatus;
@@ -70,14 +72,16 @@ public class CarritoFavoritoController {
             @RequestParam(required = false) UUID alumnoId,
             @RequestParam(required = false) UUID productoId) {
 
-        List<CarritoFavorito> carts = getCarritosFavoritosByTutor.execute(
-                cognitoSubject(authentication),
-                alumnoId,
-                productoId
+        List<GetCarritosFavoritosByTutorResponse> carts = getCarritosFavoritosByTutor.execute(
+                new GetCarritosFavoritosByTutorRequest(
+                        cognitoSubject(authentication),
+                        alumnoId,
+                        productoId
+                )
         );
 
         List<CarritoFavoritoResponse> response = carts.stream()
-                .map(CarritoFavoritoResponse::fromDomain)
+                .map(CarritoFavoritoResponse::fromDto)
                 .toList();
 
         return ResponseEntity.ok(response);

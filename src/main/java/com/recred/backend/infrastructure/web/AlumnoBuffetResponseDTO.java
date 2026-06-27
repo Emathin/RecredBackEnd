@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.domain.models.Buffet;
+import com.recred.backend.application.GetBuffetByAlumnoResponse;
 import java.util.UUID;
 
 public record AlumnoBuffetResponseDTO(
@@ -8,11 +8,11 @@ public record AlumnoBuffetResponseDTO(
         String nombre,
         UUID colegioId
 ) {
-    public static AlumnoBuffetResponseDTO fromDomain(Buffet buffet) {
+    public static AlumnoBuffetResponseDTO fromResponse(GetBuffetByAlumnoResponse response) {
         return new AlumnoBuffetResponseDTO(
-                buffet.getId(),
-                buffet.getNombre(),
-                buffet.getColegio() != null ? buffet.getColegio().getId() : null
+                response.id(),
+                response.nombre(),
+                response.colegioId()
         );
     }
 }

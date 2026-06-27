@@ -9,7 +9,6 @@ import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
 
 public class GetCarritosFavoritosByTutor {
 
@@ -27,15 +26,44 @@ public class GetCarritosFavoritosByTutor {
     }
 
     @Transactional(readOnly = true)
-    public List<CarritoFavorito> execute(String cognitoSub, UUID alumnoId, UUID productoId) {
-        Usuario usuario = usuarioRepository.findByIdCognito(cognitoSub)
+    public List<GetCarritosFavoritosByTutorResponse> execute(
+            GetCarritosFavoritosByTutorRequest request) {
+        Usuario usuario = usuarioRepository.findByIdCognito(request.cognitoSub())
                 .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
 
         Tutor tutor = tutorRepository.findByUsuarioId(usuario.getId())
                 .orElseThrow(() -> new SecurityException(
                         "No se encontró perfil de tutor para el usuario"));
 
-        return carritoFavoritoRepository.findByTutorIdAndFilters(
-                tutor.getId(), alumnoId, productoId);
+        List<CarritoFavorito> domainCarts = carritoFavoritoRepository.findByTutorIdAndFilters(
+                tutor.getId(), request.alumnoId(), request.productoId());
+
+        return domainCarts.stream()
+                .map(cart -> {
+                    List<GetCarritosFavoritosByTutorResponse.CarritoFavoritoItemResponse>
+                            items = cart.getItems() != null
+                            ? cart.getItems().entrySet().stream()
+                                    .map(entry ->
+                                            new GetCarritosFavoritosByTutorResponse
+                                                    .CarritoFavoritoItemResponse(
+                                                    entry.getKey().getId(),
+                                                    entry.getKey().getNombre(),
+                                                    entry.getKey().getPrecio(),
+                                                    entry.getValue()
+                                            ))
+                                    .toList()
+                            : List.of();
+
+                    return new GetCarritosFavoritosByTutorResponse(
+                            cart.getId(),
+                            cart.getNombre(),
+                            cart.getTutor() != null ? cart.getTutor().getId() : null,
+                            cart.getAlumno() != null ? cart.getAlumno().getId() : null,
+                            cart.getAlumno() != null ? cart.getAlumno().getNombre() : null,
+                            cart.getAlumno() != null ? cart.getAlumno().getApellido() : null,
+                            items
+                    );
+                })
+                .toList();
     }
 }

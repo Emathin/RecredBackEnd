@@ -5,10 +5,11 @@ import com.recred.backend.application.GenerarMenuBuffet;
 import com.recred.backend.application.GenerateLowBalanceAlerts;
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetBuffetByAlumno;
+import com.recred.backend.application.GetBuffetByAlumnoRequest;
+import com.recred.backend.application.GetBuffetByAlumnoResponse;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.UpdateTutorDashboardConfig;
-import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Producto;
@@ -152,11 +153,18 @@ class SmallControllerDelegationTest {
         MenuProductoDTO item = MenuProductoDTO.permitido(
                 product("Jugo", new BigDecimal("10.00"))
         );
-        Buffet buffet = new Buffet();
-        buffet.setId(buffetId);
-        buffet.setNombre("Buffet");
+        GetBuffetByAlumnoResponse responseBuffet = new GetBuffetByAlumnoResponse(
+                buffetId,
+                "Buffet",
+                null,
+                null,
+                null,
+                true,
+                null,
+                null
+        );
         when(generarMenuBuffet.execute(alumnoId, buffetId, dateTime)).thenReturn(List.of(item));
-        when(getBuffetByAlumno.execute(alumnoId)).thenReturn(Optional.of(buffet));
+        when(getBuffetByAlumno.execute(new GetBuffetByAlumnoRequest(alumnoId))).thenReturn(Optional.of(responseBuffet));
         MenuBuffetController controller = new MenuBuffetController(
                 generarMenuBuffet,
                 getBuffetByAlumno
@@ -176,7 +184,7 @@ class SmallControllerDelegationTest {
         UUID buffetId = UUID.randomUUID();
         when(generarMenuBuffet.execute(eq(alumnoId), eq(buffetId), any(LocalDateTime.class)))
                 .thenReturn(List.of());
-        when(getBuffetByAlumno.execute(alumnoId)).thenReturn(Optional.empty());
+        when(getBuffetByAlumno.execute(new GetBuffetByAlumnoRequest(alumnoId))).thenReturn(Optional.empty());
         MenuBuffetController controller = new MenuBuffetController(
                 generarMenuBuffet,
                 getBuffetByAlumno
