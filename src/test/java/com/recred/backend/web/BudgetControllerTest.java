@@ -1,13 +1,18 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.CreateBudget;
+import com.recred.backend.application.CreateBudgetResponse;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
+import com.recred.backend.domain.models.PeriodoPresupuesto;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.infrastructure.web.BudgetController;
 import org.junit.jupiter.api.BeforeEach;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -74,7 +79,18 @@ class BudgetControllerTest {
 
     @Test
     void create_Retorna201Created() throws Exception {
-        when(createBudget.execute(any())).thenReturn(presupuestoMock);
+        CreateBudgetResponse responseMock = new CreateBudgetResponse(
+                budgetId,
+                studentId,
+                UUID.randomUUID(),
+                new BigDecimal("5000.00"),
+                PeriodoPresupuesto.SEMANAL,
+                LocalDate.now(),
+                true,
+                List.of(),
+                new BigDecimal("5000.00")
+        );
+        when(createBudget.execute(any())).thenReturn(responseMock);
 
         String jsonBody = "{\"limitAmount\": 5000, \"period\": \"SEMANAL\"}";
 

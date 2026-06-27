@@ -2,6 +2,8 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.BudgetCommand;
 import com.recred.backend.application.CreateBudget;
+import com.recred.backend.application.CreateBudgetRequest;
+import com.recred.backend.application.CreateBudgetResponse;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.UpdateBudget;
@@ -50,9 +52,9 @@ public class BudgetController {
     }
 
     @PostMapping
-    public ResponseEntity<PresupuestoAlumno> create(@RequestBody BudgetCommand command) {
-        PresupuestoAlumno presupuesto = createBudget.execute(command);
-        return ResponseEntity.status(HttpStatus.CREATED).body(presupuesto);
+    public ResponseEntity<CreateBudgetResponse> create(@RequestBody CreateBudgetRequest request) {
+        CreateBudgetResponse response = createBudget.execute(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/student/{studentId}/active")

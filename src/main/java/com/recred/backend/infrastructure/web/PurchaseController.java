@@ -2,6 +2,8 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CreateAdvancePurchase;
+import com.recred.backend.application.CreateAdvancePurchaseRequest;
+import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.ProcessPresentialPurchase;
@@ -88,9 +90,36 @@ public class PurchaseController {
             @Valid @RequestBody AdvancePurchaseRequest request,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
-                createAdvancePurchase.execute(request, cognitoSubject(authentication))
+        CreateAdvancePurchaseRequest useCaseRequest = new CreateAdvancePurchaseRequest(
+                request.orders().stream()
+                        .map(o -> new CreateAdvancePurchaseRequest.OrderRequest(
+                                o.studentId(),
+                                o.buyerId(),
+                                o.buyerType(),
+                                o.buffetId(),
+                                o.date(),
+                                o.recessTime(),
+                                o.items().stream()
+                                        .map(i -> new CreateAdvancePurchaseRequest.ItemRequest(
+                                                i.productId(),
+                                                i.quantity()
+                                        ))
+                                        .toList(),
+                                o.suggestionId(),
+                                o.tutorId()
+                        ))
+                        .toList()
         );
+
+        CreateAdvancePurchaseResponse useCaseResponse =
+                createAdvancePurchase.execute(useCaseRequest, cognitoSubject(authentication));
+
+        return ResponseEntity.ok(new AdvancePurchaseResponse(
+                useCaseResponse.orderId(),
+                useCaseResponse.status(),
+                useCaseResponse.total(),
+                useCaseResponse.codes()
+        ));
     }
 
     @GetMapping("/{id}")

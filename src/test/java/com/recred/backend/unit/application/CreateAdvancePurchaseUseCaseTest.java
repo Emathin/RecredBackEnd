@@ -32,8 +32,8 @@ import com.recred.backend.domain.services.RecessTimeSlotResolver;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
-import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
-import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
+import com.recred.backend.application.CreateAdvancePurchaseRequest;
+import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -166,7 +166,7 @@ class CreateAdvancePurchaseUseCaseTest {
     void execute_WhenTutorBuysForOwnChild_ShouldCreateAdvancePurchase() {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
-        AdvancePurchaseResponse response = useCase.execute(request(buffetId, suggestionId), "sub");
+        CreateAdvancePurchaseResponse response = useCase.execute(request(buffetId, suggestionId), "sub");
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
@@ -197,7 +197,7 @@ class CreateAdvancePurchaseUseCaseTest {
         user.setRol(RolUsuario.ALUMNO);
         user.setAlumno(student);
 
-        AdvancePurchaseResponse response = useCase.execute(request(buffetId, null), "sub");
+        CreateAdvancePurchaseResponse response = useCase.execute(request(buffetId, null), "sub");
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
@@ -270,7 +270,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
     @Test
     void execute_WhenOrdersAreEmpty_ShouldThrowException() {
-        AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of());
+        CreateAdvancePurchaseRequest request = new CreateAdvancePurchaseRequest(List.of());
 
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(request, "sub"));
 
@@ -286,7 +286,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
     @Test
     void execute_WhenOrdersAreNull_ShouldThrowException() {
-        AdvancePurchaseRequest request = new AdvancePurchaseRequest(null);
+        CreateAdvancePurchaseRequest request = new CreateAdvancePurchaseRequest(null);
 
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(request, "sub"));
 
@@ -426,7 +426,7 @@ class CreateAdvancePurchaseUseCaseTest {
         product.setPrecio(null);
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
-        AdvancePurchaseResponse response = useCase.execute(request(buffetId, null), "sub");
+        CreateAdvancePurchaseResponse response = useCase.execute(request(buffetId, null), "sub");
 
         assertEquals(0.0, response.total());
         assertEquals(new BigDecimal("100.00"), wallet.getSaldoCreditos());
@@ -451,7 +451,7 @@ class CreateAdvancePurchaseUseCaseTest {
         );
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
-        AdvancePurchaseResponse response = localUseCase.execute(request(buffetId, null), "sub");
+        CreateAdvancePurchaseResponse response = localUseCase.execute(request(buffetId, null), "sub");
 
         assertEquals(purchaseId.toString(), response.orderId());
     }
@@ -489,34 +489,33 @@ class CreateAdvancePurchaseUseCaseTest {
         );
     }
 
-    private AdvancePurchaseRequest request(UUID requestBuffetId, UUID requestSuggestionId) {
+    private CreateAdvancePurchaseRequest request(UUID requestBuffetId, UUID requestSuggestionId) {
         return request(requestBuffetId, requestSuggestionId, "2026-06-20", List.of(item()));
     }
 
-    private AdvancePurchaseRequest request(
+    private CreateAdvancePurchaseRequest request(
             UUID requestBuffetId,
             UUID requestSuggestionId,
             String date,
-            List<AdvancePurchaseRequest.ItemRequest> items
+            List<CreateAdvancePurchaseRequest.ItemRequest> items
     ) {
-        AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
-                studentId,
-                userId,
-                BuyerType.TUTOR,
-                requestBuffetId,
-                date,
-                RecessTime.FIRST_RECESS,
-                items,
-                requestSuggestionId,
-                tutorId
-        );
-        return new AdvancePurchaseRequest(List.of(orderRequest));
+        CreateAdvancePurchaseRequest.OrderRequest orderRequest =
+                new CreateAdvancePurchaseRequest.OrderRequest(
+                        studentId,
+                        userId,
+                        BuyerType.TUTOR,
+                        requestBuffetId,
+                        date,
+                        RecessTime.FIRST_RECESS,
+                        items,
+                        requestSuggestionId,
+                        tutorId
+                );
+        return new CreateAdvancePurchaseRequest(List.of(orderRequest));
     }
 
-    private AdvancePurchaseRequest.ItemRequest item() {
-        AdvancePurchaseRequest.ItemRequest itemRequest =
-                new AdvancePurchaseRequest.ItemRequest(productId, 2);
-        return itemRequest;
+    private CreateAdvancePurchaseRequest.ItemRequest item() {
+        return new CreateAdvancePurchaseRequest.ItemRequest(productId, 2);
     }
 
     private Grado grade(UUID schoolId) {

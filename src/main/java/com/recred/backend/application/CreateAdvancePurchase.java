@@ -32,8 +32,7 @@ import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
-import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
-import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
+
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
@@ -115,7 +114,8 @@ public class CreateAdvancePurchase {
     }
 
     @Transactional
-    public AdvancePurchaseResponse execute(AdvancePurchaseRequest request, String cognitoSub) {
+    public CreateAdvancePurchaseResponse execute(
+            CreateAdvancePurchaseRequest request, String cognitoSub) {
         validateRequest(request);
         Usuario user = authenticatedUser(cognitoSub);
 
@@ -123,7 +123,7 @@ public class CreateAdvancePurchase {
         Purchase firstPurchase = null;
         double total = 0;
 
-        for (AdvancePurchaseRequest.OrderRequest orderRequest : request.orders()) {
+        for (CreateAdvancePurchaseRequest.OrderRequest orderRequest : request.orders()) {
             Purchase purchase = createPurchase(orderRequest, user);
             if (firstPurchase == null) {
                 firstPurchase = purchase;
@@ -133,7 +133,7 @@ public class CreateAdvancePurchase {
             codes.put(purchase.getStudent().getId(), purchase.getWithdrawalCode());
         }
 
-        return new AdvancePurchaseResponse(
+        return new CreateAdvancePurchaseResponse(
                 firstPurchase.getId().toString(),
                 PurchaseStatus.from(firstPurchase),
                 total,
@@ -142,7 +142,7 @@ public class CreateAdvancePurchase {
     }
 
     private Purchase createPurchase(
-            AdvancePurchaseRequest.OrderRequest orderRequest,
+            CreateAdvancePurchaseRequest.OrderRequest orderRequest,
             Usuario user
     ) {
         Alumno student = alumnoRepository.findById(orderRequest.studentId())
@@ -190,7 +190,7 @@ public class CreateAdvancePurchase {
         return savedPurchase;
     }
 
-    private void validateRequest(AdvancePurchaseRequest request) {
+    private void validateRequest(CreateAdvancePurchaseRequest request) {
         if (request == null || request.orders() == null || request.orders().isEmpty()) {
             throw new IllegalArgumentException("orders is required");
         }
@@ -235,7 +235,7 @@ public class CreateAdvancePurchase {
         return new Buyer(user.getId(), BuyerType.TUTOR, tutor.getId());
     }
 
-    private UUID buffetId(AdvancePurchaseRequest.OrderRequest orderRequest, Alumno student) {
+    private UUID buffetId(CreateAdvancePurchaseRequest.OrderRequest orderRequest, Alumno student) {
         if (orderRequest.buffetId() != null) {
             return orderRequest.buffetId();
         }
@@ -270,7 +270,7 @@ public class CreateAdvancePurchase {
     }
 
     private Map<Producto, Integer> items(
-            AdvancePurchaseRequest.OrderRequest orderRequest,
+            CreateAdvancePurchaseRequest.OrderRequest orderRequest,
             UUID buffetId
     ) {
         if (orderRequest.items() == null || orderRequest.items().isEmpty()) {
@@ -278,7 +278,7 @@ public class CreateAdvancePurchase {
         }
 
         Map<Producto, Integer> items = new HashMap<>();
-        for (AdvancePurchaseRequest.ItemRequest itemRequest : orderRequest.items()) {
+        for (CreateAdvancePurchaseRequest.ItemRequest itemRequest : orderRequest.items()) {
             Optional<Producto> productOpt = productRepository.findActiveByIdWithStock(
                     itemRequest.productId(),
                     buffetId
