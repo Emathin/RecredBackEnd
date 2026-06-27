@@ -4,6 +4,8 @@ import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AgregarProductoFavoritoRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetFavoritosByAlumno;
+import com.recred.backend.application.GetFavoritosByAlumnoRequest;
+import com.recred.backend.application.GetFavoritosByAlumnoResponse;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
 import com.recred.backend.application.RemoverProductoFavorito;
@@ -206,17 +208,38 @@ class StudentPreferenceControllerTest {
     @Test
     void obtenerFavoritosSuccessfully() {
         UUID studentId = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        producto.setNombre("Test");
+        UUID productId = UUID.randomUUID();
+        GetFavoritosByAlumnoResponse responseDTO = new GetFavoritosByAlumnoResponse(
+                productId,
+                "Test",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
 
-        when(getFavoritosByAlumno.execute(studentId)).thenReturn(Set.of(producto));
+        when(getFavoritosByAlumno.execute(new GetFavoritosByAlumnoRequest(studentId))).thenReturn(Set.of(responseDTO));
 
         ResponseEntity<List<ProductResponseDTO>> response = controller.obtenerFavoritos(studentId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
-        assertEquals(producto.getId(), response.getBody().get(0).id());
-        verify(getFavoritosByAlumno).execute(studentId);
+        assertEquals(productId, response.getBody().get(0).id());
+        verify(getFavoritosByAlumno).execute(new GetFavoritosByAlumnoRequest(studentId));
     }
 }

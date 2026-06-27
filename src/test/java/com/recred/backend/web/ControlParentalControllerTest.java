@@ -8,6 +8,8 @@ import com.recred.backend.application.DesbloquearProductoManual;
 import com.recred.backend.application.DesbloquearProductoManualRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.GetHealthRestrictionsRequest;
+import com.recred.backend.application.GetHealthRestrictionsResponse;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
@@ -111,11 +113,12 @@ class ControlParentalControllerTest {
 
     @Test
     void obtenerRestriccionesSalud_DeberiaRetornarListaY200Ok() throws Exception {
-        ClasificacionSalud clasificacion = new ClasificacionSalud();
-        clasificacion.setId(clasificacionId);
-        clasificacion.setDescripcion("Celíaco");
+        GetHealthRestrictionsResponse responseItem = new GetHealthRestrictionsResponse(
+                clasificacionId, "Celíaco", true
+        );
 
-        when(getHealthRestrictions.ejecutar(alumnoId)).thenReturn(Set.of(clasificacion));
+        when(getHealthRestrictions.ejecutar(new GetHealthRestrictionsRequest(alumnoId)))
+                .thenReturn(Set.of(responseItem));
 
         mockMvc.perform(get("/api/v1/control-parental/alumnos/{alumnoId}/obtener-restricciones-salud", alumnoId)
                         .contentType(MediaType.APPLICATION_JSON))
@@ -123,7 +126,7 @@ class ControlParentalControllerTest {
                 .andExpect(jsonPath("$[0].id").value(clasificacionId.toString()))
                 .andExpect(jsonPath("$[0].descripcion").value("Celíaco"));
 
-        verify(getHealthRestrictions).ejecutar(alumnoId);
+        verify(getHealthRestrictions).ejecutar(new GetHealthRestrictionsRequest(alumnoId));
     }
 
     @Test

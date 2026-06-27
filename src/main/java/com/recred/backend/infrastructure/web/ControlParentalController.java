@@ -8,6 +8,7 @@ import com.recred.backend.application.DesbloquearProductoManual;
 import com.recred.backend.application.DesbloquearProductoManualRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
+import com.recred.backend.application.GetHealthRestrictionsRequest;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import org.springframework.http.ResponseEntity;
@@ -66,9 +67,11 @@ public class ControlParentalController {
     public ResponseEntity<List<ClasificacionSaludDTO>> obtenerRestriccionesSalud (
             @PathVariable UUID alumnoId) {
 
-        var restriccionesDominio = obtenerRestriccionesUseCase.ejecutar(alumnoId);
-        List<ClasificacionSaludDTO> respuesta = restriccionesDominio.stream()
-                .map(ClasificacionSaludDTO::fromDomain)
+        var restriccionesResponse = obtenerRestriccionesUseCase.ejecutar(
+                new GetHealthRestrictionsRequest(alumnoId)
+        );
+        List<ClasificacionSaludDTO> respuesta = restriccionesResponse.stream()
+                .map(res -> new ClasificacionSaludDTO(res.id(), res.descripcion()))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(respuesta);

@@ -4,6 +4,7 @@ import com.recred.backend.application.AgregarProductoFavorito;
 import com.recred.backend.application.AgregarProductoFavoritoRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetFavoritosByAlumno;
+import com.recred.backend.application.GetFavoritosByAlumnoRequest;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
 import com.recred.backend.application.RemoverProductoFavorito;
@@ -123,10 +124,11 @@ public class StudentPreferenceController {
     public ResponseEntity<List<ProductResponseDTO>> obtenerFavoritos(
             @PathVariable UUID alumnoId
     ) {
-        List<ProductResponseDTO> favoritos = getFavoritosByAlumno.execute(alumnoId)
-                .stream()
-                .map(ProductResponseDTO::fromDomain)
-                .toList();
+        List<ProductResponseDTO> favoritos =
+                getFavoritosByAlumno.execute(new GetFavoritosByAlumnoRequest(alumnoId))
+                        .stream()
+                        .map(ProductResponseDTO::fromUseCaseResponse)
+                        .toList();
         return ResponseEntity.ok(favoritos);
     }
 
