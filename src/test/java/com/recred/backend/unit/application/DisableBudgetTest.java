@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.DisableBudget;
+import com.recred.backend.application.DisableBudgetRequest;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class DisableBudgetTest {
         UUID budgetId = UUID.randomUUID();
         when(repository.findById(budgetId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> disableBudget.execute(budgetId));
+        assertThrows(RuntimeException.class, () -> disableBudget.execute(new DisableBudgetRequest(budgetId)));
     }
 
     @Test
@@ -43,7 +44,7 @@ class DisableBudgetTest {
 
         when(repository.findById(budgetId)).thenReturn(Optional.of(presupuesto));
 
-        disableBudget.execute(budgetId);
+        disableBudget.execute(new DisableBudgetRequest(budgetId));
 
         assertFalse(presupuesto.isActivo(), "El presupuesto debería haber sido desactivado");
         verify(repository).save(presupuesto);

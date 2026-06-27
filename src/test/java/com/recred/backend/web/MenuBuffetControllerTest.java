@@ -1,11 +1,11 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.GenerarMenuBuffet;
-import com.recred.backend.application.GetBuffetByAlumno;
+import com.recred.backend.application.GetBuffetByStudent;
+import com.recred.backend.application.GetBuffetByStudentRequest;
+import com.recred.backend.application.GetBuffetByStudentResponse;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
-import com.recred.backend.domain.models.Buffet;
-import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.infrastructure.web.MenuBuffetController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +38,7 @@ class MenuBuffetControllerTest {
     private GenerarMenuBuffet generarMenuBuffet;
 
     @MockitoBean
-    private GetBuffetByAlumno getBuffetByAlumno;
+    private GetBuffetByStudent getBuffetByStudent;
 
     @MockitoBean
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
@@ -55,14 +55,18 @@ class MenuBuffetControllerTest {
         UUID buffetId = UUID.randomUUID();
         UUID colegioId = UUID.randomUUID();
 
-        Buffet buffet = new Buffet();
-        buffet.setId(buffetId);
-        buffet.setNombre("Buffet del Colegio");
-        Colegio colegio = new Colegio();
-        colegio.setId(colegioId);
-        buffet.setColegio(colegio);
+        GetBuffetByStudentResponse response = new GetBuffetByStudentResponse(
+                buffetId,
+                "Buffet del Colegio",
+                colegioId,
+                null,
+                null,
+                true,
+                null,
+                null
+        );
 
-        when(getBuffetByAlumno.execute(alumnoId)).thenReturn(Optional.of(buffet));
+        when(getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId))).thenReturn(Optional.of(response));
 
         mockMvc.perform(get("/api/v1/alumnos/" + alumnoId + "/buffet")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -75,7 +79,7 @@ class MenuBuffetControllerTest {
     @Test
     void obtenerBuffet_dadoAlumnoSinBuffet_deberiaRetornar404() throws Exception {
         UUID alumnoId = UUID.randomUUID();
-        when(getBuffetByAlumno.execute(alumnoId)).thenReturn(Optional.empty());
+        when(getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId))).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/v1/alumnos/" + alumnoId + "/buffet")
                         .contentType(MediaType.APPLICATION_JSON))

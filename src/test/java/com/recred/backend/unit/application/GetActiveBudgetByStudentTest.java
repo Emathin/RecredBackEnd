@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetActiveBudgetByStudent;
+import com.recred.backend.application.GetActiveBudgetByStudentRequest;
+import com.recred.backend.application.GetActiveBudgetByStudentResponse;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,13 +33,28 @@ class GetActiveBudgetByStudentTest {
     void execute_DelegaLaConsultaAlRepositorio() {
         UUID studentId = UUID.randomUUID();
         PresupuestoAlumno presupuesto = new PresupuestoAlumno();
+        presupuesto.setId(UUID.randomUUID());
+        presupuesto.setAlumnoId(studentId);
+        presupuesto.setActivo(true);
 
         when(repository.findActivoByAlumnoId(studentId)).thenReturn(Optional.of(presupuesto));
 
-        Optional<PresupuestoAlumno> resultado = getActiveBudgetByStudent.execute(studentId);
+        Optional<GetActiveBudgetByStudentResponse> resultado = getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId));
 
         assertTrue(resultado.isPresent());
-        assertEquals(presupuesto, resultado.get());
+        assertEquals(presupuesto.getId(), resultado.get().id());
+        assertEquals(presupuesto.getAlumnoId(), resultado.get().alumnoId());
+        verify(repository).findActivoByAlumnoId(studentId);
+    }
+
+    @Test
+    void execute_CuandoNoHayPresupuestoActivo_RetornaOptionalVacio() {
+        UUID studentId = UUID.randomUUID();
+        when(repository.findActivoByAlumnoId(studentId)).thenReturn(Optional.empty());
+
+        Optional<GetActiveBudgetByStudentResponse> resultado = getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId));
+
+        assertFalse(resultado.isPresent());
         verify(repository).findActivoByAlumnoId(studentId);
     }
 }

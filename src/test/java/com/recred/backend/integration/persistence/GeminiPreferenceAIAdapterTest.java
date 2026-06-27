@@ -2,6 +2,7 @@ package com.recred.backend.integration.persistence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
@@ -15,6 +16,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -41,33 +43,33 @@ class GeminiPreferenceAIAdapterTest {
     }
 
     @Test
-    void analyzePreferencesSuccessfullyWhenGeminiRespondsWithValidJson() {
-        Alumno alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
+    void analyzePreferences_SuccessfullyWhenGeminiRespondsWithValidJson() {
+        Alumno student = new Alumno();
+        student.setId(UUID.randomUUID());
         
-        com.recred.backend.domain.models.CategoriaProducto categoria = new com.recred.backend.domain.models.CategoriaProducto();
-        categoria.setDescripcion("Snacks");
+        CategoriaProducto category = new CategoriaProducto();
+        category.setDescripcion("Snacks");
         
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        producto.setNombre("Papas");
-        producto.setCategoria(categoria);
+        Producto product = new Producto();
+        product.setId(UUID.randomUUID());
+        product.setNombre("Chips");
+        product.setCategoria(category);
         
-        Producto productoSinCat = new Producto();
-        productoSinCat.setId(UUID.randomUUID());
-        productoSinCat.setNombre("Agua");
-        productoSinCat.setCategoria(null);
+        Producto productWithoutCategory = new Producto();
+        productWithoutCategory.setId(UUID.randomUUID());
+        productWithoutCategory.setNombre("Water");
+        productWithoutCategory.setCategoria(null);
 
-        PreferenceAIRepository.CompraResumen compra = new PreferenceAIRepository.CompraResumen(
-                "Galletitas", "Dulces", java.time.LocalDateTime.now()
+        PreferenceAIRepository.CompraResumen purchase = new PreferenceAIRepository.CompraResumen(
+                "Cookies", "Sweets", LocalDateTime.now()
         );
 
         String jsonResponse = """
                 {
-                  "titulo": "Sugerencia Lácteos",
-                  "mensaje": "Le gustan los yogures",
+                  "titulo": "Dairy Suggestion",
+                  "mensaje": "Likes yogurts",
                   "productoId": "prod-123",
-                  "razonIA": "Patrón detectado"
+                  "razonIA": "Pattern detected"
                 }
                 """;
         
@@ -75,25 +77,25 @@ class GeminiPreferenceAIAdapterTest {
                 .thenReturn(Optional.of(new GeminiTextResponse(jsonResponse, "model")));
 
         Optional<PreferenceAIRepository.PreferenciaDetectada> result = 
-                adapter.analizarPreferencias(alumno, List.of(compra), List.of(producto, productoSinCat));
+                adapter.analizarPreferencias(student, List.of(purchase), List.of(product, productWithoutCategory));
 
         assertTrue(result.isPresent());
-        assertEquals("Sugerencia Lácteos", result.get().titulo());
+        assertEquals("Dairy Suggestion", result.get().titulo());
         assertEquals("prod-123", result.get().productoId());
     }
 
     @Test
-    void analyzePreferencesSuccessfullyEvenWhenGeminiWrapsJsonInMarkdownTags() {
-        Alumno alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
+    void analyzePreferences_SuccessfullyEvenWhenGeminiWrapsJsonInMarkdownTags() {
+        Alumno student = new Alumno();
+        student.setId(UUID.randomUUID());
         
         String markdownResponse = """
                 ```json
                 {
-                  "titulo": "Sugerencia Markdown",
-                  "mensaje": "Mensaje limpio",
+                  "titulo": "Markdown Suggestion",
+                  "mensaje": "Clean message",
                   "productoId": "prod-456",
-                  "razonIA": "Lógica de limpieza"
+                  "razonIA": "Cleanup logic"
                 }
                 ```
                 """;
@@ -102,23 +104,23 @@ class GeminiPreferenceAIAdapterTest {
                 .thenReturn(Optional.of(new GeminiTextResponse(markdownResponse, "model")));
 
         Optional<PreferenceAIRepository.PreferenciaDetectada> result = 
-                adapter.analizarPreferencias(alumno, Collections.emptyList(), Collections.emptyList());
+                adapter.analizarPreferencias(student, Collections.emptyList(), Collections.emptyList());
 
         assertTrue(result.isPresent());
-        assertEquals("Sugerencia Markdown", result.get().titulo());
+        assertEquals("Markdown Suggestion", result.get().titulo());
         assertEquals("prod-456", result.get().productoId());
     }
 
     @Test
-    void analyzePreferencesShouldIncludeStudentGradeWhenPresent() {
-        Alumno alumno = new Alumno();
-        Grado grado = new Grado();
-        grado.setAnio("3");
-        grado.setDivision("B");
-        alumno.setGrado(grado);
+    void analyzePreferences_ShouldIncludeStudentGradeWhenPresent() {
+        Alumno student = new Alumno();
+        Grado grade = new Grado();
+        grade.setAnio("3");
+        grade.setDivision("B");
+        student.setGrado(grade);
         when(geminiTextClient.generate(anyString())).thenReturn(Optional.empty());
 
-        adapter.analizarPreferencias(alumno, Collections.emptyList(), Collections.emptyList());
+        adapter.analizarPreferencias(student, Collections.emptyList(), Collections.emptyList());
 
         ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
         verify(geminiTextClient).generate(promptCaptor.capture());
@@ -126,24 +128,24 @@ class GeminiPreferenceAIAdapterTest {
     }
 
     @Test
-    void returnEmptyOptionalWhenGeminiRespondsWithInvalidJson() {
-        Alumno alumno = new Alumno();
+    void returnEmptyOptional_WhenGeminiRespondsWithInvalidJson() {
+        Alumno student = new Alumno();
         when(geminiTextClient.generate(anyString()))
                 .thenReturn(Optional.of(new GeminiTextResponse("invalid json", "model")));
 
         Optional<PreferenceAIRepository.PreferenciaDetectada> result = 
-                adapter.analizarPreferencias(alumno, Collections.emptyList(), Collections.emptyList());
+                adapter.analizarPreferencias(student, Collections.emptyList(), Collections.emptyList());
 
         assertTrue(result.isEmpty());
     }
 
     @Test
-    void returnEmptyOptionalWhenGeminiClientFailsToRespond() {
-        Alumno alumno = new Alumno();
+    void returnEmptyOptional_WhenGeminiClientFailsToRespond() {
+        Alumno student = new Alumno();
         when(geminiTextClient.generate(anyString())).thenReturn(Optional.empty());
 
         Optional<PreferenceAIRepository.PreferenciaDetectada> result = 
-                adapter.analizarPreferencias(alumno, Collections.emptyList(), Collections.emptyList());
+                adapter.analizarPreferencias(student, Collections.emptyList(), Collections.emptyList());
 
         assertTrue(result.isEmpty());
     }

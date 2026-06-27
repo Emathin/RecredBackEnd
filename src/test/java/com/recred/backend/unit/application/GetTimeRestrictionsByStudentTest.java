@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
+import com.recred.backend.application.GetTimeRestrictionsByStudentRequest;
+import com.recred.backend.application.GetTimeRestrictionsByStudentResponse;
 import com.recred.backend.domain.models.RestriccionHoraria;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import org.junit.jupiter.api.Test;
@@ -28,13 +30,31 @@ class GetTimeRestrictionsByStudentTest {
     @Test
     void execute_DevuelveListaDeRestriccionesDelAlumno() {
         UUID studentId = UUID.randomUUID();
-        List<RestriccionHoraria> restriccionesEsperadas = List.of(new RestriccionHoraria());
+        RestriccionHoraria restriccion = new RestriccionHoraria();
+        restriccion.setId(UUID.randomUUID());
+        restriccion.setAlumnoId(studentId);
+        List<RestriccionHoraria> restriccionesEsperadas = List.of(restriccion);
 
         when(repository.findAllByAlumnoEntityId(studentId)).thenReturn(restriccionesEsperadas);
 
-        List<RestriccionHoraria> resultado = getTimeRestrictionsByStudent.execute(studentId);
+        List<GetTimeRestrictionsByStudentResponse> resultado =
+                getTimeRestrictionsByStudent.execute(new GetTimeRestrictionsByStudentRequest(studentId));
 
         assertEquals(1, resultado.size());
+        assertEquals(restriccion.getId(), resultado.get(0).id());
+        assertEquals(studentId, resultado.get(0).alumnoId());
+        verify(repository).findAllByAlumnoEntityId(studentId);
+    }
+
+    @Test
+    void execute_CuandoNoHayRestricciones_RetornaListaVacia() {
+        UUID studentId = UUID.randomUUID();
+        when(repository.findAllByAlumnoEntityId(studentId)).thenReturn(List.of());
+
+        List<GetTimeRestrictionsByStudentResponse> resultado =
+                getTimeRestrictionsByStudent.execute(new GetTimeRestrictionsByStudentRequest(studentId));
+
+        assertEquals(0, resultado.size());
         verify(repository).findAllByAlumnoEntityId(studentId);
     }
 }

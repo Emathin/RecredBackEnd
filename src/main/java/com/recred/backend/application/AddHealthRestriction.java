@@ -18,16 +18,26 @@ public class AddHealthRestriction {
         this.clasificacionRepository = clasificacionRepository;
     }
 
-    public void execute(UUID studentId, UUID classificationId) {
-        Alumno student = alumnoRepository.findById(studentId)
-                .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
+    public void execute(AddHealthRestrictionRequest request) {
+        Alumno student = this.findAlumnoById(request.studentId());
 
-        ClasificacionSalud classification = clasificacionRepository.findById(classificationId)
-                .orElseThrow(() -> new IllegalArgumentException
-                        ("La clasificación médica no existe."));
+        ClasificacionSalud classification =
+                this.findClasificacionSaludById(request.classificationId());
 
         student.agregarRestriccionSalud(classification);
 
         alumnoRepository.save(student);
+    }
+
+    private Alumno findAlumnoById(UUID id) {
+        return alumnoRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
+    }
+
+    private ClasificacionSalud findClasificacionSaludById(UUID id) {
+        return clasificacionRepository
+                .findById(id)
+                .orElseThrow(() -> new IllegalArgumentException
+                        ("La clasificación médica no existe."));
     }
 }

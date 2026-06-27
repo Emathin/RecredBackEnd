@@ -32,12 +32,12 @@ import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
-import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
-import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
+
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -115,7 +115,8 @@ public class CreateAdvancePurchase {
     }
 
     @Transactional
-    public AdvancePurchaseResponse execute(AdvancePurchaseRequest request, String cognitoSub) {
+    public CreateAdvancePurchaseResponse execute(
+            CreateAdvancePurchaseRequest request, String cognitoSub) {
         validateRequest(request);
         Usuario user = authenticatedUser(cognitoSub);
 
@@ -123,7 +124,7 @@ public class CreateAdvancePurchase {
         Purchase firstPurchase = null;
         double total = 0;
 
-        for (AdvancePurchaseRequest.OrderRequest orderRequest : request.orders()) {
+        for (CreateAdvancePurchaseRequest.OrderRequest orderRequest : request.orders()) {
             Purchase purchase = createPurchase(orderRequest, user);
             if (firstPurchase == null) {
                 firstPurchase = purchase;
@@ -133,7 +134,7 @@ public class CreateAdvancePurchase {
             codes.put(purchase.getStudent().getId(), purchase.getWithdrawalCode());
         }
 
-        return new AdvancePurchaseResponse(
+        return new CreateAdvancePurchaseResponse(
                 firstPurchase.getId().toString(),
                 PurchaseStatus.from(firstPurchase),
                 total,
@@ -142,7 +143,7 @@ public class CreateAdvancePurchase {
     }
 
     private Purchase createPurchase(
-            AdvancePurchaseRequest.OrderRequest orderRequest,
+            CreateAdvancePurchaseRequest.OrderRequest orderRequest,
             Usuario user
     ) {
         Alumno student = alumnoRepository.findById(orderRequest.studentId())
@@ -158,6 +159,29 @@ public class CreateAdvancePurchase {
 
         advancePurchaseRulesService.validate(buffetId, pickupSlot, pickupDate, items);
 
+        Purchase purchase = buildPurchase(
+                student, buyer, buffetId, pickupDate, pickupSlot, orderRequest, items);
+
+        purchaseValidator.validate(purchase);
+        BigDecimal total = calculateTotal(items);
+
+        processPaymentAndReserve(orderRequest.studentId(), total, buyer.id(), buffetId, items);
+
+        purchase.setWithdrawalCode(withdrawalCodeService.generateCode(purchase));
+        Purchase savedPurchase = purchaseRepository.save(purchase);
+        registerPurchaseMovement(wallet(orderRequest.studentId()), total, buyer.id());
+        return savedPurchase;
+    }
+
+    private Purchase buildPurchase(
+            Alumno student,
+            Buyer buyer,
+            UUID buffetId,
+            LocalDate pickupDate,
+            FranjaHoraria pickupSlot,
+            CreateAdvancePurchaseRequest.OrderRequest orderRequest,
+            Map<Producto, Integer> items
+    ) {
         Purchase purchase = Purchase.advance(
                 student,
                 items,
@@ -170,27 +194,29 @@ public class CreateAdvancePurchase {
         );
         purchase.setSuggestionId(orderRequest.suggestionId());
         purchase.setTutorId(buyer.tutorId());
+        return purchase;
+    }
 
-        purchaseValidator.validate(purchase);
-        BigDecimal total = calculateTotal(items);
-        Billetera wallet = wallet(orderRequest.studentId());
+    private void processPaymentAndReserve(
+            UUID studentId,
+            BigDecimal total,
+            UUID buyerId,
+            UUID buffetId,
+            Map<Producto, Integer> items
+    ) {
+        Billetera wallet = wallet(studentId);
 
         if (!wallet.hasSufficientBalance(total)) {
             throw new InsufficientBalanceException(
-                    "Insufficient balance for student: " + orderRequest.studentId());
+                    "Insufficient balance for student: " + studentId);
         }
 
         inventoryAvailabilityService.reserve(buffetId, items);
         wallet.debit(total);
         walletRepository.save(wallet);
-
-        purchase.setWithdrawalCode(withdrawalCodeService.generateCode(purchase));
-        Purchase savedPurchase = purchaseRepository.save(purchase);
-        registerPurchaseMovement(wallet, total, buyer.id());
-        return savedPurchase;
     }
 
-    private void validateRequest(AdvancePurchaseRequest request) {
+    private void validateRequest(CreateAdvancePurchaseRequest request) {
         if (request == null || request.orders() == null || request.orders().isEmpty()) {
             throw new IllegalArgumentException("orders is required");
         }
@@ -235,7 +261,7 @@ public class CreateAdvancePurchase {
         return new Buyer(user.getId(), BuyerType.TUTOR, tutor.getId());
     }
 
-    private UUID buffetId(AdvancePurchaseRequest.OrderRequest orderRequest, Alumno student) {
+    private UUID buffetId(CreateAdvancePurchaseRequest.OrderRequest orderRequest, Alumno student) {
         if (orderRequest.buffetId() != null) {
             return orderRequest.buffetId();
         }
@@ -270,7 +296,7 @@ public class CreateAdvancePurchase {
     }
 
     private Map<Producto, Integer> items(
-            AdvancePurchaseRequest.OrderRequest orderRequest,
+            CreateAdvancePurchaseRequest.OrderRequest orderRequest,
             UUID buffetId
     ) {
         if (orderRequest.items() == null || orderRequest.items().isEmpty()) {
@@ -278,106 +304,136 @@ public class CreateAdvancePurchase {
         }
 
         Map<Producto, Integer> items = new HashMap<>();
-        for (AdvancePurchaseRequest.ItemRequest itemRequest : orderRequest.items()) {
-            Optional<Producto> productOpt = productRepository.findActiveByIdWithStock(
-                    itemRequest.productId(),
-                    buffetId
-            );
-            if (productOpt.isPresent()) {
-                mergeOrPut(items, productOpt.get(), itemRequest.quantity());
-            } else {
-                Optional<Promotion> promotionOpt = promotionRepository
-                        .findById(itemRequest.productId());
-                if (promotionOpt.isPresent()) {
-                    Promotion promotion = promotionOpt.get();
-                    if (promotion.getStatus() != PromotionStatus.ACTIVE) {
-                        throw new IllegalArgumentException("La promocion no esta activa");
-                    }
-                    if (promotion.getBuffet() != null
-                            && !promotion.getBuffet().getId().equals(buffetId)) {
-                        throw new IllegalArgumentException(
-                                "La promocion no pertenece a este buffet");
-                    }
-                    LocalDateTime now = LocalDateTime.now();
-                    if (promotion.getStartDate() != null
-                            && now.isBefore(promotion.getStartDate())) {
-                        throw new IllegalArgumentException(
-                                "La promocion aun no ha comenzado");
-                    }
-                    if (promotion.getEndDate() != null
-                            && now.isAfter(promotion.getEndDate())) {
-                        throw new IllegalArgumentException("La promocion ha finalizado");
-                    }
-
-                    if (promotion.getProducts() != null) {
-                        BigDecimal discountPercentage = promotion.getDiscountPercentage();
-                        BigDecimal multiplier = BigDecimal.ONE.subtract(
-                                discountPercentage.divide(
-                                        new BigDecimal("100"),
-                                        4,
-                                        java.math.RoundingMode.HALF_UP
-                                )
-                        );
-                        for (Producto p : promotion.getProducts()) {
-                            Producto activeProd = productRepository
-                                    .findActiveByIdWithStock(p.getId(), buffetId)
-                                    .orElseThrow(() ->
-                                            new ProductNotFoundException(p.getId()));
-
-                            Producto discountedProduct = new Producto();
-                            discountedProduct.setId(activeProd.getId());
-                            discountedProduct.setCategoria(activeProd.getCategoria());
-                            discountedProduct.setNombre(activeProd.getNombre());
-                            discountedProduct.setDescripcion(activeProd.getDescripcion());
-                            discountedProduct.setPeso(activeProd.getPeso());
-                            discountedProduct.setRequierePreparacion(
-                                    activeProd.getRequierePreparacion()
-                            );
-                            discountedProduct.setActivo(activeProd.getActivo());
-                            discountedProduct.setCreadoEn(activeProd.getCreadoEn());
-                            discountedProduct.setActualizadoEn(activeProd.getActualizadoEn());
-                            discountedProduct.setUrlImagen(activeProd.getUrlImagen());
-                            discountedProduct.setStockActual(activeProd.getStockActual());
-                            discountedProduct.setStockReservado(activeProd.getStockReservado());
-                            discountedProduct.setStockMinimo(activeProd.getStockMinimo());
-                            discountedProduct.setStockDisponible(activeProd.getStockDisponible());
-                            discountedProduct.setEstadoInventario(
-                                    activeProd.getEstadoInventario()
-                            );
-                            discountedProduct.setTipoManejoInventario(
-                                    activeProd.getTipoManejoInventario()
-                            );
-                            discountedProduct.setCupoMaximoDiario(
-                                    activeProd.getCupoMaximoDiario()
-                            );
-                            discountedProduct.setCupoDisponibleDia(
-                                    activeProd.getCupoDisponibleDia()
-                            );
-                            discountedProduct.setMedidas(activeProd.getMedidas());
-                            discountedProduct.setTipos(activeProd.getTipos());
-                            discountedProduct.setClasificacionesSalud(
-                                    activeProd.getClasificacionesSalud()
-                            );
-
-                            BigDecimal originalPrice = activeProd.getPrecio() != null
-                                    ? activeProd.getPrecio()
-                                    : BigDecimal.ZERO;
-                            BigDecimal discountedPrice = originalPrice
-                                    .multiply(multiplier)
-                                    .setScale(2, java.math.RoundingMode.HALF_UP);
-                            discountedProduct.setPrecio(discountedPrice);
-                            discountedProduct.setPromocionId(promotion.getId());
-                            discountedProduct.setPromocionNombre(promotion.getName());
-
-                            mergeOrPut(items, discountedProduct, itemRequest.quantity());
-                        }
-                    }
-                } else {
-                    throw new ProductNotFoundException(itemRequest.productId());
-                }
-            }
+        for (CreateAdvancePurchaseRequest.ItemRequest itemRequest : orderRequest.items()) {
+            processItemRequest(itemRequest, buffetId, items);
         }
         return items;
+    }
+
+    private void processItemRequest(
+            CreateAdvancePurchaseRequest.ItemRequest itemRequest,
+            UUID buffetId,
+            Map<Producto, Integer> items
+    ) {
+        Optional<Producto> productOpt = productRepository.findActiveByIdWithStock(
+                itemRequest.productId(),
+                buffetId
+        );
+        if (productOpt.isPresent()) {
+            mergeOrPut(items, productOpt.get(), itemRequest.quantity());
+        } else {
+            Optional<Promotion> promotionOpt = promotionRepository
+                    .findById(itemRequest.productId());
+            if (promotionOpt.isPresent()) {
+                processPromotion(promotionOpt.get(), itemRequest.quantity(), buffetId, items);
+            } else {
+                throw new ProductNotFoundException(itemRequest.productId());
+            }
+        }
+    }
+
+    private void processPromotion(
+            Promotion promotion,
+            int quantity,
+            UUID buffetId,
+            Map<Producto, Integer> items
+    ) {
+        validatePromotion(promotion, buffetId);
+
+        if (promotion.getProducts() != null) {
+            BigDecimal discountPercentage = promotion.getDiscountPercentage();
+            BigDecimal multiplier = BigDecimal.ONE.subtract(
+                    discountPercentage.divide(
+                            new BigDecimal("100"),
+                            4,
+                            RoundingMode.HALF_UP
+                    )
+            );
+            for (Producto p : promotion.getProducts()) {
+                Producto activeProd = productRepository
+                        .findActiveByIdWithStock(p.getId(), buffetId)
+                        .orElseThrow(() -> new ProductNotFoundException(p.getId()));
+
+                Producto discountedProduct = createDiscountedProduct(
+                        activeProd, promotion, multiplier);
+
+                mergeOrPut(items, discountedProduct, quantity);
+            }
+        }
+    }
+
+    private void validatePromotion(Promotion promotion, UUID buffetId) {
+        if (promotion.getStatus() != PromotionStatus.ACTIVE) {
+            throw new IllegalArgumentException("La promocion no esta activa");
+        }
+        if (promotion.getBuffet() != null
+                && !promotion.getBuffet().getId().equals(buffetId)) {
+            throw new IllegalArgumentException(
+                    "La promocion no pertenece a este buffet");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (promotion.getStartDate() != null
+                && now.isBefore(promotion.getStartDate())) {
+            throw new IllegalArgumentException(
+                    "La promocion aun no ha comenzado");
+        }
+        if (promotion.getEndDate() != null
+                && now.isAfter(promotion.getEndDate())) {
+            throw new IllegalArgumentException("La promocion ha finalizado");
+        }
+    }
+
+    private Producto createDiscountedProduct(
+            Producto activeProd,
+            Promotion promotion,
+            BigDecimal multiplier
+    ) {
+        Producto discountedProduct = new Producto();
+        discountedProduct.setId(activeProd.getId());
+        discountedProduct.setCategoria(activeProd.getCategoria());
+        discountedProduct.setNombre(activeProd.getNombre());
+        discountedProduct.setDescripcion(activeProd.getDescripcion());
+        discountedProduct.setPeso(activeProd.getPeso());
+        discountedProduct.setRequierePreparacion(
+                activeProd.getRequierePreparacion()
+        );
+        discountedProduct.setActivo(activeProd.getActivo());
+        discountedProduct.setCreadoEn(activeProd.getCreadoEn());
+        discountedProduct.setActualizadoEn(activeProd.getActualizadoEn());
+        discountedProduct.setUrlImagen(activeProd.getUrlImagen());
+        discountedProduct.setStockActual(activeProd.getStockActual());
+        discountedProduct.setStockReservado(activeProd.getStockReservado());
+        discountedProduct.setStockMinimo(activeProd.getStockMinimo());
+        discountedProduct.setStockDisponible(activeProd.getStockDisponible());
+        discountedProduct.setEstadoInventario(
+                activeProd.getEstadoInventario()
+        );
+        discountedProduct.setTipoManejoInventario(
+                activeProd.getTipoManejoInventario()
+        );
+        discountedProduct.setCupoMaximoDiario(
+                activeProd.getCupoMaximoDiario()
+        );
+        discountedProduct.setCupoDisponibleDia(
+                activeProd.getCupoDisponibleDia()
+        );
+        discountedProduct.setMedidas(activeProd.getMedidas());
+        discountedProduct.setTipos(activeProd.getTipos());
+        discountedProduct.setClasificacionesSalud(
+                activeProd.getClasificacionesSalud()
+        );
+
+        BigDecimal originalPrice = activeProd.getPrecio() != null
+                ? activeProd.getPrecio()
+                : BigDecimal.ZERO;
+        BigDecimal discountedPrice = originalPrice
+                .multiply(multiplier)
+                .setScale(2, RoundingMode.HALF_UP);
+        discountedProduct.setPrecio(discountedPrice);
+        discountedProduct.setPromocionId(promotion.getId());
+        discountedProduct.setPromocionNombre(promotion.getName());
+
+        return discountedProduct;
     }
 
     private void mergeOrPut(Map<Producto, Integer> items, Producto product, int quantity) {

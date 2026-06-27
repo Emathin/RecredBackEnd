@@ -7,8 +7,8 @@ import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
-import com.recred.backend.infrastructure.web.CheckBudgetDatesRequest;
-import com.recred.backend.infrastructure.web.CheckBudgetDatesResponse;
+import com.recred.backend.application.CheckBudgetDatesRequest;
+import com.recred.backend.application.CheckBudgetDatesResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -132,12 +132,15 @@ class CheckBudgetDatesTest {
         );
 
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(productId)).thenReturn(Optional.empty());
 
-        assertThrows(
+        IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> checkBudgetDates.execute(studentId, request)
         );
+        assertEquals("Product or Promotion not found: " + productId, exception.getMessage());
     }
+
 
     @Test
     void execute_WhenProductPriceIsNull_ShouldUseZeroAsItemTotal() {

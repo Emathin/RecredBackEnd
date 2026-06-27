@@ -15,4 +15,19 @@ public record MovimientoStock(
         UUID compraId,
         LocalDateTime creadoEn
 ) {
+    public boolean isRelease() {
+        return tipo == TipoMovimientoStock.LIBERACION;
+    }
+
+    public int quantityOrZero() {
+        return cantidad == null ? 0 : cantidad;
+    }
+
+    public boolean reachedZeroStock() {
+        return cantidadNueva != null && cantidadNueva <= 0;
+    }
+
+    public boolean hasInventoryId() {
+        return inventarioId != null;
+    }
 }

@@ -24,7 +24,7 @@ Se han configurado perfiles en el `pom.xml` para evitar comandos largos y comple
 | :--- | :--- | :--- |
 | **Solo Unitarios** | `./mvnw test -Punit` 
 | **Solo Web** | `./mvnw test -Pweb` 
-| **Solo Integración** | `./mvnw test -Pintegration` 
+| **Solo Integración** | `./mvnw test -Pintegration - ./mvnw failsafe:integration-test`
 | **Suite Completa** | `./mvnw test` 
 
 ---
@@ -79,3 +79,11 @@ Para verificar qué partes del código te falta testear:
 1.  **Prohibición de Wildcards:** NUNCA usar `import com.recred...*`. Usar imports específicos para optimizar el compilador y el pipeline.
 2.  **Pureza Unitaria:** Si creás un test en `unit/`, está **prohibido** usar `@SpringBootTest`. Si necesitás Spring, el test pertenece a `integration/`.
 3.  **Mantener el Espejo:** Si creás un componente en `infrastructure/mi-servicio`, su test debe vivir en `integration/mi-servicio`.
+
+
+## 7. Nuevos test de IT
+1. **Descripcion:**  Maven Failsafe Plugin ( mvn verify ): Está configurado para correr las clases que terminan en  *IT.java  (Integration Tests).
+2. **Activar en POM:** Por defecto, Maven trae activado el  maven-surefire-plugin  (que corre los  *Test.java  en la fase  test ), pero NO trae activado por defecto el plugin que se encarga de buscar y correr los  *IT.java  en la fase  verify. Asi lo activamos -> <goal>integration-test</goal>.
+3. **Cantidad actual:** Tests run: 156.
+4. **Comando para los test con terminación IT:** `./mvnw failsafe:integration-test`.
+5. **OBSERVACIÓN:** Este comando `./mvnw test -Pintegration` corre los de integracion mockeados y los de integracion-repositorio de terminación 'IT'.

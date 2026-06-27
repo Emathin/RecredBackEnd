@@ -1,6 +1,8 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.CreateAdvancePurchase;
+import com.recred.backend.application.CreateAdvancePurchaseRequest;
+import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RespondToAISuggestion;
@@ -98,26 +100,36 @@ public class PurchaseSuggestController {
                 ? BuyerType.STUDENT
                 : BuyerType.TUTOR;
 
-        AdvancePurchaseRequest.ItemRequest item =
-                new AdvancePurchaseRequest.ItemRequest(productoId, 1);
+        CreateAdvancePurchaseRequest.ItemRequest item =
+                new CreateAdvancePurchaseRequest.ItemRequest(productoId, 1);
 
-        AdvancePurchaseRequest.OrderRequest order = new AdvancePurchaseRequest.OrderRequest(
-                alumnoId,
-                usuario.getId(),
-                buyerType,
-                buffetId,
-                LocalDate.now().toString(),
-                RecessTime.AFTER_HOURS,
-                List.of(item),
-                sugerenciaId,
-                tutorId
-        );
+        CreateAdvancePurchaseRequest.OrderRequest order =
+                new CreateAdvancePurchaseRequest.OrderRequest(
+                        alumnoId,
+                        usuario.getId(),
+                        buyerType,
+                        buffetId,
+                        LocalDate.now().toString(),
+                        RecessTime.AFTER_HOURS,
+                        List.of(item),
+                        sugerenciaId,
+                        tutorId
+                );
 
         // TODO: Implementar lógica de código de verificación si fuera necesario
 
-        AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
+        CreateAdvancePurchaseRequest request =
+                new CreateAdvancePurchaseRequest(List.of(order));
 
-        return ResponseEntity.ok(createAdvancePurchase.execute(request, subject));
+        CreateAdvancePurchaseResponse useCaseResponse =
+                createAdvancePurchase.execute(request, subject);
+
+        return ResponseEntity.ok(new AdvancePurchaseResponse(
+                useCaseResponse.orderId(),
+                useCaseResponse.status(),
+                useCaseResponse.total(),
+                useCaseResponse.codes()
+        ));
     }
 
     private String cognitoSubject(Authentication authentication) {

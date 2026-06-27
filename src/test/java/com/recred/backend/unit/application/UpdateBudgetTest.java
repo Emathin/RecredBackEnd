@@ -1,7 +1,8 @@
 package com.recred.backend.unit.application;
 
-import com.recred.backend.application.BudgetCommand;
 import com.recred.backend.application.UpdateBudget;
+import com.recred.backend.application.UpdateBudgetRequest;
+import com.recred.backend.application.UpdateBudgetResponse;
 import com.recred.backend.domain.models.PeriodoPresupuesto;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
@@ -22,10 +23,9 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateBudgetTest {
@@ -50,8 +50,16 @@ class UpdateBudgetTest {
     void execute_PresupuestoNoExiste_LanzaExcepcion() {
         when(repository.findById(budgetId)).thenReturn(Optional.empty());
 
+        UpdateBudgetRequest request = new UpdateBudgetRequest(
+                budgetId,
+                new BigDecimal("10000.00"),
+                PeriodoPresupuesto.SEMANAL,
+                LocalDate.now(),
+                List.of()
+        );
+
         assertThrows(RuntimeException.class, () -> {
-            updateBudget.execute(budgetId, mock(BudgetCommand.class));
+            updateBudget.execute(request);
         });
     }
 
@@ -61,17 +69,21 @@ class UpdateBudgetTest {
 
         when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        BudgetCommand command = mock(BudgetCommand.class);
-        when(command.limitAmount()).thenReturn(new BigDecimal("10000.00"));
-        when(command.period()).thenReturn(PeriodoPresupuesto.SEMANAL);
-        when(command.startDate()).thenReturn(LocalDate.now());
+        UUID categoryId = UUID.randomUUID();
+        UpdateBudgetRequest.CategoryRuleRequest rule = new UpdateBudgetRequest.CategoryRuleRequest(
+                categoryId,
+                new BigDecimal("20.00")
+        );
 
-        var ruleMock = mock(BudgetCommand.CategoryRuleCommand.class);
-        when(ruleMock.categoryId()).thenReturn(UUID.randomUUID());
-        when(ruleMock.porcentajeLimite()).thenReturn(new BigDecimal("20.00"));
-        when(command.categoryRules()).thenReturn(List.of(ruleMock));
+        UpdateBudgetRequest request = new UpdateBudgetRequest(
+                budgetId,
+                new BigDecimal("10000.00"),
+                PeriodoPresupuesto.SEMANAL,
+                LocalDate.now(),
+                List.of(rule)
+        );
 
-        PresupuestoAlumno resultado = updateBudget.execute(budgetId, command);
+        UpdateBudgetResponse response = updateBudget.execute(request);
 
         ArgumentCaptor<PresupuestoAlumno> captor = ArgumentCaptor.forClass(PresupuestoAlumno.class);
         verify(repository).save(captor.capture());
@@ -85,5 +97,42 @@ class UpdateBudgetTest {
 
         BigDecimal montoCalculado = guardado.getReglasCategoria().get(0).getMontoLimiteCalculado();
         assertEquals(new BigDecimal("2000.00"), montoCalculado);
+
+        // Also assert on UpdateBudgetResponse DTO fields
+        assertEquals(budgetId, response.id());
+        assertEquals(new BigDecimal("10000.00"), response.montoLimiteGeneral());
+        assertEquals(PeriodoPresupuesto.SEMANAL, response.periodo());
+        assertNotNull(response.reglasCategoria());
+        assertEquals(1, response.reglasCategoria().size());
+        assertEquals(new BigDecimal("2000.00"), response.reglasCategoria().get(0).montoLimiteCalculado());
+    }
+
+    @Test
+    void execute_CuandoSumaPorcentajesSupera100_LanzaIllegalArgumentException() {
+        when(repository.findById(budgetId)).thenReturn(Optional.of(presupuestoExistente));
+
+        UpdateBudgetRequest.CategoryRuleRequest rule1 = new UpdateBudgetRequest.CategoryRuleRequest(
+                UUID.randomUUID(),
+                new BigDecimal("60.00")
+        );
+        UpdateBudgetRequest.CategoryRuleRequest rule2 = new UpdateBudgetRequest.CategoryRuleRequest(
+                UUID.randomUUID(),
+                new BigDecimal("50.00")
+        );
+
+        UpdateBudgetRequest request = new UpdateBudgetRequest(
+                budgetId,
+                new BigDecimal("10000.00"),
+                PeriodoPresupuesto.SEMANAL,
+                LocalDate.now(),
+                List.of(rule1, rule2)
+        );
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            updateBudget.execute(request);
+        });
+
+        assertTrue(exception.getMessage().contains("La suma de los porcentajes no puede superar el 100%"));
+        verify(repository, never()).save(any());
     }
 }

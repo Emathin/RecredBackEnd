@@ -1,12 +1,17 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.ActualizarFotoAlumno;
+import com.recred.backend.application.UpdateStudentPhoto;
+import com.recred.backend.application.UpdateStudentPhotoRequest;
+import com.recred.backend.application.UpdateStudentPhotoResponse;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateStudentFromParentRequest;
 import com.recred.backend.application.CreateStudentFromParentResponse;
 import com.recred.backend.application.ObtenerHijosPorPadre;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.application.GetChildrenByTutor;
+import com.recred.backend.application.GetChildrenByTutorRequest;
+import com.recred.backend.application.GetChildrenByTutorResponse;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -31,30 +36,31 @@ import java.util.UUID;
 @RequestMapping("/api/v1/tutores")
 public class TutorController {
 
-    private final ObtenerHijosPorPadre obtenerHijosPorPadre;
+    private final GetChildrenByTutor getChildrenByTutor;
     private final UsuarioService usuarioService;
     private final CreateStudentFromParent createStudentFromParent;
-    private final ActualizarFotoAlumno actualizarFotoAlumno;
+    private final UpdateStudentPhoto updateStudentPhoto;
     private final CloudinaryService cloudinaryService;
 
-    public TutorController(ObtenerHijosPorPadre obtenerHijosPorPadre,
+    public TutorController(GetChildrenByTutor getChildrenByTutor,
                            UsuarioService usuarioService,
                            CreateStudentFromParent createStudentFromParent,
-                           ActualizarFotoAlumno actualizarFotoAlumno,
+                           UpdateStudentPhoto updateStudentPhoto,
                            CloudinaryService cloudinaryService) {
-        this.obtenerHijosPorPadre = obtenerHijosPorPadre;
+        this.getChildrenByTutor = getChildrenByTutor;
         this.usuarioService = usuarioService;
         this.createStudentFromParent = createStudentFromParent;
-        this.actualizarFotoAlumno = actualizarFotoAlumno;
+        this.updateStudentPhoto = updateStudentPhoto;
         this.cloudinaryService = cloudinaryService;
     }
 
     @GetMapping("/me/hijos")
     public ResponseEntity<List<StudentDTO>> obtenerMisHijos(Authentication authentication) {
-        List<StudentDTO> alumnos = obtenerHijosPorPadre
-                .executeByCognitoSubject(cognitoSubject(authentication))
+        var request = GetChildrenByTutorRequest.byCognitoSubject(cognitoSubject(authentication));
+        List<StudentDTO> alumnos = getChildrenByTutor
+                .execute(request)
                 .stream()
-                .map(StudentDTO::fromDomain)
+                .map(this::toStudentDTO)
                 .toList();
 
         return ResponseEntity.ok(alumnos);
@@ -95,9 +101,10 @@ public class TutorController {
             id = UUID.fromString(tutorId);
         }
 
-        List<StudentDTO> alumnos = obtenerHijosPorPadre.execute(id)
+        var request = GetChildrenByTutorRequest.byTutorId(id);
+        List<StudentDTO> alumnos = getChildrenByTutor.execute(request)
                 .stream()
-                .map(StudentDTO::fromDomain)
+                .map(this::toStudentDTO)
                 .toList();
 
         return ResponseEntity.ok(alumnos);
@@ -111,9 +118,36 @@ public class TutorController {
             @RequestParam("foto") MultipartFile foto) {
         String cognitoSub = cognitoSubject(authentication);
         String url = cloudinaryService.uploadImage(foto);
-        com.recred.backend.domain.models.Alumno alumno =
-                actualizarFotoAlumno.execute(cognitoSub, alumnoId, url);
-        return ResponseEntity.ok(StudentDTO.fromDomain(alumno));
+        UpdateStudentPhotoRequest request =
+                new UpdateStudentPhotoRequest(cognitoSub, alumnoId, url);
+        UpdateStudentPhotoResponse response = updateStudentPhoto.execute(request);
+        return ResponseEntity.ok(toStudentDTO(response));
+    }
+
+    private StudentDTO toStudentDTO(UpdateStudentPhotoResponse response) {
+        return new StudentDTO(
+                response.id(),
+                response.nombre(),
+                response.apellido(),
+                response.activo(),
+                response.grado(),
+                response.colegioId(),
+                response.saldo(),
+                response.urlFotoPerfil()
+        );
+    }
+
+    private StudentDTO toStudentDTO(GetChildrenByTutorResponse response) {
+        return new StudentDTO(
+                response.id(),
+                response.nombre(),
+                response.apellido(),
+                response.activo(),
+                response.grado(),
+                response.colegioId(),
+                response.saldo(),
+                response.urlFotoPerfil()
+        );
     }
 
     private String cognitoSubject(Authentication authentication) {

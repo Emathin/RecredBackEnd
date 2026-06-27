@@ -17,6 +17,9 @@ import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.Promotion;
+import com.recred.backend.domain.models.PromotionStatus;
+import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -32,8 +35,8 @@ import com.recred.backend.domain.services.RecessTimeSlotResolver;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
-import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
-import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
+import com.recred.backend.application.CreateAdvancePurchaseRequest;
+import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,6 +48,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -166,7 +170,7 @@ class CreateAdvancePurchaseUseCaseTest {
     void execute_WhenTutorBuysForOwnChild_ShouldCreateAdvancePurchase() {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
-        AdvancePurchaseResponse response = useCase.execute(request(buffetId, suggestionId), "sub");
+        CreateAdvancePurchaseResponse response = useCase.execute(request(buffetId, suggestionId), "sub");
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
@@ -197,7 +201,7 @@ class CreateAdvancePurchaseUseCaseTest {
         user.setRol(RolUsuario.ALUMNO);
         user.setAlumno(student);
 
-        AdvancePurchaseResponse response = useCase.execute(request(buffetId, null), "sub");
+        CreateAdvancePurchaseResponse response = useCase.execute(request(buffetId, null), "sub");
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
@@ -270,7 +274,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
     @Test
     void execute_WhenOrdersAreEmpty_ShouldThrowException() {
-        AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of());
+        CreateAdvancePurchaseRequest request = new CreateAdvancePurchaseRequest(List.of());
 
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(request, "sub"));
 
@@ -286,7 +290,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
     @Test
     void execute_WhenOrdersAreNull_ShouldThrowException() {
-        AdvancePurchaseRequest request = new AdvancePurchaseRequest(null);
+        CreateAdvancePurchaseRequest request = new CreateAdvancePurchaseRequest(null);
 
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(request, "sub"));
 
@@ -426,7 +430,7 @@ class CreateAdvancePurchaseUseCaseTest {
         product.setPrecio(null);
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
-        AdvancePurchaseResponse response = useCase.execute(request(buffetId, null), "sub");
+        CreateAdvancePurchaseResponse response = useCase.execute(request(buffetId, null), "sub");
 
         assertEquals(0.0, response.total());
         assertEquals(new BigDecimal("100.00"), wallet.getSaldoCreditos());
@@ -451,7 +455,7 @@ class CreateAdvancePurchaseUseCaseTest {
         );
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
-        AdvancePurchaseResponse response = localUseCase.execute(request(buffetId, null), "sub");
+        CreateAdvancePurchaseResponse response = localUseCase.execute(request(buffetId, null), "sub");
 
         assertEquals(purchaseId.toString(), response.orderId());
     }
@@ -489,34 +493,33 @@ class CreateAdvancePurchaseUseCaseTest {
         );
     }
 
-    private AdvancePurchaseRequest request(UUID requestBuffetId, UUID requestSuggestionId) {
+    private CreateAdvancePurchaseRequest request(UUID requestBuffetId, UUID requestSuggestionId) {
         return request(requestBuffetId, requestSuggestionId, "2026-06-20", List.of(item()));
     }
 
-    private AdvancePurchaseRequest request(
+    private CreateAdvancePurchaseRequest request(
             UUID requestBuffetId,
             UUID requestSuggestionId,
             String date,
-            List<AdvancePurchaseRequest.ItemRequest> items
+            List<CreateAdvancePurchaseRequest.ItemRequest> items
     ) {
-        AdvancePurchaseRequest.OrderRequest orderRequest = new AdvancePurchaseRequest.OrderRequest(
-                studentId,
-                userId,
-                BuyerType.TUTOR,
-                requestBuffetId,
-                date,
-                RecessTime.FIRST_RECESS,
-                items,
-                requestSuggestionId,
-                tutorId
-        );
-        return new AdvancePurchaseRequest(List.of(orderRequest));
+        CreateAdvancePurchaseRequest.OrderRequest orderRequest =
+                new CreateAdvancePurchaseRequest.OrderRequest(
+                        studentId,
+                        userId,
+                        BuyerType.TUTOR,
+                        requestBuffetId,
+                        date,
+                        RecessTime.FIRST_RECESS,
+                        items,
+                        requestSuggestionId,
+                        tutorId
+                );
+        return new CreateAdvancePurchaseRequest(List.of(orderRequest));
     }
 
-    private AdvancePurchaseRequest.ItemRequest item() {
-        AdvancePurchaseRequest.ItemRequest itemRequest =
-                new AdvancePurchaseRequest.ItemRequest(productId, 2);
-        return itemRequest;
+    private CreateAdvancePurchaseRequest.ItemRequest item() {
+        return new CreateAdvancePurchaseRequest.ItemRequest(productId, 2);
     }
 
     private Grado grade(UUID schoolId) {
@@ -526,5 +529,108 @@ class CreateAdvancePurchaseUseCaseTest {
         Grado grade = new Grado();
         grade.setColegio(school);
         return grade;
+    }
+
+    @Test
+    void execute_WhenPromotionIsNotActive_ShouldThrowIllegalArgumentException() {
+        UUID promotionId = UUID.randomUUID();
+        Promotion promotion = new Promotion();
+        promotion.setId(promotionId);
+        promotion.setStatus(PromotionStatus.DRAFT);
+
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(productRepository.findActiveByIdWithStock(promotionId, buffetId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+        assertEquals("La promocion no esta activa", exception.getMessage());
+    }
+
+    @Test
+    void execute_WhenPromotionDoesNotBelongToBuffet_ShouldThrowIllegalArgumentException() {
+        UUID promotionId = UUID.randomUUID();
+        Promotion promotion = new Promotion();
+        promotion.setId(promotionId);
+        promotion.setStatus(PromotionStatus.ACTIVE);
+        Buffet otherBuffet = new Buffet();
+        otherBuffet.setId(UUID.randomUUID());
+        promotion.setBuffet(otherBuffet);
+
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(productRepository.findActiveByIdWithStock(promotionId, buffetId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+        assertEquals("La promocion no pertenece a este buffet", exception.getMessage());
+    }
+
+    @Test
+    void execute_WhenPromotionNotStarted_ShouldThrowIllegalArgumentException() {
+        UUID promotionId = UUID.randomUUID();
+        Promotion promotion = new Promotion();
+        promotion.setId(promotionId);
+        promotion.setStatus(PromotionStatus.ACTIVE);
+        Buffet promoBuffet = new Buffet();
+        promoBuffet.setId(buffetId);
+        promotion.setBuffet(promoBuffet);
+        promotion.setStartDate(LocalDateTime.now().plusDays(1));
+
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(productRepository.findActiveByIdWithStock(promotionId, buffetId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+        assertEquals("La promocion aun no ha comenzado", exception.getMessage());
+    }
+
+    @Test
+    void execute_WhenPromotionHasEnded_ShouldThrowIllegalArgumentException() {
+        UUID promotionId = UUID.randomUUID();
+        Promotion promotion = new Promotion();
+        promotion.setId(promotionId);
+        promotion.setStatus(PromotionStatus.ACTIVE);
+        Buffet promoBuffet = new Buffet();
+        promoBuffet.setId(buffetId);
+        promotion.setBuffet(promoBuffet);
+        promotion.setStartDate(LocalDateTime.now().minusDays(2));
+        promotion.setEndDate(LocalDateTime.now().minusDays(1));
+
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(productRepository.findActiveByIdWithStock(promotionId, buffetId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+        assertEquals("La promocion ha finalizado", exception.getMessage());
+    }
+
+    @Test
+    void execute_WhenPromotionContainsInactiveProduct_ShouldThrowProductNotFoundException() {
+        UUID promotionId = UUID.randomUUID();
+        Promotion promotion = new Promotion();
+        promotion.setId(promotionId);
+        promotion.setStatus(PromotionStatus.ACTIVE);
+        Buffet promoBuffet = new Buffet();
+        promoBuffet.setId(buffetId);
+        promotion.setBuffet(promoBuffet);
+        promotion.setStartDate(LocalDateTime.now().minusDays(1));
+        promotion.setEndDate(LocalDateTime.now().plusDays(1));
+        promotion.setProducts(List.of(product));
+        promotion.setDiscountPercentage(new BigDecimal("10.00"));
+
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(productRepository.findActiveByIdWithStock(promotionId, buffetId)).thenReturn(Optional.empty());
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
+        when(productRepository.findActiveByIdWithStock(productId, buffetId)).thenReturn(Optional.empty());
+
+        assertThrows(ProductNotFoundException.class,
+                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+    }
+
+    private CreateAdvancePurchaseRequest promotionRequest(UUID requestBuffetId, UUID promotionId) {
+        return request(requestBuffetId, null, "2026-06-20", List.of(new CreateAdvancePurchaseRequest.ItemRequest(promotionId, 1)));
     }
 }

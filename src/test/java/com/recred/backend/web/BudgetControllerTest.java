@@ -1,13 +1,25 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.CreateBudget;
+import com.recred.backend.application.CreateBudgetResponse;
 import com.recred.backend.application.DisableBudget;
+import com.recred.backend.application.DisableBudgetRequest;
 import com.recred.backend.application.GetActiveBudgetByStudent;
+import com.recred.backend.application.GetActiveBudgetByStudentRequest;
+import com.recred.backend.application.GetActiveBudgetByStudentResponse;
 import com.recred.backend.application.UpdateBudget;
+import com.recred.backend.application.UpdateBudgetRequest;
+import com.recred.backend.application.UpdateBudgetResponse;
 import com.recred.backend.application.UpdateBudgetRules;
+import com.recred.backend.application.UpdateBudgetRulesRequest;
+import com.recred.backend.application.UpdateBudgetRulesResponse;
+import com.recred.backend.domain.models.PeriodoPresupuesto;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.infrastructure.web.BudgetController;
 import org.junit.jupiter.api.BeforeEach;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -74,7 +86,18 @@ class BudgetControllerTest {
 
     @Test
     void create_Retorna201Created() throws Exception {
-        when(createBudget.execute(any())).thenReturn(presupuestoMock);
+        CreateBudgetResponse responseMock = new CreateBudgetResponse(
+                budgetId,
+                studentId,
+                UUID.randomUUID(),
+                new BigDecimal("5000.00"),
+                PeriodoPresupuesto.SEMANAL,
+                LocalDate.now(),
+                true,
+                List.of(),
+                new BigDecimal("5000.00")
+        );
+        when(createBudget.execute(any())).thenReturn(responseMock);
 
         String jsonBody = "{\"limitAmount\": 5000, \"period\": \"SEMANAL\"}";
 
@@ -90,30 +113,52 @@ class BudgetControllerTest {
 
     @Test
     void getActiveByStudent_SiExiste_Retorna200Ok() throws Exception {
-        when(getActiveBudgetByStudent.execute(studentId)).thenReturn(Optional.of(presupuestoMock));
+        GetActiveBudgetByStudentResponse responseMock = new GetActiveBudgetByStudentResponse(
+                budgetId,
+                studentId,
+                UUID.randomUUID(),
+                new BigDecimal("5000.00"),
+                PeriodoPresupuesto.SEMANAL,
+                LocalDate.now(),
+                true,
+                List.of(),
+                new BigDecimal("5000.00")
+        );
+        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId))).thenReturn(Optional.of(responseMock));
 
         mockMvc.perform(get("/api/v1/budgets/student/{studentId}/active", studentId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(budgetId.toString()));
 
-        verify(getActiveBudgetByStudent).execute(studentId);
+        verify(getActiveBudgetByStudent).execute(new GetActiveBudgetByStudentRequest(studentId));
     }
 
     @Test
     void getActiveByStudent_SiNoExiste_Retorna404NotFound() throws Exception {
-        when(getActiveBudgetByStudent.execute(studentId)).thenReturn(Optional.empty());
+        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId))).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/v1/budgets/student/{studentId}/active", studentId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
 
-        verify(getActiveBudgetByStudent).execute(studentId);
+        verify(getActiveBudgetByStudent).execute(new GetActiveBudgetByStudentRequest(studentId));
     }
 
     @Test
     void update_Retorna200Ok() throws Exception {
-        when(updateBudget.execute(eq(budgetId), any())).thenReturn(presupuestoMock);
+        UpdateBudgetResponse responseMock = new UpdateBudgetResponse(
+                budgetId,
+                studentId,
+                UUID.randomUUID(),
+                new BigDecimal("10000.00"),
+                PeriodoPresupuesto.SEMANAL,
+                LocalDate.now(),
+                true,
+                List.of(),
+                new BigDecimal("10000.00")
+        );
+        when(updateBudget.execute(any(UpdateBudgetRequest.class))).thenReturn(responseMock);
 
         String jsonBody = "{\"limitAmount\": 10000}";
 
@@ -121,26 +166,38 @@ class BudgetControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonBody))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(budgetId.toString()));
+                .andExpect(jsonPath("$.id").value(budgetId.toString()))
+                .andExpect(jsonPath("$.montoLimiteGeneral").value(10000.00));
 
-        verify(updateBudget).execute(eq(budgetId), any());
+        verify(updateBudget).execute(any(UpdateBudgetRequest.class));
     }
 
     @Test
     void disable_Retorna204NoContent() throws Exception {
 
-        doNothing().when(disableBudget).execute(budgetId);
+        doNothing().when(disableBudget).execute(new DisableBudgetRequest(budgetId));
 
         mockMvc.perform(patch("/api/v1/budgets/{budgetId}/disable", budgetId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
 
-        verify(disableBudget).execute(budgetId);
+        verify(disableBudget).execute(new DisableBudgetRequest(budgetId));
     }
 
     @Test
     void updateCategoryRules_Retorna200Ok() throws Exception {
-        when(updateBudgetRules.execute(eq(budgetId), any())).thenReturn(presupuestoMock);
+        UpdateBudgetRulesResponse responseMock = new UpdateBudgetRulesResponse(
+                budgetId,
+                studentId,
+                UUID.randomUUID(),
+                new BigDecimal("5000.00"),
+                PeriodoPresupuesto.SEMANAL,
+                LocalDate.now(),
+                true,
+                List.of(),
+                new BigDecimal("5000.00")
+        );
+        when(updateBudgetRules.execute(any(UpdateBudgetRulesRequest.class))).thenReturn(responseMock);
 
         String jsonBody = """
                 {
@@ -159,6 +216,6 @@ class BudgetControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(budgetId.toString()));
 
-        verify(updateBudgetRules).execute(eq(budgetId), any());
+        verify(updateBudgetRules).execute(any(UpdateBudgetRulesRequest.class));
     }
 }

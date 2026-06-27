@@ -2,6 +2,8 @@ package com.recred.backend.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.CreateAdvancePurchase;
+import com.recred.backend.application.CreateAdvancePurchaseRequest;
+import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RespondToAISuggestion;
@@ -172,7 +174,7 @@ class PurchaseSuggestControllerTest {
         usuario.setId(usuarioId);
         usuario.setRol(RolUsuario.PADRE);
 
-        AdvancePurchaseResponse response = new AdvancePurchaseResponse(
+        CreateAdvancePurchaseResponse response = new CreateAdvancePurchaseResponse(
                 UUID.randomUUID().toString(),
                 new PurchaseStatus(UUID.randomUUID(), alumnoId, EstadoCompra.PENDIENTE, "Pendiente", java.time.LocalDateTime.now()),
                 100.00,
@@ -181,7 +183,7 @@ class PurchaseSuggestControllerTest {
 
         when(sugerenciaIARepository.findById(sugerenciaId)).thenReturn(Optional.of(sugerencia));
         when(usuarioService.obtenerUsuarioActual(anyString())).thenReturn(usuario);
-        when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class), anyString())).thenReturn(response);
+        when(createAdvancePurchase.execute(any(CreateAdvancePurchaseRequest.class), anyString())).thenReturn(response);
 
         TestSuggestionRequest testRequest = new TestSuggestionRequest("user-123", sugerenciaId);
 
@@ -234,7 +236,7 @@ class PurchaseSuggestControllerTest {
         usuario.setRol(RolUsuario.ALUMNO);
         Tutor tutor = new Tutor();
         tutor.setId(UUID.randomUUID());
-        AdvancePurchaseResponse response = new AdvancePurchaseResponse(
+        CreateAdvancePurchaseResponse response = new CreateAdvancePurchaseResponse(
                 UUID.randomUUID().toString(),
                 new PurchaseStatus(
                         UUID.randomUUID(),
@@ -249,7 +251,7 @@ class PurchaseSuggestControllerTest {
         when(sugerenciaIARepository.findById(sugerenciaId)).thenReturn(Optional.of(sugerencia));
         when(usuarioService.obtenerUsuarioActual("user-123")).thenReturn(usuario);
         when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(List.of(tutor));
-        when(createAdvancePurchase.execute(any(AdvancePurchaseRequest.class), anyString()))
+        when(createAdvancePurchase.execute(any(CreateAdvancePurchaseRequest.class), anyString()))
                 .thenReturn(response);
 
         ResponseEntity<AdvancePurchaseResponse> result = controller.comprarSugerencia(
@@ -258,7 +260,7 @@ class PurchaseSuggestControllerTest {
         );
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        verify(createAdvancePurchase).execute(any(AdvancePurchaseRequest.class), anyString());
+        verify(createAdvancePurchase).execute(any(CreateAdvancePurchaseRequest.class), anyString());
     }
 
     private SugerenciaIAEntity sugerenciaEntity() {

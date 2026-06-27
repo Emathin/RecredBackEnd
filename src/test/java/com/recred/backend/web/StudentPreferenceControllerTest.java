@@ -1,14 +1,17 @@
 package com.recred.backend.web;
 
-import com.recred.backend.application.AgregarProductoFavorito;
+import com.recred.backend.application.AddFavoriteProduct;
+import com.recred.backend.application.AddFavoriteProductRequest;
 import com.recred.backend.application.DetectStudentPreferences;
-import com.recred.backend.application.GetFavoritosByAlumno;
+import com.recred.backend.application.GetFavoritesByStudent;
+import com.recred.backend.application.GetFavoritesByStudentRequest;
+import com.recred.backend.application.GetFavoritesByStudentResponse;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
-import com.recred.backend.application.RemoverProductoFavorito;
+import com.recred.backend.application.DeleteFavoriteProduct;
+import com.recred.backend.application.DeleteFavoriteProductRequest;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
@@ -28,7 +31,6 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,9 +42,9 @@ class StudentPreferenceControllerTest {
     private GetStudentPreferences getStudentPreferences;
     private RespondToAISuggestion respondToAISuggestion;
     private AlumnoRepository alumnoRepository;
-    private AgregarProductoFavorito agregarProductoFavorito;
-    private RemoverProductoFavorito removerProductoFavorito;
-    private GetFavoritosByAlumno getFavoritosByAlumno;
+    private AddFavoriteProduct addFavoriteProduct;
+    private DeleteFavoriteProduct deleteFavoriteProduct;
+    private GetFavoritesByStudent getFavoritesByStudent;
     private StudentPreferenceController controller;
 
     @BeforeEach
@@ -51,18 +53,18 @@ class StudentPreferenceControllerTest {
         getStudentPreferences = mock(GetStudentPreferences.class);
         respondToAISuggestion = mock(RespondToAISuggestion.class);
         alumnoRepository = mock(AlumnoRepository.class);
-        agregarProductoFavorito = mock(AgregarProductoFavorito.class);
-        removerProductoFavorito = mock(RemoverProductoFavorito.class);
-        getFavoritosByAlumno = mock(GetFavoritosByAlumno.class);
+        addFavoriteProduct = mock(AddFavoriteProduct.class);
+        deleteFavoriteProduct = mock(DeleteFavoriteProduct.class);
+        getFavoritesByStudent = mock(GetFavoritesByStudent.class);
 
         controller = new StudentPreferenceController(
                 detectStudentPreferences,
                 getStudentPreferences,
                 respondToAISuggestion,
                 alumnoRepository,
-                agregarProductoFavorito,
-                removerProductoFavorito,
-                getFavoritosByAlumno
+                addFavoriteProduct,
+                deleteFavoriteProduct,
+                getFavoritesByStudent
         );
     }
 
@@ -188,7 +190,7 @@ class StudentPreferenceControllerTest {
         ResponseEntity<Void> response = controller.agregarFavorito(studentId, productoId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(agregarProductoFavorito).execute(studentId, productoId);
+        verify(addFavoriteProduct).execute(new AddFavoriteProductRequest(studentId, productoId));
     }
 
     @Test
@@ -199,23 +201,44 @@ class StudentPreferenceControllerTest {
         ResponseEntity<Void> response = controller.removerFavorito(studentId, productoId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(removerProductoFavorito).execute(studentId, productoId);
+        verify(deleteFavoriteProduct).execute(new DeleteFavoriteProductRequest(studentId, productoId));
     }
 
     @Test
     void obtenerFavoritosSuccessfully() {
         UUID studentId = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        producto.setNombre("Test");
+        UUID productId = UUID.randomUUID();
+        GetFavoritesByStudentResponse responseDTO = new GetFavoritesByStudentResponse(
+                productId,
+                "Test",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
 
-        when(getFavoritosByAlumno.execute(studentId)).thenReturn(Set.of(producto));
+        when(getFavoritesByStudent.execute(new GetFavoritesByStudentRequest(studentId))).thenReturn(Set.of(responseDTO));
 
         ResponseEntity<List<ProductResponseDTO>> response = controller.obtenerFavoritos(studentId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
-        assertEquals(producto.getId(), response.getBody().get(0).id());
-        verify(getFavoritosByAlumno).execute(studentId);
+        assertEquals(productId, response.getBody().get(0).id());
+        verify(getFavoritesByStudent).execute(new GetFavoritesByStudentRequest(studentId));
     }
 }

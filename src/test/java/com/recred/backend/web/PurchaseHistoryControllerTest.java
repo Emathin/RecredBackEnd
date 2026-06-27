@@ -1,7 +1,11 @@
 package com.recred.backend.web;
 
-import com.recred.backend.application.ObtenerHistorialAlumno;
-import com.recred.backend.application.ObtenerHistorialPendienteAlumno;
+import com.recred.backend.application.GetHistoryByStudent;
+import com.recred.backend.application.GetHistoryByStudentRequest;
+import com.recred.backend.application.GetHistoryByStudentResponse;
+import com.recred.backend.application.GetPendingHistoryByStudent;
+import com.recred.backend.application.GetPendingHistoryByStudentRequest;
+import com.recred.backend.application.GetPendingHistoryByStudentResponse;
 import com.recred.backend.application.ObtenerHistorialTutor;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
@@ -42,13 +46,13 @@ class PurchaseHistoryControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ObtenerHistorialAlumno obtenerHistorialAlumno;
+    private GetHistoryByStudent getHistoryByStudent;
 
     @MockitoBean
     private ObtenerHistorialTutor obtenerHistorialTutor;
 
     @MockitoBean
-    private ObtenerHistorialPendienteAlumno obtenerHistorialPendienteAlumno;
+    private GetPendingHistoryByStudent getPendingHistoryByStudent;
 
     @MockitoBean
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
@@ -64,13 +68,24 @@ class PurchaseHistoryControllerTest {
         UUID alumnoId = UUID.randomUUID();
         UUID compraId = UUID.randomUUID();
 
-        Purchase compra = new Purchase();
-        compra.setId(compraId);
-        compra.setTotalAmount(new BigDecimal("1500.50"));
-        compra.setStatus(EstadoCompra.ENTREGADO);
-        compra.setDate(LocalDateTime.now());
+        GetHistoryByStudentResponse response = new GetHistoryByStudentResponse(
+                compraId,
+                alumnoId,
+                new BigDecimal("1500.50"),
+                "ENTREGADO",
+                "Entregado",
+                "EFECTIVO",
+                LocalDateTime.now(),
+                List.of(),
+                "PRESENCIAL",
+                null,
+                null,
+                null,
+                null,
+                null
+        );
 
-        when(obtenerHistorialAlumno.execute(alumnoId)).thenReturn(List.of(compra));
+        when(getHistoryByStudent.execute(new GetHistoryByStudentRequest(alumnoId))).thenReturn(List.of(response));
 
         mockMvc.perform(get("/api/v1/purchases/alumno/{alumnoId}", alumnoId)
                 .contentType(MediaType.APPLICATION_JSON))
@@ -106,13 +121,25 @@ class PurchaseHistoryControllerTest {
          UUID alumnoId = UUID.randomUUID();
          UUID compraId = UUID.randomUUID();
 
-         Purchase compra = new Purchase();
-         compra.setId(compraId);
-         compra.setTotalAmount(new BigDecimal("1200.00"));
-         compra.setStatus(EstadoCompra.PENDIENTE);
-         compra.setDate(LocalDateTime.now());
+         GetPendingHistoryByStudentResponse response = new GetPendingHistoryByStudentResponse(
+                 compraId,
+                 alumnoId,
+                 new BigDecimal("1200.00"),
+                 "PENDIENTE",
+                 "Pendiente",
+                 "EFECTIVO",
+                 LocalDateTime.now(),
+                 List.of(),
+                 "PRESENCIAL",
+                 null,
+                 null,
+                 null,
+                 null,
+                 null
+         );
 
-         when(obtenerHistorialPendienteAlumno.execute(alumnoId)).thenReturn(List.of(compra));
+         when(getPendingHistoryByStudent.execute(new GetPendingHistoryByStudentRequest(alumnoId)))
+                 .thenReturn(List.of(response));
 
          mockMvc.perform(get("/api/v1/purchases/alumno/{alumnoId}/pendientes", alumnoId)
                  .contentType(MediaType.APPLICATION_JSON))
@@ -132,9 +159,9 @@ class PurchaseHistoryControllerTest {
         compra.setStatus(EstadoCompra.ENTREGADO);
         compra.setDate(LocalDateTime.now());
         PurchaseHistoryController controller = new PurchaseHistoryController(
-                obtenerHistorialAlumno,
+                getHistoryByStudent,
                 obtenerHistorialTutor,
-                obtenerHistorialPendienteAlumno
+                getPendingHistoryByStudent
         );
         when(obtenerHistorialTutor.executeByCognitoSubject(cognitoSubject))
                 .thenReturn(List.of(compra));
@@ -150,9 +177,9 @@ class PurchaseHistoryControllerTest {
     @Test
     void cuandoPideMiHistorialTutorSinAutenticacion_entoncesFalla() {
         PurchaseHistoryController controller = new PurchaseHistoryController(
-                obtenerHistorialAlumno,
+                getHistoryByStudent,
                 obtenerHistorialTutor,
-                obtenerHistorialPendienteAlumno
+                getPendingHistoryByStudent
         );
 
         assertThrows(AuthenticationCredentialsNotFoundException.class,
