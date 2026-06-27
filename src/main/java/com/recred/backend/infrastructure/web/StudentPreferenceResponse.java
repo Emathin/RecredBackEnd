@@ -1,5 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.DetectStudentPreferencesResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
@@ -29,6 +30,22 @@ public record StudentPreferenceResponse(
             domain.mensaje(),
             domain.productoId(),
             domain.razonIA()
+        );
+    }
+
+    public static StudentPreferenceResponse fromUseCaseResponse(
+            DetectStudentPreferencesResponse response
+    ) {
+        return new StudentPreferenceResponse(
+            null,
+            null,
+            null,
+            null,
+            TipoSugerenciaIA.PREFERENCIA_DETECTADA,
+            response.titulo(),
+            response.mensaje(),
+            response.productoId().toString(),
+            response.razonIA()
         );
     }
 

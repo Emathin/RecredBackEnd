@@ -2,15 +2,16 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddHealthRestrictionRequest;
-import com.recred.backend.application.ManualProductLock;
-import com.recred.backend.application.ManualProductLockRequest;
-import com.recred.backend.application.ManualProductUnlock;
-import com.recred.backend.application.ManualProductUnlockRequest;
 import com.recred.backend.application.DetectStudentPreferences;
+import com.recred.backend.application.DetectStudentPreferencesRequest;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsRequest;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.ManageRestrictionsRequest;
+import com.recred.backend.application.ManualProductLock;
+import com.recred.backend.application.ManualProductLockRequest;
+import com.recred.backend.application.ManualProductUnlock;
+import com.recred.backend.application.ManualProductUnlockRequest;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictionsRequest;
 import org.springframework.http.ResponseEntity;
@@ -102,7 +103,9 @@ public class ControlParentalController {
     public ResponseEntity<Void> analizarPreferencias(
             @PathVariable UUID alumnoId,
             @RequestParam UUID buffetId) {
-        detectarPreferenciasUseCase.execute(alumnoId, buffetId);
+        detectarPreferenciasUseCase.execute(
+                new DetectStudentPreferencesRequest(alumnoId, buffetId)
+        );
         return ResponseEntity.accepted().build();
     }
 
