@@ -37,4 +37,21 @@ class GetPendingHistoryByStudentTest {
         assertEquals(purchase.getId(), result.get(0).id());
         assertEquals(purchase.getTotalAmount(), result.get(0).totalAmount());
     }
+
+    @Test
+    void executeShouldReturnEmptyListWhenNoPendingPurchasesExist() {
+        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
+        GetPendingHistoryByStudent useCase =
+                new GetPendingHistoryByStudent(purchaseRepository);
+        UUID alumnoId = UUID.randomUUID();
+
+        when(purchaseRepository.findPendientesByAlumno(alumnoId))
+                .thenReturn(List.of());
+
+        List<GetPendingHistoryByStudentResponse> result = useCase.execute(
+                new GetPendingHistoryByStudentRequest(alumnoId)
+        );
+
+        assertEquals(0, result.size());
+    }
 }

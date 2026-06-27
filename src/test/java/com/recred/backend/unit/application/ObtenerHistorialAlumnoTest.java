@@ -46,4 +46,17 @@ class ObtenerHistorialAlumnoTest {
         assertEquals(compra2.getId(), resultado.get(1).id());
         verify(purchaseRepository, times(1)).findHistorialByAlumno(alumnoId);
     }
+
+    @Test
+    void dadoAlumnoSinCompras_cuandoSeEjecuta_entoncesRetornaListaVacia() {
+        UUID alumnoId = UUID.randomUUID();
+        when(purchaseRepository.findHistorialByAlumno(alumnoId)).thenReturn(List.of());
+
+        List<GetHistoryByStudentResponse> resultado = getHistoryByStudent.execute(
+                new GetHistoryByStudentRequest(alumnoId)
+        );
+
+        assertEquals(0, resultado.size());
+        verify(purchaseRepository, times(1)).findHistorialByAlumno(alumnoId);
+    }
 }
