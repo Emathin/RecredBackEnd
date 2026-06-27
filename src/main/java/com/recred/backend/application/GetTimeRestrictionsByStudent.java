@@ -18,8 +18,17 @@ public class GetTimeRestrictionsByStudent {
 
     public List<GetTimeRestrictionsByStudentResponse> execute(
             GetTimeRestrictionsByStudentRequest request) {
-        List<RestriccionHoraria> restrictions = repository
-                .findAllByAlumnoEntityId(request.studentId());
+        List<RestriccionHoraria> restrictions = this.fetchRestrictions(request);
+        return this.mapToResponses(restrictions);
+    }
+
+    private List<RestriccionHoraria> fetchRestrictions(
+            GetTimeRestrictionsByStudentRequest request) {
+        return repository.findAllByAlumnoEntityId(request.studentId());
+    }
+
+    private List<GetTimeRestrictionsByStudentResponse> mapToResponses(
+            List<RestriccionHoraria> restrictions) {
         return restrictions.stream()
                 .map(this::mapToResponse)
                 .toList();

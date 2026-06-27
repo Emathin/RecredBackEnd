@@ -22,7 +22,7 @@ public class AddHealthRestriction {
         Alumno student = this.findAlumnoById(request.studentId());
 
         ClasificacionSalud classification =
-                this.findClasificacionSaludById(student.getId());
+                this.findClasificacionSaludById(request.classificationId());
 
         student.agregarRestriccionSalud(classification);
 
