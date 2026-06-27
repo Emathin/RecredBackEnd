@@ -103,12 +103,15 @@ public class GetTutorGlobalDashboard {
 
             String predictionMsg = "Datos insuficientes para predecir";
             try {
-                var prediction = predictStudentSpending.execute(alumno.getId(), null);
-                if (prediction.aiAnalysis().isPresent()) {
-                    predictionMsg = prediction.aiAnalysis().get().summary();
-                } else if (prediction.spendingPrediction() != null) {
+                var prediction = predictStudentSpending.execute(new PredictStudentSpendingRequest(
+                        alumno.getId(),
+                        null
+                ));
+                if (prediction.aiAnalysis() != null) {
+                    predictionMsg = prediction.aiAnalysis().summary();
+                } else {
                     predictionMsg = "Gasto estimado al fin de periodo: $" 
-                            + prediction.spendingPrediction().predictedSpending();
+                            + prediction.predictedSpending();
                 }
             } catch (Exception e) {
                 
