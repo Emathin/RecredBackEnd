@@ -19,23 +19,41 @@ public class CreateBudget {
 
     @Transactional
     public CreateBudgetResponse execute(CreateBudgetRequest request) {
-        List<ReglaPresupuestoCategoria> reglas = null;
+        List<ReglaPresupuestoCategoria> reglas = this.mapCategoryRules(request.categoryRules());
+        PresupuestoAlumno presupuesto = this.buildPresupuesto(request, reglas);
 
-        if (request.categoryRules() != null && !request.categoryRules().isEmpty()) {
-            reglas = request.categoryRules().stream().map(rule -> {
-                CategoriaProducto categoria = new CategoriaProducto();
-                categoria.setId(rule.categoryId());
+        presupuesto.validarPorcentajes();
+        presupuesto.recalcularMontosReglas();
 
-                return new ReglaPresupuestoCategoria(
-                        null,
-                        categoria,
-                        rule.porcentajeLimite(),
-                        null,
-                        true);
-            }).collect(Collectors.toList());
+        PresupuestoAlumno saved = repository.save(presupuesto);
+        return mapToResponse(saved);
+    }
+
+    private List<ReglaPresupuestoCategoria> mapCategoryRules(
+            List<CreateBudgetRequest.CategoryRuleRequest> categoryRules) {
+        if (categoryRules == null || categoryRules.isEmpty()) {
+            return null;
         }
+        return categoryRules.stream().map(this::mapToCategoryRule).collect(Collectors.toList());
+    }
 
-        PresupuestoAlumno presupuesto = new PresupuestoAlumno(
+    private ReglaPresupuestoCategoria mapToCategoryRule(
+            CreateBudgetRequest.CategoryRuleRequest rule) {
+        CategoriaProducto categoria = new CategoriaProducto();
+        categoria.setId(rule.categoryId());
+
+        return new ReglaPresupuestoCategoria(
+                null,
+                categoria,
+                rule.porcentajeLimite(),
+                null,
+                true);
+    }
+
+    private PresupuestoAlumno buildPresupuesto(
+            CreateBudgetRequest request,
+            List<ReglaPresupuestoCategoria> reglas) {
+        return new PresupuestoAlumno(
                 null,
                 request.studentId(),
                 request.creadorId(),
@@ -44,12 +62,6 @@ public class CreateBudget {
                 request.startDate(),
                 true,
                 reglas);
-
-        presupuesto.validarPorcentajes();
-        presupuesto.recalcularMontosReglas();
-
-        PresupuestoAlumno saved = repository.save(presupuesto);
-        return mapToResponse(saved);
     }
 
     private CreateBudgetResponse mapToResponse(PresupuestoAlumno domain) {
