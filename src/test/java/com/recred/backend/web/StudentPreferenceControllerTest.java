@@ -2,19 +2,20 @@ package com.recred.backend.web;
 
 import com.recred.backend.application.AddFavoriteProduct;
 import com.recred.backend.application.AddFavoriteProductRequest;
+import com.recred.backend.application.DeleteFavoriteProduct;
+import com.recred.backend.application.DeleteFavoriteProductRequest;
 import com.recred.backend.application.DetectStudentPreferences;
+import com.recred.backend.application.DetectStudentPreferencesRequest;
+import com.recred.backend.application.DetectStudentPreferencesResponse;
 import com.recred.backend.application.GetFavoritesByStudent;
 import com.recred.backend.application.GetFavoritesByStudentRequest;
 import com.recred.backend.application.GetFavoritesByStudentResponse;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
-import com.recred.backend.application.DeleteFavoriteProduct;
-import com.recred.backend.application.DeleteFavoriteProductRequest;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
-import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
 import com.recred.backend.infrastructure.web.ProductResponseDTO;
 import com.recred.backend.infrastructure.web.StudentPreferenceController;
 import com.recred.backend.infrastructure.web.StudentPreferenceResponse;
@@ -73,14 +74,17 @@ class StudentPreferenceControllerTest {
         UUID userId = UUID.randomUUID();
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        PreferenciaDetectada detected = new PreferenciaDetectada(
+        UUID productId = UUID.randomUUID();
+        DetectStudentPreferencesResponse detected = new DetectStudentPreferencesResponse(
                 "Yogur con Cereales",
                 "He notado que te gusta...",
-                UUID.randomUUID().toString(),
+                productId,
                 "Frecuencia alta"
         );
         when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
-        when(detectStudentPreferences.execute(studentId, buffetId)).thenReturn(Optional.of(detected));
+        when(detectStudentPreferences.execute(
+                new DetectStudentPreferencesRequest(studentId, buffetId)))
+                .thenReturn(Optional.of(detected));
 
         ResponseEntity<StudentPreferenceResponse> response = controller.detect(userId, buffetId);
 
@@ -94,7 +98,9 @@ class StudentPreferenceControllerTest {
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
-        when(detectStudentPreferences.execute(studentId, buffetId)).thenReturn(Optional.empty());
+        when(detectStudentPreferences.execute(
+                new DetectStudentPreferencesRequest(studentId, buffetId)))
+                .thenReturn(Optional.empty());
 
         ResponseEntity<StudentPreferenceResponse> response = controller.detect(userId, buffetId);
 
@@ -107,12 +113,14 @@ class StudentPreferenceControllerTest {
         UUID studentId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
-        when(detectStudentPreferences.execute(studentId, buffetId)).thenReturn(Optional.empty());
+        DetectStudentPreferencesRequest request =
+                new DetectStudentPreferencesRequest(studentId, buffetId);
+        when(detectStudentPreferences.execute(request)).thenReturn(Optional.empty());
 
         ResponseEntity<StudentPreferenceResponse> response = controller.detect(userId, buffetId);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        verify(detectStudentPreferences).execute(studentId, buffetId);
+        verify(detectStudentPreferences).execute(request);
     }
 
     @Test

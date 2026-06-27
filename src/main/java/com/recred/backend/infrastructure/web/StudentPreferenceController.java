@@ -2,13 +2,14 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AddFavoriteProduct;
 import com.recred.backend.application.AddFavoriteProductRequest;
+import com.recred.backend.application.DeleteFavoriteProduct;
+import com.recred.backend.application.DeleteFavoriteProductRequest;
 import com.recred.backend.application.DetectStudentPreferences;
+import com.recred.backend.application.DetectStudentPreferencesRequest;
 import com.recred.backend.application.GetFavoritesByStudent;
 import com.recred.backend.application.GetFavoritesByStudentRequest;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
-import com.recred.backend.application.DeleteFavoriteProduct;
-import com.recred.backend.application.DeleteFavoriteProductRequest;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -60,8 +61,9 @@ public class StudentPreferenceController {
             @RequestParam("buffetId") UUID buffetId
     ) {
         UUID resolvedAlumnoId = resolveAlumnoId(userId);
-        return detectStudentPreferences.execute(resolvedAlumnoId, buffetId)
-                .map(StudentPreferenceResponse::fromDomain)
+        return detectStudentPreferences
+                .execute(new DetectStudentPreferencesRequest(resolvedAlumnoId, buffetId))
+                .map(StudentPreferenceResponse::fromUseCaseResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
     }

@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.application.DetectStudentPreferences;
+import com.recred.backend.application.DetectStudentPreferencesRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
@@ -44,7 +45,12 @@ public class PreferenceDetectionScheduler {
                     .filter(Alumno::getActivo)
                     .forEach(alumno -> {
                         try {
-                            detectStudentPreferences.execute(alumno.getId(), buffet.getId());
+                            detectStudentPreferences.execute(
+                                    new DetectStudentPreferencesRequest(
+                                            alumno.getId(),
+                                            buffet.getId()
+                                    )
+                            );
                         } catch (Exception e) {
                             log.error("Error detecting preferences for student {}: {}",
                                     alumno.getId(), e.getMessage());
