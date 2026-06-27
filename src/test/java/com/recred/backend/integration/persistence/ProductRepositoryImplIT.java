@@ -278,7 +278,7 @@ public class ProductRepositoryImplIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void findBestSoldProductsMapsDomains() {
+    void findBestSoldProductsNotInStockMapsDomains() {
         BuffetEntity buffet = generateBuffet();
         ProductoEntity product1 = generateProduct("Top 1", true);
         ProductoEntity product2 = generateProduct("Top 2", true);
@@ -286,7 +286,8 @@ public class ProductRepositoryImplIT extends AbstractIntegrationTest {
         generatePurchase(buffet, product1, 500);
         generatePurchase(buffet, product2, 10);
         
-        List<Producto> result = productRepository.findBestSoldProducts();
+        List<Producto> result = productRepository
+                .findBestSoldProductsNotInStock(buffet.getId());
         
         assertFalse(result.isEmpty());
         assertEquals(product1.getId(), result.get(0).getId());

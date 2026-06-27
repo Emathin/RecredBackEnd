@@ -18,6 +18,6 @@ public interface ProductRepository {
     void updatePrice(UUID productId, BigDecimal newPrice);
     ProductChangeRecommendation findBuffetLeastSoldProducts(UUID buffetId);
     List<ProductChangeRecommendation> findBuffetTop5LeastSoldProducts(UUID buffetId);
-    List<Producto> findBestSoldProducts();
+    List<Producto> findBestSoldProductsNotInStock(UUID buffetId);
     List<Producto> findBuffetTop3MostSold(UUID buffetId, UUID categoriaId);
     }

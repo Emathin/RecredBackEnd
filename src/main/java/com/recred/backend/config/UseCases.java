@@ -1046,7 +1046,6 @@ public class UseCases {
     public AddProductRecommendation addProductRecommendation(
             ProductRepository productRepository,
             KiosqueroRepository kiosqueroRepository,
-            InventoryRepository inventoryRepository,
             AIEventRepository aiEventRepository,
             ProductAdditionNotificationRepository notificationRepository,
             ProductStatisticsRepository productStatisticsRepository,
@@ -1054,7 +1053,6 @@ public class UseCases {
         return new AddProductRecommendation(
                 productRepository,
                 kiosqueroRepository,
-                inventoryRepository,
                 aiEventRepository,
                 notificationRepository,
                 productStatisticsRepository,
