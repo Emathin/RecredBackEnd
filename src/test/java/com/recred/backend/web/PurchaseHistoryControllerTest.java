@@ -4,6 +4,8 @@ import com.recred.backend.application.ObtenerHistorialAlumno;
 import com.recred.backend.application.ObtenerHistorialAlumnoRequest;
 import com.recred.backend.application.ObtenerHistorialAlumnoResponse;
 import com.recred.backend.application.ObtenerHistorialPendienteAlumno;
+import com.recred.backend.application.ObtenerHistorialPendienteAlumnoRequest;
+import com.recred.backend.application.ObtenerHistorialPendienteAlumnoResponse;
 import com.recred.backend.application.ObtenerHistorialTutor;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
@@ -119,13 +121,25 @@ class PurchaseHistoryControllerTest {
          UUID alumnoId = UUID.randomUUID();
          UUID compraId = UUID.randomUUID();
 
-         Purchase compra = new Purchase();
-         compra.setId(compraId);
-         compra.setTotalAmount(new BigDecimal("1200.00"));
-         compra.setStatus(EstadoCompra.PENDIENTE);
-         compra.setDate(LocalDateTime.now());
+         ObtenerHistorialPendienteAlumnoResponse response = new ObtenerHistorialPendienteAlumnoResponse(
+                 compraId,
+                 alumnoId,
+                 new BigDecimal("1200.00"),
+                 "PENDIENTE",
+                 "Pendiente",
+                 "EFECTIVO",
+                 LocalDateTime.now(),
+                 List.of(),
+                 "PRESENCIAL",
+                 null,
+                 null,
+                 null,
+                 null,
+                 null
+         );
 
-         when(obtenerHistorialPendienteAlumno.execute(alumnoId)).thenReturn(List.of(compra));
+         when(obtenerHistorialPendienteAlumno.execute(new ObtenerHistorialPendienteAlumnoRequest(alumnoId)))
+                 .thenReturn(List.of(response));
 
          mockMvc.perform(get("/api/v1/purchases/alumno/{alumnoId}/pendientes", alumnoId)
                  .contentType(MediaType.APPLICATION_JSON))
