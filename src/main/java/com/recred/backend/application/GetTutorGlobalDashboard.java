@@ -25,18 +25,18 @@ public class GetTutorGlobalDashboard {
     private final GetActiveBudgetByStudent getActiveBudgetByStudent;
     private final GetStudentRewardStatus getStudentRewardStatus;
     private final PredictStudentSpending predictStudentSpending;
-    private final ObtenerHistorialAlumno obtenerHistorialAlumno;
+    private final GetHistoryByStudent getHistoryByStudent;
     private final TutorRepository tutorRepository;
 
     public GetTutorGlobalDashboard(GetActiveBudgetByStudent getActiveBudgetByStudent,
                                    GetStudentRewardStatus getStudentRewardStatus,
                                    PredictStudentSpending predictStudentSpending,
-                                   ObtenerHistorialAlumno obtenerHistorialAlumno,
+                                   GetHistoryByStudent getHistoryByStudent,
                                    TutorRepository tutorRepository) {
         this.getActiveBudgetByStudent = getActiveBudgetByStudent;
         this.getStudentRewardStatus = getStudentRewardStatus;
         this.predictStudentSpending = predictStudentSpending;
-        this.obtenerHistorialAlumno = obtenerHistorialAlumno;
+        this.getHistoryByStudent = getHistoryByStudent;
         this.tutorRepository = tutorRepository;
     }
 
@@ -61,8 +61,8 @@ public class GetTutorGlobalDashboard {
             }
             totalDebt = totalDebt.add(debt);
 
-            List<ObtenerHistorialAlumnoResponse> historial = obtenerHistorialAlumno.execute(
-                    new ObtenerHistorialAlumnoRequest(alumno.getId())
+            List<GetHistoryByStudentResponse> historial = getHistoryByStudent.execute(
+                    new GetHistoryByStudentRequest(alumno.getId())
             );
 
             Optional<GetActiveBudgetByStudentResponse> presupuestoOpt = getActiveBudgetByStudent
@@ -75,7 +75,7 @@ public class GetTutorGlobalDashboard {
                     CalculadorPeriodoPresupuesto calculador = new CalculadorPeriodoPresupuesto();
                     LocalDateTime now = LocalDateTime.now();
                     RangoFechas rango = calculador.calcularRango(p.periodo(), now);
-                    for (ObtenerHistorialAlumnoResponse purchase : historial) {
+                    for (GetHistoryByStudentResponse purchase : historial) {
                         LocalDateTime purchaseDate = purchase.date();
                         if (purchaseDate != null 
                                 && !purchaseDate.isBefore(rango.inicio()) 
@@ -140,7 +140,7 @@ public class GetTutorGlobalDashboard {
             
             List<ScheduledPickupDTO> todayPickups = new ArrayList<>();
             java.time.LocalDate today = java.time.LocalDate.now();
-            for (ObtenerHistorialAlumnoResponse p : historial) {
+            for (GetHistoryByStudentResponse p : historial) {
                 var tipo = p.tipo();
                 var ws = p.withdrawalStatus();
                 boolean isToday = p.pickupDate() != null 
@@ -185,11 +185,11 @@ public class GetTutorGlobalDashboard {
                 dashboardConfig, childrenDashboards, planStr);
     }
 
-    private String getPurchaseName(ObtenerHistorialAlumnoResponse p) {
+    private String getPurchaseName(GetHistoryByStudentResponse p) {
         if (p.items() == null || p.items().isEmpty()) {
             return "Compra";
         }
-        ObtenerHistorialAlumnoResponse.Item first = p.items().iterator().next();
+        GetHistoryByStudentResponse.Item first = p.items().iterator().next();
         String name = first != null 
                 ? first.nombre() : "Producto";
         if (p.items().size() > 1) {

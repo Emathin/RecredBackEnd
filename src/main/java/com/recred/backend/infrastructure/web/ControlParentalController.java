@@ -2,16 +2,17 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddHealthRestrictionRequest;
-import com.recred.backend.application.BloquearProductoManual;
-import com.recred.backend.application.BloquearProductoManualRequest;
-import com.recred.backend.application.DesbloquearProductoManual;
-import com.recred.backend.application.DesbloquearProductoManualRequest;
+import com.recred.backend.application.ManualProductLock;
+import com.recred.backend.application.ManualProductLockRequest;
+import com.recred.backend.application.ManualProductUnlock;
+import com.recred.backend.application.ManualProductUnlockRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsRequest;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.ManageRestrictionsRequest;
 import com.recred.backend.application.RemoveHealthRestrictions;
+import com.recred.backend.application.RemoveHealthRestrictionsRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,23 +37,23 @@ public class ControlParentalController {
     private final AddHealthRestriction addHealthRestriction;
     private final RemoveHealthRestrictions removeHealthRestrictions;
     private final DetectStudentPreferences detectarPreferenciasUseCase;
-    private final BloquearProductoManual bloquearProductoManual;
-    private final DesbloquearProductoManual desbloquearProductoManual;
+    private final ManualProductLock manualProductLock;
+    private final ManualProductUnlock manualProductUnlock;
 
     public ControlParentalController(ManageRestrictions useCase,
                                      GetHealthRestrictions obtenerRestriccionesUseCase,
                                      AddHealthRestriction addHealthRestriction,
                                      RemoveHealthRestrictions removeHealthRestrictions,
                                      DetectStudentPreferences detectarPreferenciasUseCase,
-                                     BloquearProductoManual bloquearProductoManual,
-                                     DesbloquearProductoManual desbloquearProductoManual) {
+                                     ManualProductLock manualProductLock,
+                                     ManualProductUnlock manualProductUnlock) {
         this.useCase = useCase;
         this.obtenerRestriccionesUseCase = obtenerRestriccionesUseCase;
         this.addHealthRestriction = addHealthRestriction;
         this.removeHealthRestrictions = removeHealthRestrictions;
         this.detectarPreferenciasUseCase = detectarPreferenciasUseCase;
-        this.bloquearProductoManual = bloquearProductoManual;
-        this.desbloquearProductoManual = desbloquearProductoManual;
+        this.manualProductLock = manualProductLock;
+        this.manualProductUnlock = manualProductUnlock;
     }
 
     @PutMapping("/alumnos/{alumnoId}/actualizar-restricciones-salud")
@@ -91,7 +92,9 @@ public class ControlParentalController {
     public ResponseEntity<Void> removerRestriccionSalud(
             @PathVariable UUID alumnoId,
             @PathVariable UUID clasificacionId) {
-        removeHealthRestrictions.ejecutar(alumnoId, clasificacionId);
+        removeHealthRestrictions.execute(
+                new RemoveHealthRestrictionsRequest(alumnoId, clasificacionId)
+        );
         return ResponseEntity.noContent().build();
     }
 
@@ -108,7 +111,7 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId) {
 
-        bloquearProductoManual.execute(new BloquearProductoManualRequest(alumnoId, productoId));
+        manualProductLock.execute(new ManualProductLockRequest(alumnoId, productoId));
         return ResponseEntity.ok().build();
     }
 
@@ -117,8 +120,8 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId) {
 
-        desbloquearProductoManual.execute(
-                new DesbloquearProductoManualRequest(alumnoId, productoId)
+        manualProductUnlock.execute(
+                new ManualProductUnlockRequest(alumnoId, productoId)
         );
         return ResponseEntity.ok().build();
     }

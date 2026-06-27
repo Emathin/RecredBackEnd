@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.RemoveHealthRestrictions;
+import com.recred.backend.application.RemoveHealthRestrictionsRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +42,7 @@ class RemoveHealthRestrictionsTest {
     void ejecutar_ConDatosValidos_DeberiaRemoverYGuardar() {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        useCase.ejecutar(alumnoId, clasificacionId);
+        useCase.execute(new RemoveHealthRestrictionsRequest(alumnoId, clasificacionId));
 
         verify(alumno).removerRestriccionSalud(clasificacionId);
         verify(alumnoRepository).save(alumno);
@@ -52,7 +53,7 @@ class RemoveHealthRestrictionsTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.ejecutar(alumnoId, clasificacionId);
+            useCase.execute(new RemoveHealthRestrictionsRequest(alumnoId, clasificacionId));
         });
 
         assertEquals("El alumno no existe.", exception.getMessage());

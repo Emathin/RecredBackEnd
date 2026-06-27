@@ -1,8 +1,8 @@
 package com.recred.backend.unit.application;
 
-import com.recred.backend.application.ObtenerHistorialAlumno;
-import com.recred.backend.application.ObtenerHistorialAlumnoRequest;
-import com.recred.backend.application.ObtenerHistorialAlumnoResponse;
+import com.recred.backend.application.GetHistoryByStudent;
+import com.recred.backend.application.GetHistoryByStudentRequest;
+import com.recred.backend.application.GetHistoryByStudentResponse;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,7 @@ class ObtenerHistorialAlumnoTest {
     private PurchaseRepository purchaseRepository;
 
     @InjectMocks
-    private ObtenerHistorialAlumno obtenerHistorialAlumno;
+    private GetHistoryByStudent getHistoryByStudent;
 
     @Test
     void dadoAlumnoConCompras_cuandoSeEjecuta_entoncesRetornaListaDeCompras() {
@@ -37,8 +37,8 @@ class ObtenerHistorialAlumnoTest {
 
         when(purchaseRepository.findHistorialByAlumno(alumnoId)).thenReturn(comprasMock);
 
-        List<ObtenerHistorialAlumnoResponse> resultado = obtenerHistorialAlumno.execute(
-                new ObtenerHistorialAlumnoRequest(alumnoId)
+        List<GetHistoryByStudentResponse> resultado = getHistoryByStudent.execute(
+                new GetHistoryByStudentRequest(alumnoId)
         );
 
         assertEquals(2, resultado.size());

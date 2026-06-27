@@ -2,10 +2,10 @@ package com.recred.backend.web;
 
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddHealthRestrictionRequest;
-import com.recred.backend.application.BloquearProductoManual;
-import com.recred.backend.application.BloquearProductoManualRequest;
-import com.recred.backend.application.DesbloquearProductoManual;
-import com.recred.backend.application.DesbloquearProductoManualRequest;
+import com.recred.backend.application.ManualProductLock;
+import com.recred.backend.application.ManualProductLockRequest;
+import com.recred.backend.application.ManualProductUnlock;
+import com.recred.backend.application.ManualProductUnlockRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsRequest;
@@ -13,9 +13,9 @@ import com.recred.backend.application.GetHealthRestrictionsResponse;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.ManageRestrictionsRequest;
 import com.recred.backend.application.RemoveHealthRestrictions;
+import com.recred.backend.application.RemoveHealthRestrictionsRequest;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
-import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.infrastructure.web.ActualizarRestriccionesDTO;
 import com.recred.backend.infrastructure.web.ControlParentalController;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,10 +61,10 @@ class ControlParentalControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private BloquearProductoManual bloquearProductoManual;
+    private ManualProductLock manualProductLock;
 
     @MockitoBean
-    private DesbloquearProductoManual desbloquearProductoManual;
+    private ManualProductUnlock manualProductUnlock;
 
     @MockitoBean
     private ManageRestrictions manageRestrictions;
@@ -145,7 +145,8 @@ class ControlParentalControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
 
-        verify(removeHealthRestrictions).ejecutar(alumnoId, clasificacionId);
+        verify(removeHealthRestrictions).execute(
+                new RemoveHealthRestrictionsRequest(alumnoId, clasificacionId));
     }
     @Test
     void returnAcceptedWhenPreferenceAnalysisIsTriggered() throws Exception {
@@ -175,7 +176,7 @@ class ControlParentalControllerTest {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
 
-        doNothing().when(bloquearProductoManual).execute(new BloquearProductoManualRequest(alumnoId, productoId));
+        doNothing().when(manualProductLock).execute(new ManualProductLockRequest(alumnoId, productoId));
 
         mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
                 .andExpect(status().isOk());
@@ -186,11 +187,11 @@ class ControlParentalControllerTest {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
 
-        doNothing().when(desbloquearProductoManual).execute(new DesbloquearProductoManualRequest(alumnoId, productoId));
+        doNothing().when(manualProductUnlock).execute(new ManualProductUnlockRequest(alumnoId, productoId));
 
         mockMvc.perform(delete("/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
                 .andExpect(status().isOk());
 
-        verify(desbloquearProductoManual).execute(new DesbloquearProductoManualRequest(alumnoId, productoId));
+        verify(manualProductUnlock).execute(new ManualProductUnlockRequest(alumnoId, productoId));
     }
 }
