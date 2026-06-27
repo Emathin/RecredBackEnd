@@ -1,10 +1,11 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetKiosqueroDashboard;
+import com.recred.backend.application.GetKiosqueroDashboardRequest;
+import com.recred.backend.application.GetKiosqueroDashboardResponse;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoInventario;
-import com.recred.backend.domain.models.KiosqueroDashboard;
 import com.recred.backend.domain.models.MovimientoStock;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
@@ -48,42 +49,165 @@ class GetKiosqueroDashboardTest {
         Producto sandwich = product("Sandwich", "50.00", "Comida");
         Producto fruta = product("Fruta", "20.00", "Frutas");
         Producto agua = product("Agua", "15.00", "Bebidas");
-        List<Purchase> purchases = List.of(
-                purchase(EstadoCompra.ENTREGADO, TipoCompra.PRESENCIAL, alfajor,
-                        2, "80.00", date.atTime(9, 30), null),
-                purchase(EstadoCompra.ENTREGADO, TipoCompra.ANTICIPADA, sandwich,
-                        1, "50.00", date.atTime(10, 0), "Primer recreo"),
-                purchase(EstadoCompra.PENDIENTE, TipoCompra.ANTICIPADA, fruta,
-                        1, "20.00", date.atTime(10, 10), "Segundo recreo"),
-                purchase(EstadoCompra.LISTO, TipoCompra.ANTICIPADA, fruta,
-                        1, "20.00", date.atTime(10, 20), "Segundo recreo"),
-                purchase(EstadoCompra.VENCIDO, TipoCompra.ANTICIPADA, agua,
-                        1, "15.00", date.atTime(10, 30), "Primer recreo"),
-                purchase(EstadoCompra.RECHAZADO, TipoCompra.ANTICIPADA, alfajor,
-                        1, "40.00", date.atTime(11, 0), "Primer recreo"),
-                purchase(EstadoCompra.ENTREGADO, TipoCompra.PRESENCIAL, alfajor,
-                        1, "40.00", date.minusDays(1).atTime(9, 30), null)
+        DashboardScenario scenario = givenDashboardData(
+                buffetId,
+                operationalPurchases(date, alfajor, sandwich, fruta, agua),
+                operationalInventory(alfajor, fruta, agua),
+                List.of(
+                        movement(TipoMovimientoStock.LIBERACION, 3, 1),
+                        movement(TipoMovimientoStock.VENTA, 2, 0)
+                )
         );
-        List<Producto> inventory = List.of(
-                inventoryProduct(alfajor, 10, 6, 4, 3, EstadoInventario.DISPONIBLE),
-                inventoryProduct(fruta, 5, 0, 2, 4, EstadoInventario.BAJO_STOCK),
-                inventoryProduct(agua, 0, 0, 0, 4, EstadoInventario.SIN_STOCK)
+
+        GetKiosqueroDashboardResponse dashboard =
+                whenDashboardIsRequested(scenario, dailyRequest(buffetId, date));
+
+        thenOperationalSummaryMatches(dashboard);
+        thenOperationalActivityMatches(dashboard, date);
+        thenOperationalProductsMatch(dashboard);
+        thenOperationalAlertsMatch(dashboard);
+        thenOperationalTrendsMatch(dashboard, date);
+    }
+
+    @Test
+    void execute_ShouldBuildDashboardForRequestedPeriod() {
+        UUID buffetId = UUID.randomUUID();
+        LocalDate from = LocalDate.of(2026, 6, 1);
+        LocalDate to = LocalDate.of(2026, 6, 14);
+        Producto alfajor = product("Alfajor", "40.00", "Golosinas");
+        DashboardScenario scenario = givenDashboardData(
+                buffetId,
+                periodPurchases(from, to, alfajor),
+                List.of(),
+                List.of()
         );
-        List<MovimientoStock> movements = List.of(
-                movement(TipoMovimientoStock.LIBERACION, 3, 1),
-                movement(TipoMovimientoStock.VENTA, 2, 0)
+
+        GetKiosqueroDashboardResponse dashboard =
+                whenDashboardIsRequested(scenario, periodRequest(buffetId, from, to));
+
+        thenPeriodDashboardMatches(dashboard, to);
+        thenRepositoriesReceivePeriodRange(scenario, buffetId, from, to);
+    }
+
+    @Test
+    void execute_ShouldRejectInvalidInputsAndRanges() {
+        GetKiosqueroDashboard useCase = useCase(
+                mock(PurchaseRepository.class),
+                mock(ProductRepository.class),
+                mock(StockMovementRepository.class)
         );
+        UUID buffetId = UUID.randomUUID();
+
+        thenInvalidRequestIsRejected(useCase, dailyRequest(null, LocalDate.of(2026, 6, 10)));
+        thenInvalidRequestIsRejected(useCase, periodRequest(
+                buffetId,
+                LocalDate.of(2026, 6, 1),
+                null
+        ));
+        thenInvalidRequestIsRejected(useCase, periodRequest(
+                buffetId,
+                LocalDate.of(2026, 6, 2),
+                LocalDate.of(2026, 6, 1)
+        ));
+        thenInvalidRequestIsRejected(useCase, periodRequest(
+                buffetId,
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2026, 6, 1)
+        ));
+    }
+
+    @Test
+    void execute_ShouldHandleNullDatesAndSparseDashboardData() {
+        UUID buffetId = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 6, 10);
+        Producto nullPriceProduct = product("Producto sin precio", "1.00");
+        nullPriceProduct.setPrecio(null);
+        Producto uncategorized = product("Sin categoria real", "10.00");
+        Producto unnamedCategory = product("Categoria sin nombre", "1.00");
+        unnamedCategory.setCategoria(category(null));
+        Producto invalidProduct = product("Cantidad invalida", "2.00");
+        Producto withoutInventory = product("Sin inventario", "1.00");
+        Producto reservedWithoutQuantity = product("Reserva nula", "1.00");
+        reservedWithoutQuantity.setStockActual(5);
+        reservedWithoutQuantity.setStockReservado(null);
+        Producto lowWithoutState = product("Bajo sin estado", "1.00");
+        lowWithoutState.setStockActual(2);
+        lowWithoutState.setStockDisponible(1);
+        lowWithoutState.setStockMinimo(2);
+        Producto soldOutByQuantity = product("Agotado por cantidad", "1.00");
+        soldOutByQuantity.setStockActual(2);
+        soldOutByQuantity.setStockDisponible(0);
+        soldOutByQuantity.setStockMinimo(1);
+        soldOutByQuantity.setEstadoInventario(EstadoInventario.DISPONIBLE);
+        DashboardScenario scenario = givenDashboardData(
+                buffetId,
+                sparsePurchases(
+                        date,
+                        nullPriceProduct,
+                        uncategorized,
+                        unnamedCategory,
+                        invalidProduct
+                ),
+                List.of(
+                        withoutInventory,
+                        reservedWithoutQuantity,
+                        lowWithoutState,
+                        soldOutByQuantity
+                ),
+                List.of(
+                        movement(TipoMovimientoStock.LIBERACION, 3, null),
+                        movement(TipoMovimientoStock.AJUSTE, 1, 0)
+                )
+        );
+
+        GetKiosqueroDashboardResponse dashboard =
+                whenDashboardIsRequested(scenario, dailyRequest(buffetId, null));
+
+        thenSparseDashboardMatches(dashboard, date);
+    }
+
+    @Test
+    void execute_ShouldUseZeroAverageWhenThereAreNoDeliveredOrders() {
+        UUID buffetId = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 6, 10);
+        Producto product = product("Pendiente", "10.00");
+        Purchase pending = purchase(
+                EstadoCompra.PENDIENTE,
+                TipoCompra.ANTICIPADA,
+                product,
+                1,
+                "10.00",
+                date.atTime(10, 0),
+                "Primer recreo"
+        );
+        DashboardScenario scenario = givenDashboardData(
+                buffetId,
+                List.of(pending),
+                List.of(),
+                List.of()
+        );
+
+        GetKiosqueroDashboardResponse dashboard =
+                whenDashboardIsRequested(scenario, dailyRequest(buffetId, date));
+
+        assertEquals(BigDecimal.ZERO, dashboard.summary().averageTicket());
+        assertFalse(dashboard.alerts().items().stream()
+                .anyMatch(alert -> "Creditos devueltos".equals(alert.label())));
+    }
+
+    private DashboardScenario givenDashboardData(
+            UUID buffetId,
+            List<Purchase> purchases,
+            List<Producto> inventory,
+            List<MovimientoStock> movements
+    ) {
         PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
         ProductRepository productRepository = mock(ProductRepository.class);
         StockMovementRepository stockMovementRepository = mock(StockMovementRepository.class);
-        GetKiosqueroDashboard useCase = new GetKiosqueroDashboard(
+        GetKiosqueroDashboard useCase = useCase(
                 purchaseRepository,
                 productRepository,
-                stockMovementRepository,
-                Clock.fixed(
-                        Instant.parse("2026-06-10T15:00:00Z"),
-                        ZoneId.of("America/Argentina/Buenos_Aires")
-                )
+                stockMovementRepository
         );
 
         when(purchaseRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
@@ -92,14 +216,40 @@ class GetKiosqueroDashboardTest {
         when(stockMovementRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
                 .thenReturn(movements);
 
-        KiosqueroDashboard dashboard = useCase.execute(buffetId, date);
+        return new DashboardScenario(
+                useCase,
+                purchaseRepository,
+                stockMovementRepository
+        );
+    }
 
+    private GetKiosqueroDashboardResponse whenDashboardIsRequested(
+            DashboardScenario scenario,
+            GetKiosqueroDashboardRequest request
+    ) {
+        return scenario.useCase().execute(request);
+    }
+
+    private void thenInvalidRequestIsRejected(
+            GetKiosqueroDashboard useCase,
+            GetKiosqueroDashboardRequest request
+    ) {
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(request));
+    }
+
+    private void thenOperationalSummaryMatches(GetKiosqueroDashboardResponse dashboard) {
         assertEquals(new BigDecimal("130.00"), dashboard.summary().totalSold());
         assertEquals(6, dashboard.summary().totalOrders());
         assertEquals(2, dashboard.summary().deliveredOrders());
         assertEquals(new BigDecimal("65.00"), dashboard.summary().averageTicket());
         assertEquals(1, dashboard.summary().pendingOrders());
         assertEquals(1, dashboard.summary().soldOutProducts());
+    }
+
+    private void thenOperationalActivityMatches(
+            GetKiosqueroDashboardResponse dashboard,
+            LocalDate date
+    ) {
         assertEquals(2, dashboard.activity().salesByTimeSlot().size());
         assertEquals("Primer recreo",
                 dashboard.activity().salesByTimeSlot().get(0).timeSlot());
@@ -116,15 +266,28 @@ class GetKiosqueroDashboardTest {
         assertEquals(new BigDecimal("80.00"),
                 dashboard.activity().salesByCategory().get(0).total());
         assertEquals(5, dashboard.activity().ordersByPurchaseType().get(1).orders());
+        assertEquals(date, dashboard.date());
+    }
+
+    private void thenOperationalProductsMatch(GetKiosqueroDashboardResponse dashboard) {
         assertEquals("Alfajor", dashboard.products().topSoldProducts().get(0).productName());
         assertEquals("Alfajor", dashboard.products().mostReservedProducts().get(0).productName());
         assertFalse(dashboard.products().productsNeedingRestock().isEmpty());
         assertEquals(1, dashboard.products().soldOutProducts().size());
+    }
+
+    private void thenOperationalAlertsMatch(GetKiosqueroDashboardResponse dashboard) {
         assertEquals(1, dashboard.alerts().expiredOrders());
         assertEquals(3, dashboard.alerts().releasedReservations());
         assertEquals(new BigDecimal("40.00"), dashboard.alerts().refundedCredits());
         assertEquals(1, dashboard.alerts().soldOutEvents());
         assertFalse(dashboard.alerts().items().isEmpty());
+    }
+
+    private void thenOperationalTrendsMatch(
+            GetKiosqueroDashboardResponse dashboard,
+            LocalDate date
+    ) {
         assertEquals(7, dashboard.trends().lastSevenDays().size());
         assertEquals(7, dashboard.trends().salesByDay().size());
         assertEquals(date, dashboard.trends().lastSevenDays().get(6).date());
@@ -135,13 +298,106 @@ class GetKiosqueroDashboardTest {
         assertEquals(1, dashboard.trends().lastSevenDays().get(6).expiredOrders());
     }
 
-    @Test
-    void execute_ShouldBuildDashboardForRequestedPeriod() {
-        UUID buffetId = UUID.randomUUID();
-        LocalDate from = LocalDate.of(2026, 6, 1);
-        LocalDate to = LocalDate.of(2026, 6, 14);
-        Producto alfajor = product("Alfajor", "40.00", "Golosinas");
-        List<Purchase> purchases = List.of(
+    private void thenPeriodDashboardMatches(
+            GetKiosqueroDashboardResponse dashboard,
+            LocalDate to
+    ) {
+        assertEquals(to, dashboard.date());
+        assertEquals(4, dashboard.summary().totalOrders());
+        assertEquals(1, dashboard.summary().deliveredOrders());
+        assertEquals(new BigDecimal("40.00"), dashboard.summary().totalSold());
+        assertEquals(14, dashboard.trends().lastSevenDays().size());
+        assertEquals(14, dashboard.trends().salesByDay().size());
+        assertEquals("Alfajor", dashboard.products().mostReservedProducts().get(0).productName());
+        assertEquals("http://example.com/alfajor.jpg",
+                dashboard.products().mostReservedProducts().get(0).image());
+        assertEquals(3, dashboard.products().mostReservedProducts().get(0).quantity());
+        assertEquals(1, dashboard.trends().salesByDay().get(0).deliveredOrders());
+        assertEquals(1, dashboard.trends().salesByDay().get(1).rejectedOrders());
+        assertEquals(1, dashboard.trends().salesByDay().get(5).pendingOrders());
+        assertEquals(1, dashboard.trends().salesByDay().get(13).cancelledOrders());
+    }
+
+    private void thenRepositoriesReceivePeriodRange(
+            DashboardScenario scenario,
+            UUID buffetId,
+            LocalDate from,
+            LocalDate to
+    ) {
+        verify(scenario.purchaseRepository()).findByBuffetAndDateRange(
+                buffetId,
+                from.atStartOfDay(),
+                to.plusDays(1).atStartOfDay().minusNanos(1)
+        );
+        verify(scenario.stockMovementRepository()).findByBuffetAndDateRange(
+                buffetId,
+                from.atStartOfDay(),
+                to.plusDays(1).atStartOfDay().minusNanos(1)
+        );
+    }
+
+    private void thenSparseDashboardMatches(
+            GetKiosqueroDashboardResponse dashboard,
+            LocalDate date
+    ) {
+        assertEquals(date, dashboard.date());
+        assertEquals(new BigDecimal("11.00"), dashboard.summary().totalSold());
+        assertTrue(dashboard.activity().salesByCategory().stream()
+                .anyMatch(categorySales -> "Sin categoria".equals(categorySales.categoryName())));
+        assertTrue(dashboard.products().topSoldProducts().stream()
+                .anyMatch(metric -> "Producto sin precio".equals(metric.productName())
+                        && BigDecimal.ZERO.equals(metric.total())));
+        assertTrue(dashboard.products().productsNeedingRestock().stream()
+                .anyMatch(item -> "Bajo sin estado".equals(item.productName())
+                        && item.estadoInventario() == null));
+        assertTrue(dashboard.products().soldOutProducts().stream()
+                .anyMatch(item -> "Agotado por cantidad".equals(item.productName())));
+        assertEquals(1, dashboard.alerts().soldOutEvents());
+    }
+
+    private List<Purchase> operationalPurchases(
+            LocalDate date,
+            Producto alfajor,
+            Producto sandwich,
+            Producto fruta,
+            Producto agua
+    ) {
+        return List.of(
+                purchase(EstadoCompra.ENTREGADO, TipoCompra.PRESENCIAL, alfajor,
+                        2, "80.00", date.atTime(9, 30), null),
+                purchase(EstadoCompra.ENTREGADO, TipoCompra.ANTICIPADA, sandwich,
+                        1, "50.00", date.atTime(10, 0), "Primer recreo"),
+                purchase(EstadoCompra.PENDIENTE, TipoCompra.ANTICIPADA, fruta,
+                        1, "20.00", date.atTime(10, 10), "Segundo recreo"),
+                purchase(EstadoCompra.LISTO, TipoCompra.ANTICIPADA, fruta,
+                        1, "20.00", date.atTime(10, 20), "Segundo recreo"),
+                purchase(EstadoCompra.VENCIDO, TipoCompra.ANTICIPADA, agua,
+                        1, "15.00", date.atTime(10, 30), "Primer recreo"),
+                purchase(EstadoCompra.RECHAZADO, TipoCompra.ANTICIPADA, alfajor,
+                        1, "40.00", date.atTime(11, 0), "Primer recreo"),
+                purchase(EstadoCompra.ENTREGADO, TipoCompra.PRESENCIAL, alfajor,
+                        1, "40.00", date.minusDays(1).atTime(9, 30), null)
+        );
+    }
+
+    private List<Producto> operationalInventory(
+            Producto alfajor,
+            Producto fruta,
+            Producto agua
+    ) {
+        return List.of(
+                inventoryProduct(alfajor, 10, 6, 4, 3, EstadoInventario.DISPONIBLE),
+                inventoryProduct(fruta, 5, 0, 2, 4, EstadoInventario.BAJO_STOCK),
+                inventoryProduct(agua, 0, 0, 0, 4, EstadoInventario.SIN_STOCK)
+        );
+    }
+
+    private List<Purchase> periodPurchases(
+            LocalDate from,
+            LocalDate to,
+            Producto alfajor
+    ) {
+        return List.of(
                 purchase(EstadoCompra.ENTREGADO, TipoCompra.PRESENCIAL, alfajor,
                         1, "40.00", from.atTime(9, 0), null),
                 purchase(EstadoCompra.RECHAZADO, TipoCompra.ANTICIPADA, alfajor,
@@ -153,106 +409,16 @@ class GetKiosqueroDashboardTest {
                 purchase(EstadoCompra.ENTREGADO, TipoCompra.PRESENCIAL, alfajor,
                         1, "40.00", from.minusDays(1).atTime(9, 0), null)
         );
-        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
-        ProductRepository productRepository = mock(ProductRepository.class);
-        StockMovementRepository stockMovementRepository = mock(StockMovementRepository.class);
-        GetKiosqueroDashboard useCase = new GetKiosqueroDashboard(
-                purchaseRepository,
-                productRepository,
-                stockMovementRepository,
-                Clock.fixed(
-                        Instant.parse("2026-06-10T15:00:00Z"),
-                        ZoneId.of("America/Argentina/Buenos_Aires")
-                )
-        );
-
-        when(purchaseRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
-                .thenReturn(purchases);
-        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of());
-        when(stockMovementRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
-                .thenReturn(List.of());
-
-        KiosqueroDashboard dashboard = useCase.execute(buffetId, null, from, to);
-
-        assertEquals(to, dashboard.date());
-        assertEquals(4, dashboard.summary().totalOrders());
-        assertEquals(1, dashboard.summary().deliveredOrders());
-        assertEquals(new BigDecimal("40.00"), dashboard.summary().totalSold());
-        assertEquals(14, dashboard.trends().lastSevenDays().size());
-        assertEquals(14, dashboard.trends().salesByDay().size());
-        assertEquals("Alfajor", dashboard.products().mostReservedProducts().get(0).productName());
-        assertEquals("http://example.com/alfajor.jpg", dashboard.products().mostReservedProducts().get(0).image());
-        assertEquals(3, dashboard.products().mostReservedProducts().get(0).quantity());
-        assertEquals(1, dashboard.trends().salesByDay().get(0).deliveredOrders());
-        assertEquals(1, dashboard.trends().salesByDay().get(1).rejectedOrders());
-        assertEquals(1, dashboard.trends().salesByDay().get(5).pendingOrders());
-        assertEquals(1, dashboard.trends().salesByDay().get(13).cancelledOrders());
-        verify(purchaseRepository).findByBuffetAndDateRange(
-                buffetId,
-                from.atStartOfDay(),
-                to.plusDays(1).atStartOfDay().minusNanos(1)
-        );
-        verify(stockMovementRepository).findByBuffetAndDateRange(
-                buffetId,
-                from.atStartOfDay(),
-                to.plusDays(1).atStartOfDay().minusNanos(1)
-        );
     }
 
-    @Test
-    void execute_ShouldRejectInvalidInputsAndRanges() {
-        GetKiosqueroDashboard useCase = useCase(
-                mock(PurchaseRepository.class),
-                mock(ProductRepository.class),
-                mock(StockMovementRepository.class)
-        );
-        UUID buffetId = UUID.randomUUID();
-
-        assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(null, LocalDate.of(2026, 6, 10)));
-        assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(buffetId, null, LocalDate.of(2026, 6, 1), null));
-        assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(
-                        buffetId,
-                        null,
-                        LocalDate.of(2026, 6, 2),
-                        LocalDate.of(2026, 6, 1)
-                ));
-        assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(
-                        buffetId,
-                        null,
-                        LocalDate.of(2025, 1, 1),
-                        LocalDate.of(2026, 6, 1)
-                ));
-    }
-
-    @Test
-    void execute_ShouldHandleNullDatesAndSparseDashboardData() {
-        UUID buffetId = UUID.randomUUID();
-        LocalDate date = LocalDate.of(2026, 6, 10);
-        Producto nullPriceProduct = product("Producto sin precio", "1.00");
-        nullPriceProduct.setPrecio(null);
-        Producto uncategorized = product("Sin categoria real", "10.00");
-        Producto unnamedCategory = product("Categoria sin nombre", "1.00");
-        CategoriaProducto category = category(null);
-        unnamedCategory.setCategoria(category);
-        Producto invalidProduct = product("Cantidad invalida", "2.00");
-        Producto withoutInventory = product("Sin inventario", "1.00");
-        Producto reservedWithoutQuantity = product("Reserva nula", "1.00");
-        reservedWithoutQuantity.setStockActual(5);
-        reservedWithoutQuantity.setStockReservado(null);
-        Producto lowWithoutState = product("Bajo sin estado", "1.00");
-        lowWithoutState.setStockActual(2);
-        lowWithoutState.setStockDisponible(1);
-        lowWithoutState.setStockMinimo(2);
-        Producto soldOutByQuantity = product("Agotado por cantidad", "1.00");
-        soldOutByQuantity.setStockActual(2);
-        soldOutByQuantity.setStockDisponible(0);
-        soldOutByQuantity.setStockMinimo(1);
-        soldOutByQuantity.setEstadoInventario(EstadoInventario.DISPONIBLE);
-        List<Purchase> purchases = List.of(
+    private List<Purchase> sparsePurchases(
+            LocalDate date,
+            Producto nullPriceProduct,
+            Producto uncategorized,
+            Producto unnamedCategory,
+            Producto invalidProduct
+    ) {
+        return List.of(
                 purchaseWithItems(
                         EstadoCompra.ENTREGADO,
                         TipoCompra.PRESENCIAL,
@@ -294,80 +460,18 @@ class GetKiosqueroDashboardTest {
                         "Primer recreo"
                 )
         );
-        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
-        ProductRepository productRepository = mock(ProductRepository.class);
-        StockMovementRepository stockMovementRepository = mock(StockMovementRepository.class);
-        GetKiosqueroDashboard useCase = useCase(
-                purchaseRepository,
-                productRepository,
-                stockMovementRepository
-        );
-
-        when(purchaseRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
-                .thenReturn(purchases);
-        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(
-                withoutInventory,
-                reservedWithoutQuantity,
-                lowWithoutState,
-                soldOutByQuantity
-        ));
-        when(stockMovementRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
-                .thenReturn(List.of(
-                        movement(TipoMovimientoStock.LIBERACION, 3, null),
-                        movement(TipoMovimientoStock.AJUSTE, 1, 0)
-                ));
-
-        KiosqueroDashboard dashboard = useCase.execute(buffetId, null);
-
-        assertEquals(date, dashboard.date());
-        assertEquals(new BigDecimal("11.00"), dashboard.summary().totalSold());
-        assertTrue(dashboard.activity().salesByCategory().stream()
-                .anyMatch(categorySales -> "Sin categoria".equals(categorySales.categoryName())));
-        assertTrue(dashboard.products().topSoldProducts().stream()
-                .anyMatch(metric -> "Producto sin precio".equals(metric.productName())
-                        && BigDecimal.ZERO.equals(metric.total())));
-        assertTrue(dashboard.products().productsNeedingRestock().stream()
-                .anyMatch(item -> "Bajo sin estado".equals(item.productName())
-                        && item.estadoInventario() == null));
-        assertTrue(dashboard.products().soldOutProducts().stream()
-                .anyMatch(item -> "Agotado por cantidad".equals(item.productName())));
-        assertEquals(1, dashboard.alerts().soldOutEvents());
     }
 
-    @Test
-    void execute_ShouldUseZeroAverageWhenThereAreNoDeliveredOrders() {
-        UUID buffetId = UUID.randomUUID();
-        LocalDate date = LocalDate.of(2026, 6, 10);
-        Producto product = product("Pendiente", "10.00");
-        Purchase pending = purchase(
-                EstadoCompra.PENDIENTE,
-                TipoCompra.ANTICIPADA,
-                product,
-                1,
-                "10.00",
-                date.atTime(10, 0),
-                "Primer recreo"
-        );
-        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
-        ProductRepository productRepository = mock(ProductRepository.class);
-        StockMovementRepository stockMovementRepository = mock(StockMovementRepository.class);
-        GetKiosqueroDashboard useCase = useCase(
-                purchaseRepository,
-                productRepository,
-                stockMovementRepository
-        );
+    private GetKiosqueroDashboardRequest dailyRequest(UUID buffetId, LocalDate date) {
+        return new GetKiosqueroDashboardRequest(buffetId, date, null, null);
+    }
 
-        when(purchaseRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
-                .thenReturn(List.of(pending));
-        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of());
-        when(stockMovementRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
-                .thenReturn(List.of());
-
-        KiosqueroDashboard dashboard = useCase.execute(buffetId, date);
-
-        assertEquals(BigDecimal.ZERO, dashboard.summary().averageTicket());
-        assertFalse(dashboard.alerts().items().stream()
-                .anyMatch(alert -> "Creditos devueltos".equals(alert.label())));
+    private GetKiosqueroDashboardRequest periodRequest(
+            UUID buffetId,
+            LocalDate from,
+            LocalDate to
+    ) {
+        return new GetKiosqueroDashboardRequest(buffetId, null, from, to);
     }
 
     private Producto product(String name, String price) {
@@ -420,16 +524,14 @@ class GetKiosqueroDashboardTest {
             LocalDateTime date,
             String slot
     ) {
-        Purchase purchase = new Purchase();
-        purchase.setId(UUID.randomUUID());
-        purchase.setStatus(status);
-        purchase.setTipo(type);
-        purchase.setTotalAmount(new BigDecimal(total));
-        purchase.setDate(date);
-        purchase.setPickupSlotDescription(slot);
-        setPickupSlotData(purchase, slot);
-        purchase.setItems(Map.of(product, quantity));
-        return purchase;
+        return purchaseWithItems(
+                status,
+                type,
+                Map.of(product, quantity),
+                total,
+                date,
+                slot
+        );
     }
 
     private Purchase purchaseWithItems(
@@ -509,5 +611,12 @@ class GetKiosqueroDashboardTest {
                         ZoneId.of("America/Argentina/Buenos_Aires")
                 )
         );
+    }
+
+    private record DashboardScenario(
+            GetKiosqueroDashboard useCase,
+            PurchaseRepository purchaseRepository,
+            StockMovementRepository stockMovementRepository
+    ) {
     }
 }
