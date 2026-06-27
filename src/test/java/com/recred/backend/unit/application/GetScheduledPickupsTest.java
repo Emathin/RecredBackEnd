@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetScheduledPickups;
+import com.recred.backend.application.GetScheduledPickupsRequest;
+import com.recred.backend.application.GetScheduledPickupsResponse;
 import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -34,14 +36,18 @@ class GetScheduledPickupsTest {
         UUID franjaId = UUID.randomUUID();
         String search = "test";
         Purchase purchase = new Purchase();
+        purchase.setId(UUID.randomUUID());
 
         when(purchaseRepository.findScheduledPickups(buffetId, fecha, estadoRetiro, franjaId, search))
                 .thenReturn(List.of(purchase));
 
-        List<Purchase> resultado = getScheduledPickups.execute(buffetId, fecha, estadoRetiro, franjaId, search);
+        GetScheduledPickupsRequest request = new GetScheduledPickupsRequest(
+                buffetId, fecha, estadoRetiro, franjaId, search);
+
+        List<GetScheduledPickupsResponse> resultado = getScheduledPickups.execute(request);
 
         assertEquals(1, resultado.size());
-        assertEquals(purchase, resultado.get(0));
+        assertEquals(purchase.getId(), resultado.get(0).id());
         verify(purchaseRepository, times(1))
                 .findScheduledPickups(buffetId, fecha, estadoRetiro, franjaId, search);
     }

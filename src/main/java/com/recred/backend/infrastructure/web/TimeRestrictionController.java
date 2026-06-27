@@ -6,6 +6,8 @@ import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.DisableTimeRestrictionRequest;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
+import com.recred.backend.application.GetTimeRestrictionsByStudentRequest;
+import com.recred.backend.application.GetTimeRestrictionsByStudentResponse;
 import com.recred.backend.application.TimeRestrictionCommand;
 import com.recred.backend.application.UpdateTimeRestriction;
 
@@ -52,10 +54,11 @@ public class TimeRestrictionController {
     }
 
     @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<RestriccionHoraria>>
+    public ResponseEntity<List<GetTimeRestrictionsByStudentResponse>>
     getByStudent(@PathVariable UUID studentId) {
-        List<RestriccionHoraria> restrictions =
-                getTimeRestrictionsByStudent.execute(studentId);
+        List<GetTimeRestrictionsByStudentResponse> restrictions =
+                getTimeRestrictionsByStudent.execute(
+                        new GetTimeRestrictionsByStudentRequest(studentId));
         return ResponseEntity.ok(restrictions);
     }
 
