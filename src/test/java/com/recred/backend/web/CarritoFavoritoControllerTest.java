@@ -3,6 +3,7 @@ package com.recred.backend.web;
 import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.application.DeleteCarritoFavorito;
+import com.recred.backend.application.DeleteCarritoFavoritoRequest;
 import com.recred.backend.application.GetCarritosFavoritosByTutor;
 import com.recred.backend.application.SaveCarritoFavorito;
 import com.recred.backend.domain.models.Alumno;
@@ -122,7 +123,7 @@ class CarritoFavoritoControllerTest {
         );
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        verify(deleteCarritoFavorito).execute("tutor-sub", cartId);
+        verify(deleteCarritoFavorito).execute(new DeleteCarritoFavoritoRequest("tutor-sub", cartId));
     }
 
     @Test

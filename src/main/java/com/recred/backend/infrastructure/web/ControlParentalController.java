@@ -5,6 +5,7 @@ import com.recred.backend.application.AddHealthRestrictionRequest;
 import com.recred.backend.application.BloquearProductoManual;
 import com.recred.backend.application.BloquearProductoManualRequest;
 import com.recred.backend.application.DesbloquearProductoManual;
+import com.recred.backend.application.DesbloquearProductoManualRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.ManageRestrictions;
@@ -112,7 +113,9 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId) {
 
-        desbloquearProductoManual.execute(alumnoId, productoId);
+        desbloquearProductoManual.execute(
+                new DesbloquearProductoManualRequest(alumnoId, productoId)
+        );
         return ResponseEntity.ok().build();
     }
 }

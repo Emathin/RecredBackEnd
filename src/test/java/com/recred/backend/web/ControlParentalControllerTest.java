@@ -5,6 +5,7 @@ import com.recred.backend.application.AddHealthRestrictionRequest;
 import com.recred.backend.application.BloquearProductoManual;
 import com.recred.backend.application.BloquearProductoManualRequest;
 import com.recred.backend.application.DesbloquearProductoManual;
+import com.recred.backend.application.DesbloquearProductoManualRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.ManageRestrictions;
@@ -181,9 +182,11 @@ class ControlParentalControllerTest {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
 
-        doNothing().when(desbloquearProductoManual).execute(alumnoId, productoId);
+        doNothing().when(desbloquearProductoManual).execute(new DesbloquearProductoManualRequest(alumnoId, productoId));
 
         mockMvc.perform(delete("/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
                 .andExpect(status().isOk());
+
+        verify(desbloquearProductoManual).execute(new DesbloquearProductoManualRequest(alumnoId, productoId));
     }
 }

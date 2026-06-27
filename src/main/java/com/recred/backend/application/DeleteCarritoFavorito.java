@@ -26,7 +26,10 @@ public class DeleteCarritoFavorito {
     }
 
     @Transactional
-    public void execute(String cognitoSub, UUID cartId) {
+    public void execute(DeleteCarritoFavoritoRequest request) {
+        String cognitoSub = request.cognitoSub();
+        UUID cartId = request.cartId();
+
         Usuario usuario = usuarioRepository.findByIdCognito(cognitoSub)
                 .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
 

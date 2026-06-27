@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.DeleteCarritoFavorito;
+import com.recred.backend.application.DeleteCarritoFavoritoRequest;
 import com.recred.backend.application.GetCarritosFavoritosByTutor;
 import com.recred.backend.application.SaveCarritoFavorito;
 import com.recred.backend.domain.models.CarritoFavorito;
@@ -87,7 +88,9 @@ public class CarritoFavoritoController {
             Authentication authentication,
             @PathVariable UUID id) {
 
-        deleteCarritoFavorito.execute(cognitoSubject(authentication), id);
+        deleteCarritoFavorito.execute(
+                new DeleteCarritoFavoritoRequest(cognitoSubject(authentication), id)
+        );
         return ResponseEntity.noContent().build();
     }
 
