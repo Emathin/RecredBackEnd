@@ -3,7 +3,10 @@ package com.recred.backend.web;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateBudgetResponse;
 import com.recred.backend.application.DisableBudget;
+import com.recred.backend.application.DisableBudgetRequest;
 import com.recred.backend.application.GetActiveBudgetByStudent;
+import com.recred.backend.application.GetActiveBudgetByStudentRequest;
+import com.recred.backend.application.GetActiveBudgetByStudentResponse;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.domain.models.PeriodoPresupuesto;
@@ -106,25 +109,36 @@ class BudgetControllerTest {
 
     @Test
     void getActiveByStudent_SiExiste_Retorna200Ok() throws Exception {
-        when(getActiveBudgetByStudent.execute(studentId)).thenReturn(Optional.of(presupuestoMock));
+        GetActiveBudgetByStudentResponse responseMock = new GetActiveBudgetByStudentResponse(
+                budgetId,
+                studentId,
+                UUID.randomUUID(),
+                new BigDecimal("5000.00"),
+                PeriodoPresupuesto.SEMANAL,
+                LocalDate.now(),
+                true,
+                List.of(),
+                new BigDecimal("5000.00")
+        );
+        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId))).thenReturn(Optional.of(responseMock));
 
         mockMvc.perform(get("/api/v1/budgets/student/{studentId}/active", studentId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(budgetId.toString()));
 
-        verify(getActiveBudgetByStudent).execute(studentId);
+        verify(getActiveBudgetByStudent).execute(new GetActiveBudgetByStudentRequest(studentId));
     }
 
     @Test
     void getActiveByStudent_SiNoExiste_Retorna404NotFound() throws Exception {
-        when(getActiveBudgetByStudent.execute(studentId)).thenReturn(Optional.empty());
+        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId))).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/v1/budgets/student/{studentId}/active", studentId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
 
-        verify(getActiveBudgetByStudent).execute(studentId);
+        verify(getActiveBudgetByStudent).execute(new GetActiveBudgetByStudentRequest(studentId));
     }
 
     @Test
@@ -145,13 +159,13 @@ class BudgetControllerTest {
     @Test
     void disable_Retorna204NoContent() throws Exception {
 
-        doNothing().when(disableBudget).execute(budgetId);
+        doNothing().when(disableBudget).execute(new DisableBudgetRequest(budgetId));
 
         mockMvc.perform(patch("/api/v1/budgets/{budgetId}/disable", budgetId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
 
-        verify(disableBudget).execute(budgetId);
+        verify(disableBudget).execute(new DisableBudgetRequest(budgetId));
     }
 
     @Test

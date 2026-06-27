@@ -89,11 +89,11 @@ class GetTutorGlobalDashboardTest {
         Purchase emptyPurchase = purchase(Map.of(), "0.00");
 
         when(obtenerHijosPorPadre.executeByCognitoSubject(cognitoSubject)).thenReturn(children);
-        when(getActiveBudgetByStudent.execute(firstChild.getId())).thenReturn(Optional.of(
-                budget(firstChild.getId())
+        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(firstChild.getId()))).thenReturn(Optional.of(
+                budgetResponse(firstChild.getId())
         ));
-        when(getActiveBudgetByStudent.execute(secondChild.getId())).thenReturn(Optional.empty());
-        when(getActiveBudgetByStudent.execute(thirdChild.getId())).thenReturn(Optional.empty());
+        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(secondChild.getId()))).thenReturn(Optional.empty());
+        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(thirdChild.getId()))).thenReturn(Optional.empty());
         when(getStudentRewardStatus.execute(firstChild.getId())).thenReturn(reward("SILVER", 120));
         when(getStudentRewardStatus.execute(secondChild.getId())).thenReturn(reward("BRONZE", 20));
         when(getStudentRewardStatus.execute(thirdChild.getId())).thenReturn(reward("GOLD", 300));
@@ -187,6 +187,20 @@ class GetTutorGlobalDashboardTest {
                 LocalDate.of(2026, 6, 1),
                 true,
                 List.of()
+        );
+    }
+
+    private GetActiveBudgetByStudentResponse budgetResponse(UUID studentId) {
+        return new GetActiveBudgetByStudentResponse(
+                UUID.randomUUID(),
+                studentId,
+                UUID.randomUUID(),
+                new BigDecimal("500.00"),
+                PeriodoPresupuesto.MENSUAL,
+                LocalDate.of(2026, 6, 1),
+                true,
+                List.of(),
+                new BigDecimal("500.00")
         );
     }
 

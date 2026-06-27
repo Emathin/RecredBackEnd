@@ -4,6 +4,7 @@ import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.DisableTimeRestrictionRequest;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.TimeRestrictionCommand;
 import com.recred.backend.application.UpdateTimeRestriction;
@@ -95,7 +96,7 @@ class TimeRestrictionControllerTest {
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         assertNull(response.getBody());
-        verify(disableTimeRestriction).execute(restrictionId);
+        verify(disableTimeRestriction).execute(new DisableTimeRestrictionRequest(restrictionId));
     }
 
     private TimeRestrictionCommand command() {

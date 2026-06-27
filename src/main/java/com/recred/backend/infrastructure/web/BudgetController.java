@@ -5,7 +5,10 @@ import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateBudgetRequest;
 import com.recred.backend.application.CreateBudgetResponse;
 import com.recred.backend.application.DisableBudget;
+import com.recred.backend.application.DisableBudgetRequest;
 import com.recred.backend.application.GetActiveBudgetByStudent;
+import com.recred.backend.application.GetActiveBudgetByStudentRequest;
+import com.recred.backend.application.GetActiveBudgetByStudentResponse;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.application.UpdateBudgetRulesCommand;
@@ -58,8 +61,9 @@ public class BudgetController {
     }
 
     @GetMapping("/student/{studentId}/active")
-    public ResponseEntity<PresupuestoAlumno> getActiveByStudent(@PathVariable UUID studentId) {
-        return getActiveBudgetByStudent.execute(studentId)
+    public ResponseEntity<GetActiveBudgetByStudentResponse> getActiveByStudent(
+            @PathVariable UUID studentId) {
+        return getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -81,7 +85,7 @@ public class BudgetController {
 
     @PatchMapping("/{budgetId}/disable")
     public ResponseEntity<Void> disable(@PathVariable UUID budgetId) {
-        disableBudget.execute(budgetId);
+        disableBudget.execute(new DisableBudgetRequest(budgetId));
         return ResponseEntity.noContent().build();
     }
 

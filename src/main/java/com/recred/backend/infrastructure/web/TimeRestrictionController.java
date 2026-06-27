@@ -4,6 +4,7 @@ import com.recred.backend.domain.models.RestriccionHoraria;
 
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DisableTimeRestriction;
+import com.recred.backend.application.DisableTimeRestrictionRequest;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.TimeRestrictionCommand;
 import com.recred.backend.application.UpdateTimeRestriction;
@@ -68,7 +69,7 @@ public class TimeRestrictionController {
 
     @PatchMapping("/{id}/disable")
     public ResponseEntity<Void> disable(@PathVariable UUID id) {
-        disableTimeRestriction.execute(id);
+        disableTimeRestriction.execute(new DisableTimeRestrictionRequest(id));
         return ResponseEntity.noContent().build();
     }
 }

@@ -1,7 +1,6 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.repositories.TutorRepository;
@@ -65,16 +64,16 @@ public class GetTutorGlobalDashboard {
 
             List<Purchase> historial = obtenerHistorialAlumno.execute(alumno.getId());
 
-            Optional<PresupuestoAlumno> presupuestoOpt = getActiveBudgetByStudent
-                    .execute(alumno.getId());
+            Optional<GetActiveBudgetByStudentResponse> presupuestoOpt = getActiveBudgetByStudent
+                    .execute(new GetActiveBudgetByStudentRequest(alumno.getId()));
             BudgetSummaryDTO budgetDto = null;
             if (presupuestoOpt.isPresent()) {
-                PresupuestoAlumno p = presupuestoOpt.get();
+                GetActiveBudgetByStudentResponse p = presupuestoOpt.get();
                 BigDecimal spent = BigDecimal.ZERO;
                 try {
                     CalculadorPeriodoPresupuesto calculador = new CalculadorPeriodoPresupuesto();
                     LocalDateTime now = LocalDateTime.now();
-                    RangoFechas rango = calculador.calcularRango(p.getPeriodo(), now);
+                    RangoFechas rango = calculador.calcularRango(p.periodo(), now);
                     for (Purchase purchase : historial) {
                         LocalDateTime purchaseDate = purchase.getDate();
                         if (purchaseDate != null 
@@ -87,9 +86,9 @@ public class GetTutorGlobalDashboard {
                     // Fallback to ZERO in case of any calculation issues
                 }
                 budgetDto = new BudgetSummaryDTO(
-                        p.getPeriodo().name(),
+                        p.periodo().name(),
                         spent,
-                        p.getMontoLimiteGeneral()
+                        p.montoLimiteGeneral()
                 );
             }
 

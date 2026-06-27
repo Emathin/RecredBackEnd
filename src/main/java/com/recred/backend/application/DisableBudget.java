@@ -13,7 +13,8 @@ public class DisableBudget {
         this.repository = repository;
     }
 
-    public void execute(UUID budgetId) {
+    public void execute(DisableBudgetRequest request) {
+        UUID budgetId = request.budgetId();
         PresupuestoAlumno presupuesto = repository.findById(budgetId)
                 .orElseThrow(() -> new RuntimeException("Presupuesto no " +
                         "encontrado con ID: " + budgetId));
