@@ -24,13 +24,20 @@ public class ManualProductLock {
         UUID alumnoId = request.alumnoId();
         UUID productoId = request.productoId();
 
-        Alumno alumno = alumnoRepository.findById(alumnoId)
-                .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
-
-        Producto producto = productRepository.findById(productoId)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+        Alumno alumno = this.findAlumnoById(alumnoId);
+        Producto producto = this.findProductoById(productoId);
 
         alumno.bloquearProducto(producto);
         alumnoRepository.save(alumno);
+    }
+
+    private Alumno findAlumnoById(UUID alumnoId) {
+        return alumnoRepository.findById(alumnoId)
+                .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
+    }
+
+    private Producto findProductoById(UUID productoId) {
+        return productRepository.findById(productoId)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
     }
 }

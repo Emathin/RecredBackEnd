@@ -11,6 +11,7 @@ import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 public class UpdateStudentPhoto {
 
@@ -27,28 +28,15 @@ public class UpdateStudentPhoto {
     }
 
     public UpdateStudentPhotoResponse execute(UpdateStudentPhotoRequest request) {
-        Usuario parent = usuarioRepository.findByIdCognito(request.parentCognitoSubject())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Usuario autenticado no encontrado"));
+        Usuario parent = this.findUsuarioByCognito(request.parentCognitoSubject());
 
-        if (parent.getRol() != RolUsuario.PADRE) {
-            throw new AccessDeniedException("El usuario autenticado no tiene rol PADRE");
-        }
+        this.analizarRolUsuario(parent);
 
-        Tutor tutor = tutorRepository.findByUsuarioId(parent.getId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Tutor no encontrado para el usuario autenticado"));
+        Tutor tutor = this.findTutorByUsuarioId(parent.getId());
+        Alumno alumno = this.findAlumnoById(request.alumnoId());
 
-        Alumno alumno = alumnoRepository.findById(request.alumnoId())
-                .orElseThrow(() -> new AlumnoNoEncontradoException(request.alumnoId()));
-
-        boolean esHijo = tutor.getHijos().stream()
-                .anyMatch(hijo -> hijo.getId().equals(request.alumnoId()));
-
-        if (!esHijo) {
-            throw new AccessDeniedException(
-                    "El alumno no pertenece al tutor autenticado");
-        }
+        boolean esHijo = this.isTutorOfStudent(tutor, alumno);
+        this.analizarExcepcion(esHijo);
 
         String idCognitoAlumno = alumno.getUsuario().getIdCognito();
         usuarioRepository.updateFotoPerfil(idCognitoAlumno, request.urlFotoPerfil());
@@ -56,6 +44,42 @@ public class UpdateStudentPhoto {
         alumno.getUsuario().setUrlFotoPerfil(request.urlFotoPerfil());
 
         return toResponse(alumno);
+    }
+
+    private void analizarRolUsuario(Usuario parent){
+        if (parent.getRol() != RolUsuario.PADRE) {
+            throw new AccessDeniedException("El usuario autenticado no tiene rol PADRE");
+        }
+
+    }
+
+    private void analizarExcepcion(boolean esHijo){
+        if (!esHijo) {
+            throw new AccessDeniedException(
+                    "El alumno no pertenece al tutor autenticado");
+        }
+    }
+
+    private Usuario findUsuarioByCognito(String cognitoSubject) {
+        return usuarioRepository.findByIdCognito(cognitoSubject)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Usuario autenticado no encontrado"));
+    }
+
+    private Tutor findTutorByUsuarioId(UUID usuarioId) {
+        return tutorRepository.findByUsuarioId(usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Tutor no encontrado para el usuario autenticado"));
+    }
+
+    private Alumno findAlumnoById(UUID id) {
+        return alumnoRepository.findById(id)
+                .orElseThrow(() -> new AlumnoNoEncontradoException(id));
+    }
+
+    private boolean isTutorOfStudent(Tutor tutor, Alumno alumno) {
+        return tutor.getHijos().stream()
+                .anyMatch(hijo -> hijo.getId().equals(alumno.getId()));
     }
 
     private UpdateStudentPhotoResponse toResponse(Alumno alumno) {
