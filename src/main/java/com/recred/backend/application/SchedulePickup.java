@@ -49,7 +49,8 @@ public class SchedulePickup {
         return student;
     }
 
-    private LocalDateTime calculateProjectedPickupTime(LocalDate pickupDate, FranjaHoraria pickupSlot) {
+    private LocalDateTime calculateProjectedPickupTime(
+            LocalDate pickupDate, FranjaHoraria pickupSlot) {
         return LocalDateTime.of(pickupDate, pickupSlot.getHoraInicio());
     }
 

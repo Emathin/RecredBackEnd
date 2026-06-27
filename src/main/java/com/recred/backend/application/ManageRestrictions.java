@@ -24,7 +24,8 @@ public class ManageRestrictions {
 
     public void execute(ManageRestrictionsRequest request) {
         Alumno student = this.findStudentById(request.studentId());
-        Set<ClasificacionSalud> newRestrictions = getRestrictionsByIds(request.newClassificationIds());
+        Set<ClasificacionSalud> newRestrictions =
+                getRestrictionsByIds(request.newClassificationIds());
         student.setRestriccionesSalud(newRestrictions);
         studentRepository.save(student);
     }

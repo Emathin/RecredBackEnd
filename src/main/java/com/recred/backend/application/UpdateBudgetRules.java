@@ -48,7 +48,8 @@ public class UpdateBudgetRules {
                 .collect(Collectors.toList());
     }
 
-    private ReglaPresupuestoCategoria mapToRegla(UpdateBudgetRulesRequest.CategoryRuleRequest rule) {
+    private ReglaPresupuestoCategoria mapToRegla(
+            UpdateBudgetRulesRequest.CategoryRuleRequest rule) {
         CategoriaProducto categoria = new CategoriaProducto();
         categoria.setId(rule.categoryId());
 
