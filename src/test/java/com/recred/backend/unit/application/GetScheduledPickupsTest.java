@@ -51,4 +51,25 @@ class GetScheduledPickupsTest {
         verify(purchaseRepository, times(1))
                 .findScheduledPickups(buffetId, fecha, estadoRetiro, franjaId, search);
     }
+
+    @Test
+    void execute_CuandoNoHayRetirosProgramados_RetornaListaVacia() {
+        UUID buffetId = UUID.randomUUID();
+        LocalDate fecha = LocalDate.now();
+        EstadoRetiro estadoRetiro = EstadoRetiro.PROGRAMADO;
+        UUID franjaId = UUID.randomUUID();
+        String search = "test";
+
+        when(purchaseRepository.findScheduledPickups(buffetId, fecha, estadoRetiro, franjaId, search))
+                .thenReturn(List.of());
+
+        GetScheduledPickupsRequest request = new GetScheduledPickupsRequest(
+                buffetId, fecha, estadoRetiro, franjaId, search);
+
+        List<GetScheduledPickupsResponse> resultado = getScheduledPickups.execute(request);
+
+        assertEquals(0, resultado.size());
+        verify(purchaseRepository, times(1))
+                .findScheduledPickups(buffetId, fecha, estadoRetiro, franjaId, search);
+    }
 }

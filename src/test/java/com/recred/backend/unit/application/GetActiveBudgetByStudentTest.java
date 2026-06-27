@@ -16,6 +16,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +44,17 @@ class GetActiveBudgetByStudentTest {
         assertTrue(resultado.isPresent());
         assertEquals(presupuesto.getId(), resultado.get().id());
         assertEquals(presupuesto.getAlumnoId(), resultado.get().alumnoId());
+        verify(repository).findActivoByAlumnoId(studentId);
+    }
+
+    @Test
+    void execute_CuandoNoHayPresupuestoActivo_RetornaOptionalVacio() {
+        UUID studentId = UUID.randomUUID();
+        when(repository.findActivoByAlumnoId(studentId)).thenReturn(Optional.empty());
+
+        Optional<GetActiveBudgetByStudentResponse> resultado = getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId));
+
+        assertFalse(resultado.isPresent());
         verify(repository).findActivoByAlumnoId(studentId);
     }
 }

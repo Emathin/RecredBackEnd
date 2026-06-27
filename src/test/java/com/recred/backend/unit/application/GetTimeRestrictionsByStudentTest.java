@@ -45,4 +45,16 @@ class GetTimeRestrictionsByStudentTest {
         assertEquals(studentId, resultado.get(0).alumnoId());
         verify(repository).findAllByAlumnoEntityId(studentId);
     }
+
+    @Test
+    void execute_CuandoNoHayRestricciones_RetornaListaVacia() {
+        UUID studentId = UUID.randomUUID();
+        when(repository.findAllByAlumnoEntityId(studentId)).thenReturn(List.of());
+
+        List<GetTimeRestrictionsByStudentResponse> resultado =
+                getTimeRestrictionsByStudent.execute(new GetTimeRestrictionsByStudentRequest(studentId));
+
+        assertEquals(0, resultado.size());
+        verify(repository).findAllByAlumnoEntityId(studentId);
+    }
 }
