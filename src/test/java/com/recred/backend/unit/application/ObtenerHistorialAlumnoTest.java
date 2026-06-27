@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.ObtenerHistorialAlumno;
+import com.recred.backend.application.ObtenerHistorialAlumnoRequest;
+import com.recred.backend.application.ObtenerHistorialAlumnoResponse;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import org.junit.jupiter.api.Test;
@@ -28,14 +30,20 @@ class ObtenerHistorialAlumnoTest {
     void dadoAlumnoConCompras_cuandoSeEjecuta_entoncesRetornaListaDeCompras() {
         UUID alumnoId = UUID.randomUUID();
         Purchase compra1 = new Purchase();
+        compra1.setId(UUID.randomUUID());
         Purchase compra2 = new Purchase();
+        compra2.setId(UUID.randomUUID());
         List<Purchase> comprasMock = List.of(compra1, compra2);
 
         when(purchaseRepository.findHistorialByAlumno(alumnoId)).thenReturn(comprasMock);
 
-        List<Purchase> resultado = obtenerHistorialAlumno.execute(alumnoId);
+        List<ObtenerHistorialAlumnoResponse> resultado = obtenerHistorialAlumno.execute(
+                new ObtenerHistorialAlumnoRequest(alumnoId)
+        );
 
         assertEquals(2, resultado.size());
+        assertEquals(compra1.getId(), resultado.get(0).id());
+        assertEquals(compra2.getId(), resultado.get(1).id());
         verify(purchaseRepository, times(1)).findHistorialByAlumno(alumnoId);
     }
 }

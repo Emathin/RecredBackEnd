@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.ObtenerHijosPorPadre;
+import com.recred.backend.application.ObtenerHijosPorPadreRequest;
+import com.recred.backend.application.ObtenerHijosPorPadreResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.repositories.TutorRepository;
@@ -10,8 +12,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
-
 
 @ExtendWith(MockitoExtension.class)
 class ObtenerHijosPorPadreTest {
@@ -43,10 +44,12 @@ class ObtenerHijosPorPadreTest {
 
         when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(tutor));
 
-        Set<Alumno> resultado = obtenerHijosPorPadre.execute(tutorId);
+        List<ObtenerHijosPorPadreResponse> resultado = obtenerHijosPorPadre.execute(
+                ObtenerHijosPorPadreRequest.byTutorId(tutorId));
 
         assertNotNull(resultado);
         assertEquals(1, resultado.size());
+        assertEquals(hijo1.getId(), resultado.get(0).id());
         verify(tutorRepository, times(1)).findById(tutorId);
     }
 
@@ -57,7 +60,7 @@ class ObtenerHijosPorPadreTest {
         when(tutorRepository.findById(tutorId)).thenReturn(Optional.empty());
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            obtenerHijosPorPadre.execute(tutorId);
+            obtenerHijosPorPadre.execute(ObtenerHijosPorPadreRequest.byTutorId(tutorId));
         });
 
         assertEquals("Tutor no encontrado con ID: " + tutorId, exception.getMessage());
@@ -73,9 +76,11 @@ class ObtenerHijosPorPadreTest {
         tutor.addHijo(hijo);
         when(tutorRepository.findByUsuarioIdCognito(subject)).thenReturn(Optional.of(tutor));
 
-        Set<Alumno> result = obtenerHijosPorPadre.executeByCognitoSubject(subject);
+        List<ObtenerHijosPorPadreResponse> result = obtenerHijosPorPadre.execute(
+                ObtenerHijosPorPadreRequest.byCognitoSubject(subject));
 
-        assertEquals(Set.of(hijo), result);
+        assertEquals(1, result.size());
+        assertEquals(hijo.getId(), result.get(0).id());
     }
 
     @Test
@@ -84,7 +89,7 @@ class ObtenerHijosPorPadreTest {
         when(tutorRepository.findByUsuarioIdCognito(subject)).thenReturn(Optional.empty());
 
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> obtenerHijosPorPadre.executeByCognitoSubject(subject));
+                () -> obtenerHijosPorPadre.execute(ObtenerHijosPorPadreRequest.byCognitoSubject(subject)));
 
         assertEquals("Tutor no encontrado para el usuario autenticado", exception.getMessage());
     }
