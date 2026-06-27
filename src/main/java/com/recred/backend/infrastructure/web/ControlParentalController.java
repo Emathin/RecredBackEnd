@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddHealthRestrictionRequest;
 import com.recred.backend.application.BloquearProductoManual;
+import com.recred.backend.application.BloquearProductoManualRequest;
 import com.recred.backend.application.DesbloquearProductoManual;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
@@ -102,7 +103,7 @@ public class ControlParentalController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId) {
 
-        bloquearProductoManual.execute(alumnoId, productoId);
+        bloquearProductoManual.execute(new BloquearProductoManualRequest(alumnoId, productoId));
         return ResponseEntity.ok().build();
     }
 

@@ -1,6 +1,7 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.AgregarProductoFavorito;
+import com.recred.backend.application.AgregarProductoFavoritoRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetFavoritosByAlumno;
 import com.recred.backend.application.GetStudentPreferences;
@@ -188,7 +189,7 @@ class StudentPreferenceControllerTest {
         ResponseEntity<Void> response = controller.agregarFavorito(studentId, productoId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(agregarProductoFavorito).execute(studentId, productoId);
+        verify(agregarProductoFavorito).execute(new AgregarProductoFavoritoRequest(studentId, productoId));
     }
 
     @Test

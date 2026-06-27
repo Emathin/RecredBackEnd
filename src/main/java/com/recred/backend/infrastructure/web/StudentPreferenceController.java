@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AgregarProductoFavorito;
+import com.recred.backend.application.AgregarProductoFavoritoRequest;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetFavoritosByAlumno;
 import com.recred.backend.application.GetStudentPreferences;
@@ -105,7 +106,7 @@ public class StudentPreferenceController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId
     ) {
-        agregarProductoFavorito.execute(alumnoId, productoId);
+        agregarProductoFavorito.execute(new AgregarProductoFavoritoRequest(alumnoId, productoId));
         return ResponseEntity.ok().build();
     }
 

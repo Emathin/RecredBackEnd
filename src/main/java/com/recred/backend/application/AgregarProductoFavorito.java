@@ -27,7 +27,10 @@ public class AgregarProductoFavorito {
     }
 
     @Transactional
-    public void execute(UUID alumnoId, UUID productoId) {
+    public void execute(AgregarProductoFavoritoRequest request) {
+        UUID alumnoId = request.alumnoId();
+        UUID productoId = request.productoId();
+
         Alumno alumno = alumnoRepository.findById(alumnoId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
@@ -36,7 +39,7 @@ public class AgregarProductoFavorito {
 
         List<Tutor> tutores = tutorRepository.findByAlumnoId(alumnoId);
         boolean isFree = tutores.isEmpty() || tutores.stream()
-                .allMatch(t -> t.getUsuario() == null 
+                .allMatch(t -> t.getUsuario() == null
                         || t.getUsuario().getPlan() == TipoPlan.GRATUITO);
 
         if (isFree) {
@@ -47,7 +50,6 @@ public class AgregarProductoFavorito {
                         "Límite de productos favoritos alcanzado para cuenta gratuita (máximo 5)");
             }
         }
-
 
         alumno.agregarProductoFavorito(producto);
         alumnoRepository.save(alumno);

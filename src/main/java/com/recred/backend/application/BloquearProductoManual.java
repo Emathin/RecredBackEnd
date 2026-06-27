@@ -20,7 +20,10 @@ public class BloquearProductoManual {
     }
 
     @Transactional
-    public void execute(UUID alumnoId, UUID productoId) {
+    public void execute(BloquearProductoManualRequest request) {
+        UUID alumnoId = request.alumnoId();
+        UUID productoId = request.productoId();
+
         Alumno alumno = alumnoRepository.findById(alumnoId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 

@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.BloquearProductoManual;
+import com.recred.backend.application.BloquearProductoManualRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -40,7 +41,7 @@ class BloquearProductoManualTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(productRepository.findById(productoId)).thenReturn(Optional.of(producto));
 
-        bloquearProductoManual.execute(alumnoId, productoId);
+        bloquearProductoManual.execute(new BloquearProductoManualRequest(alumnoId, productoId));
 
         verify(alumnoRepository, times(1)).save(alumno);
     }
@@ -53,7 +54,7 @@ class BloquearProductoManualTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                bloquearProductoManual.execute(alumnoId, productoId)
+                bloquearProductoManual.execute(new BloquearProductoManualRequest(alumnoId, productoId))
         );
 
         verify(productRepository, never()).findById(any());

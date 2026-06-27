@@ -3,6 +3,7 @@ package com.recred.backend.web;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddHealthRestrictionRequest;
 import com.recred.backend.application.BloquearProductoManual;
+import com.recred.backend.application.BloquearProductoManualRequest;
 import com.recred.backend.application.DesbloquearProductoManual;
 import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.GetHealthRestrictions;
@@ -169,7 +170,7 @@ class ControlParentalControllerTest {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
 
-        doNothing().when(bloquearProductoManual).execute(alumnoId, productoId);
+        doNothing().when(bloquearProductoManual).execute(new BloquearProductoManualRequest(alumnoId, productoId));
 
         mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
                 .andExpect(status().isOk());
