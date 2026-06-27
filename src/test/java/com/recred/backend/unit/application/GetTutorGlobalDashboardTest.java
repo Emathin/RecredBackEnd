@@ -9,9 +9,6 @@ import com.recred.backend.domain.models.PeriodoPresupuesto;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.SpendingPrediction;
-import com.recred.backend.domain.models.SpendingPredictionAnalysis;
-import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.TutorRepository;
@@ -75,7 +72,6 @@ class GetTutorGlobalDashboardTest {
         Alumno firstChild = child("Mateo", "100.00");
         Alumno secondChild = childWithoutUser();
         Alumno thirdChild = child("Ana", "50.00");
-        Set<Alumno> children = new LinkedHashSet<>(List.of(firstChild, secondChild, thirdChild));
         Producto alfajor = product("Alfajor", "40.00");
         Producto jugo = product("Jugo", "30.00");
         Purchase multipleProductsPurchase = purchase(
@@ -84,39 +80,105 @@ class GetTutorGlobalDashboardTest {
         );
         Purchase emptyPurchase = purchase(Map.of(), "0.00");
 
+        givenTutorWithChildren(cognitoSubject, firstChild, secondChild, thirdChild);
+        givenBudgetFor(firstChild);
+        givenNoBudgetFor(secondChild);
+        givenNoBudgetFor(thirdChild);
+        givenRewardsFor(firstChild, secondChild, thirdChild);
+        givenPredictionWithAnalysis(firstChild);
+        givenPredictionFailure(secondChild);
+        givenPredictionWithoutAnalysis(thirdChild);
+        givenHistory(firstChild, multipleProductsPurchase);
+        givenEmptyHistory(secondChild);
+        givenHistory(thirdChild, emptyPurchase);
+
+        TutorGlobalDashboardDTO result = whenDashboardIsRequested(cognitoSubject);
+
+        thenDashboardSummaryMatches(result);
+        assertFirstChild(result.children().get(0));
+        assertSecondChild(result.children().get(1));
+        assertThirdChild(result.children().get(2));
+    }
+
+    private void givenTutorWithChildren(
+            String cognitoSubject,
+            Alumno firstChild,
+            Alumno secondChild,
+            Alumno thirdChild
+    ) {
+        Set<Alumno> children = new LinkedHashSet<>(List.of(
+                firstChild,
+                secondChild,
+                thirdChild
+        ));
         Tutor tutor = new Tutor();
         tutor.setId(UUID.randomUUID());
         tutor.setHijos(children);
         when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.of(tutor));
-        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(firstChild.getId()))).thenReturn(Optional.of(
-                budgetResponse(firstChild.getId())
+    }
+
+    private void givenBudgetFor(Alumno child) {
+        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(child.getId())))
+                .thenReturn(Optional.of(budgetResponse(child.getId())));
+    }
+
+    private void givenNoBudgetFor(Alumno child) {
+        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(child.getId())))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenRewardsFor(
+            Alumno firstChild,
+            Alumno secondChild,
+            Alumno thirdChild
+    ) {
+        when(getStudentRewardStatus.execute(firstChild.getId())).thenReturn(reward(
+                "SILVER",
+                120
         ));
-        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(secondChild.getId()))).thenReturn(Optional.empty());
-        when(getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(thirdChild.getId()))).thenReturn(Optional.empty());
-        when(getStudentRewardStatus.execute(firstChild.getId())).thenReturn(reward("SILVER", 120));
-        when(getStudentRewardStatus.execute(secondChild.getId())).thenReturn(reward("BRONZE", 20));
-        when(getStudentRewardStatus.execute(thirdChild.getId())).thenReturn(reward("GOLD", 300));
-        when(predictStudentSpending.execute(firstChild.getId(), null))
-                .thenReturn(predictionWithAnalysis(firstChild.getId()));
-        when(predictStudentSpending.execute(secondChild.getId(), null))
+        when(getStudentRewardStatus.execute(secondChild.getId())).thenReturn(reward(
+                "BRONZE",
+                20
+        ));
+        when(getStudentRewardStatus.execute(thirdChild.getId())).thenReturn(reward(
+                "GOLD",
+                300
+        ));
+    }
+
+    private void givenPredictionWithAnalysis(Alumno child) {
+        when(predictStudentSpending.execute(predictionRequest(child.getId())))
+                .thenReturn(predictionWithAnalysis(child.getId()));
+    }
+
+    private void givenPredictionFailure(Alumno child) {
+        when(predictStudentSpending.execute(predictionRequest(child.getId())))
                 .thenThrow(new RuntimeException("sin datos"));
-        when(predictStudentSpending.execute(thirdChild.getId(), null))
-                .thenReturn(predictionWithoutAnalysis(thirdChild.getId()));
-        when(getHistoryByStudent.execute(new GetHistoryByStudentRequest(firstChild.getId())))
-                .thenReturn(List.of(toResponse(multipleProductsPurchase, firstChild.getId())));
-        when(getHistoryByStudent.execute(new GetHistoryByStudentRequest(secondChild.getId()))).thenReturn(List.of());
-        when(getHistoryByStudent.execute(new GetHistoryByStudentRequest(thirdChild.getId())))
-                .thenReturn(List.of(toResponse(emptyPurchase, thirdChild.getId())));
+    }
 
-        TutorGlobalDashboardDTO result = getTutorGlobalDashboard
-                .executeByCognitoSubject(cognitoSubject);
+    private void givenPredictionWithoutAnalysis(Alumno child) {
+        when(predictStudentSpending.execute(predictionRequest(child.getId())))
+                .thenReturn(predictionWithoutAnalysis(child.getId()));
+    }
 
+    private void givenHistory(Alumno child, Purchase purchase) {
+        when(getHistoryByStudent.execute(new GetHistoryByStudentRequest(child.getId())))
+                .thenReturn(List.of(toResponse(purchase, child.getId())));
+    }
+
+    private void givenEmptyHistory(Alumno child) {
+        when(getHistoryByStudent.execute(new GetHistoryByStudentRequest(child.getId())))
+                .thenReturn(List.of());
+    }
+
+    private TutorGlobalDashboardDTO whenDashboardIsRequested(String cognitoSubject) {
+        return getTutorGlobalDashboard.executeByCognitoSubject(cognitoSubject);
+    }
+
+    private void thenDashboardSummaryMatches(TutorGlobalDashboardDTO result) {
         assertEquals("ME", result.tutorId());
         assertEquals(new BigDecimal("150.00"), result.totalBalance());
         assertEquals(3, result.children().size());
-        assertFirstChild(result.children().get(0));
-        assertSecondChild(result.children().get(1));
-        assertThirdChild(result.children().get(2));
     }
 
     private void assertFirstChild(TutorGlobalDashboardDTO.ChildDashboardDTO child) {
@@ -208,27 +270,33 @@ class GetTutorGlobalDashboardTest {
         return new StudentRewardResponse(points, level, "Buen progreso", 30, "GOLD");
     }
 
-    private SpendingPredictionResult predictionWithAnalysis(UUID studentId) {
-        return new SpendingPredictionResult(
-                prediction(studentId, new BigDecimal("80.00")),
-                Optional.of(new SpendingPredictionAnalysis(
+    private PredictStudentSpendingRequest predictionRequest(UUID studentId) {
+        return new PredictStudentSpendingRequest(studentId, null);
+    }
+
+    private PredictStudentSpendingResponse predictionWithAnalysis(UUID studentId) {
+        return prediction(
+                studentId,
+                new BigDecimal("80.00"),
+                new PredictStudentSpendingResponse.SpendingPredictionAnalysisResponse(
                         "Puede gastar menos esta semana.",
                         List.of(),
                         List.of(),
                         "test-model"
-                ))
+                )
         );
     }
 
-    private SpendingPredictionResult predictionWithoutAnalysis(UUID studentId) {
-        return new SpendingPredictionResult(
-                prediction(studentId, new BigDecimal("123.45")),
-                Optional.empty()
-        );
+    private PredictStudentSpendingResponse predictionWithoutAnalysis(UUID studentId) {
+        return prediction(studentId, new BigDecimal("123.45"), null);
     }
 
-    private SpendingPrediction prediction(UUID studentId, BigDecimal predictedSpending) {
-        return new SpendingPrediction(
+    private PredictStudentSpendingResponse prediction(
+            UUID studentId,
+            BigDecimal predictedSpending,
+            PredictStudentSpendingResponse.SpendingPredictionAnalysisResponse analysis
+    ) {
+        return new PredictStudentSpendingResponse(
                 studentId,
                 BudgetPeriod.MENSUAL,
                 LocalDate.of(2026, 6, 10),
@@ -242,7 +310,8 @@ class GetTutorGlobalDashboardTest {
                 BigDecimal.ONE,
                 30,
                 20,
-                List.of()
+                List.of(),
+                analysis
         );
     }
 
