@@ -213,8 +213,10 @@ public class UseCases {
     @Bean
     public GenerateComboSuggestion generateComboSuggestion(
             ProductRepository productRepository,
-            KiosqueroRepository kiosqueroRepository) {
-        return new GenerateComboSuggestion(productRepository, kiosqueroRepository);
+            KiosqueroRepository kiosqueroRepository,
+            UsuarioRepository usuarioRepository) {
+        return new GenerateComboSuggestion(
+                productRepository, kiosqueroRepository, usuarioRepository);
     }
 
     @Bean
