@@ -82,7 +82,7 @@ class CancelPresentialPurchaseTest {
         when(walletRepository.findByStudentId(purchase.getStudent().getId()))
                 .thenReturn(Optional.of(wallet));
 
-        useCase.execute(purchaseId);
+        useCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId));
 
         assertEquals(EstadoCompra.CANCELADO, purchase.getStatus());
         assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
@@ -102,7 +102,7 @@ class CancelPresentialPurchaseTest {
         when(walletRepository.findByStudentId(purchase.getStudent().getId()))
                 .thenReturn(Optional.of(wallet));
 
-        localUseCase.execute(purchaseId);
+        localUseCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId));
 
         assertEquals(EstadoCompra.CANCELADO, purchase.getStatus());
         assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
@@ -122,7 +122,7 @@ class CancelPresentialPurchaseTest {
         when(walletRepository.findByStudentId(purchase.getStudent().getId()))
                 .thenReturn(Optional.of(wallet));
 
-        useCase.execute(purchaseId);
+        useCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId));
 
         verify(inventoryAvailabilityService).releaseReservation(
                 buffetId,
@@ -139,7 +139,7 @@ class CancelPresentialPurchaseTest {
 
         assertThrows(
                 InvalidPurchaseStatusTransitionException.class,
-                () -> useCase.execute(purchaseId)
+                () -> useCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId))
         );
 
         verify(walletRepository, never()).save(any());
@@ -150,7 +150,7 @@ class CancelPresentialPurchaseTest {
     void execute_WhenPurchaseNotFound_ShouldThrowException() {
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(purchaseId));
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId)));
 
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
@@ -162,7 +162,7 @@ class CancelPresentialPurchaseTest {
         when(walletRepository.findByStudentId(purchase.getStudent().getId()))
                 .thenReturn(Optional.empty());
 
-        assertThrows(IllegalStateException.class, () -> useCase.execute(purchaseId));
+        assertThrows(IllegalStateException.class, () -> useCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId)));
 
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
@@ -173,7 +173,7 @@ class CancelPresentialPurchaseTest {
         purchase.setStudent(null);
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
 
-        assertThrows(IllegalStateException.class, () -> useCase.execute(purchaseId));
+        assertThrows(IllegalStateException.class, () -> useCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId)));
 
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
@@ -184,7 +184,7 @@ class CancelPresentialPurchaseTest {
         purchase.getStudent().setId(null);
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
 
-        assertThrows(IllegalStateException.class, () -> useCase.execute(purchaseId));
+        assertThrows(IllegalStateException.class, () -> useCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId)));
 
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
@@ -209,7 +209,7 @@ class CancelPresentialPurchaseTest {
         when(walletRepository.findByStudentId(purchase.getStudent().getId()))
                 .thenReturn(Optional.of(wallet));
 
-        useCase.execute(purchaseId);
+        useCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId));
 
         assertEquals(EstadoCompra.CANCELADO, purchase.getStatus());
         assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
@@ -234,7 +234,7 @@ class CancelPresentialPurchaseTest {
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
         when(timeSlotRepository.findById(slotId)).thenReturn(Optional.of(franja));
 
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(purchaseId));
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId)));
 
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
@@ -251,7 +251,7 @@ class CancelPresentialPurchaseTest {
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
         when(timeSlotRepository.findById(slotId)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalStateException.class, () -> useCase.execute(purchaseId));
+        assertThrows(IllegalStateException.class, () -> useCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId)));
 
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
@@ -274,7 +274,7 @@ class CancelPresentialPurchaseTest {
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
         when(timeSlotRepository.findById(slotId)).thenReturn(Optional.of(franja));
 
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(purchaseId));
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId)));
 
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
@@ -295,7 +295,7 @@ class CancelPresentialPurchaseTest {
         when(walletRepository.findByStudentId(purchase.getStudent().getId()))
                 .thenReturn(Optional.of(wallet));
 
-        localUseCase.execute(purchaseId);
+        localUseCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId));
 
         verify(movimientoBilleteraRepository).registrarMovimientoSistema(
                 eq(wallet.getId()),

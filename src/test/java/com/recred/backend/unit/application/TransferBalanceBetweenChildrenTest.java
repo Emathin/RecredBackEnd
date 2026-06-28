@@ -105,7 +105,7 @@ class TransferBalanceBetweenChildrenTest {
         when(walletRepository.findByStudentId(toId)).thenReturn(Optional.of(toWallet));
         when(schoolCreditRepository.findByStudentIdAndStatus(toId, CreditStatus.ACTIVE)).thenReturn(Optional.empty());
 
-        transferUseCase.execute(cognitoSub, fromId, toId, amount);
+        transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, amount));
 
         assertEquals(new BigDecimal("70.00"), fromWallet.getSaldoCreditos());
         assertEquals(new BigDecimal("80.00"), toWallet.getSaldoCreditos());
@@ -141,7 +141,7 @@ class TransferBalanceBetweenChildrenTest {
         when(walletRepository.findByStudentId(toId)).thenReturn(Optional.of(toWallet));
         when(schoolCreditRepository.findByStudentIdAndStatus(toId, CreditStatus.ACTIVE)).thenReturn(Optional.of(activeCredit));
 
-        transferUseCase.execute(cognitoSub, fromId, toId, amount);
+        transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, amount));
 
         assertEquals(new BigDecimal("70.00"), fromWallet.getSaldoCreditos());
         // $30 transfer - $20 credit = $10 added to balance. Original was $50 -> $60
@@ -173,7 +173,7 @@ class TransferBalanceBetweenChildrenTest {
         when(walletRepository.findByStudentId(toId)).thenReturn(Optional.of(toWallet));
         when(schoolCreditRepository.findByStudentIdAndStatus(toId, CreditStatus.ACTIVE)).thenReturn(Optional.of(activeCredit));
 
-        transferUseCase.execute(cognitoSub, fromId, toId, amount);
+        transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, amount));
 
         assertEquals(new BigDecimal("70.00"), fromWallet.getSaldoCreditos());
         // $30 transfer fully consumed. Original was $50 -> $50
@@ -187,9 +187,9 @@ class TransferBalanceBetweenChildrenTest {
     @Test
     void execute_shouldThrowException_whenAmountIsZeroOrLess() {
         assertThrows(IllegalArgumentException.class, () ->
-                transferUseCase.execute(cognitoSub, fromId, toId, BigDecimal.ZERO));
+                transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, BigDecimal.ZERO)));
         assertThrows(IllegalArgumentException.class, () ->
-                transferUseCase.execute(cognitoSub, fromId, toId, new BigDecimal("-5")));
+                transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, new BigDecimal("-5"))));
 
         verify(walletRepository, never()).save(any());
     }
@@ -197,7 +197,7 @@ class TransferBalanceBetweenChildrenTest {
     @Test
     void execute_shouldThrowException_whenFromStudentAndToStudentAreSame() {
         assertThrows(IllegalArgumentException.class, () ->
-                transferUseCase.execute(cognitoSub, fromId, fromId, new BigDecimal("30.00")));
+                transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, fromId, new BigDecimal("30.00"))));
 
         verify(walletRepository, never()).save(any());
     }
@@ -207,7 +207,7 @@ class TransferBalanceBetweenChildrenTest {
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.empty());
 
         assertThrows(SecurityException.class, () ->
-                transferUseCase.execute(cognitoSub, fromId, toId, new BigDecimal("30.00")));
+                transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, new BigDecimal("30.00"))));
 
         verify(walletRepository, never()).save(any());
     }
@@ -218,7 +218,7 @@ class TransferBalanceBetweenChildrenTest {
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
 
         assertThrows(SecurityException.class, () ->
-                transferUseCase.execute(cognitoSub, fromId, toId, new BigDecimal("30.00")));
+                transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, new BigDecimal("30.00"))));
 
         verify(walletRepository, never()).save(any());
     }
@@ -229,7 +229,7 @@ class TransferBalanceBetweenChildrenTest {
         when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.empty());
 
         assertThrows(SecurityException.class, () ->
-                transferUseCase.execute(cognitoSub, fromId, toId, new BigDecimal("30.00")));
+                transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, new BigDecimal("30.00"))));
 
         verify(walletRepository, never()).save(any());
     }
@@ -246,7 +246,7 @@ class TransferBalanceBetweenChildrenTest {
         when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
 
         assertThrows(SecurityException.class, () ->
-                transferUseCase.execute(cognitoSub, fromId, toId, new BigDecimal("30.00")));
+                transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, new BigDecimal("30.00"))));
 
         verify(walletRepository, never()).save(any());
     }
@@ -258,7 +258,7 @@ class TransferBalanceBetweenChildrenTest {
         when(walletRepository.findByStudentId(fromId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                transferUseCase.execute(cognitoSub, fromId, toId, new BigDecimal("30.00")));
+                transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, new BigDecimal("30.00"))));
 
         verify(walletRepository, never()).save(any());
     }
@@ -271,7 +271,7 @@ class TransferBalanceBetweenChildrenTest {
         when(walletRepository.findByStudentId(toId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                transferUseCase.execute(cognitoSub, fromId, toId, new BigDecimal("30.00")));
+                transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, new BigDecimal("30.00"))));
 
         verify(walletRepository, never()).save(any());
     }
@@ -282,7 +282,7 @@ class TransferBalanceBetweenChildrenTest {
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                transferUseCase.execute(cognitoSub, fromId, toId, new BigDecimal("30.00")));
+                transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, new BigDecimal("30.00"))));
         assertEquals("La transferencia entre hijos no está permitida en cuentas gratuitas", exception.getMessage());
 
         verify(walletRepository, never()).save(any());

@@ -3,16 +3,16 @@ package com.recred.backend.web;
 import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.application.CreateTimeRestriction;
+import com.recred.backend.application.CreateTimeRestrictionRequest;
+import com.recred.backend.application.CreateTimeRestrictionResponse;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.DisableTimeRestrictionRequest;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeRestrictionsByStudentRequest;
 import com.recred.backend.application.GetTimeRestrictionsByStudentResponse;
-import com.recred.backend.application.TimeRestrictionCommand;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.application.UpdateTimeRestrictionRequest;
 import com.recred.backend.application.UpdateTimeRestrictionResponse;
-import com.recred.backend.domain.models.RestriccionHoraria;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class TimeRestrictionControllerTest {
@@ -56,15 +57,29 @@ class TimeRestrictionControllerTest {
 
     @Test
     void create_ShouldReturnCreatedRestriction() {
-        TimeRestrictionCommand command = command();
-        RestriccionHoraria restriction = restriction();
+        CreateTimeRestrictionRequest request = new CreateTimeRestrictionRequest(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null
+        );
+        CreateTimeRestrictionResponse responseMock = new CreateTimeRestrictionResponse(
+                UUID.randomUUID(),
+                request.studentId(),
+                request.timeSlotId(),
+                request.categoryId(),
+                request.classificationId(),
+                true,
+                UUID.randomUUID()
+        );
         Principal principal = () -> "cognito-sub";
-        when(createTimeRestriction.execute(command, "cognito-sub")).thenReturn(restriction);
+        when(createTimeRestriction.execute(any(CreateTimeRestrictionRequest.class))).thenReturn(responseMock);
 
-        ResponseEntity<RestriccionHoraria> response = controller.create(command, principal);
+        ResponseEntity<CreateTimeRestrictionResponse> response = controller.create(request, principal);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(restriction, response.getBody());
+        assertEquals(responseMock, response.getBody());
     }
 
     @Test
@@ -129,20 +144,5 @@ class TimeRestrictionControllerTest {
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         assertNull(response.getBody());
         verify(disableTimeRestriction).execute(new DisableTimeRestrictionRequest(restrictionId));
-    }
-
-    private TimeRestrictionCommand command() {
-        return new TimeRestrictionCommand(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID()
-        );
-    }
-
-    private RestriccionHoraria restriction() {
-        RestriccionHoraria restriction = new RestriccionHoraria();
-        restriction.setId(UUID.randomUUID());
-        return restriction;
     }
 }
