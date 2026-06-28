@@ -53,9 +53,11 @@ public class WalletController {
             @RequestBody LoadBalanceRequest request, 
             Authentication authentication) {
         loadBalanceToChild.execute(
-                cognitoSubject(authentication), 
-                request.studentId(), 
-                request.amount()
+                new com.recred.backend.application.LoadBalanceToChildRequest(
+                        cognitoSubject(authentication), 
+                        request.studentId(), 
+                        request.amount()
+                )
         );
         return ResponseEntity.ok().build();
     }
@@ -65,10 +67,12 @@ public class WalletController {
             @RequestBody TransferBalanceRequest request, 
             Authentication authentication) {
         transferBalanceBetweenChildren.execute(
-                cognitoSubject(authentication), 
-                request.fromStudentId(), 
-                request.toStudentId(), 
-                request.amount()
+                new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(
+                        cognitoSubject(authentication), 
+                        request.fromStudentId(), 
+                        request.toStudentId(), 
+                        request.amount()
+                )
         );
         return ResponseEntity.ok().build();
     }

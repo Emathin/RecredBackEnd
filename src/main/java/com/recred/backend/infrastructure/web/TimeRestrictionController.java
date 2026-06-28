@@ -1,14 +1,13 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.domain.models.RestriccionHoraria;
-
+import com.recred.backend.application.CreateTimeRestrictionResponse;
+import com.recred.backend.application.CreateTimeRestrictionRequest;
 import com.recred.backend.application.CreateTimeRestriction;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.DisableTimeRestrictionRequest;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
 import com.recred.backend.application.GetTimeRestrictionsByStudentRequest;
 import com.recred.backend.application.GetTimeRestrictionsByStudentResponse;
-import com.recred.backend.application.TimeRestrictionCommand;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.application.UpdateTimeRestrictionRequest;
 import com.recred.backend.application.UpdateTimeRestrictionResponse;
@@ -48,10 +47,17 @@ public class TimeRestrictionController {
     }
 
     @PostMapping
-    public ResponseEntity<RestriccionHoraria> create(
-            @RequestBody TimeRestrictionCommand command,
+    public ResponseEntity<CreateTimeRestrictionResponse> create(
+            @RequestBody CreateTimeRestrictionRequest command,
             java.security.Principal principal) {
-        RestriccionHoraria created = createTimeRestriction.execute(command, principal.getName());
+        CreateTimeRestrictionRequest request = new CreateTimeRestrictionRequest(
+                command.studentId(),
+                command.timeSlotId(),
+                command.categoryId(),
+                command.classificationId(),
+                principal.getName()
+        );
+        CreateTimeRestrictionResponse created = createTimeRestriction.execute(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 

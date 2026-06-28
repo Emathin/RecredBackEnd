@@ -34,34 +34,48 @@ public class LoadBalanceToChild {
     }
 
     @Transactional
-    public void execute(String cognitoSub, UUID studentId, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than zero");
-        }
+    public void execute(LoadBalanceToChildRequest request) {
+        request.validate();
 
+        Usuario padre = getPadreValidate(request.cognitoSub());
+        Tutor tutor = tutorRepository.findByUsuarioId(padre.getId())
+                .orElseThrow(() -> new SecurityException("El usuario no es un tutor válido"));
+
+        Alumno student = getHijo(tutor, request.studentId());
+        Billetera billetera = getWallet(request.studentId());
+
+        billetera.credit(request.amount());
+        walletRepository.save(billetera);
+
+        registerLoadMovement(billetera, student, request.amount(), padre.getId());
+    }
+
+    private Usuario getPadreValidate(String cognitoSub) {
         Usuario padre = usuarioRepository.findByIdCognito(cognitoSub)
                 .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
 
         if (padre.getRol() != RolUsuario.PADRE) {
             throw new SecurityException("Solo un padre puede cargar saldo");
         }
+        return padre;
+    }
 
-        Tutor tutor = tutorRepository.findByUsuarioId(padre.getId())
-                .orElseThrow(() -> new SecurityException("El usuario no es un tutor válido"));
-
-        Alumno student = tutor.getHijos().stream()
+    private Alumno getHijo(Tutor tutor, UUID studentId) {
+        return tutor.getHijos().stream()
                 .filter(h -> h.getId().equals(studentId))
                 .findFirst()
                 .orElseThrow(() -> new SecurityException(
                         "El alumno no es hijo del tutor o no existe"));
+    }
 
-        Billetera billetera = walletRepository.findByStudentId(studentId)
+    private Billetera getWallet(UUID studentId) {
+        return walletRepository.findByStudentId(studentId)
                 .orElseThrow(() -> new RuntimeException(
                         "Billetera no encontrada para el alumno"));
+    }
 
-        billetera.credit(amount);
-        walletRepository.save(billetera);
-
+    private void registerLoadMovement(Billetera billetera, Alumno student, 
+            BigDecimal amount, UUID padreId) {
         String desc = "Carga de saldo realizada por tutor a " 
                 + student.getNombre() + " " + student.getApellido();
         movimientoBilleteraRepository.registrarMovimiento(
@@ -69,7 +83,7 @@ public class LoadBalanceToChild {
                 TipoMovimientoBilletera.CARGA, 
                 amount, 
                 desc, 
-                padre.getId()
+                padreId
         );
     }
 }
