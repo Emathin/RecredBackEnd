@@ -92,12 +92,12 @@ class GetTutorGlobalDashboardTest {
         givenEmptyHistory(secondChild);
         givenHistory(thirdChild, emptyPurchase);
 
-        TutorGlobalDashboardDTO result = whenDashboardIsRequested(cognitoSubject);
+        GetTutorGlobalDashboardResponse result = whenDashboardIsRequested(cognitoSubject);
 
         thenDashboardSummaryMatches(result);
-        assertFirstChild(result.children().get(0));
-        assertSecondChild(result.children().get(1));
-        assertThirdChild(result.children().get(2));
+        assertFirstChild(result.childrenDashboards().get(0));
+        assertSecondChild(result.childrenDashboards().get(1));
+        assertThirdChild(result.childrenDashboards().get(2));
     }
 
     private void givenTutorWithChildren(
@@ -171,22 +171,22 @@ class GetTutorGlobalDashboardTest {
                 .thenReturn(List.of());
     }
 
-    private TutorGlobalDashboardDTO whenDashboardIsRequested(String cognitoSubject) {
-        return getTutorGlobalDashboard.executeByCognitoSubject(cognitoSubject);
+    private GetTutorGlobalDashboardResponse whenDashboardIsRequested(String cognitoSubject) {
+        return getTutorGlobalDashboard.execute(new GetTutorGlobalDashboardRequest(cognitoSubject));
     }
 
-    private void thenDashboardSummaryMatches(TutorGlobalDashboardDTO result) {
+    private void thenDashboardSummaryMatches(GetTutorGlobalDashboardResponse result) {
         assertEquals("ME", result.tutorId());
         assertEquals(new BigDecimal("150.00"), result.totalBalance());
-        assertEquals(3, result.children().size());
+        assertEquals(3, result.childrenDashboards().size());
     }
 
-    private void assertFirstChild(TutorGlobalDashboardDTO.ChildDashboardDTO child) {
-        assertEquals("Mateo", child.studentName());
-        assertEquals(new BigDecimal("100.00"), child.balance());
-        assertEquals("Puede gastar menos esta semana.", child.spendingPredictionMessage());
+    private void assertFirstChild(GetTutorGlobalDashboardResponse.ChildDashboardResponse child) {
+        assertEquals("Mateo", child.nombre());
+        assertEquals(new BigDecimal("100.00"), child.saldoCreditos());
+        assertEquals("Puede gastar menos esta semana.", child.predictionMessage());
         assertNotNull(child.budget());
-        assertEquals(PeriodoPresupuesto.MENSUAL.name(), child.budget().period());
+        assertEquals(PeriodoPresupuesto.MENSUAL.name(), child.budget().periodName());
         assertEquals(BigDecimal.ZERO, child.budget().spent());
         assertEquals(new BigDecimal("500.00"), child.budget().limit());
         assertEquals("SILVER", child.health().rewardLevel());
@@ -194,29 +194,29 @@ class GetTutorGlobalDashboardTest {
         assertEquals(30, child.health().pointsToNextLevel());
         assertEquals("Buen progreso", child.health().weeklyHealthSummary());
         assertEquals(1, child.recentTransactions().size());
-        assertEquals("Alfajor y 1 m\u00e1s", child.recentTransactions().get(0).name());
+        assertEquals("Alfajor y 1 m\u00e1s", child.recentTransactions().get(0).title());
         assertNotNull(child.smartAction());
         assertEquals("BLOCK_CATEGORY", child.smartAction().actionType());
     }
 
-    private void assertSecondChild(TutorGlobalDashboardDTO.ChildDashboardDTO child) {
-        assertEquals("Alumno", child.studentName());
-        assertEquals(BigDecimal.ZERO, child.balance());
-        assertEquals("Datos insuficientes para predecir", child.spendingPredictionMessage());
+    private void assertSecondChild(GetTutorGlobalDashboardResponse.ChildDashboardResponse child) {
+        assertEquals("Alumno", child.nombre());
+        assertEquals(BigDecimal.ZERO, child.saldoCreditos());
+        assertEquals("Datos insuficientes para predecir", child.predictionMessage());
         assertNull(child.budget());
         assertEquals(0, child.recentTransactions().size());
         assertNull(child.smartAction());
     }
 
-    private void assertThirdChild(TutorGlobalDashboardDTO.ChildDashboardDTO child) {
-        assertEquals("Ana", child.studentName());
-        assertEquals(new BigDecimal("50.00"), child.balance());
+    private void assertThirdChild(GetTutorGlobalDashboardResponse.ChildDashboardResponse child) {
+        assertEquals("Ana", child.nombre());
+        assertEquals(new BigDecimal("50.00"), child.saldoCreditos());
         assertEquals(
                 "Gasto estimado al fin de periodo: $123.45",
-                child.spendingPredictionMessage()
+                child.predictionMessage()
         );
         assertEquals(1, child.recentTransactions().size());
-        assertEquals("Compra", child.recentTransactions().get(0).name());
+        assertEquals("Compra", child.recentTransactions().get(0).title());
         assertNotNull(child.smartAction());
     }
 

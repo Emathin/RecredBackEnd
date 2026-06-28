@@ -15,11 +15,23 @@ public class UpdateTutorDashboardConfig {
         this.tutorRepository = tutorRepository;
     }
 
-    public void execute(String cognitoSubject, String dashboardConfig) {
-        Tutor tutor = tutorRepository.findByUsuarioIdCognito(cognitoSubject)
+    public void execute(UpdateTutorDashboardConfigRequest request) {
+        request.validate();
+
+        Tutor tutor = findTutor(request.cognitoSubject());
+        validatePlanLimits(tutor, request.dashboardConfig());
+
+        tutor.setDashboardConfig(request.dashboardConfig());
+        tutorRepository.save(tutor);
+    }
+
+    private Tutor findTutor(String cognitoSubject) {
+        return tutorRepository.findByUsuarioIdCognito(cognitoSubject)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Tutor no encontrado para el usuario actual"));
+    }
 
+    private void validatePlanLimits(Tutor tutor, String dashboardConfig) {
         if (tutor.getUsuario() != null && tutor.getUsuario().getPlan() == TipoPlan.GRATUITO) {
             int cardsCount = countCards(dashboardConfig);
             if (cardsCount > 5) {
@@ -27,9 +39,6 @@ public class UpdateTutorDashboardConfig {
                         "El plan gratuito permite hasta 5 tarjetas en el dashboard");
             }
         }
-
-        tutor.setDashboardConfig(dashboardConfig);
-        tutorRepository.save(tutor);
     }
 
     private int countCards(String configJson) {

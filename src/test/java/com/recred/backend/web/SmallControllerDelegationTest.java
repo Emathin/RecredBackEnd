@@ -64,24 +64,28 @@ class SmallControllerDelegationTest {
 
     @Test
     void tutorGlobalDashboardShouldUseAuthenticatedSubject() {
-        TutorGlobalDashboardDTO dashboard = new TutorGlobalDashboardDTO(
-                UUID.randomUUID().toString(),
+        com.recred.backend.application.GetTutorGlobalDashboardResponse response = 
+                new com.recred.backend.application.GetTutorGlobalDashboardResponse(
+                "ME",
                 BigDecimal.TEN,
                 BigDecimal.ZERO,
                 null,
                 List.of(),
                 "GRATUITO"
         );
-        when(getTutorGlobalDashboard.executeByCognitoSubject("sub")).thenReturn(dashboard);
+        when(getTutorGlobalDashboard.execute(any(com.recred.backend.application.GetTutorGlobalDashboardRequest.class)))
+                .thenReturn(response);
+                
         TutorGlobalDashboardController controller =
                 new TutorGlobalDashboardController(getTutorGlobalDashboard, updateTutorDashboardConfig);
 
-        ResponseEntity<TutorGlobalDashboardDTO> response = controller.getGlobalDashboard(
+        ResponseEntity<TutorGlobalDashboardDTO> httpResponse = controller.getGlobalDashboard(
                 new UsernamePasswordAuthenticationToken("sub", null)
         );
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(dashboard, response.getBody());
+        assertEquals(HttpStatus.OK, httpResponse.getStatusCode());
+        assertEquals("GRATUITO", httpResponse.getBody().plan());
+        assertEquals(BigDecimal.TEN, httpResponse.getBody().totalBalance());
     }
 
     @Test

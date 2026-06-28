@@ -3,8 +3,13 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.EnableSchoolCredit;
 import com.recred.backend.application.GetActiveSchoolCredit;
 import com.recred.backend.application.GetLastRecharge;
+import com.recred.backend.application.EnableSchoolCreditRequest;
+import com.recred.backend.application.EnableSchoolCreditResponse;
+import com.recred.backend.application.GetActiveSchoolCreditRequest;
+import com.recred.backend.application.GetActiveSchoolCreditResponse;
+import com.recred.backend.application.GetLastRechargeRequest;
+import com.recred.backend.application.GetLastRechargeResponse;
 import com.recred.backend.domain.exceptions.ActiveCreditExistsException;
-import com.recred.backend.domain.models.SchoolCredit;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -50,11 +55,13 @@ public class SchoolCreditController {
             }
             UUID tutorId = usuario.getTutor().getId();
 
-            SchoolCredit credit = enableSchoolCredit.execute(
-                    tutorId,
-                    request.getStudentId(),
-                    request.getAmount(),
-                    request.getInstallments() != null ? request.getInstallments() : 1
+            EnableSchoolCreditResponse credit = enableSchoolCredit.execute(
+                    new EnableSchoolCreditRequest(
+                            tutorId,
+                            request.studentId(),
+                            request.amount(),
+                            request.installments() != null ? request.installments() : 1
+                    )
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(credit);
         } catch (ActiveCreditExistsException e) {
@@ -70,8 +77,9 @@ public class SchoolCreditController {
     @GetMapping("/alumno/{studentId}/last-recharge")
     public ResponseEntity<BigDecimal> getLastRechargeAmount(@PathVariable UUID studentId) {
         try {
-            BigDecimal amount = getLastRecharge.execute(studentId);
-            return ResponseEntity.ok(amount);
+            GetLastRechargeResponse response = getLastRecharge.execute(
+                    new GetLastRechargeRequest(studentId));
+            return ResponseEntity.ok(response.amount());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
@@ -80,9 +88,11 @@ public class SchoolCreditController {
     }
 
     @GetMapping("/alumno/{studentId}/active")
-    public ResponseEntity<SchoolCredit> getActiveCredit(@PathVariable UUID studentId) {
+    public ResponseEntity<GetActiveSchoolCreditResponse> getActiveCredit(
+            @PathVariable UUID studentId) {
         try {
-            return getActiveSchoolCredit.execute(studentId)
+            return getActiveSchoolCredit.execute(
+                            new GetActiveSchoolCreditRequest(studentId))
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.notFound().build());
         } catch (IllegalArgumentException e) {

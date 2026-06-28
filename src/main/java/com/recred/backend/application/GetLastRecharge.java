@@ -6,7 +6,7 @@ import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.models.Alumno;
 
 import java.math.BigDecimal;
-import java.util.UUID;
+
 
 public class GetLastRecharge {
 
@@ -20,15 +20,23 @@ public class GetLastRecharge {
         this.movimientoBilleteraRepository = movimientoBilleteraRepository;
     }
 
-    public BigDecimal execute(UUID studentId) {
-        Alumno alumno = alumnoRepository.findById(studentId)
+    public GetLastRechargeResponse execute(GetLastRechargeRequest request) {
+        request.validate();
+        
+        Alumno alumno = alumnoRepository.findById(request.studentId())
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
 
-        Billetera wallet = alumno.getBilletera();
+        Billetera wallet = getWallet(alumno);
         if (wallet == null) {
-            return BigDecimal.ZERO;
+            return new GetLastRechargeResponse(BigDecimal.ZERO);
         }
 
-        return movimientoBilleteraRepository.obtenerUltimoMontoCarga(wallet.getId());
+        BigDecimal lastAmount = 
+                movimientoBilleteraRepository.obtenerUltimoMontoCarga(wallet.getId());
+        return new GetLastRechargeResponse(lastAmount);
+    }
+
+    private Billetera getWallet(Alumno alumno) {
+        return alumno.getBilletera();
     }
 }

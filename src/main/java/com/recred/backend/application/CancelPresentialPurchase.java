@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.UUID;
 
 public class CancelPresentialPurchase {
 
@@ -49,10 +48,12 @@ public class CancelPresentialPurchase {
     }
 
     @Transactional
-    public void execute(UUID purchaseId) {
-        Purchase purchase = purchaseRepository.findById(purchaseId)
+    public void execute(CancelPresentialPurchaseRequest request) {
+        request.validate();
+
+        Purchase purchase = purchaseRepository.findById(request.purchaseId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Purchase not found: " + purchaseId));
+                        "Purchase not found: " + request.purchaseId()));
 
         EstadoCompra previousStatus = purchase.getStatus();
 
@@ -70,10 +71,6 @@ public class CancelPresentialPurchase {
             throw new IllegalStateException("Purchase does not have an associated student.");
         }
 
-        Billetera wallet = walletRepository.findByStudentId(purchase.getStudent().getId())
-                .orElseThrow(() ->
-                        new IllegalStateException("Student wallet not found for refund."));
-
         if (shouldReleaseReservation(purchase, previousStatus)) {
             inventoryAvailabilityService.releaseReservation(
                     purchase.getBuffetId(),
@@ -81,11 +78,20 @@ public class CancelPresentialPurchase {
                     purchase.getId());
         }
 
-        wallet.credit(purchase.getTotalAmount());
+        processRefund(purchase);
 
-        walletRepository.save(wallet);
-        registerRefundMovement(wallet, purchase);
         purchaseRepository.save(purchase);
+    }
+
+    private void processRefund(Purchase purchase) {
+        Billetera wallet = walletRepository.findByStudentId(purchase.getStudent().getId())
+                .orElseThrow(() ->
+                        new IllegalStateException("Student wallet not found for refund."));
+
+        wallet.credit(purchase.getTotalAmount());
+        walletRepository.save(wallet);
+
+        registerRefundMovement(wallet, purchase);
     }
 
     private void validateAdvancePurchaseCancellationWindow(Purchase purchase) {
