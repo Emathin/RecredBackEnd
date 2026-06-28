@@ -1,45 +1,59 @@
 package com.recred.backend.web;
 
-import com.recred.backend.infrastructure.web.*;
-
-import com.recred.backend.application.GenerateParentSummary;
+import com.recred.backend.application.GetLastSummary;
+import com.recred.backend.application.GetLastSummaryRequest;
+import com.recred.backend.application.GetLastSummaryResponse;
 import com.recred.backend.domain.models.Summary;
+import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.SummaryRepository;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.recred.backend.domain.repositories.UsuarioRepository;
+import com.recred.backend.infrastructure.web.SummaryController;
+import com.recred.backend.infrastructure.web.SummaryResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SummaryControllerTest {
 
-    private GenerateParentSummary generateParentSummary;
-    private SummaryRepository summaryRepository;
+    private GetLastSummary getLastSummary;
+    private UsuarioRepository usuarioRepository;
     private SummaryController controller;
+    private Authentication authentication;
 
     @BeforeEach
     void setUp() {
-        generateParentSummary = mock(GenerateParentSummary.class);
-        summaryRepository = mock(SummaryRepository.class);
-        controller = new SummaryController(generateParentSummary, summaryRepository);
+        getLastSummary = mock(GetLastSummary.class);
+        usuarioRepository = mock(UsuarioRepository.class);
+        authentication = mock(Authentication.class);
+        controller = new SummaryController(getLastSummary, usuarioRepository);
     }
 
     @Test
     void getLastSummaryReturnsMappedSummaryWhenFound() {
         UUID userId = UUID.randomUUID();
+        String cognitoId = "user123";
         Summary summary = summary(UUID.randomUUID());
-        when(summaryRepository.findLastByUsuarioId(userId)).thenReturn(Optional.of(summary));
+        
+        Usuario usuario = new Usuario();
+        usuario.setId(userId);
+        
+        when(authentication.getName()).thenReturn(cognitoId);
+        when(usuarioRepository.findByIdCognito(cognitoId)).thenReturn(Optional.of(usuario));
+        when(getLastSummary.execute(new GetLastSummaryRequest(userId)))
+                .thenReturn(Optional.of(GetLastSummaryResponse.fromSummary(summary)));
 
-        ResponseEntity<SummaryResponse> response = controller.getLastSummary(userId);
+        ResponseEntity<SummaryResponse> response = controller.getLastSummary(authentication);
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(summary.getId().toString(), response.getBody().getId());
@@ -50,53 +64,38 @@ class SummaryControllerTest {
     @Test
     void getLastSummaryReturnsNotFoundWhenMissing() {
         UUID userId = UUID.randomUUID();
-        when(summaryRepository.findLastByUsuarioId(userId)).thenReturn(Optional.empty());
+        String cognitoId = "user123";
+        
+        Usuario usuario = new Usuario();
+        usuario.setId(userId);
+        
+        when(authentication.getName()).thenReturn(cognitoId);
+        when(usuarioRepository.findByIdCognito(cognitoId)).thenReturn(Optional.of(usuario));
+        when(getLastSummary.execute(new GetLastSummaryRequest(userId))).thenReturn(Optional.empty());
 
-        ResponseEntity<SummaryResponse> response = controller.getLastSummary(userId);
+        ResponseEntity<SummaryResponse> response = controller.getLastSummary(authentication);
 
         assertEquals(404, response.getStatusCode().value());
     }
-
+    
     @Test
-    void getAllSummariesReturnsMappedList() {
-        UUID userId = UUID.randomUUID();
-        Summary summary = summary(UUID.randomUUID());
-        when(summaryRepository.findAllByUsuarioId(userId)).thenReturn(List.of(summary));
-
-        ResponseEntity<List<SummaryResponse>> response =
-                controller.getAllSummaries(userId);
-
-        assertEquals(200, response.getStatusCode().value());
-        assertEquals(summary.getId().toString(), response.getBody().get(0).getId());
+    void getLastSummaryThrowsWhenNotAuthenticated() {
+        when(authentication.getName()).thenReturn(null);
+        
+        assertThrows(AuthenticationCredentialsNotFoundException.class, () -> 
+            controller.getLastSummary(authentication)
+        );
     }
-
+    
     @Test
-    void createSummaryGeneratesLastSevenDaysSummary() {
-        UUID userId = UUID.randomUUID();
-        Summary summary = summary(UUID.randomUUID());
-        when(generateParentSummary.execute(eq(userId), any(), any())).thenReturn(summary);
-
-        ResponseEntity<SummaryResponse> response = controller.createSummary(userId);
-
-        assertEquals(200, response.getStatusCode().value());
-        assertEquals("Resumen semanal", response.getBody().getResumen());
-        verify(generateParentSummary).execute(eq(userId), any(), any());
-    }
-
-    @Test
-    void createCustomSummaryUsesProvidedDates() {
-        UUID userId = UUID.randomUUID();
-        LocalDateTime start = LocalDateTime.of(2026, 6, 1, 0, 0);
-        LocalDateTime end = LocalDateTime.of(2026, 6, 8, 0, 0);
-        Summary summary = summary(UUID.randomUUID());
-        when(generateParentSummary.execute(userId, start, end)).thenReturn(summary);
-
-        ResponseEntity<SummaryResponse> response =
-                controller.createCustomSummary(userId, start, end);
-
-        assertEquals(200, response.getStatusCode().value());
-        assertEquals(summary.getId().toString(), response.getBody().getId());
-        verify(generateParentSummary).execute(userId, start, end);
+    void getLastSummaryThrowsWhenUserNotFound() {
+        String cognitoId = "user123";
+        when(authentication.getName()).thenReturn(cognitoId);
+        when(usuarioRepository.findByIdCognito(cognitoId)).thenReturn(Optional.empty());
+        
+        assertThrows(RuntimeException.class, () -> 
+            controller.getLastSummary(authentication)
+        );
     }
 
     private Summary summary(UUID summaryId) {
