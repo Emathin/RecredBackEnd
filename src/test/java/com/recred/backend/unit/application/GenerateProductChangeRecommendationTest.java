@@ -21,8 +21,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -31,6 +29,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class GenerateProductChangeRecommendationTest {
+
     @Mock
     private ProductRepository productRepository;
 
@@ -50,104 +49,7 @@ public class GenerateProductChangeRecommendationTest {
     private GenerateProductChangeRecommendation useCase;
 
     @Test
-    void executeShouldReturnAnalysisWhenProductExistsAndAiAnalyzes() {
-        UUID sellerId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-
-        ProductChangeRecommendation leastSold = new ProductChangeRecommendation();
-        leastSold.setId(productId);
-        leastSold.setIdBuffet(buffetId);
-        leastSold.setNombre("Alfajor de Maicena");
-        leastSold.setPrecio(new BigDecimal("1500.00"));
-
-        ProductChangeAnalysis analysis = new ProductChangeAnalysis(
-                "Resumen de prueba",
-                List.of("Alerta 1"),
-                List.of("Recomendacion 1"),
-                "gemini-1.5-flash"
-        );
-
-        when(kiosqueroRepository.findBuffetById(sellerId)).thenReturn(buffetId);
-        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId)).thenReturn(List.of(leastSold));
-        when(productChangeAnalyzer.analyze(leastSold)).thenReturn(Optional.of(analysis));
-
-        List<ProductRecommendationResult> results = useCase.execute(sellerId);
-        ProductRecommendationResult result = results.get(0);
-
-        assertEquals(leastSold, result.getProductChangeRecommendation());
-        assertEquals(analysis, result.getAiAnalysis().get());
-        verify(aiEventRepository).registerProductChangeRecommendation(any(ProductRecommendationResult.class));
-    }
-
-    @Test
-    void executeShouldThrowExceptionWhenKiosqueroNotFound() {
-        UUID sellerId = UUID.randomUUID();
-        when(kiosqueroRepository.findBuffetById(sellerId)).thenReturn(null);
-
-        assertThrows(KiosqueroNotFoundException.class, () -> useCase.execute(sellerId));
-        verify(productRepository, never()).findBuffetTop5LeastSoldProducts(any());
-    }
-
-    @Test
-    void executeByUsuarioIdShouldReturnAnalysisWhenProductExistsAndAiAnalyzes() {
-        UUID usuarioId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-
-        ProductChangeRecommendation leastSold = new ProductChangeRecommendation();
-        leastSold.setId(productId);
-        leastSold.setIdBuffet(buffetId);
-        leastSold.setNombre("Alfajor de Maicena");
-        leastSold.setPrecio(new BigDecimal("1500.00"));
-
-        ProductChangeAnalysis analysis = new ProductChangeAnalysis(
-                "Resumen de prueba",
-                List.of("Alerta 1"),
-                List.of("Recomendacion 1"),
-                "gemini-1.5-flash"
-        );
-
-        when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(buffetId);
-        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId)).thenReturn(List.of(leastSold));
-        when(productChangeAnalyzer.analyze(leastSold)).thenReturn(Optional.of(analysis));
-
-        List<ProductRecommendationResult> results = useCase.executeByUsuarioId(usuarioId);
-        ProductRecommendationResult result = results.get(0);
-
-        assertEquals(leastSold, result.getProductChangeRecommendation());
-        assertEquals(analysis, result.getAiAnalysis().get());
-        verify(aiEventRepository).registerProductChangeRecommendation(any(ProductRecommendationResult.class));
-    }
-
-    @Test
-    void executeByUsuarioIdShouldThrowExceptionWhenBuffetNotFound() {
-        UUID usuarioId = UUID.randomUUID();
-        when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(null);
-
-        assertThrows(KiosqueroNotFoundException.class, () -> useCase.executeByUsuarioId(usuarioId));
-        verify(productRepository, never()).findBuffetTop5LeastSoldProducts(any());
-    }
-
-    @Test
-    void findLatestResultByUsuarioIdShouldReturnResult() {
-        UUID usuarioId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        ProductRecommendationResult expectedResult = new ProductRecommendationResult(null, Optional.empty());
-
-        when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(buffetId);
-        when(aiEventRepository.findLatestProductChangeRecommendation(buffetId))
-                .thenReturn(Optional.of(expectedResult));
-
-        Optional<ProductRecommendationResult> result = useCase.findLatestResultByUsuarioId(usuarioId);
-
-        assertEquals(expectedResult, result.get());
-        verify(kiosqueroRepository).findBuffetByUsuarioId(usuarioId);
-        verify(aiEventRepository).findLatestProductChangeRecommendation(buffetId);
-    }
-
-    @Test
-    void executeAllShouldGenerateRecommendationsForAllKiosqueros() {
+    void executeShouldGenerateRecommendationsForAllKiosqueros() {
         UUID sellerId1 = UUID.randomUUID();
         UUID sellerId2 = UUID.randomUUID();
         UUID buffetId1 = UUID.randomUUID();
@@ -157,13 +59,13 @@ public class GenerateProductChangeRecommendationTest {
         when(kiosqueroRepository.findBuffetById(sellerId1)).thenReturn(buffetId1);
         when(kiosqueroRepository.findBuffetById(sellerId2)).thenReturn(buffetId2);
 
-        ProductChangeRecommendation leastSold1 = new ProductChangeRecommendation();
-        leastSold1.setIdBuffet(buffetId1);
-        ProductChangeRecommendation leastSold2 = new ProductChangeRecommendation();
-        leastSold2.setIdBuffet(buffetId2);
+        ProductChangeRecommendation product1 = buildProduct(buffetId1);
+        ProductChangeRecommendation product2 = buildProduct(buffetId2);
 
-        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId1)).thenReturn(List.of(leastSold1));
-        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId2)).thenReturn(List.of(leastSold2));
+        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId1))
+                .thenReturn(List.of(product1));
+        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId2))
+                .thenReturn(List.of(product2));
 
         ProductChangeAnalysis analysis = new ProductChangeAnalysis(
                 "Resumen", List.of(), List.of(), "model"
@@ -179,18 +81,19 @@ public class GenerateProductChangeRecommendationTest {
     }
 
     @Test
-    void executeAllShouldContinueWhenOneKiosqueroFails() {
+    void executeShouldContinueWhenOneKiosqueroFails() {
         UUID failingSellerId = UUID.randomUUID();
         UUID sellerId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        ProductChangeRecommendation leastSold = new ProductChangeRecommendation();
 
         when(kiosqueroRepository.findAllIds()).thenReturn(List.of(failingSellerId, sellerId));
         when(kiosqueroRepository.findBuffetById(failingSellerId)).thenReturn(null);
         when(kiosqueroRepository.findBuffetById(sellerId)).thenReturn(buffetId);
+
+        ProductChangeRecommendation product = buildProduct(buffetId);
         when(productRepository.findBuffetTop5LeastSoldProducts(buffetId))
-                .thenReturn(List.of(leastSold));
-        when(productChangeAnalyzer.analyze(leastSold)).thenReturn(Optional.empty());
+                .thenReturn(List.of(product));
+        when(productChangeAnalyzer.analyze(product)).thenReturn(Optional.empty());
 
         useCase.execute();
 
@@ -201,70 +104,21 @@ public class GenerateProductChangeRecommendationTest {
     }
 
     @Test
-    void findLatestResultShouldReturnResultForSeller() {
-        UUID sellerId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        ProductRecommendationResult expectedResult = new ProductRecommendationResult(
-                null,
-                Optional.empty()
-        );
+    void executeShouldNotRegisterWhenNoKiosqueros() {
+        when(kiosqueroRepository.findAllIds()).thenReturn(List.of());
 
-        when(kiosqueroRepository.findBuffetById(sellerId)).thenReturn(buffetId);
-        when(aiEventRepository.findLatestProductChangeRecommendation(buffetId))
-                .thenReturn(Optional.of(expectedResult));
+        useCase.execute();
 
-        Optional<ProductRecommendationResult> result = useCase.findLatestResult(sellerId);
-
-        assertEquals(expectedResult, result.get());
+        verify(productRepository, never()).findBuffetTop5LeastSoldProducts(any());
+        verify(aiEventRepository, never()).registerProductChangeRecommendation(any());
     }
 
-    @Test
-    void findLatestResultShouldThrowWhenSellerHasNoBuffet() {
-        UUID sellerId = UUID.randomUUID();
-        when(kiosqueroRepository.findBuffetById(sellerId)).thenReturn(null);
-
-        assertThrows(KiosqueroNotFoundException.class, () -> useCase.findLatestResult(sellerId));
-
-        verify(aiEventRepository, never()).findLatestProductChangeRecommendation(any());
-    }
-
-    @Test
-    void findLatestResultByUsuarioIdShouldThrowWhenUsuarioHasNoBuffet() {
-        UUID usuarioId = UUID.randomUUID();
-        when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(null);
-
-        assertThrows(KiosqueroNotFoundException.class,
-                () -> useCase.findLatestResultByUsuarioId(usuarioId));
-
-        verify(aiEventRepository, never()).findLatestProductChangeRecommendation(any());
-    }
-
-    @Test
-    void findAllResultsByUsuarioIdShouldReturnResults() {
-        UUID usuarioId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        ProductRecommendationResult expectedResult = new ProductRecommendationResult(
-                null,
-                Optional.empty()
-        );
-
-        when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(buffetId);
-        when(aiEventRepository.findAllProductChangeRecommendations(buffetId))
-                .thenReturn(List.of(expectedResult));
-
-        List<ProductRecommendationResult> results = useCase.findAllResultsByUsuarioId(usuarioId);
-
-        assertEquals(List.of(expectedResult), results);
-    }
-
-    @Test
-    void findAllResultsByUsuarioIdShouldThrowWhenUsuarioHasNoBuffet() {
-        UUID usuarioId = UUID.randomUUID();
-        when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(null);
-
-        assertThrows(KiosqueroNotFoundException.class,
-                () -> useCase.findAllResultsByUsuarioId(usuarioId));
-
-        verify(aiEventRepository, never()).findAllProductChangeRecommendations(any());
+    private ProductChangeRecommendation buildProduct(UUID buffetId) {
+        ProductChangeRecommendation product = new ProductChangeRecommendation();
+        product.setId(UUID.randomUUID());
+        product.setIdBuffet(buffetId);
+        product.setNombre("Alfajor");
+        product.setPrecio(new BigDecimal("500.00"));
+        return product;
     }
 }

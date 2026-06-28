@@ -44,6 +44,7 @@ import com.recred.backend.application.GenerateLowBalanceAlerts;
 import com.recred.backend.application.GenerateParentSummary;
 import com.recred.backend.application.GeneratePriceAlert;
 import com.recred.backend.application.GenerateProductChangeRecommendation;
+import com.recred.backend.application.GetProductChangeRecommendation;
 import com.recred.backend.application.GeneratePurchaseRecommendation;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
@@ -1025,6 +1026,13 @@ public class UseCases {
         return new GenerateProductChangeRecommendation(
                 productRepository, productChangeAnalyzer, aiEventRepository, kiosqueroRepository,
                 getProductStatistics);
+    }
+
+    @Bean
+    public GetProductChangeRecommendation getProductChangeRecommendation(
+            KiosqueroRepository kiosqueroRepository,
+            AIEventRepository aiEventRepository) {
+        return new GetProductChangeRecommendation(kiosqueroRepository, aiEventRepository);
     }
 
     @Bean
