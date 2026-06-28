@@ -24,6 +24,13 @@ public interface SpringDataKiosqueroRepository extends
     """)
     UUID findBuffetByUsuarioId(UUID usuarioId);
 
+    @Query("""
+            select k.id 
+                from KiosqueroEntity k 
+                    where k.usuario.id = CAST(:usuarioId AS java.util.UUID)
+    """)
+    java.util.Optional<UUID> findKiosqueroIdByUsuarioId(UUID usuarioId);
+
     @Query("select k.id from KiosqueroEntity k")
     List<UUID> findAllIds();
 }

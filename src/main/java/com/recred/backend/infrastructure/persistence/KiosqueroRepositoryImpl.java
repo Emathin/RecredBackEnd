@@ -31,6 +31,11 @@ public class KiosqueroRepositoryImpl implements KiosqueroRepository {
     }
 
     @Override
+    public java.util.Optional<UUID> findKiosqueroIdByUsuarioId(UUID usuarioId) {
+        return springDataKiosqueroRepository.findKiosqueroIdByUsuarioId(usuarioId);
+    }
+
+    @Override
     public List<UUID> findAllIds() {
         return springDataKiosqueroRepository.findAllIds();
     }
