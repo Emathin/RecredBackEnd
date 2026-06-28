@@ -44,6 +44,7 @@ import com.recred.backend.application.GenerateLowBalanceAlerts;
 import com.recred.backend.application.GenerateParentSummary;
 import com.recred.backend.application.GeneratePriceAlert;
 import com.recred.backend.application.GenerateProductChangeRecommendation;
+import com.recred.backend.application.GetProductChangeRecommendation;
 import com.recred.backend.application.GeneratePurchaseRecommendation;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
@@ -1030,6 +1031,13 @@ public class UseCases {
     }
 
     @Bean
+    public GetProductChangeRecommendation getProductChangeRecommendation(
+            KiosqueroRepository kiosqueroRepository,
+            AIEventRepository aiEventRepository) {
+        return new GetProductChangeRecommendation(kiosqueroRepository, aiEventRepository);
+    }
+
+    @Bean
     public GenerateSeasonalRecommendation generateSeasonalRecommendation(
             OpenMeteoWeatherClient climaService,
             NominatimGeocodingClient geocodingClient,
@@ -1048,7 +1056,6 @@ public class UseCases {
     public AddProductRecommendation addProductRecommendation(
             ProductRepository productRepository,
             KiosqueroRepository kiosqueroRepository,
-            InventoryRepository inventoryRepository,
             AIEventRepository aiEventRepository,
             ProductAdditionNotificationRepository notificationRepository,
             ProductStatisticsRepository productStatisticsRepository,
@@ -1056,7 +1063,6 @@ public class UseCases {
         return new AddProductRecommendation(
                 productRepository,
                 kiosqueroRepository,
-                inventoryRepository,
                 aiEventRepository,
                 notificationRepository,
                 productStatisticsRepository,

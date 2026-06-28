@@ -55,6 +55,15 @@ class KiosqueroRepositoryImplIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void findUsuarioIdById_ShouldReturnUsuarioId() {
+        KiosqueroEntity kiosquero = generateKiosqueroEntity("20-12345678-9", "vendor7.test@recred.com");
+
+        UUID result = repository.findUsuarioIdById(kiosquero.getId());
+
+        assertEquals(kiosquero.getUsuario().getId(), result);
+    }
+
+    @Test
     void findAllIds_ShouldReturnAllKiosqueroIds() {
         KiosqueroEntity first = generateKiosqueroEntity("20-12345678-9", "vendor3.test@recred.com");
         KiosqueroEntity second = generateKiosqueroEntity("20-87654321-9", "vendor4.test@recred.com");
