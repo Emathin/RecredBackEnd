@@ -30,6 +30,12 @@ public class SchoolCreditRepositoryImpl implements SchoolCreditRepository {
     }
 
     @Override
+    public Optional<SchoolCredit> findById(UUID id) {
+        return repository.findById(id)
+                .map(SchoolCreditEntity::toDomain);
+    }
+
+    @Override
     public SchoolCredit save(SchoolCredit schoolCredit) {
         SchoolCreditEntity entity = new SchoolCreditEntity();
         entity.setId(schoolCredit.getId());

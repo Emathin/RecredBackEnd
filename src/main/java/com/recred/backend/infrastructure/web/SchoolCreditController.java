@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.EnableSchoolCredit;
 import com.recred.backend.application.GetActiveSchoolCredit;
 import com.recred.backend.application.GetLastRecharge;
+import com.recred.backend.application.PaySchoolCredit;
 import com.recred.backend.application.EnableSchoolCreditRequest;
 import com.recred.backend.application.EnableSchoolCreditResponse;
 import com.recred.backend.application.GetActiveSchoolCreditRequest;
@@ -21,6 +22,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.SchoolCredit;
+import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -31,15 +34,18 @@ public class SchoolCreditController {
     private final EnableSchoolCredit enableSchoolCredit;
     private final GetLastRecharge getLastRecharge;
     private final GetActiveSchoolCredit getActiveSchoolCredit;
+    private final PaySchoolCredit paySchoolCredit;
     private final UsuarioService usuarioService;
 
     public SchoolCreditController(EnableSchoolCredit enableSchoolCredit,
                                   GetLastRecharge getLastRecharge,
                                   GetActiveSchoolCredit getActiveSchoolCredit,
+                                  PaySchoolCredit paySchoolCredit,
                                   UsuarioService usuarioService) {
         this.enableSchoolCredit = enableSchoolCredit;
         this.getLastRecharge = getLastRecharge;
         this.getActiveSchoolCredit = getActiveSchoolCredit;
+        this.paySchoolCredit = paySchoolCredit;
         this.usuarioService = usuarioService;
     }
 
@@ -99,6 +105,21 @@ public class SchoolCreditController {
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{creditId}/pay")
+    public ResponseEntity<?> payCredit(@PathVariable UUID creditId) {
+        try {
+            SchoolCredit credit = paySchoolCredit.execute(creditId);
+            return ResponseEntity.ok(credit);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (InsufficientBalanceException e) {
+            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An unexpected error occurred: " + e.getMessage());
         }
     }
 }
