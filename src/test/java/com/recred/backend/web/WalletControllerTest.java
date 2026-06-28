@@ -75,7 +75,7 @@ class WalletControllerTest {
                         .content(requestBody))
                 .andExpect(status().isOk());
 
-        verify(loadBalanceToChild).execute("cognito-sub", studentId, amount);
+        verify(loadBalanceToChild).execute(new com.recred.backend.application.LoadBalanceToChildRequest("cognito-sub", studentId, amount));
     }
 
     @Test
@@ -95,7 +95,7 @@ class WalletControllerTest {
                         .content(requestBody))
                 .andExpect(status().isOk());
 
-        verify(transferBalanceBetweenChildren).execute("cognito-sub", fromId, toId, amount);
+        verify(transferBalanceBetweenChildren).execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest("cognito-sub", fromId, toId, amount));
     }
 
     @Test

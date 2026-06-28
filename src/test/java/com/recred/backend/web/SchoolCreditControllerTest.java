@@ -67,13 +67,13 @@ public class SchoolCreditControllerTest {
         request.setAmount(new BigDecimal("2000.00"));
         request.setInstallments(3);
 
-        SchoolCredit credit = new SchoolCredit();
-        credit.setId(UUID.randomUUID());
-        credit.setStudentId(request.getStudentId());
-        credit.setAmount(new BigDecimal("2000.00"));
-        credit.setStatus(CreditStatus.ACTIVE);
-        credit.setInstallments(3);
-        credit.setCreatedAt(LocalDateTime.now());
+        com.recred.backend.application.EnableSchoolCreditResponse credit = new com.recred.backend.application.EnableSchoolCreditResponse(UUID.randomUUID(), request.getAmount(), "ACTIVE", 3);
+        
+        
+        
+        
+        
+        
 
         Usuario mockUsuario = new Usuario();
         Tutor mockTutor = new Tutor();
@@ -81,7 +81,7 @@ public class SchoolCreditControllerTest {
         mockUsuario.setTutor(mockTutor);
 
         when(usuarioService.obtenerUsuarioActual("test-user")).thenReturn(mockUsuario);
-        when(enableSchoolCredit.execute(any(UUID.class), any(UUID.class), any(BigDecimal.class), any(Integer.class)))
+        when(enableSchoolCredit.execute(any(com.recred.backend.application.EnableSchoolCreditRequest.class)))
                 .thenReturn(credit);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken("test-user", "password");
@@ -108,7 +108,7 @@ public class SchoolCreditControllerTest {
         mockUsuario.setTutor(mockTutor);
 
         when(usuarioService.obtenerUsuarioActual("test-user")).thenReturn(mockUsuario);
-        when(enableSchoolCredit.execute(any(UUID.class), any(UUID.class), any(), any()))
+        when(enableSchoolCredit.execute(any(com.recred.backend.application.EnableSchoolCreditRequest.class)))
                 .thenThrow(new ActiveCreditExistsException("Already has active credit"));
 
         Authentication authentication = new UsernamePasswordAuthenticationToken("test-user", "password");

@@ -31,6 +31,41 @@ public class PurchaseResponseDTO {
     private java.time.LocalDate pickupDate;
     private String pickupSlotStartTime;
 
+    
+    public PurchaseResponseDTO(
+            com.recred.backend.application.GetPresentialPurchaseResponse response) {
+        this.id = response.id();
+        this.studentId = response.studentId();
+        this.totalAmount = response.totalAmount();
+        this.status = response.status();
+        this.statusLabel = response.statusLabel();
+        this.paymentMethod = response.paymentMethod();
+        this.date = response.date();
+        this.tipo = response.tipo();
+        this.withdrawalCode = response.withdrawalCode();
+        this.pickupSlotDescription = response.pickupSlotDescription();
+        this.pickupDate = response.pickupDate();
+        if (response.pickupSlotStartTime() != null) {
+            this.pickupSlotStartTime = response.pickupSlotStartTime()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+        }
+
+        if (response.items() != null) {
+            this.items = response.items().stream()
+                .map(item -> {
+                    PurchaseItemDTO itemDTO = new PurchaseItemDTO(
+                        item.productId(),
+                        item.nombre(),
+                        item.quantity(),
+                        item.precio()
+                    );
+                    itemDTO.setRequierePreparacion(item.requierePreparacion());
+                    itemDTO.setCupoMaximoDiario(item.cupoMaximoDiario());
+                    return itemDTO;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        }
+    }
     public PurchaseResponseDTO(GetHistoryByStudentResponse response) {
         this.id = response.id();
         this.studentId = response.studentId();
@@ -252,3 +287,4 @@ public class PurchaseResponseDTO {
         return item;
     }
 }
+

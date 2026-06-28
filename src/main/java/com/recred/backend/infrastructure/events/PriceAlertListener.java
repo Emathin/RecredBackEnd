@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.events;
 
 import com.recred.backend.application.GeneratePriceAlert;
+import com.recred.backend.application.GeneratePriceAlertRequest;
 import com.recred.backend.domain.events.ProductPriceChangedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,11 @@ public class PriceAlertListener {
                 event.oldPrice(),
                 event.newPrice()
         );
-        generatePriceAlert.execute(
+        generatePriceAlert.execute(toRequest(event));
+    }
+
+    private GeneratePriceAlertRequest toRequest(ProductPriceChangedEvent event) {
+        return new GeneratePriceAlertRequest(
                 event.producto(),
                 event.oldPrice(),
                 event.newPrice(),

@@ -3,13 +3,12 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.repositories.TutorRepository;
-import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO;
-import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.BudgetSummaryDTO;
-import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.ChildDashboardDTO;
-import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.HealthSummaryDTO;
-import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.ScheduledPickupDTO;
-import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.SmartActionDTO;
-import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO.TransactionSummaryDTO;
+import com.recred.backend.application.GetTutorGlobalDashboardResponse.BudgetSummaryResponse;
+import com.recred.backend.application.GetTutorGlobalDashboardResponse.ChildDashboardResponse;
+import com.recred.backend.application.GetTutorGlobalDashboardResponse.HealthSummaryResponse;
+import com.recred.backend.application.GetTutorGlobalDashboardResponse.ScheduledPickupResponse;
+import com.recred.backend.application.GetTutorGlobalDashboardResponse.SmartActionResponse;
+import com.recred.backend.application.GetTutorGlobalDashboardResponse.TransactionSummaryResponse;
 
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.models.RangoFechas;
@@ -19,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class GetTutorGlobalDashboard {
 
@@ -40,149 +40,174 @@ public class GetTutorGlobalDashboard {
         this.tutorRepository = tutorRepository;
     }
 
-    public TutorGlobalDashboardDTO executeByCognitoSubject(String cognitoSubject) {
-        Set<Alumno> hijos = tutorRepository.findByUsuarioIdCognito(cognitoSubject)
-                .orElseThrow(() -> new RuntimeException(
-                        "Tutor no encontrado para el usuario autenticado"))
-                .getHijos();
+    public GetTutorGlobalDashboardResponse execute(GetTutorGlobalDashboardRequest request) {
+        request.validate();
+
+        Tutor tutor = tutorRepository.findByUsuarioIdCognito(request.cognitoSubject())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Tutor no encontrado para el usuario autenticado"));
+
+        Set<Alumno> hijos = tutor.getHijos();
+
         BigDecimal totalBalance = BigDecimal.ZERO;
         BigDecimal totalDebt = BigDecimal.ZERO;
-        List<ChildDashboardDTO> childrenDashboards = new ArrayList<>();
+        List<ChildDashboardResponse> childrenDashboards = new ArrayList<>();
 
         for (Alumno alumno : hijos) {
-            BigDecimal balance = alumno.getBilletera() != null 
-                    ? alumno.getBilletera().getSaldoCreditos() : BigDecimal.ZERO;
+            BigDecimal balance = getBalance(alumno);
+            BigDecimal debt = getDebt(alumno);
             totalBalance = totalBalance.add(balance);
-
-            BigDecimal debt = alumno.getBilletera() != null 
-                    ? alumno.getBilletera().getSaldoDeudaInterno() : BigDecimal.ZERO;
-            if (debt == null) {
-                debt = BigDecimal.ZERO;
-            }
             totalDebt = totalDebt.add(debt);
 
             List<GetHistoryByStudentResponse> historial = getHistoryByStudent.execute(
                     new GetHistoryByStudentRequest(alumno.getId())
             );
 
-            Optional<GetActiveBudgetByStudentResponse> presupuestoOpt = getActiveBudgetByStudent
-                    .execute(new GetActiveBudgetByStudentRequest(alumno.getId()));
-            BudgetSummaryDTO budgetDto = null;
-            if (presupuestoOpt.isPresent()) {
-                GetActiveBudgetByStudentResponse p = presupuestoOpt.get();
-                BigDecimal spent = BigDecimal.ZERO;
-                try {
-                    CalculadorPeriodoPresupuesto calculador = new CalculadorPeriodoPresupuesto();
-                    LocalDateTime now = LocalDateTime.now();
-                    RangoFechas rango = calculador.calcularRango(p.periodo(), now);
-                    for (GetHistoryByStudentResponse purchase : historial) {
-                        LocalDateTime purchaseDate = purchase.date();
-                        if (purchaseDate != null 
-                                && !purchaseDate.isBefore(rango.inicio()) 
-                                && !purchaseDate.isAfter(rango.fin())) {
-                            spent = spent.add(purchase.totalAmount());
-                        }
-                    }
-                } catch (Exception e) {
-                    // Fallback to ZERO in case of any calculation issues
-                }
-                budgetDto = new BudgetSummaryDTO(
-                        p.periodo().name(),
-                        spent,
-                        p.montoLimiteGeneral()
-                );
-            }
-
-            StudentRewardResponse reward = getStudentRewardStatus.execute(alumno.getId());
-            HealthSummaryDTO healthDto = new HealthSummaryDTO(
-                    reward.currentLevel(),
-                    reward.totalPoints(),
-                    reward.pointsToNextLevel(),
-                    reward.levelMessage()
-            );
-
-            String predictionMsg = "Datos insuficientes para predecir";
-            try {
-                var prediction = predictStudentSpending.execute(alumno.getId(), null);
-                if (prediction.aiAnalysis().isPresent()) {
-                    predictionMsg = prediction.aiAnalysis().get().summary();
-                } else if (prediction.spendingPrediction() != null) {
-                    predictionMsg = "Gasto estimado al fin de periodo: $" 
-                            + prediction.spendingPrediction().predictedSpending();
-                }
-            } catch (Exception e) {
-                
-            }
-            List<TransactionSummaryDTO> transactions = historial.stream()
-                    .limit(4)
-                    .map(p -> new TransactionSummaryDTO(
-                            p.id().toString(),
-                            getPurchaseName(p),
-                            p.date(),
-                            p.totalAmount(),
-                            "🛒"
-                    )).toList();
-
-            SmartActionDTO smartAction = null;
-            if (!transactions.isEmpty()) {
-                smartAction = new SmartActionDTO(
-                        "Oportunidad Saludable",
-                        "Cambia las compras frecuentes de snacks por alternativas más sanas.",
-                        "BLOCK_CATEGORY",
-                        "SNACKS"
-                );
-            }
-
-            String stuName = alumno.getUsuario() != null 
-                    ? alumno.getUsuario().getNombre() : "Alumno";
-            String urlFotoPerfil = alumno.getUsuario() != null
-                    ? alumno.getUsuario().getUrlFotoPerfil() : null;
-            
-            List<ScheduledPickupDTO> todayPickups = new ArrayList<>();
-            java.time.LocalDate today = java.time.LocalDate.now();
-            for (GetHistoryByStudentResponse p : historial) {
-                var tipo = p.tipo();
-                var ws = p.withdrawalStatus();
-                boolean isToday = p.pickupDate() != null 
-                        && p.pickupDate().equals(today);
-                boolean isActive = "PROGRAMADO".equals(ws)
-                        || "EN_PREPARACION".equals(ws)
-                        || "LISTO".equals(ws);
-
-                if ("ANTICIPADA".equals(tipo) 
-                        && isToday && isActive) {
-                    String desc = p.pickupSlotDescription() != null 
-                            ? p.pickupSlotDescription() : "";
-                    todayPickups.add(new ScheduledPickupDTO(
-                            p.id().toString(),
-                            getPurchaseName(p),
-                            desc
-                    ));
-                }
-            }
-
-            childrenDashboards.add(new ChildDashboardDTO(
-                    alumno.getId(),
-                    stuName,
-                    balance,
-                    debt,
-                    urlFotoPerfil,
-                    predictionMsg,
-                    budgetDto,
-                    healthDto,
-                    todayPickups,
-                    transactions,
-                    smartAction
-            ));
+            childrenDashboards.add(buildChildDashboard(alumno, balance, debt, historial));
         }
 
-        Tutor tutor = tutorRepository.findByUsuarioIdCognito(cognitoSubject).orElse(null);
-        String dashboardConfig = tutor != null ? tutor.getDashboardConfig() : null;
-        String planStr = tutor != null && tutor.getUsuario() != null
+        String dashboardConfig = tutor.getDashboardConfig();
+        String planStr = tutor.getUsuario() != null 
                 ? tutor.getUsuario().getPlan().name() : "GRATUITO";
 
-        return new TutorGlobalDashboardDTO("ME", totalBalance, totalDebt, 
+        return new GetTutorGlobalDashboardResponse("ME", totalBalance, totalDebt,
                 dashboardConfig, childrenDashboards, planStr);
+    }
+
+    private BigDecimal getBalance(Alumno alumno) {
+        return alumno.getBilletera() != null 
+                ? alumno.getBilletera().getSaldoCreditos() : BigDecimal.ZERO;
+    }
+
+    private BigDecimal getDebt(Alumno alumno) {
+        BigDecimal debt = alumno.getBilletera() != null 
+                ? alumno.getBilletera().getSaldoDeudaInterno() : BigDecimal.ZERO;
+        return debt == null ? BigDecimal.ZERO : debt;
+    }
+
+    private ChildDashboardResponse buildChildDashboard(Alumno alumno, BigDecimal balance, 
+            BigDecimal debt, List<GetHistoryByStudentResponse> historial) {
+        
+        BudgetSummaryResponse budgetDto = buildBudgetSummary(alumno, historial);
+        HealthSummaryResponse healthDto = buildHealthSummary(alumno);
+        String predictionMsg = buildPredictionMessage(alumno);
+        List<TransactionSummaryResponse> transactions = buildRecentTransactions(historial);
+        SmartActionResponse smartAction = buildSmartAction(transactions);
+        List<ScheduledPickupResponse> todayPickups = buildTodayPickups(historial);
+
+        String stuName = alumno.getUsuario() != null 
+                ? alumno.getUsuario().getNombre() : "Alumno";
+        String urlFotoPerfil = alumno.getUsuario() != null 
+                ? alumno.getUsuario().getUrlFotoPerfil() : null;
+
+        return new ChildDashboardResponse(
+                alumno.getId(), stuName, balance, debt, urlFotoPerfil,
+                predictionMsg, budgetDto, healthDto, todayPickups, transactions, smartAction
+        );
+    }
+
+    private BudgetSummaryResponse buildBudgetSummary(Alumno alumno, 
+            List<GetHistoryByStudentResponse> historial) {
+        Optional<GetActiveBudgetByStudentResponse> presupuestoOpt = getActiveBudgetByStudent
+                .execute(new GetActiveBudgetByStudentRequest(alumno.getId()));
+
+        if (presupuestoOpt.isEmpty()) {
+            return null;
+        }
+
+        GetActiveBudgetByStudentResponse p = presupuestoOpt.get();
+        BigDecimal spent = calculateSpent(p, historial);
+
+        return new BudgetSummaryResponse(p.periodo().name(), spent, p.montoLimiteGeneral());
+    }
+
+    private BigDecimal calculateSpent(GetActiveBudgetByStudentResponse p, 
+            List<GetHistoryByStudentResponse> historial) {
+        BigDecimal spent = BigDecimal.ZERO;
+        try {
+            CalculadorPeriodoPresupuesto calculador = new CalculadorPeriodoPresupuesto();
+            LocalDateTime now = LocalDateTime.now();
+            RangoFechas rango = calculador.calcularRango(p.periodo(), now);
+            for (GetHistoryByStudentResponse purchase : historial) {
+                LocalDateTime purchaseDate = purchase.date();
+                if (purchaseDate != null && !purchaseDate.isBefore(rango.inicio()) 
+                        && !purchaseDate.isAfter(rango.fin())) {
+                    spent = spent.add(purchase.totalAmount());
+                }
+            }
+        } catch (Exception e) {
+            // Fallback to ZERO
+        }
+        return spent;
+    }
+
+    private HealthSummaryResponse buildHealthSummary(Alumno alumno) {
+        StudentRewardResponse reward = getStudentRewardStatus.execute(alumno.getId());
+        return new HealthSummaryResponse(
+                reward.currentLevel(),
+                reward.totalPoints(),
+                reward.pointsToNextLevel(),
+                reward.levelMessage()
+        );
+    }
+
+    private String buildPredictionMessage(Alumno alumno) {
+        try {
+            var predictionRequest = new PredictStudentSpendingRequest(alumno.getId(), null);
+            var prediction = predictStudentSpending.execute(predictionRequest);
+            if (prediction.aiAnalysis() != null) {
+                return prediction.aiAnalysis().summary();
+            } else {
+                return "Gasto estimado al fin de periodo: $" + prediction.predictedSpending();
+            }
+        } catch (Exception e) {
+            return "Datos insuficientes para predecir";
+        }
+    }
+
+    private List<TransactionSummaryResponse> buildRecentTransactions(
+            List<GetHistoryByStudentResponse> historial) {
+        return historial.stream()
+                .limit(4)
+                .map(p -> new TransactionSummaryResponse(
+                        p.id().toString(),
+                        getPurchaseName(p),
+                        p.date(),
+                        p.totalAmount(),
+                        "🛒"
+                )).collect(Collectors.toList());
+    }
+
+    private SmartActionResponse buildSmartAction(List<TransactionSummaryResponse> transactions) {
+        if (!transactions.isEmpty()) {
+            return new SmartActionResponse(
+                    "Oportunidad Saludable",
+                    "Cambia las compras frecuentes de snacks por alternativas más sanas.",
+                    "BLOCK_CATEGORY",
+                    "SNACKS"
+            );
+        }
+        return null;
+    }
+
+    private List<ScheduledPickupResponse> buildTodayPickups(
+            List<GetHistoryByStudentResponse> historial) {
+        List<ScheduledPickupResponse> pickups = new ArrayList<>();
+        java.time.LocalDate today = java.time.LocalDate.now();
+
+        for (GetHistoryByStudentResponse p : historial) {
+            boolean isToday = p.pickupDate() != null && p.pickupDate().equals(today);
+            boolean isActive = "PROGRAMADO".equals(p.withdrawalStatus())
+                    || "EN_PREPARACION".equals(p.withdrawalStatus())
+                    || "LISTO".equals(p.withdrawalStatus());
+
+            if ("ANTICIPADA".equals(p.tipo()) && isToday && isActive) {
+                String desc = p.pickupSlotDescription() != null ? p.pickupSlotDescription() : "";
+                pickups.add(new ScheduledPickupResponse(
+                        p.id().toString(), getPurchaseName(p), desc));
+            }
+        }
+        return pickups;
     }
 
     private String getPurchaseName(GetHistoryByStudentResponse p) {
@@ -190,8 +215,7 @@ public class GetTutorGlobalDashboard {
             return "Compra";
         }
         GetHistoryByStudentResponse.Item first = p.items().iterator().next();
-        String name = first != null 
-                ? first.nombre() : "Producto";
+        String name = first != null ? first.nombre() : "Producto";
         if (p.items().size() > 1) {
             name += " y " + (p.items().size() - 1) + " más";
         }

@@ -23,8 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateBudgetRulesTest {
@@ -96,5 +95,23 @@ class UpdateBudgetRulesTest {
  
         assertTrue(captor.getValue().getReglasCategoria().isEmpty(), "La lista de reglas debería quedar vacía");
         assertTrue(response.reglasCategoria().isEmpty());
+    }
+
+    @Test
+    void execute_CuandoSumaPorcentajesSupera100_LanzaIllegalArgumentException() {
+        when(repository.findById(budgetId)).thenReturn(Optional.of(presupuestoExistente));
+
+        UpdateBudgetRulesRequest.CategoryRuleRequest rule1 =
+                new UpdateBudgetRulesRequest.CategoryRuleRequest(UUID.randomUUID(), new BigDecimal("60.00"));
+        UpdateBudgetRulesRequest.CategoryRuleRequest rule2 =
+                new UpdateBudgetRulesRequest.CategoryRuleRequest(UUID.randomUUID(), new BigDecimal("50.00"));
+        UpdateBudgetRulesRequest request = new UpdateBudgetRulesRequest(budgetId, List.of(rule1, rule2));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                updateBudgetRules.execute(request)
+        );
+
+        assertTrue(exception.getMessage().contains("La suma de los porcentajes no puede superar el 100%"));
+        verify(repository, never()).save(any());
     }
 }

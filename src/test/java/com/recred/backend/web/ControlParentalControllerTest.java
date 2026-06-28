@@ -2,16 +2,17 @@ package com.recred.backend.web;
 
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddHealthRestrictionRequest;
-import com.recred.backend.application.ManualProductLock;
-import com.recred.backend.application.ManualProductLockRequest;
-import com.recred.backend.application.ManualProductUnlock;
-import com.recred.backend.application.ManualProductUnlockRequest;
 import com.recred.backend.application.DetectStudentPreferences;
+import com.recred.backend.application.DetectStudentPreferencesRequest;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsRequest;
 import com.recred.backend.application.GetHealthRestrictionsResponse;
 import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.ManageRestrictionsRequest;
+import com.recred.backend.application.ManualProductLock;
+import com.recred.backend.application.ManualProductLockRequest;
+import com.recred.backend.application.ManualProductUnlock;
+import com.recred.backend.application.ManualProductUnlockRequest;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictionsRequest;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
@@ -157,13 +158,16 @@ class ControlParentalControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isAccepted());
 
-        verify(detectStudentPreferences).execute(alumnoId, buffetId);
+        verify(detectStudentPreferences).execute(
+                new DetectStudentPreferencesRequest(alumnoId, buffetId)
+        );
     }
 
     @Test
     void returnInternalServerErrorWhenPreferenceAnalysisFails() throws Exception {
         UUID buffetId = UUID.randomUUID();
-        doThrow(new RuntimeException("Error IA")).when(detectStudentPreferences).execute(alumnoId, buffetId);
+        doThrow(new RuntimeException("Error IA")).when(detectStudentPreferences)
+                .execute(new DetectStudentPreferencesRequest(alumnoId, buffetId));
 
         mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/analizar-preferencias", alumnoId)
                         .param("buffetId", buffetId.toString())

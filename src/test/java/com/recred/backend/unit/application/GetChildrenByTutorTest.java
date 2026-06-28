@@ -93,4 +93,14 @@ class GetChildrenByTutorTest {
 
         assertEquals("Tutor no encontrado para el usuario autenticado", exception.getMessage());
     }
+
+    @Test
+    void execute_CuandoAmbosParametrosSonNulos_LanzaIllegalArgumentException() {
+        GetChildrenByTutorRequest request = new GetChildrenByTutorRequest(null, null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> getChildrenByTutor.execute(request));
+
+        assertEquals("Debe proporcionar tutorId o cognitoSubject", exception.getMessage());
+    }
 }

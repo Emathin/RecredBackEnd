@@ -8,7 +8,6 @@ import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
@@ -58,21 +57,42 @@ public class UpdatePurchaseStatus {
     }
 
     @Transactional
-    public PurchaseStatus execute(UUID purchaseId, EstadoCompra requestedStatus) {
-        Purchase purchase = purchaseRepository.findById(purchaseId)
-                .orElseThrow(() -> new PurchaseNotFoundException(purchaseId));
+    public UpdatePurchaseStatusResponse execute(UpdatePurchaseStatusRequest request) {
+        Purchase purchase = findPurchase(request.purchaseId());
         EstadoCompra previousStatus = purchase.getStatus();
 
+        validateStatusTransition(previousStatus, request.requestedStatus());
+        purchase.changeStatusTo(request.requestedStatus());
+
+        handleInventoryUpdates(purchase, previousStatus, request.requestedStatus());
+        handleRefundIfNecessary(purchase, request.requestedStatus());
+
+        Purchase savedPurchase = purchaseRepository.save(purchase);
+        publishOperationalEvent(savedPurchase, request.requestedStatus());
+
+        return new UpdatePurchaseStatusResponse(
+                savedPurchase.getId(),
+                savedPurchase.getStudent() != null ? savedPurchase.getStudent().getId() : null,
+                savedPurchase.getStatus(),
+                savedPurchase.getStatus().getLabel(),
+                savedPurchase.getDate()
+        );
+    }
+
+    private Purchase findPurchase(UUID purchaseId) {
+        return purchaseRepository.findById(purchaseId)
+                .orElseThrow(() -> new PurchaseNotFoundException(purchaseId));
+    }
+
+    private void validateStatusTransition(
+            EstadoCompra currentStatus, EstadoCompra requestedStatus) {
         if (requestedStatus == EstadoCompra.CANCELADO) {
-            InvalidPurchaseStatusTransitionException exception =
-                    new InvalidPurchaseStatusTransitionException(
-                            purchase.getStatus(),
-                            requestedStatus);
-            throw exception;
+            throw new InvalidPurchaseStatusTransitionException(currentStatus, requestedStatus);
         }
+    }
 
-        purchase.changeStatusTo(requestedStatus);
-
+    private void handleInventoryUpdates(
+            Purchase purchase, EstadoCompra previousStatus, EstadoCompra requestedStatus) {
         if (shouldConsumeReservation(purchase, requestedStatus)) {
             inventoryAvailabilityService.consumeReservation(
                     purchase.getBuffetId(),
@@ -86,15 +106,12 @@ public class UpdatePurchaseStatus {
                     purchase.getItems(),
                     purchase.getId());
         }
+    }
 
+    private void handleRefundIfNecessary(Purchase purchase, EstadoCompra requestedStatus) {
         if (shouldRefund(purchase, requestedStatus)) {
             refund(purchase);
         }
-
-        Purchase savedPurchase = purchaseRepository.save(purchase);
-        publishOperationalEvent(savedPurchase, requestedStatus);
-
-        return PurchaseStatus.from(savedPurchase);
     }
 
     private void publishOperationalEvent(Purchase purchase, EstadoCompra requestedStatus) {

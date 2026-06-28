@@ -37,6 +37,19 @@ public class Alumno {
         this.restriccionesSalud = restriccionesSalud != null ? restriccionesSalud : new HashSet<>();
     }
 
+    public static Alumno createFromUser(Usuario usuario, Grado grado) {
+        if (usuario == null) {
+            throw new IllegalArgumentException("El usuario del alumno es obligatorio");
+        }
+
+        Alumno alumno = new Alumno();
+        alumno.setUsuario(usuario);
+        alumno.setUsuarioId(usuario.getId());
+        alumno.setActivo(true);
+        alumno.setGrado(grado);
+        return alumno;
+    }
+
     public void agregarRestriccionSalud(ClasificacionSalud restriccion) {
         if (restriccion != null) {
             boolean yaExiste = this.restriccionesSalud.stream()

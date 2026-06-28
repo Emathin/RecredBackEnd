@@ -548,14 +548,16 @@ public class UseCases {
             PurchaseRepository purchaseRepository,
             PurchaseValidator purchaseValidator,
             InventoryAvailabilityService inventoryAvailabilityService,
-            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+            MovimientoBilleteraRepository movimientoBilleteraRepository,
+            ProductRepository productRepository) {
         return new ProcessPresentialPurchase(
                 studentRepository,
                 walletRepository,
                 purchaseRepository,
                 purchaseValidator,
                 inventoryAvailabilityService,
-                movimientoBilleteraRepository);
+                movimientoBilleteraRepository,
+                productRepository);
     }
 
     @Bean

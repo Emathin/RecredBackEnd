@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.PredictStudentSpending;
+import com.recred.backend.application.PredictStudentSpendingRequest;
+import com.recred.backend.application.PredictStudentSpendingResponse;
 import com.recred.backend.domain.models.BudgetPeriod;
 import com.recred.backend.domain.services.SpendingPredictionAnalyzer;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -11,7 +13,6 @@ import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.models.SpendingPredictionAnalysis;
 import com.recred.backend.domain.models.ConsumptionCategory;
 import com.recred.backend.domain.models.PurchaseSpending;
-import com.recred.backend.domain.models.SpendingPrediction;
 import com.recred.backend.domain.models.SpendingPredictionResult;
 import com.recred.backend.domain.models.SpendingPeriodPreference;
 import com.recred.backend.domain.services.SpendingPredictionCalculator;
@@ -81,110 +82,205 @@ class PredictStudentSpendingTest {
     @Test
     void useActivePreferenceWhenPeriodIsNotRequested() {
         UUID studentId = UUID.randomUUID();
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
-        when(spendingPreferenceRepository.findActivePreferences(
-                studentId,
-                LocalDate.of(2026, 5, 21)
-        )).thenReturn(List.of(new SpendingPeriodPreference(
-                BudgetPeriod.QUINCENAL,
-                new BigDecimal("200.00")
-        )));
-        when(purchaseSpendingRepository.findSpending(any(), anyCollection(), any(), any()))
-                .thenReturn(
-                        List.of(spending("2026-05-21T10:00:00", "50.00")),
-                        List.of(spending("2026-04-10T10:00:00", "100.00"))
-                );
-        when(purchaseSpendingRepository.findMostConsumedCategories(
-                any(),
-                anyCollection(),
-                any(),
-                any()
-        ))
-                .thenReturn(List.of(
-                        category("Bebidas", "20.00"),
-                        category("Snacks", "15.00"),
-                        category("Frutas", "10.00"),
-                        category("Panificados", "8.00"),
-                        category("Golosinas", "5.00"),
-                        category("Otros", "1.00")
-                ));
-        when(spendingPredictionAnalyzer.analyze(any())).thenReturn(Optional.of(analysis()));
-
-        SpendingPredictionResult response = predictStudentSpending.execute(studentId, null);
-
-        assertEquals(BudgetPeriod.QUINCENAL, response.spendingPrediction().period());
-        assertEquals(new BigDecimal("200.00"), response.spendingPrediction().limitAmount());
-        assertEquals(5, response.spendingPrediction().mostConsumedCategories().size());
-        assertEquals("Reducir snacks.", response.aiAnalysis().orElseThrow().recommendations()
-                .get(0));
-        verify(spendingPreferenceRepository).findActivePreferences(
-                studentId,
-                LocalDate.of(2026, 5, 21)
+        givenExistingStudent(studentId);
+        givenActivePreference(studentId, BudgetPeriod.QUINCENAL, "200.00");
+        givenCurrentAndHistoricalSpending(
+                List.of(spending("2026-05-21T10:00:00", "50.00")),
+                List.of(spending("2026-04-10T10:00:00", "100.00"))
         );
-        ArgumentCaptor<SpendingPredictionResult> captor = ArgumentCaptor.forClass(
-                SpendingPredictionResult.class);
-        verify(aiEventRepository).registerPrediction(captor.capture());
-        assertEquals(BudgetPeriod.QUINCENAL, captor.getValue().spendingPrediction().period());
+        givenMostConsumedCategories(
+                category("Bebidas", "20.00"),
+                category("Snacks", "15.00"),
+                category("Frutas", "10.00"),
+                category("Panificados", "8.00"),
+                category("Golosinas", "5.00"),
+                category("Otros", "1.00")
+        );
+        givenAiAnalysis();
+
+        PredictStudentSpendingResponse response = whenSpendingIsPredicted(studentId, null);
+
+        thenActivePreferencePredictionMatches(response);
+        thenPreferenceWasQueried(studentId);
+        thenPredictionWasRegisteredWithPeriod(BudgetPeriod.QUINCENAL);
     }
 
     @Test
     void requestedPeriodOverridesPreference() {
         UUID studentId = UUID.randomUUID();
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
-        when(spendingPreferenceRepository.findActivePreferences(any(), any()))
-                .thenReturn(List.of(new SpendingPeriodPreference(
-                        BudgetPeriod.QUINCENAL,
-                        new BigDecimal("200.00")
-                )));
-        when(purchaseSpendingRepository.findSpending(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(), List.of());
-        when(purchaseSpendingRepository.findMostConsumedCategories(
-                any(),
-                anyCollection(),
-                any(),
-                any()
-        ))
-                .thenReturn(List.of());
-        when(spendingPredictionAnalyzer.analyze(any())).thenReturn(Optional.empty());
+        givenExistingStudent(studentId);
+        givenActivePreference(studentId, BudgetPeriod.QUINCENAL, "200.00");
+        givenNoSpendingData();
 
-        SpendingPredictionResult response = predictStudentSpending.execute(
+        PredictStudentSpendingResponse response = whenSpendingIsPredicted(
                 studentId,
                 BudgetPeriod.MENSUAL
         );
 
-        assertEquals(BudgetPeriod.MENSUAL, response.spendingPrediction().period());
-        verify(aiEventRepository).registerPrediction(any(SpendingPredictionResult.class));
+        thenPeriodMatches(response, BudgetPeriod.MENSUAL);
+        thenPredictionWasRegistered();
     }
 
     @Test
     void resolveStudentIdFromUserIdWhenStudentIdDoesNotExist() {
         UUID userId = UUID.randomUUID();
         UUID studentId = UUID.randomUUID();
+        givenUserIdResolvesToStudent(userId, studentId);
+        givenNoPreference();
+        givenNoSpendingData();
+
+        PredictStudentSpendingResponse response = whenSpendingIsPredicted(
+                userId,
+                BudgetPeriod.MENSUAL
+        );
+
+        thenStudentWasResolved(response, studentId);
+        thenPreferenceWasQueried(studentId);
+        thenCurrentRangeWasQueried(studentId);
+    }
+
+    @Test
+    void useMonthlyPeriodWhenNoPreferenceAndNoRequestedPeriod() {
+        UUID studentId = UUID.randomUUID();
+        givenExistingStudent(studentId);
+        givenNoPreference();
+        givenNoSpendingData();
+
+        PredictStudentSpendingResponse response = whenSpendingIsPredicted(studentId, null);
+
+        thenPeriodMatches(response, BudgetPeriod.MENSUAL);
+    }
+
+    @Test
+    void throwExceptionWhenStudentDoesNotExist() {
+        UUID studentId = UUID.randomUUID();
+        givenUnknownStudent(studentId);
+
+        assertThrows(AlumnoNoEncontradoException.class, () -> whenSpendingIsPredicted(
+                studentId,
+                BudgetPeriod.MENSUAL
+        ));
+        thenPredictionDependenciesWereNotCalled();
+    }
+
+    @Test
+    void querySpendingWithCurrentAndHistoricalRanges() {
+        UUID studentId = UUID.randomUUID();
+        givenExistingStudent(studentId);
+        givenNoPreference();
+        givenNoSpendingData();
+
+        whenSpendingIsPredicted(studentId, BudgetPeriod.MENSUAL);
+
+        thenCurrentRangeWasQueried(studentId);
+        thenHistoricalRangeWasQueried(studentId);
+    }
+
+    private void givenExistingStudent(UUID studentId) {
+        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+    }
+
+    private void givenUnknownStudent(UUID studentId) {
+        when(alumnoRepository.existsById(studentId)).thenReturn(false);
+    }
+
+    private void givenUserIdResolvesToStudent(UUID userId, UUID studentId) {
         when(alumnoRepository.existsById(userId)).thenReturn(false);
         when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+    }
+
+    private void givenActivePreference(
+            UUID studentId,
+            BudgetPeriod period,
+            String limitAmount
+    ) {
+        when(spendingPreferenceRepository.findActivePreferences(
+                studentId,
+                LocalDate.of(2026, 5, 21)
+        )).thenReturn(List.of(new SpendingPeriodPreference(
+                period,
+                new BigDecimal(limitAmount)
+        )));
+    }
+
+    private void givenNoPreference() {
         when(spendingPreferenceRepository.findActivePreferences(any(), any()))
                 .thenReturn(List.of());
+    }
+
+    private void givenNoSpendingData() {
+        givenCurrentAndHistoricalSpending(List.of(), List.of());
+        givenMostConsumedCategories();
+        givenNoAiAnalysis();
+    }
+
+    private void givenCurrentAndHistoricalSpending(
+            List<PurchaseSpending> currentSpending,
+            List<PurchaseSpending> historicalSpending
+    ) {
         when(purchaseSpendingRepository.findSpending(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(), List.of());
+                .thenReturn(currentSpending, historicalSpending);
+    }
+
+    private void givenMostConsumedCategories(ConsumptionCategory... categories) {
         when(purchaseSpendingRepository.findMostConsumedCategories(
                 any(),
                 anyCollection(),
                 any(),
                 any()
-        ))
-                .thenReturn(List.of());
+        )).thenReturn(List.of(categories));
+    }
+
+    private void givenAiAnalysis() {
+        when(spendingPredictionAnalyzer.analyze(any())).thenReturn(Optional.of(analysis()));
+    }
+
+    private void givenNoAiAnalysis() {
         when(spendingPredictionAnalyzer.analyze(any())).thenReturn(Optional.empty());
+    }
 
-        SpendingPredictionResult response = predictStudentSpending.execute(
-                userId,
-                BudgetPeriod.MENSUAL
-        );
+    private void thenActivePreferencePredictionMatches(
+            PredictStudentSpendingResponse response
+    ) {
+        assertEquals(BudgetPeriod.QUINCENAL, response.period());
+        assertEquals(new BigDecimal("200.00"), response.limitAmount());
+        assertEquals(5, response.mostConsumedCategories().size());
+        assertEquals("Reducir snacks.", response.aiAnalysis().recommendations().get(0));
+    }
 
-        assertEquals(studentId, response.spendingPrediction().studentId());
+    private void thenPeriodMatches(
+            PredictStudentSpendingResponse response,
+            BudgetPeriod period
+    ) {
+        assertEquals(period, response.period());
+    }
+
+    private void thenStudentWasResolved(
+            PredictStudentSpendingResponse response,
+            UUID studentId
+    ) {
+        assertEquals(studentId, response.studentId());
+    }
+
+    private void thenPreferenceWasQueried(UUID studentId) {
         verify(spendingPreferenceRepository).findActivePreferences(
                 studentId,
                 LocalDate.of(2026, 5, 21)
         );
+    }
+
+    private void thenPredictionWasRegistered() {
+        verify(aiEventRepository).registerPrediction(any(SpendingPredictionResult.class));
+    }
+
+    private void thenPredictionWasRegisteredWithPeriod(BudgetPeriod period) {
+        ArgumentCaptor<SpendingPredictionResult> captor = ArgumentCaptor.forClass(
+                SpendingPredictionResult.class);
+        verify(aiEventRepository).registerPrediction(captor.capture());
+        assertEquals(period, captor.getValue().spendingPrediction().period());
+    }
+
+    private void thenCurrentRangeWasQueried(UUID studentId) {
         verify(purchaseSpendingRepository).findSpending(
                 eq(studentId),
                 anyCollection(),
@@ -193,37 +289,16 @@ class PredictStudentSpendingTest {
         );
     }
 
-    @Test
-    void useMonthlyPeriodWhenNoPreferenceAndNoRequestedPeriod() {
-        UUID studentId = UUID.randomUUID();
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
-        when(spendingPreferenceRepository.findActivePreferences(any(), any()))
-                .thenReturn(List.of());
-        when(purchaseSpendingRepository.findSpending(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(), List.of());
-        when(purchaseSpendingRepository.findMostConsumedCategories(
-                any(),
+    private void thenHistoricalRangeWasQueried(UUID studentId) {
+        verify(purchaseSpendingRepository).findSpending(
+                eq(studentId),
                 anyCollection(),
-                any(),
-                any()
-        ))
-                .thenReturn(List.of());
-        when(spendingPredictionAnalyzer.analyze(any())).thenReturn(Optional.empty());
-
-        SpendingPredictionResult response = predictStudentSpending.execute(studentId, null);
-
-        assertEquals(BudgetPeriod.MENSUAL, response.spendingPrediction().period());
+                eq(LocalDateTime.parse("2026-01-31T00:00:00")),
+                eq(LocalDateTime.parse("2026-04-30T23:59:59.999999999"))
+        );
     }
 
-    @Test
-    void throwExceptionWhenStudentDoesNotExist() {
-        UUID studentId = UUID.randomUUID();
-        when(alumnoRepository.existsById(studentId)).thenReturn(false);
-
-        assertThrows(AlumnoNoEncontradoException.class, () -> predictStudentSpending.execute(
-                studentId,
-                BudgetPeriod.MENSUAL
-        ));
+    private void thenPredictionDependenciesWereNotCalled() {
         verify(spendingPreferenceRepository, never()).findActivePreferences(any(), any());
         verify(purchaseSpendingRepository, never()).findSpending(
                 any(),
@@ -235,41 +310,18 @@ class PredictStudentSpendingTest {
         verify(aiEventRepository, never()).registerPrediction(any());
     }
 
-    @Test
-    void querySpendingWithCurrentAndHistoricalRanges() {
-        UUID studentId = UUID.randomUUID();
-        when(alumnoRepository.existsById(studentId)).thenReturn(true);
-        when(spendingPreferenceRepository.findActivePreferences(any(), any()))
-                .thenReturn(List.of());
-        when(purchaseSpendingRepository.findSpending(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(), List.of());
-        when(purchaseSpendingRepository.findMostConsumedCategories(
-                any(),
-                anyCollection(),
-                any(),
-                any()
-        ))
-                .thenReturn(List.of());
-        when(spendingPredictionAnalyzer.analyze(any())).thenReturn(Optional.empty());
-
-        predictStudentSpending.execute(studentId, BudgetPeriod.MENSUAL);
-
-        verify(purchaseSpendingRepository).findSpending(
-                eq(studentId),
-                anyCollection(),
-                eq(LocalDateTime.parse("2026-05-01T00:00:00")),
-                eq(LocalDateTime.parse("2026-05-21T23:59:59.999999999"))
-        );
-        verify(purchaseSpendingRepository).findSpending(
-                eq(studentId),
-                anyCollection(),
-                eq(LocalDateTime.parse("2026-01-31T00:00:00")),
-                eq(LocalDateTime.parse("2026-04-30T23:59:59.999999999"))
-        );
-    }
-
     private PurchaseSpending spending(String dateTime, String amount) {
         return new PurchaseSpending(LocalDateTime.parse(dateTime), new BigDecimal(amount));
+    }
+
+    private PredictStudentSpendingResponse whenSpendingIsPredicted(
+            UUID studentId,
+            BudgetPeriod period
+    ) {
+        return predictStudentSpending.execute(new PredictStudentSpendingRequest(
+                studentId,
+                period
+        ));
     }
 
     private ConsumptionCategory category(String description, String amount) {
