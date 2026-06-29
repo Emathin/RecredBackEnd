@@ -1,6 +1,8 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.LoadStockIA;
+import com.recred.backend.application.LoadStockIARequest;
+import com.recred.backend.application.LoadStockIAResponse;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.models.Producto;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -34,13 +37,38 @@ public class LoadStockIAController {
     public ResponseEntity<LoadStockPredictionDTO> uploadImage(
             @RequestParam("image") MultipartFile image) {
         validateImage(image);
-        return ResponseEntity.ok(loadStockIA.procesarImagen(image));
+        
+        try {
+            LoadStockIARequest request = new LoadStockIARequest(
+                    image.getBytes(),
+                    image.getOriginalFilename(),
+                    image.getContentType(),
+                    image.getSize()
+            );
+            
+            LoadStockIAResponse response = loadStockIA.execute(request);
+            
+            LoadStockPredictionDTO dto = LoadStockPredictionDTO.builder()
+                    .nombre(response.name())
+                    .descripcion(response.description())
+                    .peso(response.weight())
+                    .contieneAzucar(response.containsSugar())
+                    .contieneMani(response.containsPeanuts())
+                    .contieneLactosa(response.containsLactose())
+                    .contieneTacc(response.containsGluten())
+                    .urlImagen(response.imageUrl())
+                    .build();
+            
+            return ResponseEntity.ok(dto);
+        } catch (IOException e) {
+            throw new RuntimeException("Error al procesar la imagen", e);
+        }
     }
 
     @PostMapping("/save-product")
-    public ResponseEntity<Producto> saveProduct(@RequestBody SaveProductDTO saveProductDTO) {
-        Producto createdProduct = saveProduct.execute(saveProductDTO.toCommand());
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdProduct);
+    public ResponseEntity<ProductResponseDTO> saveProduct(@jakarta.validation.Valid @RequestBody ProductRequestDTO request) {
+        Producto createdProduct = saveProduct.execute(request.toSaveCommand());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ProductResponseDTO.fromDomain(createdProduct));
     }
 
     private void validateImage(MultipartFile image) {

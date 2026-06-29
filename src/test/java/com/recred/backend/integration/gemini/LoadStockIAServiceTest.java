@@ -1,18 +1,17 @@
 package com.recred.backend.integration.gemini;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recred.backend.application.LoadStockIARequest;
+import com.recred.backend.application.LoadStockIAResponse;
 import com.recred.backend.infrastructure.gemini.GeminiTextClient;
 import com.recred.backend.infrastructure.gemini.GeminiTextResponse;
 import com.recred.backend.infrastructure.gemini.LoadStockIAService;
-import com.recred.backend.infrastructure.web.LoadStockPredictionDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mock.web.MockMultipartFile;
 
-import java.io.IOException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -36,55 +35,52 @@ class LoadStockIAServiceTest {
 
     @Test
     void analyze_DeberiaLanzarExcepcion_CuandoArchivoEstaVacio() {
-        MockMultipartFile file = new MockMultipartFile("image", new byte[0]);
-        assertThrows(IllegalArgumentException.class, () -> loadStockIAService.analyze(file));
+        LoadStockIARequest request = new LoadStockIARequest(new byte[0], "test.jpg", "image/jpeg", 0);
+        assertThrows(IllegalArgumentException.class, () -> loadStockIAService.analyze(request));
     }
 
     @Test
     void analyze_DeberiaLanzarExcepcion_CuandoFormatoNoPermitido() {
-        MockMultipartFile file = new MockMultipartFile("image", "test.txt", "text/plain", "content".getBytes());
-        assertThrows(IllegalArgumentException.class, () -> loadStockIAService.analyze(file));
+        LoadStockIARequest request = new LoadStockIARequest("content".getBytes(), "test.txt", "text/plain", "content".length());
+        assertThrows(IllegalArgumentException.class, () -> loadStockIAService.analyze(request));
     }
 
     @Test
     void analyze_DeberiaLanzarExcepcion_CuandoContentTypeEsNulo() {
-        MockMultipartFile file = new MockMultipartFile("image", "test", null, "content".getBytes());
-        assertThrows(IllegalArgumentException.class, () -> loadStockIAService.analyze(file));
+        LoadStockIARequest request = new LoadStockIARequest("content".getBytes(), "test", null, "content".length());
+        assertThrows(IllegalArgumentException.class, () -> loadStockIAService.analyze(request));
     }
 
     @Test
     void analyze_DeberiaLanzarExcepcion_CuandoArchivoExcedeTamano() {
         byte[] largeContent = new byte[6 * 1024 * 1024];
-        MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", largeContent);
-        assertThrows(IllegalArgumentException.class, () -> loadStockIAService.analyze(file));
+        LoadStockIARequest request = new LoadStockIARequest(largeContent, "test.jpg", "image/jpeg", largeContent.length);
+        assertThrows(IllegalArgumentException.class, () -> loadStockIAService.analyze(request));
     }
 
     @Test
     void analyze_DeberiaRetornarRespuestaVacia_CuandoIAnoGeneraRespuesta() {
-        MockMultipartFile file = new MockMultipartFile(
-                "image", "test.jpg", "image/jpeg", "content".getBytes());
+        LoadStockIARequest request = new LoadStockIARequest("content".getBytes(), "test.jpg", "image/jpeg", "content".length());
         when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
                 .thenReturn(Optional.empty());
 
-        LoadStockPredictionDTO result = loadStockIAService.analyze(file);
+        LoadStockIAResponse result = loadStockIAService.analyze(request);
 
-        assertEquals("-", result.getNombre());
+        assertEquals("-", result.name());
     }
 
     @Test
     void analyze_DeberiaLanzarExcepcion_CuandoIAFalla() {
-        MockMultipartFile file = new MockMultipartFile(
-                "image", "test.jpg", "image/jpeg", "content".getBytes());
+        LoadStockIARequest request = new LoadStockIARequest("content".getBytes(), "test.jpg", "image/jpeg", "content".length());
         when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
                 .thenThrow(new RuntimeException("Error"));
 
-        assertThrows(RuntimeException.class, () -> loadStockIAService.analyze(file));
+        assertThrows(RuntimeException.class, () -> loadStockIAService.analyze(request));
     }
 
     @Test
     void analyze_DeberiaRetornarPrediccion_CuandoIAEsExitosa() {
-        MockMultipartFile file = new MockMultipartFile(
-                "image", "test.jpg", "image/jpeg", "content".getBytes());
+        LoadStockIARequest request = new LoadStockIARequest("content".getBytes(), "test.jpg", "image/jpeg", "content".length());
         GeminiTextResponse geminiResponse = new GeminiTextResponse(
                 "{\"nombre\":\"Galleta\",\"descripcion\":\"Pepitos\",\"peso\":\"100g\","
                         + "\"contiene_azucar\":\"si\",\"contiene_mani\":\"no\","
@@ -94,28 +90,27 @@ class LoadStockIAServiceTest {
         when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
                 .thenReturn(Optional.of(geminiResponse));
 
-        LoadStockPredictionDTO result = loadStockIAService.analyze(file);
+        LoadStockIAResponse result = loadStockIAService.analyze(request);
 
         assertNotNull(result);
-        assertEquals("Galleta", result.getNombre());
-        assertEquals("Pepitos", result.getDescripcion());
-        assertEquals("100g", result.getPeso());
-        assertEquals("si", result.getContieneAzucar());
-        assertEquals("no", result.getContieneMani());
-        assertEquals("si", result.getContieneLactosa());
-        assertEquals("si", result.getContieneTacc());
+        assertEquals("Galleta", result.name());
+        assertEquals("Pepitos", result.description());
+        assertEquals("100g", result.weight());
+        assertEquals("si", result.containsSugar());
+        assertEquals("no", result.containsPeanuts());
+        assertEquals("si", result.containsLactose());
+        assertEquals("si", result.containsGluten());
     }
 
     @Test
     void analyze_DeberiaRetornarRespuestaVacia_CuandoJsonEsInvalido() {
-        MockMultipartFile file = new MockMultipartFile(
-                "image", "test.jpg", "image/jpeg", "content".getBytes());
+        LoadStockIARequest request = new LoadStockIARequest("content".getBytes(), "test.jpg", "image/jpeg", "content".length());
         GeminiTextResponse geminiResponse = new GeminiTextResponse("invalid json", "gemini-pro");
         when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
                 .thenReturn(Optional.of(geminiResponse));
 
-        LoadStockPredictionDTO result = loadStockIAService.analyze(file);
+        LoadStockIAResponse result = loadStockIAService.analyze(request);
 
-        assertEquals("-", result.getNombre());
+        assertEquals("-", result.name());
     }
 }

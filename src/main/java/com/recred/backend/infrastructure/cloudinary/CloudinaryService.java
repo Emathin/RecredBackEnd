@@ -5,7 +5,6 @@ import com.cloudinary.utils.ObjectUtils;
 import java.io.IOException;
 import java.util.Map;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class CloudinaryService {
@@ -16,10 +15,10 @@ public class CloudinaryService {
         this.cloudinary = cloudinary;
     }
 
-    public String uploadImage(MultipartFile file) {
+    public String uploadImage(byte[] fileBytes, String originalFilename) {
         try {
             Map<?, ?> result = cloudinary.uploader().upload(
-                    file.getBytes(),
+                    fileBytes,
                     ObjectUtils.asMap("resource_type", "image")
             );
             return (String) result.get("secure_url");

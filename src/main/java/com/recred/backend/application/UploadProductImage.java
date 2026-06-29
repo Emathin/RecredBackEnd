@@ -16,7 +16,7 @@ public class UploadProductImage {
     }
 
     public UploadProductImageResponse execute(UploadProductImageRequest request) {
-        String urlImagen = cloudinaryService.uploadImage(request.imagen());
+        String urlImagen = cloudinaryService.uploadImage(request.imageBytes(), request.originalFilename());
         inventoryRepository.updateUrlImagen(
                 request.buffetId(), request.productoId(), urlImagen);
         return new UploadProductImageResponse(urlImagen);

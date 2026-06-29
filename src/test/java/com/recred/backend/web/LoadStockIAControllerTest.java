@@ -1,13 +1,16 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.LoadStockIA;
+import com.recred.backend.application.LoadStockIARequest;
+import com.recred.backend.application.LoadStockIAResponse;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SaveProductCommand;
 import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.infrastructure.web.LoadStockIAController;
 import com.recred.backend.infrastructure.web.LoadStockPredictionDTO;
-import com.recred.backend.infrastructure.web.SaveProductDTO;
+import com.recred.backend.infrastructure.web.ProductResponseDTO;
+import com.recred.backend.infrastructure.web.ProductRequestDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,6 +20,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.math.BigDecimal;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,13 +45,13 @@ class LoadStockIAControllerTest {
     @Test
     void uploadImage_ConImagenValida_RetornaOk() {
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
-        LoadStockPredictionDTO expectedResponse = LoadStockPredictionDTO.builder().nombre("Test").build();
-        when(loadStockIA.procesarImagen(file)).thenReturn(expectedResponse);
+        LoadStockIAResponse responseIa = new LoadStockIAResponse("Test", "Desc", "0", "false", "false", "false", "false", "url");
+        when(loadStockIA.execute(any(LoadStockIARequest.class))).thenReturn(responseIa);
 
         ResponseEntity<LoadStockPredictionDTO> response = controller.uploadImage(file);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(expectedResponse, response.getBody());
+        assertEquals("Test", response.getBody().getNombre());
     }
 
     @Test
@@ -79,38 +84,41 @@ class LoadStockIAControllerTest {
     @Test
     void uploadImage_ConTipoPng_RetornaOk() {
         MockMultipartFile file = new MockMultipartFile("image", "test.png", "image/png", "content".getBytes());
-        LoadStockPredictionDTO expectedResponse = LoadStockPredictionDTO.builder().nombre("Test").build();
-        when(loadStockIA.procesarImagen(file)).thenReturn(expectedResponse);
+        LoadStockIAResponse responseIa = new LoadStockIAResponse("Test", "Desc", "0", "false", "false", "false", "false", "url");
+        when(loadStockIA.execute(any(LoadStockIARequest.class))).thenReturn(responseIa);
 
         ResponseEntity<LoadStockPredictionDTO> response = controller.uploadImage(file);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(expectedResponse, response.getBody());
+        assertEquals("Test", response.getBody().getNombre());
     }
 
     @Test
     void uploadImage_ConTipoJpg_RetornaOk() {
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpg", "content".getBytes());
-        LoadStockPredictionDTO expectedResponse = LoadStockPredictionDTO.builder().nombre("Test").build();
-        when(loadStockIA.procesarImagen(file)).thenReturn(expectedResponse);
+        LoadStockIAResponse responseIa = new LoadStockIAResponse("Test", "Desc", "0", "false", "false", "false", "false", "url");
+        when(loadStockIA.execute(any(LoadStockIARequest.class))).thenReturn(responseIa);
 
         ResponseEntity<LoadStockPredictionDTO> response = controller.uploadImage(file);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(expectedResponse, response.getBody());
+        assertEquals("Test", response.getBody().getNombre());
     }
 
     @Test
     void saveProduct_ConDatosValidos_RetornaCreated() {
-        SaveProductDTO dto = new SaveProductDTO("Prod", "Desc", null, null, false, UUID.randomUUID(), null,
-                UUID.randomUUID(), 10, null, null);
+        ProductRequestDTO dto = new ProductRequestDTO("Prod", "Desc", BigDecimal.TEN, BigDecimal.ONE, false, UUID.randomUUID(), "Cat",
+                UUID.randomUUID(), 10, null, null, Set.of(), Set.of(), "url");
         Producto savedProduct = new Producto();
+        savedProduct.setId(UUID.randomUUID());
+        savedProduct.setNombre("Prod");
+        
         when(saveProduct.execute(any(SaveProductCommand.class))).thenReturn(savedProduct);
 
-        ResponseEntity<Producto> response = controller.saveProduct(dto);
+        ResponseEntity<ProductResponseDTO> response = controller.saveProduct(dto);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(savedProduct, response.getBody());
+        assertEquals(savedProduct.getId(), response.getBody().id());
         verify(saveProduct).execute(any(SaveProductCommand.class));
     }
 }
