@@ -13,6 +13,8 @@ public enum EstadoCompra {
     NO_RETIRADO("No retirado");
 
     private static final Set<EstadoCompra> HEALTHY_RECOMMENDATION_STATUSES = Set.of(ENTREGADO);
+    private static final Set<EstadoCompra> STATISTICAL_CONSUMPTION_ALERT_STATUSES =
+            Set.of(ENTREGADO);
 
     private final String label;
 
@@ -26,5 +28,9 @@ public enum EstadoCompra {
 
     public static Set<EstadoCompra> healthyRecommendationStatuses() {
         return HEALTHY_RECOMMENDATION_STATUSES;
+    }
+
+    public static Set<EstadoCompra> statisticalConsumptionAlertStatuses() {
+        return STATISTICAL_CONSUMPTION_ALERT_STATUSES;
     }
 }

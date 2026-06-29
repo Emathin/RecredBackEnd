@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
+import com.recred.backend.application.GenerateStatisticalConsumptionAlertsRequest;
+import com.recred.backend.application.GenerateStatisticalConsumptionAlertsResponse;
 import com.recred.backend.config.StatisticalConsumptionAlertProperties;
 import com.recred.backend.domain.models.ConsumptionAlert;
 import com.recred.backend.domain.models.ConsumptionAlertAnalysisRequest;
@@ -76,32 +78,25 @@ class GenerateStatisticalConsumptionAlertsTest {
     void generatePatternAlertWhenStudentHasEnoughHistory() {
         UUID productId = UUID.randomUUID();
         ConsumptionAlertCandidate candidate = candidate();
-        when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
-        when(notificationRepository.hasAnyAlertBetween(eq(candidate.studentId()), any(), any()))
-                .thenReturn(false);
-        when(purchaseRepository.countPurchases(any(), anyCollection(), any(), any()))
-                .thenReturn(4L);
-        when(notificationRepository.hasAlertSince(
-                eq(candidate.studentId()),
-                eq(ConsumptionAlertType.STATISTICAL_PATTERN),
-                eq(LocalDateTime.parse("2026-05-18T00:00:00"))
-        )).thenReturn(false);
-        when(purchaseRepository.findCategoryStatistics(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(
-                        category("Bebidas", "80.00"),
-                        category("Snacks", "20.00")
-                ));
-        when(purchaseRepository.findProductStatistics(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(product(productId, "Agua", 3L)));
-        when(analyzer.analyze(any())).thenReturn(Optional.of(messages()));
+        givenActiveCandidate(candidate);
+        givenStudentWithoutAlertToday(candidate);
+        givenPurchaseCount(4L);
+        givenStudentOutsideCooldown(
+                candidate,
+                ConsumptionAlertType.STATISTICAL_PATTERN,
+                "2026-05-18T00:00:00"
+        );
+        givenCategoryStatistics(
+                category("Bebidas", "80.00"),
+                category("Snacks", "20.00")
+        );
+        givenProductStatistics(product(productId, "Agua", 3L));
+        givenAiReturnsMessages();
 
-        int generatedAlerts = useCase.execute();
+        GenerateStatisticalConsumptionAlertsResponse response = whenGeneratingAlerts();
 
-        assertEquals(1, generatedAlerts);
-        ArgumentCaptor<ConsumptionAlert> captor = ArgumentCaptor.forClass(
-                ConsumptionAlert.class);
-        verify(notificationRepository).save(captor.capture());
-        ConsumptionAlert alert = captor.getValue();
+        thenGeneratedAlerts(response, 1);
+        ConsumptionAlert alert = thenAlertWasSaved();
         assertEquals(ConsumptionAlertType.STATISTICAL_PATTERN, alert.pattern().type());
         assertEquals("Bebidas", alert.pattern().mainCategory());
         assertEquals(new BigDecimal("80.00"), alert.pattern().mainCategoryPercentage());
@@ -112,26 +107,203 @@ class GenerateStatisticalConsumptionAlertsTest {
     @Test
     void generateHealthyRecommendationWhenStudentHasLittleHistory() {
         ConsumptionAlertCandidate candidate = candidate();
+        givenActiveCandidate(candidate);
+        givenStudentWithoutAlertToday(candidate);
+        givenPurchaseCount(1L);
+        givenStudentOutsideCooldown(
+                candidate,
+                ConsumptionAlertType.HEALTHY_RECOMMENDATION,
+                "2026-05-11T00:00:00"
+        );
+        givenAiReturnsMessages();
+
+        GenerateStatisticalConsumptionAlertsResponse response = whenGeneratingAlerts();
+
+        thenGeneratedAlerts(response, 1);
+        assertEquals(
+                ConsumptionAlertType.HEALTHY_RECOMMENDATION,
+                thenAlertWasSaved().pattern().type()
+        );
+        thenStatisticsWereNotRequested();
+    }
+
+    @Test
+    void generatePatternWithoutCategoryOrSuggestedProductWhenStatsAreWeak() {
+        ConsumptionAlertCandidate candidate = candidate();
+        givenActiveCandidate(candidate);
+        givenStudentWithoutAlertToday(candidate);
+        givenPurchaseCount(3L);
+        givenStudentOutsideCooldown(candidate, ConsumptionAlertType.STATISTICAL_PATTERN);
+        givenCategoryStatistics();
+        givenProductStatistics(product(UUID.randomUUID(), "Agua", null));
+        givenAiReturnsMessages();
+
+        GenerateStatisticalConsumptionAlertsResponse response = whenGeneratingAlerts();
+
+        thenGeneratedAlerts(response, 1);
+        ConsumptionAlert alert = thenAlertWasSaved();
+        assertNull(alert.pattern().mainCategory());
+        assertEquals(BigDecimal.ZERO, alert.pattern().mainCategoryPercentage());
+        assertNull(alert.pattern().suggestedProductId());
+    }
+
+    @Test
+    void generatePatternWithZeroAmountWhenCategoryAmountIsMissing() {
+        ConsumptionAlertCandidate candidate = candidate();
+        givenActiveCandidate(candidate);
+        givenStudentWithoutAlertToday(candidate);
+        givenPurchaseCount(3L);
+        givenStudentOutsideCooldown(candidate, ConsumptionAlertType.STATISTICAL_PATTERN);
+        givenCategoryStatistics(category("Bebidas", null));
+        givenProductStatistics(product(UUID.randomUUID(), "Agua", 1L));
+        givenAiReturnsMessages();
+
+        GenerateStatisticalConsumptionAlertsResponse response = whenGeneratingAlerts();
+
+        thenGeneratedAlerts(response, 1);
+        ConsumptionAlert alert = thenAlertWasSaved();
+        assertEquals("Bebidas", alert.pattern().mainCategory());
+        assertEquals(BigDecimal.ZERO, alert.pattern().totalAmount());
+        assertEquals(BigDecimal.ZERO, alert.pattern().mainCategoryPercentage());
+        assertNull(alert.pattern().suggestedProductId());
+    }
+
+    @Test
+    void skipStudentWhenAlreadyHasAlertToday() {
+        ConsumptionAlertCandidate candidate = candidate();
+        givenActiveCandidate(candidate);
+        givenStudentWithAlertToday(candidate);
+
+        GenerateStatisticalConsumptionAlertsResponse response = whenGeneratingAlerts();
+
+        thenGeneratedAlerts(response, 0);
+        thenPurchasesWereNotCounted();
+        thenAnalyzerWasNotCalled();
+        thenNoAlertWasSaved();
+    }
+
+    @Test
+    void skipStudentWhenAlertTypeIsInsideCooldown() {
+        ConsumptionAlertCandidate candidate = candidate();
+        givenActiveCandidate(candidate);
+        givenStudentWithoutAlertToday(candidate);
+        givenPurchaseCount(3L);
+        givenStudentInsideCooldown(candidate, ConsumptionAlertType.STATISTICAL_PATTERN);
+
+        GenerateStatisticalConsumptionAlertsResponse response = whenGeneratingAlerts();
+
+        thenGeneratedAlerts(response, 0);
+        thenAnalyzerWasNotCalled();
+        thenNoAlertWasSaved();
+    }
+
+    @Test
+    void skipStudentWhenAiDoesNotReturnMessages() {
+        ConsumptionAlertCandidate candidate = candidate();
+        givenActiveCandidate(candidate);
+        givenStudentWithoutAlertToday(candidate);
+        givenPurchaseCount(0L);
+        givenStudentOutsideCooldown(candidate, ConsumptionAlertType.HEALTHY_RECOMMENDATION);
+        givenAiReturnsNoMessages();
+
+        GenerateStatisticalConsumptionAlertsResponse response = whenGeneratingAlerts();
+
+        thenGeneratedAlerts(response, 0);
+        thenNoAlertWasSaved();
+    }
+
+    private void givenActiveCandidate(ConsumptionAlertCandidate candidate) {
         when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
+    }
+
+    private void givenStudentWithoutAlertToday(ConsumptionAlertCandidate candidate) {
         when(notificationRepository.hasAnyAlertBetween(eq(candidate.studentId()), any(), any()))
                 .thenReturn(false);
+    }
+
+    private void givenStudentWithAlertToday(ConsumptionAlertCandidate candidate) {
+        when(notificationRepository.hasAnyAlertBetween(eq(candidate.studentId()), any(), any()))
+                .thenReturn(true);
+    }
+
+    private void givenPurchaseCount(long purchaseCount) {
         when(purchaseRepository.countPurchases(any(), anyCollection(), any(), any()))
-                .thenReturn(1L);
+                .thenReturn(purchaseCount);
+    }
+
+    private void givenStudentOutsideCooldown(
+            ConsumptionAlertCandidate candidate,
+            ConsumptionAlertType alertType
+    ) {
         when(notificationRepository.hasAlertSince(
                 eq(candidate.studentId()),
-                eq(ConsumptionAlertType.HEALTHY_RECOMMENDATION),
-                eq(LocalDateTime.parse("2026-05-11T00:00:00"))
+                eq(alertType),
+                any()
         )).thenReturn(false);
-        when(analyzer.analyze(any())).thenReturn(Optional.of(messages()));
+    }
 
-        int generatedAlerts = useCase.execute();
+    private void givenStudentOutsideCooldown(
+            ConsumptionAlertCandidate candidate,
+            ConsumptionAlertType alertType,
+            String cooldownStartDateTime
+    ) {
+        when(notificationRepository.hasAlertSince(
+                eq(candidate.studentId()),
+                eq(alertType),
+                eq(LocalDateTime.parse(cooldownStartDateTime))
+        )).thenReturn(false);
+    }
 
-        assertEquals(1, generatedAlerts);
+    private void givenStudentInsideCooldown(
+            ConsumptionAlertCandidate candidate,
+            ConsumptionAlertType alertType
+    ) {
+        when(notificationRepository.hasAlertSince(
+                eq(candidate.studentId()),
+                eq(alertType),
+                any()
+        )).thenReturn(true);
+    }
+
+    private void givenCategoryStatistics(ConsumptionCategoryStatistic... statistics) {
+        when(purchaseRepository.findCategoryStatistics(any(), anyCollection(), any(), any()))
+                .thenReturn(List.of(statistics));
+    }
+
+    private void givenProductStatistics(ConsumptionProductStatistic... statistics) {
+        when(purchaseRepository.findProductStatistics(any(), anyCollection(), any(), any()))
+                .thenReturn(List.of(statistics));
+    }
+
+    private void givenAiReturnsMessages() {
+        when(analyzer.analyze(any(ConsumptionAlertAnalysisRequest.class)))
+                .thenReturn(Optional.of(messages()));
+    }
+
+    private void givenAiReturnsNoMessages() {
+        when(analyzer.analyze(any(ConsumptionAlertAnalysisRequest.class)))
+                .thenReturn(Optional.empty());
+    }
+
+    private GenerateStatisticalConsumptionAlertsResponse whenGeneratingAlerts() {
+        return useCase.execute(new GenerateStatisticalConsumptionAlertsRequest());
+    }
+
+    private void thenGeneratedAlerts(
+            GenerateStatisticalConsumptionAlertsResponse response,
+            int expected
+    ) {
+        assertEquals(expected, response.generatedAlerts());
+    }
+
+    private ConsumptionAlert thenAlertWasSaved() {
         ArgumentCaptor<ConsumptionAlert> captor = ArgumentCaptor.forClass(
                 ConsumptionAlert.class);
         verify(notificationRepository).save(captor.capture());
-        assertEquals(ConsumptionAlertType.HEALTHY_RECOMMENDATION, captor.getValue()
-                .pattern().type());
+        return captor.getValue();
+    }
+
+    private void thenStatisticsWereNotRequested() {
         verify(purchaseRepository, never()).findCategoryStatistics(
                 any(),
                 anyCollection(),
@@ -146,118 +318,15 @@ class GenerateStatisticalConsumptionAlertsTest {
         );
     }
 
-    @Test
-    void generatePatternWithoutCategoryOrSuggestedProductWhenStatsAreWeak() {
-        ConsumptionAlertCandidate candidate = candidate();
-        when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
-        when(notificationRepository.hasAnyAlertBetween(eq(candidate.studentId()), any(), any()))
-                .thenReturn(false);
-        when(purchaseRepository.countPurchases(any(), anyCollection(), any(), any()))
-                .thenReturn(3L);
-        when(notificationRepository.hasAlertSince(
-                eq(candidate.studentId()),
-                eq(ConsumptionAlertType.STATISTICAL_PATTERN),
-                any()
-        )).thenReturn(false);
-        when(purchaseRepository.findCategoryStatistics(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of());
-        when(purchaseRepository.findProductStatistics(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(product(UUID.randomUUID(), "Agua", null)));
-        when(analyzer.analyze(any())).thenReturn(Optional.of(messages()));
-
-        int generatedAlerts = useCase.execute();
-
-        assertEquals(1, generatedAlerts);
-        ArgumentCaptor<ConsumptionAlert> captor = ArgumentCaptor.forClass(
-                ConsumptionAlert.class);
-        verify(notificationRepository).save(captor.capture());
-        assertNull(captor.getValue().pattern().mainCategory());
-        assertEquals(BigDecimal.ZERO, captor.getValue().pattern().mainCategoryPercentage());
-        assertNull(captor.getValue().pattern().suggestedProductId());
-    }
-
-    @Test
-    void generatePatternWithZeroAmountWhenCategoryAmountIsMissing() {
-        ConsumptionAlertCandidate candidate = candidate();
-        when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
-        when(notificationRepository.hasAnyAlertBetween(eq(candidate.studentId()), any(), any()))
-                .thenReturn(false);
-        when(purchaseRepository.countPurchases(any(), anyCollection(), any(), any()))
-                .thenReturn(3L);
-        when(notificationRepository.hasAlertSince(
-                eq(candidate.studentId()),
-                eq(ConsumptionAlertType.STATISTICAL_PATTERN),
-                any()
-        )).thenReturn(false);
-        when(purchaseRepository.findCategoryStatistics(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(category("Bebidas", null)));
-        when(purchaseRepository.findProductStatistics(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(product(UUID.randomUUID(), "Agua", 1L)));
-        when(analyzer.analyze(any())).thenReturn(Optional.of(messages()));
-
-        int generatedAlerts = useCase.execute();
-
-        assertEquals(1, generatedAlerts);
-        ArgumentCaptor<ConsumptionAlert> captor = ArgumentCaptor.forClass(
-                ConsumptionAlert.class);
-        verify(notificationRepository).save(captor.capture());
-        assertEquals("Bebidas", captor.getValue().pattern().mainCategory());
-        assertEquals(BigDecimal.ZERO, captor.getValue().pattern().totalAmount());
-        assertEquals(BigDecimal.ZERO, captor.getValue().pattern().mainCategoryPercentage());
-        assertNull(captor.getValue().pattern().suggestedProductId());
-    }
-
-    @Test
-    void skipStudentWhenAlreadyHasAlertToday() {
-        ConsumptionAlertCandidate candidate = candidate();
-        when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
-        when(notificationRepository.hasAnyAlertBetween(eq(candidate.studentId()), any(), any()))
-                .thenReturn(true);
-
-        int generatedAlerts = useCase.execute();
-
-        assertEquals(0, generatedAlerts);
+    private void thenPurchasesWereNotCounted() {
         verify(purchaseRepository, never()).countPurchases(any(), anyCollection(), any(), any());
-        verify(analyzer, never()).analyze(any());
-        verify(notificationRepository, never()).save(any());
     }
 
-    @Test
-    void skipStudentWhenAlertTypeIsInsideCooldown() {
-        ConsumptionAlertCandidate candidate = candidate();
-        when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
-        when(notificationRepository.hasAnyAlertBetween(eq(candidate.studentId()), any(), any()))
-                .thenReturn(false);
-        when(purchaseRepository.countPurchases(any(), anyCollection(), any(), any()))
-                .thenReturn(3L);
-        when(notificationRepository.hasAlertSince(
-                eq(candidate.studentId()),
-                eq(ConsumptionAlertType.STATISTICAL_PATTERN),
-                any()
-        )).thenReturn(true);
-
-        int generatedAlerts = useCase.execute();
-
-        assertEquals(0, generatedAlerts);
+    private void thenAnalyzerWasNotCalled() {
         verify(analyzer, never()).analyze(any());
-        verify(notificationRepository, never()).save(any());
     }
 
-    @Test
-    void skipStudentWhenAiDoesNotReturnMessages() {
-        ConsumptionAlertCandidate candidate = candidate();
-        when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
-        when(notificationRepository.hasAnyAlertBetween(eq(candidate.studentId()), any(), any()))
-                .thenReturn(false);
-        when(purchaseRepository.countPurchases(any(), anyCollection(), any(), any()))
-                .thenReturn(0L);
-        when(notificationRepository.hasAlertSince(any(), any(), any())).thenReturn(false);
-        when(analyzer.analyze(any(ConsumptionAlertAnalysisRequest.class)))
-                .thenReturn(Optional.empty());
-
-        int generatedAlerts = useCase.execute();
-
-        assertEquals(0, generatedAlerts);
+    private void thenNoAlertWasSaved() {
         verify(notificationRepository, never()).save(any());
     }
 
