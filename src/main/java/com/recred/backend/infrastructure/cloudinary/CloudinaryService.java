@@ -12,8 +12,7 @@ public class CloudinaryService {
     private final Cloudinary cloudinary;
 
     public CloudinaryService(Cloudinary cloudinary) {
-        this.cloudinary = cloudinary;
-    }
+        this.cloudinary = cloudinary;}
 
     public String uploadImage(byte[] fileBytes, String originalFilename) {
         try {

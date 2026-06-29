@@ -13,7 +13,8 @@ public class LoadStockIA {
     }
 
     public LoadStockIAResponse execute(LoadStockIARequest request) {
-        String imageUrl = storageService.uploadFile(request.fileBytes(), request.fileName(), request.contentType());
+        String imageUrl = storageService.uploadFile(request.fileBytes(),
+                request.fileName(), request.contentType());
         var prediction = loadStockAnalyzer.analyze(request);
         
         return new LoadStockIAResponse(
