@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.recred.backend.domain.models.StudentConsumptionDetail;
+import com.recred.backend.application.GetLoggedUserConsumptionDetailResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -21,7 +21,9 @@ public record StudentConsumptionResponse(
         @JsonProperty("compras")
         List<StudentConsumptionPurchaseResponse> purchases
 ) {
-    public static StudentConsumptionResponse fromDomain(StudentConsumptionDetail detail) {
+    public static StudentConsumptionResponse fromApplication(
+            GetLoggedUserConsumptionDetailResponse detail
+    ) {
         return new StudentConsumptionResponse(
                 detail.studentId(),
                 detail.from(),
@@ -29,7 +31,7 @@ public record StudentConsumptionResponse(
                 detail.totalAmount(),
                 detail.purchaseCount(),
                 detail.purchases().stream()
-                        .map(StudentConsumptionPurchaseResponse::fromDomain)
+                        .map(StudentConsumptionPurchaseResponse::fromApplication)
                         .toList()
         );
     }

@@ -16,6 +16,7 @@ public enum EstadoCompra {
     private static final Set<EstadoCompra> HEALTHY_RECOMMENDATION_STATUSES = Set.of(ENTREGADO);
     private static final Set<EstadoCompra> STATISTICAL_CONSUMPTION_ALERT_STATUSES =
             Set.of(ENTREGADO);
+    private static final Set<EstadoCompra> STUDENT_CONSUMPTION_STATUSES = Set.of(ENTREGADO);
     private static final List<EstadoCompra> ACTIVE_TRACKING_STATUSES = List.of(
             PENDIENTE,
             EN_PREPARACION,
@@ -38,6 +39,10 @@ public enum EstadoCompra {
 
     public static Set<EstadoCompra> statisticalConsumptionAlertStatuses() {
         return STATISTICAL_CONSUMPTION_ALERT_STATUSES;
+    }
+
+    public static Set<EstadoCompra> studentConsumptionStatuses() {
+        return STUDENT_CONSUMPTION_STATUSES;
     }
 
     public static List<EstadoCompra> activeTrackingStatuses() {

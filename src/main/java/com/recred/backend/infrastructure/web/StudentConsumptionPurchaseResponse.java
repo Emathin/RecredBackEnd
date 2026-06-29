@@ -1,9 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.MedioPago;
-import com.recred.backend.domain.models.StudentConsumptionPurchase;
+import com.recred.backend.application.GetLoggedUserConsumptionDetailResponse.PurchaseResponse;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,9 +13,9 @@ public record StudentConsumptionPurchaseResponse(
         @JsonProperty("fechaHora")
         LocalDateTime dateTime,
         @JsonProperty("estado")
-        EstadoCompra status,
+        String status,
         @JsonProperty("medioPago")
-        MedioPago paymentMethod,
+        String paymentMethod,
         @JsonProperty("montoTotal")
         BigDecimal totalAmount,
         @JsonProperty("buffetId")
@@ -27,8 +25,8 @@ public record StudentConsumptionPurchaseResponse(
         @JsonProperty("productos")
         List<StudentConsumptionProductResponse> products
 ) {
-    public static StudentConsumptionPurchaseResponse fromDomain(
-            StudentConsumptionPurchase purchase
+    public static StudentConsumptionPurchaseResponse fromApplication(
+            PurchaseResponse purchase
     ) {
         return new StudentConsumptionPurchaseResponse(
                 purchase.purchaseId(),
@@ -39,7 +37,7 @@ public record StudentConsumptionPurchaseResponse(
                 purchase.buffetId(),
                 purchase.buffetName(),
                 purchase.products().stream()
-                        .map(StudentConsumptionProductResponse::fromDomain)
+                        .map(StudentConsumptionProductResponse::fromApplication)
                         .toList()
         );
     }

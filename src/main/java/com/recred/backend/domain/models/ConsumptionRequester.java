@@ -14,7 +14,15 @@ public record ConsumptionRequester(
                 && studentId.equals(requestedStudentId);
     }
 
+    public boolean isStudent() {
+        return role == RolUsuario.ALUMNO;
+    }
+
     public boolean isTutor() {
         return role == RolUsuario.PADRE;
+    }
+
+    public boolean hasStudentId() {
+        return studentId != null;
     }
 }
