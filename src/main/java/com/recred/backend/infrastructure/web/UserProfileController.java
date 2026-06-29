@@ -71,9 +71,13 @@ public class UserProfileController {
             Authentication authentication,
             @RequestParam("foto") MultipartFile foto) {
         String sub = cognitoSubject(authentication);
-        String url = cloudinaryService.uploadImage(foto);
-        Usuario usuario = usuarioService.actualizarFotoPerfil(sub, url);
-        return ResponseEntity.ok(buildUserProfileResponse(usuario));
+        try {
+            String url = cloudinaryService.uploadImage(foto.getBytes(), foto.getOriginalFilename());
+            Usuario usuario = usuarioService.actualizarFotoPerfil(sub, url);
+            return ResponseEntity.ok(buildUserProfileResponse(usuario));
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Error al leer la imagen", e);
+        }
     }
 
     private String cognitoSubject(Authentication authentication) {
