@@ -1,10 +1,10 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.GenerateProductChangeRecommendation;
+import com.recred.backend.application.GetProductChangeRecommendation;
+import com.recred.backend.application.GetProductChangeRecommendationRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,49 +17,28 @@ import java.util.UUID;
 @RequestMapping("/api/v1/kiosqueros/")
 public class ProductChangeController {
 
-    private final GenerateProductChangeRecommendation generateProductChangeRecommendation;
+    private final GetProductChangeRecommendation getProductChangeRecommendation;
 
     public ProductChangeController(
-            GenerateProductChangeRecommendation generateProductChangeRecommendation) {
-        this.generateProductChangeRecommendation = generateProductChangeRecommendation;
-    }
-
-    @GetMapping("/{idUsuario}/sugerencia-cambio-producto")
-    public ResponseEntity<ProductChangeRecommendationResponse> generateProductChangeRecommendation(
-            @PathVariable("idUsuario") UUID usuarioId
+            GetProductChangeRecommendation getProductChangeRecommendation
     ) {
-
-        return generateProductChangeRecommendation.findLatestResultByUsuarioId(usuarioId)
-                .map(ProductChangeRecommendationResponse::fromDomain)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.noContent().build());
-
+        this.getProductChangeRecommendation = getProductChangeRecommendation;
     }
 
     @GetMapping("/{idUsuario}/lista-sugerencia-cambio-producto")
     public ResponseEntity<List<ProductChangeRecommendationResponse>>
     findAllProductChangeRecommendations(@PathVariable("idUsuario") UUID usuarioId) {
         Set<UUID> seenProducts = new HashSet<>();
-        List<ProductChangeRecommendationResponse> responses = generateProductChangeRecommendation
-                .findAllResultsByUsuarioId(usuarioId)
+        GetProductChangeRecommendationRequest request =
+                new GetProductChangeRecommendationRequest(usuarioId);
+        List<ProductChangeRecommendationResponse> responses = getProductChangeRecommendation
+                .execute(request)
                 .stream()
-                .filter(result -> seenProducts.add(
-                        result.getProductChangeRecommendation().getId()))
+                .filter(dto -> seenProducts.add(dto.recommendationId()))
                 .limit(5)
-                .map(ProductChangeRecommendationResponse::fromDomain)
+                .map(ProductChangeRecommendationResponse::fromUseCaseResponse)
                 .toList();
 
         return ResponseEntity.ok(responses);
-    }
-
-    @PostMapping("/{idUsuario}/sugerencia-cambio-producto")
-    public List<ProductChangeRecommendationResponse> generateProductChangeRecommendationPost(
-            @PathVariable("idUsuario") UUID usuarioId
-    ) {
-        return generateProductChangeRecommendation.executeByUsuarioId(usuarioId)
-                .stream()
-                .map(ProductChangeRecommendationResponse::fromDomain)
-                .toList();
-
     }
 }

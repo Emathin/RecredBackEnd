@@ -1,6 +1,6 @@
 package com.recred.backend.unit.infrastructure.scheduling;
 
-import com.recred.backend.infrastructure.scheduling.*;
+import com.recred.backend.infrastructure.scheduling.ProductChangeRecomendationJob;
 
 import com.recred.backend.application.GenerateProductChangeRecommendation;
 import org.junit.jupiter.api.Test;
