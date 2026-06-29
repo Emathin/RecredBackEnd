@@ -80,7 +80,8 @@ public class PromotionController {
                 request.getStartDate(),
                 request.getEndDate(),
                 request.getBuffetId(),
-                false
+                false,
+                request.getImageUrl()
         );
         return ResponseEntity.ok(PromotionResponseDTO.fromDomain(promotion));
     }
