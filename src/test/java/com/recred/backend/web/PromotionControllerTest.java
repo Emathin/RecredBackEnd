@@ -116,7 +116,8 @@ class PromotionControllerTest {
                 request.getStartDate(),
                 request.getEndDate(),
                 request.getBuffetId(),
-                false
+                false,
+                request.getImageUrl()
         )).thenReturn(promotion);
 
         ResponseEntity<PromotionResponseDTO> response =
@@ -131,7 +132,8 @@ class PromotionControllerTest {
                 request.getStartDate(),
                 request.getEndDate(),
                 request.getBuffetId(),
-                false
+                false,
+                request.getImageUrl()
         );
     }
 

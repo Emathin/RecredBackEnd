@@ -22,6 +22,7 @@ public class Promotion {
     private PromotionStatus status;
     private List<Producto> products;
     private Buffet buffet;
+    private String imageUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

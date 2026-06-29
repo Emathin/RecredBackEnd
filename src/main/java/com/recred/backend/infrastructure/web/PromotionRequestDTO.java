@@ -17,4 +17,5 @@ public class PromotionRequestDTO {
     private LocalDateTime endDate;
     private List<UUID> productIds;
     private UUID buffetId;
+    private String imageUrl;
 }
