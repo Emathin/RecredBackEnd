@@ -7,4 +7,14 @@ public record ConsumptionRequester(
         RolUsuario role,
         UUID studentId
 ) {
+
+    public boolean isStudentFor(UUID requestedStudentId) {
+        return role == RolUsuario.ALUMNO
+                && studentId != null
+                && studentId.equals(requestedStudentId);
+    }
+
+    public boolean isTutor() {
+        return role == RolUsuario.PADRE;
+    }
 }

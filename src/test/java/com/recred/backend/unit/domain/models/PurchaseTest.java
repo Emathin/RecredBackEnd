@@ -200,6 +200,14 @@ class PurchaseTest {
     }
 
     @Test
+    void changeTrackingStatusTo_WhenRequestedStatusIsCancelled_ShouldThrowException() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+
+        assertThrows(InvalidPurchaseStatusTransitionException.class,
+                () -> purchase.changeTrackingStatusTo(EstadoCompra.CANCELADO));
+    }
+
+    @Test
     void cancel_WhenPurchaseIsAlreadyCancelled_ShouldThrowException() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.CANCELADO);
 
@@ -222,6 +230,56 @@ class PurchaseTest {
         assertEquals(true, purchase.hasType(TipoCompra.ANTICIPADA));
         assertEquals(true, purchase.isDelivered());
         assertEquals(true, purchase.isAdvancePurchase());
+    }
+
+    @Test
+    void trackingSideEffectQueries_ShouldExposePurchaseBusinessRules() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+
+        assertEquals(true, purchase.shouldConsumeReservationWhenChangingTo(
+                EstadoCompra.ENTREGADO));
+        assertEquals(true, purchase.shouldReleaseReservationWhenChangingFrom(
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.RECHAZADO
+        ));
+        assertEquals(true, purchase.shouldRefundWhenChangingTo(EstadoCompra.RECHAZADO));
+        assertEquals(true, purchase.shouldPublishExpirationEventFor(EstadoCompra.VENCIDO));
+    }
+
+    @Test
+    void trackingSideEffectQueries_ShouldRejectPresentialPurchases() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+        purchase.setTipo(TipoCompra.PRESENCIAL);
+
+        assertEquals(false, purchase.shouldConsumeReservationWhenChangingTo(
+                EstadoCompra.ENTREGADO));
+        assertEquals(false, purchase.shouldReleaseReservationWhenChangingFrom(
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.RECHAZADO
+        ));
+        assertEquals(false, purchase.shouldRefundWhenChangingTo(EstadoCompra.RECHAZADO));
+    }
+
+    @Test
+    void studentIdQueries_ShouldExposeAssociatedStudentId() {
+        UUID studentId = UUID.randomUUID();
+        Alumno student = new Alumno();
+        student.setId(studentId);
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+        purchase.setStudent(student);
+
+        assertEquals(true, purchase.hasStudentId());
+        assertEquals(studentId, purchase.studentIdOrNull());
+        assertEquals(studentId, purchase.requireStudentId());
+    }
+
+    @Test
+    void requireStudentId_WhenStudentDoesNotExist_ShouldThrowException() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+
+        assertEquals(false, purchase.hasStudentId());
+        assertThrows(IllegalStateException.class, purchase::requireStudentId);
     }
 
     @Test
