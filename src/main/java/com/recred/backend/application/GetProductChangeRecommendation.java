@@ -5,8 +5,10 @@ import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.ProductRecommendationResult;
 import com.recred.backend.domain.models.ProductSaleStatistics;
+import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
+import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -16,21 +18,31 @@ public class GetProductChangeRecommendation {
 
     private final KiosqueroRepository kiosqueroRepository;
     private final AIEventRepository aiEventRepository;
+    private final UsuarioRepository usuarioRepository;
 
     public GetProductChangeRecommendation(
             KiosqueroRepository kiosqueroRepository,
-            AIEventRepository aiEventRepository
+            AIEventRepository aiEventRepository,
+            UsuarioRepository usuarioRepository
     ) {
         this.kiosqueroRepository = kiosqueroRepository;
         this.aiEventRepository = aiEventRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @Transactional(readOnly = true)
     public List<GetProductChangeRecommendationResponse> execute(
             GetProductChangeRecommendationRequest request) {
-        UUID buffetId = findBuffetId(request.usuarioId());
+        UUID usuarioId = findUsuarioId(request.cognitoSubject());
+        UUID buffetId = findBuffetId(usuarioId);
         List<ProductRecommendationResult> results = findRecommendations(buffetId);
         return mapToResponse(results);
+    }
+
+    private UUID findUsuarioId(String cognitoSubject) {
+        return usuarioRepository.findByIdCognito(cognitoSubject)
+                .map(Usuario::getId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     private UUID findBuffetId(UUID usuarioId) {

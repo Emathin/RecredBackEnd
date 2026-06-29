@@ -56,7 +56,8 @@ public class GenerateComboSuggestion {
 
     private GenerateComboSuggestionResponse buildResponse(
             Producto product, List<Producto> topSold) {
-        List<GenerateComboSuggestionResponse.SuggestedProductResponse> suggestions = topSold.stream()
+        List<GenerateComboSuggestionResponse
+                .SuggestedProductResponse> suggestions = topSold.stream()
                 .map(this::mapToSuggestedProductResponse)
                 .toList();
         return new GenerateComboSuggestionResponse(
