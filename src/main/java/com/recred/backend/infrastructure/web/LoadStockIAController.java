@@ -66,9 +66,11 @@ public class LoadStockIAController {
     }
 
     @PostMapping("/save-product")
-    public ResponseEntity<ProductResponseDTO> saveProduct(@jakarta.validation.Valid @RequestBody ProductRequestDTO request) {
+    public ResponseEntity<ProductResponseDTO> saveProduct(
+            @jakarta.validation.Valid @RequestBody ProductRequestDTO request) {
         Producto createdProduct = saveProduct.execute(request.toSaveCommand());
-        return ResponseEntity.status(HttpStatus.CREATED).body(ProductResponseDTO.fromDomain(createdProduct));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ProductResponseDTO.fromDomain(createdProduct));
     }
 
     private void validateImage(MultipartFile image) {
