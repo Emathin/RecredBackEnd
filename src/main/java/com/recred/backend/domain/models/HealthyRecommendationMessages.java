@@ -11,4 +11,8 @@ public record HealthyRecommendationMessages(
         BigDecimal confidence,
         String model
 ) {
+
+    public boolean suggests(UUID productId) {
+        return suggestedProductId != null && suggestedProductId.equals(productId);
+    }
 }

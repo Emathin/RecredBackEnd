@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
+import com.recred.backend.application.GenerateHealthyProductRecommendationsRequest;
+import com.recred.backend.application.GenerateHealthyProductRecommendationsResponse;
 import com.recred.backend.config.HealthyRecommendationProperties;
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
 import com.recred.backend.domain.models.HealthyProductOption;
@@ -75,64 +77,38 @@ class GenerateHealthyProductRecommendationsTest {
         UUID cokeId = UUID.randomUUID();
         UUID waterId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
-        when(notificationRepository.hasRecommendationSince(eq(candidate.studentId()), any()))
-                .thenReturn(false);
-        when(purchaseRepository.findConsumptions(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(
-                        consumption(cokeId, "Coca Cola", "Gaseosa azucarada", null, buffetId,
-                                "2026-05-24T10:00:00", null),
-                        consumption(cokeId, "Coca Cola", "Gaseosa azucarada", null, buffetId,
-                                "2026-05-25T10:00:00", 1)
-                ));
-        when(purchaseRepository.findAvailableOptions(
-                eq(candidate.studentId()),
-                eq(buffetId),
-                eq(cokeId),
-                anyCollection()
-        )).thenReturn(List.of(
+        givenActiveCandidate(candidate);
+        givenStudentOutsideCooldown(candidate);
+        givenRecentConsumptions(
+                consumption(cokeId, "Coca Cola", "Gaseosa azucarada", null, buffetId,
+                        "2026-05-24T10:00:00", null),
+                consumption(cokeId, "Coca Cola", "Gaseosa azucarada", null, buffetId,
+                        "2026-05-25T10:00:00", 1)
+        );
+        givenAvailableOptions(candidate, buffetId, cokeId,
                 option(waterId, "Agua mineral", "Agua sin azucar", null),
                 option(UUID.randomUUID(), "Alfajor", "Dulce con chocolate", "Snacks")
-        ));
-        when(analyzer.analyze(any())).thenReturn(Optional.of(messages(waterId)));
+        );
+        givenAiSuggests(waterId);
 
-        int generatedRecommendations = useCase.execute();
+        GenerateHealthyProductRecommendationsResponse response = whenGeneratingRecommendations();
 
-        assertEquals(1, generatedRecommendations);
-        ArgumentCaptor<HealthyRecommendationAnalysisRequest> requestCaptor =
-                ArgumentCaptor.forClass(HealthyRecommendationAnalysisRequest.class);
-        verify(analyzer).analyze(requestCaptor.capture());
-        HealthyRecommendationAnalysisRequest request = requestCaptor.getValue();
-        assertEquals(2, request.consumptionHistory().size());
-        assertEquals(2, request.availableOptions().size());
-
-        ArgumentCaptor<HealthyProductRecommendation> recommendationCaptor =
-                ArgumentCaptor.forClass(HealthyProductRecommendation.class);
-        verify(notificationRepository).save(recommendationCaptor.capture());
-        HealthyProductRecommendation recommendation = recommendationCaptor.getValue();
-        assertEquals(cokeId, recommendation.pattern().repeatedProductId());
-        assertEquals(waterId, recommendation.pattern().suggestedProductId());
-        assertEquals(2, recommendation.pattern().repeatedDays());
-        assertEquals(1L, recommendation.pattern().totalQuantity());
+        thenGeneratedRecommendations(response, 1);
+        thenAnalyzerReceivesRequest(2, 2);
+        thenRecommendationWasSaved(cokeId, waterId, 2, 1L);
     }
 
     @Test
     void skipStudentInsideCooldown() {
         ConsumptionAlertCandidate candidate = candidate();
-        when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
-        when(notificationRepository.hasRecommendationSince(eq(candidate.studentId()), any()))
-                .thenReturn(true);
+        givenActiveCandidate(candidate);
+        givenStudentInsideCooldown(candidate);
 
-        int generatedRecommendations = useCase.execute();
+        GenerateHealthyProductRecommendationsResponse response = whenGeneratingRecommendations();
 
-        assertEquals(0, generatedRecommendations);
-        verify(purchaseRepository, never()).findConsumptions(
-                any(),
-                anyCollection(),
-                any(),
-                any()
-        );
-        verify(notificationRepository, never()).save(any());
+        thenGeneratedRecommendations(response, 0);
+        thenConsumptionsWereNotRequested();
+        thenNoRecommendationWasSaved();
     }
 
     @Test
@@ -140,27 +116,20 @@ class GenerateHealthyProductRecommendationsTest {
         ConsumptionAlertCandidate candidate = candidate();
         UUID cokeId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
-        when(notificationRepository.hasRecommendationSince(eq(candidate.studentId()), any()))
-                .thenReturn(false);
-        when(purchaseRepository.findConsumptions(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(
-                        consumption(cokeId, "Coca Cola", "Gaseosa azucarada", "Bebidas",
-                                buffetId, "2026-05-25T10:00:00", 1),
-                        consumption(cokeId, "Coca Cola", "Gaseosa azucarada", "Bebidas",
-                                buffetId, "2026-05-25T11:00:00", 1)
-                ));
-
-        int generatedRecommendations = useCase.execute();
-
-        assertEquals(0, generatedRecommendations);
-        verify(purchaseRepository, never()).findAvailableOptions(
-                any(),
-                any(),
-                any(),
-                anyCollection()
+        givenActiveCandidate(candidate);
+        givenStudentOutsideCooldown(candidate);
+        givenRecentConsumptions(
+                consumption(cokeId, "Coca Cola", "Gaseosa azucarada", "Bebidas",
+                        buffetId, "2026-05-25T10:00:00", 1),
+                consumption(cokeId, "Coca Cola", "Gaseosa azucarada", "Bebidas",
+                        buffetId, "2026-05-25T11:00:00", 1)
         );
-        verify(notificationRepository, never()).save(any());
+
+        GenerateHealthyProductRecommendationsResponse response = whenGeneratingRecommendations();
+
+        thenGeneratedRecommendations(response, 0);
+        thenAvailableOptionsWereNotRequested();
+        thenNoRecommendationWasSaved();
     }
 
     @Test
@@ -168,26 +137,23 @@ class GenerateHealthyProductRecommendationsTest {
         ConsumptionAlertCandidate candidate = candidate();
         UUID sandwichId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
-        when(notificationRepository.hasRecommendationSince(eq(candidate.studentId()), any()))
-                .thenReturn(false);
-        when(purchaseRepository.findConsumptions(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(
-                        consumption(sandwichId, "Sandwich", "Pan con queso", "Comidas",
-                                buffetId, "2026-05-24T10:00:00", 1),
-                        consumption(sandwichId, "Sandwich", "Pan con queso", "Comidas",
-                                buffetId, "2026-05-25T10:00:00", 1)
-                ));
-        when(purchaseRepository.findAvailableOptions(any(), any(), any(), anyCollection()))
-                .thenReturn(List.of(option(UUID.randomUUID(), "Agua mineral",
-                        "Agua sin azucar", "Bebidas")));
-        when(analyzer.analyze(any(HealthyRecommendationAnalysisRequest.class)))
-                .thenReturn(Optional.empty());
+        givenActiveCandidate(candidate);
+        givenStudentOutsideCooldown(candidate);
+        givenRecentConsumptions(
+                consumption(sandwichId, "Sandwich", "Pan con queso", "Comidas",
+                        buffetId, "2026-05-24T10:00:00", 1),
+                consumption(sandwichId, "Sandwich", "Pan con queso", "Comidas",
+                        buffetId, "2026-05-25T10:00:00", 1)
+        );
+        givenAvailableOptions(
+                option(UUID.randomUUID(), "Agua mineral", "Agua sin azucar", "Bebidas")
+        );
+        givenAiDoesNotRecommendAnything();
 
-        int generatedRecommendations = useCase.execute();
+        GenerateHealthyProductRecommendationsResponse response = whenGeneratingRecommendations();
 
-        assertEquals(0, generatedRecommendations);
-        verify(notificationRepository, never()).save(any());
+        thenGeneratedRecommendations(response, 0);
+        thenNoRecommendationWasSaved();
     }
 
     @Test
@@ -195,28 +161,21 @@ class GenerateHealthyProductRecommendationsTest {
         ConsumptionAlertCandidate candidate = candidate();
         UUID cokeId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
-        when(notificationRepository.hasRecommendationSince(eq(candidate.studentId()), any()))
-                .thenReturn(false);
-        when(purchaseRepository.findConsumptions(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(
-                        consumption(cokeId, "Coca Cola", "Gaseosa azucarada", "Bebidas",
-                                buffetId, "2026-05-24T10:00:00", 1),
-                        consumption(cokeId, "Coca Cola", "Gaseosa azucarada", "Bebidas",
-                                buffetId, "2026-05-25T10:00:00", 1)
-                ));
-        when(purchaseRepository.findAvailableOptions(
-                eq(candidate.studentId()),
-                eq(buffetId),
-                eq(cokeId),
-                anyCollection()
-        )).thenReturn(List.of());
+        givenActiveCandidate(candidate);
+        givenStudentOutsideCooldown(candidate);
+        givenRecentConsumptions(
+                consumption(cokeId, "Coca Cola", "Gaseosa azucarada", "Bebidas",
+                        buffetId, "2026-05-24T10:00:00", 1),
+                consumption(cokeId, "Coca Cola", "Gaseosa azucarada", "Bebidas",
+                        buffetId, "2026-05-25T10:00:00", 1)
+        );
+        givenAvailableOptions(candidate, buffetId, cokeId);
 
-        int generatedRecommendations = useCase.execute();
+        GenerateHealthyProductRecommendationsResponse response = whenGeneratingRecommendations();
 
-        assertEquals(0, generatedRecommendations);
-        verify(analyzer, never()).analyze(any());
-        verify(notificationRepository, never()).save(any());
+        thenGeneratedRecommendations(response, 0);
+        thenAnalyzerWasNotCalled();
+        thenNoRecommendationWasSaved();
     }
 
     @Test
@@ -224,26 +183,136 @@ class GenerateHealthyProductRecommendationsTest {
         ConsumptionAlertCandidate candidate = candidate();
         UUID cokeId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
+        givenActiveCandidate(candidate);
+        givenStudentOutsideCooldown(candidate);
+        givenRecentConsumptions(
+                consumption(cokeId, "Coca Cola", "Gaseosa azucarada", "Bebidas",
+                        buffetId, "2026-05-24T10:00:00", 1),
+                consumption(cokeId, "Coca Cola", "Gaseosa azucarada", "Bebidas",
+                        buffetId, "2026-05-25T10:00:00", 1)
+        );
+        givenAvailableOptions(
+                option(UUID.randomUUID(), "Agua mineral", "Agua sin azucar", "Bebidas")
+        );
+        givenAiSuggests(UUID.randomUUID());
+
+        GenerateHealthyProductRecommendationsResponse response = whenGeneratingRecommendations();
+
+        thenGeneratedRecommendations(response, 0);
+        thenNoRecommendationWasSaved();
+    }
+
+    private void givenActiveCandidate(ConsumptionAlertCandidate candidate) {
         when(studentRepository.findActiveCandidates()).thenReturn(List.of(candidate));
+    }
+
+    private void givenStudentOutsideCooldown(ConsumptionAlertCandidate candidate) {
         when(notificationRepository.hasRecommendationSince(eq(candidate.studentId()), any()))
                 .thenReturn(false);
+    }
+
+    private void givenStudentInsideCooldown(ConsumptionAlertCandidate candidate) {
+        when(notificationRepository.hasRecommendationSince(eq(candidate.studentId()), any()))
+                .thenReturn(true);
+    }
+
+    private void givenRecentConsumptions(RecentProductConsumption... consumptions) {
         when(purchaseRepository.findConsumptions(any(), anyCollection(), any(), any()))
-                .thenReturn(List.of(
-                        consumption(cokeId, "Coca Cola", "Gaseosa azucarada", "Bebidas",
-                                buffetId, "2026-05-24T10:00:00", 1),
-                        consumption(cokeId, "Coca Cola", "Gaseosa azucarada", "Bebidas",
-                                buffetId, "2026-05-25T10:00:00", 1)
-                ));
+                .thenReturn(List.of(consumptions));
+    }
+
+    private void givenAvailableOptions(HealthyProductOption... options) {
         when(purchaseRepository.findAvailableOptions(any(), any(), any(), anyCollection()))
-                .thenReturn(List.of(option(UUID.randomUUID(), "Agua mineral",
-                        "Agua sin azucar", "Bebidas")));
+                .thenReturn(List.of(options));
+    }
+
+    private void givenAvailableOptions(
+            ConsumptionAlertCandidate candidate,
+            UUID buffetId,
+            UUID excludedProductId,
+            HealthyProductOption... options
+    ) {
+        when(purchaseRepository.findAvailableOptions(
+                eq(candidate.studentId()),
+                eq(buffetId),
+                eq(excludedProductId),
+                anyCollection()
+        )).thenReturn(List.of(options));
+    }
+
+    private void givenAiSuggests(UUID productId) {
         when(analyzer.analyze(any(HealthyRecommendationAnalysisRequest.class)))
-                .thenReturn(Optional.of(messages(UUID.randomUUID())));
+                .thenReturn(Optional.of(messages(productId)));
+    }
 
-        int generatedRecommendations = useCase.execute();
+    private void givenAiDoesNotRecommendAnything() {
+        when(analyzer.analyze(any(HealthyRecommendationAnalysisRequest.class)))
+                .thenReturn(Optional.empty());
+    }
 
-        assertEquals(0, generatedRecommendations);
+    private GenerateHealthyProductRecommendationsResponse whenGeneratingRecommendations() {
+        return useCase.execute(new GenerateHealthyProductRecommendationsRequest());
+    }
+
+    private void thenGeneratedRecommendations(
+            GenerateHealthyProductRecommendationsResponse response,
+            int expected
+    ) {
+        assertEquals(expected, response.generatedRecommendations());
+    }
+
+    private void thenAnalyzerReceivesRequest(
+            int expectedHistorySize,
+            int expectedAvailableOptionsSize
+    ) {
+        ArgumentCaptor<HealthyRecommendationAnalysisRequest> requestCaptor =
+                ArgumentCaptor.forClass(HealthyRecommendationAnalysisRequest.class);
+        verify(analyzer).analyze(requestCaptor.capture());
+        HealthyRecommendationAnalysisRequest request = requestCaptor.getValue();
+        assertEquals(expectedHistorySize, request.consumptionHistory().size());
+        assertEquals(expectedAvailableOptionsSize, request.availableOptions().size());
+    }
+
+    private void thenRecommendationWasSaved(
+            UUID expectedRepeatedProductId,
+            UUID expectedSuggestedProductId,
+            int expectedRepeatedDays,
+            long expectedTotalQuantity
+    ) {
+        ArgumentCaptor<HealthyProductRecommendation> recommendationCaptor =
+                ArgumentCaptor.forClass(HealthyProductRecommendation.class);
+        verify(notificationRepository).save(recommendationCaptor.capture());
+        HealthyProductRecommendation recommendation = recommendationCaptor.getValue();
+        assertEquals(expectedRepeatedProductId, recommendation.pattern().repeatedProductId());
+        assertEquals(expectedSuggestedProductId, recommendation.pattern().suggestedProductId());
+        assertEquals(expectedRepeatedDays, recommendation.pattern().repeatedDays());
+        assertEquals(expectedTotalQuantity, recommendation.pattern().totalQuantity());
+    }
+
+    private void thenNoRecommendationWasSaved() {
         verify(notificationRepository, never()).save(any());
+    }
+
+    private void thenConsumptionsWereNotRequested() {
+        verify(purchaseRepository, never()).findConsumptions(
+                any(),
+                anyCollection(),
+                any(),
+                any()
+        );
+    }
+
+    private void thenAvailableOptionsWereNotRequested() {
+        verify(purchaseRepository, never()).findAvailableOptions(
+                any(),
+                any(),
+                any(),
+                anyCollection()
+        );
+    }
+
+    private void thenAnalyzerWasNotCalled() {
+        verify(analyzer, never()).analyze(any());
     }
 
     private ConsumptionAlertCandidate candidate() {

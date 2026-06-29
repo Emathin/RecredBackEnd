@@ -8,4 +8,8 @@ public record HealthyProductOption(
         String productDescription,
         String categoryName
 ) {
+
+    public boolean isSuggestedBy(HealthyRecommendationMessages messages) {
+        return messages != null && messages.suggests(productId);
+    }
 }
