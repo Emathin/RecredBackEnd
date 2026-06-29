@@ -1,5 +1,6 @@
 package com.recred.backend.web;
 
+import com.recred.backend.application.ListInventoryProductsResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.EstadoCompra;
@@ -15,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -144,13 +146,17 @@ class KiosqueroOrderResponseTest {
         inventoryProduct.setId(productId);
         inventoryProduct.setNombre("Inventory Name");
         inventoryProduct.setPrecio(new BigDecimal("12.00"));
+        ListInventoryProductsResponse.InventoryProductResponse inventoryProductResponse =
+                ListInventoryProductsResponse.fromDomain(List.of(inventoryProduct))
+                        .products()
+                        .get(0);
 
         Purchase purchase = new Purchase();
         purchase.setItems(Map.of(domainProduct, 1));
 
         KiosqueroOrderResponse response = KiosqueroOrderResponse.fromDomain(
                 purchase,
-                Map.of(productId, inventoryProduct)
+                Map.of(productId, inventoryProductResponse)
         );
 
         assertEquals("Inventory Name", response.items().get(0).productName());

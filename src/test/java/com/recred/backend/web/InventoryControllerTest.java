@@ -2,20 +2,23 @@ package com.recred.backend.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AdjustInventoryStock;
-import com.recred.backend.application.AdjustInventoryStockCommand;
+import com.recred.backend.application.AdjustInventoryStockRequest;
+import com.recred.backend.application.AdjustInventoryStockResponse;
+import com.recred.backend.application.ApplyInventoryQuickActionRequest;
 import com.recred.backend.application.GetStockMovements;
-import com.recred.backend.application.InventoryQuickActionCommand;
+import com.recred.backend.application.GetStockMovementsRequest;
+import com.recred.backend.application.GetStockMovementsResponse;
 import com.recred.backend.application.ListInventoryProducts;
+import com.recred.backend.application.ListInventoryProductsRequest;
+import com.recred.backend.application.ListInventoryProductsResponse;
 import com.recred.backend.application.UploadProductImage;
 import com.recred.backend.application.UploadProductImageRequest;
 import com.recred.backend.application.UploadProductImageResponse;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.InventoryQuickActionType;
 import com.recred.backend.domain.models.Inventario;
-import com.recred.backend.domain.models.MovimientoStock;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.TipoManejoInventario;
-import com.recred.backend.domain.models.TipoMovimientoStock;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -78,7 +81,8 @@ class InventoryControllerTest {
         UUID buffetId = UUID.randomUUID();
         Producto product = product();
 
-        when(listInventoryProducts.execute(buffetId)).thenReturn(List.of(product));
+        when(listInventoryProducts.execute(new ListInventoryProductsRequest(buffetId)))
+                .thenReturn(ListInventoryProductsResponse.fromDomain(List.of(product)));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
                         "/api/v1/inventory/{buffetId}",
@@ -94,7 +98,7 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$[0].estadoInventario").value("DISPONIBLE"))
                 .andExpect(jsonPath("$[0].tipoManejoInventario").value("STOCK_EXACTO"));
 
-        verify(listInventoryProducts).execute(buffetId);
+        verify(listInventoryProducts).execute(new ListInventoryProductsRequest(buffetId));
     }
 
     @Test
@@ -104,8 +108,8 @@ class InventoryControllerTest {
         UUID userId = UUID.randomUUID();
         Inventario inventory = inventory(buffetId, productId);
 
-        when(adjustInventoryStock.execute(any(AdjustInventoryStockCommand.class)))
-                .thenReturn(inventory);
+        when(adjustInventoryStock.execute(any(AdjustInventoryStockRequest.class)))
+                .thenReturn(AdjustInventoryStockResponse.fromDomain(inventory));
 
         mockMvc.perform(patch(
                         "/api/v1/inventory/{buffetId}/products/{productId}/stock",
@@ -123,8 +127,8 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$.urlImagen").value("http://example.com/image.jpg"))
                 .andExpect(jsonPath("$.stockDisponible").value(10));
 
-        ArgumentCaptor<AdjustInventoryStockCommand> captor =
-                ArgumentCaptor.forClass(AdjustInventoryStockCommand.class);
+        ArgumentCaptor<AdjustInventoryStockRequest> captor =
+                ArgumentCaptor.forClass(AdjustInventoryStockRequest.class);
         verify(adjustInventoryStock).execute(captor.capture());
         assertEquals(buffetId, captor.getValue().buffetId());
         assertEquals(productId, captor.getValue().productId());
@@ -144,7 +148,8 @@ class InventoryControllerTest {
         product.setCupoMaximoDiario(20);
         product.setUrlImagen("http://example.com/image.jpg");
 
-        when(listInventoryProducts.execute(buffetId)).thenReturn(List.of(product));
+        when(listInventoryProducts.execute(new ListInventoryProductsRequest(buffetId)))
+                .thenReturn(ListInventoryProductsResponse.fromDomain(List.of(product)));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
                         "/api/v1/inventory/{buffetId}/overview",
@@ -170,8 +175,8 @@ class InventoryControllerTest {
         UUID userId = UUID.randomUUID();
         Inventario inventory = inventory(buffetId, productId);
 
-        when(adjustInventoryStock.execute(any(InventoryQuickActionCommand.class)))
-                .thenReturn(inventory);
+        when(adjustInventoryStock.execute(any(ApplyInventoryQuickActionRequest.class)))
+                .thenReturn(AdjustInventoryStockResponse.fromDomain(inventory));
 
         mockMvc.perform(patch(
                         "/api/v1/inventory/{buffetId}/products/{productId}/quick-action",
@@ -188,8 +193,8 @@ class InventoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stockActual").value(12));
 
-        ArgumentCaptor<InventoryQuickActionCommand> captor =
-                ArgumentCaptor.forClass(InventoryQuickActionCommand.class);
+        ArgumentCaptor<ApplyInventoryQuickActionRequest> captor =
+                ArgumentCaptor.forClass(ApplyInventoryQuickActionRequest.class);
         verify(adjustInventoryStock).execute(captor.capture());
         assertEquals(buffetId, captor.getValue().buffetId());
         assertEquals(productId, captor.getValue().productId());
@@ -205,10 +210,11 @@ class InventoryControllerTest {
         UUID productId = UUID.randomUUID();
         UUID inventoryId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        MovimientoStock movement = new MovimientoStock(
+        GetStockMovementsResponse.StockMovementResponse movement =
+                new GetStockMovementsResponse.StockMovementResponse(
                 UUID.randomUUID(),
                 inventoryId,
-                TipoMovimientoStock.AJUSTE,
+                "AJUSTE",
                 5,
                 10,
                 15,
@@ -218,7 +224,8 @@ class InventoryControllerTest {
                 LocalDateTime.of(2026, 6, 8, 10, 0)
         );
 
-        when(getStockMovements.execute(buffetId, productId)).thenReturn(List.of(movement));
+        when(getStockMovements.execute(new GetStockMovementsRequest(buffetId, productId)))
+                .thenReturn(new GetStockMovementsResponse(List.of(movement)));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
                         "/api/v1/inventory/{buffetId}/products/{productId}/movements",
@@ -232,7 +239,7 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$[0].motivo").value("Carga inicial"))
                 .andExpect(jsonPath("$[0].usuarioId").value(userId.toString()));
 
-        verify(getStockMovements).execute(buffetId, productId);
+        verify(getStockMovements).execute(new GetStockMovementsRequest(buffetId, productId));
     }
 
     @Test
@@ -256,12 +263,13 @@ class InventoryControllerTest {
         Producto disabledProduct = product();
         disabledProduct.setEstadoInventario(EstadoInventario.DESACTIVADO);
 
-        when(listInventoryProducts.execute(buffetId)).thenReturn(List.of(
-                availabilityProduct,
-                defaultModeProduct,
-                dailyProduct,
-                disabledProduct
-        ));
+        when(listInventoryProducts.execute(new ListInventoryProductsRequest(buffetId)))
+                .thenReturn(ListInventoryProductsResponse.fromDomain(List.of(
+                        availabilityProduct,
+                        defaultModeProduct,
+                        dailyProduct,
+                        disabledProduct
+                )));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
                         "/api/v1/inventory/{buffetId}/overview",
@@ -283,18 +291,21 @@ class InventoryControllerTest {
     void adjustStock_WhenInventoryStateIsNull_ShouldReturnNullFields() throws Exception {
         UUID buffetId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        Inventario inventory = org.mockito.Mockito.mock(Inventario.class);
-        when(inventory.getId()).thenReturn(UUID.randomUUID());
-        when(inventory.getBuffetId()).thenReturn(buffetId);
-        when(inventory.getProductoId()).thenReturn(productId);
-        when(inventory.getStockActual()).thenReturn(12);
-        when(inventory.getStockReservado()).thenReturn(2);
-        when(inventory.stockMinimoEfectivo()).thenReturn(1);
-        when(inventory.stockDisponible()).thenReturn(10);
-        when(inventory.estadoActual()).thenReturn(null);
-        when(inventory.getTipoManejo()).thenReturn(null);
+        AdjustInventoryStockResponse inventory = new AdjustInventoryStockResponse(
+                UUID.randomUUID(),
+                buffetId,
+                productId,
+                12,
+                2,
+                1,
+                10,
+                null,
+                null,
+                null,
+                null
+        );
 
-        when(adjustInventoryStock.execute(any(AdjustInventoryStockCommand.class)))
+        when(adjustInventoryStock.execute(any(AdjustInventoryStockRequest.class)))
                 .thenReturn(inventory);
 
         mockMvc.perform(patch(
@@ -338,7 +349,8 @@ class InventoryControllerTest {
     void movements_WhenMovementTypeIsNull_ShouldReturnNullType() throws Exception {
         UUID buffetId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        MovimientoStock movement = new MovimientoStock(
+        GetStockMovementsResponse.StockMovementResponse movement =
+                new GetStockMovementsResponse.StockMovementResponse(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 null,
@@ -351,7 +363,8 @@ class InventoryControllerTest {
                 LocalDateTime.of(2026, 6, 8, 10, 0)
         );
 
-        when(getStockMovements.execute(buffetId, productId)).thenReturn(List.of(movement));
+        when(getStockMovements.execute(new GetStockMovementsRequest(buffetId, productId)))
+                .thenReturn(new GetStockMovementsResponse(List.of(movement)));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
                         "/api/v1/inventory/{buffetId}/products/{productId}/movements",

@@ -4,8 +4,6 @@ import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 public class AdjustInventoryStock {
 
     private final InventoryAvailabilityService inventoryAvailabilityService;
@@ -15,48 +13,41 @@ public class AdjustInventoryStock {
     }
 
     @Transactional
-    public Inventario execute(
-            UUID buffetId,
-            UUID productId,
-            int stockActual,
-            String motivo,
-            UUID usuarioId
-    ) {
-        return inventoryAvailabilityService.adjustStock(
-                buffetId,
-                productId,
-                stockActual,
-                motivo,
-                usuarioId
-        );
+    public AdjustInventoryStockResponse execute(AdjustInventoryStockRequest request) {
+        Inventario inventory = adjustInventory(request);
+        return AdjustInventoryStockResponse.fromDomain(inventory);
     }
 
     @Transactional
-    public Inventario execute(AdjustInventoryStockCommand command) {
+    public AdjustInventoryStockResponse execute(ApplyInventoryQuickActionRequest request) {
+        Inventario inventory = applyQuickAction(request);
+        return AdjustInventoryStockResponse.fromDomain(inventory);
+    }
+
+    private Inventario adjustInventory(AdjustInventoryStockRequest request) {
         return inventoryAvailabilityService.adjustInventory(
-                command.buffetId(),
-                command.productId(),
-                command.stockActual(),
-                command.stockMinimo(),
-                command.estadoInventario(),
-                command.tipoManejoInventario(),
-                command.disponible(),
-                command.cupoMaximoDiario(),
-                command.motivo(),
-                command.usuarioId()
+                request.buffetId(),
+                request.productId(),
+                request.stockActual(),
+                request.stockMinimo(),
+                request.estadoInventario(),
+                request.tipoManejoInventario(),
+                request.disponible(),
+                request.cupoMaximoDiario(),
+                request.motivo(),
+                request.usuarioId()
         );
     }
 
-    @Transactional
-    public Inventario execute(InventoryQuickActionCommand command) {
+    private Inventario applyQuickAction(ApplyInventoryQuickActionRequest request) {
         return inventoryAvailabilityService.applyQuickAction(
-                command.buffetId(),
-                command.productId(),
-                command.action(),
-                command.quantity(),
-                command.stockMinimo(),
-                command.motivo(),
-                command.usuarioId()
+                request.buffetId(),
+                request.productId(),
+                request.action(),
+                request.quantity(),
+                request.stockMinimo(),
+                request.motivo(),
+                request.usuarioId()
         );
     }
 }

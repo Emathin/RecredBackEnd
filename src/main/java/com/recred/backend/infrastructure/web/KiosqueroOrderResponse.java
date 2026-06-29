@@ -1,5 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.ListInventoryProductsResponse.InventoryProductResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.EstadoCompra;
@@ -38,7 +39,7 @@ public record KiosqueroOrderResponse(
 
     public static KiosqueroOrderResponse fromDomain(
             Purchase purchase,
-            Map<UUID, Producto> inventoryProducts
+            Map<UUID, InventoryProductResponse> inventoryProducts
     ) {
         return new KiosqueroOrderResponse(
                 purchase.getId(),
@@ -93,7 +94,7 @@ public record KiosqueroOrderResponse(
 
     private static List<Item> items(
             Map<Producto, Integer> items,
-            Map<UUID, Producto> inventoryProducts
+            Map<UUID, InventoryProductResponse> inventoryProducts
     ) {
         if (items == null) {
             return List.of();
@@ -104,27 +105,61 @@ public record KiosqueroOrderResponse(
                 .toList();
     }
 
-    private static Producto product(Producto product, Map<UUID, Producto> inventoryProducts) {
+    private static OrderProduct product(
+            Producto product,
+            Map<UUID, InventoryProductResponse> inventoryProducts
+    ) {
         if (product == null || inventoryProducts == null) {
-            return product;
+            return OrderProduct.fromDomain(product);
         }
 
-        return inventoryProducts.getOrDefault(product.getId(), product);
+        InventoryProductResponse inventoryProduct = inventoryProducts.get(product.getId());
+        return inventoryProduct == null
+                ? OrderProduct.fromDomain(product)
+                : OrderProduct.fromResponse(inventoryProduct);
     }
 
-    private static Item item(Producto product, Integer quantity) {
-        BigDecimal unitPrice = product.getPrecio() == null
+    private static Item item(OrderProduct product, Integer quantity) {
+        BigDecimal unitPrice = product.price() == null
                 ? BigDecimal.ZERO
-                : product.getPrecio();
+                : product.price();
         return new Item(
-                product.getId(),
-                product.getNombre(),
+                product.id(),
+                product.name(),
                 quantity,
                 unitPrice,
                 unitPrice.multiply(BigDecimal.valueOf(quantity)),
-                product.getRequierePreparacion(),
-                product.getCupoMaximoDiario()
+                product.requiresPreparation(),
+                product.dailyCapacity()
         );
+    }
+
+    private record OrderProduct(
+            UUID id,
+            String name,
+            BigDecimal price,
+            Boolean requiresPreparation,
+            Integer dailyCapacity
+    ) {
+        private static OrderProduct fromDomain(Producto product) {
+            return new OrderProduct(
+                    product.getId(),
+                    product.getNombre(),
+                    product.getPrecio(),
+                    product.getRequierePreparacion(),
+                    product.getCupoMaximoDiario()
+            );
+        }
+
+        private static OrderProduct fromResponse(InventoryProductResponse product) {
+            return new OrderProduct(
+                    product.id(),
+                    product.nombre(),
+                    product.precio(),
+                    product.requierePreparacion(),
+                    product.cupoMaximoDiario()
+            );
+        }
     }
 
     public record Student(

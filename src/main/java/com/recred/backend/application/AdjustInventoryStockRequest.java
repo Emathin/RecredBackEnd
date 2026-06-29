@@ -2,10 +2,9 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.TipoManejoInventario;
-
 import java.util.UUID;
 
-public record AdjustInventoryStockCommand(
+public record AdjustInventoryStockRequest(
         UUID buffetId,
         UUID productId,
         Integer stockActual,
