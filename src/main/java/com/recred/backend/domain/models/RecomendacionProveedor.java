@@ -20,5 +20,6 @@ public class RecomendacionProveedor {
     private String nombreProveedorRecomendado;
     private BigDecimal mejorPrecio;
     private String unidad;
+    private BigDecimal mejorPrecioUnitario;
     private List<AlternativaProveedor> alternativas;
 }

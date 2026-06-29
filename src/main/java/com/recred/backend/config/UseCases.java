@@ -1470,9 +1470,11 @@ public class UseCases {
     @Bean
     public RecommendSupplierForProducts recommendSupplierForProducts(
             ItemListaPrecioProveedorRepository itemListaPrecioProveedorRepository,
-            ProveedorRepository proveedorRepository) {
+            ProveedorRepository proveedorRepository,
+            ProductRepository productRepository) {
         return new RecommendSupplierForProducts(
                 itemListaPrecioProveedorRepository,
-                proveedorRepository);
+                proveedorRepository,
+                productRepository);
     }
 }
