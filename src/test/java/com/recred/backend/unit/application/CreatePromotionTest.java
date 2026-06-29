@@ -147,4 +147,22 @@ class CreatePromotionTest {
 
         verify(promotionRepository, never()).save(any());
     }
+
+    @Test
+    void execute_shouldCreatePromotionWithImageUrl_whenImageUrlIsProvided() {
+        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+        BigDecimal discount = new BigDecimal("15");
+        String name = "Promo Image";
+        LocalDateTime start = LocalDateTime.now().minusDays(1);
+        LocalDateTime end = LocalDateTime.now().plusDays(2);
+        String imageUrl = "https://res.cloudinary.com/djzfudbze/image/upload/v1/collage.png";
+
+        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Promotion result = createPromotion.execute(productIds, discount, name, start, end, null, false, imageUrl);
+
+        assertNotNull(result);
+        assertEquals(imageUrl, result.getImageUrl());
+        verify(promotionRepository).save(any(Promotion.class));
+    }
 }

@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.scheduling;
 
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
+import com.recred.backend.application.GenerateStatisticalConsumptionAlertsRequest;
 import com.recred.backend.config.StatisticalConsumptionAlertProperties;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,9 @@ public class StatisticalConsumptionAlertJob {
         if (!properties.enabled()) {
             return;
         }
-        generateStatisticalConsumptionAlerts.execute();
+
+        generateStatisticalConsumptionAlerts.execute(
+                new GenerateStatisticalConsumptionAlertsRequest()
+        );
     }
 }

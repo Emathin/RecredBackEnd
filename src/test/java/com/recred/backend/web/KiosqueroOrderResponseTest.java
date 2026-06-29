@@ -1,5 +1,7 @@
 package com.recred.backend.web;
 
+import com.recred.backend.application.ListInventoryProductsResponse;
+import com.recred.backend.application.ListKiosqueroOrdersResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.EstadoCompra;
@@ -15,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -95,6 +98,75 @@ class KiosqueroOrderResponseTest {
     }
 
     @Test
+    void fromApplication_ShouldMapOrderResponse() {
+        UUID productId = UUID.randomUUID();
+        UUID inventoryProductId = productId;
+        LocalDateTime now = LocalDateTime.now();
+        LocalDate today = LocalDate.now();
+        ListKiosqueroOrdersResponse.OrderResponse order =
+                new ListKiosqueroOrdersResponse.OrderResponse(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        "ANTICIPADA",
+                        "LISTO",
+                        "Listo para retirar",
+                        new BigDecimal("20.00"),
+                        "CREDITOS",
+                        now,
+                        "1234",
+                        today,
+                        new ListKiosqueroOrdersResponse.PickupSlotResponse(
+                                UUID.randomUUID(),
+                                "Recreo 1",
+                                LocalTime.of(10, 0),
+                                LocalTime.of(10, 15)
+                        ),
+                        new ListKiosqueroOrdersResponse.StudentResponse(
+                                UUID.randomUUID(),
+                                "John",
+                                "Doe",
+                                "1",
+                                "A"
+                        ),
+                        new ListKiosqueroOrdersResponse.BuyerResponse(
+                                UUID.randomUUID(),
+                                "STUDENT"
+                        ),
+                        List.of(new ListKiosqueroOrdersResponse.ItemResponse(
+                                productId,
+                                "Product 1",
+                                2,
+                                new BigDecimal("10.00"),
+                                new BigDecimal("20.00"),
+                                true,
+                                50
+                        ))
+                );
+        Producto inventoryProduct = new Producto();
+        inventoryProduct.setId(inventoryProductId);
+        inventoryProduct.setNombre("Inventory Product");
+        inventoryProduct.setPrecio(new BigDecimal("12.00"));
+        ListInventoryProductsResponse.InventoryProductResponse inventoryResponse =
+                ListInventoryProductsResponse.fromDomain(List.of(inventoryProduct))
+                        .products()
+                        .get(0);
+
+        KiosqueroOrderResponse response = KiosqueroOrderResponse.fromApplication(
+                order,
+                Map.of(productId, inventoryResponse)
+        );
+
+        assertEquals(TipoCompra.ANTICIPADA, response.tipo());
+        assertEquals(EstadoCompra.LISTO, response.status());
+        assertEquals("Listo para retirar", response.statusLabel());
+        assertEquals("Recreo 1", response.pickupSlot().description());
+        assertEquals("John", response.student().firstName());
+        assertEquals("STUDENT", response.buyer().type());
+        assertEquals("Inventory Product", response.items().get(0).productName());
+        assertEquals(new BigDecimal("12.00"), response.items().get(0).unitPrice());
+    }
+
+    @Test
     void fromDomain_ShouldHandleNullFields() {
         Purchase purchase = new Purchase();
         purchase.setId(UUID.randomUUID());
@@ -144,13 +216,17 @@ class KiosqueroOrderResponseTest {
         inventoryProduct.setId(productId);
         inventoryProduct.setNombre("Inventory Name");
         inventoryProduct.setPrecio(new BigDecimal("12.00"));
+        ListInventoryProductsResponse.InventoryProductResponse inventoryProductResponse =
+                ListInventoryProductsResponse.fromDomain(List.of(inventoryProduct))
+                        .products()
+                        .get(0);
 
         Purchase purchase = new Purchase();
         purchase.setItems(Map.of(domainProduct, 1));
 
         KiosqueroOrderResponse response = KiosqueroOrderResponse.fromDomain(
                 purchase,
-                Map.of(productId, inventoryProduct)
+                Map.of(productId, inventoryProductResponse)
         );
 
         assertEquals("Inventory Name", response.items().get(0).productName());

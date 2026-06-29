@@ -35,8 +35,13 @@ public class GetProductChangeRecommendationTest {
     @Mock
     private AIEventRepository aiEventRepository;
 
+    @Mock
+    private com.recred.backend.domain.repositories.UsuarioRepository usuarioRepository;
+
     @InjectMocks
     private GetProductChangeRecommendation useCase;
+
+    private final String cognitoSubject = "test-sub";
 
     @Test
     void executeShouldReturnRecommendations() {
@@ -58,12 +63,16 @@ public class GetProductChangeRecommendationTest {
                 Optional.of(analysis)
         );
 
+        com.recred.backend.domain.models.Usuario usuario = new com.recred.backend.domain.models.Usuario();
+        usuario.setId(usuarioId);
+
+        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(usuario));
         when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(buffetId);
         when(aiEventRepository.findAllProductChangeRecommendations(buffetId))
                 .thenReturn(List.of(result));
 
         GetProductChangeRecommendationRequest request =
-                new GetProductChangeRecommendationRequest(usuarioId);
+                new GetProductChangeRecommendationRequest(cognitoSubject);
 
         List<GetProductChangeRecommendationResponse> responses = useCase.execute(request);
 
@@ -74,6 +83,7 @@ public class GetProductChangeRecommendationTest {
         assertEquals("Galletitas", resp.originalProductName());
         assertEquals("Resumen", resp.summary());
 
+        verify(usuarioRepository).findByIdCognito(cognitoSubject);
         verify(kiosqueroRepository).findBuffetByUsuarioId(usuarioId);
         verify(aiEventRepository).findAllProductChangeRecommendations(buffetId);
     }
@@ -81,10 +91,14 @@ public class GetProductChangeRecommendationTest {
     @Test
     void executeShouldThrowExceptionWhenBuffetNotFound() {
         UUID usuarioId = UUID.randomUUID();
+        com.recred.backend.domain.models.Usuario usuario = new com.recred.backend.domain.models.Usuario();
+        usuario.setId(usuarioId);
+
+        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(usuario));
         when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(null);
 
         GetProductChangeRecommendationRequest request =
-                new GetProductChangeRecommendationRequest(usuarioId);
+                new GetProductChangeRecommendationRequest(cognitoSubject);
 
         assertThrows(KiosqueroNotFoundException.class, () -> useCase.execute(request));
     }

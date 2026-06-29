@@ -1,9 +1,13 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GenerateComboSuggestion;
-import com.recred.backend.domain.models.ComboSuggestion;
+import com.recred.backend.application.GenerateComboSuggestionRequest;
+import com.recred.backend.application.GenerateComboSuggestionResponse;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,10 +23,19 @@ public class ComboSuggestionController {
         this.generateComboSuggestion = generateComboSuggestion;
     }
 
-    @GetMapping("/{productId}/{userId}")
-    public ResponseEntity<ComboSuggestion> getComboSuggestions(
-            @PathVariable UUID productId,
-            @PathVariable UUID userId) {
-        return ResponseEntity.ok(generateComboSuggestion.execute(productId, userId));
+    @GetMapping("/{productId}")
+    public ResponseEntity<GenerateComboSuggestionResponse> getComboSuggestions(
+            Authentication authentication,
+            @PathVariable UUID productId) {
+        GenerateComboSuggestionRequest request = new GenerateComboSuggestionRequest(
+                productId, cognitoSubject(authentication));
+        return ResponseEntity.ok(generateComboSuggestion.execute(request));
+    }
+
+    private String cognitoSubject(Authentication authentication) {
+        return Optional.ofNullable(authentication)
+                .map(Authentication::getName)
+                .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
+                        "Usuario no autenticado"));
     }
 }

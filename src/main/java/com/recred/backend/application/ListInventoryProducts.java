@@ -3,7 +3,6 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
 import java.util.List;
-import java.util.UUID;
 
 public class ListInventoryProducts {
 
@@ -13,12 +12,23 @@ public class ListInventoryProducts {
         this.productRepository = productRepository;
     }
 
-    public List<Producto> execute(UUID buffetId) {
-        if (buffetId == null) {
-            throw new IllegalArgumentException("buffetId is required");
+    public ListInventoryProductsResponse execute(ListInventoryProductsRequest request) {
+        validate(request);
+        return ListInventoryProductsResponse.fromDomain(inventoryProducts(request));
+    }
+
+    private void validate(ListInventoryProductsRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request is required");
         }
 
-        return productRepository.findAllActiveWithStock(buffetId).stream()
+        if (request.buffetId() == null) {
+            throw new IllegalArgumentException("buffetId is required");
+        }
+    }
+
+    private List<Producto> inventoryProducts(ListInventoryProductsRequest request) {
+        return productRepository.findAllActiveWithStock(request.buffetId()).stream()
                 .filter(this::hasInventory)
                 .toList();
     }

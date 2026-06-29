@@ -7,7 +7,10 @@ import com.recred.backend.application.CheckBudgetDatesRequest;
 import com.recred.backend.application.CheckBudgetDatesResponse;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.DisableBudget;
-import com.recred.backend.application.GeneratePurchaseRecommendation;
+import com.recred.backend.application.FindPurchaseSuggestionForToday;
+import com.recred.backend.application.FindPurchaseSuggestionForTomorrow;
+import com.recred.backend.application.FindPurchaseSuggestionRequest;
+import com.recred.backend.application.FindPurchaseSuggestionResponse;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetProductStatistics;
 import com.recred.backend.application.UpdateBudget;
@@ -34,7 +37,9 @@ import static org.mockito.Mockito.when;
 class ControllerDelegationCoverageTest {
 
     @Mock
-    private GeneratePurchaseRecommendation generatePurchaseRecommendation;
+    private FindPurchaseSuggestionForToday findPurchaseSuggestionForToday;
+    @Mock
+    private FindPurchaseSuggestionForTomorrow findPurchaseSuggestionForTomorrow;
     @Mock
     private GetProductStatistics getProductStatistics;
     @Mock
@@ -52,20 +57,30 @@ class ControllerDelegationCoverageTest {
 
     @Test
     void purchaseRecommendationControllerShouldDelegateTodayAndTomorrow() {
-        UUID studentId = UUID.randomUUID();
-        NotificacionEntity notification = new NotificacionEntity();
-        when(generatePurchaseRecommendation.findSuggestionForToday(studentId))
-                .thenReturn(notification);
+        String cognitoSubject = "test-sub";
+        org.springframework.security.core.Authentication auth = 
+                org.mockito.Mockito.mock(org.springframework.security.core.Authentication.class);
+        when(auth.getName()).thenReturn(cognitoSubject);
+
+        FindPurchaseSuggestionResponse response = new FindPurchaseSuggestionResponse(
+                UUID.randomUUID(), com.recred.backend.domain.models.TipoNotificacion.SALDO_BAJO, 
+                "Title", "Msg", false, null, null);
+        
+        FindPurchaseSuggestionRequest request = new FindPurchaseSuggestionRequest(cognitoSubject);
+
+        when(findPurchaseSuggestionForToday.execute(request)).thenReturn(response);
+        when(findPurchaseSuggestionForTomorrow.execute(request)).thenReturn(response);
+        
         PurchaseRecommendationController controller =
-                new PurchaseRecommendationController(generatePurchaseRecommendation);
+                new PurchaseRecommendationController(findPurchaseSuggestionForToday, findPurchaseSuggestionForTomorrow);
 
-        NotificacionEntity today = controller.getTodayPurchaseRecommendation(studentId);
-        NotificacionEntity tomorrow = controller.getTomorrowPurchaseRecommendation(studentId);
+        FindPurchaseSuggestionResponse today = controller.getTodayPurchaseRecommendation(auth);
+        FindPurchaseSuggestionResponse tomorrow = controller.getTomorrowPurchaseRecommendation(auth);
 
-        assertSame(notification, today);
-        assertSame(notification, tomorrow);
-        verify(generatePurchaseRecommendation, times(2))
-                .findSuggestionForToday(studentId);
+        assertSame(response, today);
+        assertSame(response, tomorrow);
+        verify(findPurchaseSuggestionForToday, times(1)).execute(request);
+        verify(findPurchaseSuggestionForTomorrow, times(1)).execute(request);
     }
 
     @Test

@@ -93,6 +93,14 @@ public class Purchase {
         }
     }
 
+    public void changeTrackingStatusTo(EstadoCompra nextStatus) {
+        if (nextStatus == EstadoCompra.CANCELADO) {
+            throw new InvalidPurchaseStatusTransitionException(this.status, nextStatus);
+        }
+
+        changeStatusTo(nextStatus);
+    }
+
     public void cancel() {
         if (this.status == EstadoCompra.CANCELADO) {
             throw new IllegalStateException("Purchase is already cancelled.");
@@ -121,6 +129,28 @@ public class Purchase {
 
     public boolean isAdvancePurchase() {
         return hasType(TipoCompra.ANTICIPADA);
+    }
+
+    public boolean shouldConsumeReservationWhenChangingTo(EstadoCompra requestedStatus) {
+        return isAdvancePurchase() && requestedStatus == EstadoCompra.ENTREGADO;
+    }
+
+    public boolean shouldReleaseReservationWhenChangingFrom(
+            EstadoCompra previousStatus,
+            EstadoCompra requestedStatus
+    ) {
+        return isAdvancePurchase()
+                && hasActiveReservation(previousStatus)
+                && (requestedStatus == EstadoCompra.RECHAZADO
+                        || requestedStatus == EstadoCompra.VENCIDO);
+    }
+
+    public boolean shouldRefundWhenChangingTo(EstadoCompra requestedStatus) {
+        return isAdvancePurchase() && requestedStatus == EstadoCompra.RECHAZADO;
+    }
+
+    public boolean shouldPublishExpirationEventFor(EstadoCompra requestedStatus) {
+        return requestedStatus == EstadoCompra.VENCIDO;
     }
 
     public boolean refundsCredits() {
@@ -152,6 +182,38 @@ public class Purchase {
         return pickupSlotDescription != null && !pickupSlotDescription.isBlank();
     }
 
+    public boolean hasStudentId() {
+        return studentIdOrNull() != null;
+    }
+
+    public UUID studentIdOrNull() {
+        return student == null ? null : student.getId();
+    }
+
+    public UUID requireStudentId() {
+        if (!hasStudentId()) {
+            throw new IllegalStateException("Purchase does not have an associated student.");
+        }
+
+        return studentIdOrNull();
+    }
+
+    public String statusName() {
+        return status == null ? null : status.name();
+    }
+
+    public String statusLabel() {
+        return status == null ? null : status.getLabel();
+    }
+
+    public String paymentMethodName() {
+        return paymentMethod == null ? null : paymentMethod.name();
+    }
+
+    public String typeName() {
+        return tipo == null ? null : tipo.name();
+    }
+
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
         return cart.entrySet().stream()
                 .map(entry -> productPrice(entry.getKey())
@@ -173,6 +235,12 @@ public class Purchase {
 
     private boolean requiresPreparation(Producto product) {
         return Boolean.TRUE.equals(product.getRequierePreparacion());
+    }
+
+    private boolean hasActiveReservation(EstadoCompra status) {
+        return status == EstadoCompra.PENDIENTE
+                || status == EstadoCompra.EN_PREPARACION
+                || status == EstadoCompra.LISTO;
     }
 
     private boolean isInvalidTransition(EstadoCompra nextStatus) {

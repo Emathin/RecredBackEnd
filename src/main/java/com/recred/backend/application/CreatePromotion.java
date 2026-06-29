@@ -28,6 +28,21 @@ public class CreatePromotion {
             LocalDateTime endDate,
             UUID buffetId,
             boolean forceDraft) {
+        return execute(
+                productIds, discountPercentage, name,
+                startDate, endDate, buffetId, forceDraft, null
+        );
+    }
+
+    public Promotion execute(
+            List<UUID> productIds, 
+            BigDecimal discountPercentage, 
+            String name, 
+            LocalDateTime startDate, 
+            LocalDateTime endDate,
+            UUID buffetId,
+            boolean forceDraft,
+            String imageUrl) {
 
         if (!hasMinimumProducts(productIds)) {
             throw new IllegalArgumentException("A promotion requires at least 2 products.");
@@ -44,6 +59,7 @@ public class CreatePromotion {
         promotion.setDiscountPercentage(discountPercentage);
         promotion.setStartDate(startDate);
         promotion.setEndDate(endDate);
+        promotion.setImageUrl(imageUrl);
 
         if (buffetId != null) {
             Buffet buffet = new Buffet();

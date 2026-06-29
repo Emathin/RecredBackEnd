@@ -1,10 +1,12 @@
 package com.recred.backend.integration.scheduling;
 
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
+import com.recred.backend.application.GenerateStatisticalConsumptionAlertsRequest;
 import com.recred.backend.config.StatisticalConsumptionAlertProperties;
 import com.recred.backend.infrastructure.scheduling.StatisticalConsumptionAlertJob;
 import org.junit.jupiter.api.Test;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -22,7 +24,7 @@ class StatisticalConsumptionAlertJobTest {
 
         job.run();
 
-        verify(useCase).execute();
+        verify(useCase).execute(new GenerateStatisticalConsumptionAlertsRequest());
     }
 
     @Test
@@ -36,7 +38,7 @@ class StatisticalConsumptionAlertJobTest {
 
         job.run();
 
-        verify(useCase, never()).execute();
+        verify(useCase, never()).execute(any());
     }
 
     private StatisticalConsumptionAlertProperties properties(boolean enabled) {

@@ -3,7 +3,7 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.InventoryQuickActionType;
 import java.util.UUID;
 
-public record InventoryQuickActionCommand(
+public record ApplyInventoryQuickActionRequest(
         UUID buffetId,
         UUID productId,
         InventoryQuickActionType action,

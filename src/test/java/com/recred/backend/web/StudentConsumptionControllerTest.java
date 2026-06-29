@@ -1,20 +1,15 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
+import com.recred.backend.application.GetLoggedUserConsumptionDetailRequest;
+import com.recred.backend.application.GetLoggedUserConsumptionDetailResponse;
 import com.recred.backend.application.GetStudentRewardStatus;
-import com.recred.backend.application.StudentConsumptionCommand;
 import com.recred.backend.application.StudentRewardResponse;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.MedioPago;
-import com.recred.backend.domain.models.StudentConsumptionDetail;
-import com.recred.backend.domain.models.StudentConsumptionProduct;
-import com.recred.backend.domain.models.StudentConsumptionPurchase;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import com.recred.backend.infrastructure.web.StudentConsumptionController;
@@ -28,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -78,32 +73,33 @@ class StudentConsumptionControllerTest {
         UUID purchaseId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        StudentConsumptionDetail detail = new StudentConsumptionDetail(
-                studentId,
-                LocalDate.of(2026, 5, 1),
-                LocalDate.of(2026, 5, 20),
-                new BigDecimal("1500.00"),
-                1,
-                List.of(new StudentConsumptionPurchase(
-                        purchaseId,
-                        LocalDateTime.of(2026, 5, 20, 10, 30),
-                        EstadoCompra.ENTREGADO,
-                        MedioPago.CREDITOS,
+        GetLoggedUserConsumptionDetailResponse detail =
+                new GetLoggedUserConsumptionDetailResponse(
+                        studentId,
+                        LocalDate.of(2026, 5, 1),
+                        LocalDate.of(2026, 5, 20),
                         new BigDecimal("1500.00"),
-                        buffetId,
-                        "Buffet Primario",
-                        List.of(new StudentConsumptionProduct(
-                                productId,
-                                "Sandwich",
-                                "Comida",
-                                1,
+                        1,
+                        List.of(new GetLoggedUserConsumptionDetailResponse.PurchaseResponse(
+                                purchaseId,
+                                LocalDateTime.of(2026, 5, 20, 10, 30),
+                                "ENTREGADO",
+                                "CREDITOS",
                                 new BigDecimal("1500.00"),
-                                new BigDecimal("1500.00")
+                                buffetId,
+                                "Buffet Primario",
+                                List.of(new GetLoggedUserConsumptionDetailResponse.ProductResponse(
+                                        productId,
+                                        "Sandwich",
+                                        "Comida",
+                                        1,
+                                        new BigDecimal("1500.00"),
+                                        new BigDecimal("1500.00"),
+                                        List.of()
+                                ))
                         ))
-                ))
-        );
-        when(getLoggedUserConsumptionDetail.execute(eq("cognito-sub"), org.mockito
-                .ArgumentMatchers.any())).thenReturn(detail);
+                );
+        when(getLoggedUserConsumptionDetail.execute(any())).thenReturn(detail);
 
         mockMvc.perform(get("/api/v1/consumos")
                         .principal(authentication())
@@ -122,13 +118,14 @@ class StudentConsumptionControllerTest {
                         .value(productId.toString()))
                 .andExpect(jsonPath("$.compras[0].productos[0].nombre").value("Sandwich"));
 
-        ArgumentCaptor<StudentConsumptionCommand> commandCaptor = ArgumentCaptor
-                .forClass(StudentConsumptionCommand.class);
-        verify(getLoggedUserConsumptionDetail).execute(eq("cognito-sub"), commandCaptor.capture());
-        StudentConsumptionCommand command = commandCaptor.getValue();
-        assertEquals(Optional.of(studentId), command.studentId());
-        assertEquals(Optional.of(LocalDate.of(2026, 5, 1)), command.from());
-        assertEquals(Optional.of(LocalDate.of(2026, 5, 20)), command.to());
+        ArgumentCaptor<GetLoggedUserConsumptionDetailRequest> requestCaptor = ArgumentCaptor
+                .forClass(GetLoggedUserConsumptionDetailRequest.class);
+        verify(getLoggedUserConsumptionDetail).execute(requestCaptor.capture());
+        GetLoggedUserConsumptionDetailRequest request = requestCaptor.getValue();
+        assertEquals("cognito-sub", request.cognitoSubject());
+        assertEquals(studentId, request.studentId());
+        assertEquals(LocalDate.of(2026, 5, 1), request.from());
+        assertEquals(LocalDate.of(2026, 5, 20), request.to());
     }
 
     @Test

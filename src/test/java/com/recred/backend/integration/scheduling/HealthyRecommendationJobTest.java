@@ -1,10 +1,12 @@
 package com.recred.backend.integration.scheduling;
 
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
+import com.recred.backend.application.GenerateHealthyProductRecommendationsRequest;
 import com.recred.backend.config.HealthyRecommendationProperties;
 import com.recred.backend.infrastructure.scheduling.HealthyRecommendationJob;
 import org.junit.jupiter.api.Test;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -19,7 +21,7 @@ class HealthyRecommendationJobTest {
 
         job.run();
 
-        verify(useCase).execute();
+        verify(useCase).execute(new GenerateHealthyProductRecommendationsRequest());
     }
 
     @Test
@@ -30,7 +32,7 @@ class HealthyRecommendationJobTest {
 
         job.run();
 
-        verify(useCase, never()).execute();
+        verify(useCase, never()).execute(any());
     }
 
     private HealthyRecommendationProperties properties(boolean enabled) {

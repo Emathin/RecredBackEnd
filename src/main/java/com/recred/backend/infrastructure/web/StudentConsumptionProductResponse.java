@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.recred.backend.domain.models.StudentConsumptionProduct;
+import com.recred.backend.application.GetLoggedUserConsumptionDetailResponse.ProductResponse;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -22,8 +22,8 @@ public record StudentConsumptionProductResponse(
         @JsonProperty("clasificacionesSalud")
         List<String> healthClassifications
 ) {
-    public static StudentConsumptionProductResponse fromDomain(
-            StudentConsumptionProduct product
+    public static StudentConsumptionProductResponse fromApplication(
+            ProductResponse product
     ) {
         return new StudentConsumptionProductResponse(
                 product.productId(),

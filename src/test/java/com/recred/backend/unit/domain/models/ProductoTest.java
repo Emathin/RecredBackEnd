@@ -149,4 +149,36 @@ class ProductoTest {
         assertEquals(4, producto.reservedStockOrZero());
         assertEquals(new BigDecimal("15.00"), producto.priceOrZero());
     }
+
+    @Test
+    void inventoryMode_WhenModeIsMissing_ShouldDefaultToExactStock() {
+        Producto producto = new Producto();
+
+        assertEquals(TipoManejoInventario.STOCK_EXACTO, producto.inventoryMode());
+    }
+
+    @Test
+    void dailyCapacity_WhenProductUsesDailyCapacity_ShouldExposeConfiguredValues() {
+        Producto producto = new Producto();
+        producto.setTipoManejoInventario(TipoManejoInventario.CUPO_DIARIO);
+        producto.setStockActual(20);
+        producto.setStockReservado(5);
+        producto.setCupoMaximoDiario(null);
+
+        assertEquals(20, producto.configuredDailyCapacity());
+        assertEquals(15, producto.dailyCapacityAvailable());
+        assertFalse(producto.hasDailyCapacityLimit());
+        producto.setCupoMaximoDiario(20);
+
+        assertTrue(producto.hasDailyCapacityLimit());
+        assertTrue(producto.isAvailableForSale());
+    }
+
+    @Test
+    void stockStatusHelpers_ShouldExposeSellerInventoryState() {
+        Producto producto = new Producto();
+        producto.setEstadoInventario(EstadoInventario.BAJO_STOCK);
+
+        assertTrue(producto.hasLowStockStatus());
+    }
 }

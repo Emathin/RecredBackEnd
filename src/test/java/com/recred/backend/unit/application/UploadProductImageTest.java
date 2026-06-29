@@ -10,7 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -34,16 +33,17 @@ class UploadProductImageTest {
     void execute_SubeImagenYActualizaRepositorio() {
         UUID buffetId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
-        MultipartFile imagen = mock(MultipartFile.class);
+        byte[] imagen = "content".getBytes();
+        String fileName = "image.jpg";
         String expectedUrl = "http://cloudinary.com/image.jpg";
 
-        when(cloudinaryService.uploadImage(imagen)).thenReturn(expectedUrl);
+        when(cloudinaryService.uploadImage(imagen, fileName)).thenReturn(expectedUrl);
 
-        UploadProductImageRequest request = new UploadProductImageRequest(buffetId, productoId, imagen);
+        UploadProductImageRequest request = new UploadProductImageRequest(buffetId, productoId, imagen, fileName);
         UploadProductImageResponse response = uploadProductImage.execute(request);
 
         assertEquals(expectedUrl, response.urlImagen());
-        verify(cloudinaryService).uploadImage(imagen);
+        verify(cloudinaryService).uploadImage(imagen, fileName);
         verify(inventoryRepository).updateUrlImagen(buffetId, productoId, expectedUrl);
     }
 
@@ -51,11 +51,12 @@ class UploadProductImageTest {
     void execute_CuandoFallaSubeImagen_LanzaExcepcion() {
         UUID buffetId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
-        MultipartFile imagen = mock(MultipartFile.class);
+        byte[] imagen = "content".getBytes();
+        String fileName = "image.jpg";
 
-        when(cloudinaryService.uploadImage(imagen)).thenThrow(new RuntimeException("Cloudinary error"));
+        when(cloudinaryService.uploadImage(imagen, fileName)).thenThrow(new RuntimeException("Cloudinary error"));
 
-        UploadProductImageRequest request = new UploadProductImageRequest(buffetId, productoId, imagen);
+        UploadProductImageRequest request = new UploadProductImageRequest(buffetId, productoId, imagen, fileName);
 
         assertThrows(RuntimeException.class, () -> uploadProductImage.execute(request));
         verify(inventoryRepository, never()).updateUrlImagen(any(), any(), any());

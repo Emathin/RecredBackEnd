@@ -15,4 +15,16 @@ public record StudentConsumptionPurchase(
         String buffetName,
         List<StudentConsumptionProduct> products
 ) {
+
+    public String statusName() {
+        return status == null ? null : status.name();
+    }
+
+    public String paymentMethodName() {
+        return paymentMethod == null ? null : paymentMethod.name();
+    }
+
+    public List<StudentConsumptionProduct> productsOrEmpty() {
+        return products == null ? List.of() : products;
+    }
 }

@@ -72,6 +72,7 @@ public class PromotionRepositoryImpl implements PromotionRepository {
         entity.setStartDate(promotion.getStartDate());
         entity.setEndDate(promotion.getEndDate());
         entity.setStatus(promotion.getStatus());
+        entity.setImageUrl(promotion.getImageUrl());
         
         if (promotion.getProducts() != null) {
             entity.setProducts(promotion.getProducts().stream().map(p -> {

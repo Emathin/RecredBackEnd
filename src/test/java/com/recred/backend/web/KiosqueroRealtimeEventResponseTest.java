@@ -1,7 +1,6 @@
 package com.recred.backend.web;
 
-import com.recred.backend.infrastructure.web.*;
-
+import com.recred.backend.application.KiosqueroRealtimeEventResponse;
 import com.recred.backend.domain.events.InventoryRealtimePayload;
 import com.recred.backend.domain.events.KiosqueroRealtimeChangeKind;
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
