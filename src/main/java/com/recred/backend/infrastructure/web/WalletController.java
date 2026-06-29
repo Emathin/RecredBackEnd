@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetStudentWalletSummary;
+import com.recred.backend.application.GetStudentWalletSummaryRequest;
 import com.recred.backend.application.LoadBalanceToChild;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -78,20 +79,20 @@ public class WalletController {
     }
 
     @GetMapping("/students/{studentId}/summary")
-    public ResponseEntity<StudentWalletSummaryResponse> getStudentWalletSummary(
+    public ResponseEntity<StudentWalletSummaryResponseDTO> getStudentWalletSummary(
             @PathVariable UUID studentId,
             @RequestParam(name = "desde", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(name = "hasta", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             Authentication authentication) {
-        return ResponseEntity.ok(StudentWalletSummaryResponse.fromDomain(
-                getStudentWalletSummary.execute(
+        return ResponseEntity.ok(StudentWalletSummaryResponseDTO.fromApplication(
+                getStudentWalletSummary.execute(new GetStudentWalletSummaryRequest(
                         cognitoSubject(authentication),
                         studentId,
                         Optional.ofNullable(from),
                         Optional.ofNullable(to)
-                )
+                ))
         ));
     }
 

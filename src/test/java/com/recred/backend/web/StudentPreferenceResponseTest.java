@@ -1,18 +1,14 @@
 package com.recred.backend.web;
 
-import com.recred.backend.infrastructure.web.*;
-
-import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.application.GetStudentPreferencesResponse;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
-import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
-import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
+import com.recred.backend.infrastructure.web.StudentPreferenceResponseDTO;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -27,7 +23,7 @@ class StudentPreferenceResponseTest {
                 "Razon"
         );
 
-        StudentPreferenceResponse response = StudentPreferenceResponse.fromDomain(preference);
+        StudentPreferenceResponseDTO response = StudentPreferenceResponseDTO.fromDomain(preference);
 
         assertNull(response.sugerenciaId());
         assertNull(response.alumnoId());
@@ -39,15 +35,19 @@ class StudentPreferenceResponseTest {
     }
 
     @Test
-    void fromEntityShouldMapSuggestionMetadataAndStudentId() {
-        UUID suggestionId = UUID.randomUUID();
-        UUID alumnoId = UUID.randomUUID();
-        SugerenciaIAEntity entity = suggestion(suggestionId, alumnoId);
+    void fromApplicationShouldMapPreferenceData() {
+        UUID suggestionId = randomUUID();
+        UUID studentId = randomUUID();
+        UUID studentUserId = randomUUID();
 
-        StudentPreferenceResponse response = StudentPreferenceResponse.fromEntity(entity);
+        StudentPreferenceResponseDTO response = StudentPreferenceResponseDTO.fromApplication(
+                preference(suggestionId, studentId, studentUserId, false, "Ana", "Perez")
+        );
 
         assertEquals(suggestionId, response.sugerenciaId());
-        assertEquals(alumnoId, response.alumnoId());
+        assertEquals(studentId, response.alumnoId());
+        assertEquals(studentUserId, response.alumnoUserId());
+        assertEquals("Ana Perez", response.alumnoNombre());
         assertEquals(TipoSugerenciaIA.PREFERENCIA_DETECTADA, response.tipo());
         assertEquals("Producto recomendado", response.titulo());
         assertEquals("Compra este producto", response.mensaje());
@@ -56,30 +56,25 @@ class StudentPreferenceResponseTest {
     }
 
     @Test
-    void fromParentViewShouldPrefixTitleAndMessageWithChildName() {
-        SugerenciaIAEntity entity = suggestion(UUID.randomUUID(), UUID.randomUUID());
-        Alumno child = child("Mateo", "Fortuna");
+    void fromApplicationShouldPrefixTitleAndMessageForParentView() {
+        UUID studentId = randomUUID();
+        UUID studentUserId = randomUUID();
 
-        StudentPreferenceResponse response = StudentPreferenceResponse.fromParentView(
-                entity,
-                child
+        StudentPreferenceResponseDTO response = StudentPreferenceResponseDTO.fromApplication(
+                preference(randomUUID(), studentId, studentUserId, true, "Mateo", "Fortuna")
         );
 
-        assertEquals(child.getId(), response.alumnoId());
-        assertEquals(child.getUsuario().getId(), response.alumnoUserId());
+        assertEquals(studentId, response.alumnoId());
+        assertEquals(studentUserId, response.alumnoUserId());
         assertEquals("Mateo Fortuna", response.alumnoNombre());
         assertEquals("Mateo Fortuna: Producto recomendado", response.titulo());
         assertEquals("Mateo Fortuna: Compra este producto", response.mensaje());
     }
 
     @Test
-    void fromParentViewShouldUseBaseTextWhenChildHasNoName() {
-        SugerenciaIAEntity entity = suggestion(UUID.randomUUID(), UUID.randomUUID());
-        Alumno child = child(null, null);
-
-        StudentPreferenceResponse response = StudentPreferenceResponse.fromParentView(
-                entity,
-                child
+    void fromApplicationShouldUseBaseTextWhenParentViewHasNoStudentName() {
+        StudentPreferenceResponseDTO response = StudentPreferenceResponseDTO.fromApplication(
+                preference(randomUUID(), randomUUID(), null, true, null, null)
         );
 
         assertNull(response.alumnoNombre());
@@ -88,111 +83,37 @@ class StudentPreferenceResponseTest {
     }
 
     @Test
-    void fromParentViewShouldUseBaseStudentWhenChildIsNull() {
-        UUID alumnoId = UUID.randomUUID();
-        SugerenciaIAEntity entity = suggestion(UUID.randomUUID(), alumnoId);
-
-        StudentPreferenceResponse response = StudentPreferenceResponse.fromParentView(
-                entity,
-                null
+    void fromApplicationShouldMapNullStudentData() {
+        StudentPreferenceResponseDTO response = StudentPreferenceResponseDTO.fromApplication(
+                preference(randomUUID(), null, null, false, null, null)
         );
-
-        assertEquals(alumnoId, response.alumnoId());
-        assertNull(response.alumnoUserId());
-        assertNull(response.alumnoNombre());
-        assertEquals("Producto recomendado", response.titulo());
-    }
-
-    @Test
-    void fromStudentViewShouldReturnBaseWhenChildIsNull() {
-        SugerenciaIAEntity entity = suggestion(UUID.randomUUID(), UUID.randomUUID());
-
-        StudentPreferenceResponse response = StudentPreferenceResponse.fromStudentView(
-                entity,
-                null
-        );
-
-        assertEquals(entity.getId(), response.sugerenciaId());
-        assertEquals(entity.getAlumnoEntity().getId(), response.alumnoId());
-        assertNull(response.alumnoNombre());
-    }
-
-    @Test
-    void fromStudentViewShouldMapChildWhenPresent() {
-        SugerenciaIAEntity entity = suggestion(UUID.randomUUID(), UUID.randomUUID());
-        Alumno child = child("Ana", "Perez");
-
-        StudentPreferenceResponse response = StudentPreferenceResponse.fromStudentView(
-                entity,
-                child
-        );
-
-        assertEquals(child.getId(), response.alumnoId());
-        assertEquals(child.getUsuario().getId(), response.alumnoUserId());
-        assertEquals("Ana Perez", response.alumnoNombre());
-        assertEquals("Producto recomendado", response.titulo());
-        assertEquals("Compra este producto", response.mensaje());
-    }
-
-    @Test
-    void fromStudentViewShouldMapChildWithoutUser() {
-        SugerenciaIAEntity entity = suggestion(UUID.randomUUID(), UUID.randomUUID());
-        Alumno child = new Alumno();
-        child.setId(UUID.randomUUID());
-
-        StudentPreferenceResponse response = StudentPreferenceResponse.fromStudentView(
-                entity,
-                child
-        );
-
-        assertEquals(child.getId(), response.alumnoId());
-        assertNull(response.alumnoUserId());
-        assertNull(response.alumnoNombre());
-    }
-
-    @Test
-    void fromEntityShouldHandleNullMetadataAndStudent() {
-        SugerenciaIAEntity entity = new SugerenciaIAEntity();
-        entity.setId(UUID.randomUUID());
-        entity.setTipo(TipoSugerenciaIA.ALERTA_GASTO);
-        entity.setTitulo("Titulo");
-        entity.setMensaje("Mensaje");
-
-        StudentPreferenceResponse response = StudentPreferenceResponse.fromEntity(entity);
 
         assertNull(response.alumnoId());
-        assertNull(response.productoId());
-        assertNull(response.razonIA());
-        assertEquals("Titulo", response.titulo());
-        assertEquals("Mensaje", response.mensaje());
+        assertNull(response.alumnoUserId());
+        assertNull(response.alumnoNombre());
+        assertEquals("Producto recomendado", response.titulo());
     }
 
-    private SugerenciaIAEntity suggestion(UUID suggestionId, UUID alumnoId) {
-        AlumnoEntity alumno = new AlumnoEntity();
-        alumno.setId(alumnoId);
-
-        SugerenciaIAEntity entity = new SugerenciaIAEntity();
-        entity.setId(suggestionId);
-        entity.setAlumnoEntity(alumno);
-        entity.setTipo(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
-        entity.setTitulo("Producto recomendado");
-        entity.setMensaje("Compra este producto");
-        entity.setMetadata(Map.of(
-                "productoId", "producto-1",
-                "razonIA", "Preferencia detectada"
-        ));
-        return entity;
-    }
-
-    private Alumno child(String firstName, String lastName) {
-        Usuario usuario = new Usuario();
-        usuario.setId(UUID.randomUUID());
-        usuario.setNombre(firstName);
-        usuario.setApellido(lastName);
-
-        Alumno child = new Alumno();
-        child.setId(UUID.randomUUID());
-        child.setUsuario(usuario);
-        return child;
+    private GetStudentPreferencesResponse.Preference preference(
+            UUID suggestionId,
+            UUID studentId,
+            UUID studentUserId,
+            boolean parentView,
+            String firstName,
+            String lastName
+    ) {
+        return new GetStudentPreferencesResponse.Preference(
+                suggestionId,
+                studentId,
+                studentUserId,
+                firstName,
+                lastName,
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA,
+                "Producto recomendado",
+                "Compra este producto",
+                "producto-1",
+                "Preferencia detectada",
+                parentView
+        );
     }
 }

@@ -30,7 +30,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -62,44 +61,71 @@ public class GetStudentWalletSummary {
     }
 
     @Transactional(readOnly = true)
-    public StudentWalletSummary execute(
-            String cognitoSubject,
-            UUID requestedStudentId,
-            Optional<LocalDate> requestedFrom,
-            Optional<LocalDate> requestedTo) {
-        ConsumptionRequester requester = accessRepository
-                .findRequesterByCognitoSubject(cognitoSubject)
-                .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(cognitoSubject));
-        UUID studentId = resolveStudentId(requester, requestedStudentId);
-        LocalDate to = requestedTo.orElse(LocalDate.now(clock));
-        LocalDate from = requestedFrom.orElse(to.minusDays(DEFAULT_LOOKBACK_DAYS));
-        validateDateRange(from, to);
+    public GetStudentWalletSummaryResponse execute(GetStudentWalletSummaryRequest request) {
+        request.validate();
 
-        LocalDateTime start = from.atStartOfDay();
-        LocalDateTime end = to.atTime(LocalTime.MAX);
-        Billetera wallet = walletRepository.findByStudentId(studentId)
+        ConsumptionRequester requester = findRequester(request.cognitoSubject());
+        UUID studentId = resolveStudentId(requester, request.studentId());
+        DateRange dateRange = resolveDateRange(request);
+        Billetera wallet = findWallet(studentId);
+        List<WalletMovement> movements = findMovements(studentId, dateRange);
+        List<StudentConsumptionPurchase> purchases = findPurchases(studentId, dateRange);
+
+        return toResponse(buildSummary(studentId, dateRange, wallet, movements, purchases));
+    }
+
+    private ConsumptionRequester findRequester(String cognitoSubject) {
+        return accessRepository.findRequesterByCognitoSubject(cognitoSubject)
+                .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(
+                        cognitoSubject));
+    }
+
+    private DateRange resolveDateRange(GetStudentWalletSummaryRequest request) {
+        LocalDate to = request.to().orElse(LocalDate.now(clock));
+        LocalDate from = request.from().orElse(to.minusDays(DEFAULT_LOOKBACK_DAYS));
+        validateDateRange(from, to);
+        return new DateRange(from, to);
+    }
+
+    private Billetera findWallet(UUID studentId) {
+        return walletRepository.findByStudentId(studentId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Billetera no encontrada para el alumno: " + studentId));
-        List<WalletMovement> movements = movementRepository.findByStudentIdAndDateRange(
+    }
+
+    private List<WalletMovement> findMovements(UUID studentId, DateRange dateRange) {
+        return movementRepository.findByStudentIdAndDateRange(
                 studentId,
-                start,
-                end
+                dateRange.startDateTime(),
+                dateRange.endDateTime()
         );
-        List<StudentConsumptionPurchase> purchases =
-                consumptionRepository.findPurchasesByStudentIdAndDateRange(
-                        studentId,
-                        CONSUMPTION_STATUSES,
-                        start,
-                        end
-                );
+    }
+
+    private List<StudentConsumptionPurchase> findPurchases(
+            UUID studentId,
+            DateRange dateRange) {
+        return consumptionRepository.findPurchasesByStudentIdAndDateRange(
+                studentId,
+                CONSUMPTION_STATUSES,
+                dateRange.startDateTime(),
+                dateRange.endDateTime()
+        );
+    }
+
+    private StudentWalletSummary buildSummary(
+            UUID studentId,
+            DateRange dateRange,
+            Billetera wallet,
+            List<WalletMovement> movements,
+            List<StudentConsumptionPurchase> purchases) {
         BigDecimal spentAmount = totalSpent(purchases);
         BigDecimal incomeAmount = totalIncome(movements);
 
         return new StudentWalletSummary(
                 studentId,
                 wallet.getSaldoCreditos(),
-                from,
-                to,
+                dateRange.from(),
+                dateRange.to(),
                 incomeAmount,
                 spentAmount,
                 incomeAmount.subtract(spentAmount),
@@ -108,6 +134,10 @@ public class GetStudentWalletSummary {
                 healthSpending(purchases, spentAmount),
                 movements
         );
+    }
+
+    private GetStudentWalletSummaryResponse toResponse(StudentWalletSummary summary) {
+        return GetStudentWalletSummaryResponse.fromDomain(summary);
     }
 
     private UUID resolveStudentId(ConsumptionRequester requester, UUID requestedStudentId) {
@@ -211,5 +241,16 @@ public class GetStudentWalletSummary {
         }
         return amount.multiply(new BigDecimal("100"))
                 .divide(total, 2, RoundingMode.HALF_UP);
+    }
+
+    private record DateRange(LocalDate from, LocalDate to) {
+
+        private LocalDateTime startDateTime() {
+            return from.atStartOfDay();
+        }
+
+        private LocalDateTime endDateTime() {
+            return to.atTime(LocalTime.MAX);
+        }
     }
 }

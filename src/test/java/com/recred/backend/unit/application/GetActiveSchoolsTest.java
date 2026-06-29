@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetActiveSchools;
+import com.recred.backend.application.GetActiveSchoolsResponse;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.repositories.ColegioRepository;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,13 +28,32 @@ class GetActiveSchoolsTest {
 
     @Test
     void execute_ReturnsActiveSchools() {
-        List<Colegio> expectedSchools = List.of(new Colegio(), new Colegio());
+        Colegio firstSchool = school("North School");
+        Colegio secondSchool = school("South School");
 
-        when(schoolRepository.findAllActive()).thenReturn(expectedSchools);
+        when(schoolRepository.findAllActive()).thenReturn(List.of(firstSchool, secondSchool));
 
-        List<Colegio> result = getActiveSchools.execute();
+        GetActiveSchoolsResponse result = getActiveSchools.execute();
 
-        assertEquals(expectedSchools, result);
+        assertSchools(result, firstSchool, secondSchool);
         verify(schoolRepository).findAllActive();
+    }
+
+    private void assertSchools(
+            GetActiveSchoolsResponse result,
+            Colegio firstSchool,
+            Colegio secondSchool) {
+        assertEquals(2, result.schools().size());
+        assertEquals(firstSchool.getId(), result.schools().get(0).id());
+        assertEquals("North School", result.schools().get(0).nombre());
+        assertEquals(secondSchool.getId(), result.schools().get(1).id());
+        assertEquals("South School", result.schools().get(1).nombre());
+    }
+
+    private Colegio school(String name) {
+        Colegio school = new Colegio();
+        school.setId(randomUUID());
+        school.setNombre(name);
+        return school;
     }
 }

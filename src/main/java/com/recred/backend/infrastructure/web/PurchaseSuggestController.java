@@ -6,6 +6,7 @@ import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RespondToAISuggestion;
+import com.recred.backend.application.RespondToAISuggestionRequest;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.RecessTime;
@@ -18,8 +19,8 @@ import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -85,7 +86,7 @@ public class PurchaseSuggestController {
 
         Usuario usuario = usuarioService.obtenerUsuarioActual(subject);
 
-        respondToAISuggestion.execute(sugerenciaId, true);
+        respondToAISuggestion.execute(new RespondToAISuggestionRequest(sugerenciaId, true));
 
         UUID alumnoId = sugerencia.getAlumnoEntity().getId();
         UUID productoId = sugerencia.getProductoEntity().getId();

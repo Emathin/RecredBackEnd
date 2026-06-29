@@ -1,10 +1,11 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.GetStudentWalletSummary;
+import com.recred.backend.application.GetStudentWalletSummaryRequest;
+import com.recred.backend.application.GetStudentWalletSummaryResponse;
 import com.recred.backend.application.LoadBalanceToChild;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
 import com.recred.backend.infrastructure.web.WalletController;
-import com.recred.backend.domain.models.StudentWalletSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,8 +27,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -61,7 +62,7 @@ class WalletControllerTest {
 
     @Test
     void loadBalanceReturns200AndDelegatesToUseCase() throws Exception {
-        UUID studentId = UUID.randomUUID();
+        UUID studentId = randomUUID();
         BigDecimal amount = new BigDecimal("100.00");
 
         String requestBody = String.format(
@@ -80,8 +81,8 @@ class WalletControllerTest {
 
     @Test
     void transferBalanceReturns200AndDelegatesToUseCase() throws Exception {
-        UUID fromId = UUID.randomUUID();
-        UUID toId = UUID.randomUUID();
+        UUID fromId = randomUUID();
+        UUID toId = randomUUID();
         BigDecimal amount = new BigDecimal("50.00");
 
         String requestBody = String.format(
@@ -100,13 +101,14 @@ class WalletControllerTest {
 
     @Test
     void getStudentWalletSummaryReturns200AndDelegatesToUseCase() throws Exception {
-        UUID studentId = UUID.randomUUID();
-        when(getStudentWalletSummary.execute(
-                eq("cognito-sub"),
-                eq(studentId),
-                eq(java.util.Optional.of(LocalDate.of(2026, 6, 1))),
-                eq(java.util.Optional.of(LocalDate.of(2026, 6, 14)))
-        )).thenReturn(new StudentWalletSummary(
+        UUID studentId = randomUUID();
+        GetStudentWalletSummaryRequest request = new GetStudentWalletSummaryRequest(
+                "cognito-sub",
+                studentId,
+                java.util.Optional.of(LocalDate.of(2026, 6, 1)),
+                java.util.Optional.of(LocalDate.of(2026, 6, 14))
+        );
+        when(getStudentWalletSummary.execute(request)).thenReturn(new GetStudentWalletSummaryResponse(
                 studentId,
                 new BigDecimal("1250.00"),
                 LocalDate.of(2026, 6, 1),
@@ -130,12 +132,14 @@ class WalletControllerTest {
                 .andExpect(jsonPath("$.periodo.desde").value("2026-06-01"))
                 .andExpect(jsonPath("$.periodo.hasta").value("2026-06-14"))
                 .andExpect(jsonPath("$.cantidadCompras").value(8));
+
+        verify(getStudentWalletSummary).execute(request);
     }
 
     @Test
     void loadBalanceWithoutAuthenticationShouldThrow() {
         WalletController.LoadBalanceRequest request = new WalletController.LoadBalanceRequest(
-                UUID.randomUUID(),
+                randomUUID(),
                 BigDecimal.TEN
         );
 
@@ -147,8 +151,8 @@ class WalletControllerTest {
     void transferBalanceWithInvalidAuthenticationPrincipalShouldThrow() {
         WalletController.TransferBalanceRequest request =
                 new WalletController.TransferBalanceRequest(
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
+                        randomUUID(),
+                        randomUUID(),
                         BigDecimal.TEN
                 );
         Authentication authentication =
