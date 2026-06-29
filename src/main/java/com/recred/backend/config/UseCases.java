@@ -1,6 +1,8 @@
 package com.recred.backend.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recred.backend.application.GenerateParentSummary;
+import com.recred.backend.application.GenerateSummaryNotification;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
@@ -65,6 +67,7 @@ import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GenerateTopUpLink;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetActivePromotions;
+import com.recred.backend.application.GetLastSummary;
 
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetAllProducts;
@@ -238,6 +241,17 @@ public class UseCases {
         return new GenerateParentSummary(tutorRepository,
                 purchaseRepository, summaryRepository,
                 presupuestoRepository, parentSummaryAnalyzer);
+    }
+
+    @Bean
+    public GetLastSummary getLastSummary(SummaryRepository summaryRepository) {
+        return new GetLastSummary(summaryRepository);
+    }
+
+    @Bean
+    public GenerateSummaryNotification generateSummaryNotification(
+            NotificationRepository notificationRepository) {
+        return new GenerateSummaryNotification(notificationRepository);
     }
 
     @Bean
