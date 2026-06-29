@@ -7,5 +7,6 @@ public record AlternativaProveedor(
         UUID proveedorId,
         String nombreProveedor,
         BigDecimal precio,
-        String unidad
+        String unidad,
+        BigDecimal precioUnitario
 ) {}
