@@ -154,10 +154,19 @@ public class InventoryController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        UploadProductImageResponse response = uploadProductImage.execute(
-                new UploadProductImageRequest(buffetId, productId, imagen)
-        );
-        return ResponseEntity.ok(new ImagenUploadResponse(response.urlImagen()));
+        try {
+            UploadProductImageResponse response = uploadProductImage.execute(
+                    new UploadProductImageRequest(
+                            buffetId, 
+                            productId, 
+                            imagen.getBytes(), 
+                            imagen.getOriginalFilename()
+                    )
+            );
+            return ResponseEntity.ok(new ImagenUploadResponse(response.urlImagen()));
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Error al leer la imagen", e);
+        }
     }
 
     public record ImagenUploadResponse(String urlImagen) {}

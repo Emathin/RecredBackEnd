@@ -17,6 +17,20 @@ import com.recred.backend.application.EnableSchoolCredit;
 import com.recred.backend.application.GetActiveSchoolCredit;
 import com.recred.backend.application.GetLastRecharge;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
+import com.recred.backend.domain.repositories.ProveedorRepository;
+import com.recred.backend.domain.repositories.ListaPrecioProveedorRepository;
+import com.recred.backend.domain.repositories.ItemListaPrecioProveedorRepository;
+import com.recred.backend.domain.services.StorageService;
+import com.recred.backend.domain.services.SupplierPriceListAnalyzer;
+import com.recred.backend.application.CreateSupplier;
+import com.recred.backend.application.ListSuppliers;
+import com.recred.backend.application.GetSupplier;
+import com.recred.backend.application.UpdateSupplier;
+import com.recred.backend.application.DeleteSupplier;
+import com.recred.backend.application.UploadSupplierPriceList;
+import com.recred.backend.application.UpdatePriceListItemMapping;
+import com.recred.backend.application.RecommendSupplierForProducts;
+import com.recred.backend.infrastructure.gemini.GeminiSupplierPriceListAnalyzer;
 import com.recred.backend.application.AddFavoriteProduct;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.ManualProductLock;
@@ -195,7 +209,6 @@ import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.domain.services.WithdrawalCodeServiceImpl;
-import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.infrastructure.gemini.GeminiBulkStockAnalyzer;
 import com.recred.backend.infrastructure.gemini.GeminiParentSummaryAnalyzer;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
@@ -877,8 +890,8 @@ public class UseCases {
 
     @Bean
     public LoadStockIA loadStockIA(LoadStockIAService loadStockIAService,
-                                   CloudinaryService cloudinaryService) {
-        return new LoadStockIA(loadStockIAService, cloudinaryService);
+                                   StorageService storageService) {
+        return new LoadStockIA(loadStockIAService, storageService);
     }
 
     @Bean
@@ -1391,5 +1404,75 @@ public class UseCases {
             UsuarioRepository usuarioRepository) {
         return new GetSuggestionByType(
                 suggestionAiRepository, kiosqueroRepository, usuarioRepository);
+    }
+
+    @Bean
+    public GeminiSupplierPriceListAnalyzer supplierPriceListAnalyzer(
+            com.recred.backend.infrastructure.gemini.GeminiTextClient geminiTextClient,
+            ObjectMapper objectMapper
+    ) {
+        return new GeminiSupplierPriceListAnalyzer(geminiTextClient, objectMapper);
+    }
+
+    @Bean
+    public CreateSupplier createSupplier(ProveedorRepository proveedorRepository) {
+        return new CreateSupplier(proveedorRepository);
+    }
+
+    @Bean
+    public ListSuppliers listSuppliers(ProveedorRepository proveedorRepository) {
+        return new ListSuppliers(proveedorRepository);
+    }
+
+    @Bean
+    public GetSupplier getSupplier(ProveedorRepository proveedorRepository) {
+        return new GetSupplier(proveedorRepository);
+    }
+
+    @Bean
+    public UpdateSupplier updateSupplier(ProveedorRepository proveedorRepository) {
+        return new UpdateSupplier(proveedorRepository);
+    }
+
+    @Bean
+    public DeleteSupplier deleteSupplier(ProveedorRepository proveedorRepository) {
+        return new DeleteSupplier(proveedorRepository);
+    }
+
+    @Bean
+    public UploadSupplierPriceList uploadSupplierPriceList(
+            ProveedorRepository proveedorRepository,
+            ListaPrecioProveedorRepository listaPrecioProveedorRepository,
+            ItemListaPrecioProveedorRepository itemListaPrecioProveedorRepository,
+            ProductRepository productRepository,
+            StorageService storageService,
+            SupplierPriceListAnalyzer supplierPriceListAnalyzer) {
+        return new UploadSupplierPriceList(
+                proveedorRepository,
+                listaPrecioProveedorRepository,
+                itemListaPrecioProveedorRepository,
+                productRepository,
+                storageService,
+                supplierPriceListAnalyzer);
+    }
+
+    @Bean
+    public UpdatePriceListItemMapping updatePriceListItemMapping(
+            ItemListaPrecioProveedorRepository itemListaPrecioProveedorRepository,
+            ListaPrecioProveedorRepository listaPrecioProveedorRepository,
+            ProveedorRepository proveedorRepository) {
+        return new UpdatePriceListItemMapping(
+                itemListaPrecioProveedorRepository,
+                listaPrecioProveedorRepository,
+                proveedorRepository);
+    }
+
+    @Bean
+    public RecommendSupplierForProducts recommendSupplierForProducts(
+            ItemListaPrecioProveedorRepository itemListaPrecioProveedorRepository,
+            ProveedorRepository proveedorRepository) {
+        return new RecommendSupplierForProducts(
+                itemListaPrecioProveedorRepository,
+                proveedorRepository);
     }
 }

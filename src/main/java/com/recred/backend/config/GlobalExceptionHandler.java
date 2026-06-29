@@ -1,6 +1,8 @@
 package com.recred.backend.config;
 
 import com.recred.backend.domain.exceptions.NotificationNotFoundException;
+import com.recred.backend.domain.exceptions.FileValidationException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.BuffetNotFoundException;
 import com.recred.backend.domain.exceptions.ImageValidationException;
@@ -273,6 +275,24 @@ public class GlobalExceptionHandler {
         String mensaje = "No se pudo guardar la información porque entra en conflicto "
                 + "con los datos existentes.";
         return buildResponse(HttpStatus.CONFLICT, "Conflicto de Datos", mensaje);
+    }
+
+    @ExceptionHandler(FileValidationException.class)
+    public ResponseEntity<ErrorResponse> handleFileValidation(FileValidationException ex) {
+        LOGGER.warn("Validación de archivo fallida: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "Validación de Archivo", ex.getMessage());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException ex
+    ) {
+        LOGGER.warn("Tamaño de archivo excedido: {}", ex.getMessage());
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validación de Archivo",
+                "El archivo supera el límite máximo de peso permitido (5MB)"
+        );
     }
 
     @ExceptionHandler(Exception.class)

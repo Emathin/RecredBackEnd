@@ -3,11 +3,11 @@ package com.recred.backend.infrastructure.gemini;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recred.backend.application.LoadStockIARequest;
+import com.recred.backend.application.LoadStockIAResponse;
 import com.recred.backend.domain.services.LoadStockAnalyzer;
-import com.recred.backend.infrastructure.web.LoadStockPredictionDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
@@ -46,36 +46,36 @@ public class LoadStockIAService implements LoadStockAnalyzer {
     }
 
     @Override
-    public LoadStockPredictionDTO analyze(MultipartFile image) {
-        validarFormato(image);
-        MultipartFile imagenSanitizada = sanitizarImagen(image);
+    public LoadStockIAResponse analyze(LoadStockIARequest request) {
+        validarFormato(request);
+        LoadStockIARequest imagenSanitizada = sanitizarImagen(request);
         return consultarIA(imagenSanitizada);
     }
 
-    private void validarFormato(MultipartFile image) {
-        if (image.isEmpty()) {
+    private void validarFormato(LoadStockIARequest request) {
+        if (request.fileBytes() == null || request.fileBytes().length == 0) {
             throw new IllegalArgumentException("El archivo no puede estar vacío");
         }
 
-        String contentType = image.getContentType();
+        String contentType = request.contentType();
         if (contentType == null || !ALLOWED_FORMATS.contains(contentType)) {
             throw new IllegalArgumentException(
                     "Formato de imagen no permitido. Solo se aceptan: " + ALLOWED_FORMATS);
         }
 
-        if (image.getSize() > MAX_FILE_SIZE) {
+        if (request.fileSize() > MAX_FILE_SIZE) {
             throw new IllegalArgumentException("El archivo excede el tamaño máximo de 5 MB");
         }
     }
 
-    private MultipartFile sanitizarImagen(MultipartFile image) {
-        return image;
+    private LoadStockIARequest sanitizarImagen(LoadStockIARequest request) {
+        return request;
     }
 
-    private LoadStockPredictionDTO consultarIA(MultipartFile image) {
+    private LoadStockIAResponse consultarIA(LoadStockIARequest request) {
         try {
             Optional<GeminiTextResponse> response = geminiTextClient
-                    .generateWithFile(PROMPT_TEMPLATE, image.getBytes(), image.getContentType());
+                    .generateWithFile(PROMPT_TEMPLATE, request.fileBytes(), request.contentType());
 
             if (response.isEmpty()) {
                 LOGGER.warn("La IA no generó una respuesta");
@@ -92,22 +92,23 @@ public class LoadStockIAService implements LoadStockAnalyzer {
     }
 
 
-    private LoadStockPredictionDTO parsearRespuestaGemini(String jsonContent) {
+    private LoadStockIAResponse parsearRespuestaGemini(String jsonContent) {
         try {
             LoadStockAnalysisResponse analysisResponse = objectMapper.readValue(
                     jsonContent,
                     LoadStockAnalysisResponse.class
             );
 
-            return LoadStockPredictionDTO.builder()
-                    .nombre(analysisResponse.nombre)
-                    .descripcion(analysisResponse.descripcion)
-                    .peso(analysisResponse.peso)
-                    .contieneAzucar(analysisResponse.contieneAzucar)
-                    .contieneMani(analysisResponse.contieneMani)
-                    .contieneLactosa(analysisResponse.contieneLactosa)
-                    .contieneTacc(analysisResponse.contieneTacc)
-                    .build();
+            return new LoadStockIAResponse(
+                    analysisResponse.nombre,
+                    analysisResponse.descripcion,
+                    analysisResponse.peso,
+                    analysisResponse.contieneAzucar,
+                    analysisResponse.contieneMani,
+                    analysisResponse.contieneLactosa,
+                    analysisResponse.contieneTacc,
+                    null
+            );
 
         } catch (IOException e) {
             LOGGER.error("Error al parsear la respuesta JSON de Gemini: {}", e.getMessage(), e);
@@ -116,16 +117,17 @@ public class LoadStockIAService implements LoadStockAnalyzer {
     }
 
 
-    private LoadStockPredictionDTO crearRespuestaVacia() {
-        return LoadStockPredictionDTO.builder()
-                .nombre("-")
-                .descripcion("-")
-                .peso("-")
-                .contieneAzucar("-")
-                .contieneMani("-")
-                .contieneLactosa("-")
-                .contieneTacc("-")
-                .build();
+    private LoadStockIAResponse crearRespuestaVacia() {
+        return new LoadStockIAResponse(
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                null
+        );
     }
 
 
