@@ -21,6 +21,7 @@ public class PromotionResponseDTO {
     private String status;
     private List<UUID> productIds;
     private UUID buffetId;
+    private String imageUrl;
 
     public static PromotionResponseDTO fromDomain(Promotion promotion) {
         PromotionResponseDTO dto = new PromotionResponseDTO();
@@ -30,6 +31,7 @@ public class PromotionResponseDTO {
         dto.setStartDate(promotion.getStartDate());
         dto.setEndDate(promotion.getEndDate());
         dto.setStatus(promotion.getStatus().name());
+        dto.setImageUrl(promotion.getImageUrl());
         
         if (promotion.getProducts() != null) {
             dto.setProductIds(promotion.getProducts().stream()

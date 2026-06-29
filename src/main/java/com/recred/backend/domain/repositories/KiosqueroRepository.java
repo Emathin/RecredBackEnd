@@ -8,6 +8,7 @@ import java.util.UUID;
 public interface KiosqueroRepository {
     UUID findBuffetById(UUID kiosqueroId);
     UUID findBuffetByUsuarioId(UUID usuarioId);
+    java.util.Optional<UUID> findKiosqueroIdByUsuarioId(UUID usuarioId);
     UUID findUsuarioIdById(UUID kiosqueroId);
 
     List<Kiosquero> findAll();
