@@ -1,19 +1,19 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.services.LoadStockAnalyzer;
-import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
+import com.recred.backend.domain.services.StorageService;
 
 public class LoadStockIA {
     private final LoadStockAnalyzer loadStockAnalyzer;
-    private final CloudinaryService cloudinaryService;
+    private final StorageService storageService;
 
-    public LoadStockIA(LoadStockAnalyzer loadStockAnalyzer, CloudinaryService cloudinaryService) {
+    public LoadStockIA(LoadStockAnalyzer loadStockAnalyzer, StorageService storageService) {
         this.loadStockAnalyzer = loadStockAnalyzer;
-        this.cloudinaryService = cloudinaryService;
+        this.storageService = storageService;
     }
 
     public LoadStockIAResponse execute(LoadStockIARequest request) {
-        String imageUrl = cloudinaryService.uploadImage(request.fileBytes(), request.fileName());
+        String imageUrl = storageService.uploadFile(request.fileBytes(), request.fileName(), request.contentType());
         var prediction = loadStockAnalyzer.analyze(request);
         
         return new LoadStockIAResponse(

@@ -887,8 +887,8 @@ public class UseCases {
 
     @Bean
     public LoadStockIA loadStockIA(LoadStockIAService loadStockIAService,
-                                   CloudinaryService cloudinaryService) {
-        return new LoadStockIA(loadStockIAService, cloudinaryService);
+                                   StorageService storageService) {
+        return new LoadStockIA(loadStockIAService, storageService);
     }
 
     @Bean
