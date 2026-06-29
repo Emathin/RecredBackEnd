@@ -10,7 +10,6 @@ import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.repositories.CategoryRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 import java.util.UUID;
@@ -30,7 +29,6 @@ public class SaveProduct {
         this.categoryRepository = categoryRepository;
     }
 
-    @Transactional
     public Producto execute(SaveProductCommand command) {
         Producto producto = mapToModel(command);
         Producto savedProduct = productRepository.save(producto);

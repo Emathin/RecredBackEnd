@@ -1211,11 +1211,10 @@ public class UseCases {
     @Bean
     public NotifyPurchaseSuggestions notifyPurchaseSuggestions(
             PurchaseSuggestIA purchaseSuggestIA,
-            AlumnoRepository alumnoRepository,
             PushNotificationSender pushNotificationSender,
             UsuarioService usuarioService,
             ObjectMapper objectMapper) {
-        return new NotifyPurchaseSuggestions(purchaseSuggestIA, alumnoRepository,
+        return new NotifyPurchaseSuggestions(purchaseSuggestIA,
                 pushNotificationSender, usuarioService, objectMapper);
     }
 

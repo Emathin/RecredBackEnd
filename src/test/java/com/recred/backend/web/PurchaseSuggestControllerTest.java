@@ -5,12 +5,9 @@ import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAdvancePurchaseRequest;
 import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
-import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
-import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.models.RolUsuario;
@@ -24,7 +21,6 @@ import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
-import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
 import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
 import com.recred.backend.infrastructure.web.PurchaseSuggestController;
 import com.recred.backend.infrastructure.web.TestSuggestionRequest;
@@ -84,9 +80,6 @@ class PurchaseSuggestControllerTest {
     private JwtDecoder jwtDecoder;
 
     @MockitoBean
-    private PurchaseSuggestIA purchaseSuggestIA;
-
-    @MockitoBean
     private NotifyPurchaseSuggestions notifyPurchaseSuggestions;
 
     @MockitoBean
@@ -124,7 +117,7 @@ class PurchaseSuggestControllerTest {
     }
 
     @Test
-    void testNotificacion_CuandoExiste_DeberiaRetornar200YNotificacion() throws Exception {
+    void testNotificacion_CuandoExiste_DeberiaRetornar200YNotification() throws Exception {
         SugerenciaIA sugerencia = SugerenciaIA.builder()
                 .id(sugerenciaId)
                 .alumnoId(alumnoId)
@@ -156,7 +149,7 @@ class PurchaseSuggestControllerTest {
     }
 
     @Test
-    void comprarSugerencia_DeberiaProcesarCompraAnticipada() throws Exception {
+    void buySuggestion_DeberiaProcesarCompraAnticipada() throws Exception {
         ProductoEntity producto = new ProductoEntity();
         producto.setId(productoId);
 
@@ -198,10 +191,10 @@ class PurchaseSuggestControllerTest {
     }
 
     @Test
-    void testNotificacion_CuandoNoHayNotificacionYUsaAutenticacion_DeberiaRetornar204() {
+    void testNotificacion_CuandoNoHayNotificationYUsaAutenticacion_DeberiaRetornar204() {
         when(notifyPurchaseSuggestions.execute("user-123")).thenReturn(null);
 
-        ResponseEntity<PushNotification> response = controller.testNotificacion(
+        ResponseEntity<PushNotification> response = controller.testNotification(
                 auth,
                 new TestSuggestionRequest(null, null)
         );
@@ -210,26 +203,26 @@ class PurchaseSuggestControllerTest {
     }
 
     @Test
-    void testNotificacion_SinUsuarioAutenticado_DeberiaFallar() {
+    void testNotification_SinUsuarioAutenticado_DeberiaFallar() {
         assertThrows(
                 AuthenticationCredentialsNotFoundException.class,
-                () -> controller.testNotificacion(null, new TestSuggestionRequest(null, null))
+                () -> controller.testNotification(null, new TestSuggestionRequest(null, null))
         );
     }
 
     @Test
-    void comprarSugerencia_CuandoNoExiste_DeberiaFallar() {
+    void buySuggestion_CuandoNoExiste_DeberiaFallar() {
         when(sugerenciaIARepository.findById(sugerenciaId)).thenReturn(Optional.empty());
 
         RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                controller.comprarSugerencia(auth, new TestSuggestionRequest(null, sugerenciaId))
+                controller.buySuggestion(auth, new TestSuggestionRequest(null, sugerenciaId))
         );
 
         assertEquals("Sugerencia no encontrada", exception.getMessage());
     }
 
     @Test
-    void comprarSugerencia_CuandoUsuarioEsAlumnoYHayTutor_DeberiaCrearCompra() {
+    void buySuggestion_CuandoUsuarioEsAlumnoYHayTutor_DeberiaCrearCompra() {
         SugerenciaIAEntity sugerencia = sugerenciaEntity();
         Usuario usuario = new Usuario();
         usuario.setId(usuarioId);
@@ -254,7 +247,7 @@ class PurchaseSuggestControllerTest {
         when(createAdvancePurchase.execute(any(CreateAdvancePurchaseRequest.class), anyString()))
                 .thenReturn(response);
 
-        ResponseEntity<AdvancePurchaseResponse> result = controller.comprarSugerencia(
+        ResponseEntity<AdvancePurchaseResponse> result = controller.buySuggestion(
                 auth,
                 new TestSuggestionRequest(null, sugerenciaId)
         );

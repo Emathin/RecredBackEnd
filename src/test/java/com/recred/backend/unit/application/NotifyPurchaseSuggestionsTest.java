@@ -11,7 +11,6 @@ import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.services.PushNotificationSender;
 import com.recred.backend.domain.services.UsuarioService;
 import org.junit.jupiter.api.DisplayName;
@@ -40,8 +39,6 @@ class NotifyPurchaseSuggestionsTest {
 
     @Mock
     private PurchaseSuggestIA purchaseSuggestIA;
-    @Mock
-    private AlumnoRepository alumnoRepository;
     @Mock
     private PushNotificationSender pushNotificationSender;
     @Mock
@@ -161,7 +158,6 @@ class NotifyPurchaseSuggestionsTest {
                 .thenThrow(new JsonProcessingException("boom") {});
         NotifyPurchaseSuggestions failingUseCase = new NotifyPurchaseSuggestions(
                 purchaseSuggestIA,
-                alumnoRepository,
                 pushNotificationSender,
                 usuarioService,
                 failingMapper
