@@ -20,6 +20,7 @@ import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListInventoryProductsRequest;
 import com.recred.backend.application.ListInventoryProductsResponse.InventoryProductResponse;
 import com.recred.backend.application.ListKiosqueroOrders;
+import com.recred.backend.application.ListKiosqueroOrdersRequest;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
 import com.recred.backend.application.UpdatePickupSlotRules;
 import com.recred.backend.domain.models.EstadoCompra;
@@ -106,15 +107,12 @@ public class KiosqueroOperationsController {
                 .products()
                 .stream()
                 .collect(Collectors.toMap(InventoryProductResponse::id, Function.identity()));
-        List<KiosqueroOrderResponse> orders = listKiosqueroOrders.execute(
-                        buffetId,
-                        statuses,
-                        date,
-                        pickupSlotId,
-                        limit
-                )
+        ListKiosqueroOrdersRequest request =
+                new ListKiosqueroOrdersRequest(buffetId, statuses, date, pickupSlotId, limit);
+        List<KiosqueroOrderResponse> orders = listKiosqueroOrders.execute(request)
+                .orders()
                 .stream()
-                .map(order -> KiosqueroOrderResponse.fromDomain(order, inventoryProducts))
+                .map(order -> KiosqueroOrderResponse.fromApplication(order, inventoryProducts))
                 .toList();
         return ResponseEntity.ok(orders);
     }

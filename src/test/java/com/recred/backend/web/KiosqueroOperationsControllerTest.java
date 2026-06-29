@@ -21,6 +21,8 @@ import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListInventoryProductsRequest;
 import com.recred.backend.application.ListInventoryProductsResponse;
 import com.recred.backend.application.ListKiosqueroOrders;
+import com.recred.backend.application.ListKiosqueroOrdersRequest;
+import com.recred.backend.application.ListKiosqueroOrdersResponse;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
 import com.recred.backend.application.UpdatePickupSlotRules;
 import com.recred.backend.domain.models.BuyerType;
@@ -305,14 +307,16 @@ class KiosqueroOperationsControllerTest {
         UUID pickupSlotId = UUID.randomUUID();
         LocalDate pickupDate = LocalDate.of(2026, 6, 8);
         Purchase purchase = purchase(buffetId, pickupSlotId, pickupDate);
-
-        when(listKiosqueroOrders.execute(
+        ListKiosqueroOrdersRequest request = new ListKiosqueroOrdersRequest(
                 buffetId,
                 List.of(EstadoCompra.PENDIENTE),
                 pickupDate,
                 pickupSlotId,
                 20
-        )).thenReturn(List.of(purchase));
+        );
+
+        when(listKiosqueroOrders.execute(request))
+                .thenReturn(ListKiosqueroOrdersResponse.from(List.of(purchase)));
         when(listInventoryProducts.execute(new ListInventoryProductsRequest(buffetId)))
                 .thenReturn(new ListInventoryProductsResponse(List.of()));
 
@@ -333,13 +337,7 @@ class KiosqueroOperationsControllerTest {
         assertEquals(pickupSlotId, order.pickupSlot().id());
         assertEquals("Primer recreo", order.pickupSlot().description());
         assertEquals(1, order.items().size());
-        verify(listKiosqueroOrders).execute(
-                buffetId,
-                List.of(EstadoCompra.PENDIENTE),
-                pickupDate,
-                pickupSlotId,
-                20
-        );
+        verify(listKiosqueroOrders).execute(request);
     }
 
     @Test
