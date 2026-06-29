@@ -1387,7 +1387,9 @@ public class UseCases {
     @Bean
     public GetSuggestionByType getSuggestionByType(
             SuggestionAiRepository suggestionAiRepository,
-            KiosqueroRepository kiosqueroRepository) {
-        return new GetSuggestionByType(suggestionAiRepository, kiosqueroRepository);
+            KiosqueroRepository kiosqueroRepository,
+            UsuarioRepository usuarioRepository) {
+        return new GetSuggestionByType(
+                suggestionAiRepository, kiosqueroRepository, usuarioRepository);
     }
 }

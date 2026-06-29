@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetSuggestionByNotificationId;
+import com.recred.backend.application.GetSuggestionByNotificationIdRequest;
+import com.recred.backend.application.GetSuggestionResponse;
 import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.repositories.SuggestionAiRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,13 +33,17 @@ class GetSuggestionByNotificationIdTest {
     @Test
     void executeShouldReturnSuggestion() {
         UUID notificationId = UUID.randomUUID();
+        String cognitoSubject = "cognito-id-123";
         SugerenciaIA suggestion = SugerenciaIA.builder().id(UUID.randomUUID()).build();
         
         when(suggestionAiRepository.getSuggestionByNotificationId(notificationId))
                 .thenReturn(suggestion);
 
-        SugerenciaIA result = useCase.execute(notificationId);
+        GetSuggestionByNotificationIdRequest request = new GetSuggestionByNotificationIdRequest(
+                notificationId, cognitoSubject);
+        GetSuggestionResponse result = useCase.execute(request);
 
-        assertEquals(suggestion, result);
+        assertNotNull(result);
+        assertEquals(suggestion.getId(), result.id());
     }
 }
