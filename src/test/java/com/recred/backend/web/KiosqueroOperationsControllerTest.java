@@ -1,22 +1,30 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.CloseDailyBuffet;
+import com.recred.backend.application.CloseDailyBuffetRequest;
+import com.recred.backend.application.CloseDailyBuffetResponse;
+import com.recred.backend.application.DailyBuffetCloseResponse;
 import com.recred.backend.application.GenerateDailyBuffetReport;
+import com.recred.backend.application.GenerateDailyBuffetReportRequest;
+import com.recred.backend.application.GenerateDailyBuffetReportResponse;
 import com.recred.backend.application.GetBuffetTimeSlots;
 import com.recred.backend.application.GetDailyBuffetCloseStatus;
+import com.recred.backend.application.GetDailyBuffetCloseStatusRequest;
+import com.recred.backend.application.GetDailyBuffetCloseStatusResponse;
 import com.recred.backend.application.GetKiosqueroDashboard;
 import com.recred.backend.application.GetKiosqueroDashboardRequest;
 import com.recred.backend.application.GetKiosqueroDashboardResponse;
 import com.recred.backend.application.ListDailyBuffetCloses;
+import com.recred.backend.application.ListDailyBuffetClosesRequest;
+import com.recred.backend.application.ListDailyBuffetClosesResponse;
 import com.recred.backend.application.ListInventoryProducts;
+import com.recred.backend.application.ListInventoryProductsRequest;
+import com.recred.backend.application.ListInventoryProductsResponse;
 import com.recred.backend.application.ListKiosqueroOrders;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
 import com.recred.backend.application.UpdatePickupSlotRules;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.DailyBuffetClose;
-import com.recred.backend.domain.models.DailyBuffetReport;
-import com.recred.backend.domain.models.DailyCloseResult;
-import com.recred.backend.domain.models.DailyCloseStatus;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.KiosqueroOperationalAlert;
@@ -47,7 +55,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -90,21 +97,31 @@ class KiosqueroOperationsControllerTest {
     void closeDaily_ShouldDelegateToUseCase() {
         UUID buffetId = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 5, 27);
-        DailyCloseResult result = new DailyCloseResult(1, report(buffetId, date));
+        CloseDailyBuffetRequest request = new CloseDailyBuffetRequest(buffetId, date);
+        CloseDailyBuffetResponse result = new CloseDailyBuffetResponse(
+                false,
+                1,
+                0,
+                BigDecimal.ZERO,
+                report(buffetId, date)
+        );
 
-        when(closeDailyBuffet.execute(buffetId, date)).thenReturn(result);
+        when(closeDailyBuffet.execute(request)).thenReturn(result);
 
-        ResponseEntity<DailyCloseResult> response = controller.closeDaily(buffetId, date, null);
+        ResponseEntity<CloseDailyBuffetResponse> response =
+                controller.closeDaily(buffetId, date, null);
 
         assertEquals(result, response.getBody());
-        verify(closeDailyBuffet).execute(buffetId, date);
+        verify(closeDailyBuffet).execute(request);
     }
 
     @Test
     void dailyCloseStatus_ShouldDelegateToUseCase() {
         UUID buffetId = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 5, 27);
-        DailyCloseStatus status = new DailyCloseStatus(
+        GetDailyBuffetCloseStatusRequest request =
+                new GetDailyBuffetCloseStatusRequest(buffetId, date);
+        GetDailyBuffetCloseStatusResponse status = new GetDailyBuffetCloseStatusResponse(
                 buffetId,
                 date,
                 true,
@@ -113,16 +130,16 @@ class KiosqueroOperationsControllerTest {
                 BigDecimal.ZERO
         );
 
-        when(getDailyBuffetCloseStatus.execute(buffetId, date)).thenReturn(status);
+        when(getDailyBuffetCloseStatus.execute(request)).thenReturn(status);
 
-        ResponseEntity<DailyCloseStatus> response = controller.dailyCloseStatus(
+        ResponseEntity<GetDailyBuffetCloseStatusResponse> response = controller.dailyCloseStatus(
                 buffetId,
                 date,
                 null
         );
 
         assertEquals(status, response.getBody());
-        verify(getDailyBuffetCloseStatus).execute(buffetId, date);
+        verify(getDailyBuffetCloseStatus).execute(request);
     }
 
     @Test
@@ -138,38 +155,45 @@ class KiosqueroOperationsControllerTest {
                 4,
                 BigDecimal.ZERO
         );
+        ListDailyBuffetClosesRequest request =
+                new ListDailyBuffetClosesRequest(buffetId, from, to);
+        ListDailyBuffetClosesResponse result =
+                ListDailyBuffetClosesResponse.fromDomain(List.of(close));
 
-        when(listDailyBuffetCloses.execute(buffetId, from, to)).thenReturn(List.of(close));
+        when(listDailyBuffetCloses.execute(request)).thenReturn(result);
 
-        ResponseEntity<List<DailyBuffetClose>> response = controller.dailyCloses(
+        ResponseEntity<List<DailyBuffetCloseResponse>> response = controller.dailyCloses(
                 buffetId,
                 from,
                 to,
                 null
         );
 
-        assertEquals(List.of(close), response.getBody());
-        verify(listDailyBuffetCloses).execute(buffetId, from, to);
+        assertEquals(result.closes(), response.getBody());
+        verify(listDailyBuffetCloses).execute(request);
     }
 
     @Test
     void dailyReport_ShouldDelegateToUseCase() {
         UUID buffetId = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 5, 27);
-        DailyBuffetReport report = report(buffetId, date);
+        GenerateDailyBuffetReportRequest request =
+                new GenerateDailyBuffetReportRequest(buffetId, date);
+        GenerateDailyBuffetReportResponse report = report(buffetId, date);
 
-        when(generateDailyBuffetReport.execute(buffetId, date)).thenReturn(report);
+        when(generateDailyBuffetReport.execute(request)).thenReturn(report);
 
-        ResponseEntity<DailyBuffetReport> response = controller.dailyReport(buffetId, date, null);
+        ResponseEntity<GenerateDailyBuffetReportResponse> response =
+                controller.dailyReport(buffetId, date, null);
 
         assertEquals(report, response.getBody());
-        verify(generateDailyBuffetReport).execute(buffetId, date);
+        verify(generateDailyBuffetReport).execute(request);
     }
 
     @Test
     void dailyReportCsv_ShouldReturnCsvWithDownloadHeadersAndDefaultDate() {
         UUID buffetId = UUID.randomUUID();
-        DailyBuffetReport report = new DailyBuffetReport(
+        GenerateDailyBuffetReportResponse report = new GenerateDailyBuffetReportResponse(
                 buffetId,
                 LocalDate.of(2026, 6, 15),
                 7,
@@ -181,10 +205,15 @@ class KiosqueroOperationsControllerTest {
                 0,
                 0,
                 new BigDecimal("250.00"),
+                BigDecimal.ZERO,
+                0,
+                List.of(),
+                List.of(),
+                List.of(),
                 List.of(),
                 List.of()
         );
-        when(generateDailyBuffetReport.execute(eq(buffetId), any(LocalDate.class)))
+        when(generateDailyBuffetReport.execute(any(GenerateDailyBuffetReportRequest.class)))
                 .thenReturn(report);
 
         ResponseEntity<String> response = controller.dailyReportCsv(buffetId, null, null);
@@ -195,7 +224,7 @@ class KiosqueroOperationsControllerTest {
         assertTrue(response.getBody().contains("metric,value"));
         assertTrue(response.getBody().contains("totalOrders,7"));
         assertTrue(response.getBody().contains("deliveredTotal,250.00"));
-        verify(generateDailyBuffetReport).execute(eq(buffetId), any(LocalDate.class));
+        verify(generateDailyBuffetReport).execute(any(GenerateDailyBuffetReportRequest.class));
     }
 
     @Test
@@ -284,7 +313,8 @@ class KiosqueroOperationsControllerTest {
                 pickupSlotId,
                 20
         )).thenReturn(List.of(purchase));
-        when(listInventoryProducts.execute(buffetId)).thenReturn(List.of());
+        when(listInventoryProducts.execute(new ListInventoryProductsRequest(buffetId)))
+                .thenReturn(new ListInventoryProductsResponse(List.of()));
 
         ResponseEntity<List<KiosqueroOrderResponse>> response = controller.orders(
                 buffetId,
@@ -363,8 +393,8 @@ class KiosqueroOperationsControllerTest {
         verify(updatePickupSlotRules).execute(slotId, 10, 20);
     }
 
-    private DailyBuffetReport report(UUID buffetId, LocalDate date) {
-        return new DailyBuffetReport(
+    private GenerateDailyBuffetReportResponse report(UUID buffetId, LocalDate date) {
+        return new GenerateDailyBuffetReportResponse(
                 buffetId,
                 date,
                 0,
@@ -376,6 +406,11 @@ class KiosqueroOperationsControllerTest {
                 0,
                 0,
                 BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                0,
+                List.of(),
+                List.of(),
+                List.of(),
                 List.of(),
                 List.of()
         );

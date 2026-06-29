@@ -1,24 +1,29 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.CloseDailyBuffet;
+import com.recred.backend.application.CloseDailyBuffetRequest;
+import com.recred.backend.application.CloseDailyBuffetResponse;
+import com.recred.backend.application.DailyBuffetCloseResponse;
 import com.recred.backend.application.GenerateDailyBuffetReport;
+import com.recred.backend.application.GenerateDailyBuffetReportRequest;
+import com.recred.backend.application.GenerateDailyBuffetReportResponse;
 import com.recred.backend.application.GetDailyBuffetCloseStatus;
+import com.recred.backend.application.GetDailyBuffetCloseStatusRequest;
+import com.recred.backend.application.GetDailyBuffetCloseStatusResponse;
 import com.recred.backend.application.GetBuffetTimeSlots;
 import com.recred.backend.application.GetKiosqueroDashboard;
 import com.recred.backend.application.GetKiosqueroDashboardRequest;
 import com.recred.backend.application.GetKiosqueroDashboardResponse;
 import com.recred.backend.application.ListDailyBuffetCloses;
+import com.recred.backend.application.ListDailyBuffetClosesRequest;
 import com.recred.backend.application.ListInventoryProducts;
+import com.recred.backend.application.ListInventoryProductsRequest;
+import com.recred.backend.application.ListInventoryProductsResponse.InventoryProductResponse;
 import com.recred.backend.application.ListKiosqueroOrders;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
 import com.recred.backend.application.UpdatePickupSlotRules;
-import com.recred.backend.domain.models.DailyBuffetReport;
-import com.recred.backend.domain.models.DailyBuffetClose;
-import com.recred.backend.domain.models.DailyCloseResult;
-import com.recred.backend.domain.models.DailyCloseStatus;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.FranjaHoraria;
-import com.recred.backend.domain.models.Producto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -96,9 +101,11 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        Map<UUID, Producto> inventoryProducts = listInventoryProducts.execute(buffetId)
+        Map<UUID, InventoryProductResponse> inventoryProducts = listInventoryProducts
+                .execute(new ListInventoryProductsRequest(buffetId))
+                .products()
                 .stream()
-                .collect(Collectors.toMap(Producto::getId, Function.identity()));
+                .collect(Collectors.toMap(InventoryProductResponse::id, Function.identity()));
         List<KiosqueroOrderResponse> orders = listKiosqueroOrders.execute(
                         buffetId,
                         statuses,
@@ -157,7 +164,7 @@ public class KiosqueroOperationsController {
     }
 
     @PostMapping("/{buffetId}/daily-close")
-    public ResponseEntity<DailyCloseResult> closeDaily(
+    public ResponseEntity<CloseDailyBuffetResponse> closeDaily(
             @PathVariable UUID buffetId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -165,11 +172,12 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(closeDailyBuffet.execute(buffetId, requestedDate(date)));
+        return ResponseEntity.ok(closeDailyBuffet.execute(
+                new CloseDailyBuffetRequest(buffetId, requestedDate(date))));
     }
 
     @GetMapping("/{buffetId}/daily-close/status")
-    public ResponseEntity<DailyCloseStatus> dailyCloseStatus(
+    public ResponseEntity<GetDailyBuffetCloseStatusResponse> dailyCloseStatus(
             @PathVariable UUID buffetId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -178,13 +186,11 @@ public class KiosqueroOperationsController {
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
         return ResponseEntity.ok(getDailyBuffetCloseStatus.execute(
-                buffetId,
-                requestedDate(date)
-        ));
+                new GetDailyBuffetCloseStatusRequest(buffetId, requestedDate(date))));
     }
 
     @GetMapping("/{buffetId}/daily-closes")
-    public ResponseEntity<List<DailyBuffetClose>> dailyCloses(
+    public ResponseEntity<List<DailyBuffetCloseResponse>> dailyCloses(
             @PathVariable UUID buffetId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -195,11 +201,12 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(listDailyBuffetCloses.execute(buffetId, from, to));
+        return ResponseEntity.ok(listDailyBuffetCloses.execute(
+                new ListDailyBuffetClosesRequest(buffetId, from, to)).closes());
     }
 
     @GetMapping("/{buffetId}/reports/daily")
-    public ResponseEntity<DailyBuffetReport> dailyReport(
+    public ResponseEntity<GenerateDailyBuffetReportResponse> dailyReport(
             @PathVariable UUID buffetId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -207,8 +214,8 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(generateDailyBuffetReport.execute(buffetId,
-                requestedDate(date)));
+        return ResponseEntity.ok(generateDailyBuffetReport.execute(
+                new GenerateDailyBuffetReportRequest(buffetId, requestedDate(date))));
     }
 
     @GetMapping("/{buffetId}/reports/daily.csv")
@@ -220,10 +227,8 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        DailyBuffetReport report = generateDailyBuffetReport.execute(
-                buffetId,
-                requestedDate(date)
-        );
+        GenerateDailyBuffetReportResponse report = generateDailyBuffetReport.execute(
+                new GenerateDailyBuffetReportRequest(buffetId, requestedDate(date)));
         return ResponseEntity.ok()
                 .contentType(new MediaType("text", "csv"))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -248,7 +253,7 @@ public class KiosqueroOperationsController {
         return date == null ? LocalDate.now() : date;
     }
 
-    private String csv(DailyBuffetReport report) {
+    private String csv(GenerateDailyBuffetReportResponse report) {
         return String.join("\n",
                 "metric,value",
                 "buffetId," + report.buffetId(),

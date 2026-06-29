@@ -1,12 +1,9 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.DailyBuffetClose;
 import com.recred.backend.domain.repositories.DailyBuffetCloseRepository;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 public class ListDailyBuffetCloses {
 
@@ -18,19 +15,20 @@ public class ListDailyBuffetCloses {
         this.dailyBuffetCloseRepository = dailyBuffetCloseRepository;
     }
 
-    public List<DailyBuffetClose> execute(
-            UUID buffetId,
-            LocalDate startDate,
-            LocalDate endDate
-    ) {
-        UUID requiredBuffetId = required(buffetId, "buffetId is required");
-        validateRange(startDate, endDate);
+    public ListDailyBuffetClosesResponse execute(ListDailyBuffetClosesRequest request) {
+        validate(request);
+        return ListDailyBuffetClosesResponse.fromDomain(
+                dailyBuffetCloseRepository.findByBuffetAndDateRange(
+                        request.buffetId(),
+                        request.startDate(),
+                        request.endDate()
+                ));
+    }
 
-        return dailyBuffetCloseRepository.findByBuffetAndDateRange(
-                requiredBuffetId,
-                startDate,
-                endDate
-        );
+    private void validate(ListDailyBuffetClosesRequest request) {
+        required(request, "request is required");
+        required(request.buffetId(), "buffetId is required");
+        validateRange(request.startDate(), request.endDate());
     }
 
     private <T> T required(T value, String message) {

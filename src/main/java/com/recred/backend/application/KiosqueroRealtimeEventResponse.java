@@ -1,4 +1,4 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.application;
 
 import com.recred.backend.domain.events.InventoryRealtimePayload;
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
