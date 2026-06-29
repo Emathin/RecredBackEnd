@@ -11,14 +11,15 @@ import com.recred.backend.application.GetFavoritesByStudent;
 import com.recred.backend.application.GetFavoritesByStudentRequest;
 import com.recred.backend.application.GetFavoritesByStudentResponse;
 import com.recred.backend.application.GetStudentPreferences;
-import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
+import com.recred.backend.application.GetStudentPreferencesByUserRequest;
+import com.recred.backend.application.GetStudentPreferencesResponse;
 import com.recred.backend.application.RespondToAISuggestion;
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.application.RespondToAISuggestionRequest;
+import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.infrastructure.web.ProductResponseDTO;
 import com.recred.backend.infrastructure.web.StudentPreferenceController;
-import com.recred.backend.infrastructure.web.StudentPreferenceResponse;
+import com.recred.backend.infrastructure.web.StudentPreferenceResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -71,10 +73,10 @@ class StudentPreferenceControllerTest {
 
     @Test
     void returnPreferenceResponseWhenPreferenceIsDetected() {
-        UUID userId = UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
+        UUID userId = randomUUID();
+        UUID studentId = randomUUID();
+        UUID buffetId = randomUUID();
+        UUID productId = randomUUID();
         DetectStudentPreferencesResponse detected = new DetectStudentPreferencesResponse(
                 "Yogur con Cereales",
                 "He notado que te gusta...",
@@ -86,7 +88,7 @@ class StudentPreferenceControllerTest {
                 new DetectStudentPreferencesRequest(studentId, buffetId)))
                 .thenReturn(Optional.of(detected));
 
-        ResponseEntity<StudentPreferenceResponse> response = controller.detect(userId, buffetId);
+        ResponseEntity<StudentPreferenceResponseDTO> response = controller.detect(userId, buffetId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(detected.titulo(), response.getBody().titulo());
@@ -94,30 +96,30 @@ class StudentPreferenceControllerTest {
 
     @Test
     void returnNoContentWhenNoAIPreferenceIsDetected() {
-        UUID userId = UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
+        UUID userId = randomUUID();
+        UUID studentId = randomUUID();
+        UUID buffetId = randomUUID();
         when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
         when(detectStudentPreferences.execute(
                 new DetectStudentPreferencesRequest(studentId, buffetId)))
                 .thenReturn(Optional.empty());
 
-        ResponseEntity<StudentPreferenceResponse> response = controller.detect(userId, buffetId);
+        ResponseEntity<StudentPreferenceResponseDTO> response = controller.detect(userId, buffetId);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
     }
 
     @Test
     void detectPreferenceUsingUserId() {
-        UUID userId = UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
+        UUID userId = randomUUID();
+        UUID studentId = randomUUID();
+        UUID buffetId = randomUUID();
         when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
         DetectStudentPreferencesRequest request =
                 new DetectStudentPreferencesRequest(studentId, buffetId);
         when(detectStudentPreferences.execute(request)).thenReturn(Optional.empty());
 
-        ResponseEntity<StudentPreferenceResponse> response = controller.detect(userId, buffetId);
+        ResponseEntity<StudentPreferenceResponseDTO> response = controller.detect(userId, buffetId);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         verify(detectStudentPreferences).execute(request);
@@ -125,10 +127,12 @@ class StudentPreferenceControllerTest {
 
     @Test
     void returnNoContentWhenPreferenceListIsEmpty() {
-        UUID userId = UUID.randomUUID();
-        when(getStudentPreferences.executeByUserId(userId, false, null)).thenReturn(List.of());
+        UUID userId = randomUUID();
+        when(getStudentPreferences.executeByUserId(
+                new GetStudentPreferencesByUserRequest(userId, false, null)))
+                .thenReturn(new GetStudentPreferencesResponse(List.of()));
 
-        ResponseEntity<List<StudentPreferenceResponse>> response =
+        ResponseEntity<List<StudentPreferenceResponseDTO>> response =
                 controller.getPreferences(userId, false, null);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
@@ -136,17 +140,21 @@ class StudentPreferenceControllerTest {
 
     @Test
     void returnOkWithPreferencesListWhenTheyExist() {
-        UUID userId = UUID.randomUUID();
-        com.recred.backend.infrastructure.entities.SugerenciaIAEntity entity =
-                new com.recred.backend.infrastructure.entities.SugerenciaIAEntity();
-        entity.setTitulo("Test");
-        entity.setMensaje("Msg");
-        entity.setTipo(com.recred.backend.domain.models.TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+        UUID userId = randomUUID();
+        when(getStudentPreferences.executeByUserId(
+                new GetStudentPreferencesByUserRequest(userId, false, null)))
+                .thenReturn(new GetStudentPreferencesResponse(List.of(preference(
+                        randomUUID(),
+                        null,
+                        null,
+                        false,
+                        null,
+                        null,
+                        "Test",
+                        "Msg"
+                ))));
 
-        when(getStudentPreferences.executeByUserId(userId, false, null))
-                .thenReturn(List.of(new StudentPreferenceResult(entity, null, false)));
-
-        ResponseEntity<List<StudentPreferenceResponse>> response =
+        ResponseEntity<List<StudentPreferenceResponseDTO>> response =
                 controller.getPreferences(userId, false, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -155,45 +163,46 @@ class StudentPreferenceControllerTest {
 
     @Test
     void returnOkWithParentPreferenceView() {
-        UUID userId = UUID.randomUUID();
-        Alumno child = new Alumno();
-        child.setId(UUID.randomUUID());
-        Usuario childUser = new Usuario();
-        childUser.setId(UUID.randomUUID());
-        childUser.setNombre("Ana");
-        childUser.setApellido("Lopez");
-        child.setUsuario(childUser);
-        com.recred.backend.infrastructure.entities.SugerenciaIAEntity entity =
-                new com.recred.backend.infrastructure.entities.SugerenciaIAEntity();
-        entity.setTitulo("Probar fruta");
-        entity.setMensaje("Puede gustarle");
-        entity.setTipo(com.recred.backend.domain.models.TipoSugerenciaIA.PREFERENCIA_DETECTADA);
-        when(getStudentPreferences.executeByUserId(userId, false, null))
-                .thenReturn(List.of(new StudentPreferenceResult(entity, child, true)));
+        UUID userId = randomUUID();
+        UUID childId = randomUUID();
+        UUID childUserId = randomUUID();
+        when(getStudentPreferences.executeByUserId(
+                new GetStudentPreferencesByUserRequest(userId, false, null)))
+                .thenReturn(new GetStudentPreferencesResponse(List.of(preference(
+                        randomUUID(),
+                        childId,
+                        childUserId,
+                        true,
+                        "Ana",
+                        "Lopez",
+                        "Probar fruta",
+                        "Puede gustarle"
+                ))));
 
-        ResponseEntity<List<StudentPreferenceResponse>> response =
+        ResponseEntity<List<StudentPreferenceResponseDTO>> response =
                 controller.getPreferences(userId, false, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Ana Lopez: Probar fruta", response.getBody().get(0).titulo());
-        assertEquals(child.getId(), response.getBody().get(0).alumnoId());
-        assertEquals(childUser.getId(), response.getBody().get(0).alumnoUserId());
+        assertEquals(childId, response.getBody().get(0).alumnoId());
+        assertEquals(childUserId, response.getBody().get(0).alumnoUserId());
     }
 
     @Test
     void respondToAISuggestionSuccessfully() {
-        UUID sugerenciaId = UUID.randomUUID();
+        UUID sugerenciaId = randomUUID();
 
         ResponseEntity<Void> response = controller.respond(sugerenciaId, true);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(respondToAISuggestion).execute(sugerenciaId, true);
+        verify(respondToAISuggestion).execute(
+                new RespondToAISuggestionRequest(sugerenciaId, true));
     }
 
     @Test
     void agregarFavoritoSuccessfully() {
-        UUID studentId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
+        UUID studentId = randomUUID();
+        UUID productoId = randomUUID();
 
         ResponseEntity<Void> response = controller.agregarFavorito(studentId, productoId);
 
@@ -203,8 +212,8 @@ class StudentPreferenceControllerTest {
 
     @Test
     void removerFavoritoSuccessfully() {
-        UUID studentId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
+        UUID studentId = randomUUID();
+        UUID productoId = randomUUID();
 
         ResponseEntity<Void> response = controller.removerFavorito(studentId, productoId);
 
@@ -214,8 +223,8 @@ class StudentPreferenceControllerTest {
 
     @Test
     void obtenerFavoritosSuccessfully() {
-        UUID studentId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
+        UUID studentId = randomUUID();
+        UUID productId = randomUUID();
         GetFavoritesByStudentResponse responseDTO = new GetFavoritesByStudentResponse(
                 productId,
                 "Test",
@@ -248,5 +257,30 @@ class StudentPreferenceControllerTest {
         assertEquals(1, response.getBody().size());
         assertEquals(productId, response.getBody().get(0).id());
         verify(getFavoritesByStudent).execute(new GetFavoritesByStudentRequest(studentId));
+    }
+
+    private GetStudentPreferencesResponse.Preference preference(
+            UUID suggestionId,
+            UUID studentId,
+            UUID studentUserId,
+            boolean parentView,
+            String firstName,
+            String lastName,
+            String title,
+            String message
+    ) {
+        return new GetStudentPreferencesResponse.Preference(
+                suggestionId,
+                studentId,
+                studentUserId,
+                firstName,
+                lastName,
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA,
+                title,
+                message,
+                null,
+                null,
+                parentView
+        );
     }
 }

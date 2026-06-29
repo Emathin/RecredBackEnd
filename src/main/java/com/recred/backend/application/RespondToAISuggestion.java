@@ -1,10 +1,11 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
+import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.Optional;
 
 public class RespondToAISuggestion {
 
@@ -15,11 +16,20 @@ public class RespondToAISuggestion {
     }
 
     @Transactional
-    public void execute(UUID sugerenciaId, boolean aceptada) {
-        sugerenciaIARepository.findById(sugerenciaId).ifPresent(sugerencia -> {
-            sugerencia.setAceptada(aceptada);
-            sugerencia.setRespondidaEn(LocalDateTime.now());
-            sugerenciaIARepository.guardar(sugerencia);
-        });
+    public void execute(RespondToAISuggestionRequest request) {
+        request.validate();
+
+        findSuggestion(request)
+                .ifPresent(suggestion -> respondToSuggestion(suggestion, request.accepted()));
+    }
+
+    private Optional<SugerenciaIAEntity> findSuggestion(RespondToAISuggestionRequest request) {
+        return sugerenciaIARepository.findById(request.suggestionId());
+    }
+
+    private void respondToSuggestion(SugerenciaIAEntity suggestion, boolean accepted) {
+        suggestion.setAceptada(accepted);
+        suggestion.setRespondidaEn(LocalDateTime.now());
+        sugerenciaIARepository.guardar(suggestion);
     }
 }

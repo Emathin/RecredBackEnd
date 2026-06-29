@@ -1,16 +1,22 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.GetActiveSchools;
+import com.recred.backend.application.GetActiveSchoolsResponse;
 import com.recred.backend.application.GetGradesBySchool;
+import com.recred.backend.application.GetGradesBySchoolRequest;
+import com.recred.backend.application.GetGradesBySchoolResponse;
 import com.recred.backend.domain.exceptions.SchoolNotFoundException;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.Nivel;
-import com.recred.backend.infrastructure.web.GradeResponse;
+import com.recred.backend.infrastructure.web.GradeResponseDTO;
 import com.recred.backend.infrastructure.web.SchoolController;
-import com.recred.backend.infrastructure.web.SchoolResponse;
+import com.recred.backend.infrastructure.web.SchoolResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -18,28 +24,68 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class SchoolControllerTest {
 
+    @Mock
     private GetActiveSchools getActiveSchools;
+    @Mock
     private GetGradesBySchool getGradesBySchool;
+
     private SchoolController schoolController;
 
     @BeforeEach
     void setUp() {
-        getActiveSchools = mock(GetActiveSchools.class);
-        getGradesBySchool = mock(GetGradesBySchool.class);
         schoolController = new SchoolController(getActiveSchools, getGradesBySchool);
     }
 
     @Test
     void getSchools_ReturnsActiveSchools() {
-        UUID schoolId = UUID.randomUUID();
+        UUID schoolId = randomUUID();
+        when(getActiveSchools.execute())
+                .thenReturn(GetActiveSchoolsResponse.fromDomain(List.of(school(schoolId))));
+
+        ResponseEntity<List<SchoolResponseDTO>> response = schoolController.getSchools();
+
+        SchoolResponseDTO school = firstOkBody(response);
+        assertEquals(schoolId, school.id());
+        assertEquals("North School", school.nombre());
+        verify(getActiveSchools).execute();
+    }
+
+    @Test
+    void getGrades_ReturnsActiveGradesForSchool() {
+        UUID schoolId = randomUUID();
+        UUID gradeId = randomUUID();
+
+        when(getGradesBySchool.execute(new GetGradesBySchoolRequest(schoolId)))
+                .thenReturn(GetGradesBySchoolResponse.fromDomain(List.of(grade(gradeId))));
+
+        ResponseEntity<List<GradeResponseDTO>> response = schoolController.getGrades(schoolId);
+
+        GradeResponseDTO grade = firstOkBody(response);
+        assertEquals(gradeId, grade.id());
+        assertEquals("1 A", grade.nombre());
+        verify(getGradesBySchool).execute(new GetGradesBySchoolRequest(schoolId));
+    }
+
+    @Test
+    void handleSchoolNotFound_ReturnsErrorMessage() {
+        UUID schoolId = randomUUID();
+        SchoolNotFoundException exception = new SchoolNotFoundException(schoolId);
+
+        Map<String, String> response = schoolController.handleSchoolNotFound(exception);
+
+        assertEquals("School not found: " + schoolId, response.get("error"));
+    }
+
+    private Colegio school(UUID schoolId) {
         Nivel level = new Nivel();
         level.setDescripcion("Primary");
 
@@ -48,48 +94,21 @@ class SchoolControllerTest {
         school.setNombre("North School");
         school.setCue("123");
         school.setNivel(level);
-
-        when(getActiveSchools.execute()).thenReturn(List.of(school));
-
-        ResponseEntity<List<SchoolResponse>> response = schoolController.getSchools();
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(1, response.getBody().size());
-        assertEquals(schoolId, response.getBody().get(0).id());
-        assertEquals("North School", response.getBody().get(0).nombre());
-        verify(getActiveSchools).execute();
+        return school;
     }
 
-    @Test
-    void getGrades_ReturnsActiveGradesForSchool() {
-        UUID schoolId = UUID.randomUUID();
-        UUID gradeId = UUID.randomUUID();
-
+    private Grado grade(UUID gradeId) {
         Grado grade = new Grado();
         grade.setId(gradeId);
         grade.setAnio("1");
         grade.setDivision("A");
+        return grade;
+    }
 
-        when(getGradesBySchool.execute(schoolId)).thenReturn(List.of(grade));
-
-        ResponseEntity<List<GradeResponse>> response = schoolController.getGrades(schoolId);
-
+    private <T> T firstOkBody(ResponseEntity<List<T>> response) {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
-        assertEquals(gradeId, response.getBody().get(0).id());
-        assertEquals("1 A", response.getBody().get(0).nombre());
-        verify(getGradesBySchool).execute(schoolId);
-    }
-
-    @Test
-    void handleSchoolNotFound_ReturnsErrorMessage() {
-        UUID schoolId = UUID.randomUUID();
-        SchoolNotFoundException exception = new SchoolNotFoundException(schoolId);
-
-        Map<String, String> response = schoolController.handleSchoolNotFound(exception);
-
-        assertEquals("School not found: " + schoolId, response.get("error"));
+        return response.getBody().get(0);
     }
 }
