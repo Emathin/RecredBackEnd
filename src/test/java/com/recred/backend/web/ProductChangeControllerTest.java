@@ -55,11 +55,16 @@ class ProductChangeControllerTest {
                         null
                 );
 
+        String cognitoSubject = "test-sub";
+        org.springframework.security.core.Authentication auth = 
+                org.mockito.Mockito.mock(org.springframework.security.core.Authentication.class);
+        when(auth.getName()).thenReturn(cognitoSubject);
+
         when(getProductChangeRecommendation.execute(any()))
                 .thenReturn(List.of(dto));
 
         ResponseEntity<List<ProductChangeRecommendationResponse>> response = controller
-                .findAllProductChangeRecommendations(usuarioId);
+                .findAllProductChangeRecommendations(auth);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());

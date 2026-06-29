@@ -2,6 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
 import com.recred.backend.domain.models.PurchasePatternAnalysis;
+import com.recred.backend.domain.models.PurchaseRecommendationResult;
 import com.recred.backend.domain.models.PurchaseResume;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -10,29 +11,25 @@ import com.recred.backend.domain.repositories.PurchaseRecommendationNotification
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SuggestionAiRepository;
 import com.recred.backend.domain.services.PurchaseAnalyzer;
-import com.recred.backend.domain.models.PurchaseRecommendationResult;
-import com.recred.backend.infrastructure.entities.NotificacionEntity;
-
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public class GeneratePurchaseRecommendation {
 
-    private AlumnoRepository alumnoRepository;
-    private PurchaseRepository purchaseRepository;
-    private PurchaseAnalyzer purchaseAnalyzer;
+    private final AlumnoRepository alumnoRepository;
+    private final PurchaseRepository purchaseRepository;
+    private final PurchaseAnalyzer purchaseAnalyzer;
     private final AIEventRepository aiEventRepository;
     private final ConsumptionAlertStudentRepository studentRepository;
-
     private final PurchaseRecommendationNotificationRepository notificationRepository;
     private final SuggestionAiRepository suggestionAiRepository;
 
-
     public GeneratePurchaseRecommendation(
-            AlumnoRepository alumnoRepository, PurchaseRepository purchaseRepository,
-            PurchaseAnalyzer purchaseAnalyzer, AIEventRepository aiEventRepository,
+            AlumnoRepository alumnoRepository,
+            PurchaseRepository purchaseRepository,
+            PurchaseAnalyzer purchaseAnalyzer,
+            AIEventRepository aiEventRepository,
             PurchaseRecommendationNotificationRepository notificationRepository,
             ConsumptionAlertStudentRepository studentRepository,
             SuggestionAiRepository suggestionAiRepository) {
@@ -40,36 +37,40 @@ public class GeneratePurchaseRecommendation {
         this.purchaseRepository = purchaseRepository;
         this.purchaseAnalyzer = purchaseAnalyzer;
         this.aiEventRepository = aiEventRepository;
-        this.studentRepository = studentRepository;
         this.notificationRepository = notificationRepository;
+        this.studentRepository = studentRepository;
         this.suggestionAiRepository = suggestionAiRepository;
     }
 
     public void execute() {
-        for (ConsumptionAlertCandidate candidate : studentRepository.findActiveCandidates()) {
-            UUID userID = this.alumnoRepository.findUserID(candidate.studentId());
-            List<PurchaseResume> purchases =
-                    this.purchaseRepository.findPurchasesByAlumno(candidate.studentId());
-            Optional<PurchasePatternAnalysis> aiAnalysis = purchaseAnalyzer.analyze(purchases);
-
-            PurchaseRecommendationResult result =
-                    new PurchaseRecommendationResult(candidate.studentId(),
-                            purchases, aiAnalysis);
-            UUID eventID = aiEventRepository.registerPurchaseRecommendation(result);
-
-            notificationRepository.save(
-                    result,
-                    suggestionAiRepository.save(eventID,result),
-                    userID);
-        }
+        List<ConsumptionAlertCandidate> candidates = studentRepository.findActiveCandidates();
+        candidates.forEach(this::processCandidate);
     }
 
-    public NotificacionEntity findSuggestionForToday(UUID studentID) {
-        String today = LocalDate.now().getDayOfWeek().name();
-        return suggestionAiRepository.findByTipoAndStudentId(today, studentID);
+    private void processCandidate(ConsumptionAlertCandidate candidate) {
+        UUID userId = alumnoRepository.findUserID(candidate.studentId());
+        List<PurchaseResume> purchases = getPurchases(candidate.studentId());
+        Optional<PurchasePatternAnalysis> analysis = purchaseAnalyzer.analyze(purchases);
+        PurchaseRecommendationResult result =
+                buildResult(candidate.studentId(), purchases, analysis);
+        saveRecommendation(result, userId);
     }
-    public NotificacionEntity findSuggestionForTomorrow(UUID studentID) {
-        String today = LocalDate.now().plusDays(1).getDayOfWeek().name();
-        return suggestionAiRepository.findByTipoAndStudentId(today, studentID);
+
+    private List<PurchaseResume> getPurchases(UUID studentId) {
+        return purchaseRepository.findPurchasesByAlumno(studentId);
     }
+
+    private PurchaseRecommendationResult buildResult(
+            UUID studentId,
+            List<PurchaseResume> purchases,
+            Optional<PurchasePatternAnalysis> analysis) {
+        return new PurchaseRecommendationResult(studentId, purchases, analysis);
+    }
+
+    private void saveRecommendation(PurchaseRecommendationResult result, UUID userId) {
+        UUID eventId = aiEventRepository.registerPurchaseRecommendation(result);
+        var savedSuggestion = suggestionAiRepository.save(eventId, result);
+        notificationRepository.save(result, savedSuggestion, userId);
+    }
+
 }

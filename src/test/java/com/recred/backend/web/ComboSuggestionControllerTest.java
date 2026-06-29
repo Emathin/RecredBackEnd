@@ -36,17 +36,25 @@ class ComboSuggestionControllerTest {
     @Test
     void getComboSuggestions_ShouldReturnComboSuggestion() throws Exception {
         UUID productId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
+        String cognitoSubject = "test-sub";
         
-        ComboSuggestion suggestion = new ComboSuggestion(
+        com.recred.backend.application.GenerateComboSuggestionResponse suggestion = 
+                new com.recred.backend.application.GenerateComboSuggestionResponse(
                 productId,
                 "Product Name",
-                List.of(new ComboSuggestion.SuggestedProduct(UUID.randomUUID(), "S1", java.math.BigDecimal.TEN))
+                List.of(new com.recred.backend.application.GenerateComboSuggestionResponse.SuggestedProductResponse(
+                        UUID.randomUUID(), "S1", java.math.BigDecimal.TEN))
         );
 
-        when(generateComboSuggestion.execute(productId, userId)).thenReturn(suggestion);
+        com.recred.backend.application.GenerateComboSuggestionRequest request = 
+                new com.recred.backend.application.GenerateComboSuggestionRequest(productId, cognitoSubject);
 
-        mockMvc.perform(get("/api/v1/combo-suggestions/{productId}/{userId}", productId, userId))
+        when(generateComboSuggestion.execute(request)).thenReturn(suggestion);
+
+        org.springframework.security.core.Authentication auth = org.mockito.Mockito.mock(org.springframework.security.core.Authentication.class);
+        when(auth.getName()).thenReturn(cognitoSubject);
+
+        mockMvc.perform(get("/api/v1/combo-suggestions/{productId}", productId).principal(auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idProduct").value(productId.toString()))
                 .andExpect(jsonPath("$.productName").value("Product Name"))

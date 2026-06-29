@@ -62,6 +62,8 @@ import com.recred.backend.application.GeneratePriceAlert;
 import com.recred.backend.application.GenerateProductChangeRecommendation;
 import com.recred.backend.application.GetProductChangeRecommendation;
 import com.recred.backend.application.GeneratePurchaseRecommendation;
+import com.recred.backend.application.FindPurchaseSuggestionForToday;
+import com.recred.backend.application.FindPurchaseSuggestionForTomorrow;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GenerateTopUpLink;
@@ -226,8 +228,10 @@ public class UseCases {
     @Bean
     public GenerateComboSuggestion generateComboSuggestion(
             ProductRepository productRepository,
-            KiosqueroRepository kiosqueroRepository) {
-        return new GenerateComboSuggestion(productRepository, kiosqueroRepository);
+            KiosqueroRepository kiosqueroRepository,
+            UsuarioRepository usuarioRepository) {
+        return new GenerateComboSuggestion(
+                productRepository, kiosqueroRepository, usuarioRepository);
     }
 
     @Bean
@@ -1059,9 +1063,10 @@ public class UseCases {
 
     @Bean
     public GetProductChangeRecommendation getProductChangeRecommendation(
-            KiosqueroRepository kiosqueroRepository,
-            AIEventRepository aiEventRepository) {
-        return new GetProductChangeRecommendation(kiosqueroRepository, aiEventRepository);
+            KiosqueroRepository kiosqueroRepository, AIEventRepository aiEventRepository,
+            UsuarioRepository usuarioRepository) {
+        return new GetProductChangeRecommendation(
+                kiosqueroRepository, aiEventRepository, usuarioRepository);
     }
 
     @Bean
@@ -1106,6 +1111,24 @@ public class UseCases {
         return new GeneratePurchaseRecommendation(alumnoRepository,
                 purchaseRepository, purchaseAnalyzer, aiEventRepository, notificationRepository,
                 studentRepository, suggestionAiRepository);
+    }
+
+    @Bean
+    public FindPurchaseSuggestionForToday findPurchaseSuggestionForToday(
+            SuggestionAiRepository suggestionAiRepository,
+            UsuarioRepository usuarioRepository,
+            AlumnoRepository alumnoRepository) {
+        return new FindPurchaseSuggestionForToday(
+                suggestionAiRepository, usuarioRepository, alumnoRepository);
+    }
+
+    @Bean
+    public FindPurchaseSuggestionForTomorrow findPurchaseSuggestionForTomorrow(
+            SuggestionAiRepository suggestionAiRepository,
+            UsuarioRepository usuarioRepository,
+            AlumnoRepository alumnoRepository) {
+        return new FindPurchaseSuggestionForTomorrow(
+                suggestionAiRepository, usuarioRepository, alumnoRepository);
     }
 
     @Bean
@@ -1377,8 +1400,10 @@ public class UseCases {
     @Bean
     public GetSuggestionByType getSuggestionByType(
             SuggestionAiRepository suggestionAiRepository,
-            KiosqueroRepository kiosqueroRepository) {
-        return new GetSuggestionByType(suggestionAiRepository, kiosqueroRepository);
+            KiosqueroRepository kiosqueroRepository,
+            UsuarioRepository usuarioRepository) {
+        return new GetSuggestionByType(
+                suggestionAiRepository, kiosqueroRepository, usuarioRepository);
     }
 
     @Bean
