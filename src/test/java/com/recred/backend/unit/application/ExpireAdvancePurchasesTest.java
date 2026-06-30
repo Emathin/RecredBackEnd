@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.ExpireAdvancePurchases;
+import com.recred.backend.application.ExpireAdvancePurchasesRequest;
+import com.recred.backend.application.ExpireAdvancePurchasesResponse;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
@@ -43,9 +45,9 @@ class ExpireAdvancePurchasesTest {
                 anyList()
         )).thenReturn(List.of(purchase));
 
-        int expired = useCase.execute(now);
+        ExpireAdvancePurchasesResponse result = useCase.execute(new ExpireAdvancePurchasesRequest(null, now));
 
-        assertEquals(1, expired);
+        assertEquals(1, result.expiredPurchases());
         assertEquals(EstadoCompra.VENCIDO, purchase.getStatus());
         verify(inventoryAvailabilityService).releaseReservation(
                 purchase.getBuffetId(),
@@ -56,7 +58,7 @@ class ExpireAdvancePurchasesTest {
     }
 
     @Test
-    void executeDetailedByBuffet_ShouldExpireAndIgnoreNullQuantities() {
+    void executeByBuffet_ShouldExpireAndIgnoreNullQuantities() {
         PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
         InventoryAvailabilityService inventoryAvailabilityService =
                 mock(InventoryAvailabilityService.class);
@@ -77,8 +79,8 @@ class ExpireAdvancePurchasesTest {
                 anyList()
         )).thenReturn(List.of(purchase));
 
-        ExpireAdvancePurchases.ExpirationResult result =
-                useCase.executeDetailed(buffetId, now);
+        ExpireAdvancePurchasesResponse result =
+                useCase.execute(new ExpireAdvancePurchasesRequest(buffetId, now));
 
         assertEquals(1, result.expiredPurchases());
         assertEquals(2, result.releasedReservations());
@@ -112,9 +114,9 @@ class ExpireAdvancePurchasesTest {
                 anyList()
         )).thenReturn(List.of(purchase));
 
-        int expired = useCase.execute(buffetId, now);
+        ExpireAdvancePurchasesResponse result = useCase.execute(new ExpireAdvancePurchasesRequest(buffetId, now));
 
-        assertEquals(1, expired);
+        assertEquals(1, result.expiredPurchases());
         verify(inventoryAvailabilityService, never()).releaseReservation(
                 purchase.getBuffetId(),
                 purchase.getItems(),

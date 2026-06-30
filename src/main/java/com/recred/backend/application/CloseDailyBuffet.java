@@ -1,6 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.application.ExpireAdvancePurchases.ExpirationResult;
+import com.recred.backend.application.ExpireAdvancePurchasesRequest;
+import com.recred.backend.application.ExpireAdvancePurchasesResponse;
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
 import com.recred.backend.domain.models.DailyBuffetClose;
@@ -57,9 +58,11 @@ public class CloseDailyBuffet {
     }
 
     private CloseDailyBuffetResponse close(CloseDailyBuffetRequest request) {
-        ExpirationResult expiration = expireAdvancePurchases.executeDetailed(
-                request.buffetId(),
-                request.date().atTime(LocalTime.MAX));
+        ExpireAdvancePurchasesResponse expiration = expireAdvancePurchases.execute(
+                new ExpireAdvancePurchasesRequest(
+                        request.buffetId(), request.date().atTime(LocalTime.MAX)
+                )
+        );
         GenerateDailyBuffetReportResponse report = dailyReport(request.buffetId(), request.date());
         DailyBuffetClose close = dailyBuffetCloseRepository.saveWithInventorySnapshot(
                 new DailyBuffetClose(

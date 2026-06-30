@@ -20,72 +20,60 @@ public class CreatePromotion {
         this.promotionRepository = promotionRepository;
     }
 
-    public Promotion execute(
-            List<UUID> productIds, 
-            BigDecimal discountPercentage, 
-            String name, 
-            LocalDateTime startDate, 
-            LocalDateTime endDate,
-            UUID buffetId,
-            boolean forceDraft) {
-        return execute(
-                productIds, discountPercentage, name,
-                startDate, endDate, buffetId, forceDraft, null
-        );
+    public CreatePromotionResponse execute(CreatePromotionRequest request) {
+        validateRequest(request);
+        Promotion promotion = buildPromotionFrom(request);
+        promotion.setStatus(determineInitialStatus(request));
+
+        Promotion savedPromotion = promotionRepository.save(promotion);
+        return CreatePromotionResponse.fromDomain(savedPromotion);
     }
 
-    public Promotion execute(
-            List<UUID> productIds, 
-            BigDecimal discountPercentage, 
-            String name, 
-            LocalDateTime startDate, 
-            LocalDateTime endDate,
-            UUID buffetId,
-            boolean forceDraft,
-            String imageUrl) {
-
-        if (!hasMinimumProducts(productIds)) {
+    private void validateRequest(CreatePromotionRequest request) {
+        if (!hasMinimumProducts(request.productIds())) {
             throw new IllegalArgumentException("A promotion requires at least 2 products.");
         }
-        if (!isDiscountValid(discountPercentage)) {
+        if (!isDiscountValid(request.discountPercentage())) {
             throw new IllegalArgumentException("Discount percentage must be between 0 and 100.");
         }
-        if (!isDateRangeValid(startDate, endDate)) {
+        if (!isDateRangeValid(request.startDate(), request.endDate())) {
             throw new IllegalArgumentException("Invalid date range.");
         }
+    }
 
+    private Promotion buildPromotionFrom(CreatePromotionRequest request) {
         Promotion promotion = new Promotion();
-        promotion.setName(name);
-        promotion.setDiscountPercentage(discountPercentage);
-        promotion.setStartDate(startDate);
-        promotion.setEndDate(endDate);
-        promotion.setImageUrl(imageUrl);
+        promotion.setName(request.name());
+        promotion.setDiscountPercentage(request.discountPercentage());
+        promotion.setStartDate(request.startDate());
+        promotion.setEndDate(request.endDate());
+        promotion.setImageUrl(request.imageUrl());
 
-        if (buffetId != null) {
+        if (request.buffetId() != null) {
             Buffet buffet = new Buffet();
-            buffet.setId(buffetId);
+            buffet.setId(request.buffetId());
             promotion.setBuffet(buffet);
         }
 
-        if (forceDraft) {
-            promotion.setStatus(PromotionStatus.DRAFT);
-        } else if (isPromotionCurrentlyActive(startDate, endDate)) {
-            promotion.setStatus(PromotionStatus.ACTIVE);
-        } else {
-            promotion.setStatus(PromotionStatus.DRAFT);
-        }
-
-        List<Producto> products = productIds.stream().map(id -> {
+        List<Producto> products = request.productIds().stream().map(id -> {
             Producto p = new Producto();
             p.setId(id);
             return p;
         }).collect(Collectors.toList());
 
         promotion.setProducts(products);
-
-        return promotionRepository.save(promotion);
+        return promotion;
     }
-//...
+
+    private PromotionStatus determineInitialStatus(CreatePromotionRequest request) {
+        if (request.forceDraft()) {
+            return PromotionStatus.DRAFT;
+        }
+        if (isPromotionCurrentlyActive(request.startDate(), request.endDate())) {
+            return PromotionStatus.ACTIVE;
+        }
+        return PromotionStatus.DRAFT;
+    }
 
     private boolean hasMinimumProducts(List<UUID> productIds) {
         return productIds != null && productIds.size() >= 2;

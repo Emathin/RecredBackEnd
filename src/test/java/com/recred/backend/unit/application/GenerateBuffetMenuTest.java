@@ -1,6 +1,6 @@
 package com.recred.backend.unit.application;
 
-import com.recred.backend.application.GenerarMenuBuffet;
+import com.recred.backend.application.GenerateBuffetMenu;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ClasificacionSalud;
@@ -46,7 +46,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class GenerarMenuBuffetTest {
+class GenerateBuffetMenuTest {
 
     @Mock
     private AlumnoRepository alumnoRepository;
@@ -59,14 +59,14 @@ class GenerarMenuBuffetTest {
     @Mock
     private CalculadorPeriodoPresupuesto calculadorPeriodo;
 
-    private GenerarMenuBuffet useCase;
+    private GenerateBuffetMenu useCase;
     private UUID alumnoId;
     private UUID buffetId;
     private Alumno alumno;
 
     @BeforeEach
     void setUp() {
-        useCase = new GenerarMenuBuffet(
+        useCase = new GenerateBuffetMenu(
                 alumnoRepository,
                 productRepository,
                 presupuestoRepository,

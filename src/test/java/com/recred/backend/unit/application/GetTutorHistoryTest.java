@@ -1,6 +1,6 @@
 package com.recred.backend.unit.application;
 
-import com.recred.backend.application.ObtenerHistorialTutor;
+import com.recred.backend.application.GetTutorHistory;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ObtenerHistorialTutorTest {
+class GetTutorHistoryTest {
 
     @Mock
     private PurchaseRepository purchaseRepository;
@@ -29,7 +29,7 @@ class ObtenerHistorialTutorTest {
     private TutorRepository tutorRepository;
 
     @InjectMocks
-    private ObtenerHistorialTutor obtenerHistorialTutor;
+    private GetTutorHistory obtenerHistorialTutor;
 
     @Test
     void dadoTutorConComprasDeHijos_cuandoSeEjecuta_entoncesRetornaListaDeCompras() {

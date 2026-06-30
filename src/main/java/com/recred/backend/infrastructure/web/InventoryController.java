@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.AdjustInventoryStockRequest;
 import com.recred.backend.application.AdjustInventoryStockResponse;
+import com.recred.backend.application.ApplyInventoryQuickAction;
 import com.recred.backend.application.ApplyInventoryQuickActionRequest;
 import com.recred.backend.application.GetStockMovements;
 import com.recred.backend.application.GetStockMovementsRequest;
@@ -40,6 +41,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class InventoryController {
 
     private final AdjustInventoryStock adjustInventoryStock;
+    private final ApplyInventoryQuickAction applyInventoryQuickAction;
     private final ListInventoryProducts listInventoryProducts;
     private final GetStockMovements getStockMovements;
     private final KiosqueroAccessGuard kiosqueroAccessGuard;
@@ -47,12 +49,14 @@ public class InventoryController {
 
     public InventoryController(
             AdjustInventoryStock adjustInventoryStock,
+            ApplyInventoryQuickAction applyInventoryQuickAction,
             ListInventoryProducts listInventoryProducts,
             GetStockMovements getStockMovements,
             KiosqueroAccessGuard kiosqueroAccessGuard,
             UploadProductImage uploadProductImage
     ) {
         this.adjustInventoryStock = adjustInventoryStock;
+        this.applyInventoryQuickAction = applyInventoryQuickAction;
         this.listInventoryProducts = listInventoryProducts;
         this.getStockMovements = getStockMovements;
         this.kiosqueroAccessGuard = kiosqueroAccessGuard;
@@ -118,7 +122,7 @@ public class InventoryController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(adjustInventoryStock.execute(
+        return ResponseEntity.ok(applyInventoryQuickAction.execute(
                 new ApplyInventoryQuickActionRequest(
                         buffetId,
                         productId,
