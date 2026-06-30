@@ -118,9 +118,9 @@ class PaymentWebhookControllerTest {
         ResponseEntity<Void> response =
                 paymentWebhookController.handleWebhook("sig", "req", null, params);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
         verify(externalPaymentService).isValidSignature("sig", "req", "666");
-        verify(confirmPaymentAndCredit).execute("666");
+        verify(confirmPaymentAndCredit, never()).execute(anyString());
     }
 
     @Test
