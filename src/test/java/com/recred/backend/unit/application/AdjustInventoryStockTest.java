@@ -3,10 +3,8 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.AdjustInventoryStockRequest;
 import com.recred.backend.application.AdjustInventoryStockResponse;
-import com.recred.backend.application.ApplyInventoryQuickActionRequest;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.Inventario;
-import com.recred.backend.domain.models.InventoryQuickActionType;
 import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import java.util.UUID;
@@ -49,17 +47,6 @@ class AdjustInventoryStockTest {
         thenInventoryResponseMatchesSavedInventory();
     }
 
-    @Test
-    void execute_WhenQuickActionIsRequested_ShouldDelegateAndReturnResponse() {
-        ApplyInventoryQuickActionRequest request = quickActionRequest();
-        givenQuickActionWillBeApplied();
-
-        whenApplyingQuickAction(request);
-
-        thenQuickActionWasDelegated();
-        thenInventoryResponseMatchesSavedInventory();
-    }
-
     private void givenInventoryWillBeAdjusted() {
         when(inventoryAvailabilityService.adjustInventory(
                 buffetId,
@@ -75,23 +62,7 @@ class AdjustInventoryStockTest {
         )).thenReturn(inventory);
     }
 
-    private void givenQuickActionWillBeApplied() {
-        when(inventoryAvailabilityService.applyQuickAction(
-                buffetId,
-                productId,
-                InventoryQuickActionType.ADD_STOCK,
-                5,
-                2,
-                "Ingreso",
-                userId
-        )).thenReturn(inventory);
-    }
-
     private void whenAdjustingInventory(AdjustInventoryStockRequest request) {
-        response = adjustInventoryStock.execute(request);
-    }
-
-    private void whenApplyingQuickAction(ApplyInventoryQuickActionRequest request) {
         response = adjustInventoryStock.execute(request);
     }
 
@@ -106,18 +77,6 @@ class AdjustInventoryStockTest {
                 true,
                 null,
                 "Ajuste",
-                userId
-        );
-    }
-
-    private void thenQuickActionWasDelegated() {
-        verify(inventoryAvailabilityService).applyQuickAction(
-                buffetId,
-                productId,
-                InventoryQuickActionType.ADD_STOCK,
-                5,
-                2,
-                "Ingreso",
                 userId
         );
     }
@@ -143,18 +102,6 @@ class AdjustInventoryStockTest {
                 true,
                 null,
                 "Ajuste",
-                userId
-        );
-    }
-
-    private ApplyInventoryQuickActionRequest quickActionRequest() {
-        return new ApplyInventoryQuickActionRequest(
-                buffetId,
-                productId,
-                InventoryQuickActionType.ADD_STOCK,
-                5,
-                2,
-                "Ingreso",
                 userId
         );
     }

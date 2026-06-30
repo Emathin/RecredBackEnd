@@ -6,6 +6,7 @@ import com.recred.backend.application.GenerateSummaryNotification;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
+import com.recred.backend.application.ApplyInventoryQuickAction;
 import com.recred.backend.application.GenerateComboSuggestion;
 import com.recred.backend.application.GetActivePromotionsByBuffet;
 import com.recred.backend.application.GetActiveSchools;
@@ -53,7 +54,7 @@ import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.ExpireAdvancePurchases;
-import com.recred.backend.application.GenerarMenuBuffet;
+import com.recred.backend.application.GenerateBuffetMenu;
 import com.recred.backend.application.GenerateDailyBuffetReport;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
 import com.recred.backend.application.GenerateLowBalanceAlerts;
@@ -111,7 +112,7 @@ import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.GetChildrenByTutor;
 import com.recred.backend.application.GetHistoryByStudent;
 import com.recred.backend.application.GetPendingHistoryByStudent;
-import com.recred.backend.application.ObtenerHistorialTutor;
+import com.recred.backend.application.GetTutorHistory;
 import com.recred.backend.application.ParseBulkStock;
 import com.recred.backend.application.PredictStudentSpending;
 import com.recred.backend.application.PrizeHealthyPurchase;
@@ -232,6 +233,12 @@ public class UseCases {
             UsuarioRepository usuarioRepository) {
         return new GenerateComboSuggestion(
                 productRepository, kiosqueroRepository, usuarioRepository);
+    }
+
+    @Bean
+    public ApplyInventoryQuickAction applyInventoryQuickAction(
+            InventoryAvailabilityService inventoryAvailabilityService) {
+        return new ApplyInventoryQuickAction(inventoryAvailabilityService);
     }
 
     @Bean
@@ -753,18 +760,18 @@ public class UseCases {
     }
 
     @Bean
-    public ObtenerHistorialTutor obtenerHistorialTutor(PurchaseRepository purchaseRepository,
+    public GetTutorHistory getTutorHistory(PurchaseRepository purchaseRepository,
             TutorRepository tutorRepository) {
-        return new ObtenerHistorialTutor(purchaseRepository, tutorRepository);
+        return new GetTutorHistory(purchaseRepository, tutorRepository);
     }
 
     @Bean
-    public GenerarMenuBuffet generarMenuBuffet(AlumnoRepository alumnoRepository,
+    public GenerateBuffetMenu generateBuffetMenu(AlumnoRepository alumnoRepository,
             ProductRepository productRepository,
             PresupuestoRepository presupuestoRepository,
             PurchaseRepository purchaseRepository,
             CalculadorPeriodoPresupuesto calculadorPeriodo) {
-        return new GenerarMenuBuffet(alumnoRepository,
+        return new GenerateBuffetMenu(alumnoRepository,
                 productRepository,
                 presupuestoRepository,
                 purchaseRepository,

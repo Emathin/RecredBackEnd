@@ -4,7 +4,8 @@ import com.recred.backend.application.CloseDailyBuffet;
 import com.recred.backend.application.CloseDailyBuffetRequest;
 import com.recred.backend.application.CloseDailyBuffetResponse;
 import com.recred.backend.application.ExpireAdvancePurchases;
-import com.recred.backend.application.ExpireAdvancePurchases.ExpirationResult;
+import com.recred.backend.application.ExpireAdvancePurchasesRequest;
+import com.recred.backend.application.ExpireAdvancePurchasesResponse;
 import com.recred.backend.application.GenerateDailyBuffetReport;
 import com.recred.backend.application.GenerateDailyBuffetReportRequest;
 import com.recred.backend.application.GenerateDailyBuffetReportResponse;
@@ -90,7 +91,7 @@ class CloseDailyBuffetTest {
         whenClosingDailyBuffet();
 
         thenCloseIsReturnedAsAlreadyClosed(close);
-        verify(expireAdvancePurchases, never()).executeDetailed(any(), any());
+        verify(expireAdvancePurchases, never()).execute(any(ExpireAdvancePurchasesRequest.class));
     }
 
     @Test
@@ -123,8 +124,8 @@ class CloseDailyBuffetTest {
     }
 
     private void givenPurchasesWillExpire(int expiredPurchases, int releasedReservations) {
-        when(expireAdvancePurchases.executeDetailed(any(), any()))
-                .thenReturn(new ExpirationResult(expiredPurchases, releasedReservations));
+        when(expireAdvancePurchases.execute(any(ExpireAdvancePurchasesRequest.class)))
+                .thenReturn(new ExpireAdvancePurchasesResponse(expiredPurchases, releasedReservations));
     }
 
     private void givenReportWillBeGenerated(List<DailyInventorySnapshot> inventory) {

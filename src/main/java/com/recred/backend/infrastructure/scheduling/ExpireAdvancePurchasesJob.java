@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.scheduling;
 
 import com.recred.backend.application.ExpireAdvancePurchases;
+import com.recred.backend.application.ExpireAdvancePurchasesRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +24,8 @@ public class ExpireAdvancePurchasesJob {
 
     @Scheduled(cron = "${advance-purchase.expiration.cron:0 */10 * * * *}")
     public void run() {
-        expireAdvancePurchases.execute(LocalDateTime.now(clock));
+        expireAdvancePurchases.execute(
+                new ExpireAdvancePurchasesRequest(null, LocalDateTime.now(clock))
+        );
     }
 }

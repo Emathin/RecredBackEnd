@@ -3,6 +3,8 @@ package com.recred.backend.unit.infrastructure.web;
 import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.application.CreatePromotion;
+import com.recred.backend.application.CreatePromotionRequest;
+import com.recred.backend.application.CreatePromotionResponse;
 import com.recred.backend.application.DeletePromotion;
 import com.recred.backend.application.GetActivePromotions;
 import com.recred.backend.application.GetActivePromotionsByBuffet;
@@ -21,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -109,16 +112,10 @@ class PromotionControllerTest {
         PromotionRequestDTO request = request(List.of(firstProductId, secondProductId));
         request.setBuffetId(buffetId);
         Promotion promotion = promotion(UUID.randomUUID(), firstProductId);
+        CreatePromotionResponse createResponse = CreatePromotionResponse.fromDomain(promotion);
         when(createPromotion.execute(
-                request.getProductIds(),
-                request.getDiscountPercentage(),
-                request.getName(),
-                request.getStartDate(),
-                request.getEndDate(),
-                request.getBuffetId(),
-                false,
-                request.getImageUrl()
-        )).thenReturn(promotion);
+                any(CreatePromotionRequest.class)
+        )).thenReturn(createResponse);
 
         ResponseEntity<PromotionResponseDTO> response =
                 controller.createPromotion(request);
@@ -126,14 +123,7 @@ class PromotionControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(promotion.getId(), response.getBody().getId());
         verify(createPromotion).execute(
-                request.getProductIds(),
-                request.getDiscountPercentage(),
-                request.getName(),
-                request.getStartDate(),
-                request.getEndDate(),
-                request.getBuffetId(),
-                false,
-                request.getImageUrl()
+                any(CreatePromotionRequest.class)
         );
     }
 

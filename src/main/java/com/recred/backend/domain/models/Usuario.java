@@ -10,7 +10,8 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Usuario {
+public class
+Usuario {
 
     private UUID id;
     private Colegio colegio;

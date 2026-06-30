@@ -87,51 +87,58 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
         }
 
         try {
-            String[] parts = signature.split(",");
-            String ts = null;
-            String hash = null;
-
-            for (String part : parts) {
-                String[] keyValue = part.split("=");
-                if (keyValue.length == 2) {
-                    if (keyValue[0].trim().equals("ts")) {
-                        ts = keyValue[1].trim();
-                    } else if (keyValue[0].trim().equals("v1")) {
-                        hash = keyValue[1].trim();
-                    }
-                }
-            }
-
-            if (ts == null || hash == null) {
+            MercadoPagoSignatureData signatureData = parseSignature(signature);
+            if (signatureData == null) {
                 return false;
             }
 
-            StringBuilder manifest = new StringBuilder();
-            manifest.append("id:").append(paymentId).append(";");
-            manifest.append("request-id:").append(requestId).append(";");
-            manifest.append("ts:").append(ts).append(";");
+            String manifest = buildManifest(paymentId, requestId, signatureData.ts());
+            String expectedHash = calculateHmacSha256(
+                    manifest, properties.getWebhookSecret().trim());
 
-            String secret = properties.getWebhookSecret().trim();
-            SecretKeySpec signingKey = new SecretKeySpec(
-                    secret.getBytes(StandardCharsets.UTF_8),
-                    "HmacSHA256");
-
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(signingKey);
-
-            byte[] rawHmac = mac.doFinal(manifest.toString().getBytes(StandardCharsets.UTF_8));
-
-            StringBuilder sb = new StringBuilder(rawHmac.length * 2);
-            Formatter formatter = new Formatter(sb);
-            for (byte b : rawHmac) {
-                formatter.format("%02x", b);
-            }
-            String sha = sb.toString();
-
-            return sha.equals(hash);
+            return expectedHash.equals(signatureData.hash());
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private record MercadoPagoSignatureData(String ts, String hash) {}
+
+    private MercadoPagoSignatureData parseSignature(String signature) {
+        String ts = null;
+        String hash = null;
+        for (String part : signature.split(",")) {
+            String[] keyValue = part.split("=");
+            if (keyValue.length == 2) {
+                if (keyValue[0].trim().equals("ts")) {
+                    ts = keyValue[1].trim();
+                } else if (keyValue[0].trim().equals("v1")) {
+                    hash = keyValue[1].trim();
+                }
+            }
+        }
+        return (ts != null && hash != null) ? new MercadoPagoSignatureData(ts, hash) : null;
+    }
+
+    private String buildManifest(String paymentId, String requestId, String ts) {
+        return "id:" + paymentId + ";request-id:" + requestId + ";ts:" + ts + ";";
+    }
+
+    private String calculateHmacSha256(String data, String secret) throws Exception {
+        SecretKeySpec signingKey = new SecretKeySpec(
+                secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(signingKey);
+        
+        byte[] rawHmac = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+        
+        StringBuilder sb = new StringBuilder(rawHmac.length * 2);
+        try (Formatter formatter = new Formatter(sb)) {
+            for (byte b : rawHmac) {
+                formatter.format("%02x", b);
+            }
+        }
+        return sb.toString();
     }
 
     @Override

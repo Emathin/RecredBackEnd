@@ -1,7 +1,7 @@
 package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.infrastructure.web.*;
-import com.recred.backend.application.GenerarMenuBuffet;
+import com.recred.backend.application.GenerateBuffetMenu;
 import com.recred.backend.application.GenerateLowBalanceAlerts;
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetBuffetByStudent;
@@ -56,7 +56,7 @@ class SmallControllerDelegationTest {
     @Mock
     private GetAllCategories getAllCategories;
     @Mock
-    private GenerarMenuBuffet generarMenuBuffet;
+    private GenerateBuffetMenu generateBuffetMenu;
     @Mock
     private GetBuffetByStudent getBuffetByStudent;
     @Mock
@@ -169,10 +169,10 @@ class SmallControllerDelegationTest {
                 null,
                 null
         );
-        when(generarMenuBuffet.execute(alumnoId, buffetId, dateTime)).thenReturn(List.of(item));
+        when(generateBuffetMenu.execute(alumnoId, buffetId, dateTime)).thenReturn(List.of(item));
         when(getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId))).thenReturn(Optional.of(responseBuffet));
         MenuBuffetController controller = new MenuBuffetController(
-                generarMenuBuffet,
+                generateBuffetMenu,
                 getBuffetByStudent
         );
 
@@ -188,11 +188,11 @@ class SmallControllerDelegationTest {
     void menuBuffetControllerShouldUseNowWhenDateIsMissingAndReturnNotFoundBuffet() {
         UUID alumnoId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        when(generarMenuBuffet.execute(eq(alumnoId), eq(buffetId), any(LocalDateTime.class)))
+        when(generateBuffetMenu.execute(eq(alumnoId), eq(buffetId), any(LocalDateTime.class)))
                 .thenReturn(List.of());
         when(getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId))).thenReturn(Optional.empty());
         MenuBuffetController controller = new MenuBuffetController(
-                generarMenuBuffet,
+                generateBuffetMenu,
                 getBuffetByStudent
         );
 
