@@ -18,6 +18,7 @@ import java.util.UUID;
 
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,12 +40,14 @@ class CartSuggestionControllerTest {
         UUID buffetId = randomUUID();
         UUID cartProductId = randomUUID();
         PurchaseItemDTO item = item(cartProductId);
-        when(getCartSuggestions.execute(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new GetCartSuggestionsResponse(List.of()));
+        givenNoSuggestions();
 
-        controller.suggest(
-                new CartSuggestionRequestDTO(studentId, buffetId, List.of(item), 2)
-        );
+        whenRequestingSuggestions(new CartSuggestionRequestDTO(
+                studentId,
+                buffetId,
+                List.of(item),
+                2
+        ));
 
         GetCartSuggestionsRequest useCaseRequest = capturedRequest();
         assertEquals(studentId, useCaseRequest.studentId());
@@ -56,12 +59,15 @@ class CartSuggestionControllerTest {
     @Test
     void suggestMapsApplicationResponseToWebResponse() {
         UUID suggestedProductId = randomUUID();
-        when(getCartSuggestions.execute(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new GetCartSuggestionsResponse(List.of(suggestion(suggestedProductId))));
+        givenSuggestions(suggestion(suggestedProductId));
 
-        ResponseEntity<List<CartSuggestionResponseDTO>> response = controller.suggest(
-                new CartSuggestionRequestDTO(randomUUID(), randomUUID(), List.of(), 2)
-        );
+        ResponseEntity<List<CartSuggestionResponseDTO>> response =
+                whenRequestingSuggestions(new CartSuggestionRequestDTO(
+                        randomUUID(),
+                        randomUUID(),
+                        List.of(),
+                        2
+                ));
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(suggestedProductId, response.getBody().get(0).productId());
@@ -73,19 +79,37 @@ class CartSuggestionControllerTest {
     void suggestUsesEmptySetWhenRequestItemsAreNull() {
         UUID studentId = randomUUID();
         UUID buffetId = randomUUID();
-        when(getCartSuggestions.execute(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new GetCartSuggestionsResponse(List.of()));
+        givenNoSuggestions();
 
-        ResponseEntity<List<CartSuggestionResponseDTO>> response = controller.suggest(
-                new CartSuggestionRequestDTO(studentId, buffetId, null, null)
-        );
+        ResponseEntity<List<CartSuggestionResponseDTO>> response =
+                whenRequestingSuggestions(new CartSuggestionRequestDTO(
+                        studentId,
+                        buffetId,
+                        null,
+                        null
+                ));
 
         assertEquals(List.of(), response.getBody());
+
         GetCartSuggestionsRequest useCaseRequest = capturedRequest();
         assertEquals(studentId, useCaseRequest.studentId());
         assertEquals(buffetId, useCaseRequest.buffetId());
         assertEquals(java.util.Set.of(), useCaseRequest.cartProductIds());
         assertEquals(null, useCaseRequest.limit());
+    }
+
+    private void givenNoSuggestions() {
+        givenSuggestions();
+    }
+
+    private void givenSuggestions(GetCartSuggestionsResponse.Suggestion... suggestions) {
+        when(getCartSuggestions.execute(any()))
+                .thenReturn(new GetCartSuggestionsResponse(List.of(suggestions)));
+    }
+
+    private ResponseEntity<List<CartSuggestionResponseDTO>> whenRequestingSuggestions(
+            CartSuggestionRequestDTO request) {
+        return controller.suggest(request);
     }
 
     private GetCartSuggestionsRequest capturedRequest() {

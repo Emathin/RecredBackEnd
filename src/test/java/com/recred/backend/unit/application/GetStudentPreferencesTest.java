@@ -56,14 +56,29 @@ class GetStudentPreferencesTest {
         ParentPreferenceScenario scenario = parentPreferenceScenario();
         givenParentPreferenceScenario(scenario);
 
-        GetStudentPreferencesResponse result =
-                getStudentPreferences.executeByUserId(userRequest(
-                        scenario.parentUserId(),
-                        false,
-                        TipoSugerenciaIA.PREFERENCIA_DETECTADA));
+        GetStudentPreferencesResponse result = whenGettingPreferencesByUser(
+                scenario.parentUserId(),
+                false,
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA);
 
-        assertParentPreferences(result, scenario);
-        assertAcceptedAndSaved(scenario.firstLatest(), scenario.secondLatest());
+        assertEquals(2, result.preferences().size());
+        assertTrue(result.preferences().stream()
+                .allMatch(GetStudentPreferencesResponse.Preference::parentView));
+        assertTrue(result.preferences().stream()
+                .map(GetStudentPreferencesResponse.Preference::suggestionId)
+                .toList()
+                .contains(scenario.firstLatest().getId()));
+        assertTrue(result.preferences().stream()
+                .map(GetStudentPreferencesResponse.Preference::suggestionId)
+                .toList()
+                .contains(scenario.secondLatest().getId()));
+
+        assertEquals(Boolean.TRUE, scenario.firstLatest().getAceptada());
+        assertNotNull(scenario.firstLatest().getRespondidaEn());
+        assertEquals(Boolean.TRUE, scenario.secondLatest().getAceptada());
+        assertNotNull(scenario.secondLatest().getRespondidaEn());
+        verify(sugerenciaIARepository).guardar(scenario.firstLatest());
+        verify(sugerenciaIARepository).guardar(scenario.secondLatest());
         verify(sugerenciaIARepository, never()).guardar(scenario.firstOlder());
     }
 
@@ -72,17 +87,17 @@ class GetStudentPreferencesTest {
         StudentPreferenceScenario scenario = studentPreferenceScenario();
         givenStudentPreferenceScenario(scenario);
 
-        GetStudentPreferencesResponse result =
-                getStudentPreferences.executeByUserId(userRequest(
-                        scenario.userId(),
-                        true,
-                        TipoSugerenciaIA.ALERTA_PRECIO));
+        GetStudentPreferencesResponse result = whenGettingPreferencesByUser(
+                scenario.userId(),
+                true,
+                TipoSugerenciaIA.ALERTA_PRECIO);
 
         assertEquals(1, result.preferences().size());
         assertEquals(scenario.latest().getId(), result.preferences().get(0).suggestionId());
         assertEquals(scenario.alumno().getId(), result.preferences().get(0).studentId());
         assertTrue(!result.preferences().get(0).parentView());
-        assertSeenByStudent(scenario.latest());
+        assertEquals(Boolean.FALSE, scenario.latest().getAceptada());
+        assertNotNull(scenario.latest().getRespondidaEn());
         verify(sugerenciaIARepository).guardar(scenario.latest());
         verify(sugerenciaIARepository, never()).guardar(scenario.older());
     }
@@ -92,16 +107,16 @@ class GetStudentPreferencesTest {
         UUID alumnoId = randomUUID();
         SugerenciaIAEntity first = suggestion(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
         SugerenciaIAEntity second = suggestion(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
-        when(sugerenciaIARepository.findByAlumnoIdAndTipo(
+        givenPreferencesByStudentAndType(
                 alumnoId,
-                TipoSugerenciaIA.PREFERENCIA_DETECTADA))
-                .thenReturn(List.of(first, second));
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA,
+                first,
+                second);
 
-        GetStudentPreferencesResponse result = getStudentPreferences.execute(request(
+        GetStudentPreferencesResponse result = whenGettingStudentPreferences(
                 alumnoId,
                 true,
-                TipoSugerenciaIA.PREFERENCIA_DETECTADA
-        ));
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA);
 
         assertEquals(1, result.preferences().size());
         assertEquals(first.getId(), result.preferences().get(0).suggestionId());
@@ -112,10 +127,9 @@ class GetStudentPreferencesTest {
         UUID alumnoId = randomUUID();
         SugerenciaIAEntity first = suggestion(TipoSugerenciaIA.ALERTA_PRECIO);
         SugerenciaIAEntity second = suggestion(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
-        when(sugerenciaIARepository.findByAlumnoId(alumnoId)).thenReturn(List.of(first, second));
+        givenPreferencesByStudent(alumnoId, first, second);
 
-        GetStudentPreferencesResponse result = getStudentPreferences.execute(
-                request(alumnoId, false, null));
+        GetStudentPreferencesResponse result = whenGettingStudentPreferences(alumnoId, false, null);
 
         assertEquals(2, result.preferences().size());
         assertEquals(first.getId(), result.preferences().get(0).suggestionId());
@@ -125,10 +139,9 @@ class GetStudentPreferencesTest {
     @Test
     void execute_WithOnlyLastAndEmptyPreferences_ShouldReturnEmptyList() {
         UUID alumnoId = randomUUID();
-        when(sugerenciaIARepository.findByAlumnoId(alumnoId)).thenReturn(List.of());
+        givenPreferencesByStudent(alumnoId);
 
-        GetStudentPreferencesResponse result = getStudentPreferences.execute(
-                request(alumnoId, true, null));
+        GetStudentPreferencesResponse result = whenGettingStudentPreferences(alumnoId, true, null);
 
         assertTrue(result.preferences().isEmpty());
     }
@@ -136,17 +149,11 @@ class GetStudentPreferencesTest {
     @Test
     void executeByUserId_WhenParentChildrenHaveNoSuggestions_ShouldReturnEmptyList() {
         UUID parentUserId = randomUUID();
-        Tutor tutor = new Tutor();
-        tutor.setHijos(java.util.Set.of(child("Juan", "Perez")));
-
-        when(tutorRepository.findByUsuarioId(parentUserId)).thenReturn(Optional.of(tutor));
-        when(sugerenciaIARepository.findPendingParentNotificationsByAlumnoId(
-                tutor.getHijos().iterator().next().getId(),
-                null))
-                .thenReturn(List.of());
+        Alumno child = child("Juan", "Perez");
+        givenParentWithChildAndNoPendingSuggestions(parentUserId, child);
 
         GetStudentPreferencesResponse result =
-                getStudentPreferences.executeByUserId(userRequest(parentUserId, false, null));
+                whenGettingPreferencesByUser(parentUserId, false, null);
 
         assertTrue(result.preferences().isEmpty());
     }
@@ -157,16 +164,9 @@ class GetStudentPreferencesTest {
         UUID studentId = randomUUID();
         Alumno alumno = child("Juan", "Perez");
         alumno.setId(studentId);
+        givenStudentUserWithNoPendingSuggestion(userId, alumno);
 
-        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(sugerenciaIARepository.findPendingStudentNotificationsByAlumnoId(
-                studentId,
-                null)).thenReturn(List.of());
-
-        GetStudentPreferencesResponse result =
-                getStudentPreferences.executeByUserId(userRequest(userId, false, null));
+        GetStudentPreferencesResponse result = whenGettingPreferencesByUser(userId, false, null);
 
         assertTrue(result.preferences().isEmpty());
     }
@@ -174,23 +174,75 @@ class GetStudentPreferencesTest {
     @Test
     void executeByUserId_WhenNoTutorOrStudentExists_ShouldThrowException() {
         UUID userId = randomUUID();
-        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.empty());
+        givenNoTutorOrStudentForUser(userId);
 
         assertThrows(IllegalArgumentException.class,
-                () -> getStudentPreferences.executeByUserId(userRequest(userId, false, null)));
+                () -> whenGettingPreferencesByUser(userId, false, null));
     }
 
     @Test
     void executeByUserId_WhenStudentEntityDoesNotExist_ShouldThrowException() {
         UUID userId = randomUUID();
         UUID studentId = randomUUID();
+        givenStudentIdWithoutEntity(userId, studentId);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> whenGettingPreferencesByUser(userId, false, null));
+    }
+
+    private GetStudentPreferencesResponse whenGettingPreferencesByUser(
+            UUID userId,
+            boolean onlyLast,
+            TipoSugerenciaIA type
+    ) {
+        return getStudentPreferences.executeByUserId(userRequest(userId, onlyLast, type));
+    }
+
+    private GetStudentPreferencesResponse whenGettingStudentPreferences(
+            UUID alumnoId,
+            boolean onlyLast,
+            TipoSugerenciaIA type
+    ) {
+        return getStudentPreferences.execute(request(alumnoId, onlyLast, type));
+    }
+
+    private void givenPreferencesByStudentAndType(
+            UUID alumnoId,
+            TipoSugerenciaIA type,
+            SugerenciaIAEntity... suggestions) {
+        when(sugerenciaIARepository.findByAlumnoIdAndTipo(alumnoId, type))
+                .thenReturn(List.of(suggestions));
+    }
+
+    private void givenPreferencesByStudent(UUID alumnoId, SugerenciaIAEntity... suggestions) {
+        when(sugerenciaIARepository.findByAlumnoId(alumnoId)).thenReturn(List.of(suggestions));
+    }
+
+    private void givenParentWithChildAndNoPendingSuggestions(UUID parentUserId, Alumno child) {
+        Tutor tutor = new Tutor();
+        tutor.setHijos(java.util.Set.of(child));
+        when(tutorRepository.findByUsuarioId(parentUserId)).thenReturn(Optional.of(tutor));
+        when(sugerenciaIARepository.findPendingParentNotificationsByAlumnoId(child.getId(), null))
+                .thenReturn(List.of());
+    }
+
+    private void givenStudentUserWithNoPendingSuggestion(UUID userId, Alumno alumno) {
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(alumno.getId()));
+        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
+        when(sugerenciaIARepository.findPendingStudentNotificationsByAlumnoId(alumno.getId(), null))
+                .thenReturn(List.of());
+    }
+
+    private void givenNoTutorOrStudentForUser(UUID userId) {
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.empty());
+    }
+
+    private void givenStudentIdWithoutEntity(UUID userId, UUID studentId) {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
         when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
-
-        assertThrows(IllegalArgumentException.class,
-                () -> getStudentPreferences.executeByUserId(userRequest(userId, false, null)));
     }
 
     private GetStudentPreferencesRequest request(
@@ -237,33 +289,6 @@ class GetStudentPreferencesTest {
                 .thenReturn(List.of(scenario.secondLatest()));
     }
 
-    private void assertParentPreferences(
-            GetStudentPreferencesResponse result,
-            ParentPreferenceScenario scenario) {
-        assertEquals(2, result.preferences().size());
-        assertTrue(result.preferences().stream()
-                .allMatch(GetStudentPreferencesResponse.Preference::parentView));
-        assertContainsSuggestion(result, scenario.firstLatest());
-        assertContainsSuggestion(result, scenario.secondLatest());
-    }
-
-    private void assertContainsSuggestion(
-            GetStudentPreferencesResponse result,
-            SugerenciaIAEntity suggestion) {
-        assertTrue(result.preferences().stream()
-                .map(GetStudentPreferencesResponse.Preference::suggestionId)
-                .toList()
-                .contains(suggestion.getId()));
-    }
-
-    private void assertAcceptedAndSaved(SugerenciaIAEntity... suggestions) {
-        for (SugerenciaIAEntity suggestion : suggestions) {
-            assertEquals(Boolean.TRUE, suggestion.getAceptada());
-            assertNotNull(suggestion.getRespondidaEn());
-            verify(sugerenciaIARepository).guardar(suggestion);
-        }
-    }
-
     private StudentPreferenceScenario studentPreferenceScenario() {
         UUID studentId = randomUUID();
         Alumno alumno = child("Juan", "Perez");
@@ -285,11 +310,6 @@ class GetStudentPreferencesTest {
                 scenario.alumno().getId(),
                 TipoSugerenciaIA.ALERTA_PRECIO))
                 .thenReturn(List.of(scenario.latest(), scenario.older()));
-    }
-
-    private void assertSeenByStudent(SugerenciaIAEntity suggestion) {
-        assertEquals(Boolean.FALSE, suggestion.getAceptada());
-        assertNotNull(suggestion.getRespondidaEn());
     }
 
     private Alumno child(String name, String lastName) {

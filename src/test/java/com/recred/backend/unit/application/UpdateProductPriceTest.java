@@ -48,10 +48,18 @@ class UpdateProductPriceTest {
         BigDecimal newPrice = new BigDecimal("120.00");
         givenProductExists(productId, product);
 
-        updateProductPrice.execute(request(productId, newPrice, buffetId));
+        whenUpdatingPrice(productId, newPrice, buffetId);
 
         verify(productRepository).updatePrice(productId, newPrice);
-        assertPriceChangedEventWasPublished(product, "100.00", newPrice, buffetId);
+
+        ArgumentCaptor<ProductPriceChangedEvent> captor =
+                ArgumentCaptor.forClass(ProductPriceChangedEvent.class);
+        verify(eventPublisher).publish(captor.capture());
+        ProductPriceChangedEvent event = captor.getValue();
+        assertEquals(product, event.producto());
+        assertEquals(new BigDecimal("100.00"), event.oldPrice());
+        assertEquals(newPrice, event.newPrice());
+        assertEquals(buffetId, event.buffetId());
     }
 
     @Test
@@ -60,7 +68,7 @@ class UpdateProductPriceTest {
         Producto product = product(productId, "100.00");
         givenProductExists(productId, product);
 
-        updateProductPrice.execute(request(productId, new BigDecimal("100.00"), null));
+        whenUpdatingPrice(productId, new BigDecimal("100.00"), null);
 
         verify(productRepository, never()).updatePrice(any(), any());
         verify(eventPublisher, never()).publish(any());
@@ -74,7 +82,7 @@ class UpdateProductPriceTest {
         BigDecimal newPrice = new BigDecimal("120.00");
         givenProductExists(productId, product);
 
-        updateProductPrice.execute(request(productId, newPrice, null));
+        whenUpdatingPrice(productId, newPrice, null);
 
         verify(productRepository).updatePrice(productId, newPrice);
     }
@@ -83,14 +91,10 @@ class UpdateProductPriceTest {
     void rejectNullOrNonPositivePrices() {
         UUID productId = randomUUID();
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> updateProductPrice.execute(request(productId, BigDecimal.ZERO, null))
-        );
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> updateProductPrice.execute(request(productId, null, null))
-        );
+        assertThrows(IllegalArgumentException.class,
+                () -> whenUpdatingPrice(productId, BigDecimal.ZERO, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> whenUpdatingPrice(productId, null, null));
     }
 
     private UpdateProductPriceRequest request(
@@ -101,24 +105,12 @@ class UpdateProductPriceTest {
         return new UpdateProductPriceRequest(productId, newPrice, buffetId);
     }
 
-    private void givenProductExists(UUID productId, Producto product) {
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+    private void whenUpdatingPrice(UUID productId, BigDecimal newPrice, UUID buffetId) {
+        updateProductPrice.execute(request(productId, newPrice, buffetId));
     }
 
-    private void assertPriceChangedEventWasPublished(
-            Producto product,
-            String oldPrice,
-            BigDecimal newPrice,
-            UUID buffetId) {
-        ArgumentCaptor<ProductPriceChangedEvent> captor =
-                ArgumentCaptor.forClass(ProductPriceChangedEvent.class);
-        verify(eventPublisher).publish(captor.capture());
-
-        ProductPriceChangedEvent event = captor.getValue();
-        assertEquals(product, event.producto());
-        assertEquals(new BigDecimal(oldPrice), event.oldPrice());
-        assertEquals(newPrice, event.newPrice());
-        assertEquals(buffetId, event.buffetId());
+    private void givenProductExists(UUID productId, Producto product) {
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
     }
 
     private Producto product(UUID productId, String price) {
