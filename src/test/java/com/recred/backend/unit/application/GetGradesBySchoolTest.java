@@ -41,21 +41,11 @@ class GetGradesBySchoolTest {
         Grado firstGrade = grade("1", "A");
         Grado secondGrade = grade("2", "B");
 
-        when(schoolRepository.existsActiveById(schoolId)).thenReturn(true);
-        when(gradeRepository.findAllActiveByColegioId(schoolId))
-                .thenReturn(List.of(firstGrade, secondGrade));
+        givenSchoolExists(schoolId);
+        givenActiveGradesForSchool(schoolId, firstGrade, secondGrade);
 
-        GetGradesBySchoolResponse result = getGradesBySchool.execute(request(schoolId));
+        GetGradesBySchoolResponse result = whenGettingGrades(schoolId);
 
-        assertGrades(result, firstGrade, secondGrade);
-        verify(schoolRepository).existsActiveById(schoolId);
-        verify(gradeRepository).findAllActiveByColegioId(schoolId);
-    }
-
-    private void assertGrades(
-            GetGradesBySchoolResponse result,
-            Grado firstGrade,
-            Grado secondGrade) {
         assertEquals(2, result.grades().size());
         assertEquals(firstGrade.getId(), result.grades().get(0).id());
         assertEquals("1", result.grades().get(0).anio());
@@ -63,24 +53,40 @@ class GetGradesBySchoolTest {
         assertEquals(secondGrade.getId(), result.grades().get(1).id());
         assertEquals("2", result.grades().get(1).anio());
         assertEquals("B", result.grades().get(1).division());
+        verify(schoolRepository).existsActiveById(schoolId);
+        verify(gradeRepository).findAllActiveByColegioId(schoolId);
     }
 
     @Test
     void execute_WhenSchoolDoesNotExist_ThrowsException() {
         UUID schoolId = randomUUID();
 
-        when(schoolRepository.existsActiveById(schoolId)).thenReturn(false);
+        givenSchoolDoesNotExist(schoolId);
 
-        assertThrows(
-                SchoolNotFoundException.class,
-                () -> getGradesBySchool.execute(request(schoolId))
-        );
+        assertThrows(SchoolNotFoundException.class, () -> whenGettingGrades(schoolId));
         verify(schoolRepository).existsActiveById(schoolId);
         verifyNoInteractions(gradeRepository);
     }
 
     private GetGradesBySchoolRequest request(UUID schoolId) {
         return new GetGradesBySchoolRequest(schoolId);
+    }
+
+    private void givenSchoolExists(UUID schoolId) {
+        when(schoolRepository.existsActiveById(schoolId)).thenReturn(true);
+    }
+
+    private void givenSchoolDoesNotExist(UUID schoolId) {
+        when(schoolRepository.existsActiveById(schoolId)).thenReturn(false);
+    }
+
+    private void givenActiveGradesForSchool(UUID schoolId, Grado... grades) {
+        when(gradeRepository.findAllActiveByColegioId(schoolId))
+                .thenReturn(List.of(grades));
+    }
+
+    private GetGradesBySchoolResponse whenGettingGrades(UUID schoolId) {
+        return getGradesBySchool.execute(request(schoolId));
     }
 
     private Grado grade(String year, String division) {

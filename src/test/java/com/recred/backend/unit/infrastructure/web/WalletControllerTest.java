@@ -4,7 +4,9 @@ import com.recred.backend.application.GetStudentWalletSummary;
 import com.recred.backend.application.GetStudentWalletSummaryRequest;
 import com.recred.backend.application.GetStudentWalletSummaryResponse;
 import com.recred.backend.application.LoadBalanceToChild;
+import com.recred.backend.application.LoadBalanceToChildRequest;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
+import com.recred.backend.application.TransferBalanceBetweenChildrenRequest;
 import com.recred.backend.infrastructure.web.WalletController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,12 +21,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static java.util.UUID.randomUUID;
@@ -38,6 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ExtendWith(MockitoExtension.class)
 class WalletControllerTest {
+
+    private static final String COGNITO_SUBJECT = "cognito-sub";
 
     private MockMvc mockMvc;
 
@@ -65,18 +71,11 @@ class WalletControllerTest {
         UUID studentId = randomUUID();
         BigDecimal amount = new BigDecimal("100.00");
 
-        String requestBody = String.format(
-                "{\"studentId\":\"%s\",\"amount\":%s}", 
-                studentId, amount
-        );
+        ResultActions result = whenLoadingBalance(studentId, amount);
 
-        mockMvc.perform(post("/api/v1/wallets/load")
-                        .principal(authentication())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isOk());
-
-        verify(loadBalanceToChild).execute(new com.recred.backend.application.LoadBalanceToChildRequest("cognito-sub", studentId, amount));
+        result.andExpect(status().isOk());
+        verify(loadBalanceToChild).execute(
+                new LoadBalanceToChildRequest(COGNITO_SUBJECT, studentId, amount));
     }
 
     @Test
@@ -85,55 +84,27 @@ class WalletControllerTest {
         UUID toId = randomUUID();
         BigDecimal amount = new BigDecimal("50.00");
 
-        String requestBody = String.format(
-                "{\"fromStudentId\":\"%s\",\"toStudentId\":\"%s\",\"amount\":%s}",
-                fromId, toId, amount
-        );
+        ResultActions result = whenTransferringBalance(fromId, toId, amount);
 
-        mockMvc.perform(post("/api/v1/wallets/transfer")
-                        .principal(authentication())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isOk());
-
-        verify(transferBalanceBetweenChildren).execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest("cognito-sub", fromId, toId, amount));
+        result.andExpect(status().isOk());
+        verify(transferBalanceBetweenChildren).execute(
+                new TransferBalanceBetweenChildrenRequest(COGNITO_SUBJECT, fromId, toId, amount));
     }
 
     @Test
     void getStudentWalletSummaryReturns200AndDelegatesToUseCase() throws Exception {
         UUID studentId = randomUUID();
-        GetStudentWalletSummaryRequest request = new GetStudentWalletSummaryRequest(
-                "cognito-sub",
-                studentId,
-                java.util.Optional.of(LocalDate.of(2026, 6, 1)),
-                java.util.Optional.of(LocalDate.of(2026, 6, 14))
-        );
-        when(getStudentWalletSummary.execute(request)).thenReturn(new GetStudentWalletSummaryResponse(
-                studentId,
-                new BigDecimal("1250.00"),
-                LocalDate.of(2026, 6, 1),
-                LocalDate.of(2026, 6, 14),
-                new BigDecimal("3000.00"),
-                new BigDecimal("1750.00"),
-                new BigDecimal("1250.00"),
-                8,
-                List.of(),
-                List.of(),
-                List.of()
-        ));
+        givenWalletSummary(studentId);
 
-        mockMvc.perform(get("/api/v1/wallets/students/{studentId}/summary", studentId)
-                        .principal(authentication())
-                        .param("desde", "2026-06-01")
-                        .param("hasta", "2026-06-14"))
-                .andExpect(status().isOk())
+        ResultActions result = whenGettingWalletSummary(studentId);
+
+        result.andExpect(status().isOk())
                 .andExpect(jsonPath("$.alumnoId").value(studentId.toString()))
                 .andExpect(jsonPath("$.saldoActual").value(1250.00))
                 .andExpect(jsonPath("$.periodo.desde").value("2026-06-01"))
                 .andExpect(jsonPath("$.periodo.hasta").value("2026-06-14"))
                 .andExpect(jsonPath("$.cantidadCompras").value(8));
-
-        verify(getStudentWalletSummary).execute(request);
+        verify(getStudentWalletSummary).execute(summaryRequest(studentId));
     }
 
     @Test
@@ -162,10 +133,82 @@ class WalletControllerTest {
                 () -> walletController.transferBalance(request, authentication));
     }
 
+    private void givenWalletSummary(UUID studentId) {
+        when(getStudentWalletSummary.execute(summaryRequest(studentId)))
+                .thenReturn(summaryResponse(studentId));
+    }
+
+    private ResultActions whenLoadingBalance(UUID studentId, BigDecimal amount) throws Exception {
+        return postJson("/api/v1/wallets/load", loadBalanceBody(studentId, amount));
+    }
+
+    private ResultActions whenTransferringBalance(
+            UUID fromId,
+            UUID toId,
+            BigDecimal amount) throws Exception {
+        return postJson("/api/v1/wallets/transfer", transferBalanceBody(fromId, toId, amount));
+    }
+
+    private ResultActions whenGettingWalletSummary(UUID studentId) throws Exception {
+        return mockMvc.perform(get("/api/v1/wallets/students/{studentId}/summary", studentId)
+                .principal(authentication())
+                .param("desde", "2026-06-01")
+                .param("hasta", "2026-06-14"));
+    }
+
+    private ResultActions postJson(String path, String requestBody) throws Exception {
+        return mockMvc.perform(post(path)
+                .principal(authentication())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody));
+    }
+
+    private String loadBalanceBody(UUID studentId, BigDecimal amount) {
+        return String.format(
+                "{\"studentId\":\"%s\",\"amount\":%s}",
+                studentId,
+                amount
+        );
+    }
+
+    private String transferBalanceBody(UUID fromId, UUID toId, BigDecimal amount) {
+        return String.format(
+                "{\"fromStudentId\":\"%s\",\"toStudentId\":\"%s\",\"amount\":%s}",
+                fromId,
+                toId,
+                amount
+        );
+    }
+
+    private GetStudentWalletSummaryRequest summaryRequest(UUID studentId) {
+        return new GetStudentWalletSummaryRequest(
+                COGNITO_SUBJECT,
+                studentId,
+                Optional.of(LocalDate.of(2026, 6, 1)),
+                Optional.of(LocalDate.of(2026, 6, 14))
+        );
+    }
+
+    private GetStudentWalletSummaryResponse summaryResponse(UUID studentId) {
+        return new GetStudentWalletSummaryResponse(
+                studentId,
+                new BigDecimal("1250.00"),
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 14),
+                new BigDecimal("3000.00"),
+                new BigDecimal("1750.00"),
+                new BigDecimal("1250.00"),
+                8,
+                List.of(),
+                List.of(),
+                List.of()
+        );
+    }
+
     private Authentication authentication() {
         Jwt jwt = Jwt.withTokenValue("token")
                 .header("alg", "none")
-                .subject("cognito-sub")
+                .subject(COGNITO_SUBJECT)
                 .issuedAt(Instant.parse("2026-05-28T10:00:00Z"))
                 .expiresAt(Instant.parse("2026-05-28T11:00:00Z"))
                 .build();

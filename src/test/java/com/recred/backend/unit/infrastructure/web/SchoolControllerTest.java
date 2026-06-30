@@ -48,10 +48,9 @@ class SchoolControllerTest {
     @Test
     void getSchools_ReturnsActiveSchools() {
         UUID schoolId = randomUUID();
-        when(getActiveSchools.execute())
-                .thenReturn(GetActiveSchoolsResponse.fromDomain(List.of(school(schoolId))));
+        givenActiveSchools(school(schoolId));
 
-        ResponseEntity<List<SchoolResponseDTO>> response = schoolController.getSchools();
+        ResponseEntity<List<SchoolResponseDTO>> response = whenGettingSchools();
 
         SchoolResponseDTO school = firstOkBody(response);
         assertEquals(schoolId, school.id());
@@ -64,10 +63,9 @@ class SchoolControllerTest {
         UUID schoolId = randomUUID();
         UUID gradeId = randomUUID();
 
-        when(getGradesBySchool.execute(new GetGradesBySchoolRequest(schoolId)))
-                .thenReturn(GetGradesBySchoolResponse.fromDomain(List.of(grade(gradeId))));
+        givenActiveGradesForSchool(schoolId, grade(gradeId));
 
-        ResponseEntity<List<GradeResponseDTO>> response = schoolController.getGrades(schoolId);
+        ResponseEntity<List<GradeResponseDTO>> response = whenGettingGrades(schoolId);
 
         GradeResponseDTO grade = firstOkBody(response);
         assertEquals(gradeId, grade.id());
@@ -80,9 +78,32 @@ class SchoolControllerTest {
         UUID schoolId = randomUUID();
         SchoolNotFoundException exception = new SchoolNotFoundException(schoolId);
 
-        Map<String, String> response = schoolController.handleSchoolNotFound(exception);
+        Map<String, String> response = whenHandlingSchoolNotFound(exception);
 
         assertEquals("School not found: " + schoolId, response.get("error"));
+    }
+
+    private void givenActiveSchools(Colegio... schools) {
+        when(getActiveSchools.execute())
+                .thenReturn(GetActiveSchoolsResponse.fromDomain(List.of(schools)));
+    }
+
+    private void givenActiveGradesForSchool(UUID schoolId, Grado... grades) {
+        when(getGradesBySchool.execute(new GetGradesBySchoolRequest(schoolId)))
+                .thenReturn(GetGradesBySchoolResponse.fromDomain(List.of(grades)));
+    }
+
+    private ResponseEntity<List<SchoolResponseDTO>> whenGettingSchools() {
+        return schoolController.getSchools();
+    }
+
+    private ResponseEntity<List<GradeResponseDTO>> whenGettingGrades(UUID schoolId) {
+        return schoolController.getGrades(schoolId);
+    }
+
+    private Map<String, String> whenHandlingSchoolNotFound(
+            SchoolNotFoundException exception) {
+        return schoolController.handleSchoolNotFound(exception);
     }
 
     private Colegio school(UUID schoolId) {

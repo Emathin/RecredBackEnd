@@ -64,9 +64,14 @@ class GetCartSuggestionsTest {
         RankingScenario scenario = rankingScenario();
         givenRankingSignals(scenario);
 
-        GetCartSuggestionsResponse result = getCartSuggestions.execute(rankingRequest(scenario));
+        GetCartSuggestionsResponse result = whenRankingSuggestionsAreRequested(scenario);
 
-        assertRankingOrder(result, scenario);
+        assertEquals(scenario.cartComplement().getId(), result.suggestions().get(0).productId());
+        assertEquals("STUDENT_CART_AFFINITY", result.suggestions().get(0).source());
+        assertEquals(scenario.detectedPreference().getId(), result.suggestions().get(1).productId());
+        assertEquals("DETECTED_PREFERENCE", result.suggestions().get(1).source());
+        assertEquals(scenario.buffetComplement().getId(), result.suggestions().get(2).productId());
+        assertEquals("BUFFET_CART_AFFINITY", result.suggestions().get(2).source());
     }
 
     @Test
@@ -81,12 +86,11 @@ class GetCartSuggestionsTest {
         givenBuffetAffinities(buffetId, Set.of(inCart.getId()));
         givenDetectedPreferences(alumnoId);
 
-        GetCartSuggestionsResponse result = getCartSuggestions.execute(request(
+        GetCartSuggestionsResponse result = whenSuggestionsAreRequested(
                 alumnoId,
                 buffetId,
                 Set.of(inCart.getId()),
-                5
-        ));
+                5);
 
         assertTrue(result.suggestions().isEmpty());
     }
@@ -107,7 +111,8 @@ class GetCartSuggestionsTest {
                 purchase(alumnoId, noStock),
                 purchase(alumnoId, unknownStock));
 
-        GetCartSuggestionsResponse result = execute(alumnoId, buffetId, Set.of(), 5);
+        GetCartSuggestionsResponse result =
+                whenSuggestionsAreRequested(alumnoId, buffetId, Set.of(), 5);
 
         assertTrue(result.suggestions().isEmpty());
     }
@@ -118,12 +123,11 @@ class GetCartSuggestionsTest {
         givenStudentDoesNotExist(alumnoId);
 
         assertThrows(RuntimeException.class,
-                () -> getCartSuggestions.execute(request(
+                () -> whenSuggestionsAreRequested(
                         alumnoId,
                         randomUUID(),
                         Set.of(),
-                        3)));
-
+                        DEFAULT_LIMIT));
         verifyNoInteractions(productRepository, purchaseRepository, sugerenciaIARepository);
     }
 
@@ -134,12 +138,11 @@ class GetCartSuggestionsTest {
         givenStudentExists(alumnoId, student(alumnoId));
         givenAvailableProducts(buffetId);
 
-        GetCartSuggestionsResponse result = getCartSuggestions.execute(request(
+        GetCartSuggestionsResponse result = whenSuggestionsAreRequested(
                 alumnoId,
                 buffetId,
                 Set.of(),
-                3
-        ));
+                3);
 
         assertTrue(result.suggestions().isEmpty());
         verifyNoInteractions(purchaseRepository, sugerenciaIARepository);
@@ -157,10 +160,12 @@ class GetCartSuggestionsTest {
         givenBaseScenario(alumnoId, buffetId, alumno, favorite);
         givenNullOptionalSignals(alumnoId, buffetId);
 
-        GetCartSuggestionsResponse result = getCartSuggestions.execute(
-                request(alumnoId, buffetId, null, null));
+        GetCartSuggestionsResponse result =
+                whenSuggestionsAreRequested(alumnoId, buffetId, null, null);
 
-        assertSuggestion(result, 0, favorite, "FAVORITE");
+        assertTrue(result.suggestions().size() > 0);
+        assertEquals(favorite.getId(), result.suggestions().get(0).productId());
+        assertEquals("FAVORITE", result.suggestions().get(0).source());
         assertEquals("Esta entre los favoritos del alumno", result.suggestions().get(0).reason());
     }
 
@@ -177,9 +182,12 @@ class GetCartSuggestionsTest {
                 List.of(frequent),
                 purchase(alumnoId, frequent, yesterday));
 
-        GetCartSuggestionsResponse result = execute(alumnoId, buffetId, Set.of(), 0);
+        GetCartSuggestionsResponse result =
+                whenSuggestionsAreRequested(alumnoId, buffetId, Set.of(), 0);
 
-        assertSuggestion(result, 0, frequent, "PURCHASE_HISTORY");
+        assertTrue(result.suggestions().size() > 0);
+        assertEquals(frequent.getId(), result.suggestions().get(0).productId());
+        assertEquals("PURCHASE_HISTORY", result.suggestions().get(0).source());
         assertEquals("El alumno lo compra con frecuencia", result.suggestions().get(0).reason());
     }
 
@@ -194,9 +202,12 @@ class GetCartSuggestionsTest {
                 List.of(product),
                 purchase(alumnoId, product, LocalDateTime.now()));
 
-        GetCartSuggestionsResponse result = execute(alumnoId, buffetId, Set.of(), 1);
+        GetCartSuggestionsResponse result =
+                whenSuggestionsAreRequested(alumnoId, buffetId, Set.of(), 1);
 
-        assertSuggestion(result, 0, product, "DAY_PATTERN");
+        assertTrue(result.suggestions().size() > 0);
+        assertEquals(product.getId(), result.suggestions().get(0).productId());
+        assertEquals("DAY_PATTERN", result.suggestions().get(0).source());
         assertEquals("Suele comprarse en dias como hoy", result.suggestions().get(0).reason());
     }
 
@@ -212,7 +223,7 @@ class GetCartSuggestionsTest {
                 buffetId,
                 productWithoutId);
 
-        GetCartSuggestionsResponse result = executeDefault(alumnoId, buffetId);
+        GetCartSuggestionsResponse result = whenDefaultSuggestionsAreRequested(alumnoId, buffetId);
 
         assertTrue(result.suggestions().isEmpty());
     }
@@ -234,10 +245,12 @@ class GetCartSuggestionsTest {
         givenBuffetAffinities(buffetId, Set.of());
         givenDetectedPreferences(alumnoId);
 
-        GetCartSuggestionsResponse result = getCartSuggestions.execute(
-                request(alumnoId, buffetId, Set.of(), 3));
+        GetCartSuggestionsResponse result =
+                whenSuggestionsAreRequested(alumnoId, buffetId, Set.of(), 3);
 
-        assertSuggestion(result, 0, complement, "STUDENT_CART_AFFINITY");
+        assertTrue(result.suggestions().size() > 0);
+        assertEquals(complement.getId(), result.suggestions().get(0).productId());
+        assertEquals("STUDENT_CART_AFFINITY", result.suggestions().get(0).source());
         assertEquals(20, result.suggestions().get(0).score());
     }
 
@@ -258,10 +271,12 @@ class GetCartSuggestionsTest {
         givenBuffetAffinities(buffetId, Set.of());
         givenDetectedPreferences(alumnoId);
 
-        GetCartSuggestionsResponse result = getCartSuggestions.execute(
-                request(alumnoId, buffetId, Set.of(), 3));
+        GetCartSuggestionsResponse result =
+                whenSuggestionsAreRequested(alumnoId, buffetId, Set.of(), 3);
 
-        assertSuggestion(result, 0, complement, "STUDENT_CART_AFFINITY");
+        assertTrue(result.suggestions().size() > 0);
+        assertEquals(complement.getId(), result.suggestions().get(0).productId());
+        assertEquals("STUDENT_CART_AFFINITY", result.suggestions().get(0).source());
         assertEquals(60, result.suggestions().get(0).score());
     }
 
@@ -281,9 +296,11 @@ class GetCartSuggestionsTest {
                 List.of(blocked, frequent),
                 purchase(alumnoId, frequent, null));
 
-        GetCartSuggestionsResponse result = executeDefault(alumnoId, buffetId);
+        GetCartSuggestionsResponse result = whenDefaultSuggestionsAreRequested(alumnoId, buffetId);
 
-        assertSuggestion(result, 0, frequent, "PURCHASE_HISTORY");
+        assertTrue(result.suggestions().size() > 0);
+        assertEquals(frequent.getId(), result.suggestions().get(0).productId());
+        assertEquals("PURCHASE_HISTORY", result.suggestions().get(0).source());
     }
 
     @Test
@@ -297,7 +314,7 @@ class GetCartSuggestionsTest {
                 buffetId,
                 withoutSignals);
 
-        GetCartSuggestionsResponse result = executeDefault(alumnoId, buffetId);
+        GetCartSuggestionsResponse result = whenDefaultSuggestionsAreRequested(alumnoId, buffetId);
 
         assertTrue(result.suggestions().isEmpty());
     }
@@ -317,10 +334,13 @@ class GetCartSuggestionsTest {
                 alumno,
                 List.of(banana, apple));
 
-        GetCartSuggestionsResponse result = executeDefault(alumnoId, buffetId);
+        GetCartSuggestionsResponse result = whenDefaultSuggestionsAreRequested(alumnoId, buffetId);
 
-        assertSuggestion(result, 0, apple, "FAVORITE");
-        assertSuggestion(result, 1, banana, "FAVORITE");
+        assertTrue(result.suggestions().size() > 1);
+        assertEquals(apple.getId(), result.suggestions().get(0).productId());
+        assertEquals("FAVORITE", result.suggestions().get(0).source());
+        assertEquals(banana.getId(), result.suggestions().get(1).productId());
+        assertEquals("FAVORITE", result.suggestions().get(1).source());
     }
 
     @Test
@@ -339,9 +359,11 @@ class GetCartSuggestionsTest {
                 alumno,
                 List.of(duplicated, duplicatedCopy));
 
-        GetCartSuggestionsResponse result = executeDefault(alumnoId, buffetId);
+        GetCartSuggestionsResponse result = whenDefaultSuggestionsAreRequested(alumnoId, buffetId);
 
-        assertSuggestion(result, 0, duplicated, "FAVORITE");
+        assertTrue(result.suggestions().size() > 0);
+        assertEquals(duplicated.getId(), result.suggestions().get(0).productId());
+        assertEquals("FAVORITE", result.suggestions().get(0).source());
     }
 
     private GetCartSuggestionsRequest request(
@@ -353,16 +375,23 @@ class GetCartSuggestionsTest {
         return new GetCartSuggestionsRequest(alumnoId, buffetId, cartProductIds, limit);
     }
 
-    private GetCartSuggestionsResponse executeDefault(UUID alumnoId, UUID buffetId) {
-        return execute(alumnoId, buffetId, Set.of(), DEFAULT_LIMIT);
+    private GetCartSuggestionsResponse whenDefaultSuggestionsAreRequested(
+            UUID alumnoId,
+            UUID buffetId) {
+        return whenSuggestionsAreRequested(alumnoId, buffetId, Set.of(), DEFAULT_LIMIT);
     }
 
-    private GetCartSuggestionsResponse execute(
+    private GetCartSuggestionsResponse whenSuggestionsAreRequested(
             UUID alumnoId,
             UUID buffetId,
             Set<UUID> cartProductIds,
             Integer limit) {
         return getCartSuggestions.execute(request(alumnoId, buffetId, cartProductIds, limit));
+    }
+
+    private GetCartSuggestionsResponse whenRankingSuggestionsAreRequested(
+            RankingScenario scenario) {
+        return getCartSuggestions.execute(rankingRequest(scenario));
     }
 
     private RankingScenario rankingScenario() {
@@ -410,14 +439,6 @@ class GetCartSuggestionsTest {
 
     private GetCartSuggestionsRequest rankingRequest(RankingScenario scenario) {
         return request(scenario.alumnoId(), scenario.buffetId(), scenario.cartIds(), 5);
-    }
-
-    private void assertRankingOrder(
-            GetCartSuggestionsResponse result,
-            RankingScenario scenario) {
-        assertSuggestion(result, 0, scenario.cartComplement(), "STUDENT_CART_AFFINITY");
-        assertSuggestion(result, 1, scenario.detectedPreference(), "DETECTED_PREFERENCE");
-        assertSuggestion(result, 2, scenario.buffetComplement(), "BUFFET_CART_AFFINITY");
     }
 
     private void givenStudentExists(UUID alumnoId, Alumno alumno) {
@@ -522,16 +543,6 @@ class GetCartSuggestionsTest {
                 .thenReturn(null);
         when(purchaseRepository.findBuffetCartAffinities(buffetId, Set.of())).thenReturn(null);
         givenDetectedPreferences(alumnoId);
-    }
-
-    private void assertSuggestion(
-            GetCartSuggestionsResponse result,
-            int index,
-            Producto product,
-            String source) {
-        assertTrue(result.suggestions().size() > index);
-        assertEquals(product.getId(), result.suggestions().get(index).productId());
-        assertEquals(source, result.suggestions().get(index).source());
     }
 
     private Alumno student(UUID alumnoId) {

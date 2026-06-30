@@ -126,41 +126,40 @@ class PurchaseSuggestControllerTest {
     }
 
     @Test
-    void testNotification_CuandoExiste_DeberiaRetornar200YNotification() throws Exception {
+    void testNotification_WhenExists_ShouldReturn200AndNotification() throws Exception {
         givenPurchaseSuggestionNotification();
 
-        postTestNotification(requestWithoutSuggestion())
-                .andExpect(status().isOk())
+        ResultActions result = whenPostingTestNotification(requestWithoutSuggestion());
+
+        result.andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(usuarioId.toString()))
                 .andExpect(jsonPath("$.data.type").value("PURCHASE_SUGGESTION"));
     }
 
     @Test
-    void buySuggestion_DeberiaProcesarCompraAnticipada() throws Exception {
+    void buySuggestion_ShouldProcessAdvancePurchase() throws Exception {
         givenSuggestionCanBePurchasedBy(RolUsuario.PADRE);
 
-        postBuySuggestion(requestWithSuggestion())
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.orderId").exists());
+        ResultActions result = whenPostingBuySuggestion(requestWithSuggestion());
 
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").exists());
         verify(respondToAISuggestion).execute(
                 new RespondToAISuggestionRequest(sugerenciaId, true));
     }
 
     @Test
-    void testNotification_CuandoNoHayNotificationYUsaAutenticacion_DeberiaRetornar204() {
-        when(notifyPurchaseSuggestions.execute(TEST_COGNITO_ID)).thenReturn(null);
+    void testNotification_WhenNoNotificationAndAuthenticated_ShouldReturn204() {
+        givenNoPurchaseSuggestionNotification();
 
-        ResponseEntity<PushNotification> response = controller.testNotification(
-                auth,
-                requestWithoutUser()
-        );
+        ResponseEntity<PushNotification> response =
+                whenTestingNotificationWithAuthentication();
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
     }
 
     @Test
-    void testNotification_SinUsuarioAutenticado_DeberiaFallar() {
+    void testNotification_WithoutAuthenticatedUser_ShouldFail() {
         assertThrows(
                 AuthenticationCredentialsNotFoundException.class,
                 () -> controller.testNotification(null, requestWithoutUser())
@@ -168,26 +167,21 @@ class PurchaseSuggestControllerTest {
     }
 
     @Test
-    void buySuggestion_CuandoNoExiste_DeberiaFallar() {
-        when(sugerenciaIARepository.findById(sugerenciaId)).thenReturn(Optional.empty());
+    void buySuggestion_WhenSuggestionDoesNotExist_ShouldFail() {
+        givenSuggestionDoesNotExist();
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                controller.buySuggestion(auth, requestWithOnlySuggestion())
-        );
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> whenBuyingSuggestion());
 
         assertEquals("Sugerencia no encontrada", exception.getMessage());
     }
 
     @Test
-    void buySuggestion_CuandoUsuarioEsAlumnoYHayTutor_DeberiaCrearCompra() {
+    void buySuggestion_WhenUserIsStudentAndTutorExists_ShouldCreatePurchase() {
         Tutor tutor = tutor();
         givenSuggestionCanBePurchasedBy(RolUsuario.ALUMNO);
-        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(List.of(tutor));
+        givenTutorForStudent(tutor);
 
-        ResponseEntity<AdvancePurchaseResponse> result = controller.buySuggestion(
-                auth,
-                requestWithOnlySuggestion()
-        );
+        ResponseEntity<AdvancePurchaseResponse> result = whenBuyingSuggestion();
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         verify(createAdvancePurchase).execute(any(CreateAdvancePurchaseRequest.class), anyString());
@@ -204,6 +198,10 @@ class PurchaseSuggestControllerTest {
         when(notifyPurchaseSuggestions.execute(anyString())).thenReturn(notification);
     }
 
+    private void givenNoPurchaseSuggestionNotification() {
+        when(notifyPurchaseSuggestions.execute(TEST_COGNITO_ID)).thenReturn(null);
+    }
+
     private void givenSuggestionCanBePurchasedBy(RolUsuario rol) {
         when(sugerenciaIARepository.findById(sugerenciaId))
                 .thenReturn(Optional.of(sugerenciaEntity()));
@@ -211,6 +209,32 @@ class PurchaseSuggestControllerTest {
                 .thenReturn(usuario(rol));
         when(createAdvancePurchase.execute(any(CreateAdvancePurchaseRequest.class), anyString()))
                 .thenReturn(advancePurchaseResponse());
+    }
+
+    private void givenSuggestionDoesNotExist() {
+        when(sugerenciaIARepository.findById(sugerenciaId)).thenReturn(Optional.empty());
+    }
+
+    private void givenTutorForStudent(Tutor tutor) {
+        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(List.of(tutor));
+    }
+
+    private ResultActions whenPostingTestNotification(TestSuggestionRequest request)
+            throws Exception {
+        return postTestNotification(request);
+    }
+
+    private ResultActions whenPostingBuySuggestion(TestSuggestionRequest request)
+            throws Exception {
+        return postBuySuggestion(request);
+    }
+
+    private ResponseEntity<PushNotification> whenTestingNotificationWithAuthentication() {
+        return controller.testNotification(auth, requestWithoutUser());
+    }
+
+    private ResponseEntity<AdvancePurchaseResponse> whenBuyingSuggestion() {
+        return controller.buySuggestion(auth, requestWithOnlySuggestion());
     }
 
     private ResultActions postTestNotification(TestSuggestionRequest request) throws Exception {
