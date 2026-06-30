@@ -96,23 +96,68 @@ public class CreateAssistantAdvancePurchase {
     @Transactional
     public Purchase execute(UUID studentId, UUID buffetId, Map<Producto, Integer> cart,
                             RecessTime recessTime, LocalDate pickupDate) {
+        requireBuffetId(buffetId);
+        Alumno student = student(studentId);
+        FranjaHoraria pickupSlot = pickupSlot(student, recessTime);
+        LocalDateTime pickupDateTime = pickupDateTime(pickupDate, pickupSlot);
+        validatePurchase(student, buffetId, cart, pickupDate, pickupSlot, pickupDateTime);
+        BigDecimal total = validatedTotal(studentId, cart, pickupDateTime);
+        Billetera wallet = fundedWallet(studentId, total);
+
+        inventoryAvailabilityService.reserve(buffetId, cart);
+        Purchase savedPurchase = savePurchase(
+                advancePurchase(student, cart, buffetId, pickupSlot, pickupDate),
+                wallet,
+                total
+        );
+        registerPurchaseMovement(wallet, student, total);
+        return savedPurchase;
+    }
+
+    private void requireBuffetId(UUID buffetId) {
         if (buffetId == null) {
             throw new IllegalArgumentException("buffetId is required");
         }
+    }
 
-        Alumno student = studentRepository.findById(studentId)
+    private Alumno student(UUID studentId) {
+        return studentRepository.findById(studentId)
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
-        FranjaHoraria pickupSlot = recessTimeSlotResolver.resolve(student, recessTime);
-        LocalDateTime pickupDateTime = LocalDateTime.of(pickupDate, pickupSlot.getHoraInicio());
+    }
 
+    private FranjaHoraria pickupSlot(Alumno student, RecessTime recessTime) {
+        return recessTimeSlotResolver.resolve(student, recessTime);
+    }
+
+    private LocalDateTime pickupDateTime(LocalDate pickupDate, FranjaHoraria pickupSlot) {
+        return LocalDateTime.of(pickupDate, pickupSlot.getHoraInicio());
+    }
+
+    private void validatePurchase(
+            Alumno student,
+            UUID buffetId,
+            Map<Producto, Integer> cart,
+            LocalDate pickupDate,
+            FranjaHoraria pickupSlot,
+            LocalDateTime pickupDateTime
+    ) {
         advancePurchaseRulesService.validate(buffetId, pickupSlot, pickupDate, cart);
         timeValidator.validarCompra(student, cart.keySet(), pickupDateTime);
         healthValidator.validarCompra(student, cart.keySet());
+    }
 
+    private BigDecimal validatedTotal(
+            UUID studentId,
+            Map<Producto, Integer> cart,
+            LocalDateTime pickupDateTime
+    ) {
         BigDecimal total = calculateTotal(cart);
         budgetValidator.validarPresupuesto(studentId, total, totalsByCategory(cart),
                 pickupDateTime);
+        return total;
+    }
 
+    private Billetera fundedWallet(UUID studentId, BigDecimal total) {
         Billetera wallet = walletRepository.findByStudentId(studentId)
                 .orElseThrow(() ->
                         new IllegalStateException("Student wallet not found: " + studentId));
@@ -122,8 +167,16 @@ public class CreateAssistantAdvancePurchase {
                     + studentId);
         }
 
-        inventoryAvailabilityService.reserve(buffetId, cart);
+        return wallet;
+    }
 
+    private Purchase advancePurchase(
+            Alumno student,
+            Map<Producto, Integer> cart,
+            UUID buffetId,
+            FranjaHoraria pickupSlot,
+            LocalDate pickupDate
+    ) {
         Purchase purchase = Purchase.advance(
                 student,
                 cart,
@@ -136,12 +189,13 @@ public class CreateAssistantAdvancePurchase {
         );
         purchase.setDate(LocalDateTime.now(clock));
         purchase.setWithdrawalCode(withdrawalCodeService.generateCode(purchase));
+        return purchase;
+    }
 
+    private Purchase savePurchase(Purchase purchase, Billetera wallet, BigDecimal total) {
         wallet.debit(total);
         walletRepository.save(wallet);
-        Purchase savedPurchase = purchaseRepository.save(purchase);
-        registerPurchaseMovement(wallet, student, total);
-        return savedPurchase;
+        return purchaseRepository.save(purchase);
     }
 
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {

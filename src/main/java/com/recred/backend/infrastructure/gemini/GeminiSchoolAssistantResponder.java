@@ -30,7 +30,7 @@ public class GeminiSchoolAssistantResponder implements SchoolAssistantResponder 
             No inventes saldos, pagos, compras, fechas, eventos, stock ni pedidos.
             Si el usuario pregunta otra cosa, responde exactamente:
             "No puedo ayudarte con ese tema ahora mismo."
-            No ofrezcas hacer pagos, cancelar compras ni modificar datos.
+            No ofrezcas hacer pagos ni modificar datos.
             Responde en espanol rioplatense, claro y breve.
             La respuesta debe tener como maximo 2 oraciones cuando no use vinetas.
             No devuelvas listas largas en una sola linea.

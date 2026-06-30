@@ -9,7 +9,6 @@ import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoExcept
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.ChatSession;
 import com.recred.backend.domain.models.RolChatMensaje;
-import com.recred.backend.domain.models.SchoolAssistantAction;
 import com.recred.backend.domain.models.SchoolAssistantAnswer;
 import com.recred.backend.domain.models.SchoolAssistantCapability;
 import com.recred.backend.domain.models.SchoolAssistantContext;
@@ -17,7 +16,6 @@ import com.recred.backend.domain.models.SchoolAssistantDraft;
 import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
 import com.recred.backend.domain.models.SchoolAssistantRole;
-import com.recred.backend.domain.models.SchoolAssistantSuggestion;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -36,7 +34,6 @@ import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -58,6 +55,7 @@ public class AskSchoolAssistant {
     private final SchoolAssistantAnswerFormatter answerFormatter;
     private final SchoolAssistantRoleCatalog roleCatalog;
     private final SchoolAssistantContextFactory contextFactory;
+    private final SchoolAssistantMessageMetadataMapper metadataMapper;
     private final Map<SchoolAssistantRole, Function<AskSchoolAssistantRequest,
             SchoolAssistantAnswer>> answerByRole;
     private final Clock clock;
@@ -90,6 +88,7 @@ public class AskSchoolAssistant {
         this.fixedTopics = fixedTopics;
         this.answerFormatter = new SchoolAssistantAnswerFormatter();
         this.roleCatalog = new SchoolAssistantRoleCatalog();
+        this.metadataMapper = new SchoolAssistantMessageMetadataMapper();
         this.contextFactory = new SchoolAssistantContextFactory(
                 walletRepository,
                 paymentRepository,
@@ -374,7 +373,7 @@ public class AskSchoolAssistant {
                 session.id(),
                 RolChatMensaje.USUARIO,
                 message,
-                messageMetadata(capabilities),
+                metadataMapper.userMetadata(capabilities),
                 now
         ));
     }
@@ -388,79 +387,8 @@ public class AskSchoolAssistant {
                 answer.sessionId(),
                 RolChatMensaje.ASISTENTE_IA,
                 answer.answer(),
-                answerMetadata(answer, additionalMetadata),
+                metadataMapper.answerMetadata(answer, additionalMetadata),
                 now
         ));
-    }
-
-    private Map<String, Object> messageMetadata(List<SchoolAssistantCapability> capabilities) {
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("capacidadesPermitidas", capabilityNames(capabilities));
-        return metadata;
-    }
-
-    private Map<String, Object> answerMetadata(
-            SchoolAssistantAnswer answer,
-            Map<String, Object> additionalMetadata
-    ) {
-        Map<String, Object> metadata = messageMetadata(answer.capabilitiesOrEmpty());
-        metadata.put("generadoPorIa", answer.generatedByAi());
-        metadata.put("rol", value(answer.roleName()));
-        metadata.put("intencion", value(answer.intentName()));
-        metadata.put("accion", actionMetadata(answer.action()));
-        metadata.put("sugerencias", suggestionsMetadata(answer.suggestionsOrEmpty()));
-        metadata.put("datos", answer.dataOrEmpty());
-        metadata.putAll(additionalMetadata);
-
-        if (answer.model() != null) {
-            metadata.put("modelo", answer.model());
-        }
-
-        return metadata;
-    }
-
-    private List<String> capabilityNames(List<SchoolAssistantCapability> capabilities) {
-        return capabilities.stream()
-                .map(SchoolAssistantCapability::name)
-                .toList();
-    }
-
-    private Map<String, Object> actionMetadata(SchoolAssistantAction action) {
-        if (action == null) {
-            return Map.of();
-        }
-
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("tipo", action.typeName());
-        metadata.put("estado", action.statusName());
-        metadata.put("requiereInput", action.requiresInput());
-        metadata.put("inputsRequeridos", action.requiredInputNames());
-        metadata.put("compraId", value(action.purchaseId()));
-        metadata.put("estadoCompra", value(action.purchaseStatusName()));
-        metadata.put("codigoRetiro", value(action.withdrawalCode()));
-        metadata.put("total", value(action.total()));
-        metadata.put("recreo", value(action.recessName()));
-        metadata.put("datos", action.dataOrEmpty());
-        return metadata;
-    }
-
-    private List<Map<String, Object>> suggestionsMetadata(
-            List<SchoolAssistantSuggestion> suggestions
-    ) {
-        return suggestions.stream()
-                .map(this::suggestionMetadata)
-                .toList();
-    }
-
-    private Map<String, Object> suggestionMetadata(SchoolAssistantSuggestion suggestion) {
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("label", suggestion.label());
-        metadata.put("mensaje", suggestion.message());
-        metadata.put("tipoAccion", suggestion.actionTypeName());
-        return metadata;
-    }
-
-    private String value(Object value) {
-        return value == null ? "sin_datos" : value.toString();
     }
 }

@@ -2,6 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.RecessTime;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -51,6 +52,7 @@ record PendingPurchase(
         java.util.UUID studentId,
         java.util.UUID buffetId,
         List<PurchaseItemRequest> items,
+        Optional<LocalDate> pickupDate,
         Optional<RecessTime> recessTime) {
 }
 

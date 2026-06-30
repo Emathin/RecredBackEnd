@@ -1,11 +1,11 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
+import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.UUID;
 
 public class CancelPresentialPurchase {
 
@@ -48,43 +49,50 @@ public class CancelPresentialPurchase {
     }
 
     @Transactional
-    public void execute(CancelPresentialPurchaseRequest request) {
+    public Purchase execute(CancelPresentialPurchaseRequest request) {
         request.validate();
+        Purchase purchase = purchase(request.purchaseId());
+        requireStudentOwner(purchase, request.studentId());
+        EstadoCompra previousStatus = requirePendingPurchase(purchase);
 
-        Purchase purchase = purchaseRepository.findById(request.purchaseId())
+        validateAdvancePurchaseCancellationWindow(purchase);
+        purchase.cancel();
+        releaseReservationIfNeeded(purchase, previousStatus);
+        processRefund(purchase);
+
+        return purchaseRepository.save(purchase);
+    }
+
+    private Purchase purchase(UUID purchaseId) {
+        return purchaseRepository.findById(purchaseId)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Purchase not found: " + request.purchaseId()));
+                        "Purchase not found: " + purchaseId));
+    }
 
+    private void requireStudentOwner(Purchase purchase, UUID expectedStudentId) {
+        if (expectedStudentId == null) {
+            return;
+        }
+
+        if (!purchase.belongsToStudent(expectedStudentId)) {
+            throw new PurchaseAccessDeniedException(purchase.getId());
+        }
+    }
+
+    private EstadoCompra requirePendingPurchase(Purchase purchase) {
         EstadoCompra previousStatus = purchase.getStatus();
 
-        if (previousStatus != EstadoCompra.PENDIENTE) {
+        if (!purchase.isPending()) {
             throw new InvalidPurchaseStatusTransitionException(
                     previousStatus,
                     EstadoCompra.CANCELADO);
         }
 
-        validateAdvancePurchaseCancellationWindow(purchase);
-
-        purchase.cancel();
-
-        if (purchase.getStudent() == null || purchase.getStudent().getId() == null) {
-            throw new IllegalStateException("Purchase does not have an associated student.");
-        }
-
-        if (shouldReleaseReservation(purchase, previousStatus)) {
-            inventoryAvailabilityService.releaseReservation(
-                    purchase.getBuffetId(),
-                    purchase.getItems(),
-                    purchase.getId());
-        }
-
-        processRefund(purchase);
-
-        purchaseRepository.save(purchase);
+        return previousStatus;
     }
 
     private void processRefund(Purchase purchase) {
-        Billetera wallet = walletRepository.findByStudentId(purchase.getStudent().getId())
+        Billetera wallet = walletRepository.findByStudentId(purchase.requireStudentId())
                 .orElseThrow(() ->
                         new IllegalStateException("Student wallet not found for refund."));
 
@@ -95,7 +103,7 @@ public class CancelPresentialPurchase {
     }
 
     private void validateAdvancePurchaseCancellationWindow(Purchase purchase) {
-        if (!hasScheduledPickup(purchase)) {
+        if (!purchase.hasScheduledPickup()) {
             return;
         }
 
@@ -116,15 +124,15 @@ public class CancelPresentialPurchase {
         }
     }
 
-    private boolean hasScheduledPickup(Purchase purchase) {
-        return purchase.getTipo() == TipoCompra.ANTICIPADA
-                && purchase.getPickupSlotId() != null
-                && purchase.getPickupDate() != null;
-    }
+    private void releaseReservationIfNeeded(Purchase purchase, EstadoCompra previousStatus) {
+        if (!purchase.shouldReleaseReservationAfterCancellationFrom(previousStatus)) {
+            return;
+        }
 
-    private boolean shouldReleaseReservation(Purchase purchase, EstadoCompra previousStatus){
-        return purchase.getTipo() == TipoCompra.ANTICIPADA
-                && previousStatus == EstadoCompra.PENDIENTE;
+        inventoryAvailabilityService.releaseReservation(
+                purchase.getBuffetId(),
+                purchase.getItems(),
+                purchase.getId());
     }
 
     private void registerRefundMovement(Billetera wallet, Purchase purchase) {

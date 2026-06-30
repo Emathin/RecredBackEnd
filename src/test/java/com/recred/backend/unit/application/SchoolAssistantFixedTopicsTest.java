@@ -1,5 +1,6 @@
 package com.recred.backend.unit.application;
 
+import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.SchoolAssistantFixedReply;
 import com.recred.backend.application.SchoolAssistantFixedTopics;
@@ -62,6 +63,9 @@ class SchoolAssistantFixedTopicsTest {
     @Mock
     private CreateAssistantAdvancePurchase createAssistantAdvancePurchase;
 
+    @Mock
+    private CancelPresentialPurchase cancelPresentialPurchase;
+
     private SchoolAssistantFixedTopics fixedTopics;
     private UUID studentId;
     private UUID sessionId;
@@ -73,6 +77,7 @@ class SchoolAssistantFixedTopicsTest {
                 purchaseRepository,
                 productRepository,
                 createAssistantAdvancePurchase,
+                cancelPresentialPurchase,
                 Clock.fixed(Instant.parse("2026-05-27T12:00:00Z"),
                         ZoneId.of("America/Argentina/Buenos_Aires"))
         );
@@ -139,13 +144,14 @@ class SchoolAssistantFixedTopicsTest {
         assertTrue(reply.orElseThrow().answer().contains("\n- 2x Agua"));
         assertTrue(reply.orElseThrow().answer().contains("Total estimado: $1400.00"));
         assertTrue(reply.orElseThrow().answer()
-                .contains("Para terminar, elegi el recreo de retiro:\n- primer recreo"));
+                .contains("Para terminar, elegi el dia de retiro."));
+        assertTrue(reply.orElseThrow().suggestions().isEmpty());
         assertEquals("PENDIENTE", reply.orElseThrow().metadata().get("estadoAccionChatbot"));
         assertEquals(SchoolAssistantActionType.COMPRA_ANTICIPADA,
                 reply.orElseThrow().action().type());
-        assertEquals(SchoolAssistantActionStatus.ESPERANDO_RECREO,
+        assertEquals(SchoolAssistantActionStatus.ESPERANDO_FECHA,
                 reply.orElseThrow().action().status());
-        assertEquals(List.of(SchoolAssistantRequiredInput.RECREO),
+        assertEquals(List.of(SchoolAssistantRequiredInput.FECHA_RETIRO),
                 reply.orElseThrow().action().requiredInputs());
 
         Map<?, ?> action = (Map<?, ?>) reply.orElseThrow()
@@ -159,7 +165,7 @@ class SchoolAssistantFixedTopicsTest {
     }
 
     @Test
-    void confirmationAsksRecessWhenPendingPurchaseHasNoRecess() {
+    void confirmationAsksDateWhenPendingPurchaseHasNoDate() {
         Producto product = product("Yogur", new BigDecimal("900.00"));
 
         Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
@@ -170,29 +176,74 @@ class SchoolAssistantFixedTopicsTest {
 
         assertTrue(reply.isPresent());
         assertTrue(reply.orElseThrow().answer()
-                .contains("Para terminar, elegi el recreo de retiro:\n- primer recreo"));
+                .contains("Para terminar, elegi el dia de retiro."));
+        assertTrue(reply.orElseThrow().suggestions().isEmpty());
         assertEquals("PENDIENTE", reply.orElseThrow().metadata().get("estadoAccionChatbot"));
         verifyNoInteractions(createAssistantAdvancePurchase);
     }
 
     @Test
-    void selectsRecessForPendingPurchase() {
+    void selectsPurchaseDateForPendingPurchase() {
         Producto product = product("Yogur", new BigDecimal("900.00"));
 
         Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
-                "primer recreo",
+                "mañana",
                 studentContext(new BigDecimal("5000.00")),
                 List.of(assistantMessage(pendingMetadata(product.getId(), 1)))
         );
 
         assertTrue(reply.isPresent());
-        assertTrue(reply.orElseThrow().answer().contains("primer recreo"));
+        assertTrue(reply.orElseThrow().answer().contains("28/5/2026"));
+        assertEquals(SchoolAssistantActionStatus.ESPERANDO_RECREO,
+                reply.orElseThrow().action().status());
+        Map<?, ?> action = (Map<?, ?>) reply.orElseThrow()
+                .metadata()
+                .get("accionPendienteChatbot");
+        assertEquals("2026-05-28", action.get("fechaRetiro"));
+    }
+
+    @Test
+    void selectPastPurchaseDateForPendingPurchaseFails() {
+        Producto product = product("Yogur", new BigDecimal("900.00"));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "1/5/2026",
+                studentContext(new BigDecimal("5000.00")),
+                List.of(assistantMessage(pendingMetadata(product.getId(), 1)))
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No puedo programar una compra para una fecha pasada.",
+                reply.orElseThrow().answer());
+        assertEquals(SchoolAssistantActionStatus.FALLIDA,
+                reply.orElseThrow().action().status());
+        verifyNoInteractions(createAssistantAdvancePurchase);
+    }
+
+    @Test
+    void selectsRecessForPendingPurchaseWithDate() {
+        Producto product = product("Yogur", new BigDecimal("900.00"));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "primer recreo",
+                studentContext(new BigDecimal("5000.00")),
+                List.of(assistantMessage(pendingMetadata(
+                        product.getId(),
+                        1,
+                        LocalDate.of(2026, 5, 28),
+                        null
+                )))
+        );
+
+        assertTrue(reply.isPresent());
+        assertTrue(reply.orElseThrow().answer().contains("28/5/2026 en primer recreo"));
         assertEquals(SchoolAssistantActionStatus.ESPERANDO_CONFIRMACION,
                 reply.orElseThrow().action().status());
         assertEquals(RecessTime.FIRST_RECESS, reply.orElseThrow().action().recessTime());
         Map<?, ?> action = (Map<?, ?>) reply.orElseThrow()
                 .metadata()
                 .get("accionPendienteChatbot");
+        assertEquals("2026-05-28", action.get("fechaRetiro"));
         assertEquals("FIRST_RECESS", action.get("recreo"));
     }
 
@@ -211,7 +262,7 @@ class SchoolAssistantFixedTopicsTest {
                 eq(buffetId),
                 argThat(cart -> cart.containsValue(1)),
                 eq(RecessTime.FIRST_RECESS),
-                eq(LocalDate.of(2026, 5, 27))
+                eq(LocalDate.of(2026, 5, 28))
         )).thenReturn(savedPurchase);
 
         Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
@@ -220,30 +271,40 @@ class SchoolAssistantFixedTopicsTest {
                 List.of(assistantMessage(pendingMetadata(
                         product.getId(),
                         1,
+                        LocalDate.of(2026, 5, 28),
                         RecessTime.FIRST_RECESS
                 )))
         );
 
         assertTrue(reply.isPresent());
-        assertTrue(reply.orElseThrow().answer()
-                .contains("Listo, tu compra anticipada quedo creada"));
-        assertTrue(reply.orElseThrow().answer().contains("ABC123"));
-        assertEquals("EJECUTADA", reply.orElseThrow().metadata().get("estadoAccionChatbot"));
+        SchoolAssistantFixedReply answer = reply.orElseThrow();
+        assertTrue(answer.answer().contains("Listo, tu compra anticipada quedo creada"));
+        assertTrue(answer.answer().contains("Fecha de retiro: 28/5/2026"));
+        assertTrue(answer.answer().contains("ABC123"));
+        assertEquals("EJECUTADA", answer.metadata().get("estadoAccionChatbot"));
         assertEquals(SchoolAssistantActionStatus.EJECUTADA,
-                reply.orElseThrow().action().status());
-        assertEquals(savedPurchase.getId(), reply.orElseThrow().action().purchaseId());
-        assertEquals(EstadoCompra.PENDIENTE, reply.orElseThrow().action().purchaseStatus());
-        assertEquals("ABC123", reply.orElseThrow().action().withdrawalCode());
-        assertEquals(RecessTime.FIRST_RECESS, reply.orElseThrow().action().recessTime());
-        assertEquals(savedPurchase.getId().toString(), reply.orElseThrow().metadata().get(
+                answer.action().status());
+        assertEquals(savedPurchase.getId(), answer.action().purchaseId());
+        assertEquals(EstadoCompra.PENDIENTE, answer.action().purchaseStatus());
+        assertEquals("ABC123", answer.action().withdrawalCode());
+        assertEquals(RecessTime.FIRST_RECESS, answer.action().recessTime());
+        assertEquals(savedPurchase.getId().toString(), answer.metadata().get(
                 "compraId"
         ));
+        assertEquals(List.of("Cancelar pedido", "Codigo retiro", "Compra habitual"),
+                answer.suggestions().stream()
+                        .map(suggestion -> suggestion.label())
+                        .toList());
+        assertTrue(answer.suggestions().stream()
+                .anyMatch(suggestion -> suggestion.message().equals("cancelar mi pedido")
+                        && suggestion.actionType()
+                                == SchoolAssistantActionType.CANCELACION_COMPRA));
         verify(createAssistantAdvancePurchase).execute(
                 eq(studentId),
                 eq(buffetId),
                 argThat(cart -> cart.containsKey(product) && cart.containsValue(1)),
                 eq(RecessTime.FIRST_RECESS),
-                eq(LocalDate.of(2026, 5, 27))
+                eq(LocalDate.of(2026, 5, 28))
         );
     }
 
@@ -258,7 +319,7 @@ class SchoolAssistantFixedTopicsTest {
                 eq(buffetId),
                 argThat(cart -> cart.containsValue(1)),
                 eq(RecessTime.FIRST_RECESS),
-                eq(LocalDate.of(2026, 5, 27))
+                eq(LocalDate.of(2026, 5, 28))
         )).thenThrow(new InsufficientBalanceException(technicalMessage));
 
         Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
@@ -267,6 +328,7 @@ class SchoolAssistantFixedTopicsTest {
                 List.of(assistantMessage(pendingMetadata(
                         product.getId(),
                         1,
+                        LocalDate.of(2026, 5, 28),
                         RecessTime.FIRST_RECESS
                 )))
         );
@@ -306,6 +368,33 @@ class SchoolAssistantFixedTopicsTest {
                 .contains("Detecte esta compra como habitual"));
         assertTrue(reply.orElseThrow().answer().contains("1x Barrita"));
         assertEquals("PENDIENTE", reply.orElseThrow().metadata().get("estadoAccionChatbot"));
+    }
+
+    @Test
+    void usualPurchaseWithPastDateFails() {
+        Producto product = product("Barrita", new BigDecimal("650.00"));
+        Purchase firstPurchase = purchase(product, 1, NOW.minusDays(1));
+        Purchase secondPurchase = purchase(product, 1, NOW.minusDays(3));
+
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of(
+                firstPurchase,
+                secondPurchase
+        ));
+        when(productRepository.findActiveById(product.getId())).thenReturn(Optional.of(product));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "comprame lo de siempre 1/5/2026",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("No puedo programar una compra para una fecha pasada.",
+                reply.orElseThrow().answer());
+        assertEquals(SchoolAssistantIntent.BUY_USUAL, reply.orElseThrow().intent());
+        assertEquals(SchoolAssistantActionStatus.FALLIDA,
+                reply.orElseThrow().action().status());
+        verifyNoInteractions(createAssistantAdvancePurchase);
     }
 
     @Test
@@ -647,6 +736,115 @@ class SchoolAssistantFixedTopicsTest {
         assertEquals("CANCELADA", reply.orElseThrow().metadata().get("estadoAccionChatbot"));
         assertEquals(SchoolAssistantActionStatus.CANCELADA,
                 reply.orElseThrow().action().status());
+    }
+
+    @Test
+    void purchaseCancellationMessageWithPendingActionCancelsDraftFirst() {
+        Producto product = product("Yogur", new BigDecimal("900.00"));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "cancelar mi pedido",
+                studentContext(new BigDecimal("5000.00")),
+                List.of(assistantMessage(pendingMetadata(product.getId(), 1)))
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("Listo, descarte esa compra pendiente.", reply.orElseThrow().answer());
+        assertEquals(SchoolAssistantActionType.COMPRA_ANTICIPADA,
+                reply.orElseThrow().action().type());
+        assertEquals(SchoolAssistantActionStatus.CANCELADA,
+                reply.orElseThrow().action().status());
+        verifyNoInteractions(cancelPresentialPurchase);
+    }
+
+    @Test
+    void purchaseCancellationCancelsRecentlyCreatedPurchaseFromConversation() {
+        Producto product = product("Yogur", new BigDecimal("900.00"));
+        UUID purchaseId = UUID.randomUUID();
+        Purchase cancelledPurchase = purchase(product, 1, NOW);
+        cancelledPurchase.setId(purchaseId);
+        cancelledPurchase.setStudent(alumno(studentId));
+        cancelledPurchase.setStatus(EstadoCompra.CANCELADO);
+
+        when(cancelPresentialPurchase.execute(
+                argThat(request -> request.purchaseId().equals(purchaseId)
+                        && request.studentId().equals(studentId))
+        )).thenReturn(cancelledPurchase);
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "cancelar mi compra",
+                studentContext(new BigDecimal("5000.00")),
+                List.of(assistantMessage(createdPurchaseMetadata(purchaseId)))
+        );
+
+        assertTrue(reply.isPresent());
+        SchoolAssistantFixedReply answer = reply.orElseThrow();
+        assertEquals("Listo, cancele tu compra y te devolvi $900.00 en creditos.",
+                answer.answer());
+        assertEquals(SchoolAssistantIntent.CANCEL_PURCHASE, answer.intent());
+        assertEquals(SchoolAssistantActionType.CANCELACION_COMPRA, answer.action().type());
+        assertEquals(SchoolAssistantActionStatus.EJECUTADA, answer.action().status());
+        assertEquals(EstadoCompra.CANCELADO, answer.action().purchaseStatus());
+        assertEquals(purchaseId, answer.action().purchaseId());
+    }
+
+    @Test
+    void purchaseCancellationCancelsOnlyCancelablePurchaseFromHistory() {
+        Producto product = product("Yogur", new BigDecimal("900.00"));
+        UUID purchaseId = UUID.randomUUID();
+        Purchase pendingPurchase = purchase(product, 1, NOW);
+        pendingPurchase.setId(purchaseId);
+        pendingPurchase.setStudent(alumno(studentId));
+        pendingPurchase.setStatus(EstadoCompra.PENDIENTE);
+        Purchase cancelledPurchase = purchase(product, 1, NOW);
+        cancelledPurchase.setId(purchaseId);
+        cancelledPurchase.setStudent(alumno(studentId));
+        cancelledPurchase.setStatus(EstadoCompra.CANCELADO);
+
+        when(purchaseRepository.findHistorialByAlumno(studentId))
+                .thenReturn(List.of(pendingPurchase));
+        when(cancelPresentialPurchase.execute(
+                argThat(request -> request.purchaseId().equals(purchaseId)
+                        && request.studentId().equals(studentId))
+        )).thenReturn(cancelledPurchase);
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "cancelar mi pedido",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals(SchoolAssistantActionType.CANCELACION_COMPRA,
+                reply.orElseThrow().action().type());
+        assertEquals(SchoolAssistantActionStatus.EJECUTADA,
+                reply.orElseThrow().action().status());
+    }
+
+    @Test
+    void purchaseCancellationWithMultipleCancelablePurchasesDoesNotCancelAutomatically() {
+        Producto product = product("Yogur", new BigDecimal("900.00"));
+        Purchase firstPurchase = purchase(product, 1, NOW.minusMinutes(10));
+        firstPurchase.setId(UUID.randomUUID());
+        firstPurchase.setStatus(EstadoCompra.PENDIENTE);
+        Purchase secondPurchase = purchase(product, 2, NOW.minusMinutes(5));
+        secondPurchase.setId(UUID.randomUUID());
+        secondPurchase.setStatus(EstadoCompra.PENDIENTE);
+
+        when(purchaseRepository.findHistorialByAlumno(studentId))
+                .thenReturn(List.of(firstPurchase, secondPurchase));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "cancelar mi pedido",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertTrue(reply.orElseThrow().answer().contains("Tenes mas de una compra pendiente"));
+        assertEquals(SchoolAssistantActionStatus.INFORMATIVA,
+                reply.orElseThrow().action().status());
+        verifyNoInteractions(cancelPresentialPurchase);
     }
 
     @Test
@@ -1011,6 +1209,7 @@ class SchoolAssistantFixedTopicsTest {
                 List.of(assistantMessage(pendingMetadata(
                         productId,
                         1,
+                        LocalDate.of(2026, 5, 28),
                         RecessTime.FIRST_RECESS
                 )))
         );
@@ -1214,7 +1413,14 @@ class SchoolAssistantFixedTopicsTest {
     }
 
     private Map<String, Object> pendingMetadata(UUID productId, int quantity) {
-        return pendingMetadata(productId, quantity, null);
+        return pendingMetadata(productId, quantity, null, null);
+    }
+
+    private Map<String, Object> createdPurchaseMetadata(UUID purchaseId) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("estadoAccionChatbot", "EJECUTADA");
+        metadata.put("compraId", purchaseId.toString());
+        return metadata;
     }
 
     private Map<String, Object> pendingMetadata(
@@ -1222,7 +1428,16 @@ class SchoolAssistantFixedTopicsTest {
             int quantity,
             RecessTime recessTime
     ) {
-        return pendingMetadata(studentId, productId, quantity, recessTime);
+        return pendingMetadata(productId, quantity, null, recessTime);
+    }
+
+    private Map<String, Object> pendingMetadata(
+            UUID productId,
+            int quantity,
+            LocalDate pickupDate,
+            RecessTime recessTime
+    ) {
+        return pendingMetadata(studentId, productId, quantity, pickupDate, recessTime);
     }
 
     private Map<String, Object> pendingMetadata(
@@ -1231,12 +1446,23 @@ class SchoolAssistantFixedTopicsTest {
             int quantity,
             RecessTime recessTime
     ) {
+        return pendingMetadata(ownerStudentId, productId, quantity, null, recessTime);
+    }
+
+    private Map<String, Object> pendingMetadata(
+            UUID ownerStudentId,
+            UUID productId,
+            int quantity,
+            LocalDate pickupDate,
+            RecessTime recessTime
+    ) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("estadoAccionChatbot", "PENDIENTE");
         metadata.put("accionPendienteChatbot", pendingAction(
                 ownerStudentId,
                 productId,
                 quantity,
+                pickupDate,
                 recessTime
         ));
         return metadata;
@@ -1246,12 +1472,15 @@ class SchoolAssistantFixedTopicsTest {
             UUID ownerStudentId,
             UUID productId,
             int quantity,
+            LocalDate pickupDate,
             RecessTime recessTime
     ) {
         Map<String, Object> action = new LinkedHashMap<>();
         action.put("tipo", "COMPRA_RAPIDA");
         action.put("alumnoId", ownerStudentId.toString());
         action.put("buffetId", buffetId.toString());
+        if (pickupDate != null)
+            action.put("fechaRetiro", pickupDate.toString());
         if (recessTime != null)
             action.put("recreo", recessTime.name());
         action.put("items", List.of(pendingItem(productId, quantity)));
