@@ -8,12 +8,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-public class ObtenerHistorialTutor {
+public class GetTutorHistory {
 
     private final PurchaseRepository purchaseRepository;
     private final TutorRepository tutorRepository;
 
-    public ObtenerHistorialTutor(PurchaseRepository purchaseRepository,
+    public GetTutorHistory(PurchaseRepository purchaseRepository,
                                   TutorRepository tutorRepository) {
         this.purchaseRepository = purchaseRepository;
         this.tutorRepository = tutorRepository;

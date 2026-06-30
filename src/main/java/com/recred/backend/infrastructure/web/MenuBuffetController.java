@@ -1,6 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.GenerarMenuBuffet;
+import com.recred.backend.application.GenerateBuffetMenu;
 import com.recred.backend.application.GetBuffetByStudent;
 import com.recred.backend.application.GetBuffetByStudentRequest;
 import org.springframework.http.ResponseEntity;
@@ -18,12 +18,12 @@ import java.util.UUID;
 @RequestMapping("/api/v1/alumnos")
 public class MenuBuffetController {
 
-    private final GenerarMenuBuffet generarMenuBuffet;
+    private final GenerateBuffetMenu generateBuffetMenu;
     private final GetBuffetByStudent getBuffetByStudent;
 
-    public MenuBuffetController(GenerarMenuBuffet generarMenuBuffet,
+    public MenuBuffetController(GenerateBuffetMenu generateBuffetMenu,
             GetBuffetByStudent getBuffetByStudent) {
-        this.generarMenuBuffet = generarMenuBuffet;
+        this.generateBuffetMenu = generateBuffetMenu;
         this.getBuffetByStudent = getBuffetByStudent;
     }
 
@@ -37,7 +37,7 @@ public class MenuBuffetController {
                 ? fechaHoraConsulta
                 : LocalDateTime.now();
 
-        List<MenuProductoDTO> menu = generarMenuBuffet.execute(
+        List<MenuProductoDTO> menu = generateBuffetMenu.execute(
                 alumnoId,
                 buffetId,
                 momentoEvaluacion

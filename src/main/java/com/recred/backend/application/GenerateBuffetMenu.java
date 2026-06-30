@@ -28,7 +28,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
 
-public class GenerarMenuBuffet {
+public class GenerateBuffetMenu {
 
     private static final ZoneId ZONA_LOCAL = ZoneId.of("America/Argentina/Buenos_Aires");
     private static final List<EstadoCompra> ACTIVE_ADVANCE_STATUSES = List.of(
@@ -43,7 +43,7 @@ public class GenerarMenuBuffet {
     private final PurchaseRepository purchaseRepository;
     private final CalculadorPeriodoPresupuesto calculadorPeriodo;
 
-    public GenerarMenuBuffet(AlumnoRepository alumnoRepository,
+    public GenerateBuffetMenu(AlumnoRepository alumnoRepository,
                              ProductRepository productRepository,
                              PresupuestoRepository presupuestoRepository,
                              PurchaseRepository purchaseRepository,

@@ -1,6 +1,6 @@
 package com.recred.backend.web;
 
-import com.recred.backend.application.GenerarMenuBuffet;
+import com.recred.backend.application.GenerateBuffetMenu;
 import com.recred.backend.application.GetBuffetByStudent;
 import com.recred.backend.application.GetBuffetByStudentRequest;
 import com.recred.backend.application.GetBuffetByStudentResponse;
@@ -35,7 +35,7 @@ class MenuBuffetControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private GenerarMenuBuffet generarMenuBuffet;
+    private GenerateBuffetMenu generateBuffetMenu;
 
     @MockitoBean
     private GetBuffetByStudent getBuffetByStudent;
