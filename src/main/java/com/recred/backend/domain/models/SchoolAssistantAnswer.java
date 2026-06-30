@@ -40,4 +40,30 @@ public record SchoolAssistantAnswer(
                 Map.of()
         );
     }
+
+    public List<String> capabilityNames() {
+        return capabilitiesOrEmpty().stream()
+                .map(Enum::name)
+                .toList();
+    }
+
+    public List<SchoolAssistantCapability> capabilitiesOrEmpty() {
+        return capabilities == null ? List.of() : capabilities;
+    }
+
+    public String roleName() {
+        return role == null ? null : role.name();
+    }
+
+    public String intentName() {
+        return intent == null ? null : intent.name();
+    }
+
+    public List<SchoolAssistantSuggestion> suggestionsOrEmpty() {
+        return suggestions == null ? List.of() : suggestions;
+    }
+
+    public Map<String, Object> dataOrEmpty() {
+        return data == null ? Map.of() : data;
+    }
 }

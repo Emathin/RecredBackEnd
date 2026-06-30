@@ -1,27 +1,18 @@
 package com.recred.backend.web;
 
 import com.recred.backend.application.AskSchoolAssistant;
-import com.recred.backend.application.SchoolAssistantCommand;
+import com.recred.backend.application.AskSchoolAssistantRequest;
+import com.recred.backend.application.AskSchoolAssistantResponse;
 import com.recred.backend.application.SchoolAssistantConversations;
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.ChatSession;
 import com.recred.backend.domain.models.EstadoChatSesion;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.RolChatMensaje;
-import com.recred.backend.domain.models.SchoolAssistantAction;
-import com.recred.backend.domain.models.SchoolAssistantActionStatus;
-import com.recred.backend.domain.models.SchoolAssistantActionType;
-import com.recred.backend.domain.models.SchoolAssistantAnswer;
-import com.recred.backend.domain.models.SchoolAssistantCapability;
-import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolAssistantRole;
-import com.recred.backend.domain.models.SchoolAssistantSuggestion;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import com.recred.backend.infrastructure.web.SchoolAssistantController;
@@ -38,8 +29,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -73,31 +63,35 @@ class SchoolAssistantControllerTest {
                 new TestingAuthenticationToken("student-sub", "");
         UUID sessionId = UUID.randomUUID();
         LocalDateTime dateTime = LocalDateTime.of(2026, 5, 27, 12, 0);
-        SchoolAssistantAnswer answer = new SchoolAssistantAnswer(
+        AskSchoolAssistantResponse answer = new AskSchoolAssistantResponse(
                 sessionId,
                 "Tenes $500.00 disponibles.",
-                List.of(SchoolAssistantCapability.SALDO),
+                List.of("SALDO"),
                 dateTime,
                 true,
                 "gemini-test",
-                SchoolAssistantRole.ALUMNO,
-                SchoolAssistantIntent.BALANCE,
-                SchoolAssistantAction.informative(
-                        SchoolAssistantActionType.CONSULTA_SALDO,
+                "ALUMNO",
+                "BALANCE",
+                new AskSchoolAssistantResponse.ActionResponse(
+                        "CONSULTA_SALDO",
+                        "INFORMATIVA",
+                        false,
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         Map.of("saldo", "500.00")
                 ),
-                List.of(new SchoolAssistantSuggestion(
+                List.of(new AskSchoolAssistantResponse.SuggestionResponse(
                         "Ultimas compras",
                         "mostrame mis ultimas compras",
-                        SchoolAssistantActionType.CONSULTA_COMPRAS
+                        "CONSULTA_COMPRAS"
                 )),
                 Map.of("saldo", "500.00")
         );
-        when(askSchoolAssistant.executeForStudent(
-                eq("student-sub"),
-                org.mockito.ArgumentMatchers.any()
-        ))
-                .thenReturn(answer);
+        when(askSchoolAssistant.execute(any())).thenReturn(answer);
 
         mockMvc.perform(post("/api/v1/ia/alumnos/me/asistente/mensajes")
                         .principal(authentication)
@@ -123,13 +117,14 @@ class SchoolAssistantControllerTest {
                         .value("mostrame mis ultimas compras"))
                 .andExpect(jsonPath("$.datos.saldo").value("500.00"));
 
-        ArgumentCaptor<SchoolAssistantCommand> commandCaptor = ArgumentCaptor
-                .forClass(SchoolAssistantCommand.class);
-        verify(askSchoolAssistant).executeForStudent(eq("student-sub"), commandCaptor.capture());
-        SchoolAssistantCommand command = commandCaptor.getValue();
-        assertEquals("saldo", command.message());
-        assertEquals(Optional.of(sessionId), command.sessionId());
-        assertTrue(command.sessionId().isPresent());
+        ArgumentCaptor<AskSchoolAssistantRequest> requestCaptor = ArgumentCaptor
+                .forClass(AskSchoolAssistantRequest.class);
+        verify(askSchoolAssistant).execute(requestCaptor.capture());
+        AskSchoolAssistantRequest useCaseRequest = requestCaptor.getValue();
+        assertEquals("student-sub", useCaseRequest.cognitoSubject());
+        assertEquals(SchoolAssistantRole.ALUMNO, useCaseRequest.role());
+        assertEquals(sessionId, useCaseRequest.sessionId());
+        assertEquals("saldo", useCaseRequest.message());
     }
 
     @Test
@@ -138,36 +133,33 @@ class SchoolAssistantControllerTest {
                 new TestingAuthenticationToken("student-sub", "");
         UUID sessionId = UUID.randomUUID();
         UUID purchaseId = UUID.randomUUID();
-        SchoolAssistantAction action = new SchoolAssistantAction(
-                SchoolAssistantActionType.COMPRA_ANTICIPADA,
-                SchoolAssistantActionStatus.EJECUTADA,
+        AskSchoolAssistantResponse.ActionResponse action =
+                new AskSchoolAssistantResponse.ActionResponse(
+                "COMPRA_ANTICIPADA",
+                "EJECUTADA",
                 false,
                 List.of(),
                 purchaseId,
-                EstadoCompra.PENDIENTE,
+                "PENDIENTE",
                 "TORO",
                 new BigDecimal("5250.00"),
-                RecessTime.SECOND_RECESS,
+                "segundo recreo",
                 Map.of()
         );
-        SchoolAssistantAnswer answer = new SchoolAssistantAnswer(
+        AskSchoolAssistantResponse answer = new AskSchoolAssistantResponse(
                 sessionId,
                 "Compra creada.",
-                List.of(SchoolAssistantCapability.COMPRAS),
+                List.of("COMPRAS"),
                 LocalDateTime.of(2026, 5, 27, 12, 0),
                 false,
                 "fixed",
-                SchoolAssistantRole.ALUMNO,
-                SchoolAssistantIntent.CONFIRM_PURCHASE,
+                "ALUMNO",
+                "CONFIRM_PURCHASE",
                 action,
                 List.of(),
                 Map.of()
         );
-        when(askSchoolAssistant.executeForStudent(
-                eq("student-sub"),
-                org.mockito.ArgumentMatchers.any()
-        ))
-                .thenReturn(answer);
+        when(askSchoolAssistant.execute(any())).thenReturn(answer);
 
         mockMvc.perform(post("/api/v1/ia/alumnos/me/asistente/mensajes")
                         .principal(authentication)
@@ -186,18 +178,20 @@ class SchoolAssistantControllerTest {
         UUID sessionId = UUID.randomUUID();
         TestingAuthenticationToken authentication =
                 new TestingAuthenticationToken("tutor-sub", "");
-        SchoolAssistantAnswer answer = new SchoolAssistantAnswer(
+        AskSchoolAssistantResponse answer = new AskSchoolAssistantResponse(
                 sessionId,
                 "Tu hijo tiene $500.00.",
-                List.of(SchoolAssistantCapability.HIJOS),
+                List.of("HIJOS"),
                 LocalDateTime.of(2026, 5, 27, 12, 0),
                 true,
-                "gemini-test"
+                "gemini-test",
+                "TUTOR",
+                "UNKNOWN",
+                null,
+                List.of(),
+                Map.of()
         );
-        when(askSchoolAssistant.executeForTutor(
-                eq("tutor-sub"),
-                org.mockito.ArgumentMatchers.any()
-        )).thenReturn(answer);
+        when(askSchoolAssistant.execute(any())).thenReturn(answer);
 
         mockMvc.perform(post("/api/v1/ia/tutores/me/asistente/mensajes")
                         .principal(authentication)
@@ -211,10 +205,11 @@ class SchoolAssistantControllerTest {
                 .andExpect(jsonPath("$.sesionId").value(sessionId.toString()))
                 .andExpect(jsonPath("$.capacidades[0]").value("HIJOS"));
 
-        verify(askSchoolAssistant).executeForTutor(
-                eq("tutor-sub"),
-                org.mockito.ArgumentMatchers.any()
-        );
+        ArgumentCaptor<AskSchoolAssistantRequest> requestCaptor = ArgumentCaptor
+                .forClass(AskSchoolAssistantRequest.class);
+        verify(askSchoolAssistant).execute(requestCaptor.capture());
+        assertEquals("tutor-sub", requestCaptor.getValue().cognitoSubject());
+        assertEquals(SchoolAssistantRole.TUTOR, requestCaptor.getValue().role());
     }
 
     @Test
@@ -222,18 +217,20 @@ class SchoolAssistantControllerTest {
         UUID sessionId = UUID.randomUUID();
         TestingAuthenticationToken authentication =
                 new TestingAuthenticationToken("kiosquero-sub", "");
-        SchoolAssistantAnswer answer = new SchoolAssistantAnswer(
+        AskSchoolAssistantResponse answer = new AskSchoolAssistantResponse(
                 sessionId,
                 "Tenes 7 productos en stock.",
-                List.of(SchoolAssistantCapability.STOCK),
+                List.of("STOCK"),
                 LocalDateTime.of(2026, 5, 27, 12, 0),
                 true,
-                "gemini-test"
+                "gemini-test",
+                "KIOSQUERO",
+                "UNKNOWN",
+                null,
+                List.of(),
+                Map.of()
         );
-        when(askSchoolAssistant.executeForKiosquero(
-                eq("kiosquero-sub"),
-                org.mockito.ArgumentMatchers.any()
-        )).thenReturn(answer);
+        when(askSchoolAssistant.execute(any())).thenReturn(answer);
 
         mockMvc.perform(post("/api/v1/ia/kiosqueros/me/asistente/mensajes")
                         .principal(authentication)
@@ -247,10 +244,11 @@ class SchoolAssistantControllerTest {
                 .andExpect(jsonPath("$.sesionId").value(sessionId.toString()))
                 .andExpect(jsonPath("$.capacidades[0]").value("STOCK"));
 
-        verify(askSchoolAssistant).executeForKiosquero(
-                eq("kiosquero-sub"),
-                org.mockito.ArgumentMatchers.any()
-        );
+        ArgumentCaptor<AskSchoolAssistantRequest> requestCaptor = ArgumentCaptor
+                .forClass(AskSchoolAssistantRequest.class);
+        verify(askSchoolAssistant).execute(requestCaptor.capture());
+        assertEquals("kiosquero-sub", requestCaptor.getValue().cognitoSubject());
+        assertEquals(SchoolAssistantRole.KIOSQUERO, requestCaptor.getValue().role());
     }
 
     @Test

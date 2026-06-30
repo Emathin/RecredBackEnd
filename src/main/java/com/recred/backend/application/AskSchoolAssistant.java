@@ -16,6 +16,7 @@ import com.recred.backend.domain.models.SchoolAssistantContext;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
 import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
+import com.recred.backend.domain.models.SchoolAssistantRole;
 import com.recred.backend.domain.models.SchoolAssistantSuggestion;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 
 public class AskSchoolAssistant {
 
@@ -56,6 +58,8 @@ public class AskSchoolAssistant {
     private final SchoolAssistantAnswerFormatter answerFormatter;
     private final SchoolAssistantRoleCatalog roleCatalog;
     private final SchoolAssistantContextFactory contextFactory;
+    private final Map<SchoolAssistantRole, Function<AskSchoolAssistantRequest,
+            SchoolAssistantAnswer>> answerByRole;
     private final Clock clock;
 
     public AskSchoolAssistant(
@@ -97,80 +101,134 @@ public class AskSchoolAssistant {
                 roleCatalog,
                 clock
         );
+        this.answerByRole = Map.of(
+                SchoolAssistantRole.ALUMNO, this::studentAnswer,
+                SchoolAssistantRole.TUTOR, this::tutorAnswer,
+                SchoolAssistantRole.KIOSQUERO, this::kiosqueroAnswer
+        );
         this.clock = clock;
     }
 
-    public SchoolAssistantAnswer execute(UUID studentIdOrUserId, SchoolAssistantCommand command) {
-        return executeForResolvedStudent(resolvedStudentId(studentIdOrUserId), command);
+    public AskSchoolAssistantResponse execute(AskSchoolAssistantRequest request) {
+        requireRequest(request);
+        return AskSchoolAssistantResponse.from(answerFor(request));
     }
 
-    public SchoolAssistantAnswer executeForStudent(String cognitoSubject,
-                                                   SchoolAssistantCommand command) {
-        Usuario user = authenticatedUser(cognitoSubject);
-        return executeForResolvedStudent(resolvedStudentId(user.getId()), command);
+    private void requireRequest(AskSchoolAssistantRequest request) {
+        if (request == null || request.role() == null) {
+            throw new IllegalArgumentException("request and role are required");
+        }
     }
 
-    private SchoolAssistantAnswer executeForResolvedStudent(
-            UUID studentId,
-            SchoolAssistantCommand command
+    private SchoolAssistantAnswer answerFor(AskSchoolAssistantRequest request) {
+        return answerResolver(request).apply(request);
+    }
+
+    private Function<AskSchoolAssistantRequest, SchoolAssistantAnswer> answerResolver(
+            AskSchoolAssistantRequest request
     ) {
-        String message = message(command);
+        Function<AskSchoolAssistantRequest, SchoolAssistantAnswer> resolver =
+                answerByRole.get(request.role());
+
+        if (resolver == null) {
+            throw new IllegalArgumentException("unsupported school assistant role");
+        }
+
+        return resolver;
+    }
+
+    private SchoolAssistantAnswer studentAnswer(AskSchoolAssistantRequest request) {
+        Usuario user = authenticatedUser(request.cognitoSubject());
+        UUID studentId = resolvedStudentId(user.getId());
+        String message = message(request);
         LocalDateTime now = LocalDateTime.now(clock);
-        ChatSession session = session(studentId, command, now);
+        ChatSession session = session(studentId, request, now);
         return answer(session, message, contextFactory.studentContext(studentId), now);
     }
 
-    public SchoolAssistantAnswer executeForTutor(String cognitoSubject,
-                                                 SchoolAssistantCommand command) {
-        Usuario user = authenticatedUser(cognitoSubject);
-        Tutor tutor = tutor(cognitoSubject);
-        String message = message(command);
+    private SchoolAssistantAnswer tutorAnswer(AskSchoolAssistantRequest request) {
+        Usuario user = authenticatedUser(request.cognitoSubject());
+        Tutor tutor = tutor(request.cognitoSubject());
+        String message = message(request);
         LocalDateTime now = LocalDateTime.now(clock);
-        ChatSession session = sessionForUser(user.getId(), command, now);
+        ChatSession session = sessionForUser(user.getId(), request, now);
         return answer(session, message, contextFactory.tutorContext(user.getId(), tutor), now);
     }
 
-    public SchoolAssistantAnswer executeForKiosquero(String cognitoSubject,
-                                                     SchoolAssistantCommand command) {
-        Usuario user = authenticatedUser(cognitoSubject);
-        UUID buffetId = buffetId(user.getId(), cognitoSubject);
-        String message = message(command);
+    private SchoolAssistantAnswer kiosqueroAnswer(AskSchoolAssistantRequest request) {
+        Usuario user = authenticatedUser(request.cognitoSubject());
+        UUID buffetId = buffetId(user.getId(), request.cognitoSubject());
+        String message = message(request);
         LocalDateTime now = LocalDateTime.now(clock);
-        ChatSession session = sessionForUser(user.getId(), command, now);
-        return answer(
-                session,
-                message,
-                contextFactory.kiosqueroContext(user.getId(), buffetId),
-                now
-        );
+        ChatSession session = sessionForUser(user.getId(), request, now);
+        SchoolAssistantContext context = contextFactory.kiosqueroContext(user.getId(), buffetId);
+        return answer(session, message, context, now);
     }
 
     private SchoolAssistantAnswer answer(ChatSession session, String message,
                                          SchoolAssistantContext context,
                                          LocalDateTime now) {
-        List<ChatMessage> recentMessages = chatMessageRepository.findRecentBySessionId(
-                session.id(),
-                RECENT_HISTORY_LIMIT
-        );
-        Optional<SchoolAssistantFixedReply> fixedReply = fixedTopics.respond(
+        List<ChatMessage> recentMessages = recentMessages(session);
+        Optional<SchoolAssistantFixedReply> fixedReply =
+                fixedReply(message, context, recentMessages);
+        SchoolAssistantAnswer answer = formattedAnswer(answerFrom(
+                session,
                 message,
                 context,
-                recentMessages
-        );
-        SchoolAssistantAnswer rawAnswer = fixedReply
+                recentMessages,
+                fixedReply,
+                now
+        ));
+        saveConversation(session, message, context, answer, fixedReply, now);
+        return answer;
+    }
+
+    private List<ChatMessage> recentMessages(ChatSession session) {
+        return chatMessageRepository.findRecentBySessionId(session.id(), RECENT_HISTORY_LIMIT);
+    }
+
+    private Optional<SchoolAssistantFixedReply> fixedReply(
+            String message,
+            SchoolAssistantContext context,
+            List<ChatMessage> recentMessages
+    ) {
+        return fixedTopics.respond(message, context, recentMessages);
+    }
+
+    private SchoolAssistantAnswer answerFrom(
+            ChatSession session,
+            String message,
+            SchoolAssistantContext context,
+            List<ChatMessage> recentMessages,
+            Optional<SchoolAssistantFixedReply> fixedReply,
+            LocalDateTime now
+    ) {
+        return fixedReply
                 .map(reply -> fixedAnswer(session, reply, context, now))
                 .orElseGet(() -> aiAnswer(session, message, context, recentMessages, now));
-        SchoolAssistantAnswer answer = formattedAnswer(rawAnswer);
+    }
 
+    private void saveConversation(
+            ChatSession session,
+            String message,
+            SchoolAssistantContext context,
+            SchoolAssistantAnswer answer,
+            Optional<SchoolAssistantFixedReply> fixedReply,
+            LocalDateTime now
+    ) {
         saveUserMessage(session, message, context.capabilities(), now);
-        saveAssistantMessage(
-                answer,
-                fixedReply.map(SchoolAssistantFixedReply::metadata).orElseGet(Map::of),
-                now
-        );
-        chatSessionRepository.updateLastActivity(session.id(), now);
+        saveAssistantMessage(answer, fixedReplyMetadata(fixedReply), now);
+        updateSessionActivity(session, now);
+    }
 
-        return answer;
+    private Map<String, Object> fixedReplyMetadata(
+            Optional<SchoolAssistantFixedReply> fixedReply
+    ) {
+        return fixedReply.map(SchoolAssistantFixedReply::metadata).orElseGet(Map::of);
+    }
+
+    private void updateSessionActivity(ChatSession session, LocalDateTime now) {
+        chatSessionRepository.updateLastActivity(session.id(), now);
     }
 
     private SchoolAssistantAnswer formattedAnswer(SchoolAssistantAnswer answer) {
@@ -260,20 +318,17 @@ public class AskSchoolAssistant {
         UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(userId);
 
         if (buffetId == null) {
-            KiosqueroNotFoundException exception =
-                    new KiosqueroNotFoundException(cognitoSubject);
-            throw exception;
+            throw new KiosqueroNotFoundException(cognitoSubject);
         }
 
         return buffetId;
     }
 
-    private String message(SchoolAssistantCommand command) {
-        String message = command.message() == null ? "" : command.message().trim();
+    private String message(AskSchoolAssistantRequest request) {
+        String message = request.message() == null ? "" : request.message().trim();
 
         if (message.isBlank()) {
-            InvalidChatMessageException exception = new InvalidChatMessageException();
-            throw exception;
+            throw new InvalidChatMessageException();
         }
 
         return message;
@@ -281,20 +336,20 @@ public class AskSchoolAssistant {
 
     private ChatSession session(
             UUID studentId,
-            SchoolAssistantCommand command,
+            AskSchoolAssistantRequest request,
             LocalDateTime now
     ) {
-        return command.sessionId()
+        return request.optionalSessionId()
                 .map(sessionId -> existingSession(studentId, sessionId))
                 .orElseGet(() -> chatSessionRepository.startForStudent(studentId, now));
     }
 
     private ChatSession sessionForUser(
             UUID userId,
-            SchoolAssistantCommand command,
+            AskSchoolAssistantRequest request,
             LocalDateTime now
     ) {
-        return command.sessionId()
+        return request.optionalSessionId()
                 .map(sessionId -> existingSessionForUser(userId, sessionId))
                 .orElseGet(() -> chatSessionRepository.startForUser(userId, now));
     }
@@ -348,18 +403,17 @@ public class AskSchoolAssistant {
             SchoolAssistantAnswer answer,
             Map<String, Object> additionalMetadata
     ) {
-        Map<String, Object> metadata = messageMetadata(answer.capabilities());
+        Map<String, Object> metadata = messageMetadata(answer.capabilitiesOrEmpty());
         metadata.put("generadoPorIa", answer.generatedByAi());
-        metadata.put("rol", value(answer.role()));
-        metadata.put("intencion", answer.intent().name());
+        metadata.put("rol", value(answer.roleName()));
+        metadata.put("intencion", value(answer.intentName()));
         metadata.put("accion", actionMetadata(answer.action()));
-        metadata.put("sugerencias", suggestionsMetadata(answer.suggestions()));
-        metadata.put("datos", answer.data());
+        metadata.put("sugerencias", suggestionsMetadata(answer.suggestionsOrEmpty()));
+        metadata.put("datos", answer.dataOrEmpty());
         metadata.putAll(additionalMetadata);
 
         if (answer.model() != null) {
-            String model = answer.model();
-            metadata.put("modelo", model);
+            metadata.put("modelo", answer.model());
         }
 
         return metadata;
@@ -377,18 +431,16 @@ public class AskSchoolAssistant {
         }
 
         Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("tipo", action.type().name());
-        metadata.put("estado", action.status().name());
+        metadata.put("tipo", action.typeName());
+        metadata.put("estado", action.statusName());
         metadata.put("requiereInput", action.requiresInput());
-        metadata.put("inputsRequeridos", action.requiredInputs().stream()
-                .map(Enum::name)
-                .toList());
+        metadata.put("inputsRequeridos", action.requiredInputNames());
         metadata.put("compraId", value(action.purchaseId()));
-        metadata.put("estadoCompra", value(action.purchaseStatus()));
+        metadata.put("estadoCompra", value(action.purchaseStatusName()));
         metadata.put("codigoRetiro", value(action.withdrawalCode()));
         metadata.put("total", value(action.total()));
-        metadata.put("recreo", value(action.recessTime()));
-        metadata.put("datos", action.data());
+        metadata.put("recreo", value(action.recessName()));
+        metadata.put("datos", action.dataOrEmpty());
         return metadata;
     }
 
@@ -404,7 +456,7 @@ public class AskSchoolAssistant {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("label", suggestion.label());
         metadata.put("mensaje", suggestion.message());
-        metadata.put("tipoAccion", suggestion.actionType().name());
+        metadata.put("tipoAccion", suggestion.actionTypeName());
         return metadata;
     }
 
