@@ -1,7 +1,6 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
-import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.BuyerType;
@@ -117,11 +116,7 @@ public class CreateAssistantAdvancePurchase {
                 .orElseThrow(() ->
                         new IllegalStateException("Student wallet not found: " + studentId));
 
-        if (!wallet.hasSufficientBalance(total)) {
-            throw new InsufficientBalanceException("Insufficient balance for student: "
-                    + studentId);
-        }
-
+        wallet.debit(total);
         inventoryAvailabilityService.reserve(buffetId, cart);
 
         Purchase purchase = Purchase.advance(
@@ -137,7 +132,6 @@ public class CreateAssistantAdvancePurchase {
         purchase.setDate(LocalDateTime.now(clock));
         purchase.setWithdrawalCode(withdrawalCodeService.generateCode(purchase));
 
-        wallet.debit(total);
         walletRepository.save(wallet);
         Purchase savedPurchase = purchaseRepository.save(purchase);
         registerPurchaseMovement(wallet, student, total);
