@@ -17,6 +17,7 @@ public class AdjustInventoryStock {
         Inventario inventory = adjustInventory(request);
         return AdjustInventoryStockResponse.fromDomain(inventory);
     }
+
     private Inventario adjustInventory(AdjustInventoryStockRequest request) {
         return inventoryAvailabilityService.adjustInventory(
                 request.buffetId(),

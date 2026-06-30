@@ -21,7 +21,15 @@ public class CreatePromotion {
     }
 
     public CreatePromotionResponse execute(CreatePromotionRequest request) {
+        validateRequest(request);
+        Promotion promotion = buildPromotionFrom(request);
+        promotion.setStatus(determineInitialStatus(request));
 
+        Promotion savedPromotion = promotionRepository.save(promotion);
+        return CreatePromotionResponse.fromDomain(savedPromotion);
+    }
+
+    private void validateRequest(CreatePromotionRequest request) {
         if (!hasMinimumProducts(request.productIds())) {
             throw new IllegalArgumentException("A promotion requires at least 2 products.");
         }
@@ -31,7 +39,9 @@ public class CreatePromotion {
         if (!isDateRangeValid(request.startDate(), request.endDate())) {
             throw new IllegalArgumentException("Invalid date range.");
         }
+    }
 
+    private Promotion buildPromotionFrom(CreatePromotionRequest request) {
         Promotion promotion = new Promotion();
         promotion.setName(request.name());
         promotion.setDiscountPercentage(request.discountPercentage());
@@ -45,14 +55,6 @@ public class CreatePromotion {
             promotion.setBuffet(buffet);
         }
 
-        if (request.forceDraft()) {
-            promotion.setStatus(PromotionStatus.DRAFT);
-        } else if (isPromotionCurrentlyActive(request.startDate(), request.endDate())) {
-            promotion.setStatus(PromotionStatus.ACTIVE);
-        } else {
-            promotion.setStatus(PromotionStatus.DRAFT);
-        }
-
         List<Producto> products = request.productIds().stream().map(id -> {
             Producto p = new Producto();
             p.setId(id);
@@ -60,11 +62,18 @@ public class CreatePromotion {
         }).collect(Collectors.toList());
 
         promotion.setProducts(products);
-
-        Promotion savedPromotion = promotionRepository.save(promotion);
-        return CreatePromotionResponse.fromDomain(savedPromotion);
+        return promotion;
     }
 
+    private PromotionStatus determineInitialStatus(CreatePromotionRequest request) {
+        if (request.forceDraft()) {
+            return PromotionStatus.DRAFT;
+        }
+        if (isPromotionCurrentlyActive(request.startDate(), request.endDate())) {
+            return PromotionStatus.ACTIVE;
+        }
+        return PromotionStatus.DRAFT;
+    }
 
     private boolean hasMinimumProducts(List<UUID> productIds) {
         return productIds != null && productIds.size() >= 2;
