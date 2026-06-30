@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.CreatePromotion;
+import com.recred.backend.application.CreatePromotionRequest;
+import com.recred.backend.application.CreatePromotionResponse;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.domain.repositories.PromotionRepository;
@@ -44,17 +46,19 @@ class CreatePromotionTest {
 
         when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Promotion result = createPromotion.execute(productIds, discount, name, start, end, null, true);
+        CreatePromotionResponse result = createPromotion.execute(
+                new CreatePromotionRequest(productIds, discount, name, start, end, null, true, null)
+        );
 
         assertNotNull(result);
-        assertEquals(name, result.getName());
-        assertEquals(discount, result.getDiscountPercentage());
-        assertEquals(start, result.getStartDate());
-        assertEquals(end, result.getEndDate());
-        assertEquals(PromotionStatus.DRAFT, result.getStatus());
-        assertEquals(2, result.getProducts().size());
-        assertEquals(prod1, result.getProducts().get(0).getId());
-        assertEquals(prod2, result.getProducts().get(1).getId());
+        assertEquals(name, result.name());
+        assertEquals(discount, result.discountPercentage());
+        assertEquals(start, result.startDate());
+        assertEquals(end, result.endDate());
+        assertEquals(PromotionStatus.DRAFT, result.status());
+        assertEquals(2, result.productIds().size());
+        assertEquals(prod1, result.productIds().get(0));
+        assertEquals(prod2, result.productIds().get(1));
 
         verify(promotionRepository).save(any(Promotion.class));
     }
@@ -69,10 +73,12 @@ class CreatePromotionTest {
 
         when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Promotion result = createPromotion.execute(productIds, discount, name, start, end, null, false);
+        CreatePromotionResponse result = createPromotion.execute(
+                new CreatePromotionRequest(productIds, discount, name, start, end, null, false, null)
+        );
 
         assertNotNull(result);
-        assertEquals(PromotionStatus.ACTIVE, result.getStatus());
+        assertEquals(PromotionStatus.ACTIVE, result.status());
         verify(promotionRepository).save(any(Promotion.class));
     }
 
@@ -86,10 +92,12 @@ class CreatePromotionTest {
 
         when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Promotion result = createPromotion.execute(productIds, discount, name, start, end, null, false);
+        CreatePromotionResponse result = createPromotion.execute(
+                new CreatePromotionRequest(productIds, discount, name, start, end, null, false, null)
+        );
 
         assertNotNull(result);
-        assertEquals(PromotionStatus.DRAFT, result.getStatus());
+        assertEquals(PromotionStatus.DRAFT, result.status());
         verify(promotionRepository).save(any(Promotion.class));
     }
 
@@ -102,7 +110,8 @@ class CreatePromotionTest {
         LocalDateTime end = LocalDateTime.now().plusDays(1);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, discount, name, start, end, null, false));
+                createPromotion.execute(new CreatePromotionRequest(productIds, discount, name, start, end, null, false, null))
+        );
 
         assertEquals("A promotion requires at least 2 products.", ex.getMessage());
         verify(promotionRepository, never()).save(any());
@@ -116,15 +125,17 @@ class CreatePromotionTest {
         LocalDateTime end = LocalDateTime.now().plusDays(1);
 
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, BigDecimal.ZERO, name, start, end, null, false));
+                createPromotion.execute(new CreatePromotionRequest(productIds, BigDecimal.ZERO, name, start, end, null, false, null))
+        );
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, new BigDecimal("-5"), name, start, end, null, false));
-
+                createPromotion.execute(new CreatePromotionRequest(productIds, new BigDecimal("-5"), name, start, end, null, false, null))
+        );
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, new BigDecimal("101"), name, start, end, null, false));
-
+                createPromotion.execute(new CreatePromotionRequest(productIds, new BigDecimal("101"), name, start, end, null, false, null))
+        );
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, null, name, start, end, null, false));
+                createPromotion.execute(new CreatePromotionRequest(productIds, null, name, start, end, null, false, null))
+        );
 
         verify(promotionRepository, never()).save(any());
     }
@@ -138,12 +149,14 @@ class CreatePromotionTest {
         LocalDateTime end = LocalDateTime.now().plusDays(2);
 
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, discount, name, start, end, null, false));
-
+                createPromotion.execute(new CreatePromotionRequest(productIds, discount, name, start, end, null, false, null))
+        );
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, discount, name, null, end, null, false));
+                createPromotion.execute(new CreatePromotionRequest(productIds, discount, name, null, end, null, false, null))
+        );
         assertThrows(IllegalArgumentException.class, () ->
-                createPromotion.execute(productIds, discount, name, start, null, null, false));
+                createPromotion.execute(new CreatePromotionRequest(productIds, discount, name, start, null, null, false, null))
+        );
 
         verify(promotionRepository, never()).save(any());
     }
@@ -159,10 +172,12 @@ class CreatePromotionTest {
 
         when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Promotion result = createPromotion.execute(productIds, discount, name, start, end, null, false, imageUrl);
+        CreatePromotionResponse result = createPromotion.execute(
+                new CreatePromotionRequest(productIds, discount, name, start, end, null, false, imageUrl)
+        );
 
         assertNotNull(result);
-        assertEquals(imageUrl, result.getImageUrl());
+        assertEquals(imageUrl, result.imageUrl());
         verify(promotionRepository).save(any(Promotion.class));
     }
 }

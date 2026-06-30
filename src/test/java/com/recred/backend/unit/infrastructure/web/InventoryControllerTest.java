@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.AdjustInventoryStockRequest;
 import com.recred.backend.application.AdjustInventoryStockResponse;
+import com.recred.backend.application.ApplyInventoryQuickAction;
 import com.recred.backend.application.ApplyInventoryQuickActionRequest;
 import com.recred.backend.application.GetStockMovements;
 import com.recred.backend.application.GetStockMovementsRequest;
@@ -53,6 +54,8 @@ class InventoryControllerTest {
     @Mock
     private AdjustInventoryStock adjustInventoryStock;
     @Mock
+    private ApplyInventoryQuickAction applyInventoryQuickAction;
+    @Mock
     private ListInventoryProducts listInventoryProducts;
     @Mock
     private GetStockMovements getStockMovements;
@@ -68,6 +71,7 @@ class InventoryControllerTest {
     void setUp() {
         mockMvc = standaloneSetup(new InventoryController(
                 adjustInventoryStock,
+                applyInventoryQuickAction,
                 listInventoryProducts,
                 getStockMovements,
                 kiosqueroAccessGuard,
@@ -175,7 +179,7 @@ class InventoryControllerTest {
         UUID userId = UUID.randomUUID();
         Inventario inventory = inventory(buffetId, productId);
 
-        when(adjustInventoryStock.execute(any(ApplyInventoryQuickActionRequest.class)))
+        when(applyInventoryQuickAction.execute(any(ApplyInventoryQuickActionRequest.class)))
                 .thenReturn(AdjustInventoryStockResponse.fromDomain(inventory));
 
         mockMvc.perform(patch(
@@ -195,7 +199,7 @@ class InventoryControllerTest {
 
         ArgumentCaptor<ApplyInventoryQuickActionRequest> captor =
                 ArgumentCaptor.forClass(ApplyInventoryQuickActionRequest.class);
-        verify(adjustInventoryStock).execute(captor.capture());
+        verify(applyInventoryQuickAction).execute(captor.capture());
         assertEquals(buffetId, captor.getValue().buffetId());
         assertEquals(productId, captor.getValue().productId());
         assertEquals(InventoryQuickActionType.ADD_STOCK, captor.getValue().action());

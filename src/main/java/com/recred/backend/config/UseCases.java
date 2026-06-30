@@ -6,6 +6,7 @@ import com.recred.backend.application.GenerateSummaryNotification;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
+import com.recred.backend.application.ApplyInventoryQuickAction;
 import com.recred.backend.application.GenerateComboSuggestion;
 import com.recred.backend.application.GetActivePromotionsByBuffet;
 import com.recred.backend.application.GetActiveSchools;
@@ -232,6 +233,12 @@ public class UseCases {
             UsuarioRepository usuarioRepository) {
         return new GenerateComboSuggestion(
                 productRepository, kiosqueroRepository, usuarioRepository);
+    }
+
+    @Bean
+    public ApplyInventoryQuickAction applyInventoryQuickAction(
+            InventoryAvailabilityService inventoryAvailabilityService) {
+        return new ApplyInventoryQuickAction(inventoryAvailabilityService);
     }
 
     @Bean
