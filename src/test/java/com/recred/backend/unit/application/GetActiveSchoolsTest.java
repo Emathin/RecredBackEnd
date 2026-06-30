@@ -31,23 +31,24 @@ class GetActiveSchoolsTest {
         Colegio firstSchool = school("North School");
         Colegio secondSchool = school("South School");
 
-        when(schoolRepository.findAllActive()).thenReturn(List.of(firstSchool, secondSchool));
+        givenActiveSchools(firstSchool, secondSchool);
 
-        GetActiveSchoolsResponse result = getActiveSchools.execute();
+        GetActiveSchoolsResponse result = whenGettingActiveSchools();
 
-        assertSchools(result, firstSchool, secondSchool);
-        verify(schoolRepository).findAllActive();
-    }
-
-    private void assertSchools(
-            GetActiveSchoolsResponse result,
-            Colegio firstSchool,
-            Colegio secondSchool) {
         assertEquals(2, result.schools().size());
         assertEquals(firstSchool.getId(), result.schools().get(0).id());
         assertEquals("North School", result.schools().get(0).nombre());
         assertEquals(secondSchool.getId(), result.schools().get(1).id());
         assertEquals("South School", result.schools().get(1).nombre());
+        verify(schoolRepository).findAllActive();
+    }
+
+    private void givenActiveSchools(Colegio... schools) {
+        when(schoolRepository.findAllActive()).thenReturn(List.of(schools));
+    }
+
+    private GetActiveSchoolsResponse whenGettingActiveSchools() {
+        return getActiveSchools.execute();
     }
 
     private Colegio school(String name) {

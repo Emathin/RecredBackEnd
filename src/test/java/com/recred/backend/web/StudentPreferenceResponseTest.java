@@ -23,7 +23,7 @@ class StudentPreferenceResponseTest {
                 "Razon"
         );
 
-        StudentPreferenceResponseDTO response = StudentPreferenceResponseDTO.fromDomain(preference);
+        StudentPreferenceResponseDTO response = whenMappingDetectedPreference(preference);
 
         assertNull(response.sugerenciaId());
         assertNull(response.alumnoId());
@@ -40,9 +40,8 @@ class StudentPreferenceResponseTest {
         UUID studentId = randomUUID();
         UUID studentUserId = randomUUID();
 
-        StudentPreferenceResponseDTO response = StudentPreferenceResponseDTO.fromApplication(
-                preference(suggestionId, studentId, studentUserId, false, "Ana", "Perez")
-        );
+        StudentPreferenceResponseDTO response = whenMappingApplicationPreference(
+                preference(suggestionId, studentId, studentUserId, false, "Ana", "Perez"));
 
         assertEquals(suggestionId, response.sugerenciaId());
         assertEquals(studentId, response.alumnoId());
@@ -60,9 +59,8 @@ class StudentPreferenceResponseTest {
         UUID studentId = randomUUID();
         UUID studentUserId = randomUUID();
 
-        StudentPreferenceResponseDTO response = StudentPreferenceResponseDTO.fromApplication(
-                preference(randomUUID(), studentId, studentUserId, true, "Mateo", "Fortuna")
-        );
+        StudentPreferenceResponseDTO response = whenMappingApplicationPreference(
+                preference(randomUUID(), studentId, studentUserId, true, "Mateo", "Fortuna"));
 
         assertEquals(studentId, response.alumnoId());
         assertEquals(studentUserId, response.alumnoUserId());
@@ -73,9 +71,8 @@ class StudentPreferenceResponseTest {
 
     @Test
     void fromApplicationShouldUseBaseTextWhenParentViewHasNoStudentName() {
-        StudentPreferenceResponseDTO response = StudentPreferenceResponseDTO.fromApplication(
-                preference(randomUUID(), randomUUID(), null, true, null, null)
-        );
+        StudentPreferenceResponseDTO response = whenMappingApplicationPreference(
+                preference(randomUUID(), randomUUID(), null, true, null, null));
 
         assertNull(response.alumnoNombre());
         assertEquals("Producto recomendado", response.titulo());
@@ -84,14 +81,23 @@ class StudentPreferenceResponseTest {
 
     @Test
     void fromApplicationShouldMapNullStudentData() {
-        StudentPreferenceResponseDTO response = StudentPreferenceResponseDTO.fromApplication(
-                preference(randomUUID(), null, null, false, null, null)
-        );
+        StudentPreferenceResponseDTO response = whenMappingApplicationPreference(
+                preference(randomUUID(), null, null, false, null, null));
 
         assertNull(response.alumnoId());
         assertNull(response.alumnoUserId());
         assertNull(response.alumnoNombre());
         assertEquals("Producto recomendado", response.titulo());
+    }
+
+    private StudentPreferenceResponseDTO whenMappingDetectedPreference(
+            PreferenciaDetectada preference) {
+        return StudentPreferenceResponseDTO.fromDomain(preference);
+    }
+
+    private StudentPreferenceResponseDTO whenMappingApplicationPreference(
+            GetStudentPreferencesResponse.Preference preference) {
+        return StudentPreferenceResponseDTO.fromApplication(preference);
     }
 
     private GetStudentPreferencesResponse.Preference preference(

@@ -105,13 +105,27 @@ class GetStudentWalletSummaryTest {
         givenMovements(studentId, from, to, movements);
         givenPurchases(studentId, from, to, purchases);
 
-        GetStudentWalletSummaryResponse summary =
-                useCase.execute(requestWithDates(studentId, from, to));
+        GetStudentWalletSummaryResponse summary = whenSummaryIsRequested(studentId, from, to);
 
-        assertSummaryTotals(summary, studentId);
-        assertCategorySpending(summary);
-        assertHealthSpending(summary);
-
+        assertEquals(studentId, summary.studentId());
+        assertEquals(new BigDecimal("1250.00"), summary.currentBalance());
+        assertEquals(new BigDecimal("3200.00"), summary.incomeAmount());
+        assertEquals(new BigDecimal("1750.00"), summary.spentAmount());
+        assertEquals(new BigDecimal("1450.00"), summary.periodBalance());
+        assertEquals(2, summary.purchaseCount());
+        assertEquals(3, summary.movements().size());
+        assertEquals("Golosinas", summary.categorySpending().get(0).category());
+        assertEquals(new BigDecimal("1000.00"), summary.categorySpending().get(0).amount());
+        assertEquals(new BigDecimal("57.14"), summary.categorySpending().get(0).percentage());
+        assertEquals("No saludable", summary.healthSpending().get(0).classification());
+        assertEquals(new BigDecimal("600.00"), summary.healthSpending().get(0).amount());
+        assertEquals(new BigDecimal("34.29"), summary.healthSpending().get(0).percentage());
+        assertEquals("Sin clasificar", summary.healthSpending().get(1).classification());
+        assertEquals(new BigDecimal("450.00"), summary.healthSpending().get(1).amount());
+        assertEquals("Poco saludable", summary.healthSpending().get(2).classification());
+        assertEquals(new BigDecimal("400.00"), summary.healthSpending().get(2).amount());
+        assertEquals("Saludable", summary.healthSpending().get(3).classification());
+        assertEquals(new BigDecimal("300.00"), summary.healthSpending().get(3).amount());
         verify(consumptionRepository).findPurchasesByStudentIdAndDateRange(
                 eq(studentId),
                 eq(Set.of(EstadoCompra.ENTREGADO)),
@@ -132,7 +146,7 @@ class GetStudentWalletSummaryTest {
         givenMovements(studentId, defaultFrom, defaultTo, List.of());
         givenPurchases(studentId, defaultFrom, defaultTo, List.of());
 
-        GetStudentWalletSummaryResponse summary = useCase.execute(defaultRequest(studentId));
+        GetStudentWalletSummaryResponse summary = whenDefaultSummaryIsRequested(studentId);
 
         assertEquals(LocalDate.of(2026, 5, 16), summary.from());
         assertEquals(LocalDate.of(2026, 6, 15), summary.to());
@@ -144,23 +158,10 @@ class GetStudentWalletSummaryTest {
     void tutorCannotSeeUnassociatedStudentWalletSummary() {
         UUID userId = randomUUID();
         UUID studentId = randomUUID();
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.PADRE,
-                        null
-                )));
-        when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(false);
+        givenAuthenticatedTutorCannotAccessStudent(userId, studentId);
 
-        assertThrows(
-                ConsumoAlumnoNoAutorizadoException.class,
-                () -> useCase.execute(request(
-                        COGNITO_SUBJECT,
-                        studentId,
-                        Optional.empty(),
-                        Optional.empty()
-                ))
-        );
+        assertThrows(ConsumoAlumnoNoAutorizadoException.class,
+                () -> whenDefaultSummaryIsRequested(studentId));
         verify(walletRepository, never()).findByStudentId(any());
     }
 
@@ -168,39 +169,22 @@ class GetStudentWalletSummaryTest {
     void rejectsInvalidDateRange() {
         UUID userId = randomUUID();
         UUID studentId = randomUUID();
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.ALUMNO,
-                        studentId
-                )));
+        givenAuthenticatedStudent(userId, studentId);
 
-        assertThrows(
-                RangoFechasConsumoInvalidoException.class,
-                () -> useCase.execute(request(
-                        COGNITO_SUBJECT,
+        assertThrows(RangoFechasConsumoInvalidoException.class,
+                () -> whenSummaryIsRequested(
                         studentId,
-                        Optional.of(LocalDate.of(2026, 6, 15)),
-                        Optional.of(LocalDate.of(2026, 6, 1))
-                ))
-        );
+                        LocalDate.of(2026, 6, 15),
+                        LocalDate.of(2026, 6, 1)));
     }
 
     @Test
     void rejectsMissingAuthenticatedUser() {
         UUID studentId = randomUUID();
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.empty());
+        givenAuthenticatedUserDoesNotExist();
 
-        assertThrows(
-                UsuarioAutenticadoNoEncontradoException.class,
-                () -> useCase.execute(request(
-                        COGNITO_SUBJECT,
-                        studentId,
-                        Optional.empty(),
-                        Optional.empty()
-                ))
-        );
+        assertThrows(UsuarioAutenticadoNoEncontradoException.class,
+                () -> whenDefaultSummaryIsRequested(studentId));
         verify(walletRepository, never()).findByStudentId(any());
     }
 
@@ -208,22 +192,10 @@ class GetStudentWalletSummaryTest {
     void rejectsStudentWithoutAssociatedStudentId() {
         UUID userId = randomUUID();
         UUID requestedStudentId = randomUUID();
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.ALUMNO,
-                        null
-                )));
+        givenAuthenticatedStudentWithoutAssociatedStudentId(userId);
 
-        assertThrows(
-                ConsumoAlumnoNoAutorizadoException.class,
-                () -> useCase.execute(request(
-                        COGNITO_SUBJECT,
-                        requestedStudentId,
-                        Optional.empty(),
-                        Optional.empty()
-                ))
-        );
+        assertThrows(ConsumoAlumnoNoAutorizadoException.class,
+                () -> whenDefaultSummaryIsRequested(requestedStudentId));
         verify(walletRepository, never()).findByStudentId(any());
     }
 
@@ -231,23 +203,11 @@ class GetStudentWalletSummaryTest {
     void rejectsWhenWalletDoesNotExistForStudent() {
         UUID userId = randomUUID();
         UUID studentId = randomUUID();
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.ALUMNO,
-                        studentId
-                )));
-        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
+        givenAuthenticatedStudent(userId, studentId);
+        givenWalletDoesNotExist(studentId);
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> useCase.execute(request(
-                        COGNITO_SUBJECT,
-                        studentId,
-                        Optional.empty(),
-                        Optional.empty()
-                ))
-        );
+        assertThrows(IllegalArgumentException.class,
+                () -> whenDefaultSummaryIsRequested(studentId));
     }
 
     @Test
@@ -258,12 +218,7 @@ class GetStudentWalletSummaryTest {
 
         givenWalletSummaryWithPurchase(userId, studentId, product);
 
-        GetStudentWalletSummaryResponse summary = useCase.execute(request(
-                COGNITO_SUBJECT,
-                studentId,
-                Optional.empty(),
-                Optional.empty()
-        ));
+        GetStudentWalletSummaryResponse summary = whenDefaultSummaryIsRequested(studentId);
 
         assertEquals("Sin categoria", summary.categorySpending().get(0).category());
     }
@@ -276,7 +231,7 @@ class GetStudentWalletSummaryTest {
 
         givenWalletSummaryWithPurchase(userId, studentId, product);
 
-        GetStudentWalletSummaryResponse summary = useCase.execute(defaultRequest(studentId));
+        GetStudentWalletSummaryResponse summary = whenDefaultSummaryIsRequested(studentId);
 
         assertEquals("Sin clasificar", summary.healthSpending().get(0).classification());
     }
@@ -289,7 +244,7 @@ class GetStudentWalletSummaryTest {
 
         givenWalletSummaryWithPurchase(userId, studentId, product);
 
-        GetStudentWalletSummaryResponse summary = useCase.execute(defaultRequest(studentId));
+        GetStudentWalletSummaryResponse summary = whenDefaultSummaryIsRequested(studentId);
 
         assertEquals(new BigDecimal("0.00"), summary.categorySpending().get(0).percentage());
         assertEquals(new BigDecimal("0.00"), summary.healthSpending().get(0).percentage());
@@ -322,6 +277,17 @@ class GetStudentWalletSummaryTest {
         return request(COGNITO_SUBJECT, studentId, Optional.of(from), Optional.of(to));
     }
 
+    private GetStudentWalletSummaryResponse whenSummaryIsRequested(
+            UUID studentId,
+            LocalDate from,
+            LocalDate to) {
+        return useCase.execute(requestWithDates(studentId, from, to));
+    }
+
+    private GetStudentWalletSummaryResponse whenDefaultSummaryIsRequested(UUID studentId) {
+        return useCase.execute(defaultRequest(studentId));
+    }
+
     private void givenAuthenticatedTutorCanAccessStudent(UUID userId, UUID studentId) {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.of(new ConsumptionRequester(
@@ -330,6 +296,16 @@ class GetStudentWalletSummaryTest {
                         null
                 )));
         when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(true);
+    }
+
+    private void givenAuthenticatedTutorCannotAccessStudent(UUID userId, UUID studentId) {
+        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.of(new ConsumptionRequester(
+                        userId,
+                        RolUsuario.PADRE,
+                        null
+                )));
+        when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(false);
     }
 
     private void givenAuthenticatedStudent(UUID userId, UUID studentId) {
@@ -341,8 +317,26 @@ class GetStudentWalletSummaryTest {
                 )));
     }
 
+    private void givenAuthenticatedStudentWithoutAssociatedStudentId(UUID userId) {
+        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.of(new ConsumptionRequester(
+                        userId,
+                        RolUsuario.ALUMNO,
+                        null
+                )));
+    }
+
+    private void givenAuthenticatedUserDoesNotExist() {
+        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.empty());
+    }
+
     private void givenWalletExists(UUID studentId, Billetera wallet) {
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+    }
+
+    private void givenWalletDoesNotExist(UUID studentId) {
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
     }
 
     private void givenWalletSummaryWithPurchase(
@@ -384,36 +378,6 @@ class GetStudentWalletSummaryTest {
                 eq(from.atStartOfDay()),
                 eq(to.atTime(23, 59, 59, 999999999))
         )).thenReturn(purchases);
-    }
-
-    private void assertSummaryTotals(
-            GetStudentWalletSummaryResponse summary,
-            UUID studentId) {
-        assertEquals(studentId, summary.studentId());
-        assertEquals(new BigDecimal("1250.00"), summary.currentBalance());
-        assertEquals(new BigDecimal("3200.00"), summary.incomeAmount());
-        assertEquals(new BigDecimal("1750.00"), summary.spentAmount());
-        assertEquals(new BigDecimal("1450.00"), summary.periodBalance());
-        assertEquals(2, summary.purchaseCount());
-        assertEquals(3, summary.movements().size());
-    }
-
-    private void assertCategorySpending(GetStudentWalletSummaryResponse summary) {
-        assertEquals("Golosinas", summary.categorySpending().get(0).category());
-        assertEquals(new BigDecimal("1000.00"), summary.categorySpending().get(0).amount());
-        assertEquals(new BigDecimal("57.14"), summary.categorySpending().get(0).percentage());
-    }
-
-    private void assertHealthSpending(GetStudentWalletSummaryResponse summary) {
-        assertEquals("No saludable", summary.healthSpending().get(0).classification());
-        assertEquals(new BigDecimal("600.00"), summary.healthSpending().get(0).amount());
-        assertEquals(new BigDecimal("34.29"), summary.healthSpending().get(0).percentage());
-        assertEquals("Sin clasificar", summary.healthSpending().get(1).classification());
-        assertEquals(new BigDecimal("450.00"), summary.healthSpending().get(1).amount());
-        assertEquals("Poco saludable", summary.healthSpending().get(2).classification());
-        assertEquals(new BigDecimal("400.00"), summary.healthSpending().get(2).amount());
-        assertEquals("Saludable", summary.healthSpending().get(3).classification());
-        assertEquals(new BigDecimal("300.00"), summary.healthSpending().get(3).amount());
     }
 
     private WalletMovement movement(String amount, WalletMovementDirection direction) {

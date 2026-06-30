@@ -83,12 +83,11 @@ class StudentPreferenceControllerTest {
                 productId,
                 "Frecuencia alta"
         );
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
-        when(detectStudentPreferences.execute(
-                new DetectStudentPreferencesRequest(studentId, buffetId)))
-                .thenReturn(Optional.of(detected));
+        givenStudentIdForUser(userId, studentId);
+        givenPreferenceDetected(studentId, buffetId, detected);
 
-        ResponseEntity<StudentPreferenceResponseDTO> response = controller.detect(userId, buffetId);
+        ResponseEntity<StudentPreferenceResponseDTO> response =
+                whenDetectingPreference(userId, buffetId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(detected.titulo(), response.getBody().titulo());
@@ -99,12 +98,11 @@ class StudentPreferenceControllerTest {
         UUID userId = randomUUID();
         UUID studentId = randomUUID();
         UUID buffetId = randomUUID();
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
-        when(detectStudentPreferences.execute(
-                new DetectStudentPreferencesRequest(studentId, buffetId)))
-                .thenReturn(Optional.empty());
+        givenStudentIdForUser(userId, studentId);
+        givenNoPreferenceDetected(studentId, buffetId);
 
-        ResponseEntity<StudentPreferenceResponseDTO> response = controller.detect(userId, buffetId);
+        ResponseEntity<StudentPreferenceResponseDTO> response =
+                whenDetectingPreference(userId, buffetId);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
     }
@@ -114,12 +112,13 @@ class StudentPreferenceControllerTest {
         UUID userId = randomUUID();
         UUID studentId = randomUUID();
         UUID buffetId = randomUUID();
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
         DetectStudentPreferencesRequest request =
                 new DetectStudentPreferencesRequest(studentId, buffetId);
-        when(detectStudentPreferences.execute(request)).thenReturn(Optional.empty());
+        givenStudentIdForUser(userId, studentId);
+        givenNoPreferenceDetected(request);
 
-        ResponseEntity<StudentPreferenceResponseDTO> response = controller.detect(userId, buffetId);
+        ResponseEntity<StudentPreferenceResponseDTO> response =
+                whenDetectingPreference(userId, buffetId);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         verify(detectStudentPreferences).execute(request);
@@ -128,12 +127,10 @@ class StudentPreferenceControllerTest {
     @Test
     void returnNoContentWhenPreferenceListIsEmpty() {
         UUID userId = randomUUID();
-        when(getStudentPreferences.executeByUserId(
-                new GetStudentPreferencesByUserRequest(userId, false, null)))
-                .thenReturn(new GetStudentPreferencesResponse(List.of()));
+        givenPreferencesByUser(userId);
 
         ResponseEntity<List<StudentPreferenceResponseDTO>> response =
-                controller.getPreferences(userId, false, null);
+                whenGettingPreferences(userId);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
     }
@@ -141,21 +138,19 @@ class StudentPreferenceControllerTest {
     @Test
     void returnOkWithPreferencesListWhenTheyExist() {
         UUID userId = randomUUID();
-        when(getStudentPreferences.executeByUserId(
-                new GetStudentPreferencesByUserRequest(userId, false, null)))
-                .thenReturn(new GetStudentPreferencesResponse(List.of(preference(
-                        randomUUID(),
-                        null,
-                        null,
-                        false,
-                        null,
-                        null,
-                        "Test",
-                        "Msg"
-                ))));
+        givenPreferencesByUser(userId, preference(
+                randomUUID(),
+                null,
+                null,
+                false,
+                null,
+                null,
+                "Test",
+                "Msg"
+        ));
 
         ResponseEntity<List<StudentPreferenceResponseDTO>> response =
-                controller.getPreferences(userId, false, null);
+                whenGettingPreferences(userId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
@@ -166,21 +161,19 @@ class StudentPreferenceControllerTest {
         UUID userId = randomUUID();
         UUID childId = randomUUID();
         UUID childUserId = randomUUID();
-        when(getStudentPreferences.executeByUserId(
-                new GetStudentPreferencesByUserRequest(userId, false, null)))
-                .thenReturn(new GetStudentPreferencesResponse(List.of(preference(
-                        randomUUID(),
-                        childId,
-                        childUserId,
-                        true,
-                        "Ana",
-                        "Lopez",
-                        "Probar fruta",
-                        "Puede gustarle"
-                ))));
+        givenPreferencesByUser(userId, preference(
+                randomUUID(),
+                childId,
+                childUserId,
+                true,
+                "Ana",
+                "Lopez",
+                "Probar fruta",
+                "Puede gustarle"
+        ));
 
         ResponseEntity<List<StudentPreferenceResponseDTO>> response =
-                controller.getPreferences(userId, false, null);
+                whenGettingPreferences(userId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Ana Lopez: Probar fruta", response.getBody().get(0).titulo());
@@ -192,7 +185,7 @@ class StudentPreferenceControllerTest {
     void respondToAISuggestionSuccessfully() {
         UUID sugerenciaId = randomUUID();
 
-        ResponseEntity<Void> response = controller.respond(sugerenciaId, true);
+        ResponseEntity<Void> response = whenRespondingToSuggestion(sugerenciaId, true);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(respondToAISuggestion).execute(
@@ -200,58 +193,35 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void agregarFavoritoSuccessfully() {
+    void addFavoriteSuccessfully() {
         UUID studentId = randomUUID();
         UUID productoId = randomUUID();
 
-        ResponseEntity<Void> response = controller.agregarFavorito(studentId, productoId);
+        ResponseEntity<Void> response = whenAddingFavorite(studentId, productoId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(addFavoriteProduct).execute(new AddFavoriteProductRequest(studentId, productoId));
     }
 
     @Test
-    void removerFavoritoSuccessfully() {
+    void removeFavoriteSuccessfully() {
         UUID studentId = randomUUID();
         UUID productoId = randomUUID();
 
-        ResponseEntity<Void> response = controller.removerFavorito(studentId, productoId);
+        ResponseEntity<Void> response = whenRemovingFavorite(studentId, productoId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(deleteFavoriteProduct).execute(new DeleteFavoriteProductRequest(studentId, productoId));
+        verify(deleteFavoriteProduct).execute(
+                new DeleteFavoriteProductRequest(studentId, productoId));
     }
 
     @Test
-    void obtenerFavoritosSuccessfully() {
+    void getFavoritesSuccessfully() {
         UUID studentId = randomUUID();
         UUID productId = randomUUID();
-        GetFavoritesByStudentResponse responseDTO = new GetFavoritesByStudentResponse(
-                productId,
-                "Test",
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-        );
+        givenFavoriteProducts(studentId, favoriteProduct(productId));
 
-        when(getFavoritesByStudent.execute(new GetFavoritesByStudentRequest(studentId))).thenReturn(Set.of(responseDTO));
-
-        ResponseEntity<List<ProductResponseDTO>> response = controller.obtenerFavoritos(studentId);
+        ResponseEntity<List<ProductResponseDTO>> response = whenGettingFavorites(studentId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
@@ -281,6 +251,100 @@ class StudentPreferenceControllerTest {
                 null,
                 null,
                 parentView
+        );
+    }
+
+    private void givenStudentIdForUser(UUID userId, UUID studentId) {
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+    }
+
+    private void givenPreferenceDetected(
+            UUID studentId,
+            UUID buffetId,
+            DetectStudentPreferencesResponse detected) {
+        when(detectStudentPreferences.execute(
+                new DetectStudentPreferencesRequest(studentId, buffetId)))
+                .thenReturn(Optional.of(detected));
+    }
+
+    private void givenNoPreferenceDetected(UUID studentId, UUID buffetId) {
+        givenNoPreferenceDetected(new DetectStudentPreferencesRequest(studentId, buffetId));
+    }
+
+    private void givenNoPreferenceDetected(DetectStudentPreferencesRequest request) {
+        when(detectStudentPreferences.execute(request)).thenReturn(Optional.empty());
+    }
+
+    private void givenPreferencesByUser(
+            UUID userId,
+            GetStudentPreferencesResponse.Preference... preferences) {
+        when(getStudentPreferences.executeByUserId(userPreferencesRequest(userId)))
+                .thenReturn(new GetStudentPreferencesResponse(List.of(preferences)));
+    }
+
+    private void givenFavoriteProducts(
+            UUID studentId,
+            GetFavoritesByStudentResponse... favorites) {
+        when(getFavoritesByStudent.execute(new GetFavoritesByStudentRequest(studentId)))
+                .thenReturn(Set.of(favorites));
+    }
+
+    private ResponseEntity<StudentPreferenceResponseDTO> whenDetectingPreference(
+            UUID userId,
+            UUID buffetId) {
+        return controller.detect(userId, buffetId);
+    }
+
+    private ResponseEntity<List<StudentPreferenceResponseDTO>> whenGettingPreferences(
+            UUID userId) {
+        return controller.getPreferences(userId, false, null);
+    }
+
+    private ResponseEntity<Void> whenRespondingToSuggestion(
+            UUID suggestionId,
+            boolean accepted) {
+        return controller.respond(suggestionId, accepted);
+    }
+
+    private ResponseEntity<Void> whenAddingFavorite(UUID studentId, UUID productId) {
+        return controller.agregarFavorito(studentId, productId);
+    }
+
+    private ResponseEntity<Void> whenRemovingFavorite(UUID studentId, UUID productId) {
+        return controller.removerFavorito(studentId, productId);
+    }
+
+    private ResponseEntity<List<ProductResponseDTO>> whenGettingFavorites(UUID studentId) {
+        return controller.obtenerFavoritos(studentId);
+    }
+
+    private GetStudentPreferencesByUserRequest userPreferencesRequest(UUID userId) {
+        return new GetStudentPreferencesByUserRequest(userId, false, null);
+    }
+
+    private GetFavoritesByStudentResponse favoriteProduct(UUID productId) {
+        return new GetFavoritesByStudentResponse(
+                productId,
+                "Test",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 }

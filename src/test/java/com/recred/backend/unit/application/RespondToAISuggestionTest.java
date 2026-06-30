@@ -40,9 +40,10 @@ class RespondToAISuggestionTest {
         SugerenciaIAEntity suggestion = suggestion(suggestionId);
         givenSuggestionExists(suggestionId, suggestion);
 
-        useCase.execute(request(suggestionId, true));
+        whenRespondingToSuggestion(suggestionId, true);
 
-        assertSuggestionWasMarkedAsResponded(suggestion, true);
+        assertEquals(true, suggestion.getAceptada());
+        assertNotNull(suggestion.getRespondidaEn());
         verify(sugerenciaIARepository).guardar(suggestion);
     }
 
@@ -51,13 +52,17 @@ class RespondToAISuggestionTest {
         UUID suggestionId = randomUUID();
         givenSuggestionDoesNotExist(suggestionId);
 
-        useCase.execute(request(suggestionId, false));
+        whenRespondingToSuggestion(suggestionId, false);
 
         verify(sugerenciaIARepository, never()).guardar(any(SugerenciaIAEntity.class));
     }
 
     private RespondToAISuggestionRequest request(UUID suggestionId, boolean accepted) {
         return new RespondToAISuggestionRequest(suggestionId, accepted);
+    }
+
+    private void whenRespondingToSuggestion(UUID suggestionId, boolean accepted) {
+        useCase.execute(request(suggestionId, accepted));
     }
 
     private void givenSuggestionExists(UUID suggestionId, SugerenciaIAEntity suggestion) {
@@ -74,10 +79,4 @@ class RespondToAISuggestionTest {
         return suggestion;
     }
 
-    private void assertSuggestionWasMarkedAsResponded(
-            SugerenciaIAEntity suggestion,
-            boolean accepted) {
-        assertEquals(accepted, suggestion.getAceptada());
-        assertNotNull(suggestion.getRespondidaEn());
-    }
 }

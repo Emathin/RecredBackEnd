@@ -26,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -88,16 +89,11 @@ class ProductControllerTest {
         UUID productId = randomUUID();
         UUID buffetId = randomUUID();
 
-        mockMvc.perform(patch("/api/v1/products/{productId}/precio", productId)
-                        .param("nuevoPrecio", "120.00")
-                        .param("buffetId", buffetId.toString()))
-                .andExpect(status().isOk());
+        ResultActions result = whenUpdatingPriceWithQueryParams(productId, buffetId);
 
-        verify(updateProductPrice).execute(new UpdateProductPriceRequest(
-                productId,
-                new BigDecimal("120.00"),
-                buffetId
-        ));
+        result.andExpect(status().isOk());
+        verify(updateProductPrice).execute(
+                new UpdateProductPriceRequest(productId, new BigDecimal("120.00"), buffetId));
     }
 
     @Test
@@ -105,38 +101,22 @@ class ProductControllerTest {
         UUID productId = randomUUID();
         UUID buffetId = randomUUID();
 
-        mockMvc.perform(patch("/api/v1/products/{productId}/precio", productId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "nuevoPrecio", "120.00",
-                                "buffetId", buffetId.toString()
-                        ))))
-                .andExpect(status().isOk());
+        ResultActions result = whenUpdatingPriceWithJsonBody(productId, buffetId);
 
-        verify(updateProductPrice).execute(new UpdateProductPriceRequest(
-                productId,
-                new BigDecimal("120.00"),
-                buffetId
-        ));
+        result.andExpect(status().isOk());
+        verify(updateProductPrice).execute(
+                new UpdateProductPriceRequest(productId, new BigDecimal("120.00"), buffetId));
     }
 
     @Test
     void updatePriceAcceptsOnlyQueryPriceAndNullBuffet() {
         UUID productId = randomUUID();
 
-        ResponseEntity<Void> response = controller.updatePrice(
-                productId,
-                new BigDecimal("120.00"),
-                null,
-                null
-        );
+        ResponseEntity<Void> response = whenUpdatingPriceWithOnlyQueryPrice(productId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(updateProductPrice).execute(new UpdateProductPriceRequest(
-                productId,
-                new BigDecimal("120.00"),
-                null
-        ));
+        verify(updateProductPrice).execute(
+                new UpdateProductPriceRequest(productId, new BigDecimal("120.00"), null));
     }
 
     @Test
@@ -151,9 +131,9 @@ class ProductControllerTest {
     void findAllReturnsMappedProducts() {
         UUID buffetId = randomUUID();
         UUID productId = randomUUID();
-        when(getAllProducts.execute(buffetId)).thenReturn(List.of(product(productId)));
+        givenProductsForBuffet(buffetId, product(productId));
 
-        ResponseEntity<List<ProductResponseDTO>> response = controller.findAll(buffetId);
+        ResponseEntity<List<ProductResponseDTO>> response = whenFindingAllProducts(buffetId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(productId, response.getBody().get(0).id());
@@ -165,10 +145,9 @@ class ProductControllerTest {
     void findByIdReturnsMappedProduct() {
         UUID productId = randomUUID();
         UUID buffetId = randomUUID();
-        when(getProductById.execute(productId, buffetId)).thenReturn(product(productId));
+        givenProductExists(productId, buffetId);
 
-        ResponseEntity<ProductResponseDTO> response =
-                controller.findById(productId, buffetId);
+        ResponseEntity<ProductResponseDTO> response = whenFindingProductById(productId, buffetId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(productId, response.getBody().id());
@@ -180,13 +159,13 @@ class ProductControllerTest {
         UUID productId = randomUUID();
         UUID buffetId = randomUUID();
         ProductRequestDTO request = productRequest(buffetId);
-        when(saveProduct.execute(any(SaveProductCommand.class)))
-                .thenReturn(product(productId));
+        givenProductIsSaved(productId);
 
-        ResponseEntity<ProductResponseDTO> response = controller.create(request);
+        ResponseEntity<ProductResponseDTO> response = whenCreatingProduct(request);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(productId, response.getBody().id());
+
         ArgumentCaptor<SaveProductCommand> commandCaptor =
                 ArgumentCaptor.forClass(SaveProductCommand.class);
         verify(saveProduct).execute(commandCaptor.capture());
@@ -199,13 +178,13 @@ class ProductControllerTest {
         UUID productId = randomUUID();
         UUID buffetId = randomUUID();
         ProductRequestDTO request = productRequest(buffetId);
-        when(updateProduct.execute(any(UpdateProductCommand.class)))
-                .thenReturn(product(productId));
+        givenProductIsUpdated(productId);
 
-        ResponseEntity<ProductResponseDTO> response = controller.update(productId, request);
+        ResponseEntity<ProductResponseDTO> response = whenUpdatingProduct(productId, request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(productId, response.getBody().id());
+
         ArgumentCaptor<UpdateProductCommand> commandCaptor =
                 ArgumentCaptor.forClass(UpdateProductCommand.class);
         verify(updateProduct).execute(commandCaptor.capture());
@@ -217,10 +196,80 @@ class ProductControllerTest {
     void deleteDelegatesAndReturnsNoContent() {
         UUID productId = randomUUID();
 
-        ResponseEntity<Void> response = controller.delete(productId);
+        ResponseEntity<Void> response = whenDeletingProduct(productId);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         verify(deleteProduct).execute(productId);
+    }
+
+    private void givenProductsForBuffet(UUID buffetId, Producto... products) {
+        when(getAllProducts.execute(buffetId)).thenReturn(List.of(products));
+    }
+
+    private void givenProductExists(UUID productId, UUID buffetId) {
+        when(getProductById.execute(productId, buffetId)).thenReturn(product(productId));
+    }
+
+    private void givenProductIsSaved(UUID productId) {
+        when(saveProduct.execute(any(SaveProductCommand.class)))
+                .thenReturn(product(productId));
+    }
+
+    private void givenProductIsUpdated(UUID productId) {
+        when(updateProduct.execute(any(UpdateProductCommand.class)))
+                .thenReturn(product(productId));
+    }
+
+    private ResultActions whenUpdatingPriceWithQueryParams(
+            UUID productId,
+            UUID buffetId) throws Exception {
+        return mockMvc.perform(patch("/api/v1/products/{productId}/precio", productId)
+                .param("nuevoPrecio", "120.00")
+                .param("buffetId", buffetId.toString()));
+    }
+
+    private ResultActions whenUpdatingPriceWithJsonBody(
+            UUID productId,
+            UUID buffetId) throws Exception {
+        return mockMvc.perform(patch("/api/v1/products/{productId}/precio", productId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of(
+                        "nuevoPrecio", "120.00",
+                        "buffetId", buffetId.toString()
+                ))));
+    }
+
+    private ResponseEntity<Void> whenUpdatingPriceWithOnlyQueryPrice(UUID productId) {
+        return controller.updatePrice(
+                productId,
+                new BigDecimal("120.00"),
+                null,
+                null
+        );
+    }
+
+    private ResponseEntity<List<ProductResponseDTO>> whenFindingAllProducts(UUID buffetId) {
+        return controller.findAll(buffetId);
+    }
+
+    private ResponseEntity<ProductResponseDTO> whenFindingProductById(
+            UUID productId,
+            UUID buffetId) {
+        return controller.findById(productId, buffetId);
+    }
+
+    private ResponseEntity<ProductResponseDTO> whenCreatingProduct(ProductRequestDTO request) {
+        return controller.create(request);
+    }
+
+    private ResponseEntity<ProductResponseDTO> whenUpdatingProduct(
+            UUID productId,
+            ProductRequestDTO request) {
+        return controller.update(productId, request);
+    }
+
+    private ResponseEntity<Void> whenDeletingProduct(UUID productId) {
+        return controller.delete(productId);
     }
 
     private ProductRequestDTO productRequest(UUID buffetId) {
