@@ -186,7 +186,7 @@ class GoogleGeminiTextClientTest {
 
     @Test
     void devolverVacioCuandoGeminiFallaConImagen() throws IOException {
-        HttpServer server = iniciarServidorGemini(VISION_PATH, 500, "Error");
+        HttpServer server = iniciarServidorGemini(VISION_PATH, 400, "Error");
 
         try {
             configurarBaseUrl(server);
