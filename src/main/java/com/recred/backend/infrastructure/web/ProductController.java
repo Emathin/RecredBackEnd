@@ -139,7 +139,8 @@ public class ProductController {
         List<SaveProductCommand> commands = request.stream()
                 .map(ProductRequestDTO::toSaveCommand)
                 .collect(Collectors.toList());
-        List<Producto> savedProducts = saveBulkProducts.execute(commands);
+        List<Producto> savedProducts = saveBulkProducts.execute(
+                commands);
         List<ProductResponseDTO> response = savedProducts.stream()
                 .map(ProductResponseDTO::fromDomain)
                 .collect(Collectors.toList());
@@ -157,7 +158,8 @@ public class ProductController {
     @PostMapping
     public ResponseEntity<ProductResponseDTO> create(
             @Valid @RequestBody ProductRequestDTO request) {
-        Producto created = saveProduct.execute(request.toSaveCommand());
+        Producto created = saveProduct.execute(
+                request.toSaveCommand());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ProductResponseDTO.fromDomain(created));
     }

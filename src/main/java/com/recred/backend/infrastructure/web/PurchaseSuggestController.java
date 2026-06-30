@@ -4,7 +4,6 @@ import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAdvancePurchaseRequest;
 import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
-import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.RespondToAISuggestionRequest;
 import com.recred.backend.domain.models.BuyerType;
@@ -33,7 +32,6 @@ import java.util.UUID;
 @RequestMapping("/api/v1/sugerencias-consumo")
 public class PurchaseSuggestController {
 
-    private final PurchaseSuggestIA purchaseSuggestIA;
     private final NotifyPurchaseSuggestions notifyPurchaseSuggestions;
     private final RespondToAISuggestion respondToAISuggestion;
     private final CreateAdvancePurchase createAdvancePurchase;
@@ -41,14 +39,12 @@ public class PurchaseSuggestController {
     private final UsuarioService usuarioService;
     private final TutorRepository tutorRepository;
 
-    public PurchaseSuggestController(PurchaseSuggestIA purchaseSuggestIA,
-                                     NotifyPurchaseSuggestions notifyPurchaseSuggestions,
+    public PurchaseSuggestController(NotifyPurchaseSuggestions notifyPurchaseSuggestions,
                                      RespondToAISuggestion respondToAISuggestion,
                                      CreateAdvancePurchase createAdvancePurchase,
                                      SugerenciaIARepository sugerenciaIARepository,
                                      UsuarioService usuarioService,
                                      TutorRepository tutorRepository) {
-        this.purchaseSuggestIA = purchaseSuggestIA;
         this.notifyPurchaseSuggestions = notifyPurchaseSuggestions;
         this.respondToAISuggestion = respondToAISuggestion;
         this.createAdvancePurchase = createAdvancePurchase;
@@ -58,7 +54,7 @@ public class PurchaseSuggestController {
     }
 
     @PostMapping("/test-notificacion")
-    public ResponseEntity<PushNotification> testNotificacion(
+    public ResponseEntity<PushNotification> testNotification(
             Authentication authentication,
             @RequestBody(required = false) TestSuggestionRequest testRequest) {
         String subject = (testRequest != null && testRequest.testCognitoId() != null) 
@@ -72,27 +68,27 @@ public class PurchaseSuggestController {
     }
 
     @PostMapping("/comprar")
-    public ResponseEntity<AdvancePurchaseResponse> comprarSugerencia(
+    public ResponseEntity<AdvancePurchaseResponse> buySuggestion(
             Authentication authentication,
             @RequestBody TestSuggestionRequest testRequest) {
         
-        UUID sugerenciaId = testRequest.sugerenciaId();
+        UUID idSuggestion = testRequest.sugerenciaId();
         String subject = (testRequest.testCognitoId() != null) 
                 ? testRequest.testCognitoId() 
                 : cognitoSubject(authentication);
 
-        SugerenciaIAEntity sugerencia = sugerenciaIARepository.findById(sugerenciaId)
+        SugerenciaIAEntity suggestion = sugerenciaIARepository.findById(idSuggestion)
                 .orElseThrow(() -> new RuntimeException("Sugerencia no encontrada"));
 
         Usuario usuario = usuarioService.obtenerUsuarioActual(subject);
 
-        respondToAISuggestion.execute(new RespondToAISuggestionRequest(sugerenciaId, true));
+        respondToAISuggestion.execute(new RespondToAISuggestionRequest(idSuggestion, true));
 
-        UUID alumnoId = sugerencia.getAlumnoEntity().getId();
-        UUID productoId = sugerencia.getProductoEntity().getId();
-        UUID buffetId = sugerencia.getBuffetEntity().getId();
+        UUID idStudent = suggestion.getAlumnoEntity().getId();
+        UUID idProduct = suggestion.getProductoEntity().getId();
+        UUID idBuffet = suggestion.getBuffetEntity().getId();
 
-        UUID tutorId = tutorRepository.findByAlumnoId(alumnoId).stream()
+        UUID idTutor = tutorRepository.findByAlumnoId(idStudent).stream()
                 .findFirst()
                 .map(t -> t.getId())
                 .orElse(null);
@@ -102,22 +98,21 @@ public class PurchaseSuggestController {
                 : BuyerType.TUTOR;
 
         CreateAdvancePurchaseRequest.ItemRequest item =
-                new CreateAdvancePurchaseRequest.ItemRequest(productoId, 1);
+                new CreateAdvancePurchaseRequest.ItemRequest(idProduct, 1);
 
         CreateAdvancePurchaseRequest.OrderRequest order =
                 new CreateAdvancePurchaseRequest.OrderRequest(
-                        alumnoId,
+                        idStudent,
                         usuario.getId(),
                         buyerType,
-                        buffetId,
+                        idBuffet,
                         LocalDate.now().toString(),
                         RecessTime.AFTER_HOURS,
                         List.of(item),
-                        sugerenciaId,
-                        tutorId
+                        idSuggestion,
+                        idTutor
                 );
 
-        // TODO: Implementar lógica de código de verificación si fuera necesario
 
         CreateAdvancePurchaseRequest request =
                 new CreateAdvancePurchaseRequest(List.of(order));
