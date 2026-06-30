@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetActiveSchools;
 import com.recred.backend.application.GetGradesBySchool;
+import com.recred.backend.application.GetGradesBySchoolRequest;
 import com.recred.backend.domain.exceptions.SchoolNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,20 +31,23 @@ public class SchoolController {
     }
 
     @GetMapping
-    public ResponseEntity<List<SchoolResponse>> getSchools() {
-        List<SchoolResponse> schools = getActiveSchools.execute()
+    public ResponseEntity<List<SchoolResponseDTO>> getSchools() {
+        List<SchoolResponseDTO> schools = getActiveSchools.execute()
+                .schools()
                 .stream()
-                .map(SchoolResponse::fromDomain)
+                .map(SchoolResponseDTO::fromApplication)
                 .toList();
 
         return ResponseEntity.ok(schools);
     }
 
     @GetMapping("/{schoolId}/grados")
-    public ResponseEntity<List<GradeResponse>> getGrades(@PathVariable UUID schoolId) {
-        List<GradeResponse> grades = getGradesBySchool.execute(schoolId)
+    public ResponseEntity<List<GradeResponseDTO>> getGrades(@PathVariable UUID schoolId) {
+        List<GradeResponseDTO> grades = getGradesBySchool
+                .execute(new GetGradesBySchoolRequest(schoolId))
+                .grades()
                 .stream()
-                .map(GradeResponse::fromDomain)
+                .map(GradeResponseDTO::fromApplication)
                 .toList();
 
         return ResponseEntity.ok(grades);

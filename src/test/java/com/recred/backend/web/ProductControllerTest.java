@@ -6,15 +6,16 @@ import com.recred.backend.application.GetAllProducts;
 import com.recred.backend.application.GetProductById;
 import com.recred.backend.application.ParseBulkStock;
 import com.recred.backend.application.SaveBulkProducts;
-import com.recred.backend.application.SaveProductCommand;
 import com.recred.backend.application.SaveProduct;
+import com.recred.backend.application.SaveProductCommand;
 import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductCommand;
 import com.recred.backend.application.UpdateProductPrice;
+import com.recred.backend.application.UpdateProductPriceRequest;
+import com.recred.backend.domain.models.Producto;
 import com.recred.backend.infrastructure.web.ProductController;
 import com.recred.backend.infrastructure.web.ProductRequestDTO;
 import com.recred.backend.infrastructure.web.ProductResponseDTO;
-import com.recred.backend.domain.models.Producto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -83,21 +85,25 @@ class ProductControllerTest {
 
     @Test
     void updatePriceAcceptsQueryParams() throws Exception {
-        UUID productId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
+        UUID productId = randomUUID();
+        UUID buffetId = randomUUID();
 
         mockMvc.perform(patch("/api/v1/products/{productId}/precio", productId)
                         .param("nuevoPrecio", "120.00")
                         .param("buffetId", buffetId.toString()))
                 .andExpect(status().isOk());
 
-        verify(updateProductPrice).execute(productId, new BigDecimal("120.00"), buffetId);
+        verify(updateProductPrice).execute(new UpdateProductPriceRequest(
+                productId,
+                new BigDecimal("120.00"),
+                buffetId
+        ));
     }
 
     @Test
     void updatePriceAcceptsJsonBody() throws Exception {
-        UUID productId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
+        UUID productId = randomUUID();
+        UUID buffetId = randomUUID();
 
         mockMvc.perform(patch("/api/v1/products/{productId}/precio", productId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -107,12 +113,16 @@ class ProductControllerTest {
                         ))))
                 .andExpect(status().isOk());
 
-        verify(updateProductPrice).execute(productId, new BigDecimal("120.00"), buffetId);
+        verify(updateProductPrice).execute(new UpdateProductPriceRequest(
+                productId,
+                new BigDecimal("120.00"),
+                buffetId
+        ));
     }
 
     @Test
     void updatePriceAcceptsOnlyQueryPriceAndNullBuffet() {
-        UUID productId = UUID.randomUUID();
+        UUID productId = randomUUID();
 
         ResponseEntity<Void> response = controller.updatePrice(
                 productId,
@@ -122,12 +132,16 @@ class ProductControllerTest {
         );
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(updateProductPrice).execute(productId, new BigDecimal("120.00"), null);
+        verify(updateProductPrice).execute(new UpdateProductPriceRequest(
+                productId,
+                new BigDecimal("120.00"),
+                null
+        ));
     }
 
     @Test
     void updatePriceWithoutPriceThrowsIllegalArgumentException() {
-        UUID productId = UUID.randomUUID();
+        UUID productId = randomUUID();
 
         assertThrows(IllegalArgumentException.class,
                 () -> controller.updatePrice(productId, null, null, null));
@@ -135,8 +149,8 @@ class ProductControllerTest {
 
     @Test
     void findAllReturnsMappedProducts() {
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
+        UUID buffetId = randomUUID();
+        UUID productId = randomUUID();
         when(getAllProducts.execute(buffetId)).thenReturn(List.of(product(productId)));
 
         ResponseEntity<List<ProductResponseDTO>> response = controller.findAll(buffetId);
@@ -149,8 +163,8 @@ class ProductControllerTest {
 
     @Test
     void findByIdReturnsMappedProduct() {
-        UUID productId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
+        UUID productId = randomUUID();
+        UUID buffetId = randomUUID();
         when(getProductById.execute(productId, buffetId)).thenReturn(product(productId));
 
         ResponseEntity<ProductResponseDTO> response =
@@ -163,8 +177,8 @@ class ProductControllerTest {
 
     @Test
     void createDelegatesSaveCommandAndReturnsCreatedProduct() {
-        UUID productId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
+        UUID productId = randomUUID();
+        UUID buffetId = randomUUID();
         ProductRequestDTO request = productRequest(buffetId);
         when(saveProduct.execute(any(SaveProductCommand.class)))
                 .thenReturn(product(productId));
@@ -182,8 +196,8 @@ class ProductControllerTest {
 
     @Test
     void updateDelegatesUpdateCommandAndReturnsUpdatedProduct() {
-        UUID productId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
+        UUID productId = randomUUID();
+        UUID buffetId = randomUUID();
         ProductRequestDTO request = productRequest(buffetId);
         when(updateProduct.execute(any(UpdateProductCommand.class)))
                 .thenReturn(product(productId));
@@ -201,7 +215,7 @@ class ProductControllerTest {
 
     @Test
     void deleteDelegatesAndReturnsNoContent() {
-        UUID productId = UUID.randomUUID();
+        UUID productId = randomUUID();
 
         ResponseEntity<Void> response = controller.delete(productId);
 
@@ -216,7 +230,7 @@ class ProductControllerTest {
                 new BigDecimal("120.00"),
                 new BigDecimal("200.00"),
                 false,
-                UUID.randomUUID(),
+                randomUUID(),
                 null,
                 buffetId,
                 5,

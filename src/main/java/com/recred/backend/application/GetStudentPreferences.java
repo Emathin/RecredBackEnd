@@ -3,6 +3,7 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.domain.repositories.TutorRepository;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -29,96 +31,215 @@ public class GetStudentPreferences {
         this.tutorRepository = tutorRepository;
     }
 
-    public List<SugerenciaIAEntity> execute(
-            UUID alumnoId, boolean onlyLast, TipoSugerenciaIA tipo) {
-        List<SugerenciaIAEntity> preferences;
+    public GetStudentPreferencesResponse execute(GetStudentPreferencesRequest request) {
+        request.validate();
 
-        if (tipo != null) {
-            preferences = sugerenciaIARepository.findByAlumnoIdAndTipo(alumnoId, tipo);
-        } else {
-            preferences = sugerenciaIARepository.findByAlumnoId(alumnoId);
+        List<SugerenciaIAEntity> preferences = findPreferences(request);
+        List<SugerenciaIAEntity> selectedPreferences = selectPreferences(preferences, request);
+
+        return toResponse(selectedPreferences, request.studentId());
+    }
+
+    private List<SugerenciaIAEntity> findPreferences(GetStudentPreferencesRequest request) {
+        if (request.type() != null) {
+            return sugerenciaIARepository.findByAlumnoIdAndTipo(
+                    request.studentId(),
+                    request.type());
         }
-        
-        if (onlyLast && !preferences.isEmpty()) {
-            return List.of(preferences.get(0));
+
+        return sugerenciaIARepository.findByAlumnoId(request.studentId());
+    }
+
+    private List<SugerenciaIAEntity> selectPreferences(
+            List<SugerenciaIAEntity> preferences,
+            GetStudentPreferencesRequest request
+    ) {
+        if (!request.onlyLast() || preferences.isEmpty()) {
+            return preferences;
         }
-        
-        return preferences;
+
+        return List.of(preferences.get(0));
     }
 
     @Transactional
-    public List<StudentPreferenceResult> executeByUserId(
-            UUID userId,
-            boolean onlyLast,
-            TipoSugerenciaIA tipo
-    ) {
-        Optional<Tutor> tutor = tutorRepository.findByUsuarioId(userId);
+    public GetStudentPreferencesResponse executeByUserId(
+            GetStudentPreferencesByUserRequest request) {
+        request.validate();
+
+        Optional<Tutor> tutor = findTutorForUser(request.userId());
         if (tutor.isPresent()) {
-            return executeForParent(tutor.orElseThrow(), tipo);
+            return preferencesForParent(tutor.orElseThrow(), request.type());
         }
 
-        UUID alumnoId = alumnoRepository.findStudentIdByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "No existe un alumno o tutor asociado al usuario: " + userId));
-        Alumno alumno = alumnoRepository.findById(alumnoId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "No existe un alumno asociado al usuario: " + userId));
-
-        return latestPendingSuggestionForStudent(alumno, tipo)
-                .map(List::of)
-                .orElseGet(List::of);
+        return preferencesForStudentUser(request.userId(), request.type());
     }
 
-    private List<StudentPreferenceResult> executeForParent(Tutor tutor, TipoSugerenciaIA tipo) {
+    private Optional<Tutor> findTutorForUser(UUID userId) {
+        return tutorRepository.findByUsuarioId(userId);
+    }
+
+    private GetStudentPreferencesResponse preferencesForParent(
+            Tutor tutor,
+            TipoSugerenciaIA tipo) {
+        return new GetStudentPreferencesResponse(preferencesForChildren(tutor, tipo));
+    }
+
+    private GetStudentPreferencesResponse preferencesForStudentUser(
+            UUID userId,
+            TipoSugerenciaIA tipo) {
+        Alumno alumno = findStudentForUser(userId);
+        return toResponse(latestPendingSuggestionForStudent(alumno, tipo));
+    }
+
+    private Alumno findStudentForUser(UUID userId) {
+        UUID alumnoId = alumnoRepository.findStudentIdByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No existe un alumno o tutor asociado al usuario: "
+                                + userId));
+        return alumnoRepository.findById(alumnoId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No existe un alumno asociado al usuario: " + userId));
+    }
+
+    private List<GetStudentPreferencesResponse.Preference> preferencesForChildren(
+            Tutor tutor,
+            TipoSugerenciaIA tipo) {
         return tutor.getHijos().stream()
                 .flatMap(child -> latestPendingSuggestionForChild(child, tipo).stream())
                 .toList();
     }
 
-    private Optional<StudentPreferenceResult> latestPendingSuggestionForChild(
+    private Optional<GetStudentPreferencesResponse.Preference> latestPendingSuggestionForChild(
             Alumno child,
+            TipoSugerenciaIA tipo
+    ) {
+        return latestPendingParentSuggestion(child.getId(), tipo)
+                .map(suggestion -> markAsResponded(suggestion, true))
+                .map(suggestion -> toPreference(suggestion, child, true));
+    }
+
+    private Optional<GetStudentPreferencesResponse.Preference> latestPendingSuggestionForStudent(
+            Alumno student,
+            TipoSugerenciaIA tipo
+    ) {
+        return latestPendingStudentSuggestion(student.getId(), tipo)
+                .map(suggestion -> markAsResponded(suggestion, false))
+                .map(suggestion -> toPreference(suggestion, student, false));
+    }
+
+    private Optional<SugerenciaIAEntity> latestPendingParentSuggestion(
+            UUID studentId,
             TipoSugerenciaIA tipo
     ) {
         List<SugerenciaIAEntity> suggestions =
                 sugerenciaIARepository.findPendingParentNotificationsByAlumnoId(
-                        child.getId(), tipo);
-
-        if (suggestions.isEmpty()) {
-            return Optional.empty();
-        }
-
-        SugerenciaIAEntity latest = suggestions.get(0);
-        latest.setAceptada(true);
-        latest.setRespondidaEn(LocalDateTime.now());
-        sugerenciaIARepository.guardar(latest);
-
-        return Optional.of(new StudentPreferenceResult(latest, child, true));
+                        studentId, tipo);
+        return firstSuggestion(suggestions);
     }
 
-    private Optional<StudentPreferenceResult> latestPendingSuggestionForStudent(
-            Alumno student,
+    private Optional<SugerenciaIAEntity> latestPendingStudentSuggestion(
+            UUID studentId,
             TipoSugerenciaIA tipo
     ) {
         List<SugerenciaIAEntity> suggestions =
                 sugerenciaIARepository.findPendingStudentNotificationsByAlumnoId(
-                        student.getId(), tipo);
+                        studentId, tipo);
+        return firstSuggestion(suggestions);
+    }
 
+    private Optional<SugerenciaIAEntity> firstSuggestion(
+            List<SugerenciaIAEntity> suggestions) {
         if (suggestions.isEmpty()) {
             return Optional.empty();
         }
 
-        SugerenciaIAEntity latest = suggestions.get(0);
-        latest.setAceptada(false);
-        latest.setRespondidaEn(LocalDateTime.now());
-        sugerenciaIARepository.guardar(latest);
-
-        return Optional.of(new StudentPreferenceResult(latest, student, false));
+        return Optional.of(suggestions.get(0));
     }
 
-    public record StudentPreferenceResult(
+    private SugerenciaIAEntity markAsResponded(
             SugerenciaIAEntity suggestion,
-            Alumno child,
+            boolean accepted) {
+        suggestion.setAceptada(accepted);
+        suggestion.setRespondidaEn(LocalDateTime.now());
+        sugerenciaIARepository.guardar(suggestion);
+        return suggestion;
+    }
+
+    private GetStudentPreferencesResponse.Preference toPreference(
+            SugerenciaIAEntity suggestion,
+            Alumno student,
             boolean parentView
     ) {
+        Usuario user = student == null ? null : student.getUsuario();
+        return new GetStudentPreferencesResponse.Preference(
+                suggestion.getId(),
+                student != null ? student.getId() : studentIdFromSuggestion(suggestion),
+                user != null ? user.getId() : null,
+                user != null ? user.getNombre() : null,
+                user != null ? user.getApellido() : null,
+                suggestion.getTipo(),
+                suggestion.getTitulo(),
+                suggestion.getMensaje(),
+                metadataValue(suggestion, "productoId"),
+                metadataValue(suggestion, "razonIA"),
+                parentView
+        );
+    }
+
+    private GetStudentPreferencesResponse toResponse(
+            Optional<GetStudentPreferencesResponse.Preference> preference
+    ) {
+        return new GetStudentPreferencesResponse(
+                preference.map(List::of).orElseGet(List::of));
+    }
+
+    private GetStudentPreferencesResponse toResponse(
+            List<SugerenciaIAEntity> suggestions,
+            UUID studentId
+    ) {
+        return new GetStudentPreferencesResponse(
+                suggestions.stream()
+                        .map(suggestion -> toPreference(suggestion, studentId))
+                        .toList()
+        );
+    }
+
+    private GetStudentPreferencesResponse.Preference toPreference(
+            SugerenciaIAEntity suggestion,
+            UUID studentId
+    ) {
+        return new GetStudentPreferencesResponse.Preference(
+                suggestion.getId(),
+                studentIdFromSuggestion(suggestion, studentId),
+                null,
+                null,
+                null,
+                suggestion.getTipo(),
+                suggestion.getTitulo(),
+                suggestion.getMensaje(),
+                metadataValue(suggestion, "productoId"),
+                metadataValue(suggestion, "razonIA"),
+                false
+        );
+    }
+
+    private UUID studentIdFromSuggestion(SugerenciaIAEntity suggestion, UUID fallbackStudentId) {
+        UUID suggestionStudentId = studentIdFromSuggestion(suggestion);
+        return suggestionStudentId == null ? fallbackStudentId : suggestionStudentId;
+    }
+
+    private UUID studentIdFromSuggestion(SugerenciaIAEntity suggestion) {
+        if (suggestion.getAlumnoEntity() == null) {
+            return null;
+        }
+        return suggestion.getAlumnoEntity().getId();
+    }
+
+    private String metadataValue(SugerenciaIAEntity suggestion, String key) {
+        Map<String, Object> metadata = suggestion.getMetadata();
+        if (metadata == null || metadata.get(key) == null) {
+            return null;
+        }
+        return metadata.get(key).toString();
     }
 }

@@ -1,19 +1,22 @@
 package com.recred.backend.web;
 
-import com.recred.backend.infrastructure.web.*;
-
 import com.recred.backend.application.GetCartSuggestions;
-import com.recred.backend.domain.models.CartSuggestion;
-import com.recred.backend.domain.models.Producto;
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import com.recred.backend.application.GetCartSuggestionsRequest;
+import com.recred.backend.application.GetCartSuggestionsResponse;
+import com.recred.backend.infrastructure.web.CartSuggestionController;
+import com.recred.backend.infrastructure.web.CartSuggestionRequestDTO;
+import com.recred.backend.infrastructure.web.CartSuggestionResponseDTO;
+import com.recred.backend.infrastructure.web.PurchaseItemDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.ResponseEntity;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -31,84 +34,85 @@ class CartSuggestionControllerTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void suggestMapsRequestItemsAndResponse() {
-        UUID studentId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        UUID cartProductId = UUID.randomUUID();
-        UUID suggestedProductId = UUID.randomUUID();
-        PurchaseItemDTO item = new PurchaseItemDTO(
-                cartProductId,
-                "Agua",
-                1,
-                new BigDecimal("100.00")
-        );
-        CartSuggestion suggestion = new CartSuggestion(
-                product(suggestedProductId),
-                "Motivo",
-                "FAVORITE",
-                50
-        );
-        when(getCartSuggestions.execute(
-                org.mockito.ArgumentMatchers.eq(studentId),
-                org.mockito.ArgumentMatchers.eq(buffetId),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq(2)
-        )).thenReturn(List.of(suggestion));
+    void suggestMapsRequestItemsToUseCaseRequest() {
+        UUID studentId = randomUUID();
+        UUID buffetId = randomUUID();
+        UUID cartProductId = randomUUID();
+        PurchaseItemDTO item = item(cartProductId);
+        when(getCartSuggestions.execute(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new GetCartSuggestionsResponse(List.of()));
 
-        ResponseEntity<List<CartSuggestionResponse>> response = controller.suggest(
-                new CartSuggestionRequest(studentId, buffetId, List.of(item), 2)
+        controller.suggest(
+                new CartSuggestionRequestDTO(studentId, buffetId, List.of(item), 2)
+        );
+
+        GetCartSuggestionsRequest useCaseRequest = capturedRequest();
+        assertEquals(studentId, useCaseRequest.studentId());
+        assertEquals(buffetId, useCaseRequest.buffetId());
+        assertEquals(java.util.Set.of(cartProductId), useCaseRequest.cartProductIds());
+        assertEquals(2, useCaseRequest.limit());
+    }
+
+    @Test
+    void suggestMapsApplicationResponseToWebResponse() {
+        UUID suggestedProductId = randomUUID();
+        when(getCartSuggestions.execute(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new GetCartSuggestionsResponse(List.of(suggestion(suggestedProductId))));
+
+        ResponseEntity<List<CartSuggestionResponseDTO>> response = controller.suggest(
+                new CartSuggestionRequestDTO(randomUUID(), randomUUID(), List.of(), 2)
         );
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(suggestedProductId, response.getBody().get(0).productId());
         assertEquals("Yogur", response.getBody().get(0).productName());
         assertEquals("FAVORITE", response.getBody().get(0).source());
-
-        ArgumentCaptor<Set<UUID>> cartProductsCaptor = ArgumentCaptor.forClass(Set.class);
-        verify(getCartSuggestions).execute(
-                org.mockito.ArgumentMatchers.eq(studentId),
-                org.mockito.ArgumentMatchers.eq(buffetId),
-                cartProductsCaptor.capture(),
-                org.mockito.ArgumentMatchers.eq(2)
-        );
-        assertEquals(Set.of(cartProductId), cartProductsCaptor.getValue());
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void suggestUsesEmptySetWhenRequestItemsAreNull() {
-        UUID studentId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        when(getCartSuggestions.execute(
-                org.mockito.ArgumentMatchers.eq(studentId),
-                org.mockito.ArgumentMatchers.eq(buffetId),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq(null)
-        )).thenReturn(List.of());
+        UUID studentId = randomUUID();
+        UUID buffetId = randomUUID();
+        when(getCartSuggestions.execute(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new GetCartSuggestionsResponse(List.of()));
 
-        ResponseEntity<List<CartSuggestionResponse>> response = controller.suggest(
-                new CartSuggestionRequest(studentId, buffetId, null, null)
+        ResponseEntity<List<CartSuggestionResponseDTO>> response = controller.suggest(
+                new CartSuggestionRequestDTO(studentId, buffetId, null, null)
         );
 
         assertEquals(List.of(), response.getBody());
-        ArgumentCaptor<Set<UUID>> cartProductsCaptor = ArgumentCaptor.forClass(Set.class);
-        verify(getCartSuggestions).execute(
-                org.mockito.ArgumentMatchers.eq(studentId),
-                org.mockito.ArgumentMatchers.eq(buffetId),
-                cartProductsCaptor.capture(),
-                org.mockito.ArgumentMatchers.eq(null)
-        );
-        assertEquals(Set.of(), cartProductsCaptor.getValue());
+        GetCartSuggestionsRequest useCaseRequest = capturedRequest();
+        assertEquals(studentId, useCaseRequest.studentId());
+        assertEquals(buffetId, useCaseRequest.buffetId());
+        assertEquals(java.util.Set.of(), useCaseRequest.cartProductIds());
+        assertEquals(null, useCaseRequest.limit());
     }
 
-    private Producto product(UUID productId) {
-        Producto product = new Producto();
-        product.setId(productId);
-        product.setNombre("Yogur");
-        product.setPrecio(new BigDecimal("120.00"));
-        product.setStockActual(5);
-        product.setStockReservado(1);
-        return product;
+    private GetCartSuggestionsRequest capturedRequest() {
+        ArgumentCaptor<GetCartSuggestionsRequest> captor =
+                ArgumentCaptor.forClass(GetCartSuggestionsRequest.class);
+        verify(getCartSuggestions).execute(captor.capture());
+        return captor.getValue();
+    }
+
+    private PurchaseItemDTO item(UUID productId) {
+        return new PurchaseItemDTO(
+                productId,
+                "Agua",
+                1,
+                new BigDecimal("100.00")
+        );
+    }
+
+    private GetCartSuggestionsResponse.Suggestion suggestion(UUID productId) {
+        return new GetCartSuggestionsResponse.Suggestion(
+                productId,
+                "Yogur",
+                new BigDecimal("120.00"),
+                4,
+                "Motivo",
+                "FAVORITE",
+                50
+        );
     }
 }
