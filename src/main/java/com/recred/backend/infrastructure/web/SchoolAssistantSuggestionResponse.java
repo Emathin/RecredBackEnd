@@ -1,8 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.recred.backend.domain.models.SchoolAssistantActionType;
-import com.recred.backend.domain.models.SchoolAssistantSuggestion;
+import com.recred.backend.application.AskSchoolAssistantResponse.SuggestionResponse;
 
 public record SchoolAssistantSuggestionResponse(
         @JsonProperty("label")
@@ -10,10 +9,10 @@ public record SchoolAssistantSuggestionResponse(
         @JsonProperty("mensaje")
         String message,
         @JsonProperty("tipoAccion")
-        SchoolAssistantActionType actionType
+        String actionType
 ) {
-    public static SchoolAssistantSuggestionResponse fromDomain(
-            SchoolAssistantSuggestion suggestion
+    public static SchoolAssistantSuggestionResponse fromApplication(
+            SuggestionResponse suggestion
     ) {
         return new SchoolAssistantSuggestionResponse(
                 suggestion.label(),
