@@ -1,6 +1,5 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.EstadoCompra;
@@ -53,7 +52,7 @@ public class CancelPresentialPurchase {
         request.validate();
         Purchase purchase = purchase(request.purchaseId());
         requireStudentOwner(purchase, request.studentId());
-        EstadoCompra previousStatus = requirePendingPurchase(purchase);
+        EstadoCompra previousStatus = purchase.getStatus();
 
         validateAdvancePurchaseCancellationWindow(purchase);
         purchase.cancel();
@@ -84,18 +83,6 @@ public class CancelPresentialPurchase {
         }
     }
 
-    private EstadoCompra requirePendingPurchase(Purchase purchase) {
-        EstadoCompra previousStatus = purchase.getStatus();
-
-        if (!purchase.isPending()) {
-            throw new InvalidPurchaseStatusTransitionException(
-                    previousStatus,
-                    EstadoCompra.CANCELADO);
-        }
-
-        return previousStatus;
-    }
-
     private void processRefund(Purchase purchase) {
         Billetera wallet = walletRepository.findByStudentId(purchase.requireStudentId())
                 .orElseThrow(() ->
@@ -114,19 +101,11 @@ public class CancelPresentialPurchase {
 
         FranjaHoraria franja = timeSlotRepository.findById(purchase.getPickupSlotId())
                 .orElseThrow(() -> new IllegalStateException(
-                        "Franja horaria no encontrada para el pedido"));
+                        "Time slot not found for purchase"));
 
         ZoneId zoneId = ZoneId.of("America/Argentina/Buenos_Aires");
         LocalDateTime nowInZone = LocalDateTime.now(zoneId);
-        LocalDateTime startDateTime = LocalDateTime.of(
-                purchase.getPickupDate(),
-                franja.getHoraInicio());
-
-        if (!nowInZone.isBefore(startDateTime.minusHours(1))) {
-            throw new IllegalArgumentException(
-                    "No se puede cancelar el pedido faltando una hora o menos "
-                            + "para que comience el horario de retiro");
-        }
+        purchase.validateCancellationWindow(franja, nowInZone);
     }
 
     private void releaseReservationIfNeeded(Purchase purchase, EstadoCompra previousStatus) {

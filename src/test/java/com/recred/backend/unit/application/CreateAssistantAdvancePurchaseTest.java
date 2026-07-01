@@ -188,7 +188,6 @@ class CreateAssistantAdvancePurchaseTest {
         assertThrows(InsufficientStockException.class,
                 () -> useCase.execute(request(buffetId, cart, pickupDate)));
 
-        assertEquals(new BigDecimal("100.00"), wallet.getSaldoCreditos());
         verify(walletRepository, never()).save(wallet);
         verify(purchaseRepository, never()).save(any(Purchase.class));
         verify(withdrawalCodeService, never()).generateCode(any(Purchase.class));

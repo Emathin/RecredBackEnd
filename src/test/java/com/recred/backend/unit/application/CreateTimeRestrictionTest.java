@@ -119,7 +119,7 @@ class CreateTimeRestrictionTest {
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, 
                 () -> useCase.execute(request));
-        assertEquals("El alumno ya posee esta restriccion de salud asignada globalmente.", ex.getMessage());
+        assertEquals("Student already has this health restriction assigned globally.", ex.getMessage());
     }
 
     @Test
@@ -142,6 +142,6 @@ class CreateTimeRestrictionTest {
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, 
                 () -> useCase.execute(request));
-        assertEquals("El alumno ya posee una restriccion activa para esta categoria o tipo en la franja horaria seleccionada.", ex.getMessage());
+        assertEquals("Student already has an active restriction for this category or type in the selected time slot.", ex.getMessage());
     }
 }

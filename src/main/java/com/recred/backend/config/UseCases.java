@@ -188,6 +188,7 @@ import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.AdvancePurchaseRulesService;
 import com.recred.backend.domain.services.BulkStockAnalyzer;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
+
 import com.recred.backend.domain.services.CognitoStudentIdentityService;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
 import com.recred.backend.domain.services.ExternalPaymentService;
@@ -372,6 +373,8 @@ public class UseCases {
         return new CalculadorPeriodoPresupuesto();
     }
 
+
+
     @Bean
     public ValidacionRestriccionesService validacionRestriccionesService() {
         return new ValidacionRestriccionesService();
@@ -449,9 +452,7 @@ public class UseCases {
             PurchaseRepository purchaseRepository,
             CalculadorPeriodoPresupuesto calculadorPeriodo) {
         return new ValidadorPresupuestoService(
-                presupuestoRepository,
-                purchaseRepository,
-                calculadorPeriodo);
+                presupuestoRepository, purchaseRepository,calculadorPeriodo);
     }
 
     @Bean

@@ -191,7 +191,8 @@ public class CreateAssistantAdvancePurchase {
     private Purchase savePurchase(Purchase purchase, Billetera wallet, BigDecimal total) {
         wallet.debit(total);
         walletRepository.save(wallet);
-        return purchaseRepository.save(purchase);
+        Purchase savedPurchase = purchaseRepository.save(purchase);
+        return savedPurchase == null ? purchase : savedPurchase;
     }
 
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {

@@ -105,13 +105,37 @@ public class Purchase {
         if (this.status == EstadoCompra.CANCELADO) {
             throw new IllegalStateException("Purchase is already cancelled.");
         }
-        if (this.status != EstadoCompra.PENDIENTE && this.status != EstadoCompra.EN_PREPARACION) {
-            throw new IllegalStateException(
-                    "Purchase can only be cancelled if it is PENDING or IN PREPARATION.");
+        
+        if (this.tipo == TipoCompra.PRESENCIAL && this.status != EstadoCompra.PENDIENTE) {
+            throw new InvalidPurchaseStatusTransitionException(this.status, EstadoCompra.CANCELADO);
         }
+
+        if (this.status != EstadoCompra.PENDIENTE && this.status != EstadoCompra.EN_PREPARACION) {
+            throw new InvalidPurchaseStatusTransitionException(this.status, EstadoCompra.CANCELADO);
+        }
+        
         this.status = EstadoCompra.CANCELADO;
         if (this.tipo == TipoCompra.ANTICIPADA) {
             this.withdrawalStatus = EstadoRetiro.CANCELADO;
+        }
+    }
+
+    public void validateCancellationWindow(FranjaHoraria pickupSlot, java.time.LocalDateTime now) {
+        if (this.tipo != TipoCompra.ANTICIPADA ||
+                this.pickupSlotId == null || this.pickupDate == null) {
+            return;
+        }
+        
+        if (pickupSlot == null) {
+            throw new IllegalArgumentException("Time slot is required for advance " +
+                    "purchase cancellation validation");
+        }
+
+        java.time.LocalDateTime startDateTime = java.time.LocalDateTime.of(
+                this.pickupDate, pickupSlot.getHoraInicio());
+        if (!now.isBefore(startDateTime.minusHours(1))) {
+            throw new IllegalArgumentException(
+                    "Cannot cancel an order less than an hour before the pickup time starts");
         }
     }
 
