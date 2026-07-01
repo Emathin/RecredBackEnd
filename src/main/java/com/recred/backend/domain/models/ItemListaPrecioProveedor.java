@@ -20,4 +20,12 @@ public class ItemListaPrecioProveedor {
     private String unidad;
     private String notas;
     private boolean mappingConfirmado = false;
+
+    public boolean hasInventoryProduct() {
+        return productoInventarioId != null;
+    }
+
+    public boolean belongsToInventoryProduct(UUID productId) {
+        return productId != null && productId.equals(productoInventarioId);
+    }
 }

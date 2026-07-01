@@ -1,10 +1,10 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.UploadSupplierPriceListResponse;
 import com.recred.backend.domain.models.ListaPrecioProveedor;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public record ListaPrecioProveedorResponse(
         UUID id,
@@ -28,7 +28,26 @@ public record ListaPrecioProveedorResponse(
                 domain.getCreadoEn(),
                 domain.getItems() != null ? domain.getItems().stream()
                         .map(ItemListaPrecioProveedorResponse::fromDomain)
-                        .collect(Collectors.toList()) : List.of()
+                        .toList() : List.of()
+        );
+    }
+
+    public static ListaPrecioProveedorResponse fromApplication(
+            UploadSupplierPriceListResponse response
+    ) {
+        if (response == null) {
+            return null;
+        }
+        return new ListaPrecioProveedorResponse(
+                response.id(),
+                response.supplierId(),
+                response.fileUrl(),
+                response.originalFilename(),
+                response.active(),
+                response.createdAt(),
+                response.items() != null ? response.items().stream()
+                        .map(ItemListaPrecioProveedorResponse::fromApplication)
+                        .toList() : List.of()
         );
     }
 }

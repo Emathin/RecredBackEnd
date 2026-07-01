@@ -57,8 +57,6 @@ public class DeleteFavoriteCart {
     }
 
     private void analizarAutorizacionParaEliminarCarrito(Tutor tutor, CarritoFavorito carrito) {
-        if (!carrito.getTutor().getId().equals(tutor.getId())) {
-            throw new SecurityException("No autorizado para eliminar este carrito");
-        }
+        carrito.validateOwnership(tutor);
     }
 }

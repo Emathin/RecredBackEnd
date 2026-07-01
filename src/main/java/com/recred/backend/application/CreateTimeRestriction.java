@@ -31,11 +31,15 @@ public class CreateTimeRestriction {
         Usuario usuario = findUsuario(request.cognitoSub());
         Alumno alumno = findAlumno(request.studentId());
 
-        validateGlobalHealthRestriction(alumno, request.classificationId());
-        validateExistingRestriction(request);
+        if (alumno.hasGlobalHealthRestriction(request.classificationId())) {
+            throw new IllegalArgumentException("Student already has this " +
+                    "health restriction assigned globally.");
+        }
 
-        RestriccionHoraria restriction = buildRestriction(request, usuario);
-        RestriccionHoraria saved = repository.save(restriction);
+        RestriccionHoraria newRestriction = buildRestriction(request, usuario);
+        validateExistingRestriction(newRestriction, request.studentId());
+
+        RestriccionHoraria saved = repository.save(newRestriction);
 
         return buildResponse(saved);
     }
@@ -50,37 +54,19 @@ public class CreateTimeRestriction {
                 .orElseThrow(() -> new IllegalArgumentException("Alumno no encontrado"));
     }
 
-    private void validateGlobalHealthRestriction(Alumno alumno, java.util.UUID classificationId) {
-        if (classificationId != null) {
-            boolean saludGlobalActiva = alumno.getRestriccionesSalud().stream()
-                    .anyMatch(r -> r.getId().equals(classificationId));
-            if (saludGlobalActiva) {
-                throw new IllegalArgumentException(
-                        "El alumno ya posee esta restriccion de salud asignada globalmente.");
-            }
-        }
-    }
 
-    private void validateExistingRestriction(CreateTimeRestrictionRequest request) {
+    private void validateExistingRestriction(
+            RestriccionHoraria newRestriction, java.util.UUID studentId) {
         List<RestriccionHoraria> restriccionesActuales = 
-                repository.findAllByAlumnoEntityId(request.studentId());
+                repository.findAllByAlumnoEntityId(studentId);
         
-        boolean yaExiste = restriccionesActuales.stream().anyMatch(r -> 
-            r.isActiva() &&
-            r.getFranjaHoraria() != null && 
-            r.getFranjaHoraria().getId().equals(request.timeSlotId()) &&
-            ((request.categoryId() != null && 
-              r.getCategoria() != null && 
-              r.getCategoria().getId().equals(request.categoryId())) ||
-             (request.classificationId() != null && 
-              r.getClasificacionSalud() != null && 
-              r.getClasificacionSalud().getId().equals(request.classificationId())))
-        );
+        boolean alreadyExists = restriccionesActuales.stream().
+                anyMatch(r -> r.overlapsWith(newRestriction));
 
-        if (yaExiste) {
+        if (alreadyExists) {
             throw new IllegalArgumentException(
-                    "El alumno ya posee una restriccion activa para esta " +
-                    "categoria o tipo en la franja horaria seleccionada.");
+                    "Student already has an active restriction " +
+                            "for this category or type in the selected time slot.");
         }
     }
 

@@ -105,13 +105,37 @@ public class Purchase {
         if (this.status == EstadoCompra.CANCELADO) {
             throw new IllegalStateException("Purchase is already cancelled.");
         }
-        if (this.status != EstadoCompra.PENDIENTE && this.status != EstadoCompra.EN_PREPARACION) {
-            throw new IllegalStateException(
-                    "Purchase can only be cancelled if it is PENDING or IN PREPARATION.");
+        
+        if (this.tipo == TipoCompra.PRESENCIAL && this.status != EstadoCompra.PENDIENTE) {
+            throw new InvalidPurchaseStatusTransitionException(this.status, EstadoCompra.CANCELADO);
         }
+
+        if (this.status != EstadoCompra.PENDIENTE && this.status != EstadoCompra.EN_PREPARACION) {
+            throw new InvalidPurchaseStatusTransitionException(this.status, EstadoCompra.CANCELADO);
+        }
+        
         this.status = EstadoCompra.CANCELADO;
         if (this.tipo == TipoCompra.ANTICIPADA) {
             this.withdrawalStatus = EstadoRetiro.CANCELADO;
+        }
+    }
+
+    public void validateCancellationWindow(FranjaHoraria pickupSlot, java.time.LocalDateTime now) {
+        if (this.tipo != TipoCompra.ANTICIPADA ||
+                this.pickupSlotId == null || this.pickupDate == null) {
+            return;
+        }
+        
+        if (pickupSlot == null) {
+            throw new IllegalArgumentException("Time slot is required for advance " +
+                    "purchase cancellation validation");
+        }
+
+        java.time.LocalDateTime startDateTime = java.time.LocalDateTime.of(
+                this.pickupDate, pickupSlot.getHoraInicio());
+        if (!now.isBefore(startDateTime.minusHours(1))) {
+            throw new IllegalArgumentException(
+                    "Cannot cancel an order less than an hour before the pickup time starts");
         }
     }
 
@@ -127,8 +151,26 @@ public class Purchase {
         return hasStatus(EstadoCompra.ENTREGADO);
     }
 
+    public boolean isPending() {
+        return hasStatus(EstadoCompra.PENDIENTE);
+    }
+
+    public boolean isActivePendingOrder() {
+        return hasStatus(EstadoCompra.PENDIENTE)
+                || hasStatus(EstadoCompra.EN_PREPARACION)
+                || hasStatus(EstadoCompra.LISTO);
+    }
+
     public boolean isAdvancePurchase() {
         return hasType(TipoCompra.ANTICIPADA);
+    }
+
+    public boolean isRebuyable() {
+        return isDelivered() && hasItems();
+    }
+
+    public boolean hasItems() {
+        return items != null && !items.isEmpty();
     }
 
     public boolean shouldConsumeReservationWhenChangingTo(EstadoCompra requestedStatus) {
@@ -157,6 +199,18 @@ public class Purchase {
         return hasStatus(EstadoCompra.CANCELADO) || hasStatus(EstadoCompra.RECHAZADO);
     }
 
+    public boolean hasScheduledPickup() {
+        return isAdvancePurchase() && pickupSlotId != null && pickupDate != null;
+    }
+
+    public boolean shouldReleaseReservationAfterCancellationFrom(EstadoCompra previousStatus) {
+        return isAdvancePurchase() && previousStatus == EstadoCompra.PENDIENTE;
+    }
+
+    public boolean belongsToStudent(UUID studentId) {
+        return studentId != null && studentId.equals(studentIdOrNull());
+    }
+
     public boolean happenedBetween(LocalDate from, LocalDate to) {
         if (date == null) {
             return false;
@@ -180,6 +234,10 @@ public class Purchase {
 
     public boolean hasPickupSlotDescription() {
         return pickupSlotDescription != null && !pickupSlotDescription.isBlank();
+    }
+
+    public boolean hasWithdrawalCode() {
+        return withdrawalCode != null && !withdrawalCode.isBlank();
     }
 
     public boolean hasStudentId() {

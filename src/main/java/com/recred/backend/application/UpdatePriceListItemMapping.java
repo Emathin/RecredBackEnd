@@ -8,8 +8,6 @@ import com.recred.backend.domain.repositories.ListaPrecioProveedorRepository;
 import com.recred.backend.domain.repositories.ProveedorRepository;
 import org.springframework.security.access.AccessDeniedException;
 
-import java.util.UUID;
-
 public class UpdatePriceListItemMapping {
 
     private final ItemListaPrecioProveedorRepository itemRepository;
@@ -26,30 +24,51 @@ public class UpdatePriceListItemMapping {
         this.proveedorRepository = proveedorRepository;
     }
 
-    public ItemListaPrecioProveedor execute(
-            UUID kiosqueroId,
-            UUID itemId,
-            UUID productoInventarioId
+    public UpdatePriceListItemMappingResponse execute(
+            UpdatePriceListItemMappingRequest request
     ) {
-        ItemListaPrecioProveedor item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Ítem de lista de precios no encontrado"));
+        request.validate();
+        ItemListaPrecioProveedor item = item(request);
+        ListaPrecioProveedor priceList = priceList(item);
+        Proveedor supplier = supplier(priceList);
+        requireSupplierOwnership(supplier, request);
+        ItemListaPrecioProveedor savedItem = saveMapping(item, request);
+        return UpdatePriceListItemMappingResponse.fromDomain(savedItem);
+    }
 
-        ListaPrecioProveedor lista = listaRepository.findById(item.getListaPrecioId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Lista de precios asociada no encontrada"));
+    private ItemListaPrecioProveedor item(UpdatePriceListItemMappingRequest request) {
+        return itemRepository.findById(request.itemId())
+                .orElseThrow(() -> new IllegalArgumentException("Price list item not found"));
+    }
 
-        Proveedor proveedor = proveedorRepository.findById(lista.getProveedorId())
+    private ListaPrecioProveedor priceList(ItemListaPrecioProveedor item) {
+        return listaRepository.findById(item.getListaPrecioId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Proveedor asociado no encontrado"));
+                        "Associated price list not found"));
+    }
 
-        if (!proveedor.getKiosqueroId().equals(kiosqueroId)) {
-            throw new AccessDeniedException("No tiene permisos para modificar este ítem");
+    private Proveedor supplier(ListaPrecioProveedor priceList) {
+        return proveedorRepository.findById(priceList.getProveedorId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Associated supplier not found"));
+    }
+
+    private void requireSupplierOwnership(
+            Proveedor supplier,
+            UpdatePriceListItemMappingRequest request
+    ) {
+        if (!supplier.belongsToKiosquero(request.kioskOwnerId())) {
+            throw new AccessDeniedException(
+                    "You do not have access to modify this price list item");
         }
+    }
 
-        item.setProductoInventarioId(productoInventarioId);
+    private ItemListaPrecioProveedor saveMapping(
+            ItemListaPrecioProveedor item,
+            UpdatePriceListItemMappingRequest request
+    ) {
+        item.setProductoInventarioId(request.inventoryProductId());
         item.setMappingConfirmado(true);
-
         return itemRepository.save(item);
     }
 }

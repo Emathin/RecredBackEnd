@@ -6,7 +6,7 @@ import com.recred.backend.application.GetHistoryByStudentResponse;
 import com.recred.backend.application.GetPendingHistoryByStudent;
 import com.recred.backend.application.GetPendingHistoryByStudentRequest;
 import com.recred.backend.application.GetPendingHistoryByStudentResponse;
-import com.recred.backend.application.ObtenerHistorialTutor;
+import com.recred.backend.application.GetTutorHistory;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.EstadoCompra;
@@ -49,7 +49,7 @@ class PurchaseHistoryControllerTest {
     private GetHistoryByStudent getHistoryByStudent;
 
     @MockitoBean
-    private ObtenerHistorialTutor obtenerHistorialTutor;
+    private GetTutorHistory getTutorHistory;
 
     @MockitoBean
     private GetPendingHistoryByStudent getPendingHistoryByStudent;
@@ -106,7 +106,7 @@ class PurchaseHistoryControllerTest {
         compra.setStatus(EstadoCompra.EN_PREPARACION);
         compra.setDate(LocalDateTime.now());
 
-        when(obtenerHistorialTutor.execute(tutorId)).thenReturn(List.of(compra));
+        when(getTutorHistory.execute(tutorId)).thenReturn(List.of(compra));
 
         mockMvc.perform(get("/api/v1/purchases/tutor/{tutorId}", tutorId)
                 .contentType(MediaType.APPLICATION_JSON))
@@ -160,10 +160,10 @@ class PurchaseHistoryControllerTest {
         compra.setDate(LocalDateTime.now());
         PurchaseHistoryController controller = new PurchaseHistoryController(
                 getHistoryByStudent,
-                obtenerHistorialTutor,
+                getTutorHistory,
                 getPendingHistoryByStudent
         );
-        when(obtenerHistorialTutor.executeByCognitoSubject(cognitoSubject))
+        when(getTutorHistory.executeByCognitoSubject(cognitoSubject))
                 .thenReturn(List.of(compra));
 
         ResponseEntity<List<PurchaseResponseDTO>> response = controller.getMyHistorial(
@@ -178,7 +178,7 @@ class PurchaseHistoryControllerTest {
     void cuandoPideMiHistorialTutorSinAutenticacion_entoncesFalla() {
         PurchaseHistoryController controller = new PurchaseHistoryController(
                 getHistoryByStudent,
-                obtenerHistorialTutor,
+                getTutorHistory,
                 getPendingHistoryByStudent
         );
 

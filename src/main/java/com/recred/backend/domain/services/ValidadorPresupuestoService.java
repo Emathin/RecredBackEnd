@@ -60,7 +60,9 @@ public class ValidadorPresupuestoService {
         }
 
         RangoFechas rango = calculadorPeriodo.calcularRango(
-                presupuesto.getPeriodo(), momentoCompra);
+                presupuesto.getPeriodo(),
+                momentoCompra
+        );
 
         BigDecimal gastadoHistorico = purchaseRepository.sumarGastosPorAlumnoEnRango(
                 alumnoId, rango.inicio(), rango.fin()
