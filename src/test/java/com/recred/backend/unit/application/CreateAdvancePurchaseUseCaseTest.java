@@ -544,7 +544,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
-        assertEquals("La promocion no esta activa", exception.getMessage());
+        assertEquals("Promotion is not active", exception.getMessage());
     }
 
     @Test
@@ -563,7 +563,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
-        assertEquals("La promocion no pertenece a este buffet", exception.getMessage());
+        assertEquals("Promotion does not belong to this buffet", exception.getMessage());
     }
 
     @Test
@@ -583,7 +583,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
-        assertEquals("La promocion aun no ha comenzado", exception.getMessage());
+        assertEquals("Promotion has not started yet", exception.getMessage());
     }
 
     @Test
@@ -604,7 +604,7 @@ class CreateAdvancePurchaseUseCaseTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
-        assertEquals("La promocion ha finalizado", exception.getMessage());
+        assertEquals("Promotion has ended", exception.getMessage());
     }
 
     @Test
@@ -631,6 +631,6 @@ class CreateAdvancePurchaseUseCaseTest {
     }
 
     private CreateAdvancePurchaseRequest promotionRequest(UUID requestBuffetId, UUID promotionId) {
-        return request(requestBuffetId, null, "2026-06-20", List.of(new CreateAdvancePurchaseRequest.ItemRequest(promotionId, 1)));
+        return request(requestBuffetId, null, LocalDate.now().toString(), List.of(new CreateAdvancePurchaseRequest.ItemRequest(promotionId, 1)));
     }
 }

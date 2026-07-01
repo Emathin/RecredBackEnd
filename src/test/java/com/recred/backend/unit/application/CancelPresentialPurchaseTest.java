@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.CancelPresentialPurchase;
+import com.recred.backend.application.CancelPresentialPurchaseRequest;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
@@ -118,11 +119,22 @@ class CancelPresentialPurchaseTest {
         purchase.setBuffetId(buffetId);
         purchase.setItems(Map.of(product, 2));
 
+        UUID slotId = UUID.randomUUID();
+        purchase.setPickupSlotId(slotId);
+        LocalDateTime allowedPickupTime = LocalDateTime.now(
+                ZoneId.of("America/Argentina/Buenos_Aires")).plusMinutes(61);
+        purchase.setPickupDate(allowedPickupTime.toLocalDate());
+
+        FranjaHoraria franja = new FranjaHoraria();
+        franja.setId(slotId);
+        franja.setHoraInicio(allowedPickupTime.toLocalTime());
+
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        when(timeSlotRepository.findById(slotId)).thenReturn(Optional.of(franja));
         when(walletRepository.findByStudentId(purchase.getStudent().getId()))
                 .thenReturn(Optional.of(wallet));
 
-        useCase.execute(new com.recred.backend.application.CancelPresentialPurchaseRequest(purchaseId));
+        useCase.execute(new CancelPresentialPurchaseRequest(purchaseId));
 
         verify(inventoryAvailabilityService).releaseReservation(
                 buffetId,

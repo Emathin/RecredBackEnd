@@ -27,4 +27,10 @@ public class CarritoFavorito {
         this.alumno = alumno;
         this.items = items != null ? items : new HashMap<>();
     }
+
+    public void validateOwnership(Tutor tutor) {
+        if (this.tutor == null || !this.tutor.getId().equals(tutor.getId())) {
+            throw new SecurityException("No autorizado para eliminar este carrito");
+        }
+    }
 }

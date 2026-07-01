@@ -17,6 +17,7 @@ import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
+
 import com.recred.backend.infrastructure.web.MenuProductoDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,8 +57,6 @@ class GenerateBuffetMenuTest {
     private PresupuestoRepository presupuestoRepository;
     @Mock
     private PurchaseRepository purchaseRepository;
-    @Mock
-    private CalculadorPeriodoPresupuesto calculadorPeriodo;
 
     private GenerateBuffetMenu useCase;
     private UUID alumnoId;
@@ -71,7 +70,7 @@ class GenerateBuffetMenuTest {
                 productRepository,
                 presupuestoRepository,
                 purchaseRepository,
-                calculadorPeriodo
+                new CalculadorPeriodoPresupuesto()
         );
         alumnoId = UUID.randomUUID();
         buffetId = UUID.randomUUID();
@@ -253,14 +252,13 @@ class GenerateBuffetMenuTest {
         Producto juice = product("Jugo", new BigDecimal("15.00"), 10, category);
         Producto soda = product("Gaseosa", new BigDecimal("30.00"), 10, category);
         LocalDateTime moment = LocalDateTime.now();
-        RangoFechas range = new RangoFechas(moment.minusHours(1), moment.plusHours(1));
         PresupuestoAlumno budget = budget(category, new BigDecimal("50.00"),
                 new BigDecimal("20.00"));
+        RangoFechas range = budget.getPeriodo().calculateRange(moment);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(juice, soda));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.of(budget));
-        when(calculadorPeriodo.calcularRango(any(), eq(moment))).thenReturn(range);
         when(purchaseRepository.sumarGastosPorAlumnoEnRango(alumnoId, range.inicio(), range.fin()))
                 .thenReturn(new BigDecimal("30.00"));
         when(purchaseRepository.sumarGastosPorCategoriaEnRango(
@@ -315,17 +313,16 @@ class GenerateBuffetMenuTest {
     void execute_WhenActiveBudgetHasNullCategoryRules_ShouldUseGeneralBudgetOnly() {
         Producto product = product("Galletitas", new BigDecimal("10.00"), 10);
         LocalDateTime moment = LocalDateTime.now();
-        RangoFechas range = new RangoFechas(moment.minusHours(1), moment.plusHours(1));
         PresupuestoAlumno budget = new PresupuestoAlumno();
         budget.setPeriodo(PeriodoPresupuesto.DIARIO);
         budget.setMontoLimiteGeneral(new BigDecimal("100.00"));
         budget.setFechaInicio(LocalDate.now().minusDays(1));
         budget.setReglasCategoria(null);
+        RangoFechas range = budget.getPeriodo().calculateRange(moment);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.of(budget));
-        when(calculadorPeriodo.calcularRango(any(), eq(moment))).thenReturn(range);
         when(purchaseRepository.sumarGastosPorAlumnoEnRango(alumnoId, range.inicio(), range.fin()))
                 .thenReturn(BigDecimal.ZERO);
 
@@ -339,14 +336,13 @@ class GenerateBuffetMenuTest {
         Producto product = product("Galletitas", new BigDecimal("10.00"), 10);
         product.setCategoria(null);
         LocalDateTime moment = LocalDateTime.now();
-        RangoFechas range = new RangoFechas(moment.minusHours(1), moment.plusHours(1));
         PresupuestoAlumno budget = budget(category("Snacks"), new BigDecimal("100.00"),
                 new BigDecimal("5.00"));
+        RangoFechas range = budget.getPeriodo().calculateRange(moment);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.of(budget));
-        when(calculadorPeriodo.calcularRango(any(), eq(moment))).thenReturn(range);
         when(purchaseRepository.sumarGastosPorAlumnoEnRango(alumnoId, range.inicio(), range.fin()))
                 .thenReturn(BigDecimal.ZERO);
         when(purchaseRepository.sumarGastosPorCategoriaEnRango(

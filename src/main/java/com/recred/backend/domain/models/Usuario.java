@@ -42,4 +42,11 @@ Usuario {
             tutor.setUsuario(this);
         }
     }
+
+    public void validatePurchaseForSelf(UUID studentId) {
+        if (this.alumno == null || !this.alumno.getId().equals(studentId)) {
+            throw new SecurityException(
+                    "No autorizado para comprar a nombre de otro alumno");
+        }
+    }
 }

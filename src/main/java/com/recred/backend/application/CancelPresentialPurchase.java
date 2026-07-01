@@ -1,6 +1,6 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
+
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.FranjaHoraria;
@@ -57,19 +57,10 @@ public class CancelPresentialPurchase {
 
         EstadoCompra previousStatus = purchase.getStatus();
 
-        if (previousStatus != EstadoCompra.PENDIENTE) {
-            throw new InvalidPurchaseStatusTransitionException(
-                    previousStatus,
-                    EstadoCompra.CANCELADO);
-        }
-
         validateAdvancePurchaseCancellationWindow(purchase);
 
         purchase.cancel();
-
-        if (purchase.getStudent() == null || purchase.getStudent().getId() == null) {
-            throw new IllegalStateException("Purchase does not have an associated student.");
-        }
+        purchase.requireStudentId();
 
         if (shouldReleaseReservation(purchase, previousStatus)) {
             inventoryAvailabilityService.releaseReservation(
@@ -95,7 +86,7 @@ public class CancelPresentialPurchase {
     }
 
     private void validateAdvancePurchaseCancellationWindow(Purchase purchase) {
-        if (!hasScheduledPickup(purchase)) {
+        if (purchase.getTipo() != TipoCompra.ANTICIPADA) {
             return;
         }
 
@@ -105,21 +96,8 @@ public class CancelPresentialPurchase {
 
         ZoneId zoneId = ZoneId.of("America/Argentina/Buenos_Aires");
         LocalDateTime nowInZone = LocalDateTime.now(zoneId);
-        LocalDateTime startDateTime = LocalDateTime.of(
-                purchase.getPickupDate(),
-                franja.getHoraInicio());
-
-        if (!nowInZone.isBefore(startDateTime.minusHours(1))) {
-            throw new IllegalArgumentException(
-                    "No se puede cancelar el pedido faltando una hora o menos "
-                            + "para que comience el horario de retiro");
-        }
-    }
-
-    private boolean hasScheduledPickup(Purchase purchase) {
-        return purchase.getTipo() == TipoCompra.ANTICIPADA
-                && purchase.getPickupSlotId() != null
-                && purchase.getPickupDate() != null;
+        
+        purchase.validateCancellationWindow(franja, nowInZone);
     }
 
     private boolean shouldReleaseReservation(Purchase purchase, EstadoCompra previousStatus){
