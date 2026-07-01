@@ -444,6 +444,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
             UUID buffetId,
             LocalDate fecha,
             EstadoRetiro estadoRetiro,
+            EstadoCompra status,
             UUID franjaId,
             String search) {
         StringBuilder jpql = new StringBuilder("""
@@ -463,6 +464,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
 
         appendFilter(jpql, fecha != null, "and retiro.fechaProgramada = :fecha\n");
         appendFilter(jpql, estadoRetiro != null, "and retiro.estado = :estadoRetiro\n");
+        appendFilter(jpql, status != null, "and purchase.estado = :status\n");
         appendFilter(jpql, franjaId != null, "and franja.id = :franjaId\n");
         if (hasText(search)) {
             jpql.append("""
@@ -480,6 +482,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
         query.setParameter("buffetId", buffetId);
         setParameterIfPresent(query, "fecha", fecha);
         setParameterIfPresent(query, "estadoRetiro", estadoRetiro);
+        setParameterIfPresent(query, "status", status);
         setParameterIfPresent(query, "franjaId", franjaId);
         setSearchParameter(query, search);
 

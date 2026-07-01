@@ -9,6 +9,7 @@ import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.web.BuffetController;
@@ -89,6 +90,7 @@ class BuffetControllerTest {
 
         LocalDate fecha = LocalDate.now();
         EstadoRetiro estado = EstadoRetiro.PROGRAMADO;
+        EstadoCompra status = EstadoCompra.PENDIENTE;
         UUID franjaId = UUID.randomUUID();
         String search = "test";
 
@@ -96,7 +98,13 @@ class BuffetControllerTest {
         purchase.setId(UUID.randomUUID());
 
         when(usuarioService.obtenerUsuarioActual(sub)).thenReturn(usuario);
-        when(getScheduledPickups.execute(new GetScheduledPickupsRequest(buffetId, fecha, estado, franjaId, search)))
+        when(getScheduledPickups.execute(new GetScheduledPickupsRequest(
+                buffetId,
+                fecha,
+                estado,
+                status,
+                franjaId,
+                search)))
                 .thenReturn(List.of(new GetScheduledPickupsResponse(
                         UUID.randomUUID(),
                         UUID.randomUUID(),
@@ -115,14 +123,20 @@ class BuffetControllerTest {
                 )));
 
         ResponseEntity<List<ScheduledPickupResponseDTO>> response = buffetController.getScheduledPickups(
-                jwt, fecha, estado, franjaId, search
+                jwt, fecha, estado, status, franjaId, search
         );
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
         verify(usuarioService, times(1)).obtenerUsuarioActual(sub);
-        verify(getScheduledPickups, times(1)).execute(new GetScheduledPickupsRequest(buffetId, fecha, estado, franjaId, search));
+        verify(getScheduledPickups, times(1)).execute(new GetScheduledPickupsRequest(
+                buffetId,
+                fecha,
+                estado,
+                status,
+                franjaId,
+                search));
     }
 
     @Test
@@ -136,11 +150,10 @@ class BuffetControllerTest {
         when(usuarioService.obtenerUsuarioActual(sub)).thenReturn(usuario);
 
         assertThrows(RuntimeException.class, () ->
-                buffetController.getScheduledPickups(jwt, null, null, null, null)
+                buffetController.getScheduledPickups(jwt, null, null, null, null, null)
         );
 
         verify(usuarioService, times(1)).obtenerUsuarioActual(sub);
         verifyNoInteractions(getScheduledPickups);
     }
 }
-
