@@ -24,6 +24,8 @@ import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.PromotionEntity;
 import com.recred.backend.infrastructure.entities.RetiroProgramadoEntity;
 import com.recred.backend.infrastructure.entities.TutorEntity;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
@@ -44,18 +46,21 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
 
     private final SpringDataPurchaseRepository springDataRepository;
     private final KiosqueroRealtimeEventPublisher realtimeEventPublisher;
+    private final EntityManager entityManager;
 
     public PurchaseRepositoryImpl(SpringDataPurchaseRepository springDataRepository) {
         this(springDataRepository, event -> {
-        });
+        }, null);
     }
 
     @Autowired
     public PurchaseRepositoryImpl(
             SpringDataPurchaseRepository springDataRepository,
-            KiosqueroRealtimeEventPublisher realtimeEventPublisher) {
+            KiosqueroRealtimeEventPublisher realtimeEventPublisher,
+            EntityManager entityManager) {
         this.springDataRepository = springDataRepository;
         this.realtimeEventPublisher = realtimeEventPublisher;
+        this.entityManager = entityManager;
     }
 
     @Override
@@ -434,17 +439,76 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Purchase> findScheduledPickups(
             UUID buffetId,
             LocalDate fecha,
             EstadoRetiro estadoRetiro,
             UUID franjaId,
             String search) {
-        return springDataRepository.findScheduledPickupsWithFilters(
-                buffetId, fecha, estadoRetiro, franjaId, search)
+        StringBuilder jpql = new StringBuilder("""
+                select distinct purchase
+                from CompraAnticipadaEntity purchase
+                join fetch purchase.retiroProgramadoEntity retiro
+                join fetch retiro.franja franja
+                left join fetch purchase.alumnoEntity alumno
+                left join fetch alumno.usuario
+                left join fetch purchase.tutorEntity
+                left join fetch purchase.detalles detail
+                left join fetch detail.productoEntity product
+                left join fetch product.categoria
+                left join fetch detail.promotionEntity
+                where purchase.buffetEntity.id = :buffetId
+                """);
+
+        appendFilter(jpql, fecha != null, "and retiro.fechaProgramada = :fecha\n");
+        appendFilter(jpql, estadoRetiro != null, "and retiro.estado = :estadoRetiro\n");
+        appendFilter(jpql, franjaId != null, "and franja.id = :franjaId\n");
+        if (hasText(search)) {
+            jpql.append("""
+                    and (
+                        lower(purchase.alumnoEntity.usuario.nombre) like :search
+                        or lower(purchase.alumnoEntity.usuario.apellido) like :search
+                        or lower(purchase.codigoVerificacion) like :search
+                    )
+                    """);
+        }
+
+        jpql.append("order by retiro.fechaProgramada asc, franja.horaInicio asc");
+
+        var query = entityManager.createQuery(jpql.toString(), CompraAnticipadaEntity.class);
+        query.setParameter("buffetId", buffetId);
+        setParameterIfPresent(query, "fecha", fecha);
+        setParameterIfPresent(query, "estadoRetiro", estadoRetiro);
+        setParameterIfPresent(query, "franjaId", franjaId);
+        setSearchParameter(query, search);
+
+        return query.getResultList()
                 .stream()
                 .map(CompraEntity::toDomain)
                 .toList();
+    }
+
+    private void appendFilter(StringBuilder jpql, boolean condition, String filter) {
+        if (condition) {
+            jpql.append(filter);
+        }
+    }
+
+    private <T> void setParameterIfPresent(TypedQuery<T> query, String name, Object value) {
+        if (value != null) {
+            query.setParameter(name, value);
+        }
+    }
+
+    private <T> void setSearchParameter(TypedQuery<T> query, String search) {
+        if (hasText(search)) {
+            query.setParameter("search", "%" + search.trim().toLowerCase() + "%");
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     @Override
