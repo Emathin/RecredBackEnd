@@ -45,6 +45,36 @@ class ColegioRepositoryImplIT extends AbstractIntegrationTest {
         assertTrue(repository.existsActiveById(school.getId()));
     }
 
+    @Test
+    void existsByEmail_ShouldReturnTrue_WhenExists() {
+        ColegioEntity school = generateNorthSchool();
+        school.setEmail("north@school.com");
+        springDataColegioRepository.saveAndFlush(school);
+
+        assertTrue(repository.existsByEmail("north@school.com"));
+    }
+
+    @Test
+    void existsByCue_ShouldReturnTrue_WhenExists() {
+        ColegioEntity school = generateNorthSchool();
+
+        assertTrue(repository.existsByCue(school.getCue()));
+    }
+
+    @Test
+    void save_ShouldPersistNewColegio() {
+        Colegio colegio = new Colegio();
+        colegio.setNombre("New School");
+        colegio.setCue("999999");
+        colegio.setEmail("new@school.com");
+        colegio.setActivo(true);
+
+        Colegio saved = repository.save(colegio);
+
+        assertTrue(springDataColegioRepository.findById(saved.getId()).isPresent());
+        assertEquals("New School", saved.getNombre());
+    }
+
     private ColegioEntity generateNorthSchool() {
         if (this.cachedNorthSchool == null) {
             ColegioEntity entity = new ColegioEntity();

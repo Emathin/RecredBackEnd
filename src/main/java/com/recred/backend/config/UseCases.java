@@ -21,6 +21,8 @@ import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.ProveedorRepository;
 import com.recred.backend.domain.repositories.ListaPrecioProveedorRepository;
 import com.recred.backend.domain.repositories.ItemListaPrecioProveedorRepository;
+import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepository;
+import com.recred.backend.domain.services.CognitoDirectorIdentityService;
 import com.recred.backend.domain.services.StorageService;
 import com.recred.backend.domain.services.SupplierPriceListAnalyzer;
 import com.recred.backend.application.CreateSupplier;
@@ -28,6 +30,9 @@ import com.recred.backend.application.ListSuppliers;
 import com.recred.backend.application.GetSupplier;
 import com.recred.backend.application.UpdateSupplier;
 import com.recred.backend.application.DeleteSupplier;
+import com.recred.backend.application.SubmitSchoolRegistration;
+import com.recred.backend.application.ApproveSchoolRegistration;
+import com.recred.backend.application.RejectSchoolRegistration;
 import com.recred.backend.application.UploadSupplierPriceList;
 import com.recred.backend.application.UpdatePriceListItemMapping;
 import com.recred.backend.application.RecommendSupplierForProducts;
@@ -58,7 +63,6 @@ import com.recred.backend.application.GenerateBuffetMenu;
 import com.recred.backend.application.GenerateDailyBuffetReport;
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
 import com.recred.backend.application.GenerateLowBalanceAlerts;
-import com.recred.backend.application.GenerateParentSummary;
 import com.recred.backend.application.GeneratePriceAlert;
 import com.recred.backend.application.GenerateProductChangeRecommendation;
 import com.recred.backend.application.GetProductChangeRecommendation;
@@ -240,6 +244,30 @@ public class UseCases {
     public ApplyInventoryQuickAction applyInventoryQuickAction(
             InventoryAvailabilityService inventoryAvailabilityService) {
         return new ApplyInventoryQuickAction(inventoryAvailabilityService);
+    }
+
+    @Bean
+    public SubmitSchoolRegistration submitSchoolRegistration(
+            SchoolRegistrationRequestRepository repository,
+            ColegioRepository colegioRepository,
+            UsuarioRepository usuarioRepository) {
+        return new SubmitSchoolRegistration(repository, colegioRepository, usuarioRepository);
+    }
+
+    @Bean
+    public ApproveSchoolRegistration approveSchoolRegistration(
+            SchoolRegistrationRequestRepository registrationRepository,
+            ColegioRepository colegioRepository,
+            UsuarioRepository usuarioRepository,
+            CognitoDirectorIdentityService cognitoService) {
+        return new ApproveSchoolRegistration(
+                registrationRepository, colegioRepository, usuarioRepository, cognitoService);
+    }
+
+    @Bean
+    public RejectSchoolRegistration rejectSchoolRegistration(
+            SchoolRegistrationRequestRepository repository) {
+        return new RejectSchoolRegistration(repository);
     }
 
     @Bean

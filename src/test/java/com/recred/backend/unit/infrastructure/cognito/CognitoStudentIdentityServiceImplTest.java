@@ -146,7 +146,7 @@ class CognitoStudentIdentityServiceImplTest {
                 () -> service.createStudentUser("student", "student@test.com", "Ana", "Lopez")
         );
 
-        assertEquals("No se pudo crear el usuario en Cognito", exception.getMessage());
+        assertEquals("No se pudo invocar Cognito", exception.getMessage());
         assertTrue(exception.getCause().getMessage().contains("Cognito respondio 400"));
     }
 
@@ -226,7 +226,7 @@ class CognitoStudentIdentityServiceImplTest {
     }
 
     private void setField(Object target, String name, Object value) throws Exception {
-        Field field = target.getClass().getDeclaredField(name);
+        Field field = target.getClass().getSuperclass().getDeclaredField(name);
         field.setAccessible(true);
         field.set(target, value);
     }
