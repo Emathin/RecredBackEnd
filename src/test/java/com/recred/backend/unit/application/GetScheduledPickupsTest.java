@@ -3,6 +3,7 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.GetScheduledPickups;
 import com.recred.backend.application.GetScheduledPickupsRequest;
 import com.recred.backend.application.GetScheduledPickupsResponse;
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -33,23 +34,30 @@ class GetScheduledPickupsTest {
         UUID buffetId = UUID.randomUUID();
         LocalDate fecha = LocalDate.now();
         EstadoRetiro estadoRetiro = EstadoRetiro.PROGRAMADO;
+        EstadoCompra status = EstadoCompra.PENDIENTE;
         UUID franjaId = UUID.randomUUID();
         String search = "test";
         Purchase purchase = new Purchase();
         purchase.setId(UUID.randomUUID());
 
-        when(purchaseRepository.findScheduledPickups(buffetId, fecha, estadoRetiro, franjaId, search))
+        when(purchaseRepository.findScheduledPickups(
+                buffetId,
+                fecha,
+                estadoRetiro,
+                status,
+                franjaId,
+                search))
                 .thenReturn(List.of(purchase));
 
         GetScheduledPickupsRequest request = new GetScheduledPickupsRequest(
-                buffetId, fecha, estadoRetiro, franjaId, search);
+                buffetId, fecha, estadoRetiro, status, franjaId, search);
 
         List<GetScheduledPickupsResponse> resultado = getScheduledPickups.execute(request);
 
         assertEquals(1, resultado.size());
         assertEquals(purchase.getId(), resultado.get(0).id());
         verify(purchaseRepository, times(1))
-                .findScheduledPickups(buffetId, fecha, estadoRetiro, franjaId, search);
+                .findScheduledPickups(buffetId, fecha, estadoRetiro, status, franjaId, search);
     }
 
     @Test
@@ -57,19 +65,26 @@ class GetScheduledPickupsTest {
         UUID buffetId = UUID.randomUUID();
         LocalDate fecha = LocalDate.now();
         EstadoRetiro estadoRetiro = EstadoRetiro.PROGRAMADO;
+        EstadoCompra status = EstadoCompra.LISTO;
         UUID franjaId = UUID.randomUUID();
         String search = "test";
 
-        when(purchaseRepository.findScheduledPickups(buffetId, fecha, estadoRetiro, franjaId, search))
+        when(purchaseRepository.findScheduledPickups(
+                buffetId,
+                fecha,
+                estadoRetiro,
+                status,
+                franjaId,
+                search))
                 .thenReturn(List.of());
 
         GetScheduledPickupsRequest request = new GetScheduledPickupsRequest(
-                buffetId, fecha, estadoRetiro, franjaId, search);
+                buffetId, fecha, estadoRetiro, status, franjaId, search);
 
         List<GetScheduledPickupsResponse> resultado = getScheduledPickups.execute(request);
 
         assertEquals(0, resultado.size());
         verify(purchaseRepository, times(1))
-                .findScheduledPickups(buffetId, fecha, estadoRetiro, franjaId, search);
+                .findScheduledPickups(buffetId, fecha, estadoRetiro, status, franjaId, search);
     }
 }

@@ -89,6 +89,7 @@ public interface PurchaseRepository {
                         UUID buffetId,
                         LocalDate fecha,
                         EstadoRetiro estadoRetiro,
+                        EstadoCompra status,
                         UUID franjaId,
                         String search);
 

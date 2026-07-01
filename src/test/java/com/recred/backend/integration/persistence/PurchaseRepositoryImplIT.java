@@ -85,6 +85,7 @@ class PurchaseRepositoryImplIT extends AbstractIntegrationTest {
                 fixture.buffetId(),
                 pickupDate,
                 EstadoRetiro.PROGRAMADO,
+                EstadoCompra.PENDIENTE,
                 fixture.slotId(),
                 "test"
         );
@@ -103,11 +104,52 @@ class PurchaseRepositoryImplIT extends AbstractIntegrationTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
 
         assertEquals(1, resultWithoutFilters.size());
         assertEquals(fixture.purchaseId(), resultWithoutFilters.get(0).getId());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void findScheduledPickups_ShouldFilterByPurchaseStatusIndependentlyFromWithdrawalStatus() {
+        LocalDate pickupDate = LocalDate.now().plusDays(1);
+        ScheduledPickupFixture pendingFixture = transactionTemplate.execute(status ->
+                generateScheduledPickup(
+                        pickupDate,
+                        EstadoCompra.PENDIENTE,
+                        EstadoRetiro.PROGRAMADO,
+                        "PENDING-123"
+                ));
+        ScheduledPickupFixture readyFixture = transactionTemplate.execute(status ->
+                generateScheduledPickup(
+                        pickupDate,
+                        EstadoCompra.LISTO,
+                        EstadoRetiro.LISTO,
+                        "READY-123"
+                ));
+        ScheduledPickupFixture expiredFixture = transactionTemplate.execute(status ->
+                generateScheduledPickup(
+                        pickupDate,
+                        EstadoCompra.VENCIDO,
+                        EstadoRetiro.CANCELADO,
+                        "EXPIRED-123"
+                ));
+
+        assertEquals(pendingFixture.purchaseId(), onlyPurchaseIdForStatus(
+                pendingFixture.buffetId(),
+                EstadoCompra.PENDIENTE
+        ));
+        assertEquals(readyFixture.purchaseId(), onlyPurchaseIdForStatus(
+                readyFixture.buffetId(),
+                EstadoCompra.LISTO
+        ));
+        assertEquals(expiredFixture.purchaseId(), onlyPurchaseIdForStatus(
+                expiredFixture.buffetId(),
+                EstadoCompra.VENCIDO
+        ));
     }
 
     private ColegioEntity getCachedSchool() {
@@ -235,6 +277,20 @@ class PurchaseRepositoryImplIT extends AbstractIntegrationTest {
     }
 
     private ScheduledPickupFixture generateScheduledPickup(LocalDate pickupDate) {
+        return generateScheduledPickup(
+                pickupDate,
+                EstadoCompra.PENDIENTE,
+                EstadoRetiro.PROGRAMADO,
+                "TEST-123"
+        );
+    }
+
+    private ScheduledPickupFixture generateScheduledPickup(
+            LocalDate pickupDate,
+            EstadoCompra purchaseStatus,
+            EstadoRetiro withdrawalStatus,
+            String withdrawalCode
+    ) {
         AlumnoEntity student = generateStudent();
         BuffetEntity buffet = getCachedBuffet();
         ProductoEntity product = generateProduct();
@@ -244,10 +300,10 @@ class PurchaseRepositoryImplIT extends AbstractIntegrationTest {
         purchase.setAlumnoEntity(student);
         purchase.setBuffetEntity(buffet);
         purchase.setMedioPago(MedioPago.CREDITOS);
-        purchase.setEstado(EstadoCompra.PENDIENTE);
+        purchase.setEstado(purchaseStatus);
         purchase.setMontoTotal(new BigDecimal("500.00"));
         purchase.setFechaHora(LocalDateTime.now());
-        purchase.setCodigoVerificacion("TEST-123");
+        purchase.setCodigoVerificacion(withdrawalCode);
         entityManager.persist(purchase);
 
         CompraDetalleEntity detail = new CompraDetalleEntity();
@@ -261,7 +317,7 @@ class PurchaseRepositoryImplIT extends AbstractIntegrationTest {
         pickup.setCompraEntity(purchase);
         pickup.setFranja(slot);
         pickup.setFechaProgramada(pickupDate);
-        pickup.setEstado(EstadoRetiro.PROGRAMADO);
+        pickup.setEstado(withdrawalStatus);
         purchase.setRetiroProgramadoEntity(pickup);
         entityManager.persist(pickup);
         entityManager.flush();
@@ -270,9 +326,23 @@ class PurchaseRepositoryImplIT extends AbstractIntegrationTest {
         return new ScheduledPickupFixture(buffet.getId(), purchase.getId(), slot.getId());
     }
 
+    private UUID onlyPurchaseIdForStatus(UUID buffetId, EstadoCompra status) {
+        List<Purchase> purchases = repository.findScheduledPickups(
+                buffetId,
+                null,
+                null,
+                status,
+                null,
+                null
+        );
+
+        assertEquals(1, purchases.size());
+        return purchases.get(0).getId();
+    }
+
     private ProductoEntity generateProduct() {
         CategoriaProductoEntity category = new CategoriaProductoEntity();
-        category.setDescripcion("Cat Scheduled");
+        category.setDescripcion("Cat Scheduled " + UUID.randomUUID());
         category.setActivo(true);
         entityManager.persist(category);
 

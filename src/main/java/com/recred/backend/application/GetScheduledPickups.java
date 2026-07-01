@@ -27,6 +27,7 @@ public class GetScheduledPickups {
                 request.buffetId(),
                 request.fecha(),
                 request.estadoRetiro(),
+                request.status(),
                 request.franjaId(),
                 request.search()
         );
@@ -94,4 +95,3 @@ public class GetScheduledPickups {
         );
     }
 }
-
