@@ -1,7 +1,10 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.CancelPresentialPurchase;
+import com.recred.backend.application.CancelPresentialPurchaseResponse;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
+import com.recred.backend.application.CreateAssistantAdvancePurchaseRequest;
+import com.recred.backend.application.CreateAssistantAdvancePurchaseResponse;
 import com.recred.backend.application.SchoolAssistantFixedReply;
 import com.recred.backend.application.SchoolAssistantFixedTopics;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
@@ -257,13 +260,13 @@ class SchoolAssistantFixedTopicsTest {
         savedPurchase.setWithdrawalCode("ABC123");
 
         when(productRepository.findActiveById(product.getId())).thenReturn(Optional.of(product));
-        when(createAssistantAdvancePurchase.execute(
-                eq(studentId),
-                eq(buffetId),
-                argThat(cart -> cart.containsValue(1)),
-                eq(RecessTime.FIRST_RECESS),
-                eq(LocalDate.of(2026, 5, 28))
-        )).thenReturn(savedPurchase);
+        when(createAssistantAdvancePurchase.execute(argThat(request -> matchesPurchaseRequest(
+                request,
+                product,
+                1,
+                RecessTime.FIRST_RECESS,
+                LocalDate.of(2026, 5, 28)
+        )))).thenReturn(responseFrom(savedPurchase));
 
         Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
                 "confirmar",
@@ -299,13 +302,13 @@ class SchoolAssistantFixedTopicsTest {
                 .anyMatch(suggestion -> suggestion.message().equals("cancelar mi pedido")
                         && suggestion.actionType()
                                 == SchoolAssistantActionType.CANCELACION_COMPRA));
-        verify(createAssistantAdvancePurchase).execute(
-                eq(studentId),
-                eq(buffetId),
-                argThat(cart -> cart.containsKey(product) && cart.containsValue(1)),
-                eq(RecessTime.FIRST_RECESS),
-                eq(LocalDate.of(2026, 5, 28))
-        );
+        verify(createAssistantAdvancePurchase).execute(argThat(request -> matchesPurchaseRequest(
+                request,
+                product,
+                1,
+                RecessTime.FIRST_RECESS,
+                LocalDate.of(2026, 5, 28)
+        )));
     }
 
     @Test
@@ -314,13 +317,13 @@ class SchoolAssistantFixedTopicsTest {
         String technicalMessage = "Insufficient balance for student: " + studentId;
 
         when(productRepository.findActiveById(product.getId())).thenReturn(Optional.of(product));
-        when(createAssistantAdvancePurchase.execute(
-                eq(studentId),
-                eq(buffetId),
-                argThat(cart -> cart.containsValue(1)),
-                eq(RecessTime.FIRST_RECESS),
-                eq(LocalDate.of(2026, 5, 28))
-        )).thenThrow(new InsufficientBalanceException(technicalMessage));
+        when(createAssistantAdvancePurchase.execute(argThat(request -> matchesPurchaseRequest(
+                request,
+                product,
+                1,
+                RecessTime.FIRST_RECESS,
+                LocalDate.of(2026, 5, 28)
+        )))).thenThrow(new InsufficientBalanceException(technicalMessage));
 
         Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
                 "confirmar",
@@ -769,7 +772,7 @@ class SchoolAssistantFixedTopicsTest {
         when(cancelPresentialPurchase.execute(
                 argThat(request -> request.purchaseId().equals(purchaseId)
                         && request.studentId().equals(studentId))
-        )).thenReturn(cancelledPurchase);
+        )).thenReturn(cancelResponse(cancelledPurchase));
 
         Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
                 "cancelar mi compra",
@@ -806,7 +809,7 @@ class SchoolAssistantFixedTopicsTest {
         when(cancelPresentialPurchase.execute(
                 argThat(request -> request.purchaseId().equals(purchaseId)
                         && request.studentId().equals(studentId))
-        )).thenReturn(cancelledPurchase);
+        )).thenReturn(cancelResponse(cancelledPurchase));
 
         Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
                 "cancelar mi pedido",
@@ -1400,6 +1403,64 @@ class SchoolAssistantFixedTopicsTest {
         Alumno alumno = new Alumno();
         alumno.setId(id);
         return alumno;
+    }
+
+    private boolean matchesPurchaseRequest(
+            CreateAssistantAdvancePurchaseRequest request,
+            Producto product,
+            int quantity,
+            RecessTime recessTime,
+            LocalDate pickupDate
+    ) {
+        return request != null
+                && studentId.equals(request.studentId())
+                && buffetId.equals(request.buffetId())
+                && request.cart().containsKey(product)
+                && request.cart().containsValue(quantity)
+                && recessTime == request.recessTime()
+                && pickupDate.equals(request.pickupDate());
+    }
+
+    private CreateAssistantAdvancePurchaseResponse responseFrom(Purchase purchase) {
+        return new CreateAssistantAdvancePurchaseResponse(
+                purchase.getId(),
+                purchase.studentIdOrNull(),
+                purchase.getBuffetId(),
+                purchase.getStatus(),
+                purchase.getWithdrawalCode(),
+                purchase.getTotalAmount(),
+                purchase.getPickupDate(),
+                purchase.getPickupSlotId(),
+                purchase.getDate(),
+                purchase.getItems()
+                        .entrySet()
+                        .stream()
+                        .map(entry -> purchaseItem(entry.getKey(), entry.getValue()))
+                        .toList()
+        );
+    }
+
+    private CreateAssistantAdvancePurchaseResponse.Item purchaseItem(
+            Producto product,
+            Integer quantity
+    ) {
+        return new CreateAssistantAdvancePurchaseResponse.Item(
+                product.getId(),
+                product.getNombre(),
+                quantity,
+                product.getPrecio()
+        );
+    }
+
+    private CancelPresentialPurchaseResponse cancelResponse(Purchase purchase) {
+        return new CancelPresentialPurchaseResponse(
+                purchase.getId(),
+                purchase.studentIdOrNull(),
+                purchase.getBuffetId(),
+                purchase.getStatus(),
+                purchase.getWithdrawalCode(),
+                purchase.getTotalAmount()
+        );
     }
 
     private ChatMessage assistantMessage(Map<String, Object> metadata) {

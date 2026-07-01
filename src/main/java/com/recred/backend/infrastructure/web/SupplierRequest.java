@@ -1,21 +1,32 @@
 package com.recred.backend.infrastructure.web;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record SupplierRequest(
-        @NotBlank(message = "El nombre del proveedor es obligatorio")
-        @Size(max = 200, message = "El nombre no puede superar los 200 caracteres")
-        String nombre,
+        @JsonProperty("nombre")
+        @JsonAlias("name")
+        @NotBlank(message = "Supplier name is required")
+        @Size(max = 200, message = "Name cannot exceed 200 characters")
+        String name,
 
-        @Size(max = 100, message = "El teléfono no puede superar los 100 caracteres")
-        String telefono,
+        @JsonProperty("telefono")
+        @JsonAlias("phone")
+        @Size(max = 100, message = "Phone cannot exceed 100 characters")
+        String phone,
 
-        @Size(max = 150, message = "El email no puede superar los 150 caracteres")
+        @JsonProperty("email")
+        @Size(max = 150, message = "Email cannot exceed 150 characters")
         String email,
 
-        @Size(max = 200, message = "Los días de visita no pueden superar los 200 caracteres")
-        String diasVisita,
+        @JsonProperty("diasVisita")
+        @JsonAlias("visitDays")
+        @Size(max = 200, message = "Visit days cannot exceed 200 characters")
+        String visitDays,
 
-        String notas
+        @JsonProperty("notas")
+        @JsonAlias("notes")
+        String notes
 ) {}

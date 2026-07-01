@@ -1,6 +1,5 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.SchoolAssistantAction;
 import com.recred.backend.domain.models.SchoolAssistantActionStatus;
@@ -131,7 +130,7 @@ class SchoolAssistantQuickPurchaseReplyFactory {
     }
 
     SchoolAssistantFixedReply executedPurchaseReply(
-            Purchase purchase,
+            CreateAssistantAdvancePurchaseResponse purchase,
             LocalDate pickupDate,
             RecessTime recessTime
     ) {
@@ -139,17 +138,17 @@ class SchoolAssistantQuickPurchaseReplyFactory {
                 SchoolAssistantIntent.CONFIRM_PURCHASE.name()
         );
         metadata.put(ACTION_STATUS_KEY, ACTION_STATUS_EXECUTED);
-        metadata.put("compraId", purchase.getId().toString());
-        Map<String, Object> data = contentFormatter.purchaseData(purchase);
+        metadata.put("compraId", purchase.purchaseId().toString());
+        Map<String, Object> data = purchaseData(purchase);
         SchoolAssistantAction action = new SchoolAssistantAction(
                 SchoolAssistantActionType.COMPRA_ANTICIPADA,
                 SchoolAssistantActionStatus.EJECUTADA,
                 false,
                 List.of(),
-                purchase.getId(),
-                purchase.getStatus(),
-                purchase.getWithdrawalCode(),
-                purchase.getTotalAmount(),
+                purchase.purchaseId(),
+                purchase.status(),
+                purchase.withdrawalCode(),
+                purchase.totalAmount(),
                 recessTime,
                 data
         );
@@ -157,13 +156,13 @@ class SchoolAssistantQuickPurchaseReplyFactory {
         return new SchoolAssistantFixedReply(
                 "Listo, tu compra anticipada quedo creada:\n"
                         + "- Total: "
-                        + contentFormatter.money(purchase.getTotalAmount())
+                        + contentFormatter.money(purchase.totalAmount())
                         + "\n- Fecha de retiro: "
                         + contentFormatter.date(pickupDate)
                         + "\n- Estado: "
-                        + contentFormatter.purchaseStatusLabel(purchase.getStatus())
+                        + contentFormatter.purchaseStatusLabel(purchase.status())
                         + "\n- Codigo de retiro: "
-                        + contentFormatter.value(purchase.getWithdrawalCode()) + ".",
+                        + contentFormatter.value(purchase.withdrawalCode()) + ".",
                 metadata,
                 SchoolAssistantIntent.CONFIRM_PURCHASE,
                 action,
@@ -174,6 +173,41 @@ class SchoolAssistantQuickPurchaseReplyFactory {
                 ),
                 data
         );
+    }
+
+    private Map<String, Object> purchaseData(CreateAssistantAdvancePurchaseResponse purchase) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("compraId", contentFormatter.value(purchase.purchaseId()));
+        data.put("alumnoId", contentFormatter.value(purchase.studentId()));
+        data.put("buffetId", contentFormatter.value(purchase.buffetId()));
+        data.put("estado", contentFormatter.value(purchase.status()));
+        data.put("total", purchase.totalAmount());
+        data.put("fechaHora", contentFormatter.value(purchase.date()));
+        data.put("codigoRetiro", contentFormatter.value(purchase.withdrawalCode()));
+        data.put("fechaRetiro", contentFormatter.value(purchase.pickupDate()));
+        data.put("franjaRetiroId", contentFormatter.value(purchase.pickupSlotId()));
+        data.put("items", purchaseItemsData(purchase));
+        return data;
+    }
+
+    private List<Map<String, Object>> purchaseItemsData(
+            CreateAssistantAdvancePurchaseResponse purchase
+    ) {
+        return purchase.items()
+                .stream()
+                .map(this::purchaseItemData)
+                .toList();
+    }
+
+    private Map<String, Object> purchaseItemData(
+            CreateAssistantAdvancePurchaseResponse.Item item
+    ) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("productoId", contentFormatter.value(item.productId()));
+        data.put("nombre", item.name());
+        data.put("cantidad", item.quantity());
+        data.put("precio", item.price());
+        return data;
     }
 
     SchoolAssistantFixedReply missingDateReply(PendingPurchase pendingPurchase) {

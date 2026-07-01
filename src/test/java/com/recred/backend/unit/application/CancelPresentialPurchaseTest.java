@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.CancelPresentialPurchase;
+import com.recred.backend.application.CancelPresentialPurchaseResponse;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.models.Alumno;
@@ -98,13 +99,14 @@ class CancelPresentialPurchaseTest {
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
         when(purchaseRepository.save(purchase)).thenReturn(purchase);
 
-        Purchase result = useCase.execute(
+        CancelPresentialPurchaseResponse result = useCase.execute(
                 new com.recred.backend.application.CancelPresentialPurchaseRequest(
                         purchaseId,
                         studentId
                 ));
 
-        assertEquals(EstadoCompra.CANCELADO, result.getStatus());
+        assertEquals(EstadoCompra.CANCELADO, result.status());
+        assertEquals(purchaseId, result.purchaseId());
         assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
         verify(purchaseRepository).save(purchase);
         verify(walletRepository).save(wallet);

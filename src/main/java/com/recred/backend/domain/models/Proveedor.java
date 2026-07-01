@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,4 +24,12 @@ public class Proveedor {
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
     private List<ListaPrecioProveedor> listasPrecios = new ArrayList<>();
+
+    public boolean belongsToKiosquero(UUID kiosqueroId) {
+        return kiosqueroId != null && kiosqueroId.equals(this.kiosqueroId);
+    }
+
+    public List<ListaPrecioProveedor> priceListsOrEmpty() {
+        return listasPrecios == null ? Collections.emptyList() : listasPrecios;
+    }
 }

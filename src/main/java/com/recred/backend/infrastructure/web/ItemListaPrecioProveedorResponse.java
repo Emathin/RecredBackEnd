@@ -1,5 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.UpdatePriceListItemMappingResponse;
+import com.recred.backend.application.UploadSupplierPriceListResponse;
 import com.recred.backend.domain.models.ItemListaPrecioProveedor;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -29,6 +31,44 @@ public record ItemListaPrecioProveedorResponse(
                 domain.getUnidad(),
                 domain.getNotas(),
                 domain.isMappingConfirmado()
+        );
+    }
+
+    public static ItemListaPrecioProveedorResponse fromApplication(
+            UploadSupplierPriceListResponse.Item response
+    ) {
+        if (response == null) {
+            return null;
+        }
+        return new ItemListaPrecioProveedorResponse(
+                response.id(),
+                response.priceListId(),
+                response.supplierProductName(),
+                response.inventoryProductId(),
+                response.inventoryProductName(),
+                response.price(),
+                response.unit(),
+                response.notes(),
+                response.mappingConfirmed()
+        );
+    }
+
+    public static ItemListaPrecioProveedorResponse fromApplication(
+            UpdatePriceListItemMappingResponse response
+    ) {
+        if (response == null) {
+            return null;
+        }
+        return new ItemListaPrecioProveedorResponse(
+                response.id(),
+                response.priceListId(),
+                response.supplierProductName(),
+                response.inventoryProductId(),
+                response.inventoryProductName(),
+                response.price(),
+                response.unit(),
+                response.notes(),
+                response.mappingConfirmed()
         );
     }
 }

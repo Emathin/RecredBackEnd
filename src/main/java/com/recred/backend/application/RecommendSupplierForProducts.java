@@ -1,31 +1,34 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.AlternativaProveedor;
+import com.recred.backend.application.RecommendSupplierForProductsResponse.Alternative;
+import com.recred.backend.application.RecommendSupplierForProductsResponse.Recommendation;
 import com.recred.backend.domain.models.ItemListaPrecioProveedor;
 import com.recred.backend.domain.models.ListaPrecioProveedor;
-import com.recred.backend.domain.models.Proveedor;
-import com.recred.backend.domain.models.RecomendacionProveedor;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Proveedor;
 import com.recred.backend.domain.repositories.ItemListaPrecioProveedorRepository;
-import com.recred.backend.domain.repositories.ProveedorRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
-import org.springframework.transaction.annotation.Transactional;
-
+import com.recred.backend.domain.repositories.ProveedorRepository;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import org.springframework.transaction.annotation.Transactional;
 
 public class RecommendSupplierForProducts {
+
+    private static final String UNKNOWN_SUPPLIER = "Unknown";
+    private static final String PRODUCT_NOT_FOUND = "Product not found";
 
     private final ItemListaPrecioProveedorRepository itemRepository;
     private final ProveedorRepository proveedorRepository;
     private final ProductRepository productRepository;
+    private final SupplierUnitQuantityParser quantityParser;
 
     public RecommendSupplierForProducts(
             ItemListaPrecioProveedorRepository itemRepository,
@@ -35,175 +38,175 @@ public class RecommendSupplierForProducts {
         this.itemRepository = itemRepository;
         this.proveedorRepository = proveedorRepository;
         this.productRepository = productRepository;
+        this.quantityParser = new SupplierUnitQuantityParser();
     }
 
     @Transactional(readOnly = true)
-    public List<RecomendacionProveedor> execute(UUID kiosqueroId, List<UUID> productoIds) {
-        if (productoIds == null || productoIds.isEmpty()) {
-            return List.of();
+    public RecommendSupplierForProductsResponse execute(
+            RecommendSupplierForProductsRequest request
+    ) {
+        if (!request.hasProducts()) {
+            return RecommendSupplierForProductsResponse.empty();
         }
 
-        // 1. Obtener proveedores del kiosquero para mapear IDs a nombres
-        List<Proveedor> proveedores = proveedorRepository.findByKiosqueroId(kiosqueroId);
-        Map<UUID, String> proveedorNombres = new HashMap<>();
-        Map<UUID, UUID> listaProveedorMap = new HashMap<>();
+        SupplierIndex supplierIndex = supplierIndex(request.kioskOwnerId());
+        Map<UUID, List<ItemListaPrecioProveedor>> itemsByProduct =
+                itemsByProduct(request);
+        List<Recommendation> recommendations = request.productIdsOrEmpty()
+                .stream()
+                .map(productId -> recommendationFor(
+                        productId,
+                        itemsByProduct.getOrDefault(productId, List.of()),
+                        supplierIndex
+                ))
+                .toList();
 
-        for (Proveedor p : proveedores) {
-            proveedorNombres.put(p.getId(), p.getNombre());
-            if (p.getListasPrecios() != null) {
-                for (ListaPrecioProveedor l : p.getListasPrecios()) {
-                    listaProveedorMap.put(l.getId(), p.getId());
-                }
-            }
-        }
-
-        // 2. Obtener todos los ítems activos para los productos seleccionados
-        List<ItemListaPrecioProveedor> items = itemRepository
-                .findItemsActivosByKiosqueroIdAndProductoIds(kiosqueroId, productoIds);
-
-        // 3. Inicializar el mapa de resultados garantizando el orden y presencia
-        // de todos los productos solicitados
-        Map<UUID, List<ItemListaPrecioProveedor>> itemsByProduct = new LinkedHashMap<>();
-        for (UUID prodId : productoIds) {
-            itemsByProduct.put(prodId, new ArrayList<>());
-        }
-
-        for (ItemListaPrecioProveedor item : items) {
-            if (item.getProductoInventarioId() != null 
-                    && itemsByProduct.containsKey(item.getProductoInventarioId())) {
-                itemsByProduct.get(item.getProductoInventarioId()).add(item);
-            }
-        }
-
-        List<RecomendacionProveedor> recomendaciones = new ArrayList<>();
-
-        // 4. Armar la recomendación recomendada (más económica unitariamente) y sus alternativas
-        for (Map.Entry<UUID, List<ItemListaPrecioProveedor>> entry : itemsByProduct.entrySet()) {
-            UUID prodId = entry.getKey();
-            List<ItemListaPrecioProveedor> prodItems = entry.getValue();
-
-            if (prodItems.isEmpty()) {
-                RecomendacionProveedor rec = new RecomendacionProveedor();
-                rec.setProductoInventarioId(prodId);
-                String nombre = productRepository.findById(prodId)
-                        .map(Producto::getNombre)
-                        .orElse("Producto no encontrado");
-                rec.setNombreProducto(nombre); // Frontend will mark this as non-quoted
-                rec.setAlternativas(List.of());
-                recomendaciones.add(rec);
-                continue;
-            }
-
-            // Ordenar ítems en memoria por precio unitario calculado ascendentemente
-            prodItems.sort((a, b) -> {
-                BigDecimal unitPriceA = calcularPrecioUnitario(a.getPrecio(), a.getUnidad());
-                BigDecimal unitPriceB = calcularPrecioUnitario(b.getPrecio(), b.getUnidad());
-                return unitPriceA.compareTo(unitPriceB);
-            });
-
-            // Recomendado es el primero (menor precio unitario debido al ordenamiento)
-            ItemListaPrecioProveedor recommendedItem = prodItems.get(0);
-            UUID recommendedListId = recommendedItem.getListaPrecioId();
-            UUID recommendedProviderId = listaProveedorMap.get(recommendedListId);
-            String recommendedProviderName = recommendedProviderId != null 
-                    ? proveedorNombres.get(recommendedProviderId) : "Desconocido";
-            BigDecimal bestUnitPrice = calcularPrecioUnitario(
-                    recommendedItem.getPrecio(), recommendedItem.getUnidad());
-
-            // Alternativas
-            List<AlternativaProveedor> alternativas = new ArrayList<>();
-            for (int i = 1; i < prodItems.size(); i++) {
-                ItemListaPrecioProveedor altItem = prodItems.get(i);
-                UUID altListId = altItem.getListaPrecioId();
-                UUID altProviderId = listaProveedorMap.get(altListId);
-                String altProviderName = altProviderId != null 
-                        ? proveedorNombres.get(altProviderId) : "Desconocido";
-                BigDecimal altUnitPrice = calcularPrecioUnitario(
-                        altItem.getPrecio(), altItem.getUnidad());
-
-                alternativas.add(new AlternativaProveedor(
-                        altProviderId,
-                        altProviderName,
-                        altItem.getPrecio(),
-                        altItem.getUnidad(),
-                        altUnitPrice
-                ));
-            }
-
-            recomendaciones.add(new RecomendacionProveedor(
-                    prodId,
-                    recommendedItem.getNombreProductoInventario(),
-                    recommendedProviderId,
-                    recommendedProviderName,
-                    recommendedItem.getPrecio(),
-                    recommendedItem.getUnidad(),
-                    bestUnitPrice,
-                    alternativas
-            ));
-        }
-
-        return recomendaciones;
+        return new RecommendSupplierForProductsResponse(recommendations);
     }
 
-    public static BigDecimal calcularPrecioUnitario(BigDecimal precio, String unidad) {
-        if (precio == null) {
+    private SupplierIndex supplierIndex(UUID kioskOwnerId) {
+        Map<UUID, String> supplierNames = new HashMap<>();
+        Map<UUID, UUID> priceListSupplierIds = new HashMap<>();
+
+        proveedorRepository.findByKiosqueroId(kioskOwnerId)
+                .forEach(supplier -> addSupplier(supplier, supplierNames, priceListSupplierIds));
+
+        return new SupplierIndex(supplierNames, priceListSupplierIds);
+    }
+
+    private void addSupplier(
+            Proveedor supplier,
+            Map<UUID, String> supplierNames,
+            Map<UUID, UUID> priceListSupplierIds
+    ) {
+        supplierNames.put(supplier.getId(), supplier.getNombre());
+        supplier.priceListsOrEmpty()
+                .stream()
+                .map(ListaPrecioProveedor::getId)
+                .forEach(priceListId -> priceListSupplierIds.put(priceListId, supplier.getId()));
+    }
+
+    private Map<UUID, List<ItemListaPrecioProveedor>> itemsByProduct(
+            RecommendSupplierForProductsRequest request
+    ) {
+        Map<UUID, List<ItemListaPrecioProveedor>> itemsByProduct =
+                emptyProductMap(request.productIdsOrEmpty());
+        itemRepository.findItemsActivosByKiosqueroIdAndProductoIds(
+                        request.kioskOwnerId(),
+                        request.productIdsOrEmpty()
+                )
+                .stream()
+                .filter(ItemListaPrecioProveedor::hasInventoryProduct)
+                .filter(item -> itemsByProduct.containsKey(item.getProductoInventarioId()))
+                .forEach(item -> itemsByProduct.get(item.getProductoInventarioId()).add(item));
+        return itemsByProduct;
+    }
+
+    private Map<UUID, List<ItemListaPrecioProveedor>> emptyProductMap(List<UUID> productIds) {
+        Map<UUID, List<ItemListaPrecioProveedor>> products = new LinkedHashMap<>();
+        productIds.forEach(productId -> products.put(productId, new ArrayList<>()));
+        return products;
+    }
+
+    private Recommendation recommendationFor(
+            UUID productId,
+            List<ItemListaPrecioProveedor> items,
+            SupplierIndex supplierIndex
+    ) {
+        if (items.isEmpty()) {
+            return emptyRecommendation(productId);
+        }
+
+        List<ItemListaPrecioProveedor> sortedItems = sortedByUnitPrice(items);
+        ItemListaPrecioProveedor recommendedItem = sortedItems.get(0);
+        UUID recommendedSupplierId = supplierIndex.supplierIdFor(
+                recommendedItem.getListaPrecioId()
+        );
+
+        return new Recommendation(
+                productId,
+                recommendedItem.getNombreProductoInventario(),
+                recommendedSupplierId,
+                supplierIndex.nameFor(recommendedSupplierId),
+                recommendedItem.getPrecio(),
+                recommendedItem.getUnidad(),
+                unitPrice(recommendedItem),
+                alternatives(sortedItems, supplierIndex)
+        );
+    }
+
+    private Recommendation emptyRecommendation(UUID productId) {
+        return new Recommendation(
+                productId,
+                productName(productId),
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of()
+        );
+    }
+
+    private String productName(UUID productId) {
+        return productRepository.findById(productId)
+                .map(Producto::getNombre)
+                .orElse(PRODUCT_NOT_FOUND);
+    }
+
+    private List<ItemListaPrecioProveedor> sortedByUnitPrice(
+            List<ItemListaPrecioProveedor> items
+    ) {
+        return items.stream()
+                .sorted(Comparator.comparing(this::unitPrice))
+                .toList();
+    }
+
+    private List<Alternative> alternatives(
+            List<ItemListaPrecioProveedor> sortedItems,
+            SupplierIndex supplierIndex
+    ) {
+        return sortedItems.stream()
+                .skip(1)
+                .map(item -> alternative(item, supplierIndex))
+                .toList();
+    }
+
+    private Alternative alternative(
+            ItemListaPrecioProveedor item,
+            SupplierIndex supplierIndex
+    ) {
+        UUID supplierId = supplierIndex.supplierIdFor(item.getListaPrecioId());
+        return new Alternative(
+                supplierId,
+                supplierIndex.nameFor(supplierId),
+                item.getPrecio(),
+                item.getUnidad(),
+                unitPrice(item)
+        );
+    }
+
+    private BigDecimal unitPrice(ItemListaPrecioProveedor item) {
+        if (item.getPrecio() == null) {
             return BigDecimal.ZERO;
         }
-        int cantidad = extraerCantidad(unidad);
-        return precio.divide(BigDecimal.valueOf(cantidad), 2, java.math.RoundingMode.HALF_UP);
+
+        int quantity = quantityParser.quantityFrom(item.getUnidad());
+        return item.getPrecio().divide(BigDecimal.valueOf(quantity), 2, RoundingMode.HALF_UP);
     }
 
-    public static int extraerCantidad(String unidad) {
-        if (unidad == null || unidad.isBlank()) {
-            return 1;
-        }
-        String s = unidad.toLowerCase().trim();
-
-        // 1. "pack de 6", "caja x12", "x 24", etc.
-        Pattern p1 = Pattern.compile(
-                "(?:pack|caja|bolsa|bulto|display|promo)?\\s*(?:x|de)\\s*(\\d+)", 
-                Pattern.CASE_INSENSITIVE
-        );
-        Matcher m1 = p1.matcher(s);
-        if (m1.find()) {
-            try {
-                int val = Integer.parseInt(m1.group(1));
-                if (val > 0) {
-                    return val;
-                }
-            } catch (NumberFormatException e) {}
+    private record SupplierIndex(
+            Map<UUID, String> supplierNames,
+            Map<UUID, UUID> priceListSupplierIds
+    ) {
+        UUID supplierIdFor(UUID priceListId) {
+            return priceListSupplierIds.get(priceListId);
         }
 
-        // 2. "pack 6", "caja 12"
-        Pattern p2 = Pattern.compile(
-                "(?:pack|caja|bolsa|bulto|display|promo)\\s+(\\d+)", 
-                Pattern.CASE_INSENSITIVE
-        );
-        Matcher m2 = p2.matcher(s);
-        if (m2.find()) {
-            try {
-                int val = Integer.parseInt(m2.group(1));
-                if (val > 0) {
-                    return val;
-                }
-            } catch (NumberFormatException e) {}
+        String nameFor(UUID supplierId) {
+            return supplierId == null
+                    ? UNKNOWN_SUPPLIER
+                    : supplierNames.getOrDefault(supplierId, UNKNOWN_SUPPLIER);
         }
-
-        // 3. "12u", "6 uds", "24 unidades"
-        Pattern p3 = Pattern.compile(
-                "(\\d+)\\s*(?:unidades|unids|uds|ud|un|u)\\b", 
-                Pattern.CASE_INSENSITIVE
-        );
-        Matcher m3 = p3.matcher(s);
-        if (m3.find()) {
-            try {
-                int val = Integer.parseInt(m3.group(1));
-                if (val > 0) {
-                    return val;
-                }
-            } catch (NumberFormatException e) {}
-        }
-
-        return 1;
     }
 }

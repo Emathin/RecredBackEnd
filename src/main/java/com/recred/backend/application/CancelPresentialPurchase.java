@@ -49,7 +49,7 @@ public class CancelPresentialPurchase {
     }
 
     @Transactional
-    public Purchase execute(CancelPresentialPurchaseRequest request) {
+    public CancelPresentialPurchaseResponse execute(CancelPresentialPurchaseRequest request) {
         request.validate();
         Purchase purchase = purchase(request.purchaseId());
         requireStudentOwner(purchase, request.studentId());
@@ -60,7 +60,12 @@ public class CancelPresentialPurchase {
         releaseReservationIfNeeded(purchase, previousStatus);
         processRefund(purchase);
 
-        return purchaseRepository.save(purchase);
+        return CancelPresentialPurchaseResponse.fromDomain(savedPurchase(purchase));
+    }
+
+    private Purchase savedPurchase(Purchase purchase) {
+        Purchase savedPurchase = purchaseRepository.save(purchase);
+        return savedPurchase == null ? purchase : savedPurchase;
     }
 
     private Purchase purchase(UUID purchaseId) {

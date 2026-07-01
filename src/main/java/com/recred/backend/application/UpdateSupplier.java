@@ -2,9 +2,8 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Proveedor;
 import com.recred.backend.domain.repositories.ProveedorRepository;
-import org.springframework.security.access.AccessDeniedException;
-
 import java.time.LocalDateTime;
+import org.springframework.security.access.AccessDeniedException;
 
 public class UpdateSupplier {
 
@@ -14,25 +13,31 @@ public class UpdateSupplier {
         this.repository = repository;
     }
 
-    public Proveedor execute(UpdateSupplierCommand command) {
-        if (command.nombre() == null || command.nombre().isBlank()) {
-            throw new IllegalArgumentException("El nombre del proveedor es obligatorio");
+    public SupplierDetailsResponse execute(UpdateSupplierRequest request) {
+        request.validate();
+        Proveedor supplier = supplier(request);
+        requireSupplierOwnership(supplier, request);
+        updateSupplier(supplier, request);
+        return SupplierDetailsResponse.fromDomain(repository.save(supplier));
+    }
+
+    private Proveedor supplier(UpdateSupplierRequest request) {
+        return repository.findById(request.id())
+                .orElseThrow(() -> new IllegalArgumentException("Supplier not found"));
+    }
+
+    private void requireSupplierOwnership(Proveedor supplier, UpdateSupplierRequest request) {
+        if (!supplier.belongsToKiosquero(request.kioskOwnerId())) {
+            throw new AccessDeniedException("You do not have access to modify this supplier");
         }
+    }
 
-        Proveedor proveedor = repository.findById(command.id())
-                .orElseThrow(() -> new IllegalArgumentException("Proveedor no encontrado"));
-
-        if (!proveedor.getKiosqueroId().equals(command.kiosqueroId())) {
-            throw new AccessDeniedException("No tiene permisos para modificar este proveedor");
-        }
-
-        proveedor.setNombre(command.nombre().trim());
-        proveedor.setTelefono(command.telefono());
-        proveedor.setEmail(command.email());
-        proveedor.setDiasVisita(command.diasVisita());
-        proveedor.setNotas(command.notas());
-        proveedor.setActualizadoEn(LocalDateTime.now());
-
-        return repository.save(proveedor);
+    private void updateSupplier(Proveedor supplier, UpdateSupplierRequest request) {
+        supplier.setNombre(request.name().trim());
+        supplier.setTelefono(request.phone());
+        supplier.setEmail(request.email());
+        supplier.setDiasVisita(request.visitDays());
+        supplier.setNotas(request.notes());
+        supplier.setActualizadoEn(LocalDateTime.now());
     }
 }

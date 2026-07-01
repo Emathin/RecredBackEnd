@@ -1,19 +1,22 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.CreateSupplier;
-import com.recred.backend.application.CreateSupplierCommand;
+import com.recred.backend.application.CreateSupplierRequest;
 import com.recred.backend.application.DeleteSupplier;
+import com.recred.backend.application.DeleteSupplierRequest;
 import com.recred.backend.application.GetSupplier;
+import com.recred.backend.application.GetSupplierRequest;
 import com.recred.backend.application.ListSuppliers;
+import com.recred.backend.application.ListSuppliersRequest;
 import com.recred.backend.application.RecommendSupplierForProducts;
+import com.recred.backend.application.RecommendSupplierForProductsRequest;
+import com.recred.backend.application.RecommendSupplierForProductsResponse;
 import com.recred.backend.application.UpdatePriceListItemMapping;
+import com.recred.backend.application.UpdatePriceListItemMappingRequest;
 import com.recred.backend.application.UpdateSupplier;
-import com.recred.backend.application.UpdateSupplierCommand;
+import com.recred.backend.application.UpdateSupplierRequest;
 import com.recred.backend.application.UploadSupplierPriceList;
-import com.recred.backend.domain.models.ItemListaPrecioProveedor;
-import com.recred.backend.domain.models.ListaPrecioProveedor;
-import com.recred.backend.domain.models.Proveedor;
-import com.recred.backend.domain.models.RecomendacionProveedor;
+import com.recred.backend.application.UploadSupplierPriceListRequest;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
@@ -39,7 +42,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/suppliers")
@@ -86,25 +88,30 @@ public class SupplierController {
             @Valid @RequestBody SupplierRequest request,
             Authentication authentication
     ) {
-        UUID kiosqueroId = getKiosqueroId(authentication);
-        Proveedor res = createSupplier.execute(new CreateSupplierCommand(
-                kiosqueroId,
-                request.nombre(),
-                request.telefono(),
-                request.email(),
-                request.diasVisita(),
-                request.notas()
-        ));
-        return ResponseEntity.ok(SupplierResponse.fromDomain(res));
+        UUID kioskOwnerId = getKioskOwnerId(authentication);
+        SupplierResponse response = SupplierResponse.fromApplication(
+                createSupplier.execute(new CreateSupplierRequest(
+                        kioskOwnerId,
+                        request.name(),
+                        request.phone(),
+                        request.email(),
+                        request.visitDays(),
+                        request.notes()
+                ))
+        );
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping
     public ResponseEntity<List<SupplierResponse>> list(Authentication authentication) {
-        UUID kiosqueroId = getKiosqueroId(authentication);
-        List<SupplierResponse> res = listSuppliers.execute(kiosqueroId).stream()
-                .map(SupplierResponse::fromDomain)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(res);
+        UUID kioskOwnerId = getKioskOwnerId(authentication);
+        List<SupplierResponse> response = listSuppliers.execute(
+                        new ListSuppliersRequest(kioskOwnerId))
+                .suppliers()
+                .stream()
+                .map(SupplierResponse::fromApplication)
+                .toList();
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
@@ -112,9 +119,11 @@ public class SupplierController {
             @PathVariable UUID id,
             Authentication authentication
     ) {
-        UUID kiosqueroId = getKiosqueroId(authentication);
-        Proveedor res = getSupplier.execute(id, kiosqueroId);
-        return ResponseEntity.ok(SupplierResponse.fromDomain(res));
+        UUID kioskOwnerId = getKioskOwnerId(authentication);
+        SupplierResponse response = SupplierResponse.fromApplication(
+                getSupplier.execute(new GetSupplierRequest(id, kioskOwnerId))
+        );
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}")
@@ -123,17 +132,19 @@ public class SupplierController {
             @Valid @RequestBody SupplierRequest request,
             Authentication authentication
     ) {
-        UUID kiosqueroId = getKiosqueroId(authentication);
-        Proveedor res = updateSupplier.execute(new UpdateSupplierCommand(
-                id,
-                kiosqueroId,
-                request.nombre(),
-                request.telefono(),
-                request.email(),
-                request.diasVisita(),
-                request.notas()
-        ));
-        return ResponseEntity.ok(SupplierResponse.fromDomain(res));
+        UUID kioskOwnerId = getKioskOwnerId(authentication);
+        SupplierResponse response = SupplierResponse.fromApplication(
+                updateSupplier.execute(new UpdateSupplierRequest(
+                        id,
+                        kioskOwnerId,
+                        request.name(),
+                        request.phone(),
+                        request.email(),
+                        request.visitDays(),
+                        request.notes()
+                ))
+        );
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
@@ -141,8 +152,8 @@ public class SupplierController {
             @PathVariable UUID id,
             Authentication authentication
     ) {
-        UUID kiosqueroId = getKiosqueroId(authentication);
-        deleteSupplier.execute(id, kiosqueroId);
+        UUID kioskOwnerId = getKioskOwnerId(authentication);
+        deleteSupplier.execute(new DeleteSupplierRequest(id, kioskOwnerId));
         return ResponseEntity.noContent().build();
     }
 
@@ -152,15 +163,19 @@ public class SupplierController {
             @RequestParam("file") MultipartFile file,
             Authentication authentication
     ) throws IOException {
-        UUID kiosqueroId = getKiosqueroId(authentication);
-        ListaPrecioProveedor res = uploadSupplierPriceList.execute(
-                kiosqueroId,
-                id,
-                file.getBytes(),
-                file.getOriginalFilename(),
-                file.getContentType()
+        UUID kioskOwnerId = getKioskOwnerId(authentication);
+        ListaPrecioProveedorResponse response = ListaPrecioProveedorResponse.fromApplication(
+                uploadSupplierPriceList.execute(
+                        new UploadSupplierPriceListRequest(
+                                kioskOwnerId,
+                                id,
+                                file.getBytes(),
+                                file.getOriginalFilename(),
+                                file.getContentType()
+                        )
+                )
         );
-        return ResponseEntity.ok(ListaPrecioProveedorResponse.fromDomain(res));
+        return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/price-list-items/{itemId}/mapping")
@@ -169,39 +184,49 @@ public class SupplierController {
             @Valid @RequestBody UpdateItemMappingRequest request,
             Authentication authentication
     ) {
-        UUID kiosqueroId = getKiosqueroId(authentication);
-        ItemListaPrecioProveedor res = updatePriceListItemMapping.execute(
-                kiosqueroId,
-                itemId,
-                request.productoInventarioId()
-        );
-        return ResponseEntity.ok(ItemListaPrecioProveedorResponse.fromDomain(res));
+        UUID kioskOwnerId = getKioskOwnerId(authentication);
+        ItemListaPrecioProveedorResponse response =
+                ItemListaPrecioProveedorResponse.fromApplication(
+                        updatePriceListItemMapping.execute(
+                                new UpdatePriceListItemMappingRequest(
+                                        kioskOwnerId,
+                                        itemId,
+                                        request.inventoryProductId()
+                                )
+                        )
+                );
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/purchase-recommendations")
-    public ResponseEntity<List<RecomendacionProveedor>> getRecommendations(
+    public ResponseEntity<List<SupplierRecommendationResponse>> getRecommendations(
             @Valid @RequestBody PurchaseRecommendationRequest request,
             Authentication authentication
     ) {
-        UUID kiosqueroId = getKiosqueroId(authentication);
-        List<RecomendacionProveedor> res = recommendSupplierForProducts.execute(
-                kiosqueroId,
-                request.productosIds()
+        UUID kioskOwnerId = getKioskOwnerId(authentication);
+        RecommendSupplierForProductsResponse response = recommendSupplierForProducts.execute(
+                new RecommendSupplierForProductsRequest(
+                        kioskOwnerId,
+                        request.productIds()
+                )
         );
-        return ResponseEntity.ok(res);
+        return ResponseEntity.ok(response.recommendations()
+                .stream()
+                .map(SupplierRecommendationResponse::fromApplication)
+                .toList());
     }
 
-    private UUID getKiosqueroId(Authentication authentication) {
+    private UUID getKioskOwnerId(Authentication authentication) {
         String subject = Optional.ofNullable(authentication)
                 .map(Authentication::getName)
                 .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
-                        "Usuario no autenticado"));
-        Usuario usuario = usuarioRepository.findByIdCognito(subject)
+                        "Authenticated user is required"));
+        Usuario user = usuarioRepository.findByIdCognito(subject)
                 .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
-                        "Usuario autenticado no sincronizado"));
+                        "Authenticated user is not synchronized"));
 
-        return kiosqueroRepository.findKiosqueroIdByUsuarioId(usuario.getId())
+        return kiosqueroRepository.findKiosqueroIdByUsuarioId(user.getId())
                 .orElseThrow(() -> new AccessDeniedException(
-                        "El usuario autenticado no es un kiosquero registrado"));
+                        "Authenticated user is not a registered kiosk owner"));
     }
 }

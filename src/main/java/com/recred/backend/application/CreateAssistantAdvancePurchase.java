@@ -94,30 +94,25 @@ public class CreateAssistantAdvancePurchase {
     }
 
     @Transactional
-    public Purchase execute(UUID studentId, UUID buffetId, Map<Producto, Integer> cart,
-                            RecessTime recessTime, LocalDate pickupDate) {
-        requireBuffetId(buffetId);
-        Alumno student = student(studentId);
-        FranjaHoraria pickupSlot = pickupSlot(student, recessTime);
-        LocalDateTime pickupDateTime = pickupDateTime(pickupDate, pickupSlot);
-        validatePurchase(student, buffetId, cart, pickupDate, pickupSlot, pickupDateTime);
-        BigDecimal total = validatedTotal(studentId, cart, pickupDateTime);
-        Billetera wallet = fundedWallet(studentId, total);
+    public CreateAssistantAdvancePurchaseResponse execute(
+            CreateAssistantAdvancePurchaseRequest request
+    ) {
+        request.validate();
+        Alumno student = student(request.studentId());
+        FranjaHoraria pickupSlot = pickupSlot(student, request.recessTime());
+        LocalDateTime pickupDateTime = pickupDateTime(request.pickupDate(), pickupSlot);
+        validatePurchase(student, request, pickupSlot, pickupDateTime);
+        BigDecimal total = validatedTotal(request.studentId(), request.cart(), pickupDateTime);
+        Billetera wallet = fundedWallet(request.studentId(), total);
 
-        inventoryAvailabilityService.reserve(buffetId, cart);
+        inventoryAvailabilityService.reserve(request.buffetId(), request.cart());
         Purchase savedPurchase = savePurchase(
-                advancePurchase(student, cart, buffetId, pickupSlot, pickupDate),
+                advancePurchase(student, request, pickupSlot),
                 wallet,
                 total
         );
         registerPurchaseMovement(wallet, student, total);
-        return savedPurchase;
-    }
-
-    private void requireBuffetId(UUID buffetId) {
-        if (buffetId == null) {
-            throw new IllegalArgumentException("buffetId is required");
-        }
+        return CreateAssistantAdvancePurchaseResponse.fromDomain(savedPurchase);
     }
 
     private Alumno student(UUID studentId) {
@@ -135,15 +130,18 @@ public class CreateAssistantAdvancePurchase {
 
     private void validatePurchase(
             Alumno student,
-            UUID buffetId,
-            Map<Producto, Integer> cart,
-            LocalDate pickupDate,
+            CreateAssistantAdvancePurchaseRequest request,
             FranjaHoraria pickupSlot,
             LocalDateTime pickupDateTime
     ) {
-        advancePurchaseRulesService.validate(buffetId, pickupSlot, pickupDate, cart);
-        timeValidator.validarCompra(student, cart.keySet(), pickupDateTime);
-        healthValidator.validarCompra(student, cart.keySet());
+        advancePurchaseRulesService.validate(
+                request.buffetId(),
+                pickupSlot,
+                request.pickupDate(),
+                request.cart()
+        );
+        timeValidator.validarCompra(student, request.cart().keySet(), pickupDateTime);
+        healthValidator.validarCompra(student, request.cart().keySet());
     }
 
     private BigDecimal validatedTotal(
@@ -172,20 +170,18 @@ public class CreateAssistantAdvancePurchase {
 
     private Purchase advancePurchase(
             Alumno student,
-            Map<Producto, Integer> cart,
-            UUID buffetId,
-            FranjaHoraria pickupSlot,
-            LocalDate pickupDate
+            CreateAssistantAdvancePurchaseRequest request,
+            FranjaHoraria pickupSlot
     ) {
         Purchase purchase = Purchase.advance(
                 student,
-                cart,
+                request.cart(),
                 MedioPago.CREDITOS,
                 student.getId(),
                 BuyerType.STUDENT,
-                buffetId,
+                request.buffetId(),
                 pickupSlot.getId(),
-                pickupDate
+                request.pickupDate()
         );
         purchase.setDate(LocalDateTime.now(clock));
         purchase.setWithdrawalCode(withdrawalCodeService.generateCode(purchase));

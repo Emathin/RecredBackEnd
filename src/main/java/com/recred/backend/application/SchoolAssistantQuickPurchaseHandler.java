@@ -7,7 +7,6 @@ import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.SchoolAssistantContext;
 import com.recred.backend.domain.models.SchoolAssistantIntent;
@@ -182,13 +181,16 @@ class SchoolAssistantQuickPurchaseHandler {
         }
 
         try {
-            Purchase purchase = createAssistantAdvancePurchase.execute(
-                    studentId,
-                    pendingPurchase.buffetId(),
-                    cart.orElseThrow(),
-                    pendingPurchase.recessTime().orElseThrow(),
-                    pendingPurchase.pickupDate().orElseThrow()
-            );
+            CreateAssistantAdvancePurchaseRequest request =
+                    new CreateAssistantAdvancePurchaseRequest(
+                            studentId,
+                            pendingPurchase.buffetId(),
+                            cart.orElseThrow(),
+                            pendingPurchase.recessTime().orElseThrow(),
+                            pendingPurchase.pickupDate().orElseThrow()
+                    );
+            CreateAssistantAdvancePurchaseResponse purchase =
+                    createAssistantAdvancePurchase.execute(request);
             return replyFactory.executedPurchaseReply(
                     purchase,
                     pendingPurchase.pickupDate().orElseThrow(),

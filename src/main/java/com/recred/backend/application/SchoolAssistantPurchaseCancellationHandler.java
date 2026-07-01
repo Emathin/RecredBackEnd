@@ -70,7 +70,7 @@ class SchoolAssistantPurchaseCancellationHandler {
             UUID purchaseId
     ) {
         try {
-            Purchase purchase = cancelPresentialPurchase.execute(
+            CancelPresentialPurchaseResponse purchase = cancelPresentialPurchase.execute(
                     new CancelPresentialPurchaseRequest(purchaseId, context.studentId()));
             return cancelledReply(purchase);
         } catch (InvalidPurchaseStatusTransitionException
@@ -83,28 +83,39 @@ class SchoolAssistantPurchaseCancellationHandler {
         }
     }
 
-    private SchoolAssistantFixedReply cancelledReply(Purchase purchase) {
-        Map<String, Object> data = contentFormatter.purchaseData(purchase);
+    private SchoolAssistantFixedReply cancelledReply(CancelPresentialPurchaseResponse purchase) {
+        Map<String, Object> data = cancelledPurchaseData(purchase);
         SchoolAssistantAction action = new SchoolAssistantAction(
                 SchoolAssistantActionType.CANCELACION_COMPRA,
                 SchoolAssistantActionStatus.EJECUTADA,
                 false,
                 List.of(),
-                purchase.getId(),
-                purchase.getStatus(),
-                purchase.getWithdrawalCode(),
-                purchase.getTotalAmount(),
+                purchase.purchaseId(),
+                purchase.status(),
+                purchase.withdrawalCode(),
+                purchase.totalAmount(),
                 null,
                 data
         );
 
         return replyBuilder.reply(
                 "Listo, cancele tu compra y te devolvi "
-                        + contentFormatter.money(purchase.getTotalAmount())
+                        + contentFormatter.money(purchase.totalAmount())
                         + " en creditos.",
                 SchoolAssistantIntent.CANCEL_PURCHASE,
                 action
         );
+    }
+
+    private Map<String, Object> cancelledPurchaseData(CancelPresentialPurchaseResponse purchase) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put(PURCHASE_ID_KEY, contentFormatter.value(purchase.purchaseId()));
+        data.put("alumnoId", contentFormatter.value(purchase.studentId()));
+        data.put("buffetId", contentFormatter.value(purchase.buffetId()));
+        data.put("estado", contentFormatter.value(purchase.status()));
+        data.put("total", purchase.totalAmount());
+        data.put("codigoRetiro", contentFormatter.value(purchase.withdrawalCode()));
+        return data;
     }
 
     private SchoolAssistantFixedReply multipleCancelablePurchasesReply(
