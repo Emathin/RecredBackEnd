@@ -218,7 +218,7 @@ class PurchaseTest {
     void cancel_WhenPurchaseIsNotPendingOrInPreparation_ShouldThrowException() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.LISTO);
 
-        assertThrows(IllegalStateException.class, purchase::cancel);
+        assertThrows(InvalidPurchaseStatusTransitionException.class, purchase::cancel);
     }
 
     @Test
