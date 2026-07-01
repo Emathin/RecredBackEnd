@@ -21,26 +21,42 @@ public class UpdateProductPrice {
     }
 
     @Transactional
-    public void execute(UUID productId, BigDecimal newPrice, UUID buffetId) {
-        if (newPrice == null || newPrice.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Product price must be greater than zero");
+    public void execute(UpdateProductPriceRequest request) {
+        request.validate();
+
+        Producto product = findProduct(request.productId());
+        BigDecimal oldPrice = product.getPrecio();
+
+        if (priceChanged(oldPrice, request.newPrice())) {
+            updatePrice(product, request);
+            publishPriceChanged(product, oldPrice, request);
         }
+    }
 
-        Producto producto = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
+    private Producto findProduct(UUID productId) {
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Product not found: " + productId));
+    }
 
-        BigDecimal oldPrice = producto.getPrecio();
+    private boolean priceChanged(BigDecimal oldPrice, BigDecimal newPrice) {
+        return oldPrice.compareTo(newPrice) != 0;
+    }
 
-        if (oldPrice.compareTo(newPrice) != 0) {
-            producto.setPrecio(newPrice);
-            productRepository.updatePrice(productId, newPrice);
+    private void updatePrice(Producto product, UpdateProductPriceRequest request) {
+        product.setPrecio(request.newPrice());
+        productRepository.updatePrice(request.productId(), request.newPrice());
+    }
 
-            eventPublisher.publish(new ProductPriceChangedEvent(
-                    producto,
-                    oldPrice,
-                    newPrice,
-                    buffetId
-            ));
-        }
+    private void publishPriceChanged(
+            Producto product,
+            BigDecimal oldPrice,
+            UpdateProductPriceRequest request) {
+        eventPublisher.publish(new ProductPriceChangedEvent(
+                product,
+                oldPrice,
+                request.newPrice(),
+                request.buffetId()
+        ));
     }
 }

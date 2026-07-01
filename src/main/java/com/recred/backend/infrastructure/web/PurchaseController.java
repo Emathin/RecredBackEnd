@@ -6,6 +6,7 @@ import com.recred.backend.application.CreateAdvancePurchaseRequest;
 import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetPurchaseStatus;
+import com.recred.backend.application.GetPurchaseStatusRequest;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.ProcessPresentialPurchaseRequest;
 import com.recred.backend.application.ProcessPresentialPurchaseResponse;
@@ -134,8 +135,11 @@ public class PurchaseController {
             @PathVariable UUID id,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(PurchaseStatusResponseDTO.fromDomain(
-                getPurchaseStatus.execute(cognitoSubject(authentication), id)
+        return ResponseEntity.ok(PurchaseStatusResponseDTO.fromApplication(
+                getPurchaseStatus.execute(new GetPurchaseStatusRequest(
+                        cognitoSubject(authentication),
+                        id
+                ))
         ));
     }
 
@@ -157,7 +161,7 @@ public class PurchaseController {
         return ResponseEntity.ok(new PurchaseStatusResponseDTO(
                 useCaseResponse.id(),
                 useCaseResponse.studentId(),
-                useCaseResponse.status().name(),
+                useCaseResponse.status(),
                 useCaseResponse.label(),
                 useCaseResponse.date()
         ));

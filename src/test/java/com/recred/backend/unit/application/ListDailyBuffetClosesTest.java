@@ -1,14 +1,15 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.ListDailyBuffetCloses;
+import com.recred.backend.application.ListDailyBuffetClosesRequest;
+import com.recred.backend.application.ListDailyBuffetClosesResponse;
 import com.recred.backend.domain.models.DailyBuffetClose;
 import com.recred.backend.domain.repositories.DailyBuffetCloseRepository;
-import org.junit.jupiter.api.Test;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -19,12 +20,47 @@ import static org.mockito.Mockito.when;
 
 class ListDailyBuffetClosesTest {
 
+    private final DailyBuffetCloseRepository repository =
+            mock(DailyBuffetCloseRepository.class);
+    private final ListDailyBuffetCloses useCase = new ListDailyBuffetCloses(repository);
+    private UUID buffetId;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private DailyBuffetClose close;
+    private ListDailyBuffetClosesResponse response;
+
     @Test
     void execute_ShouldReturnClosesInRange() {
-        UUID buffetId = UUID.randomUUID();
-        LocalDate startDate = LocalDate.of(2026, 6, 1);
-        LocalDate endDate = LocalDate.of(2026, 6, 10);
-        DailyBuffetClose close = new DailyBuffetClose(
+        givenCloseRange();
+        givenRepositoryHasCloses();
+
+        whenListingCloses();
+
+        assertEquals(1, response.closes().size());
+        assertEquals(close.id(), response.closes().get(0).id());
+        verify(repository).findByBuffetAndDateRange(buffetId, startDate, endDate);
+    }
+
+    @Test
+    void execute_WhenRangeIsInvalid_ShouldFail() {
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(
+                new ListDailyBuffetClosesRequest(
+                        UUID.randomUUID(),
+                        LocalDate.of(2026, 6, 10),
+                        LocalDate.of(2026, 6, 1)
+                )
+        ));
+        verifyNoInteractions(repository);
+    }
+
+    private void givenCloseRange() {
+        buffetId = UUID.randomUUID();
+        startDate = LocalDate.of(2026, 6, 1);
+        endDate = LocalDate.of(2026, 6, 10);
+    }
+
+    private void givenRepositoryHasCloses() {
+        close = new DailyBuffetClose(
                 UUID.randomUUID(),
                 buffetId,
                 LocalDate.of(2026, 6, 8),
@@ -32,28 +68,15 @@ class ListDailyBuffetClosesTest {
                 2,
                 BigDecimal.ZERO
         );
-        DailyBuffetCloseRepository repository = mock(DailyBuffetCloseRepository.class);
-        ListDailyBuffetCloses useCase = new ListDailyBuffetCloses(repository);
-
         when(repository.findByBuffetAndDateRange(buffetId, startDate, endDate))
                 .thenReturn(List.of(close));
-
-        List<DailyBuffetClose> result = useCase.execute(buffetId, startDate, endDate);
-
-        assertEquals(List.of(close), result);
-        verify(repository).findByBuffetAndDateRange(buffetId, startDate, endDate);
     }
 
-    @Test
-    void execute_WhenRangeIsInvalid_ShouldFail() {
-        DailyBuffetCloseRepository repository = mock(DailyBuffetCloseRepository.class);
-        ListDailyBuffetCloses useCase = new ListDailyBuffetCloses(repository);
-
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(
-                UUID.randomUUID(),
-                LocalDate.of(2026, 6, 10),
-                LocalDate.of(2026, 6, 1)
+    private void whenListingCloses() {
+        response = useCase.execute(new ListDailyBuffetClosesRequest(
+                buffetId,
+                startDate,
+                endDate
         ));
-        verifyNoInteractions(repository);
     }
 }

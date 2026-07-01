@@ -6,7 +6,6 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AIEventRepository;
-import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductAdditionNotificationRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -35,9 +34,6 @@ public class AddProductRecommendationTest {
     private KiosqueroRepository kiosqueroRepository;
 
     @Mock
-    private InventoryRepository inventoryRepository;
-
-    @Mock
     private AIEventRepository aiEventRepository;
 
     @Mock
@@ -60,7 +56,6 @@ public class AddProductRecommendationTest {
         useCase = new AddProductRecommendation(
                 productRepository,
                 kiosqueroRepository,
-                inventoryRepository,
                 aiEventRepository,
                 notificationRepository,
                 productStatisticsRepository,
@@ -82,14 +77,15 @@ public class AddProductRecommendationTest {
 
     @Test
     void WhenProductIsNotInStockShouldRegisterRecommendationWithCorrectStatistics() {
-        when(productRepository.findBestSoldProducts()).thenReturn(List.of(producto));
         when(kiosqueroRepository.findAll()).thenReturn(List.of(kiosquero));
         when(kiosqueroRepository.findBuffetById(kiosquero.getId())).thenReturn(buffetId);
-        when(inventoryRepository.checkIfProductIsInStock(producto.getId(), buffetId)).thenReturn(false);
+        when(productRepository.findBestSoldProductsNotInStock(buffetId))
+                .thenReturn(List.of(producto));
         
         when(productStatisticsRepository.countTotalSalesByProduct(any(), any())).thenReturn(100L);
         when(productStatisticsRepository.countDistinctCustomersByProduct(any(), any())).thenReturn(50L);
-        when(productStatisticsRepository.calculateTotalRevenueByProduct(any(), any())).thenReturn(new java.math.BigDecimal("5000"));
+        when(productStatisticsRepository.calculateTotalRevenueByProduct(any(), any()))
+                .thenReturn(new java.math.BigDecimal("5000"));
 
         useCase.execute();
 
@@ -100,10 +96,10 @@ public class AddProductRecommendationTest {
 
     @Test
     void WhenProductAlreadyInStock_ShouldNotRegisterRecommendation() {
-        when(productRepository.findBestSoldProducts()).thenReturn(List.of(producto));
         when(kiosqueroRepository.findAll()).thenReturn(List.of(kiosquero));
         when(kiosqueroRepository.findBuffetById(kiosquero.getId())).thenReturn(buffetId);
-        when(inventoryRepository.checkIfProductIsInStock(producto.getId(), buffetId)).thenReturn(true);
+        when(productRepository.findBestSoldProductsNotInStock(buffetId))
+                .thenReturn(List.of());
 
         useCase.execute();
 

@@ -4,7 +4,7 @@ import com.recred.backend.application.GetHistoryByStudent;
 import com.recred.backend.application.GetHistoryByStudentRequest;
 import com.recred.backend.application.GetPendingHistoryByStudent;
 import com.recred.backend.application.GetPendingHistoryByStudentRequest;
-import com.recred.backend.application.ObtenerHistorialTutor;
+import com.recred.backend.application.GetTutorHistory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
@@ -23,15 +23,15 @@ import java.util.stream.Collectors;
 public class PurchaseHistoryController {
 
     private final GetHistoryByStudent getHistoryByStudent;
-    private final ObtenerHistorialTutor obtenerHistorialTutor;
+    private final GetTutorHistory getTutorHistory;
     private final GetPendingHistoryByStudent getPendingHistoryByStudent;
 
     public PurchaseHistoryController(
             GetHistoryByStudent getHistoryByStudent,
-            ObtenerHistorialTutor obtenerHistorialTutor,
+            GetTutorHistory getTutorHistory,
             GetPendingHistoryByStudent getPendingHistoryByStudent) {
         this.getHistoryByStudent = getHistoryByStudent;
-        this.obtenerHistorialTutor = obtenerHistorialTutor;
+        this.getTutorHistory = getTutorHistory;
         this.getPendingHistoryByStudent = getPendingHistoryByStudent;
     }
 
@@ -63,7 +63,7 @@ public class PurchaseHistoryController {
 
     @GetMapping("/tutor/me")
     public ResponseEntity<List<PurchaseResponseDTO>> getMyHistorial(Authentication authentication) {
-        List<PurchaseResponseDTO> historial = obtenerHistorialTutor
+        List<PurchaseResponseDTO> historial = getTutorHistory
                 .executeByCognitoSubject(cognitoSubject(authentication))
                 .stream()
                 .map(PurchaseResponseDTO::new)
@@ -75,7 +75,7 @@ public class PurchaseHistoryController {
     @GetMapping("/tutor/{tutorId}")
     public ResponseEntity<List<PurchaseResponseDTO>> getHistorialTutor(
             @PathVariable UUID tutorId) {
-        List<PurchaseResponseDTO> historial = obtenerHistorialTutor.execute(tutorId)
+        List<PurchaseResponseDTO> historial = getTutorHistory.execute(tutorId)
                 .stream()
                 .map(PurchaseResponseDTO::new)
                 .collect(Collectors.toList());

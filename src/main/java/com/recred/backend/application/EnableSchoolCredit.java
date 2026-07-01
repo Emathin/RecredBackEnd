@@ -1,6 +1,5 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.exceptions.ActiveCreditExistsException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.CreditStatus;
@@ -51,8 +50,6 @@ public class EnableSchoolCredit {
 
         Billetera wallet = getOrCreateWallet(alumno);
 
-        ensureNoActiveCredits(alumno.getId());
-
         int installments = request.installments() == null || request.installments() < 1 
                 ? 1 
                 : request.installments();
@@ -60,7 +57,8 @@ public class EnableSchoolCredit {
         SchoolCredit savedCredit = createAndSaveCredit(
                 alumno.getId(), request.amount(), installments);
 
-        updateWalletWithCredit(wallet, request.amount());
+        wallet.enableCredit(request.amount());
+        walletRepository.save(wallet);
 
         return new EnableSchoolCreditResponse(
                 savedCredit.getId(),
@@ -96,15 +94,6 @@ public class EnableSchoolCredit {
         return wallet;
     }
 
-    private void ensureNoActiveCredits(UUID studentId) {
-        schoolCreditRepository.findByStudentIdAndStatus(studentId, CreditStatus.ACTIVE)
-                .ifPresent(c -> {
-                    throw new ActiveCreditExistsException(
-                            "The student already has an active credit."
-                    );
-                });
-    }
-
     private SchoolCredit createAndSaveCredit(UUID studentId, BigDecimal amount, int installments) {
         SchoolCredit newCredit = new SchoolCredit();
         newCredit.setStudentId(studentId);
@@ -113,11 +102,5 @@ public class EnableSchoolCredit {
         newCredit.setInstallments(installments);
         newCredit.setCreatedAt(LocalDateTime.now(clock));
         return schoolCreditRepository.save(newCredit);
-    }
-
-    private void updateWalletWithCredit(Billetera wallet, BigDecimal amount) {
-        wallet.credit(amount);
-        wallet.setCreditoHabilitado(true);
-        walletRepository.save(wallet);
     }
 }

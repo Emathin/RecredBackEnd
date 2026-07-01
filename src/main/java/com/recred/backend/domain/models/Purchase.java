@@ -93,17 +93,49 @@ public class Purchase {
         }
     }
 
+    public void changeTrackingStatusTo(EstadoCompra nextStatus) {
+        if (nextStatus == EstadoCompra.CANCELADO) {
+            throw new InvalidPurchaseStatusTransitionException(this.status, nextStatus);
+        }
+
+        changeStatusTo(nextStatus);
+    }
+
     public void cancel() {
         if (this.status == EstadoCompra.CANCELADO) {
             throw new IllegalStateException("Purchase is already cancelled.");
         }
-        if (this.status != EstadoCompra.PENDIENTE && this.status != EstadoCompra.EN_PREPARACION) {
-            throw new IllegalStateException(
-                    "Purchase can only be cancelled if it is PENDING or IN PREPARATION.");
+        
+        if (this.tipo == TipoCompra.PRESENCIAL && this.status != EstadoCompra.PENDIENTE) {
+            throw new InvalidPurchaseStatusTransitionException(this.status, EstadoCompra.CANCELADO);
         }
+
+        if (this.status != EstadoCompra.PENDIENTE && this.status != EstadoCompra.EN_PREPARACION) {
+            throw new InvalidPurchaseStatusTransitionException(this.status, EstadoCompra.CANCELADO);
+        }
+        
         this.status = EstadoCompra.CANCELADO;
         if (this.tipo == TipoCompra.ANTICIPADA) {
             this.withdrawalStatus = EstadoRetiro.CANCELADO;
+        }
+    }
+
+    public void validateCancellationWindow(FranjaHoraria pickupSlot, java.time.LocalDateTime now) {
+        if (this.tipo != TipoCompra.ANTICIPADA ||
+                this.pickupSlotId == null || this.pickupDate == null) {
+            return;
+        }
+        
+        if (pickupSlot == null) {
+            throw new IllegalArgumentException("Time slot is required for advance " +
+                    "purchase cancellation validation");
+        }
+
+        java.time.LocalDateTime startDateTime = java.time.LocalDateTime.of(
+                this.pickupDate, pickupSlot.getHoraInicio());
+        if (!now.isBefore(startDateTime.minusHours(1))) {
+            throw new IllegalArgumentException(
+                    "Cannot cancel an order less than an hour before the pickup time starts");
         }
     }
 
@@ -119,12 +151,64 @@ public class Purchase {
         return hasStatus(EstadoCompra.ENTREGADO);
     }
 
+    public boolean isPending() {
+        return hasStatus(EstadoCompra.PENDIENTE);
+    }
+
+    public boolean isActivePendingOrder() {
+        return hasStatus(EstadoCompra.PENDIENTE)
+                || hasStatus(EstadoCompra.EN_PREPARACION)
+                || hasStatus(EstadoCompra.LISTO);
+    }
+
     public boolean isAdvancePurchase() {
         return hasType(TipoCompra.ANTICIPADA);
     }
 
+    public boolean isRebuyable() {
+        return isDelivered() && hasItems();
+    }
+
+    public boolean hasItems() {
+        return items != null && !items.isEmpty();
+    }
+
+    public boolean shouldConsumeReservationWhenChangingTo(EstadoCompra requestedStatus) {
+        return isAdvancePurchase() && requestedStatus == EstadoCompra.ENTREGADO;
+    }
+
+    public boolean shouldReleaseReservationWhenChangingFrom(
+            EstadoCompra previousStatus,
+            EstadoCompra requestedStatus
+    ) {
+        return isAdvancePurchase()
+                && hasActiveReservation(previousStatus)
+                && (requestedStatus == EstadoCompra.RECHAZADO
+                        || requestedStatus == EstadoCompra.VENCIDO);
+    }
+
+    public boolean shouldRefundWhenChangingTo(EstadoCompra requestedStatus) {
+        return isAdvancePurchase() && requestedStatus == EstadoCompra.RECHAZADO;
+    }
+
+    public boolean shouldPublishExpirationEventFor(EstadoCompra requestedStatus) {
+        return requestedStatus == EstadoCompra.VENCIDO;
+    }
+
     public boolean refundsCredits() {
         return hasStatus(EstadoCompra.CANCELADO) || hasStatus(EstadoCompra.RECHAZADO);
+    }
+
+    public boolean hasScheduledPickup() {
+        return isAdvancePurchase() && pickupSlotId != null && pickupDate != null;
+    }
+
+    public boolean shouldReleaseReservationAfterCancellationFrom(EstadoCompra previousStatus) {
+        return isAdvancePurchase() && previousStatus == EstadoCompra.PENDIENTE;
+    }
+
+    public boolean belongsToStudent(UUID studentId) {
+        return studentId != null && studentId.equals(studentIdOrNull());
     }
 
     public boolean happenedBetween(LocalDate from, LocalDate to) {
@@ -152,6 +236,42 @@ public class Purchase {
         return pickupSlotDescription != null && !pickupSlotDescription.isBlank();
     }
 
+    public boolean hasWithdrawalCode() {
+        return withdrawalCode != null && !withdrawalCode.isBlank();
+    }
+
+    public boolean hasStudentId() {
+        return studentIdOrNull() != null;
+    }
+
+    public UUID studentIdOrNull() {
+        return student == null ? null : student.getId();
+    }
+
+    public UUID requireStudentId() {
+        if (!hasStudentId()) {
+            throw new IllegalStateException("Purchase does not have an associated student.");
+        }
+
+        return studentIdOrNull();
+    }
+
+    public String statusName() {
+        return status == null ? null : status.name();
+    }
+
+    public String statusLabel() {
+        return status == null ? null : status.getLabel();
+    }
+
+    public String paymentMethodName() {
+        return paymentMethod == null ? null : paymentMethod.name();
+    }
+
+    public String typeName() {
+        return tipo == null ? null : tipo.name();
+    }
+
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {
         return cart.entrySet().stream()
                 .map(entry -> productPrice(entry.getKey())
@@ -173,6 +293,12 @@ public class Purchase {
 
     private boolean requiresPreparation(Producto product) {
         return Boolean.TRUE.equals(product.getRequierePreparacion());
+    }
+
+    private boolean hasActiveReservation(EstadoCompra status) {
+        return status == EstadoCompra.PENDIENTE
+                || status == EstadoCompra.EN_PREPARACION
+                || status == EstadoCompra.LISTO;
     }
 
     private boolean isInvalidTransition(EstadoCompra nextStatus) {

@@ -185,8 +185,9 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Producto> findBestSoldProducts() {
-        List<ProductoEntity> productos = springDataRepository.findBestSoldProducts();
+    public List<Producto> findBestSoldProductsNotInStock(UUID buffetId) {
+        List<ProductoEntity> productos = springDataRepository
+                .findBestSoldProductsNotInStock(buffetId);
         return productos.stream().map(ProductoEntity::toDomain).toList();
     }
 

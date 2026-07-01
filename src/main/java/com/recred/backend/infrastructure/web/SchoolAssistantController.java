@@ -1,8 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AskSchoolAssistant;
-import com.recred.backend.application.SchoolAssistantCommand;
+import com.recred.backend.application.AskSchoolAssistantRequest;
 import com.recred.backend.application.SchoolAssistantConversations;
+import com.recred.backend.domain.models.SchoolAssistantRole;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,10 +41,8 @@ public class SchoolAssistantController {
             Authentication authentication,
             @RequestBody SchoolAssistantRequest request
     ) {
-        SchoolAssistantCommand command = command(request);
-        return SchoolAssistantResponse.fromDomain(askSchoolAssistant.executeForStudent(
-                cognitoSubject(authentication),
-                command
+        return SchoolAssistantResponse.fromApplication(askSchoolAssistant.execute(
+                assistantRequest(authentication, request, SchoolAssistantRole.ALUMNO)
         ));
     }
 
@@ -100,9 +99,8 @@ public class SchoolAssistantController {
             Authentication authentication,
             @RequestBody SchoolAssistantRequest request
     ) {
-        return SchoolAssistantResponse.fromDomain(askSchoolAssistant.executeForTutor(
-                cognitoSubject(authentication),
-                command(request)
+        return SchoolAssistantResponse.fromApplication(askSchoolAssistant.execute(
+                assistantRequest(authentication, request, SchoolAssistantRole.TUTOR)
         ));
     }
 
@@ -159,9 +157,8 @@ public class SchoolAssistantController {
             Authentication authentication,
             @RequestBody SchoolAssistantRequest request
     ) {
-        return SchoolAssistantResponse.fromDomain(askSchoolAssistant.executeForKiosquero(
-                cognitoSubject(authentication),
-                command(request)
+        return SchoolAssistantResponse.fromApplication(askSchoolAssistant.execute(
+                assistantRequest(authentication, request, SchoolAssistantRole.KIOSQUERO)
         ));
     }
 
@@ -213,9 +210,15 @@ public class SchoolAssistantController {
         return ResponseEntity.noContent().build();
     }
 
-    private SchoolAssistantCommand command(SchoolAssistantRequest request) {
-        return new SchoolAssistantCommand(
-                request.optionalSessionId(),
+    private AskSchoolAssistantRequest assistantRequest(
+            Authentication authentication,
+            SchoolAssistantRequest request,
+            SchoolAssistantRole role
+    ) {
+        return new AskSchoolAssistantRequest(
+                cognitoSubject(authentication),
+                role,
+                request.sessionId(),
                 request.message()
         );
     }

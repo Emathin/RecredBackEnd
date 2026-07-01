@@ -35,4 +35,13 @@ public class Tutor {
             alumno.getTutores().remove(this);
         }
     }
+
+    public void validatePurchaseFor(UUID studentId) {
+        boolean isOwnChild = this.hijos.stream()
+                .anyMatch(child -> child.getId().equals(studentId));
+        if (!isOwnChild) {
+            throw new SecurityException(
+                    "No autorizado para comprar a nombre de este alumno");
+        }
+    }
 }

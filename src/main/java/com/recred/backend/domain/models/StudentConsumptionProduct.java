@@ -22,4 +22,8 @@ public record StudentConsumptionProduct(
             BigDecimal subtotal) {
         this(productId, productName, categoryName, quantity, unitPrice, subtotal, List.of());
     }
+
+    public List<String> healthClassificationsOrEmpty() {
+        return healthClassifications == null ? List.of() : healthClassifications;
+    }
 }

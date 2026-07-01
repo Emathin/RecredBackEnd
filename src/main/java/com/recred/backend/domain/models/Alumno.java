@@ -65,6 +65,14 @@ public class Alumno {
         this.restriccionesSalud.removeIf(r -> r.getId().equals(restriccionId));
     }
 
+    public boolean hasGlobalHealthRestriction(UUID classificationId) {
+        if (classificationId == null) {
+            return false;
+        }
+        return this.restriccionesSalud.stream()
+                .anyMatch(r -> r.getId().equals(classificationId));
+    }
+
     public void agregarRestriccionHoraria(RestriccionHoraria restriccion) {
         this.restriccionesHorarias.add(restriccion);
     }

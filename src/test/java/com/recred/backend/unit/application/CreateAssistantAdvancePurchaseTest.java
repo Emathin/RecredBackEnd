@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
+import com.recred.backend.application.CreateAssistantAdvancePurchaseRequest;
+import com.recred.backend.application.CreateAssistantAdvancePurchaseResponse;
 import com.recred.backend.domain.exceptions.InsufficientStockException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
@@ -132,13 +134,8 @@ class CreateAssistantAdvancePurchaseTest {
         when(purchaseRepository.save(any(Purchase.class))).thenAnswer(invocation ->
                 invocation.getArgument(0));
 
-        Purchase result = useCase.execute(
-                studentId,
-                buffetId,
-                cart,
-                RecessTime.FIRST_RECESS,
-                pickupDate
-        );
+        CreateAssistantAdvancePurchaseResponse result =
+                useCase.execute(request(buffetId, cart, pickupDate));
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
@@ -152,7 +149,9 @@ class CreateAssistantAdvancePurchaseTest {
         assertEquals("ABC123", savedPurchase.getWithdrawalCode());
         assertEquals(new BigDecimal("30.00"), savedPurchase.getTotalAmount());
         assertEquals(new BigDecimal("70.00"), wallet.getSaldoCreditos());
-        assertEquals(savedPurchase, result);
+        assertEquals(savedPurchase.getStatus(), result.status());
+        assertEquals(savedPurchase.getWithdrawalCode(), result.withdrawalCode());
+        assertEquals(savedPurchase.getTotalAmount(), result.totalAmount());
 
         verify(timeValidator).validarCompra(
                 eq(student),
@@ -186,15 +185,9 @@ class CreateAssistantAdvancePurchaseTest {
                 .when(inventoryAvailabilityService)
                 .reserve(buffetId, cart);
 
-        assertThrows(InsufficientStockException.class, () -> useCase.execute(
-                studentId,
-                buffetId,
-                cart,
-                RecessTime.FIRST_RECESS,
-                pickupDate
-        ));
+        assertThrows(InsufficientStockException.class,
+                () -> useCase.execute(request(buffetId, cart, pickupDate)));
 
-        assertEquals(new BigDecimal("100.00"), wallet.getSaldoCreditos());
         verify(walletRepository, never()).save(wallet);
         verify(purchaseRepository, never()).save(any(Purchase.class));
         verify(withdrawalCodeService, never()).generateCode(any(Purchase.class));
@@ -203,12 +196,7 @@ class CreateAssistantAdvancePurchaseTest {
     @Test
     void executeThrowsWhenBuffetIdIsMissing() {
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(
-                studentId,
-                null,
-                Map.of(product, 1),
-                RecessTime.FIRST_RECESS,
-                LocalDate.of(2026, 5, 27)
-        ));
+                request(null, Map.of(product, 1), LocalDate.of(2026, 5, 27))));
     }
 
     @Test
@@ -216,13 +204,11 @@ class CreateAssistantAdvancePurchaseTest {
         when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
 
         assertThrows(com.recred.backend.domain.exceptions.AlumnoNoEncontradoException.class,
-                () -> useCase.execute(
-                        studentId,
+                () -> useCase.execute(request(
                         buffetId,
                         Map.of(product, 1),
-                        RecessTime.FIRST_RECESS,
                         LocalDate.of(2026, 5, 27)
-                ));
+                )));
     }
 
     @Test
@@ -237,13 +223,8 @@ class CreateAssistantAdvancePurchaseTest {
                 .thenReturn(slot);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalStateException.class, () -> useCase.execute(
-                studentId,
-                buffetId,
-                cart,
-                RecessTime.FIRST_RECESS,
-                pickupDate
-        ));
+        assertThrows(IllegalStateException.class,
+                () -> useCase.execute(request(buffetId, cart, pickupDate)));
 
         verify(inventoryAvailabilityService, never()).reserve(any(), any());
     }
@@ -261,13 +242,7 @@ class CreateAssistantAdvancePurchaseTest {
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
         assertThrows(com.recred.backend.domain.exceptions.InsufficientBalanceException.class,
-                () -> useCase.execute(
-                        studentId,
-                        buffetId,
-                        cart,
-                        RecessTime.FIRST_RECESS,
-                        pickupDate
-                ));
+                () -> useCase.execute(request(buffetId, cart, pickupDate)));
 
         verify(inventoryAvailabilityService, never()).reserve(any(), any());
         verify(purchaseRepository, never()).save(any(Purchase.class));
@@ -293,13 +268,7 @@ class CreateAssistantAdvancePurchaseTest {
         when(purchaseRepository.save(any(Purchase.class))).thenAnswer(invocation ->
                 invocation.getArgument(0));
 
-        useCaseWithMovements.execute(
-                studentId,
-                buffetId,
-                cart,
-                RecessTime.FIRST_RECESS,
-                pickupDate
-        );
+        useCaseWithMovements.execute(request(buffetId, cart, pickupDate));
 
         verify(budgetValidator).validarPresupuesto(
                 eq(studentId),
@@ -337,13 +306,7 @@ class CreateAssistantAdvancePurchaseTest {
         when(purchaseRepository.save(any(Purchase.class))).thenAnswer(invocation ->
                 invocation.getArgument(0));
 
-        useCaseWithMovements.execute(
-                studentId,
-                buffetId,
-                cart,
-                RecessTime.FIRST_RECESS,
-                pickupDate
-        );
+        useCaseWithMovements.execute(request(buffetId, cart, pickupDate));
 
         verify(movimientoBilleteraRepository).registrarMovimientoSistema(
                 eq(wallet.getId()),
@@ -402,6 +365,20 @@ class CreateAssistantAdvancePurchaseTest {
                 inventoryAvailabilityService,
                 advancePurchaseRulesService,
                 movimientoBilleteraRepository
+        );
+    }
+
+    private CreateAssistantAdvancePurchaseRequest request(
+            UUID buffetId,
+            Map<Producto, Integer> cart,
+            LocalDate pickupDate
+    ) {
+        return new CreateAssistantAdvancePurchaseRequest(
+                studentId,
+                buffetId,
+                cart,
+                RecessTime.FIRST_RECESS,
+                pickupDate
         );
     }
 

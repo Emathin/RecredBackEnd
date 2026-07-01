@@ -13,13 +13,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.web.multipart.MultipartFile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 class GoogleGeminiTextClientTest {
 
     private static final String MODEL = "gemini-test";
@@ -29,7 +25,7 @@ class GoogleGeminiTextClientTest {
     private static final String VISION_PATH = "/v1beta/models/" + VISION_MODEL + ":generateContent";
 
     @Test
-    void noGenerarTextoCuandoGeminiNoEstaConfigurado() {
+    void shouldNotGenerateTextWhenGeminiIsNotConfigured() {
         GoogleGeminiTextClient client = new GoogleGeminiTextClient(new GeminiProperties(
                 "",
                 MODEL,
@@ -42,8 +38,8 @@ class GoogleGeminiTextClientTest {
     }
 
     @Test
-    void generarTextoConRespuestaValidaDeGemini() throws IOException {
-        HttpServer server = iniciarServidorGemini(BASE_PATH, 200, """
+    void shouldGenerateTextWithValidGeminiResponse() throws IOException {
+        HttpServer server = startGeminiServer(BASE_PATH, 200, """
                 {
                   "candidates": [
                     {
@@ -62,8 +58,8 @@ class GoogleGeminiTextClientTest {
                 """);
 
         try {
-            configurarBaseUrl(server);
-            GoogleGeminiTextClient client = clienteConfigurado();
+            configureBaseUrl(server);
+            GoogleGeminiTextClient client = configuredClient();
 
             Optional<GeminiTextResponse> response = client.generate("prompt");
 
@@ -71,13 +67,13 @@ class GoogleGeminiTextClientTest {
             assertEquals("{\"resumen\":\"Todo bien\"}", response.orElseThrow().text());
             assertEquals(MODEL, response.orElseThrow().model());
         } finally {
-            cerrarServidor(server);
+            stopServer(server);
         }
     }
 
     @Test
-    void devolverVacioCuandoGeminiDevuelveTextoEnBlanco() throws IOException {
-        HttpServer server = iniciarServidorGemini(BASE_PATH, 200, """
+    void shouldReturnEmptyWhenGeminiReturnsBlankText() throws IOException {
+        HttpServer server = startGeminiServer(BASE_PATH, 200, """
                 {
                   "candidates": [
                     {
@@ -96,20 +92,20 @@ class GoogleGeminiTextClientTest {
                 """);
 
         try {
-            configurarBaseUrl(server);
-            GoogleGeminiTextClient client = clienteConfigurado();
+            configureBaseUrl(server);
+            GoogleGeminiTextClient client = configuredClient();
 
             Optional<GeminiTextResponse> response = client.generate("prompt");
 
             assertTrue(response.isEmpty());
         } finally {
-            cerrarServidor(server);
+            stopServer(server);
         }
     }
 
     @Test
-    void devolverVacioCuandoGeminiFalla() throws IOException {
-        HttpServer server = iniciarServidorGemini(BASE_PATH, 400, """
+    void shouldReturnEmptyWhenGeminiFails() throws IOException {
+        HttpServer server = startGeminiServer(BASE_PATH, 400, """
                 {
                   "error": {
                     "code": 400,
@@ -120,19 +116,19 @@ class GoogleGeminiTextClientTest {
                 """);
 
         try {
-            configurarBaseUrl(server);
-            GoogleGeminiTextClient client = clienteConfigurado();
+            configureBaseUrl(server);
+            GoogleGeminiTextClient client = configuredClient();
 
             Optional<GeminiTextResponse> response = client.generate("prompt");
 
             assertTrue(response.isEmpty());
         } finally {
-            cerrarServidor(server);
+            stopServer(server);
         }
     }
 
     @Test
-    void noGenerarTextoConImagenCuandoGeminiNoEstaConfigurado() throws IOException {
+    void shouldNotGenerateTextWithImageWhenGeminiIsNotConfigured() throws IOException {
         GoogleGeminiTextClient client = new GoogleGeminiTextClient(new GeminiProperties(
                 "",
                 MODEL,
@@ -148,8 +144,8 @@ class GoogleGeminiTextClientTest {
     }
 
     @Test
-    void generarTextoConImagenConRespuestaValida() throws IOException {
-        HttpServer server = iniciarServidorGemini(VISION_PATH, 200, """
+    void shouldGenerateTextWithImageWithValidResponse() throws IOException {
+        HttpServer server = startGeminiServer(VISION_PATH, 200, """
                 {
                   "candidates": [
                     {
@@ -168,8 +164,8 @@ class GoogleGeminiTextClientTest {
                 """);
 
         try {
-            configurarBaseUrl(server);
-            GoogleGeminiTextClient client = clienteConfigurado();
+            configureBaseUrl(server);
+            GoogleGeminiTextClient client = configuredClient();
             MockMultipartFile file = new MockMultipartFile(
                     "image", "test.jpg", "image/jpeg", "content".getBytes());
 
@@ -180,17 +176,17 @@ class GoogleGeminiTextClientTest {
             assertEquals("{\"nombre\":\"Coca Cola\"}", response.orElseThrow().text());
             assertEquals(VISION_MODEL, response.orElseThrow().model());
         } finally {
-            cerrarServidor(server);
+            stopServer(server);
         }
     }
 
     @Test
-    void devolverVacioCuandoGeminiFallaConImagen() throws IOException {
-        HttpServer server = iniciarServidorGemini(VISION_PATH, 500, "Error");
+    void shouldReturnEmptyWhenGeminiFailsWithImage() throws IOException {
+        HttpServer server = startGeminiServer(VISION_PATH, 400, "Error");
 
         try {
-            configurarBaseUrl(server);
-            GoogleGeminiTextClient client = clienteConfigurado();
+            configureBaseUrl(server);
+            GoogleGeminiTextClient client = configuredClient();
             MockMultipartFile file = new MockMultipartFile(
                     "image", "test.jpg", "image/jpeg", "content".getBytes());
 
@@ -199,11 +195,11 @@ class GoogleGeminiTextClientTest {
 
             assertTrue(response.isEmpty());
         } finally {
-            cerrarServidor(server);
+            stopServer(server);
         }
     }
 
-    private GoogleGeminiTextClient clienteConfigurado() {
+    private GoogleGeminiTextClient configuredClient() {
         return new GoogleGeminiTextClient(new GeminiProperties(
                 API_KEY,
                 MODEL,
@@ -211,26 +207,26 @@ class GoogleGeminiTextClientTest {
         ));
     }
 
-    private HttpServer iniciarServidorGemini(String path, int status, String body) throws IOException {
+    private HttpServer startGeminiServer(String path, int status, String body) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext(path, exchange -> responder(exchange, status, body));
+        server.createContext(path, exchange -> respond(exchange, status, body));
         server.start();
         return server;
     }
 
-    private void configurarBaseUrl(HttpServer server) {
+    private void configureBaseUrl(HttpServer server) {
         Client.setDefaultBaseUrls(
                 Optional.of("http://localhost:" + server.getAddress().getPort()),
                 Optional.empty()
         );
     }
 
-    private void cerrarServidor(HttpServer server) {
+    private void stopServer(HttpServer server) {
         Client.setDefaultBaseUrls(Optional.empty(), Optional.empty());
         server.stop(0);
     }
 
-    private void responder(HttpExchange exchange, int status, String body) throws IOException {
+    private void respond(HttpExchange exchange, int status, String body) throws IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().add("Content-Type", "application/json");
         exchange.sendResponseHeaders(status, bytes.length);

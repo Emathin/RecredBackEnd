@@ -10,7 +10,6 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,82 +39,40 @@ public class GenerateProductChangeRecommendation {
         this.getProductStatistics = getProductStatistics;
     }
 
-    @Transactional
     public void execute() {
         List<UUID> kiosqueroIds = kiosqueroRepository.findAllIds();
-        kiosqueroIds.forEach(id -> {
-            try {
-                this.execute(id);
-            } catch (Exception e) {
-                LOGGER.error("Error generating product change recommendation for kiosquero {}: {}",
-                        id, e.getMessage());
-            }
-        });
+        kiosqueroIds.forEach(this::generateForKiosquero);
     }
 
-    @Transactional
-    public List<ProductRecommendationResult> execute(UUID sellerId) {
+    private void generateForKiosquero(UUID sellerId) {
+        try {
+            UUID buffetId = findBuffet(sellerId);
+            UUID usuarioId = kiosqueroRepository.findUsuarioIdById(sellerId);
+            generateForBuffet(buffetId, usuarioId);
+        } catch (Exception e) {
+            LOGGER.error("Error generating product change recommendation for kiosquero {}: {}",
+                    sellerId, e.getMessage());
+        }
+    }
+
+    private UUID findBuffet(UUID sellerId) {
         UUID buffetId = kiosqueroRepository.findBuffetById(sellerId);
         if (buffetId == null) {
             throw new KiosqueroNotFoundException(sellerId);
         }
-        return generateForBuffet(buffetId, sellerId);
+        return buffetId;
     }
 
-    @Transactional
-    public List<ProductRecommendationResult> executeByUsuarioId(UUID usuarioId) {
-        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(usuarioId);
-        if (buffetId == null) {
-            throw new KiosqueroNotFoundException(usuarioId);
-        }
-        return generateForBuffet(buffetId, usuarioId);
-    }
-
-    private List<ProductRecommendationResult> generateForBuffet(UUID buffetId, UUID actorId) {
-        List<ProductChangeRecommendation> leastSoldProducts =
+    private void generateForBuffet(UUID buffetId, UUID actorId) {
+        List<ProductChangeRecommendation> products =
                 productRepository.findBuffetTop5LeastSoldProducts(buffetId);
-        
-        return leastSoldProducts.stream()
-                .map(product -> {
-                    product.setSaleStatistics(
-                            getProductStatistics.execute(product.getId(), actorId));
-                    Optional<ProductChangeAnalysis> aiAnalysis = productChangeAnalyzer
-                            .analyze(product);
-                    ProductRecommendationResult result = new ProductRecommendationResult(
-                            product,
-                            aiAnalysis
-                    );
-                    aiEventRepository.registerProductChangeRecommendation(result);
-                    return result;
-                })
-                .toList();
+        products.forEach(product -> analyzeAndRegister(product, actorId));
     }
 
-    @Transactional(readOnly = true)
-    public Optional<ProductRecommendationResult> findLatestResult(UUID sellerId) {
-        UUID buffetId = kiosqueroRepository.findBuffetById(sellerId);
-        if (buffetId == null) {
-            throw new KiosqueroNotFoundException(sellerId);
-        }
-        return aiEventRepository.findLatestProductChangeRecommendation(buffetId);
+    private void analyzeAndRegister(ProductChangeRecommendation product, UUID actorId) {
+        product.setSaleStatistics(getProductStatistics.execute(product.getId(), actorId));
+        Optional<ProductChangeAnalysis> aiAnalysis = productChangeAnalyzer.analyze(product);
+        ProductRecommendationResult result = new ProductRecommendationResult(product, aiAnalysis);
+        aiEventRepository.registerProductChangeRecommendation(result);
     }
-
-    @Transactional(readOnly = true)
-    public Optional<ProductRecommendationResult> findLatestResultByUsuarioId(UUID usuarioId) {
-        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(usuarioId);
-        if (buffetId == null) {
-            throw new KiosqueroNotFoundException(usuarioId);
-        }
-        return aiEventRepository.findLatestProductChangeRecommendation(buffetId);
-    }
-
-    @Transactional(readOnly = true)
-    public List<ProductRecommendationResult> findAllResultsByUsuarioId(UUID usuarioId) {
-        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(usuarioId);
-        if (buffetId == null) {
-            throw new KiosqueroNotFoundException(usuarioId);
-        }
-        return aiEventRepository.findAllProductChangeRecommendations(buffetId);
-    }
-
 }

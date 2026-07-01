@@ -89,6 +89,10 @@ public class Producto {
                 && getStockDisponible() <= stockMinimo;
     }
 
+    public boolean hasLowStockStatus() {
+        return estadoInventario == EstadoInventario.BAJO_STOCK;
+    }
+
     public boolean isSoldOut() {
         if (estadoInventario == EstadoInventario.SIN_STOCK
                 || estadoInventario == EstadoInventario.DESACTIVADO) {
@@ -96,6 +100,40 @@ public class Producto {
         }
 
         return getStockDisponible() != null && getStockDisponible() <= 0;
+    }
+
+    public boolean isAvailableForSale() {
+        return !isSoldOut();
+    }
+
+    public boolean hasAvailableStock() {
+        return getStockDisponible() != null && getStockDisponible() > 0;
+    }
+
+    public TipoManejoInventario inventoryMode() {
+        return tipoManejoInventario == null
+                ? TipoManejoInventario.STOCK_EXACTO
+                : tipoManejoInventario;
+    }
+
+    public Integer configuredDailyCapacity() {
+        if (inventoryMode() != TipoManejoInventario.CUPO_DIARIO) {
+            return null;
+        }
+
+        return cupoMaximoDiario == null ? stockActual : cupoMaximoDiario;
+    }
+
+    public Integer dailyCapacityAvailable() {
+        return inventoryMode() == TipoManejoInventario.CUPO_DIARIO
+                ? getStockDisponible()
+                : null;
+    }
+
+    public boolean hasDailyCapacityLimit() {
+        return inventoryMode() == TipoManejoInventario.CUPO_DIARIO
+                && cupoMaximoDiario != null
+                && cupoMaximoDiario > 0;
     }
 
     public int reservedStockOrZero() {

@@ -208,6 +208,29 @@ class InventarioTest {
         assertEquals(EstadoInventario.DISPONIBLE, inventario.getEstado());
     }
 
+    @Test
+    void inventoryAvailabilityHelpers_ShouldExposeCurrentStockState() {
+        Inventario inventario = inventory(5, 1);
+        inventario.setTipoManejo(TipoManejoInventario.CUPO_DIARIO);
+
+        assertEquals(true, inventario.requiresQuantityControl());
+        assertEquals(5, inventario.currentStockOrZero());
+        assertEquals(1, inventario.reservedStockOrZero());
+        assertEquals(4, inventario.stockDisponible());
+        assertEquals(4, inventario.dailyCapacityAvailable());
+        assertEquals(true, inventario.isAvailableForSale());
+        assertEquals(false, inventario.isSoldOut());
+    }
+
+    @Test
+    void inventoryAvailabilityHelpers_WhenStockIsLow_ShouldExposeLowStockState() {
+        Inventario inventario = inventory(2, 0);
+        inventario.setStockMinimo(4);
+
+        assertEquals(EstadoInventario.BAJO_STOCK, inventario.estadoActual());
+        assertEquals(true, inventario.isLowStock());
+    }
+
     private Inventario inventory(int stockActual, int stockReservado) {
         Inventario inventario = new Inventario();
         inventario.setId(UUID.randomUUID());

@@ -30,62 +30,62 @@ public class Inventario {
     private LocalDateTime actualizadoEn;
 
     public int stockDisponible() {
-        if (!requiereControlDeCantidad()) {
-            return estaDisponibleSinControlDeCantidad() ? 1 : 0;
+        if (!requiresQuantityControl()) {
+            return isAvailableWithoutQuantityControl() ? 1 : 0;
         }
 
-        return Math.max(0, stockActualSeguro() - stockReservadoSeguro());
+        return Math.max(0, currentStockOrZero() - reservedStockOrZero());
     }
 
     public void reservar(int cantidad) {
         validarCantidad(cantidad);
 
-        if (!requiereControlDeCantidad()) {
+        if (!requiresQuantityControl()) {
             validarDisponibleSinControlDeCantidad();
             return;
         }
 
         validarDisponibilidad(cantidad);
-        stockReservado = stockReservadoSeguro() + cantidad;
+        stockReservado = reservedStockOrZero() + cantidad;
         actualizarEstado();
     }
 
     public void consumir(int cantidad) {
         validarCantidad(cantidad);
 
-        if (!requiereControlDeCantidad()) {
+        if (!requiresQuantityControl()) {
             validarDisponibleSinControlDeCantidad();
             return;
         }
 
         validarDisponibilidad(cantidad);
-        stockActual = stockActualSeguro() - cantidad;
+        stockActual = currentStockOrZero() - cantidad;
         actualizarEstado();
     }
 
     public void consumirReserva(int cantidad) {
         validarCantidad(cantidad);
 
-        if (!requiereControlDeCantidad()) {
+        if (!requiresQuantityControl()) {
             validarDisponibleSinControlDeCantidad();
             return;
         }
 
         validarReserva(cantidad);
-        stockActual = stockActualSeguro() - cantidad;
-        stockReservado = stockReservadoSeguro() - cantidad;
+        stockActual = currentStockOrZero() - cantidad;
+        stockReservado = reservedStockOrZero() - cantidad;
         actualizarEstado();
     }
 
     public void liberarReserva(int cantidad) {
         validarCantidad(cantidad);
 
-        if (!requiereControlDeCantidad()) {
+        if (!requiresQuantityControl()) {
             return;
         }
 
         validarReserva(cantidad);
-        stockReservado = stockReservadoSeguro() - cantidad;
+        stockReservado = reservedStockOrZero() - cantidad;
         actualizarEstado();
     }
 
@@ -94,7 +94,7 @@ public class Inventario {
             throw new InventoryOperationException("El stock no puede ser negativo.");
         }
 
-        if (requiereControlDeCantidad() && nuevoStock < stockReservadoSeguro()) {
+        if (requiresQuantityControl() && nuevoStock < reservedStockOrZero()) {
             throw new InventoryOperationException(
                     "El stock ajustado no puede ser menor al stock reservado.");
         }
@@ -110,7 +110,7 @@ public class Inventario {
     }
 
     private EstadoInventario estadoConInventarioActivo() {
-        return requiereControlDeCantidad()
+        return requiresQuantityControl()
                 ? estadoConControlDeCantidad()
                 : estadoSeguro();
     }
@@ -127,8 +127,47 @@ public class Inventario {
                 : EstadoInventario.DISPONIBLE;
     }
 
-    private boolean requiereControlDeCantidad() {
-        return tipoManejoSeguro() != TipoManejoInventario.DISPONIBLE_NO_DISPONIBLE;
+    public boolean requiresQuantityControl() {
+        return inventoryMode() != TipoManejoInventario.DISPONIBLE_NO_DISPONIBLE;
+    }
+
+    public boolean isAvailableWithoutQuantityControl() {
+        return estadoSeguro() != EstadoInventario.SIN_STOCK
+                && estadoSeguro() != EstadoInventario.DESACTIVADO;
+    }
+
+    public int currentStockOrZero() {
+        return stockActual == null ? 0 : stockActual;
+    }
+
+    public int reservedStockOrZero() {
+        return stockReservado == null ? 0 : stockReservado;
+    }
+
+    public boolean isSoldOut() {
+        return estadoActual() == EstadoInventario.SIN_STOCK
+                || stockDisponible() <= 0;
+    }
+
+    public boolean isLowStock() {
+        return estadoActual() == EstadoInventario.BAJO_STOCK;
+    }
+
+    public Integer dailyCapacityAvailable() {
+        return inventoryMode() == TipoManejoInventario.CUPO_DIARIO
+                ? stockDisponible()
+                : null;
+    }
+
+    public boolean isAvailableForSale() {
+        EstadoInventario currentStatus = estadoActual();
+        return currentStatus != EstadoInventario.DESACTIVADO
+                && currentStatus != EstadoInventario.SIN_STOCK
+                && stockDisponible() > 0;
+    }
+
+    public TipoManejoInventario inventoryMode() {
+        return tipoManejoSeguro();
     }
 
     private void validarDisponibilidad(int cantidad) {
@@ -138,7 +177,7 @@ public class Inventario {
     }
 
     private void validarReserva(int cantidad) {
-        if (stockReservadoSeguro() < cantidad) {
+        if (reservedStockOrZero() < cantidad) {
             throw new InventoryOperationException(
                     "No hay reserva suficiente para liberar o consumir.");
         }
@@ -151,26 +190,13 @@ public class Inventario {
     }
 
     private void validarDisponibleSinControlDeCantidad() {
-        if (!estaDisponibleSinControlDeCantidad()) {
+        if (!isAvailableWithoutQuantityControl()) {
             throw new InsufficientStockException(productoId, 1, 0);
         }
     }
 
-    private boolean estaDisponibleSinControlDeCantidad() {
-        return estadoSeguro() != EstadoInventario.SIN_STOCK
-                && estadoSeguro() != EstadoInventario.DESACTIVADO;
-    }
-
     private void actualizarEstado() {
         estado = estadoActual();
-    }
-
-    private int stockActualSeguro() {
-        return stockActual == null ? 0 : stockActual;
-    }
-
-    private int stockReservadoSeguro() {
-        return stockReservado == null ? 0 : stockReservado;
     }
 
     public int stockMinimoEfectivo() {

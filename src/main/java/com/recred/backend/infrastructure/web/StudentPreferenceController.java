@@ -9,8 +9,9 @@ import com.recred.backend.application.DetectStudentPreferencesRequest;
 import com.recred.backend.application.GetFavoritesByStudent;
 import com.recred.backend.application.GetFavoritesByStudentRequest;
 import com.recred.backend.application.GetStudentPreferences;
-import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
+import com.recred.backend.application.GetStudentPreferencesByUserRequest;
 import com.recred.backend.application.RespondToAISuggestion;
+import com.recred.backend.application.RespondToAISuggestionRequest;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import org.springframework.http.ResponseEntity;
@@ -56,28 +57,30 @@ public class StudentPreferenceController {
     }
 
     @PostMapping("/usuarios/{userId}/preferencias/detectar")
-    public ResponseEntity<StudentPreferenceResponse> detect(
+    public ResponseEntity<StudentPreferenceResponseDTO> detect(
             @PathVariable UUID userId,
             @RequestParam("buffetId") UUID buffetId
     ) {
         UUID resolvedAlumnoId = resolveAlumnoId(userId);
         return detectStudentPreferences
                 .execute(new DetectStudentPreferencesRequest(resolvedAlumnoId, buffetId))
-                .map(StudentPreferenceResponse::fromUseCaseResponse)
+                .map(StudentPreferenceResponseDTO::fromUseCaseResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
     }
 
     @GetMapping("/usuarios/{userId}/preferencias")
-    public ResponseEntity<List<StudentPreferenceResponse>> getPreferences(
+    public ResponseEntity<List<StudentPreferenceResponseDTO>> getPreferences(
             @PathVariable UUID userId,
             @RequestParam(name = "ultima", required = false, defaultValue = "false") boolean ultima,
             @RequestParam(name = "tipo", required = false) TipoSugerenciaIA tipo
     ) {
-        List<StudentPreferenceResponse> preferences =
-                getStudentPreferences.executeByUserId(userId, ultima, tipo)
+        List<StudentPreferenceResponseDTO> preferences =
+                getStudentPreferences.executeByUserId(
+                        new GetStudentPreferencesByUserRequest(userId, ultima, tipo))
+                        .preferences()
                         .stream()
-                        .map(this::toResponse)
+                        .map(StudentPreferenceResponseDTO::fromApplication)
                         .toList();
 
         return preferences.isEmpty()
@@ -85,23 +88,12 @@ public class StudentPreferenceController {
                 : ResponseEntity.ok(preferences);
     }
 
-    private StudentPreferenceResponse toResponse(StudentPreferenceResult result) {
-        if (result.parentView()) {
-            return StudentPreferenceResponse.fromParentView(
-                    result.suggestion(),
-                    result.child());
-        }
-        return StudentPreferenceResponse.fromStudentView(
-                result.suggestion(),
-                result.child());
-    }
-
     @PatchMapping("/usuarios/{userId}/preferencias/{sugerenciaId}/responder")
     public ResponseEntity<Void> respond(
             @PathVariable UUID sugerenciaId,
             @RequestParam("aceptada") boolean aceptada
     ) {
-        respondToAISuggestion.execute(sugerenciaId, aceptada);
+        respondToAISuggestion.execute(new RespondToAISuggestionRequest(sugerenciaId, aceptada));
         return ResponseEntity.ok().build();
     }
 

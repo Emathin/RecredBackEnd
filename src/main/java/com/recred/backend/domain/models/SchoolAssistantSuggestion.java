@@ -5,4 +5,8 @@ public record SchoolAssistantSuggestion(
         String message,
         SchoolAssistantActionType actionType
 ) {
+
+    public String actionTypeName() {
+        return actionType == null ? null : actionType.name();
+    }
 }

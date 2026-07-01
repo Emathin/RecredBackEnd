@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.recred.backend.application.GetProductChangeRecommendationResponse;
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductRecommendationResult;
 import com.recred.backend.domain.models.ProductSaleStatistics;
@@ -40,6 +41,20 @@ public record ProductChangeRecommendationResponse(
                 stats != null ? ProductSaleStatisticsResponse.fromDomain(stats) : null
         );
     }
+
+    public static ProductChangeRecommendationResponse fromUseCaseResponse(
+            GetProductChangeRecommendationResponse result) {
+        return new ProductChangeRecommendationResponse(
+                result.originalProductName(),
+                result.summary(),
+                result.alerts(),
+                result.suggestedProducts(),
+                "Producto dentro del top 5 menos vendidos",
+                result.model(),
+                result.saleStatistics() != null ?
+                        ProductSaleStatisticsResponse.fromDto(result.saleStatistics()) : null
+        );
+    }
 }
 
 record ProductSaleStatisticsResponse(
@@ -76,6 +91,27 @@ record ProductSaleStatisticsResponse(
                 domain.getClientesDistintos(),
                 domain.getStockActual(),
                 domain.getStockPromedioCategoria()
+        );
+    }
+
+    public static ProductSaleStatisticsResponse fromDto(
+            GetProductChangeRecommendationResponse.ProductSaleStatisticsDto dto) {
+        return new ProductSaleStatisticsResponse(
+                dto.productoId(),
+                dto.nombre(),
+                dto.categoria(),
+                dto.precioActual(),
+                dto.ventasPeriodo(),
+                dto.participacionVentas(),
+                dto.rankingGeneral(),
+                dto.rankingCategoria(),
+                dto.promedioVentasCategoria(),
+                dto.promedioPrecioCategoria(),
+                dto.diferenciaPrecioCategoria(),
+                dto.diasSinVenta(),
+                dto.clientesDistintos(),
+                dto.stockActual(),
+                dto.stockPromedioCategoria()
         );
     }
 }

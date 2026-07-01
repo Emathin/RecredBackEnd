@@ -1,16 +1,15 @@
 package com.recred.backend.unit.application;
 
-import com.recred.backend.application.*;
-
+import com.recred.backend.application.AdjustInventoryStock;
+import com.recred.backend.application.AdjustInventoryStockRequest;
+import com.recred.backend.application.AdjustInventoryStockResponse;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.Inventario;
-import com.recred.backend.domain.models.InventoryQuickActionType;
 import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -21,63 +20,34 @@ class AdjustInventoryStockTest {
 
     private InventoryAvailabilityService inventoryAvailabilityService;
     private AdjustInventoryStock adjustInventoryStock;
+    private UUID buffetId;
+    private UUID productId;
+    private UUID userId;
+    private Inventario inventory;
+    private AdjustInventoryStockResponse response;
 
     @BeforeEach
     void setUp() {
         inventoryAvailabilityService = mock(InventoryAvailabilityService.class);
         adjustInventoryStock = new AdjustInventoryStock(inventoryAvailabilityService);
+        buffetId = UUID.randomUUID();
+        productId = UUID.randomUUID();
+        userId = UUID.randomUUID();
+        inventory = inventory(buffetId, productId);
     }
 
     @Test
-    void executeWithSimpleParametersShouldDelegateToAdjustStock() {
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        Inventario inventory = inventory(buffetId, productId);
-        when(inventoryAvailabilityService.adjustStock(
-                buffetId,
-                productId,
-                10,
-                "Ajuste",
-                userId
-        )).thenReturn(inventory);
+    void execute_WhenInventoryAdjustmentIsRequested_ShouldDelegateAndReturnResponse() {
+        AdjustInventoryStockRequest request = inventoryAdjustmentRequest();
+        givenInventoryWillBeAdjusted();
 
-        Inventario result = adjustInventoryStock.execute(
-                buffetId,
-                productId,
-                10,
-                "Ajuste",
-                userId
-        );
+        whenAdjustingInventory(request);
 
-        assertEquals(inventory, result);
-        verify(inventoryAvailabilityService).adjustStock(
-                buffetId,
-                productId,
-                10,
-                "Ajuste",
-                userId
-        );
+        thenInventoryAdjustmentWasDelegated();
+        thenInventoryResponseMatchesSavedInventory();
     }
 
-    @Test
-    void executeWithCommandShouldDelegateToAdjustInventory() {
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        AdjustInventoryStockCommand command = new AdjustInventoryStockCommand(
-                buffetId,
-                productId,
-                10,
-                3,
-                EstadoInventario.DISPONIBLE,
-                TipoManejoInventario.STOCK_EXACTO,
-                true,
-                null,
-                "Ajuste",
-                userId
-        );
-        Inventario inventory = inventory(buffetId, productId);
+    private void givenInventoryWillBeAdjusted() {
         when(inventoryAvailabilityService.adjustInventory(
                 buffetId,
                 productId,
@@ -90,40 +60,50 @@ class AdjustInventoryStockTest {
                 "Ajuste",
                 userId
         )).thenReturn(inventory);
-
-        Inventario result = adjustInventoryStock.execute(command);
-
-        assertEquals(inventory, result);
     }
 
-    @Test
-    void executeWithQuickActionShouldDelegateToApplyQuickAction() {
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        InventoryQuickActionCommand command = new InventoryQuickActionCommand(
+    private void whenAdjustingInventory(AdjustInventoryStockRequest request) {
+        response = adjustInventoryStock.execute(request);
+    }
+
+    private void thenInventoryAdjustmentWasDelegated() {
+        verify(inventoryAvailabilityService).adjustInventory(
                 buffetId,
                 productId,
-                InventoryQuickActionType.ADD_STOCK,
-                5,
-                2,
-                "Ingreso",
+                10,
+                3,
+                EstadoInventario.DISPONIBLE,
+                TipoManejoInventario.STOCK_EXACTO,
+                true,
+                null,
+                "Ajuste",
                 userId
         );
-        Inventario inventory = inventory(buffetId, productId);
-        when(inventoryAvailabilityService.applyQuickAction(
+    }
+
+    private void thenInventoryResponseMatchesSavedInventory() {
+        assertEquals(inventory.getId(), response.id());
+        assertEquals(buffetId, response.buffetId());
+        assertEquals(productId, response.productoId());
+        assertEquals(12, response.stockActual());
+        assertEquals(10, response.stockDisponible());
+        assertEquals("DISPONIBLE", response.estadoInventario());
+        assertEquals("STOCK_EXACTO", response.tipoManejoInventario());
+    }
+
+    private AdjustInventoryStockRequest inventoryAdjustmentRequest() {
+        return new AdjustInventoryStockRequest(
                 buffetId,
                 productId,
-                InventoryQuickActionType.ADD_STOCK,
-                5,
-                2,
-                "Ingreso",
+                10,
+                3,
+                EstadoInventario.DISPONIBLE,
+                TipoManejoInventario.STOCK_EXACTO,
+                true,
+                null,
+                "Ajuste",
                 userId
-        )).thenReturn(inventory);
-
-        Inventario result = adjustInventoryStock.execute(command);
-
-        assertEquals(inventory, result);
+        );
     }
 
     private Inventario inventory(UUID buffetId, UUID productId) {
@@ -131,6 +111,11 @@ class AdjustInventoryStockTest {
         inventory.setId(UUID.randomUUID());
         inventory.setBuffetId(buffetId);
         inventory.setProductoId(productId);
+        inventory.setStockActual(12);
+        inventory.setStockReservado(2);
+        inventory.setStockMinimo(1);
+        inventory.setEstado(EstadoInventario.DISPONIBLE);
+        inventory.setTipoManejo(TipoManejoInventario.STOCK_EXACTO);
         return inventory;
     }
 }

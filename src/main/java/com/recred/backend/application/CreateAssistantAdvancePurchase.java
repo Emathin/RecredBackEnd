@@ -94,25 +94,68 @@ public class CreateAssistantAdvancePurchase {
     }
 
     @Transactional
-    public Purchase execute(UUID studentId, UUID buffetId, Map<Producto, Integer> cart,
-                            RecessTime recessTime, LocalDate pickupDate) {
-        if (buffetId == null) {
-            throw new IllegalArgumentException("buffetId is required");
-        }
+    public CreateAssistantAdvancePurchaseResponse execute(
+            CreateAssistantAdvancePurchaseRequest request
+    ) {
+        request.validate();
+        Alumno student = student(request.studentId());
+        FranjaHoraria pickupSlot = pickupSlot(student, request.recessTime());
+        LocalDateTime pickupDateTime = pickupDateTime(request.pickupDate(), pickupSlot);
+        validatePurchase(student, request, pickupSlot, pickupDateTime);
+        BigDecimal total = validatedTotal(request.studentId(), request.cart(), pickupDateTime);
+        Billetera wallet = fundedWallet(request.studentId(), total);
 
-        Alumno student = studentRepository.findById(studentId)
+        inventoryAvailabilityService.reserve(request.buffetId(), request.cart());
+        Purchase savedPurchase = savePurchase(
+                advancePurchase(student, request, pickupSlot),
+                wallet,
+                total
+        );
+        registerPurchaseMovement(wallet, student, total);
+        return CreateAssistantAdvancePurchaseResponse.fromDomain(savedPurchase);
+    }
+
+    private Alumno student(UUID studentId) {
+        return studentRepository.findById(studentId)
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
-        FranjaHoraria pickupSlot = recessTimeSlotResolver.resolve(student, recessTime);
-        LocalDateTime pickupDateTime = LocalDateTime.of(pickupDate, pickupSlot.getHoraInicio());
+    }
 
-        advancePurchaseRulesService.validate(buffetId, pickupSlot, pickupDate, cart);
-        timeValidator.validarCompra(student, cart.keySet(), pickupDateTime);
-        healthValidator.validarCompra(student, cart.keySet());
+    private FranjaHoraria pickupSlot(Alumno student, RecessTime recessTime) {
+        return recessTimeSlotResolver.resolve(student, recessTime);
+    }
 
+    private LocalDateTime pickupDateTime(LocalDate pickupDate, FranjaHoraria pickupSlot) {
+        return LocalDateTime.of(pickupDate, pickupSlot.getHoraInicio());
+    }
+
+    private void validatePurchase(
+            Alumno student,
+            CreateAssistantAdvancePurchaseRequest request,
+            FranjaHoraria pickupSlot,
+            LocalDateTime pickupDateTime
+    ) {
+        advancePurchaseRulesService.validate(
+                request.buffetId(),
+                pickupSlot,
+                request.pickupDate(),
+                request.cart()
+        );
+        timeValidator.validarCompra(student, request.cart().keySet(), pickupDateTime);
+        healthValidator.validarCompra(student, request.cart().keySet());
+    }
+
+    private BigDecimal validatedTotal(
+            UUID studentId,
+            Map<Producto, Integer> cart,
+            LocalDateTime pickupDateTime
+    ) {
         BigDecimal total = calculateTotal(cart);
         budgetValidator.validarPresupuesto(studentId, total, totalsByCategory(cart),
                 pickupDateTime);
+        return total;
+    }
 
+    private Billetera fundedWallet(UUID studentId, BigDecimal total) {
         Billetera wallet = walletRepository.findByStudentId(studentId)
                 .orElseThrow(() ->
                         new IllegalStateException("Student wallet not found: " + studentId));
@@ -122,26 +165,34 @@ public class CreateAssistantAdvancePurchase {
                     + studentId);
         }
 
-        inventoryAvailabilityService.reserve(buffetId, cart);
+        return wallet;
+    }
 
+    private Purchase advancePurchase(
+            Alumno student,
+            CreateAssistantAdvancePurchaseRequest request,
+            FranjaHoraria pickupSlot
+    ) {
         Purchase purchase = Purchase.advance(
                 student,
-                cart,
+                request.cart(),
                 MedioPago.CREDITOS,
                 student.getId(),
                 BuyerType.STUDENT,
-                buffetId,
+                request.buffetId(),
                 pickupSlot.getId(),
-                pickupDate
+                request.pickupDate()
         );
         purchase.setDate(LocalDateTime.now(clock));
         purchase.setWithdrawalCode(withdrawalCodeService.generateCode(purchase));
+        return purchase;
+    }
 
+    private Purchase savePurchase(Purchase purchase, Billetera wallet, BigDecimal total) {
         wallet.debit(total);
         walletRepository.save(wallet);
         Purchase savedPurchase = purchaseRepository.save(purchase);
-        registerPurchaseMovement(wallet, student, total);
-        return savedPurchase;
+        return savedPurchase == null ? purchase : savedPurchase;
     }
 
     private BigDecimal calculateTotal(Map<Producto, Integer> cart) {

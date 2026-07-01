@@ -34,4 +34,38 @@ public record SchoolAssistantAction(
                 data
         );
     }
+
+    public String typeName() {
+        return type == null ? null : type.name();
+    }
+
+    public String statusName() {
+        return status == null ? null : status.name();
+    }
+
+    public List<String> requiredInputNames() {
+        return requiredInputsOrEmpty().stream()
+                .map(Enum::name)
+                .toList();
+    }
+
+    public List<SchoolAssistantRequiredInput> requiredInputsOrEmpty() {
+        return requiredInputs == null ? List.of() : requiredInputs;
+    }
+
+    public String purchaseStatusName() {
+        return purchaseStatus == null ? null : purchaseStatus.name();
+    }
+
+    public String recessLabel() {
+        return recessTime == null ? null : recessTime.getLabel();
+    }
+
+    public String recessName() {
+        return recessTime == null ? null : recessTime.name();
+    }
+
+    public Map<String, Object> dataOrEmpty() {
+        return data == null ? Map.of() : data;
+    }
 }

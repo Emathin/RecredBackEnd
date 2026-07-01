@@ -73,41 +73,46 @@ class UpdatePurchaseStatusTest {
 
     @Test
     void execute_WhenPurchaseExists_ShouldUpdateStatus() {
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
+        givenPurchaseExists();
+        givenPurchaseCanBeSaved();
 
-        UpdatePurchaseStatusResponse response = useCase.execute(
-                new UpdatePurchaseStatusRequest(purchaseId, EstadoCompra.EN_PREPARACION));
+        UpdatePurchaseStatusResponse response = whenUpdatingStatusTo(
+                EstadoCompra.EN_PREPARACION);
 
-        assertEquals(EstadoCompra.EN_PREPARACION, response.status());
+        assertEquals("EN_PREPARACION", response.status());
         verify(purchaseRepository).save(purchase);
     }
 
     @Test
     void execute_WhenPurchaseNotFound_ShouldThrowException() {
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.empty());
+        givenPurchaseDoesNotExist();
 
         assertThrows(PurchaseNotFoundException.class,
-                () -> useCase.execute(new UpdatePurchaseStatusRequest(purchaseId, EstadoCompra.EN_PREPARACION)));
+                () -> whenUpdatingStatusTo(EstadoCompra.EN_PREPARACION));
     }
 
     @Test
     void execute_WhenRequestedStatusIsCancelado_ShouldThrowException() {
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        givenPurchaseExists();
 
         assertThrows(InvalidPurchaseStatusTransitionException.class,
-                () -> useCase.execute(new UpdatePurchaseStatusRequest(purchaseId, EstadoCompra.CANCELADO)));
+                () -> whenUpdatingStatusTo(EstadoCompra.CANCELADO));
+    }
+
+    @Test
+    void execute_WhenRequestIsNull_ShouldThrowException() {
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(null));
     }
 
     @Test
     void execute_WhenAdvancePurchaseDelivered_ShouldConsumeReservation() {
         purchase.setTipo(TipoCompra.ANTICIPADA);
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
         purchase.changeStatusTo(EstadoCompra.EN_PREPARACION);
         purchase.changeStatusTo(EstadoCompra.LISTO);
+        givenPurchaseExists();
+        givenPurchaseCanBeSaved();
 
-        useCase.execute(new UpdatePurchaseStatusRequest(purchaseId, EstadoCompra.ENTREGADO));
+        whenUpdatingStatusTo(EstadoCompra.ENTREGADO);
 
         verify(inventoryAvailabilityService).consumeReservation(
                 buffetId, purchase.getItems(), purchaseId);
@@ -117,21 +122,20 @@ class UpdatePurchaseStatusTest {
     void execute_WhenAdvancePurchaseRejected_ShouldReleaseReservationAndRefund() {
         purchase.setTipo(TipoCompra.ANTICIPADA);
         purchase.setStatus(EstadoCompra.PENDIENTE);
-        
+
         Alumno student = new Alumno();
         student.setId(UUID.randomUUID());
         purchase.setStudent(student);
         purchase.setTotalAmount(new BigDecimal("100.0"));
-        
+
         Billetera wallet = new Billetera();
         wallet.setId(UUID.randomUUID());
         wallet.setSaldoCreditos(BigDecimal.ZERO);
-        
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(walletRepository.findByStudentId(student.getId())).thenReturn(Optional.of(wallet));
-        when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
 
-        useCase.execute(new UpdatePurchaseStatusRequest(purchaseId, EstadoCompra.RECHAZADO));
+        givenPurchaseExists();
+        givenWalletExistsFor(student, wallet);
+        givenPurchaseCanBeSaved();
+        whenUpdatingStatusTo(EstadoCompra.RECHAZADO);
 
         verify(inventoryAvailabilityService).releaseReservation(
                 buffetId, purchase.getItems(), purchaseId);
@@ -149,14 +153,33 @@ class UpdatePurchaseStatusTest {
     void execute_WhenAdvancePurchaseExpired_ShouldReleaseReservationAndPublishEvent() {
         purchase.setTipo(TipoCompra.ANTICIPADA);
         purchase.setStatus(EstadoCompra.PENDIENTE);
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
+        givenPurchaseExists();
+        givenPurchaseCanBeSaved();
 
-        useCase.execute(new UpdatePurchaseStatusRequest(purchaseId, EstadoCompra.VENCIDO));
+        whenUpdatingStatusTo(EstadoCompra.VENCIDO);
 
         verify(inventoryAvailabilityService).releaseReservation(
                 buffetId, purchase.getItems(), purchaseId);
         verify(realtimeEventPublisher).publish(any(KiosqueroRealtimeEvent.class));
     }
-}
 
+    private void givenPurchaseExists() {
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+    }
+
+    private void givenPurchaseDoesNotExist() {
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.empty());
+    }
+
+    private void givenPurchaseCanBeSaved() {
+        when(purchaseRepository.save(any(Purchase.class))).thenReturn(purchase);
+    }
+
+    private void givenWalletExistsFor(Alumno student, Billetera wallet) {
+        when(walletRepository.findByStudentId(student.getId())).thenReturn(Optional.of(wallet));
+    }
+
+    private UpdatePurchaseStatusResponse whenUpdatingStatusTo(EstadoCompra status) {
+        return useCase.execute(new UpdatePurchaseStatusRequest(purchaseId, status));
+    }
+}

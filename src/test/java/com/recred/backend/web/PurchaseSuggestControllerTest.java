@@ -5,16 +5,13 @@ import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAdvancePurchaseRequest;
 import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
-import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.RespondToAISuggestion;
+import com.recred.backend.application.RespondToAISuggestionRequest;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
-import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.PurchaseStatus;
+import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.RolUsuario;
-import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
@@ -24,7 +21,6 @@ import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
-import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
 import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
 import com.recred.backend.infrastructure.web.PurchaseSuggestController;
 import com.recred.backend.infrastructure.web.TestSuggestionRequest;
@@ -36,21 +32,24 @@ import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilte
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
-import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -72,6 +71,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 class PurchaseSuggestControllerTest {
 
+    private static final String TEST_COGNITO_ID = "user-123";
+    private static final String TEST_NOTIFICATION_URL =
+            "/api/v1/sugerencias-consumo/test-notificacion";
+    private static final String BUY_SUGGESTION_URL =
+            "/api/v1/sugerencias-consumo/comprar";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -82,9 +87,6 @@ class PurchaseSuggestControllerTest {
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
-
-    @MockitoBean
-    private PurchaseSuggestIA purchaseSuggestIA;
 
     @MockitoBean
     private NotifyPurchaseSuggestions notifyPurchaseSuggestions;
@@ -115,166 +117,200 @@ class PurchaseSuggestControllerTest {
 
     @BeforeEach
     void setUp() {
-        sugerenciaId = UUID.randomUUID();
-        alumnoId = UUID.randomUUID();
-        productoId = UUID.randomUUID();
-        usuarioId = UUID.randomUUID();
-        
-        auth = new TestingAuthenticationToken("user-123", null);
+        sugerenciaId = randomUUID();
+        alumnoId = randomUUID();
+        productoId = randomUUID();
+        usuarioId = randomUUID();
+
+        auth = new TestingAuthenticationToken(TEST_COGNITO_ID, null);
     }
 
     @Test
-    void testNotificacion_CuandoExiste_DeberiaRetornar200YNotificacion() throws Exception {
-        SugerenciaIA sugerencia = SugerenciaIA.builder()
-                .id(sugerenciaId)
-                .alumnoId(alumnoId)
-                .productoId(productoId)
-                .producto(new com.recred.backend.domain.models.Producto())
-                .titulo("Comé sano")
-                .mensaje("Mensaje")
-                .build();
-        sugerencia.getProducto().setId(productoId);
-        sugerencia.getProducto().setNombre("Manzana");
-        sugerencia.getProducto().setPrecio(new BigDecimal("100.00"));
+    void testNotification_WhenExists_ShouldReturn200AndNotification() throws Exception {
+        givenPurchaseSuggestionNotification();
 
-        PushNotification notification = new PushNotification(
-                usuarioId, "Titulo", "Mensaje", 
-                java.util.Map.of("type", "PURCHASE_SUGGESTION", "producto", "{}")
-        );
+        ResultActions result = whenPostingTestNotification(requestWithoutSuggestion());
 
-        when(notifyPurchaseSuggestions.execute(anyString())).thenReturn(notification);
-
-        TestSuggestionRequest request = new TestSuggestionRequest("user-123", null);
-
-        mockMvc.perform(post("/api/v1/sugerencias-consumo/test-notificacion")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(auth))
-                .andExpect(status().isOk())
+        result.andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(usuarioId.toString()))
                 .andExpect(jsonPath("$.data.type").value("PURCHASE_SUGGESTION"));
     }
 
     @Test
-    void comprarSugerencia_DeberiaProcesarCompraAnticipada() throws Exception {
-        ProductoEntity producto = new ProductoEntity();
-        producto.setId(productoId);
+    void buySuggestion_ShouldProcessAdvancePurchase() throws Exception {
+        givenSuggestionCanBePurchasedBy(RolUsuario.PADRE);
 
-        AlumnoEntity alumno = new AlumnoEntity();
-        alumno.setId(alumnoId);
+        ResultActions result = whenPostingBuySuggestion(requestWithSuggestion());
 
-        SugerenciaIAEntity sugerencia = new SugerenciaIAEntity();
-        sugerencia.setId(sugerenciaId);
-        sugerencia.setAlumnoEntity(alumno);
-        sugerencia.setProductoEntity(producto);
-        sugerencia.setBuffetEntity(new BuffetEntity());
-        sugerencia.getBuffetEntity().setId(UUID.randomUUID());
-
-        Usuario usuario = new Usuario();
-        usuario.setId(usuarioId);
-        usuario.setRol(RolUsuario.PADRE);
-
-        CreateAdvancePurchaseResponse response = new CreateAdvancePurchaseResponse(
-                UUID.randomUUID().toString(),
-                new PurchaseStatus(UUID.randomUUID(), alumnoId, EstadoCompra.PENDIENTE, "Pendiente", java.time.LocalDateTime.now()),
-                100.00,
-                Collections.singletonMap(alumnoId, "CODE123")
-        );
-
-        when(sugerenciaIARepository.findById(sugerenciaId)).thenReturn(Optional.of(sugerencia));
-        when(usuarioService.obtenerUsuarioActual(anyString())).thenReturn(usuario);
-        when(createAdvancePurchase.execute(any(CreateAdvancePurchaseRequest.class), anyString())).thenReturn(response);
-
-        TestSuggestionRequest testRequest = new TestSuggestionRequest("user-123", sugerenciaId);
-
-        mockMvc.perform(post("/api/v1/sugerencias-consumo/comprar")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(testRequest))
-                .principal(auth))
-                .andExpect(status().isOk())
+        result.andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").exists());
-
-        verify(respondToAISuggestion).execute(sugerenciaId, true);
+        verify(respondToAISuggestion).execute(
+                new RespondToAISuggestionRequest(sugerenciaId, true));
     }
 
     @Test
-    void testNotificacion_CuandoNoHayNotificacionYUsaAutenticacion_DeberiaRetornar204() {
-        when(notifyPurchaseSuggestions.execute("user-123")).thenReturn(null);
+    void testNotification_WhenNoNotificationAndAuthenticated_ShouldReturn204() {
+        givenNoPurchaseSuggestionNotification();
 
-        ResponseEntity<PushNotification> response = controller.testNotificacion(
-                auth,
-                new TestSuggestionRequest(null, null)
-        );
+        ResponseEntity<PushNotification> response =
+                whenTestingNotificationWithAuthentication();
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
     }
 
     @Test
-    void testNotificacion_SinUsuarioAutenticado_DeberiaFallar() {
+    void testNotification_WithoutAuthenticatedUser_ShouldFail() {
         assertThrows(
                 AuthenticationCredentialsNotFoundException.class,
-                () -> controller.testNotificacion(null, new TestSuggestionRequest(null, null))
+                () -> controller.testNotification(null, requestWithoutUser())
         );
     }
 
     @Test
-    void comprarSugerencia_CuandoNoExiste_DeberiaFallar() {
-        when(sugerenciaIARepository.findById(sugerenciaId)).thenReturn(Optional.empty());
+    void buySuggestion_WhenSuggestionDoesNotExist_ShouldFail() {
+        givenSuggestionDoesNotExist();
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                controller.comprarSugerencia(auth, new TestSuggestionRequest(null, sugerenciaId))
-        );
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> whenBuyingSuggestion());
 
         assertEquals("Sugerencia no encontrada", exception.getMessage());
     }
 
     @Test
-    void comprarSugerencia_CuandoUsuarioEsAlumnoYHayTutor_DeberiaCrearCompra() {
-        SugerenciaIAEntity sugerencia = sugerenciaEntity();
-        Usuario usuario = new Usuario();
-        usuario.setId(usuarioId);
-        usuario.setRol(RolUsuario.ALUMNO);
-        Tutor tutor = new Tutor();
-        tutor.setId(UUID.randomUUID());
-        CreateAdvancePurchaseResponse response = new CreateAdvancePurchaseResponse(
-                UUID.randomUUID().toString(),
-                new PurchaseStatus(
-                        UUID.randomUUID(),
-                        alumnoId,
-                        EstadoCompra.PENDIENTE,
-                        "Pendiente",
-                        java.time.LocalDateTime.now()
-                ),
-                100.00,
-                Collections.singletonMap(alumnoId, "CODE123")
-        );
-        when(sugerenciaIARepository.findById(sugerenciaId)).thenReturn(Optional.of(sugerencia));
-        when(usuarioService.obtenerUsuarioActual("user-123")).thenReturn(usuario);
-        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(List.of(tutor));
-        when(createAdvancePurchase.execute(any(CreateAdvancePurchaseRequest.class), anyString()))
-                .thenReturn(response);
+    void buySuggestion_WhenUserIsStudentAndTutorExists_ShouldCreatePurchase() {
+        Tutor tutor = tutor();
+        givenSuggestionCanBePurchasedBy(RolUsuario.ALUMNO);
+        givenTutorForStudent(tutor);
 
-        ResponseEntity<AdvancePurchaseResponse> result = controller.comprarSugerencia(
-                auth,
-                new TestSuggestionRequest(null, sugerenciaId)
-        );
+        ResponseEntity<AdvancePurchaseResponse> result = whenBuyingSuggestion();
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         verify(createAdvancePurchase).execute(any(CreateAdvancePurchaseRequest.class), anyString());
     }
 
+    private void givenPurchaseSuggestionNotification() {
+        PushNotification notification = new PushNotification(
+                usuarioId,
+                "Titulo",
+                "Mensaje",
+                Map.of("type", "PURCHASE_SUGGESTION", "producto", "{}")
+        );
+
+        when(notifyPurchaseSuggestions.execute(anyString())).thenReturn(notification);
+    }
+
+    private void givenNoPurchaseSuggestionNotification() {
+        when(notifyPurchaseSuggestions.execute(TEST_COGNITO_ID)).thenReturn(null);
+    }
+
+    private void givenSuggestionCanBePurchasedBy(RolUsuario rol) {
+        when(sugerenciaIARepository.findById(sugerenciaId))
+                .thenReturn(Optional.of(sugerenciaEntity()));
+        when(usuarioService.obtenerUsuarioActual(anyString()))
+                .thenReturn(usuario(rol));
+        when(createAdvancePurchase.execute(any(CreateAdvancePurchaseRequest.class), anyString()))
+                .thenReturn(advancePurchaseResponse());
+    }
+
+    private void givenSuggestionDoesNotExist() {
+        when(sugerenciaIARepository.findById(sugerenciaId)).thenReturn(Optional.empty());
+    }
+
+    private void givenTutorForStudent(Tutor tutor) {
+        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(List.of(tutor));
+    }
+
+    private ResultActions whenPostingTestNotification(TestSuggestionRequest request)
+            throws Exception {
+        return postTestNotification(request);
+    }
+
+    private ResultActions whenPostingBuySuggestion(TestSuggestionRequest request)
+            throws Exception {
+        return postBuySuggestion(request);
+    }
+
+    private ResponseEntity<PushNotification> whenTestingNotificationWithAuthentication() {
+        return controller.testNotification(auth, requestWithoutUser());
+    }
+
+    private ResponseEntity<AdvancePurchaseResponse> whenBuyingSuggestion() {
+        return controller.buySuggestion(auth, requestWithOnlySuggestion());
+    }
+
+    private ResultActions postTestNotification(TestSuggestionRequest request) throws Exception {
+        return postJson(TEST_NOTIFICATION_URL, request);
+    }
+
+    private ResultActions postBuySuggestion(TestSuggestionRequest request) throws Exception {
+        return postJson(BUY_SUGGESTION_URL, request);
+    }
+
+    private ResultActions postJson(String path, TestSuggestionRequest request) throws Exception {
+        return mockMvc.perform(post(path)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .principal(auth));
+    }
+
+    private TestSuggestionRequest requestWithoutSuggestion() {
+        return new TestSuggestionRequest(TEST_COGNITO_ID, null);
+    }
+
+    private TestSuggestionRequest requestWithSuggestion() {
+        return new TestSuggestionRequest(TEST_COGNITO_ID, sugerenciaId);
+    }
+
+    private TestSuggestionRequest requestWithoutUser() {
+        return new TestSuggestionRequest(null, null);
+    }
+
+    private TestSuggestionRequest requestWithOnlySuggestion() {
+        return new TestSuggestionRequest(null, sugerenciaId);
+    }
+
     private SugerenciaIAEntity sugerenciaEntity() {
         ProductoEntity producto = new ProductoEntity();
         producto.setId(productoId);
+
         AlumnoEntity alumno = new AlumnoEntity();
         alumno.setId(alumnoId);
+
         BuffetEntity buffet = new BuffetEntity();
-        buffet.setId(UUID.randomUUID());
+        buffet.setId(randomUUID());
+
         SugerenciaIAEntity sugerencia = new SugerenciaIAEntity();
         sugerencia.setId(sugerenciaId);
         sugerencia.setAlumnoEntity(alumno);
         sugerencia.setProductoEntity(producto);
         sugerencia.setBuffetEntity(buffet);
         return sugerencia;
+    }
+
+    private Usuario usuario(RolUsuario rol) {
+        Usuario usuario = new Usuario();
+        usuario.setId(usuarioId);
+        usuario.setRol(rol);
+        return usuario;
+    }
+
+    private Tutor tutor() {
+        Tutor tutor = new Tutor();
+        tutor.setId(randomUUID());
+        return tutor;
+    }
+
+    private CreateAdvancePurchaseResponse advancePurchaseResponse() {
+        return new CreateAdvancePurchaseResponse(
+                randomUUID().toString(),
+                new PurchaseStatus(
+                        randomUUID(),
+                        alumnoId,
+                        EstadoCompra.PENDIENTE,
+                        "Pendiente",
+                        LocalDateTime.now()
+                ),
+                100.00,
+                Collections.singletonMap(alumnoId, "CODE123")
+        );
     }
 }

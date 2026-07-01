@@ -1,5 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.KiosqueroRealtimeEventResponse;
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
 import java.io.IOException;
 import java.time.Duration;

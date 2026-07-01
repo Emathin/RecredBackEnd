@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetPurchaseStatus;
+import com.recred.backend.application.GetPurchaseStatusRequest;
+import com.recred.backend.application.GetPurchaseStatusResponse;
 import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
@@ -8,7 +10,6 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.ConsumptionRequester;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -70,15 +71,14 @@ class GetPurchaseStatusTest {
                 RolUsuario.ALUMNO,
                 studentId
         );
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(requester));
 
-        PurchaseStatus result = useCase.execute(COGNITO_SUBJECT, purchaseId);
+        givenPurchaseExists();
+        givenAuthenticatedRequester(requester);
+        GetPurchaseStatusResponse result = whenGettingPurchaseStatus();
 
         assertEquals(purchaseId, result.purchaseId());
         assertEquals(studentId, result.studentId());
-        assertEquals(EstadoCompra.PENDIENTE, result.status());
+        assertEquals("PENDIENTE", result.status());
         assertEquals("A preparar", result.statusLabel());
         verify(accessRepository, never()).tutorCanAccessStudent(userId, studentId);
     }
@@ -90,25 +90,23 @@ class GetPurchaseStatusTest {
                 RolUsuario.PADRE,
                 null
         );
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(requester));
-        when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(true);
 
-        PurchaseStatus result = useCase.execute(COGNITO_SUBJECT, purchaseId);
+        givenPurchaseExists();
+        givenAuthenticatedRequester(requester);
+        givenTutorCanAccessStudent(true);
+        GetPurchaseStatusResponse result = whenGettingPurchaseStatus();
 
-        assertEquals(EstadoCompra.PENDIENTE, result.status());
+        assertEquals("PENDIENTE", result.status());
         verify(accessRepository).tutorCanAccessStudent(userId, studentId);
     }
 
     @Test
     void execute_WhenAuthenticatedUserDoesNotExist_ShouldThrowException() {
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.empty());
+        givenPurchaseExists();
+        givenAuthenticatedRequesterDoesNotExist();
 
         assertThrows(UsuarioAutenticadoNoEncontradoException.class,
-                () -> useCase.execute(COGNITO_SUBJECT, purchaseId));
+                this::whenGettingPurchaseStatus);
     }
 
     @Test
@@ -118,12 +116,11 @@ class GetPurchaseStatusTest {
                 RolUsuario.ALUMNO,
                 UUID.randomUUID()
         );
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(requester));
+        givenPurchaseExists();
+        givenAuthenticatedRequester(requester);
 
         assertThrows(PurchaseAccessDeniedException.class,
-                () -> useCase.execute(COGNITO_SUBJECT, purchaseId));
+                this::whenGettingPurchaseStatus);
     }
 
     @Test
@@ -134,12 +131,11 @@ class GetPurchaseStatusTest {
                 RolUsuario.ALUMNO,
                 studentId
         );
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(requester));
+        givenPurchaseExists();
+        givenAuthenticatedRequester(requester);
 
         assertThrows(PurchaseAccessDeniedException.class,
-                () -> useCase.execute(COGNITO_SUBJECT, purchaseId));
+                this::whenGettingPurchaseStatus);
     }
 
     @Test
@@ -150,12 +146,11 @@ class GetPurchaseStatusTest {
                 RolUsuario.ALUMNO,
                 studentId
         );
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(requester));
+        givenPurchaseExists();
+        givenAuthenticatedRequester(requester);
 
         assertThrows(PurchaseAccessDeniedException.class,
-                () -> useCase.execute(COGNITO_SUBJECT, purchaseId));
+                this::whenGettingPurchaseStatus);
     }
 
     @Test
@@ -165,13 +160,12 @@ class GetPurchaseStatusTest {
                 RolUsuario.PADRE,
                 null
         );
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(requester));
-        when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(false);
+        givenPurchaseExists();
+        givenAuthenticatedRequester(requester);
+        givenTutorCanAccessStudent(false);
 
         assertThrows(PurchaseAccessDeniedException.class,
-                () -> useCase.execute(COGNITO_SUBJECT, purchaseId));
+                this::whenGettingPurchaseStatus);
 
         verify(accessRepository).tutorCanAccessStudent(userId, studentId);
     }
@@ -183,21 +177,50 @@ class GetPurchaseStatusTest {
                 RolUsuario.ADMIN,
                 null
         );
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(requester));
+        givenPurchaseExists();
+        givenAuthenticatedRequester(requester);
 
         assertThrows(PurchaseAccessDeniedException.class,
-                () -> useCase.execute(COGNITO_SUBJECT, purchaseId));
+                this::whenGettingPurchaseStatus);
     }
 
     @Test
     void execute_WhenPurchaseDoesNotExist_ShouldThrowException() {
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.empty());
+        givenPurchaseDoesNotExist();
 
         assertThrows(PurchaseNotFoundException.class,
-                () -> useCase.execute(COGNITO_SUBJECT, purchaseId));
+                this::whenGettingPurchaseStatus);
 
         verifyNoInteractions(accessRepository);
+    }
+
+    private void givenPurchaseExists() {
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+    }
+
+    private void givenPurchaseDoesNotExist() {
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.empty());
+    }
+
+    private void givenAuthenticatedRequester(ConsumptionRequester requester) {
+        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.of(requester));
+    }
+
+    private void givenAuthenticatedRequesterDoesNotExist() {
+        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenTutorCanAccessStudent(boolean canAccess) {
+        when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(canAccess);
+    }
+
+    private GetPurchaseStatusResponse whenGettingPurchaseStatus() {
+        return useCase.execute(request());
+    }
+
+    private GetPurchaseStatusRequest request() {
+        return new GetPurchaseStatusRequest(COGNITO_SUBJECT, purchaseId);
     }
 }

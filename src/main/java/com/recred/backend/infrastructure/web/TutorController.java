@@ -116,11 +116,15 @@ public class TutorController {
             @PathVariable UUID alumnoId,
             @RequestParam("foto") MultipartFile foto) {
         String cognitoSub = cognitoSubject(authentication);
-        String url = cloudinaryService.uploadImage(foto);
-        UpdateStudentPhotoRequest request =
-                new UpdateStudentPhotoRequest(cognitoSub, alumnoId, url);
-        UpdateStudentPhotoResponse response = updateStudentPhoto.execute(request);
-        return ResponseEntity.ok(toStudentDTO(response));
+        try {
+            String url = cloudinaryService.uploadImage(foto.getBytes(), foto.getOriginalFilename());
+            UpdateStudentPhotoRequest request =
+                    new UpdateStudentPhotoRequest(cognitoSub, alumnoId, url);
+            UpdateStudentPhotoResponse response = updateStudentPhoto.execute(request);
+            return ResponseEntity.ok(toStudentDTO(response));
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Error al leer la imagen", e);
+        }
     }
 
     private StudentDTO toStudentDTO(UpdateStudentPhotoResponse response) {

@@ -97,11 +97,6 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                         LEFT JOIN CompraDetalleEntity cd ON cd.productoEntity.id = p.id
                         LEFT JOIN CompraEntity c ON cd.compra.id = c.id
                         WHERE c.buffetEntity.id = CAST(:buffetId AS java.util.UUID)
-                        AND  p.id NOT IN(
-                                    SELECT AI.productoEntity.id
-                                    FROM AIEventEntity AI
-                                    WHERE AI.productoEntity.id IS NOT NULL
-                                    )
                         GROUP BY p.id
                         ORDER BY SUM(COALESCE(cd.cantidad, 0)) ASC LIMIT 5
                         """)
@@ -129,10 +124,19 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                         select p, SUM(COALESCE(cd.cantidad, 0)) as cantidad
                         FROM ProductoEntity p
                         LEFT JOIN CompraDetalleEntity cd ON cd.productoEntity.id = p.id
+                        WHERE p.id NOT IN (
+                            SELECT i.productoEntity.id
+                            FROM InventarioBuffetEntity i
+                            WHERE i.buffetEntity.id = CAST(:buffetId AS java.util.UUID)
+                            AND i.estado IN ('DISPONIBLE', 'BAJO_STOCK')
+                            AND (i.tipoManejo = 'DISPONIBLE_NO_DISPONIBLE'
+                                OR i.stockActual > COALESCE(i.stockReservado, 0))
+                        )
                         GROUP BY p.id
                         ORDER BY SUM(COALESCE(cd.cantidad, 0)) DESC LIMIT 3
                         """)
-        List<ProductoEntity> findBestSoldProducts();
+        List<ProductoEntity> findBestSoldProductsNotInStock(
+                @Param("buffetId") UUID buffetId);
 
         @Query("""
             SELECT p
