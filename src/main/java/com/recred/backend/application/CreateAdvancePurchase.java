@@ -232,10 +232,7 @@ public class CreateAdvancePurchase {
     }
 
     private Buyer studentBuyer(Usuario user, UUID studentId) {
-        if (user.getAlumno() == null || !user.getAlumno().getId().equals(studentId)) {
-            throw new SecurityException("No autorizado para comprar a nombre de otro alumno");
-        }
-
+        user.validatePurchaseForSelf(studentId);
         return new Buyer(user.getId(), BuyerType.STUDENT, null);
     }
 
@@ -243,12 +240,8 @@ public class CreateAdvancePurchase {
         Tutor tutor = tutorRepository.findByUsuarioId(user.getId())
                 .orElseThrow(() -> new SecurityException(
                         "No se encontro un perfil de tutor para este usuario"));
-        boolean isOwnChild = tutor.getHijos().stream()
-                .anyMatch(child -> child.getId().equals(studentId));
 
-        if (!isOwnChild) {
-            throw new SecurityException("No autorizado para comprar a nombre de este alumno");
-        }
+        tutor.validatePurchaseFor(studentId);
 
         return new Buyer(user.getId(), BuyerType.TUTOR, tutor.getId());
     }
