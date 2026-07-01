@@ -28,7 +28,6 @@ import com.recred.backend.domain.services.RecessTimeSlotResolver;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.domain.models.Promotion;
-import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
 
@@ -38,7 +37,6 @@ import java.util.Optional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -154,7 +152,7 @@ public class CreateAdvancePurchase {
                 student,
                 orderRequest.recessTime()
         );
-        Map<Producto, Integer> items = items(orderRequest, buffetId);
+        Map<Producto, Integer> items = items(orderRequest, buffetId, pickupDate);
 
         advancePurchaseRulesService.validate(buffetId, pickupSlot, pickupDate, items);
 
@@ -291,7 +289,8 @@ public class CreateAdvancePurchase {
 
     private Map<Producto, Integer> items(
             CreateAdvancePurchaseRequest.OrderRequest orderRequest,
-            UUID buffetId
+            UUID buffetId,
+            LocalDate pickupDate
     ) {
         if (orderRequest.items() == null || orderRequest.items().isEmpty()) {
             throw new IllegalArgumentException("items is required");
@@ -299,7 +298,7 @@ public class CreateAdvancePurchase {
 
         Map<Producto, Integer> items = new HashMap<>();
         for (CreateAdvancePurchaseRequest.ItemRequest itemRequest : orderRequest.items()) {
-            processItemRequest(itemRequest, buffetId, items);
+            processItemRequest(itemRequest, buffetId, pickupDate, items);
         }
         return items;
     }
@@ -307,6 +306,7 @@ public class CreateAdvancePurchase {
     private void processItemRequest(
             CreateAdvancePurchaseRequest.ItemRequest itemRequest,
             UUID buffetId,
+            LocalDate pickupDate,
             Map<Producto, Integer> items
     ) {
         Optional<Producto> productOpt = productRepository.findActiveByIdWithStock(
@@ -319,7 +319,8 @@ public class CreateAdvancePurchase {
             Optional<Promotion> promotionOpt = promotionRepository
                     .findById(itemRequest.productId());
             if (promotionOpt.isPresent()) {
-                processPromotion(promotionOpt.get(), itemRequest.quantity(), buffetId, items);
+                processPromotion(promotionOpt.get(), itemRequest.quantity(),
+                        buffetId, pickupDate, items);
             } else {
                 throw new ProductNotFoundException(itemRequest.productId());
             }
@@ -330,9 +331,10 @@ public class CreateAdvancePurchase {
             Promotion promotion,
             int quantity,
             UUID buffetId,
+            LocalDate pickupDate,
             Map<Producto, Integer> items
     ) {
-        validatePromotion(promotion, buffetId);
+        promotion.validateFor(pickupDate, buffetId);
 
         if (promotion.getProducts() != null) {
             BigDecimal discountPercentage = promotion.getDiscountPercentage();
@@ -356,26 +358,7 @@ public class CreateAdvancePurchase {
         }
     }
 
-    private void validatePromotion(Promotion promotion, UUID buffetId) {
-        if (promotion.getStatus() != PromotionStatus.ACTIVE) {
-            throw new IllegalArgumentException("La promocion no esta activa");
-        }
-        if (promotion.getBuffet() != null
-                && !promotion.getBuffet().getId().equals(buffetId)) {
-            throw new IllegalArgumentException(
-                    "La promocion no pertenece a este buffet");
-        }
-        LocalDateTime now = LocalDateTime.now();
-        if (promotion.getStartDate() != null
-                && now.isBefore(promotion.getStartDate())) {
-            throw new IllegalArgumentException(
-                    "La promocion aun no ha comenzado");
-        }
-        if (promotion.getEndDate() != null
-                && now.isAfter(promotion.getEndDate())) {
-            throw new IllegalArgumentException("La promocion ha finalizado");
-        }
-    }
+
 
     private Producto createDiscountedProduct(
             Producto activeProd,
