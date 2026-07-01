@@ -106,6 +106,10 @@ public class Producto {
         return !isSoldOut();
     }
 
+    public boolean hasAvailableStock() {
+        return getStockDisponible() != null && getStockDisponible() > 0;
+    }
+
     public TipoManejoInventario inventoryMode() {
         return tipoManejoInventario == null
                 ? TipoManejoInventario.STOCK_EXACTO

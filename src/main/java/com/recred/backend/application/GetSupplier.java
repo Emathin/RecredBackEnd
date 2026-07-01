@@ -4,8 +4,6 @@ import com.recred.backend.domain.models.Proveedor;
 import com.recred.backend.domain.repositories.ProveedorRepository;
 import org.springframework.security.access.AccessDeniedException;
 
-import java.util.UUID;
-
 public class GetSupplier {
 
     private final ProveedorRepository repository;
@@ -14,13 +12,21 @@ public class GetSupplier {
         this.repository = repository;
     }
 
-    public Proveedor execute(UUID id, UUID kiosqueroId) {
-        Proveedor proveedor = repository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Proveedor no encontrado"));
+    public SupplierDetailsResponse execute(GetSupplierRequest request) {
+        request.validate();
+        Proveedor supplier = supplier(request);
+        requireSupplierOwnership(supplier, request);
+        return SupplierDetailsResponse.fromDomain(supplier);
+    }
 
-        if (!proveedor.getKiosqueroId().equals(kiosqueroId)) {
-            throw new AccessDeniedException("No tiene permisos sobre este proveedor");
+    private Proveedor supplier(GetSupplierRequest request) {
+        return repository.findById(request.id())
+                .orElseThrow(() -> new IllegalArgumentException("Supplier not found"));
+    }
+
+    private void requireSupplierOwnership(Proveedor supplier, GetSupplierRequest request) {
+        if (!supplier.belongsToKiosquero(request.kioskOwnerId())) {
+            throw new AccessDeniedException("You do not have access to this supplier");
         }
-        return proveedor;
     }
 }

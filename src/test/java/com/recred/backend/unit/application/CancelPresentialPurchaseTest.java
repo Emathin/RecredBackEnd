@@ -2,7 +2,9 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CancelPresentialPurchaseRequest;
+import com.recred.backend.application.CancelPresentialPurchaseResponse;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
+import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.EstadoCompra;
@@ -89,6 +91,40 @@ class CancelPresentialPurchaseTest {
         assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
         verify(purchaseRepository).save(purchase);
         verify(walletRepository).save(wallet);
+    }
+
+    @Test
+    void execute_WhenRequestHasMatchingStudent_ShouldCancelAndRefund() {
+        UUID studentId = purchase.getStudent().getId();
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        when(purchaseRepository.save(purchase)).thenReturn(purchase);
+
+        CancelPresentialPurchaseResponse result = useCase.execute(
+                new com.recred.backend.application.CancelPresentialPurchaseRequest(
+                        purchaseId,
+                        studentId
+                ));
+
+        assertEquals(EstadoCompra.CANCELADO, result.status());
+        assertEquals(purchaseId, result.purchaseId());
+        assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
+        verify(purchaseRepository).save(purchase);
+        verify(walletRepository).save(wallet);
+    }
+
+    @Test
+    void execute_WhenRequestHasAnotherStudent_ShouldThrowException() {
+        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+
+        assertThrows(PurchaseAccessDeniedException.class, () -> useCase.execute(
+                new com.recred.backend.application.CancelPresentialPurchaseRequest(
+                        purchaseId,
+                        UUID.randomUUID()
+                )));
+
+        verify(walletRepository, never()).save(any());
+        verify(purchaseRepository, never()).save(any());
     }
 
     @Test

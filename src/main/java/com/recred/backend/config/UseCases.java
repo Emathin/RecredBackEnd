@@ -470,11 +470,13 @@ public class UseCases {
             PurchaseRepository purchaseRepository,
             ProductRepository productRepository,
             CreateAssistantAdvancePurchase createAssistantAdvancePurchase,
+            CancelPresentialPurchase cancelPresentialPurchase,
             Clock clock) {
         return new SchoolAssistantFixedTopics(
                 purchaseRepository,
                 productRepository,
                 createAssistantAdvancePurchase,
+                cancelPresentialPurchase,
                 clock);
     }
 

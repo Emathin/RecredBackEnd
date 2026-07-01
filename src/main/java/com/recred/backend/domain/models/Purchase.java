@@ -151,8 +151,26 @@ public class Purchase {
         return hasStatus(EstadoCompra.ENTREGADO);
     }
 
+    public boolean isPending() {
+        return hasStatus(EstadoCompra.PENDIENTE);
+    }
+
+    public boolean isActivePendingOrder() {
+        return hasStatus(EstadoCompra.PENDIENTE)
+                || hasStatus(EstadoCompra.EN_PREPARACION)
+                || hasStatus(EstadoCompra.LISTO);
+    }
+
     public boolean isAdvancePurchase() {
         return hasType(TipoCompra.ANTICIPADA);
+    }
+
+    public boolean isRebuyable() {
+        return isDelivered() && hasItems();
+    }
+
+    public boolean hasItems() {
+        return items != null && !items.isEmpty();
     }
 
     public boolean shouldConsumeReservationWhenChangingTo(EstadoCompra requestedStatus) {
@@ -181,6 +199,18 @@ public class Purchase {
         return hasStatus(EstadoCompra.CANCELADO) || hasStatus(EstadoCompra.RECHAZADO);
     }
 
+    public boolean hasScheduledPickup() {
+        return isAdvancePurchase() && pickupSlotId != null && pickupDate != null;
+    }
+
+    public boolean shouldReleaseReservationAfterCancellationFrom(EstadoCompra previousStatus) {
+        return isAdvancePurchase() && previousStatus == EstadoCompra.PENDIENTE;
+    }
+
+    public boolean belongsToStudent(UUID studentId) {
+        return studentId != null && studentId.equals(studentIdOrNull());
+    }
+
     public boolean happenedBetween(LocalDate from, LocalDate to) {
         if (date == null) {
             return false;
@@ -204,6 +234,10 @@ public class Purchase {
 
     public boolean hasPickupSlotDescription() {
         return pickupSlotDescription != null && !pickupSlotDescription.isBlank();
+    }
+
+    public boolean hasWithdrawalCode() {
+        return withdrawalCode != null && !withdrawalCode.isBlank();
     }
 
     public boolean hasStudentId() {

@@ -3,6 +3,9 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.SchoolAssistantIntent;
 import java.text.Normalizer;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -11,6 +14,9 @@ import java.util.regex.Pattern;
 class SchoolAssistantIntentDetector {
 
     private static final Pattern DIACRITICS = Pattern.compile("\\p{M}+");
+    private static final Pattern DATE_PATTERN = Pattern.compile(
+            "\\b(\\d{1,2})/(\\d{1,2})(?:/(\\d{2}|\\d{4}))?\\b"
+    );
 
     SchoolAssistantIntent detectIntent(String message) {
         String normalized = normalize(message);
@@ -44,7 +50,37 @@ class SchoolAssistantIntentDetector {
         return Optional.empty();
     }
 
+    Optional<LocalDate> purchaseDate(String message, LocalDate today) {
+        String normalized = normalize(message);
+
+        if (containsAny(normalized, normalize("pasado mañana"))) {
+            return Optional.of(today.plusDays(2));
+        }
+
+        if (containsAny(normalized, normalize("mañana"))) {
+            return Optional.of(today.plusDays(1));
+        }
+
+        if (containsAny(normalized, "hoy")) {
+            return Optional.of(today);
+        }
+
+        Optional<LocalDate> explicitDate = explicitDate(normalized, today);
+
+        if (explicitDate.isPresent()) {
+            return explicitDate;
+        }
+
+        return dayOfWeek(normalized).map(day -> nextOrSame(today, day));
+    }
+
     private SchoolAssistantIntent detectNonConfirmationIntent(String normalized) {
+        return isPurchaseCancellation(normalized)
+                ? SchoolAssistantIntent.CANCEL_PURCHASE
+                : detectDraftCancellationOrRecessIntent(normalized);
+    }
+
+    private SchoolAssistantIntent detectDraftCancellationOrRecessIntent(String normalized) {
         return isCancellation(normalized)
                 ? SchoolAssistantIntent.CANCEL_ACTION
                 : detectRecessOrPurchaseIntent(normalized);
@@ -69,6 +105,12 @@ class SchoolAssistantIntentDetector {
     }
 
     private SchoolAssistantIntent detectTopicIntent(String normalized) {
+        return isPurchaseDateSelection(normalized)
+                ? SchoolAssistantIntent.SELECT_PURCHASE_DATE
+                : detectFrequentPurchaseOrOperationalIntent(normalized);
+    }
+
+    private SchoolAssistantIntent detectFrequentPurchaseOrOperationalIntent(String normalized) {
         return isFrequentPurchasesQuestion(normalized)
                 ? SchoolAssistantIntent.FREQUENT_PURCHASES
                 : detectOperationalIntent(normalized);
@@ -129,6 +171,38 @@ class SchoolAssistantIntentDetector {
 
     private boolean isCancellation(String message) {
         return List.of("cancelar", "cancela", "descartar", "no").contains(message);
+    }
+
+    private boolean isPurchaseCancellation(String message) {
+        return containsAny(message, "cancelar", "cancela", "anular", "anula")
+                && containsAny(message, "compra", "pedido", "orden");
+    }
+
+    private boolean isPurchaseDateSelection(String message) {
+        return isRelativeDateSelection(message)
+                || isWeekdaySelection(message)
+                || isExplicitDateSelection(message);
+    }
+
+    private boolean isRelativeDateSelection(String message) {
+        return List.of("hoy", normalize("mañana"), "para hoy", normalize("para mañana"),
+                        normalize("pasado mañana"), normalize("para pasado mañana"))
+                .contains(message);
+    }
+
+    private boolean isWeekdaySelection(String message) {
+        return dayOfWeekName(withoutDateSelectionPrefix(message)).isPresent();
+    }
+
+    private boolean isExplicitDateSelection(String message) {
+        return DATE_PATTERN.matcher(withoutDateSelectionPrefix(message)).matches();
+    }
+
+    private String withoutDateSelectionPrefix(String message) {
+        return message
+                .replaceFirst("^para el ", "")
+                .replaceFirst("^para ", "")
+                .replaceFirst("^el ", "");
     }
 
     private boolean isQuickUsualPurchase(String message) {
@@ -202,6 +276,61 @@ class SchoolAssistantIntentDetector {
 
     private boolean containsAll(String message, String... values) {
         return List.of(values).stream().allMatch(message::contains);
+    }
+
+    private Optional<LocalDate> explicitDate(String message, LocalDate today) {
+        java.util.regex.Matcher matcher = DATE_PATTERN.matcher(message);
+
+        if (!matcher.find()) {
+            return Optional.empty();
+        }
+
+        int day = Integer.parseInt(matcher.group(1));
+        int month = Integer.parseInt(matcher.group(2));
+        int year = explicitYear(matcher.group(3), today.getYear());
+
+        try {
+            LocalDate date = LocalDate.of(year, month, day);
+            return Optional.of(date.isBefore(today) && matcher.group(3) == null
+                    ? date.plusYears(1)
+                    : date);
+        } catch (java.time.DateTimeException exception) {
+            return Optional.empty();
+        }
+    }
+
+    private int explicitYear(String value, int currentYear) {
+        if (value == null) {
+            return currentYear;
+        }
+
+        int year = Integer.parseInt(value);
+        return value.length() == 2 ? 2000 + year : year;
+    }
+
+    private Optional<DayOfWeek> dayOfWeek(String message) {
+        return Arrays.stream(message.split("\\s+"))
+                .map(this::dayOfWeekName)
+                .flatMap(Optional::stream)
+                .findFirst();
+    }
+
+    private Optional<DayOfWeek> dayOfWeekName(String value) {
+        return switch (value) {
+            case "lunes" -> Optional.of(DayOfWeek.MONDAY);
+            case "martes" -> Optional.of(DayOfWeek.TUESDAY);
+            case "miercoles" -> Optional.of(DayOfWeek.WEDNESDAY);
+            case "jueves" -> Optional.of(DayOfWeek.THURSDAY);
+            case "viernes" -> Optional.of(DayOfWeek.FRIDAY);
+            case "sabado" -> Optional.of(DayOfWeek.SATURDAY);
+            case "domingo" -> Optional.of(DayOfWeek.SUNDAY);
+            default -> Optional.empty();
+        };
+    }
+
+    private LocalDate nextOrSame(LocalDate today, DayOfWeek day) {
+        int daysUntil = day.getValue() - today.getDayOfWeek().getValue();
+        return today.plusDays(daysUntil < 0 ? daysUntil + 7 : daysUntil);
     }
 
     private String normalize(String message) {
