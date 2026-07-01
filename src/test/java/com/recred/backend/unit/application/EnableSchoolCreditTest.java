@@ -75,10 +75,6 @@ public class EnableSchoolCreditTest {
         alumnoMock.setBilletera(wallet);
         when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumnoMock));
-        when(schoolCreditRepository.findByStudentIdAndStatus(studentId, CreditStatus.ACTIVE))
-                .thenReturn(Optional.empty());
-        when(purchaseRepository.sumarGastosPorAlumnoEnRango(eq(studentId), any(), any()))
-                .thenReturn(BigDecimal.ZERO);
 
         SchoolCredit saved = new SchoolCredit();
         saved.setId(UUID.randomUUID());
@@ -105,10 +101,6 @@ public class EnableSchoolCreditTest {
         alumnoMock.setBilletera(wallet);
         when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumnoMock));
-        when(schoolCreditRepository.findByStudentIdAndStatus(studentId, CreditStatus.ACTIVE))
-                .thenReturn(Optional.empty());
-        when(purchaseRepository.sumarGastosPorAlumnoEnRango(eq(studentId), any(), any()))
-                .thenReturn(BigDecimal.valueOf(100.0));
 
         SchoolCredit saved = new SchoolCredit();
         saved.setId(UUID.randomUUID());
@@ -126,9 +118,12 @@ public class EnableSchoolCreditTest {
     @Test
     void execute_throwsWhenActiveCreditExists() {
         when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
-        Alumno alumnoMock2 = new Alumno(); alumnoMock2.setId(studentId); when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumnoMock2));
-        when(schoolCreditRepository.findByStudentIdAndStatus(studentId, CreditStatus.ACTIVE))
-                .thenReturn(Optional.of(new SchoolCredit()));
+        Alumno alumnoMock2 = new Alumno(); 
+        alumnoMock2.setId(studentId); 
+        Billetera activeWallet = new Billetera();
+        activeWallet.setCreditoHabilitado(true);
+        alumnoMock2.setBilletera(activeWallet);
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumnoMock2));
 
         assertThrows(ActiveCreditExistsException.class, () -> {
             enableSchoolCredit.execute(new com.recred.backend.application.EnableSchoolCreditRequest(tutorId, studentId, new BigDecimal("1000.00"), 1));

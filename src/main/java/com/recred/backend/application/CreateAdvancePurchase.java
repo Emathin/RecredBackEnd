@@ -1,7 +1,6 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
-import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
@@ -206,13 +205,8 @@ public class CreateAdvancePurchase {
     ) {
         Billetera wallet = wallet(studentId);
 
-        if (!wallet.hasSufficientBalance(total)) {
-            throw new InsufficientBalanceException(
-                    "Insufficient balance for student: " + studentId);
-        }
-
-        inventoryAvailabilityService.reserve(buffetId, items);
         wallet.debit(total);
+        inventoryAvailabilityService.reserve(buffetId, items);
         walletRepository.save(wallet);
     }
 
