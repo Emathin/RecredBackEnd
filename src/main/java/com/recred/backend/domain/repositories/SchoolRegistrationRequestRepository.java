@@ -11,4 +11,8 @@ public interface SchoolRegistrationRequestRepository {
     void save(SchoolRegistrationRequest request);
     Optional<SchoolRegistrationRequest> findById(UUID id);
     List<SchoolRegistrationRequest> findByStatus(SchoolRegistrationStatus status);
+    
+    boolean existsBySchoolEmailAndStatus(String email, SchoolRegistrationStatus status);
+    boolean existsBySchoolCueAndStatus(String cue, SchoolRegistrationStatus status);
+    boolean existsByDirectorEmailAndStatus(String email, SchoolRegistrationStatus status);
 }

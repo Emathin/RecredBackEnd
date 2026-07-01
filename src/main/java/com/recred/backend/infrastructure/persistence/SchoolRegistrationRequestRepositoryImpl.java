@@ -37,4 +37,19 @@ public class SchoolRegistrationRequestRepositoryImpl
                 .map(SchoolRegistrationRequestEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    public boolean existsBySchoolEmailAndStatus(String email, SchoolRegistrationStatus status) {
+        return springDataRepository.existsBySchoolEmailAndStatus(email, status);
+    }
+
+    @Override
+    public boolean existsBySchoolCueAndStatus(String cue, SchoolRegistrationStatus status) {
+        return springDataRepository.existsBySchoolCueAndStatus(cue, status);
+    }
+
+    @Override
+    public boolean existsByDirectorEmailAndStatus(String email, SchoolRegistrationStatus status) {
+        return springDataRepository.existsByDirectorEmailAndStatus(email, status);
+    }
 }

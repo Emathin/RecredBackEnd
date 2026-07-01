@@ -5,13 +5,16 @@ import com.recred.backend.application.SubmitSchoolRegistrationRequest;
 import com.recred.backend.domain.models.Nivel;
 import com.recred.backend.domain.models.SchoolRegistrationRequest;
 import com.recred.backend.domain.models.SchoolRegistrationStatus;
+import com.recred.backend.domain.repositories.ColegioRepository;
 import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepository;
+import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -22,6 +25,12 @@ class SubmitSchoolRegistrationTest {
 
     @Mock
     private SchoolRegistrationRequestRepository repository;
+
+    @Mock
+    private ColegioRepository colegioRepository;
+
+    @Mock
+    private UsuarioRepository usuarioRepository;
 
     @InjectMocks
     private SubmitSchoolRegistration useCase;
@@ -42,6 +51,9 @@ class SubmitSchoolRegistrationTest {
                 "11223344",
                 "directorUser123"
         );
+
+        org.mockito.Mockito.when(usuarioRepository.findByEmail("director@test.com"))
+                .thenReturn(Optional.empty());
 
         useCase.execute(request);
 

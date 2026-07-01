@@ -13,4 +13,8 @@ public interface SpringDataColegioRepository extends JpaRepository<ColegioEntity
     List<ColegioEntity> findByActivoTrueOrderByNombreAsc();
 
     boolean existsByIdAndActivoTrue(UUID id);
+    
+    boolean existsByEmail(String email);
+    
+    boolean existsByCue(String cue);
 }

@@ -10,14 +10,12 @@ import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepositor
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.services.CognitoDirectorIdentityService;
 import com.recred.backend.domain.services.CreatedCognitoUser;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Service
-@RequiredArgsConstructor
+import org.springframework.transaction.annotation.Transactional;
+
 public class ApproveSchoolRegistration {
 
     private final SchoolRegistrationRequestRepository registrationRepository;
@@ -25,6 +23,17 @@ public class ApproveSchoolRegistration {
     private final UsuarioRepository usuarioRepository;
     private final CognitoDirectorIdentityService cognitoService;
 
+    public ApproveSchoolRegistration(SchoolRegistrationRequestRepository registrationRepository,
+                                     ColegioRepository colegioRepository,
+                                     UsuarioRepository usuarioRepository,
+                                     CognitoDirectorIdentityService cognitoService) {
+        this.registrationRepository = registrationRepository;
+        this.colegioRepository = colegioRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.cognitoService = cognitoService;
+    }
+
+    @Transactional
     public void execute(ApproveSchoolRegistrationRequest request) {
         SchoolRegistrationRequest registration = fetchPendingRegistration(request.registrationId());
         Colegio newColegio = createAndSaveColegio(registration);
@@ -55,11 +64,21 @@ public class ApproveSchoolRegistration {
     }
 
     private void createAndSaveDirectorUser(SchoolRegistrationRequest req, Colegio colegio) {
-        CreatedCognitoUser cognitoUser = cognitoService.createDirectorUser(
-                req.getDirectorUsername(), 
-                req.getDirectorEmail(), 
-                req.getDirectorFirstName(), 
-                req.getDirectorLastName());
+        CreatedCognitoUser cognitoUser;
+        try {
+            cognitoUser = cognitoService.createDirectorUser(
+                    req.getDirectorUsername(), 
+                    req.getDirectorEmail(), 
+                    req.getDirectorFirstName(), 
+                    req.getDirectorLastName());
+        } catch (com.recred.backend.domain.exceptions.UsernameExistsException e) {
+            String suffix = UUID.randomUUID().toString().substring(0, 4);
+            cognitoUser = cognitoService.createDirectorUser(
+                    req.getDirectorUsername() + "-" + suffix, 
+                    req.getDirectorEmail(), 
+                    req.getDirectorFirstName(), 
+                    req.getDirectorLastName());
+        }
         Usuario usuario = buildUsuario(req, colegio, cognitoUser.sub());
         usuarioRepository.save(usuario);
     }

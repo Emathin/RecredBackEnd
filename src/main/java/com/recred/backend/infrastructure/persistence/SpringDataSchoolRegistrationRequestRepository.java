@@ -20,4 +20,8 @@ public interface SpringDataSchoolRegistrationRequestRepository
 
     @EntityGraph(attributePaths = {"schoolLevel"})
     Optional<SchoolRegistrationRequestEntity> findById(UUID id);
+    
+    boolean existsBySchoolEmailAndStatus(String schoolEmail, SchoolRegistrationStatus status);
+    boolean existsBySchoolCueAndStatus(String schoolCue, SchoolRegistrationStatus status);
+    boolean existsByDirectorEmailAndStatus(String directorEmail, SchoolRegistrationStatus status);
 }

@@ -3,17 +3,17 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.SchoolRegistrationRequest;
 import com.recred.backend.domain.models.SchoolRegistrationStatus;
 import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Service
-@RequiredArgsConstructor
 public class RejectSchoolRegistration {
 
     private final SchoolRegistrationRequestRepository repository;
+
+    public RejectSchoolRegistration(SchoolRegistrationRequestRepository repository) {
+        this.repository = repository;
+    }
 
     public void execute(RejectSchoolRegistrationRequest request) {
         SchoolRegistrationRequest registration = fetchPendingRegistration(request.registrationId());

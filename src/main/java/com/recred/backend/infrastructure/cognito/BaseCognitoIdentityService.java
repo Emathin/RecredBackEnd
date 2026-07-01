@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.cognito;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.config.CognitoAdminProperties;
+import com.recred.backend.domain.exceptions.UsernameExistsException;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -80,6 +81,11 @@ public abstract class BaseCognitoIdentityService {
                     HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                if (response.body() != null 
+                        && response.body().contains("UsernameExistsException")) {
+                    throw new UsernameExistsException(
+                            "El nombre de usuario elegido ya se encuentra en uso por otra cuenta.");
+                }
                 throw new IllegalStateException("Cognito respondio "
                         + response.statusCode() + ": " + response.body());
             }
@@ -89,6 +95,8 @@ public abstract class BaseCognitoIdentityService {
             }
 
             return objectMapper.readValue(response.body(), MAP_TYPE);
+        } catch (UsernameExistsException ex) {
+            throw ex;
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Se interrumpio la llamada a Cognito", ex);
