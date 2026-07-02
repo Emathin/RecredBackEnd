@@ -9,8 +9,6 @@ import com.recred.backend.application.GetPendingHistoryByStudentResponse;
 import com.recred.backend.application.GetTutorHistory;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.infrastructure.web.PurchaseHistoryController;
 import com.recred.backend.infrastructure.web.PurchaseResponseDTO;
 import org.junit.jupiter.api.Test;
@@ -100,13 +98,12 @@ class PurchaseHistoryControllerTest {
         UUID tutorId = UUID.randomUUID();
         UUID compraId = UUID.randomUUID();
 
-        Purchase compra = new Purchase();
-        compra.setId(compraId);
-        compra.setTotalAmount(new BigDecimal("3000.00"));
-        compra.setStatus(EstadoCompra.EN_PREPARACION);
-        compra.setDate(LocalDateTime.now());
+        GetHistoryByStudentResponse mockResponse = new GetHistoryByStudentResponse(
+                compraId, null, new BigDecimal("3000.00"), "EN_PREPARACION", "En preparacion",
+                null, LocalDateTime.now(), List.of(), null, null, null, null, null, null
+        );
 
-        when(getTutorHistory.execute(tutorId)).thenReturn(List.of(compra));
+        when(getTutorHistory.execute(tutorId)).thenReturn(List.of(mockResponse));
 
         mockMvc.perform(get("/api/v1/purchases/tutor/{tutorId}", tutorId)
                 .contentType(MediaType.APPLICATION_JSON))
@@ -153,23 +150,25 @@ class PurchaseHistoryControllerTest {
     void cuandoPideMiHistorialTutor_entoncesUsaElSubjectAutenticado() {
         String cognitoSubject = "cognito-sub";
         UUID compraId = UUID.randomUUID();
-        Purchase compra = new Purchase();
-        compra.setId(compraId);
-        compra.setTotalAmount(new BigDecimal("2200.00"));
-        compra.setStatus(EstadoCompra.ENTREGADO);
-        compra.setDate(LocalDateTime.now());
         PurchaseHistoryController controller = new PurchaseHistoryController(
                 getHistoryByStudent,
                 getTutorHistory,
                 getPendingHistoryByStudent
         );
+
+        GetHistoryByStudentResponse mockResponse = new GetHistoryByStudentResponse(
+                compraId, null, new BigDecimal("2200.00"), "ENTREGADO", "Entregado",
+                null, LocalDateTime.now(), List.of(), null, null, null, null, null, null
+        );
+
         when(getTutorHistory.executeByCognitoSubject(cognitoSubject))
-                .thenReturn(List.of(compra));
+                .thenReturn(List.of(mockResponse));
 
         ResponseEntity<List<PurchaseResponseDTO>> response = controller.getMyHistorial(
                 new UsernamePasswordAuthenticationToken(cognitoSubject, null)
         );
 
+        assertEquals(200, response.getStatusCode().value());
         assertEquals(1, response.getBody().size());
         assertEquals(compraId, response.getBody().get(0).getId());
     }

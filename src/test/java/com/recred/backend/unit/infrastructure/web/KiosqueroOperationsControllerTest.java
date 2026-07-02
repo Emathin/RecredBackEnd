@@ -29,6 +29,7 @@ import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.DailyBuffetClose;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.FranjaHoraria;
+
 import com.recred.backend.domain.models.KiosqueroOperationalAlert;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.OperationalAlertSeverity;
@@ -345,16 +346,16 @@ class KiosqueroOperationsControllerTest {
         UUID buffetId = UUID.randomUUID();
         UUID colegioId = UUID.randomUUID();
         UUID slotId = UUID.randomUUID();
-        FranjaHoraria slot = new FranjaHoraria(
+        com.recred.backend.application.GetTimeSlotsBySchoolResponse slot = new com.recred.backend.application.GetTimeSlotsBySchoolResponse(
                 slotId,
                 colegioId,
                 "Primer recreo",
                 LocalTime.of(9, 30),
                 LocalTime.of(9, 45),
-                true
+                true,
+                30,
+                10
         );
-        slot.setCupoMaximo(30);
-        slot.setMinutosCorte(10);
 
         when(getBuffetTimeSlots.execute(buffetId)).thenReturn(List.of(slot));
 

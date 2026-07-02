@@ -157,7 +157,7 @@ public class KiosqueroOperationsController {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
         return ResponseEntity.ok(getBuffetTimeSlots.execute(buffetId)
                 .stream()
-                .map(TimeSlotResponse::fromDomain)
+                .map(TimeSlotResponse::fromUseCaseResponse)
                 .toList());
     }
 
