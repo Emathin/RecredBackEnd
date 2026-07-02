@@ -9,6 +9,7 @@ import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public class PrizeHealthyPurchase {
 
@@ -22,40 +23,41 @@ public class PrizeHealthyPurchase {
     }
 
     public PrizeHealthyPurchaseResponse execute(PrizeHealthyPurchaseCommand command) {
-        Purchase currentPurchase = purchaseRepository.findById(command.compraId())
-                .orElseThrow(() -> new PurchaseNotFoundException(command.compraId()));
-
-        if (currentPurchase.getSuggestionId() == null) {
+        Purchase currentPurchase = findPurchase(command.compraId());
+        if (!currentPurchase.hasSuggestion()) {
             return new PrizeHealthyPurchaseResponse();
         }
 
-        long healthyPurchasesLast15Days = purchaseRepository.countHealthyPurchasesByAlumno(
-                command.alumnoId(),
-                LocalDateTime.now().minusDays(15)
-        );
-
-        long healthyPurchasesLast7Days = purchaseRepository.countHealthyPurchasesByAlumno(
-                command.alumnoId(),
-                LocalDateTime.now().minusDays(7)
-        );
-
-        RewardLevel level = determineLevel(healthyPurchasesLast7Days, healthyPurchasesLast15Days);
-
-        Alumno alumno = alumnoRepository.findById(command.alumnoId())
-                .orElseThrow(() -> new AlumnoNoEncontradoException(command.alumnoId()));
-
-        alumno.addRewardPoints(level.getPoints());
-        alumnoRepository.save(alumno);
+        reward(command.alumnoId());
         return new PrizeHealthyPurchaseResponse();
     }
 
-    private RewardLevel determineLevel(long last7Days, long last15Days) {
-        if (last15Days > 5) {
-            return RewardLevel.GOLD;
-        }
-        if (last7Days >= 3) {
-            return RewardLevel.SILVER;
-        }
-        return RewardLevel.BRONZE;
+    private void reward(UUID alumnoId) {
+        Alumno alumno = findAlumno(alumnoId);
+        alumno.addRewardPoints(rewardLevel(alumnoId).getPoints());
+        alumnoRepository.save(alumno);
+    }
+
+    private Purchase findPurchase(UUID purchaseId) {
+        return purchaseRepository.findById(purchaseId)
+                .orElseThrow(() -> new PurchaseNotFoundException(purchaseId));
+    }
+
+    private Alumno findAlumno(UUID alumnoId) {
+        return alumnoRepository.findById(alumnoId)
+                .orElseThrow(() -> new AlumnoNoEncontradoException(alumnoId));
+    }
+
+    private RewardLevel rewardLevel(UUID alumnoId) {
+        long last15Days = healthyPurchasesSince(alumnoId, 15);
+        long last7Days = healthyPurchasesSince(alumnoId, 7);
+        return RewardLevel.forHealthyPurchaseHistory(last7Days, last15Days);
+    }
+
+    private long healthyPurchasesSince(UUID alumnoId, int days) {
+        return purchaseRepository.countHealthyPurchasesByAlumno(
+                alumnoId,
+                LocalDateTime.now().minusDays(days)
+        );
     }
 }

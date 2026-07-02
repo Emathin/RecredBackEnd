@@ -44,38 +44,49 @@ public class GenerateLowBalanceAlerts {
 
     public GenerateLowBalanceAlertsResponse execute(GenerateLowBalanceAlertsRequest request) {
         LOGGER.info("Starting low balance alert generation...");
-        List<UUID> studentsWithLowBalance = 
-                walletRepository.findAlumnoIdsWithLowBalance(LOW_BALANCE_THRESHOLD);
-        
+        List<UUID> studentsWithLowBalance = studentsWithLowBalance();
         LOGGER.info("Found {} students with low balance.", studentsWithLowBalance.size());
-
-        for (UUID studentId : studentsWithLowBalance) {
-            UUID studentUserId = alumnoRepository.findUserID(studentId);
-            if (studentUserId != null) {
-                LOGGER.info("Sending notification to student user id: {}", studentUserId);
-                sendNotification(
-                    studentUserId, 
-                    RolUsuario.ALUMNO, 
-                    ALERT_TITLE, 
-                    ALERT_MESSAGE_STUDENT, 
-                    studentId);
-            }
-
-            List<Tutor> tutors = tutorRepository.findByAlumnoId(studentId);
-            LOGGER.info("Found {} tutors for student id: {}", tutors.size(), studentId);
-            for (Tutor tutor : tutors) {
-                if (tutor.getUsuario() != null && tutor.getUsuario().getId() != null) {
-                    sendNotification(
-                            tutor.getUsuario().getId(),
-                            RolUsuario.PADRE,
-                            ALERT_TITLE,
-                            ALERT_MESSAGE_PARENT,
-                            studentId
-                    );
-                }
-            }
-        }
+        studentsWithLowBalance.forEach(this::sendStudentAndTutorNotifications);
         return new GenerateLowBalanceAlertsResponse();
+    }
+
+    private List<UUID> studentsWithLowBalance() {
+        return walletRepository.findAlumnoIdsWithLowBalance(LOW_BALANCE_THRESHOLD);
+    }
+
+    private void sendStudentAndTutorNotifications(UUID studentId) {
+        sendStudentNotification(studentId);
+        sendTutorNotifications(studentId);
+    }
+
+    private void sendStudentNotification(UUID studentId) {
+        UUID studentUserId = alumnoRepository.findUserID(studentId);
+        if (studentUserId == null) {
+            return;
+        }
+
+        LOGGER.info("Sending notification to student user id: {}", studentUserId);
+        sendNotification(
+                studentUserId,
+                RolUsuario.ALUMNO,
+                ALERT_TITLE,
+                ALERT_MESSAGE_STUDENT,
+                studentId);
+    }
+
+    private void sendTutorNotifications(UUID studentId) {
+        List<Tutor> tutors = tutorRepository.findByAlumnoId(studentId);
+        LOGGER.info("Found {} tutors for student id: {}", tutors.size(), studentId);
+        tutors.stream()
+                .filter(tutor -> tutor.getUsuario() != null)
+                .filter(tutor -> tutor.getUsuario().getId() != null)
+                .forEach(tutor -> sendNotification(
+                        tutor.getUsuario().getId(),
+                        RolUsuario.PADRE,
+                        ALERT_TITLE,
+                        ALERT_MESSAGE_PARENT,
+                        studentId
+                ));
     }
 
     private void sendNotification(

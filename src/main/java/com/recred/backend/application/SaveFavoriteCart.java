@@ -5,7 +5,6 @@ import com.recred.backend.domain.models.CarritoFavorito;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.CarritoFavoritoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -41,21 +40,34 @@ public class SaveFavoriteCart {
 
     @Transactional
     public SaveFavoriteCartResponse execute(SaveFavoriteCartRequest request) {
+        SaveFavoriteCartContext context = contextFor(request);
+        CarritoFavorito saved = saveCart(request, context);
+        return toResponse(saved);
+    }
+
+    private SaveFavoriteCartContext contextFor(SaveFavoriteCartRequest request) {
         Usuario usuario = this.findUsuario(request.cognitoSub());
         Tutor tutor = this.findTutor(usuario.getId());
         Alumno student = this.findStudent(request.alumnoId());
-
         this.validateStudentBelongsToTutor(tutor, request.alumnoId());
+        return new SaveFavoriteCartContext(usuario, tutor, student);
+    }
 
-        CarritoFavorito carrito = this.resolveCarritoFavorito(request.cartId(), tutor, usuario);
+    private CarritoFavorito saveCart(
+            SaveFavoriteCartRequest request,
+            SaveFavoriteCartContext context
+    ) {
+        CarritoFavorito carrito = this.resolveCarritoFavorito(
+                request.cartId(),
+                context.tutor(),
+                context.usuario());
         carrito.setNombre(request.nombre());
-        carrito.setAlumno(student);
+        carrito.setAlumno(context.student());
 
         Map<Producto, Integer> items = this.resolveCartItems(request.productQuantities());
         carrito.setItems(items);
 
-        CarritoFavorito saved = carritoFavoritoRepository.save(carrito);
-        return toResponse(saved);
+        return carritoFavoritoRepository.save(carrito);
     }
 
     private Usuario findUsuario(String cognitoSub) {
@@ -75,12 +87,9 @@ public class SaveFavoriteCart {
     }
 
     private void validateStudentBelongsToTutor(Tutor tutor, UUID studentId) {
-        boolean isChildOfTutor = tutor.getHijos().stream()
-                .anyMatch(h -> h.getId().equals(studentId));
-        if (!isChildOfTutor) {
-            throw new SecurityException(
-                    "No autorizado: el alumno seleccionado no es hijo del tutor");
-        }
+        tutor.childOrThrow(
+                studentId,
+                "No autorizado: el alumno seleccionado no es hijo del tutor");
     }
 
     private CarritoFavorito resolveCarritoFavorito(UUID cartId, Tutor tutor, Usuario usuario) {
@@ -102,7 +111,7 @@ public class SaveFavoriteCart {
     }
 
     private void validateCartLimitForFreePlan(Tutor tutor, Usuario usuario) {
-        if (usuario.getPlan() == TipoPlan.GRATUITO) {
+        if (usuario.hasFreePlan()) {
             var existingCarts = carritoFavoritoRepository
                     .findByTutorIdAndFilters(tutor.getId(), null, null);
             if (existingCarts.size() >= 3) {
@@ -119,10 +128,10 @@ public class SaveFavoriteCart {
             for (var entry : productQuantities.entrySet()) {
                 UUID prodId = entry.getKey();
                 Integer quantity = entry.getValue();
-                
+
                 this.validateProductQuantity(quantity);
                 Producto product = this.findAndValidateActiveProduct(prodId);
-                
+
                 items.put(product, quantity);
             }
         }
@@ -168,5 +177,8 @@ public class SaveFavoriteCart {
                 domain.getAlumno() != null ? domain.getAlumno().getApellido() : null,
                 itemResponses
         );
+    }
+
+    private record SaveFavoriteCartContext(Usuario usuario, Tutor tutor, Alumno student) {
     }
 }

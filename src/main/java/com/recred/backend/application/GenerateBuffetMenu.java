@@ -1,13 +1,11 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.RangoFechas;
 import com.recred.backend.domain.models.ReglaPresupuestoCategoria;
-import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -15,17 +13,14 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 
 import java.math.BigDecimal;
-import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
 
 public class GenerateBuffetMenu {
@@ -57,60 +52,75 @@ public class GenerateBuffetMenu {
 
     @Transactional(readOnly = true)
     public GenerateBuffetMenuResponse execute(GenerateBuffetMenuRequest request) {
-        UUID alumnoId = request.alumnoId();
-        UUID buffetId = request.buffetId();
-        LocalDateTime momentoConsulta = request.momentoConsulta();
+        UUID buffetId = requireBuffetId(request);
+        Alumno alumno = findAlumno(request.alumnoId());
+        List<Producto> catalogo = productRepository.findAllActiveWithStock(buffetId);
+        LocalDateTime momentoLocal = localMoment(request.momentoConsulta());
+        BudgetAvailability budget = budgetAvailability(request.alumnoId(),
+                request.momentoConsulta());
+        return new GenerateBuffetMenuResponse(menuItems(
+                alumno, catalogo, buffetId, momentoLocal, budget));
+    }
 
-        if (buffetId == null) {
+    private UUID requireBuffetId(GenerateBuffetMenuRequest request) {
+        if (request.buffetId() == null) {
             throw new IllegalArgumentException("buffetId is required");
         }
+        return request.buffetId();
+    }
 
-        Alumno alumno = alumnoRepository.findById(alumnoId)
+    private Alumno findAlumno(UUID alumnoId) {
+        return alumnoRepository.findById(alumnoId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
-        List<Producto> catalogo = productRepository.findAllActiveWithStock(buffetId);
+    }
 
-        LocalDateTime momentoLocal = ZonedDateTime.of(momentoConsulta, ZoneId.systemDefault())
-                .withZoneSameInstant(ZONA_LOCAL).toLocalDateTime();
+    private LocalDateTime localMoment(LocalDateTime momentoConsulta) {
+        return ZonedDateTime.of(momentoConsulta, ZoneId.systemDefault())
+                .withZoneSameInstant(ZONA_LOCAL)
+                .toLocalDateTime();
+    }
 
-        BigDecimal presupuestoGeneralDisponible = null;
-        Map<UUID, BigDecimal> presupuestoCategoriaDisponible = new HashMap<>();
-
+    private BudgetAvailability budgetAvailability(UUID alumnoId, LocalDateTime momentoConsulta) {
         Optional<PresupuestoAlumno> presupuestoOpt =
                 presupuestoRepository.findActivoByAlumnoId(alumnoId);
-        if (presupuestoOpt.isPresent()
-                && presupuestoOpt.get().esVigente(momentoConsulta.toLocalDate())) {
-            PresupuestoAlumno presupuesto = presupuestoOpt.get();
-            RangoFechas rango = calculadorPeriodo.calcularRango(
-                    presupuesto.getPeriodo(),
-                    momentoConsulta
-            );
-            BigDecimal gastadoHistorico = purchaseRepository.sumarGastosPorAlumnoEnRango(
-                    alumnoId,
-                    rango.inicio(),
-                    rango.fin()
-            );
-            presupuestoGeneralDisponible = presupuesto.getMontoLimiteGeneral()
-                    .subtract(gastadoHistorico);
-            presupuestoCategoriaDisponible = presupuestoCategoriaDisponible(
-                    alumnoId,
-                    presupuesto,
-                    rango
-            );
+        if (presupuestoOpt.isEmpty()
+                || !presupuestoOpt.get().esVigente(momentoConsulta.toLocalDate())) {
+            return BudgetAvailability.unlimited();
         }
 
-        BigDecimal presupuestoFinalParaLambda = presupuestoGeneralDisponible;
-        Map<UUID, BigDecimal> presupuestoCategoriaFinal = presupuestoCategoriaDisponible;
+        PresupuestoAlumno presupuesto = presupuestoOpt.get();
+        RangoFechas rango = calculadorPeriodo.calcularRango(
+                presupuesto.getPeriodo(),
+                momentoConsulta
+        );
+        BigDecimal gastadoHistorico = purchaseRepository.sumarGastosPorAlumnoEnRango(
+                alumnoId,
+                rango.inicio(),
+                rango.fin()
+        );
+        BigDecimal general = presupuesto.getMontoLimiteGeneral().subtract(gastadoHistorico);
+        return new BudgetAvailability(
+                general,
+                presupuestoCategoriaDisponible(alumnoId, presupuesto, rango)
+        );
+    }
 
-        return new GenerateBuffetMenuResponse(catalogo.stream()
+    private List<MenuProductResponse> menuItems(
+            Alumno alumno,
+            List<Producto> catalogo,
+            UUID buffetId,
+            LocalDateTime momentoLocal,
+            BudgetAvailability budget
+    ) {
+        return catalogo.stream()
                 .map(producto -> menuItem(
                         alumno,
                         producto,
                         buffetId,
                         momentoLocal,
-                        presupuestoFinalParaLambda,
-                        presupuestoCategoriaFinal
+                        budget
                 ))
-                .toList());
+                .toList();
     }
 
     private Map<UUID, BigDecimal> presupuestoCategoriaDisponible(
@@ -141,54 +151,38 @@ public class GenerateBuffetMenu {
             Producto producto,
             UUID buffetId,
             LocalDateTime momentoLocal,
-            BigDecimal presupuestoGeneralDisponible,
-            Map<UUID, BigDecimal> presupuestoCategoriaDisponible
+            BudgetAvailability budget
     ) {
         applyDailyCapacity(buffetId, producto, momentoLocal);
-
-        if (estaBloqueadoManual(alumno, producto)) {
-            return MenuProductResponse.bloqueado(producto, "Bloqueado por el tutor");
-        }
-
-        if (sinCupoDiario(producto)) {
-            return MenuProductResponse.bloqueado(producto, "Cupo diario agotado");
-        }
-
-        if (!tieneDisponibilidad(producto)) {
-            return MenuProductResponse.bloqueado(producto, "Sin disponibilidad");
-        }
-
-        Optional<String> conflictosSalud = conflictosSalud(alumno, producto);
-        if (conflictosSalud.isPresent()) {
-            return MenuProductResponse.bloqueado(producto, "Contiene: " + conflictosSalud.get());
-        }
-
-        if (fueraDeHorario(alumno, producto, momentoLocal)) {
-            return MenuProductResponse.bloqueado(producto, "No permitido en este horario");
-        }
-
-        if (superaPresupuestoGeneral(producto, presupuestoGeneralDisponible)) {
-            return MenuProductResponse.bloqueado(producto, "Supera el limite de gasto");
-        }
-
-        if (superaPresupuestoCategoria(producto, presupuestoCategoriaDisponible)) {
-            return MenuProductResponse.bloqueado(producto, "Supera limite de su categoria");
-        }
-
-        return MenuProductResponse.permitido(producto);
+        return blockingReason(alumno, producto, momentoLocal, budget)
+                .map(reason -> MenuProductResponse.bloqueado(producto, reason))
+                .orElseGet(() -> MenuProductResponse.permitido(producto));
     }
 
-    private boolean estaBloqueadoManual(Alumno alumno, Producto producto) {
-        if (alumno.getProductosBloqueados() == null) {
-            return false;
+    private Optional<String> blockingReason(
+            Alumno alumno,
+            Producto producto,
+            LocalDateTime momentoLocal,
+            BudgetAvailability budget
+    ) {
+        if (alumno.hasBlockedProduct(producto)) {
+            return Optional.of("Bloqueado por el tutor");
         }
-
-        return alumno.getProductosBloqueados().stream()
-                .anyMatch(bloqueado -> Objects.equals(bloqueado.getId(), producto.getId()));
-    }
-
-    private boolean tieneDisponibilidad(Producto producto) {
-        return producto.getStockDisponible() != null && producto.getStockDisponible() > 0;
+        if (producto.isDailyCapacityExhausted()) {
+            return Optional.of("Cupo diario agotado");
+        }
+        if (!producto.hasAvailableStock()) {
+            return Optional.of("Sin disponibilidad");
+        }
+        Optional<String> healthConflict = alumno.healthConflictReasonFor(producto)
+                .map(conflict -> "Contiene: " + conflict);
+        if (healthConflict.isPresent()) {
+            return healthConflict;
+        }
+        if (alumno.hasTimeRestrictionFor(producto, momentoLocal)) {
+            return Optional.of("No permitido en este horario");
+        }
+        return budget.blockingReasonFor(producto);
     }
 
     private void applyDailyCapacity(
@@ -196,7 +190,7 @@ public class GenerateBuffetMenu {
             Producto producto,
             LocalDateTime momentoLocal
     ) {
-        if (!hasDailyCapacity(producto)) {
+        if (!producto.hasDailyCapacityLimit()) {
             return;
         }
 
@@ -205,118 +199,26 @@ public class GenerateBuffetMenu {
                 producto.getId(),
                 momentoLocal.toLocalDate(),
                 ACTIVE_ADVANCE_STATUSES);
-        producto.setCupoDisponibleDia(Math.max(0,
-                producto.getCupoMaximoDiario() - (int) reserved));
+        producto.applyDailyCapacity(reserved);
     }
 
-    private boolean hasDailyCapacity(Producto producto) {
-        return producto.getTipoManejoInventario() == TipoManejoInventario.CUPO_DIARIO
-                && producto.getCupoMaximoDiario() != null
-                && producto.getCupoMaximoDiario() > 0;
-    }
+    private record BudgetAvailability(
+            BigDecimal general,
+            Map<UUID, BigDecimal> categories
+    ) {
 
-    private boolean sinCupoDiario(Producto producto) {
-        return hasDailyCapacity(producto)
-                && producto.getCupoDisponibleDia() != null
-                && producto.getCupoDisponibleDia() <= 0;
-    }
+        static BudgetAvailability unlimited() {
+            return new BudgetAvailability(null, Map.of());
+        }
 
-    private Optional<String> conflictosSalud(Alumno alumno, Producto producto) {
-        if (alumno.getRestriccionesSalud() == null || alumno.getRestriccionesSalud().isEmpty()) {
+        Optional<String> blockingReasonFor(Producto producto) {
+            if (producto.exceedsPrice(general)) {
+                return Optional.of("Supera el limite de gasto");
+            }
+            if (producto.exceedsCategoryBudget(categories)) {
+                return Optional.of("Supera limite de su categoria");
+            }
             return Optional.empty();
         }
-
-        String conflictos = alumno.getRestriccionesSalud().stream()
-                .filter(restriccion -> conflictoSalud(restriccion, producto))
-                .map(ClasificacionSalud::getDescripcion)
-                .map(this::motivoConflictoSalud)
-                .collect(Collectors.joining(", "));
-
-        return conflictos.isEmpty() ? Optional.empty() : Optional.of(conflictos);
-    }
-
-    private boolean conflictoSalud(ClasificacionSalud restriccion, Producto producto) {
-        boolean tieneClasificacion = producto.getClasificaciones() != null
-                && producto.getClasificaciones().stream()
-                .anyMatch(clasificacion -> Objects.equals(
-                        clasificacion.getId(),
-                        restriccion.getId()
-                ));
-
-        if (requiereEtiquetaApta(restriccion.getDescripcion())) {
-            return !tieneClasificacion;
-        }
-
-        return tieneClasificacion;
-    }
-
-    private boolean requiereEtiquetaApta(String descripcion) {
-        return descripcion != null
-                && (descripcion.startsWith("Sin") || descripcion.contains("Vegano"));
-    }
-
-    private String motivoConflictoSalud(String descripcion) {
-        String normalizada = normalizarDescripcion(descripcion);
-
-        if ("sin tacc".equals(normalizada)) {
-            return "Gluten (TACC)";
-        }
-        if ("sin sodio".equals(normalizada)) {
-            return "Alto sodio";
-        }
-        if ("sin azucar".equals(normalizada)) {
-            return "Azucar";
-        }
-        if ("apto vegano".equals(normalizada)) {
-            return "Ingredientes de origen animal";
-        }
-        if ("contiene lacteos".equals(normalizada)) {
-            return "Lacteos";
-        }
-
-        return descripcion;
-    }
-
-    private String normalizarDescripcion(String descripcion) {
-        if (descripcion == null) {
-            return "";
-        }
-
-        return Normalizer.normalize(descripcion, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .toLowerCase();
-    }
-
-    private boolean fueraDeHorario(
-            Alumno alumno,
-            Producto producto,
-            LocalDateTime momentoLocal
-    ) {
-        if (alumno.getRestriccionesHorarias() == null) {
-            return false;
-        }
-
-        return alumno.getRestriccionesHorarias().stream()
-                .anyMatch(restriccion -> restriccion.bloquea(producto, momentoLocal));
-    }
-
-    private boolean superaPresupuestoGeneral(
-            Producto producto,
-            BigDecimal presupuestoGeneralDisponible
-    ) {
-        return presupuestoGeneralDisponible != null
-                && producto.getPrecio().compareTo(presupuestoGeneralDisponible) > 0;
-    }
-
-    private boolean superaPresupuestoCategoria(
-            Producto producto,
-            Map<UUID, BigDecimal> presupuestoCategoriaDisponible
-    ) {
-        if (producto.getCategoria() == null) {
-            return false;
-        }
-
-        BigDecimal disponible = presupuestoCategoriaDisponible.get(producto.getCategoria().getId());
-        return disponible != null && producto.getPrecio().compareTo(disponible) > 0;
     }
 }

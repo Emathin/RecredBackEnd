@@ -1,7 +1,6 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Tutor;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,7 +32,7 @@ public class UpdateTutorDashboardConfig {
     }
 
     private void validatePlanLimits(Tutor tutor, String dashboardConfig) {
-        if (tutor.getUsuario() != null && tutor.getUsuario().getPlan() == TipoPlan.GRATUITO) {
+        if (tutor.getUsuario() != null && tutor.getUsuario().hasFreePlan()) {
             int cardsCount = countCards(dashboardConfig);
             if (cardsCount > 5) {
                 throw new IllegalArgumentException(

@@ -6,7 +6,6 @@ import com.recred.backend.domain.models.OperationalAlertSeverity;
 import com.recred.backend.domain.models.OperationalAlertType;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 
@@ -77,7 +76,7 @@ public class ListKiosqueroOperationalAlerts {
             List<KiosqueroOperationalAlert> alerts
     ) {
         long pending = orders.stream()
-                .filter(order -> order.getStatus() == EstadoCompra.PENDIENTE)
+                .filter(Purchase::isPending)
                 .count();
         if (pending >= MANY_PENDING_THRESHOLD) {
             alerts.add(alert(
@@ -163,14 +162,8 @@ public class ListKiosqueroOperationalAlerts {
             List<KiosqueroOperationalAlert> alerts
     ) {
         products.values().stream()
-                .filter(this::hasDailyCapacity)
+                .filter(Producto::hasDailyCapacityLimit)
                 .forEach(product -> addDailyCapacityAlert(buffetId, now, product, alerts));
-    }
-
-    private boolean hasDailyCapacity(Producto product) {
-        return product.getTipoManejoInventario() == TipoManejoInventario.CUPO_DIARIO
-                && product.getCupoMaximoDiario() != null
-                && product.getCupoMaximoDiario() > 0;
     }
 
     private void addDailyCapacityAlert(
@@ -186,7 +179,7 @@ public class ListKiosqueroOperationalAlerts {
                 ACTIVE_STATUSES
         );
         int remaining = product.getCupoMaximoDiario() - (int) reserved;
-        product.setCupoDisponibleDia(Math.max(0, remaining));
+        product.applyDailyCapacity(reserved);
         if (remaining <= Math.max(1, product.getCupoMaximoDiario() / 5)) {
             alerts.add(alert(
                     buffetId,

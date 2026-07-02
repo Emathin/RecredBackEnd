@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -360,24 +359,22 @@ class GenerateBuffetMenuTest {
 
     @Test
     void motivoConflictoSalud_ShouldReturnOriginalDescriptionWhenItHasNoKnownMapping() {
-        String result = ReflectionTestUtils.invokeMethod(
-                useCase,
-                "motivoConflictoSalud",
-                "Colorante"
-        );
+        ClasificacionSalud colorante = classification("Colorante");
+        alumno.setRestriccionesSalud(Set.of(colorante));
+        Producto product = product("Jugo", BigDecimal.TEN, 10);
+        product.setClasificacionesSalud(Set.of(classification(colorante.getId(), "Colorante")));
 
-        assertEquals("Colorante", result);
+        assertEquals("Colorante", alumno.healthConflictReasonFor(product).orElseThrow());
     }
 
     @Test
     void normalizarDescripcion_WhenDescriptionIsNull_ShouldReturnEmptyString() {
-        String result = ReflectionTestUtils.invokeMethod(
-                useCase,
-                "normalizarDescripcion",
-                (String) null
-        );
+        ClasificacionSalud restriction = classification(null);
+        alumno.setRestriccionesSalud(Set.of(restriction));
+        Producto product = product("Producto", BigDecimal.TEN, 10);
+        product.setClasificacionesSalud(Set.of(classification(restriction.getId(), null)));
 
-        assertEquals("", result);
+        assertTrue(alumno.healthConflictReasonFor(product).isEmpty());
     }
 
     private Producto product(String name, BigDecimal price, int stockDisponible) {
