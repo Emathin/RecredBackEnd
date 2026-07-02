@@ -1,8 +1,10 @@
 package com.recred.backend.unit.application;
 
+import com.recred.backend.application.ProductResponse;
 import com.recred.backend.application.SaveBulkProducts;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SaveProductCommand;
+
 import com.recred.backend.domain.models.Producto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,11 +56,11 @@ class SaveBulkProductsTest {
         when(saveProduct.execute(command1)).thenReturn(producto1);
         when(saveProduct.execute(command2)).thenReturn(producto2);
 
-        List<Producto> resultado = saveBulkProducts.execute(List.of(command1, command2));
+        List<ProductResponse> resultado = saveBulkProducts.execute(List.of(command1, command2));
 
         assertEquals(2, resultado.size());
-        assertEquals("Producto 1", resultado.get(0).getNombre());
-        assertEquals("Producto 2", resultado.get(1).getNombre());
+        assertEquals("Producto 1", resultado.get(0).nombre());
+        assertEquals("Producto 2", resultado.get(1).nombre());
 
         verify(saveProduct, times(1)).execute(command1);
         verify(saveProduct, times(1)).execute(command2);

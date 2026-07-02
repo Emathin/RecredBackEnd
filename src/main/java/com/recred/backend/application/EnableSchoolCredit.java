@@ -1,6 +1,5 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.exceptions.ActiveCreditExistsException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.CreditStatus;
@@ -43,13 +42,43 @@ public class EnableSchoolCredit {
     }
 
     @Transactional
-    public SchoolCredit execute(
-            UUID tutorId, UUID studentId, BigDecimal amount, Integer installments) {
-        Tutor tutor = tutorRepository.findById(tutorId)
-                .orElseThrow(() -> new IllegalArgumentException("Tutor not found"));
-        Alumno alumno = alumnoRepository.findById(studentId)
-                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+    public EnableSchoolCreditResponse execute(EnableSchoolCreditRequest request) {
+        request.validate();
 
+        Tutor tutor = validateParentAndGetTutor(request.tutorId());
+        Alumno alumno = getHijo(request.studentId());
+
+        Billetera wallet = getOrCreateWallet(alumno);
+
+        int installments = request.installments() == null || request.installments() < 1 
+                ? 1 
+                : request.installments();
+
+        SchoolCredit savedCredit = createAndSaveCredit(
+                alumno.getId(), request.amount(), installments);
+
+        wallet.enableCredit(request.amount());
+        walletRepository.save(wallet);
+
+        return new EnableSchoolCreditResponse(
+                savedCredit.getId(),
+                savedCredit.getAmount(),
+                savedCredit.getStatus().name(),
+                savedCredit.getInstallments()
+        );
+    }
+
+    private Tutor validateParentAndGetTutor(UUID tutorId) {
+        return tutorRepository.findById(tutorId)
+                .orElseThrow(() -> new IllegalArgumentException("Tutor not found"));
+    }
+
+    private Alumno getHijo(UUID studentId) {
+        return alumnoRepository.findById(studentId)
+                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+    }
+
+    private Billetera getOrCreateWallet(Alumno alumno) {
         Billetera wallet = alumno.getBilletera();
         if (wallet == null) {
             wallet = new Billetera();
@@ -60,37 +89,18 @@ public class EnableSchoolCredit {
             wallet.setSaldoDeudaInterno(BigDecimal.ZERO);
             wallet.setCreditoHabilitado(false);
             alumno.setBilletera(wallet);
-            alumno = alumnoRepository.save(alumno);
+            alumnoRepository.save(alumno);
         }
+        return wallet;
+    }
 
-        schoolCreditRepository.findByStudentIdAndStatus(studentId, CreditStatus.ACTIVE)
-                .ifPresent(c -> {
-                    throw new ActiveCreditExistsException(
-                            "The student already has an active credit."
-                    );
-                });
-
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Credit amount must be greater than zero");
-        }
-
-        if (installments == null || installments < 1) {
-            installments = 1;
-        }
-
+    private SchoolCredit createAndSaveCredit(UUID studentId, BigDecimal amount, int installments) {
         SchoolCredit newCredit = new SchoolCredit();
         newCredit.setStudentId(studentId);
         newCredit.setAmount(amount);
         newCredit.setStatus(CreditStatus.ACTIVE);
         newCredit.setInstallments(installments);
         newCredit.setCreatedAt(LocalDateTime.now(clock));
-
-        SchoolCredit savedCredit = schoolCreditRepository.save(newCredit);
-        
-        wallet.credit(amount);
-        wallet.setCreditoHabilitado(true);
-        walletRepository.save(wallet);
-
-        return savedCredit;
+        return schoolCreditRepository.save(newCredit);
     }
 }

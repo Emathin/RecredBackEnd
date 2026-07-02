@@ -29,4 +29,21 @@ public class ColegioRepositoryImpl implements ColegioRepository {
     public boolean existsActiveById(UUID id) {
         return springDataColegioRepository.existsByIdAndActivoTrue(id);
     }
+
+    @Override
+    public boolean existsByEmail(String email) {
+        return springDataColegioRepository.existsByEmail(email);
+    }
+
+    @Override
+    public boolean existsByCue(String cue) {
+        return springDataColegioRepository.existsByCue(cue);
+    }
+
+    @Override
+    public Colegio save(Colegio colegio) {
+        ColegioEntity entity = ColegioEntity.fromDomain(colegio);
+        ColegioEntity savedEntity = springDataColegioRepository.save(entity);
+        return savedEntity.toDomain();
+    }
 }

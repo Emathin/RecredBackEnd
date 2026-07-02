@@ -3,13 +3,10 @@ package com.recred.backend.application;
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventType;
-import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.PurchaseStatus;
-import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -58,47 +55,75 @@ public class UpdatePurchaseStatus {
     }
 
     @Transactional
-    public PurchaseStatus execute(UUID purchaseId, EstadoCompra requestedStatus) {
-        Purchase purchase = purchaseRepository.findById(purchaseId)
-                .orElseThrow(() -> new PurchaseNotFoundException(purchaseId));
+    public UpdatePurchaseStatusResponse execute(UpdatePurchaseStatusRequest request) {
+        requireRequest(request);
+        Purchase purchase = findPurchase(request.purchaseId());
         EstadoCompra previousStatus = purchase.getStatus();
+        purchase.changeTrackingStatusTo(request.requestedStatus());
+        handleStatusChangeSideEffects(purchase, previousStatus, request.requestedStatus());
+        Purchase savedPurchase = purchaseRepository.save(purchase);
+        publishOperationalEvent(savedPurchase, request.requestedStatus());
+        return response(savedPurchase);
+    }
 
-        if (requestedStatus == EstadoCompra.CANCELADO) {
-            InvalidPurchaseStatusTransitionException exception =
-                    new InvalidPurchaseStatusTransitionException(
-                            purchase.getStatus(),
-                            requestedStatus);
-            throw exception;
+    private void requireRequest(UpdatePurchaseStatusRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request is required");
         }
+    }
 
-        purchase.changeStatusTo(requestedStatus);
+    private UpdatePurchaseStatusResponse response(Purchase savedPurchase) {
+        return new UpdatePurchaseStatusResponse(
+                savedPurchase.getId(),
+                savedPurchase.studentIdOrNull(),
+                savedPurchase.statusName(),
+                savedPurchase.statusLabel(),
+                savedPurchase.getDate()
+        );
+    }
 
-        if (shouldConsumeReservation(purchase, requestedStatus)) {
+    private Purchase findPurchase(UUID purchaseId) {
+        return purchaseRepository.findById(purchaseId)
+                .orElseThrow(() -> new PurchaseNotFoundException(purchaseId));
+    }
+
+    private void handleStatusChangeSideEffects(
+            Purchase purchase,
+            EstadoCompra previousStatus,
+            EstadoCompra requestedStatus
+    ) {
+        handleInventoryUpdates(purchase, previousStatus, requestedStatus);
+        handleRefundIfNecessary(purchase, requestedStatus);
+    }
+
+    private void handleInventoryUpdates(
+            Purchase purchase,
+            EstadoCompra previousStatus,
+            EstadoCompra requestedStatus
+    ) {
+        if (purchase.shouldConsumeReservationWhenChangingTo(requestedStatus)) {
             inventoryAvailabilityService.consumeReservation(
                     purchase.getBuffetId(),
                     purchase.getItems(),
                     purchase.getId());
         }
 
-        if (shouldReleaseReservation(purchase, previousStatus, requestedStatus)) {
+        if (purchase.shouldReleaseReservationWhenChangingFrom(previousStatus, requestedStatus)) {
             inventoryAvailabilityService.releaseReservation(
                     purchase.getBuffetId(),
                     purchase.getItems(),
                     purchase.getId());
         }
+    }
 
-        if (shouldRefund(purchase, requestedStatus)) {
+    private void handleRefundIfNecessary(Purchase purchase, EstadoCompra requestedStatus) {
+        if (purchase.shouldRefundWhenChangingTo(requestedStatus)) {
             refund(purchase);
         }
-
-        Purchase savedPurchase = purchaseRepository.save(purchase);
-        publishOperationalEvent(savedPurchase, requestedStatus);
-
-        return PurchaseStatus.from(savedPurchase);
     }
 
     private void publishOperationalEvent(Purchase purchase, EstadoCompra requestedStatus) {
-        if (requestedStatus != EstadoCompra.VENCIDO) {
+        if (!purchase.shouldPublishExpirationEventFor(requestedStatus)) {
             return;
         }
 
@@ -108,43 +133,13 @@ public class UpdatePurchaseStatus {
                 "Pedido vencido o no retirado"));
     }
 
-    private boolean shouldConsumeReservation(Purchase purchase, EstadoCompra requestedStatus) {
-        return purchase.getTipo() == TipoCompra.ANTICIPADA
-                && requestedStatus == EstadoCompra.ENTREGADO;
-    }
-
-    private boolean shouldReleaseReservation(
-            Purchase purchase,
-            EstadoCompra previousStatus,
-            EstadoCompra requestedStatus) {
-        return purchase.getTipo() == TipoCompra.ANTICIPADA
-                && hasActiveReservation(previousStatus)
-                && (requestedStatus == EstadoCompra.RECHAZADO
-                        || requestedStatus == EstadoCompra.VENCIDO);
-    }
-
-    private boolean shouldRefund(Purchase purchase, EstadoCompra requestedStatus) {
-        return purchase.getTipo() == TipoCompra.ANTICIPADA
-                && requestedStatus == EstadoCompra.RECHAZADO;
-    }
-
     private void refund(Purchase purchase) {
-        if (purchase.getStudent() == null || purchase.getStudent().getId() == null) {
-            throw new IllegalStateException("Purchase does not have an associated student.");
-        }
-
-        Billetera wallet = walletRepository.findByStudentId(purchase.getStudent().getId())
+        Billetera wallet = walletRepository.findByStudentId(purchase.requireStudentId())
                 .orElseThrow(() ->
                         new IllegalStateException("Student wallet not found for refund."));
         wallet.credit(purchase.getTotalAmount());
         walletRepository.save(wallet);
         registerRefundMovement(wallet, purchase);
-    }
-
-    private boolean hasActiveReservation(EstadoCompra status) {
-        return status == EstadoCompra.PENDIENTE
-                || status == EstadoCompra.EN_PREPARACION
-                || status == EstadoCompra.LISTO;
     }
 
     private void registerRefundMovement(Billetera wallet, Purchase purchase) {

@@ -83,4 +83,27 @@ public class ColegioEntity {
 
         return colegio;
     }
+
+    public static ColegioEntity fromDomain(Colegio colegio) {
+        if (colegio == null) {
+            return null;
+        }
+        ColegioEntity entity = new ColegioEntity();
+        entity.setId(colegio.getId());
+        entity.setNombre(colegio.getNombre());
+        entity.setLatitud(colegio.getLatitud());
+        entity.setLongitud(colegio.getLongitud());
+        entity.setTelefono(colegio.getTelefono());
+        entity.setEmail(colegio.getEmail());
+        entity.setCue(colegio.getCue());
+        entity.setActivo(colegio.getActivo());
+        entity.setCreadoEn(colegio.getCreadoEn());
+        entity.setActualizadoEn(colegio.getActualizadoEn());
+        if (colegio.getNivel() != null) {
+            NivelEntity nivelEntity = new NivelEntity();
+            nivelEntity.setId(colegio.getNivel().getId());
+            entity.setNivelEntity(nivelEntity);
+        }
+        return entity;
+    }
 }

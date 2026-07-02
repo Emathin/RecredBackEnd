@@ -2,8 +2,10 @@ package com.recred.backend.unit.domain.models;
 
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.ProductoMedida;
+import com.recred.backend.domain.models.TipoManejoInventario;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -88,5 +90,95 @@ class ProductoTest {
         assertTrue(producto.getRequierePreparacion());
         assertFalse(producto.getActivo());
         assertEquals(10, producto.getStockActual());
+    }
+
+    @Test
+    void hasInventoryData_ShouldReturnTrueWhenProductHasInventoryFields() {
+        Producto producto = new Producto();
+
+        assertFalse(producto.hasInventoryData());
+
+        producto.setTipoManejoInventario(TipoManejoInventario.STOCK_EXACTO);
+
+        assertTrue(producto.hasInventoryData());
+    }
+
+    @Test
+    void needsRestock_ShouldReturnTrueForLowStockOrSoldOutProducts() {
+        Producto lowStock = new Producto();
+        lowStock.setStockActual(2);
+        lowStock.setStockDisponible(1);
+        lowStock.setStockMinimo(2);
+        Producto soldOut = new Producto();
+        soldOut.setEstadoInventario(EstadoInventario.SIN_STOCK);
+        Producto available = new Producto();
+        available.setStockActual(10);
+        available.setStockDisponible(8);
+        available.setStockMinimo(2);
+        available.setEstadoInventario(EstadoInventario.DISPONIBLE);
+
+        assertTrue(lowStock.hasLowStock());
+        assertTrue(lowStock.needsRestock());
+        assertTrue(soldOut.isSoldOut());
+        assertTrue(soldOut.needsRestock());
+        assertFalse(available.needsRestock());
+    }
+
+    @Test
+    void isSoldOut_ShouldReturnTrueForDisabledOrWithoutAvailableStock() {
+        Producto disabled = new Producto();
+        disabled.setEstadoInventario(EstadoInventario.DESACTIVADO);
+        Producto withoutAvailableStock = new Producto();
+        withoutAvailableStock.setStockDisponible(0);
+        withoutAvailableStock.setEstadoInventario(EstadoInventario.DISPONIBLE);
+
+        assertTrue(disabled.isSoldOut());
+        assertTrue(withoutAvailableStock.isSoldOut());
+    }
+
+    @Test
+    void reservedStockOrZeroAndPriceOrZero_ShouldNormalizeNullableValues() {
+        Producto producto = new Producto();
+
+        assertEquals(0, producto.reservedStockOrZero());
+        assertEquals(BigDecimal.ZERO, producto.priceOrZero());
+
+        producto.setStockReservado(4);
+        producto.setPrecio(new BigDecimal("15.00"));
+
+        assertEquals(4, producto.reservedStockOrZero());
+        assertEquals(new BigDecimal("15.00"), producto.priceOrZero());
+    }
+
+    @Test
+    void inventoryMode_WhenModeIsMissing_ShouldDefaultToExactStock() {
+        Producto producto = new Producto();
+
+        assertEquals(TipoManejoInventario.STOCK_EXACTO, producto.inventoryMode());
+    }
+
+    @Test
+    void dailyCapacity_WhenProductUsesDailyCapacity_ShouldExposeConfiguredValues() {
+        Producto producto = new Producto();
+        producto.setTipoManejoInventario(TipoManejoInventario.CUPO_DIARIO);
+        producto.setStockActual(20);
+        producto.setStockReservado(5);
+        producto.setCupoMaximoDiario(null);
+
+        assertEquals(20, producto.configuredDailyCapacity());
+        assertEquals(15, producto.dailyCapacityAvailable());
+        assertFalse(producto.hasDailyCapacityLimit());
+        producto.setCupoMaximoDiario(20);
+
+        assertTrue(producto.hasDailyCapacityLimit());
+        assertTrue(producto.isAvailableForSale());
+    }
+
+    @Test
+    void stockStatusHelpers_ShouldExposeSellerInventoryState() {
+        Producto producto = new Producto();
+        producto.setEstadoInventario(EstadoInventario.BAJO_STOCK);
+
+        assertTrue(producto.hasLowStockStatus());
     }
 }

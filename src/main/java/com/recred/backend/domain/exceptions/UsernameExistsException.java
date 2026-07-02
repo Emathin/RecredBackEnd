@@ -1,0 +1,7 @@
+package com.recred.backend.domain.exceptions;
+
+public class UsernameExistsException extends RuntimeException {
+    public UsernameExistsException(String message) {
+        super(message);
+    }
+}

@@ -1,12 +1,16 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.DetectStudentPreferences;
+import com.recred.backend.application.DetectStudentPreferencesRequest;
+import com.recred.backend.application.DetectStudentPreferencesResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
+import com.recred.backend.domain.repositories.PreferenceAIRepository.CompraResumen;
+import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
@@ -17,7 +21,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Collections;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +36,11 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DetectStudentPreferencesTest {
+
+    private static final String TITLE = "Title";
+    private static final String MESSAGE = "Message";
+    private static final String AI_REASON = "Reason";
+    private static final int PURCHASE_HISTORY_LIMIT = 20;
 
     @Mock
     private AlumnoRepository alumnoRepository;
@@ -59,165 +68,255 @@ class DetectStudentPreferencesTest {
 
     @Test
     void executeAndSaveAISuggestionWhenValidPreferenceIsDetected() {
-        UUID studentId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(studentId);
-
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
+        TestContext context = context();
+        Producto producto = product();
         List<Producto> stock = List.of(producto);
+        List<CompraResumen> historial = sufficientHistory();
+        PreferenciaDetectada preference = detectedPreference(producto.getId());
 
-        List<PreferenceAIRepository.CompraResumen> historial = List.of(
-                new PreferenceAIRepository.CompraResumen("A", "C", java.time.LocalDateTime.now()),
-                new PreferenceAIRepository.CompraResumen("B", "C", java.time.LocalDateTime.now()),
-                new PreferenceAIRepository.CompraResumen("C", "C", java.time.LocalDateTime.now())
-        );
+        givenAlumnoExists(context);
+        givenPurchaseHistory(context, historial);
+        givenAvailableStock(context, stock);
+        givenPreferenceDetected(context.alumno(), historial, stock, preference);
 
-        PreferenceAIRepository.PreferenciaDetectada preference = new PreferenceAIRepository.PreferenciaDetectada(
-                "Title", "Message", producto.getId().toString(), "Reason"
-        );
+        Optional<DetectStudentPreferencesResponse> result =
+                detectStudentPreferences.execute(request(context));
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(purchaseRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
-        when(inventoryRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(stock);
-        when(preferenceAIRepository.analizarPreferencias(alumno, historial, stock))
-                .thenReturn(Optional.of(preference));
-
-        detectStudentPreferences.execute(studentId, buffetId);
-
-        ArgumentCaptor<SugerenciaIAEntity> captor = ArgumentCaptor.forClass(SugerenciaIAEntity.class);
-        verify(sugerenciaIARepository).guardar(captor.capture());
-
-        SugerenciaIAEntity saved = captor.getValue();
-        assertEquals(TipoSugerenciaIA.PREFERENCIA_DETECTADA, saved.getTipo());
-        assertEquals(producto.getId(), saved.getProductoEntity().getId());
-        assertEquals(studentId, saved.getAlumnoEntity().getId());
-        assertEquals(buffetId, saved.getBuffetEntity().getId());
+        SugerenciaIAEntity saved = savedSuggestion();
+        assertTrue(result.isPresent());
+        assertEquals(TITLE, result.orElseThrow().titulo());
+        assertEquals(producto.getId(), result.orElseThrow().productoId());
+        assertSavedSuggestion(saved, context, producto.getId());
     }
 
     @Test
     void abortDetectionWhenInsufficientPurchaseHistory() {
-        UUID studentId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(studentId);
+        TestContext context = context();
 
-        List<PreferenceAIRepository.CompraResumen> historial = List.of(
-                new PreferenceAIRepository.CompraResumen("A", "C", java.time.LocalDateTime.now()),
-                new PreferenceAIRepository.CompraResumen("B", "C", java.time.LocalDateTime.now())
-        );
+        givenAlumnoExists(context);
+        givenPurchaseHistory(context, insufficientHistory());
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(purchaseRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
-
-        Optional<PreferenceAIRepository.PreferenciaDetectada> result =
-                detectStudentPreferences.execute(studentId, buffetId);
+        Optional<DetectStudentPreferencesResponse> result =
+                detectStudentPreferences.execute(request(context));
 
         assertTrue(result.isEmpty());
-        verify(preferenceAIRepository, never()).analizarPreferencias(any(), any(), any());
+        assertPreferenceWasNotAnalyzed();
+        assertSuggestionWasNotSaved();
     }
 
     @Test
     void discardAIResultWhenProductIdIsNotInAvailableStock() {
-        UUID studentId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(studentId);
+        TestContext context = context();
+        Producto availableProduct = product();
+        List<Producto> stock = List.of(availableProduct);
+        List<CompraResumen> historial = sufficientHistory();
+        PreferenciaDetectada preference = detectedPreference(UUID.randomUUID());
 
-        Producto productoEnStock = new Producto();
-        productoEnStock.setId(UUID.randomUUID());
-        List<Producto> stock = List.of(productoEnStock);
+        givenAlumnoExists(context);
+        givenPurchaseHistory(context, historial);
+        givenAvailableStock(context, stock);
+        givenPreferenceDetected(context.alumno(), historial, stock, preference);
 
-        List<PreferenceAIRepository.CompraResumen> historial = List.of(
-                new PreferenceAIRepository.CompraResumen("A", "C", java.time.LocalDateTime.now()),
-                new PreferenceAIRepository.CompraResumen("B", "C", java.time.LocalDateTime.now()),
-                new PreferenceAIRepository.CompraResumen("C", "C", java.time.LocalDateTime.now())
-        );
-
-        PreferenceAIRepository.PreferenciaDetectada preference = new PreferenceAIRepository.PreferenciaDetectada(
-                "Title", "Message", UUID.randomUUID().toString(), "Reason"
-        );
-
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(purchaseRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
-        when(inventoryRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(stock);
-        when(preferenceAIRepository.analizarPreferencias(alumno, historial, stock))
-                .thenReturn(Optional.of(preference));
-
-        Optional<PreferenceAIRepository.PreferenciaDetectada> result =
-                detectStudentPreferences.execute(studentId, buffetId);
+        Optional<DetectStudentPreferencesResponse> result =
+                detectStudentPreferences.execute(request(context));
 
         assertTrue(result.isEmpty());
-        verify(sugerenciaIARepository, never()).guardar(any());
+        assertSuggestionWasNotSaved();
     }
 
     @Test
     void abortDetectionWhenNoStockIsAvailableInBuffet() {
-        UUID studentId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(studentId);
+        TestContext context = context();
 
-        List<PreferenceAIRepository.CompraResumen> historial = List.of(
-                new PreferenceAIRepository.CompraResumen("A", "C", java.time.LocalDateTime.now()),
-                new PreferenceAIRepository.CompraResumen("B", "C", java.time.LocalDateTime.now()),
-                new PreferenceAIRepository.CompraResumen("C", "C", java.time.LocalDateTime.now())
-        );
+        givenAlumnoExists(context);
+        givenPurchaseHistory(context, sufficientHistory());
+        givenAvailableStock(context, List.of());
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(purchaseRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
-        when(inventoryRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(Collections.emptyList());
+        Optional<DetectStudentPreferencesResponse> result =
+                detectStudentPreferences.execute(request(context));
 
-        detectStudentPreferences.execute(studentId, buffetId);
-
-        verify(preferenceAIRepository, never()).analizarPreferencias(any(), any(), any());
-        verify(sugerenciaIARepository, never()).guardar(any());
+        assertTrue(result.isEmpty());
+        assertPreferenceWasNotAnalyzed();
+        assertSuggestionWasNotSaved();
     }
 
     @Test
     void doNothingWhenAINoPreferenceDetected() {
-        UUID studentId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(studentId);
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
+        TestContext context = context();
+        Producto producto = product();
         List<Producto> stock = List.of(producto);
+        List<CompraResumen> historial = sufficientHistory();
 
-        List<PreferenceAIRepository.CompraResumen> historial = List.of(
-                new PreferenceAIRepository.CompraResumen("A", "C", java.time.LocalDateTime.now()),
-                new PreferenceAIRepository.CompraResumen("B", "C", java.time.LocalDateTime.now()),
-                new PreferenceAIRepository.CompraResumen("C", "C", java.time.LocalDateTime.now())
-        );
+        givenAlumnoExists(context);
+        givenPurchaseHistory(context, historial);
+        givenAvailableStock(context, stock);
+        givenNoPreferenceDetected(context.alumno(), historial, stock);
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(purchaseRepository.findLastPurchasesByAlumno(studentId, 20)).thenReturn(historial);
-        when(inventoryRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(stock);
-        when(preferenceAIRepository.analizarPreferencias(alumno, historial, stock)).thenReturn(Optional.empty());
+        Optional<DetectStudentPreferencesResponse> result =
+                detectStudentPreferences.execute(request(context));
 
-        detectStudentPreferences.execute(studentId, buffetId);
-
-        verify(sugerenciaIARepository, never()).guardar(any());
+        assertTrue(result.isEmpty());
+        assertSuggestionWasNotSaved();
     }
 
     @Test
     void throwExceptionWhenTargetStudentDoesNotExist() {
-        UUID studentId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
+        TestContext context = context();
+        when(alumnoRepository.findById(context.studentId())).thenReturn(Optional.empty());
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
-
-        assertThrows(RuntimeException.class, () -> detectStudentPreferences.execute(studentId, buffetId));
+        assertThrows(RuntimeException.class,
+                () -> detectStudentPreferences.execute(request(context)));
     }
 
     @Test
     void rethrowExceptionWhenUnexpectedErrorOccursInProcess() {
+        TestContext context = context();
+        when(alumnoRepository.findById(context.studentId()))
+                .thenThrow(new RuntimeException("Database error"));
+
+        assertThrows(RuntimeException.class,
+                () -> detectStudentPreferences.execute(request(context)));
+    }
+
+    @Test
+    void rejectNullAlumnoIdBeforeReadingRepositories() {
+        DetectStudentPreferencesRequest request =
+                new DetectStudentPreferencesRequest(null, UUID.randomUUID());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> detectStudentPreferences.execute(request));
+
+        assertEquals("El alumno es obligatorio", exception.getMessage());
+        verify(alumnoRepository, never()).findById(any());
+    }
+
+    @Test
+    void rejectNullBuffetIdBeforeReadingRepositories() {
+        DetectStudentPreferencesRequest request =
+                new DetectStudentPreferencesRequest(UUID.randomUUID(), null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> detectStudentPreferences.execute(request));
+
+        assertEquals("El buffet es obligatorio", exception.getMessage());
+        verify(alumnoRepository, never()).findById(any());
+    }
+
+    private TestContext context() {
         UUID studentId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
+        return new TestContext(studentId, UUID.randomUUID(), alumno(studentId));
+    }
 
-        when(alumnoRepository.findById(studentId)).thenThrow(new RuntimeException("Database error"));
+    private DetectStudentPreferencesRequest request(TestContext context) {
+        return new DetectStudentPreferencesRequest(context.studentId(), context.buffetId());
+    }
 
-        assertThrows(RuntimeException.class, () -> detectStudentPreferences.execute(studentId, buffetId));
+    private Alumno alumno(UUID id) {
+        Alumno alumno = new Alumno();
+        alumno.setId(id);
+        return alumno;
+    }
+
+    private Producto product() {
+        Producto producto = new Producto();
+        producto.setId(UUID.randomUUID());
+        return producto;
+    }
+
+    private List<CompraResumen> sufficientHistory() {
+        return List.of(
+                purchase("A"),
+                purchase("B"),
+                purchase("C")
+        );
+    }
+
+    private List<CompraResumen> insufficientHistory() {
+        return List.of(
+                purchase("A"),
+                purchase("B")
+        );
+    }
+
+    private CompraResumen purchase(String productName) {
+        return new CompraResumen(productName, "C", LocalDateTime.now());
+    }
+
+    private PreferenciaDetectada detectedPreference(UUID productId) {
+        return new PreferenciaDetectada(
+                TITLE,
+                MESSAGE,
+                productId.toString(),
+                AI_REASON
+        );
+    }
+
+    private void givenAlumnoExists(TestContext context) {
+        when(alumnoRepository.findById(context.studentId()))
+                .thenReturn(Optional.of(context.alumno()));
+    }
+
+    private void givenPurchaseHistory(TestContext context, List<CompraResumen> historial) {
+        when(purchaseRepository.findLastPurchasesByAlumno(
+                context.studentId(),
+                PURCHASE_HISTORY_LIMIT))
+                .thenReturn(historial);
+    }
+
+    private void givenAvailableStock(TestContext context, List<Producto> stock) {
+        when(inventoryRepository.findAvailableProductsByBuffet(context.buffetId()))
+                .thenReturn(stock);
+    }
+
+    private void givenPreferenceDetected(
+            Alumno alumno,
+            List<CompraResumen> historial,
+            List<Producto> stock,
+            PreferenciaDetectada preference
+    ) {
+        when(preferenceAIRepository.analizarPreferencias(alumno, historial, stock))
+                .thenReturn(Optional.of(preference));
+    }
+
+    private void givenNoPreferenceDetected(
+            Alumno alumno,
+            List<CompraResumen> historial,
+            List<Producto> stock
+    ) {
+        when(preferenceAIRepository.analizarPreferencias(alumno, historial, stock))
+                .thenReturn(Optional.empty());
+    }
+
+    private SugerenciaIAEntity savedSuggestion() {
+        ArgumentCaptor<SugerenciaIAEntity> captor =
+                ArgumentCaptor.forClass(SugerenciaIAEntity.class);
+        verify(sugerenciaIARepository).guardar(captor.capture());
+        return captor.getValue();
+    }
+
+    private void assertSavedSuggestion(
+            SugerenciaIAEntity saved,
+            TestContext context,
+            UUID productId
+    ) {
+        assertEquals(TipoSugerenciaIA.PREFERENCIA_DETECTADA, saved.getTipo());
+        assertEquals(TITLE, saved.getTitulo());
+        assertEquals(MESSAGE, saved.getMensaje());
+        assertEquals(productId, saved.getProductoEntity().getId());
+        assertEquals(context.studentId(), saved.getAlumnoEntity().getId());
+        assertEquals(context.buffetId(), saved.getBuffetEntity().getId());
+        assertEquals(productId.toString(), saved.getMetadata().get("productoId"));
+        assertEquals(AI_REASON, saved.getMetadata().get("razonIA"));
+    }
+
+    private void assertPreferenceWasNotAnalyzed() {
+        verify(preferenceAIRepository, never()).analizarPreferencias(any(), any(), any());
+    }
+
+    private void assertSuggestionWasNotSaved() {
+        verify(sugerenciaIARepository, never()).guardar(any());
+    }
+
+    private record TestContext(UUID studentId, UUID buffetId, Alumno alumno) {
     }
 }

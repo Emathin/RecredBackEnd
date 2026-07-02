@@ -3,6 +3,7 @@ package com.recred.backend.unit.application;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
+import com.recred.backend.application.PurchaseSuggestIAResponse;
 import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ClasificacionSalud;
@@ -11,7 +12,6 @@ import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.services.PushNotificationSender;
 import com.recred.backend.domain.services.UsuarioService;
 import org.junit.jupiter.api.DisplayName;
@@ -40,8 +40,6 @@ class NotifyPurchaseSuggestionsTest {
 
     @Mock
     private PurchaseSuggestIA purchaseSuggestIA;
-    @Mock
-    private AlumnoRepository alumnoRepository;
     @Mock
     private PushNotificationSender pushNotificationSender;
     @Mock
@@ -72,7 +70,7 @@ class NotifyPurchaseSuggestionsTest {
         usuario.setId(userId);
         usuario.setRol(RolUsuario.ALUMNO);
 
-        when(purchaseSuggestIA.execute(cognitoId)).thenReturn(Optional.of(sugerencia));
+        when(purchaseSuggestIA.execute(cognitoId)).thenReturn(Optional.of(toResponse(sugerencia)));
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
 
 
@@ -117,7 +115,7 @@ class NotifyPurchaseSuggestionsTest {
                 .build();
         Usuario usuario = new Usuario();
         usuario.setId(userId);
-        when(purchaseSuggestIA.execute(cognitoId)).thenReturn(Optional.of(sugerencia));
+        when(purchaseSuggestIA.execute(cognitoId)).thenReturn(Optional.of(toResponse(sugerencia)));
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
 
         PushNotification notification = useCase.execute(cognitoId);
@@ -138,7 +136,7 @@ class NotifyPurchaseSuggestionsTest {
 
         PushNotification notification = useCase.createNotification(
                 userId,
-                sugerencia,
+                toResponse(sugerencia),
                 "ALUMNO"
         );
 
@@ -161,7 +159,6 @@ class NotifyPurchaseSuggestionsTest {
                 .thenThrow(new JsonProcessingException("boom") {});
         NotifyPurchaseSuggestions failingUseCase = new NotifyPurchaseSuggestions(
                 purchaseSuggestIA,
-                alumnoRepository,
                 pushNotificationSender,
                 usuarioService,
                 failingMapper
@@ -174,7 +171,7 @@ class NotifyPurchaseSuggestionsTest {
 
         PushNotification notification = failingUseCase.createNotification(
                 UUID.randomUUID(),
-                sugerencia,
+                toResponse(sugerencia),
                 "ALUMNO"
         );
 
@@ -199,7 +196,7 @@ class NotifyPurchaseSuggestionsTest {
 
         PushNotification notification = useCase.createNotification(
                 UUID.randomUUID(),
-                sugerencia,
+                toResponse(sugerencia),
                 "PADRE"
         );
 
@@ -233,5 +230,22 @@ class NotifyPurchaseSuggestionsTest {
         producto.setCategoria(categoria);
         producto.setClasificacionesSalud(Set.of(clasificacion));
         return producto;
+    }
+
+    private PurchaseSuggestIAResponse toResponse(SugerenciaIA s) {
+        return new PurchaseSuggestIAResponse(new PurchaseSuggestIAResponse.SugerenciaIADTO(
+                s.getId(), s.getAlumnoId(), s.getBuffetId(), s.getProductoId(),
+                s.getProducto() != null ? new PurchaseSuggestIAResponse.ProductoDTO(
+                        s.getProducto().getId(), s.getProducto().getNombre(), null,
+                        s.getProducto().getPrecio(), s.getProducto().getDescripcion(),
+                        s.getProducto().getCategoria() != null ? s.getProducto().getCategoria().getId() : null,
+                        s.getProducto().getCategoria() != null ? s.getProducto().getCategoria().getDescripcion() : null,
+                        s.getProducto().getClasificacionesSalud() != null ?
+                                s.getProducto().getClasificacionesSalud().stream()
+                                        .map(c -> new PurchaseSuggestIAResponse.ClasificacionSaludDTO(c.getId(), c.getDescripcion()))
+                                        .toList() : List.of()
+                ) : null,
+                null, s.getTitulo(), s.getMensaje(), null
+        ));
     }
 }

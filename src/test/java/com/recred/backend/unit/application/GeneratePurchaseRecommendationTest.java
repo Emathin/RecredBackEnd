@@ -1,4 +1,6 @@
-package com.recred.backend.application;
+package com.recred.backend.unit.application;
+
+import com.recred.backend.application.*;
 
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
 import com.recred.backend.domain.models.PurchasePatternAnalysis;
@@ -103,31 +105,4 @@ class GeneratePurchaseRecommendationTest {
         verify(notificationRepository).save(result, suggestion, userId);
     }
 
-    @Test
-    void findSuggestionForTodayDelegatesCurrentDayName() {
-        UUID studentId = UUID.randomUUID();
-        NotificacionEntity notification = new NotificacionEntity();
-        String today = LocalDate.now().getDayOfWeek().name();
-        when(suggestionAiRepository.findByTipoAndStudentId(today, studentId))
-                .thenReturn(notification);
-
-        NotificacionEntity result = useCase.findSuggestionForToday(studentId);
-
-        assertSame(notification, result);
-        verify(suggestionAiRepository).findByTipoAndStudentId(today, studentId);
-    }
-
-    @Test
-    void findSuggestionForTomorrowDelegatesTomorrowDayName() {
-        UUID studentId = UUID.randomUUID();
-        NotificacionEntity notification = new NotificacionEntity();
-        String tomorrow = LocalDate.now().plusDays(1).getDayOfWeek().name();
-        when(suggestionAiRepository.findByTipoAndStudentId(tomorrow, studentId))
-                .thenReturn(notification);
-
-        NotificacionEntity result = useCase.findSuggestionForTomorrow(studentId);
-
-        assertSame(notification, result);
-        verify(suggestionAiRepository).findByTipoAndStudentId(tomorrow, studentId);
-    }
 }

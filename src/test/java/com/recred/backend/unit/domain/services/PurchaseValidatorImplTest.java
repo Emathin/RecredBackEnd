@@ -1,4 +1,6 @@
-package com.recred.backend.domain.services;
+package com.recred.backend.unit.domain.services;
+
+import com.recred.backend.domain.services.*;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CategoriaProducto;

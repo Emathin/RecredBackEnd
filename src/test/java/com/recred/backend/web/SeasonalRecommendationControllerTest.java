@@ -49,7 +49,7 @@ class SeasonalRecommendationControllerTest {
     void dadoQueElCasoDeUsoRespondeCorrectamente_cuandoSeLlamaAlEndpoint_entoncesRetorna200ConJson() throws Exception {
         RecommendationResponseDTO respuesta = new RecommendationResponseDTO();
         respuesta.setSugerences(List.of(
-                new SugerenciaDTO("Helados y Congelados", "AUMENTAR", "Clima caluroso.")));
+                new SugerenciaDTO("Bebidas Frias", "AUMENTAR", "Clima caluroso.", "🧊")));
         respuesta.setPromocionalTip("Promo 2x1 en helados.");
         when(useCase.execute(anyDouble(), anyDouble(), any())).thenReturn(respuesta);
 
@@ -59,7 +59,7 @@ class SeasonalRecommendationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tip_promocional").value("Promo 2x1 en helados."))
-                .andExpect(jsonPath("$.sugerencias[0].categoria").value("Helados y Congelados"))
+                .andExpect(jsonPath("$.sugerencias[0].categoria").value("Bebidas Frias"))
                 .andExpect(jsonPath("$.sugerencias[0].accion").value("AUMENTAR"));
     }
 

@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.scheduling;
 
 import com.recred.backend.application.GenerateHealthyProductRecommendations;
+import com.recred.backend.application.GenerateHealthyProductRecommendationsRequest;
 import com.recred.backend.config.HealthyRecommendationProperties;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,8 @@ public class HealthyRecommendationJob {
             return;
         }
 
-        generateHealthyProductRecommendations.execute();
+        generateHealthyProductRecommendations.execute(
+                new GenerateHealthyProductRecommendationsRequest()
+        );
     }
 }

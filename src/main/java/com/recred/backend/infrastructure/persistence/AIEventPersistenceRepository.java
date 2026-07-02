@@ -69,6 +69,7 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         ).stream().map(this::mapToResult).toList();
     }
 
+    @SuppressWarnings("unchecked")
     private ProductRecommendationResult mapToResult(AIEventEntity entity) {
         ProductChangeRecommendation recommendation = new ProductChangeRecommendation();
         recommendation.setId(entity.getProductoEntity().getId());
@@ -165,6 +166,7 @@ public class AIEventPersistenceRepository implements AIEventRepository {
         return data;
     }
     @Override
+    @SuppressWarnings("unchecked")
     public void registerProductChangeRecommendation(ProductRecommendationResult result) {
         AIEventEntity aiEventEntity = new AIEventEntity();
         aiEventEntity.setType(AIEventType.PRODUCTO_CAMBIO);

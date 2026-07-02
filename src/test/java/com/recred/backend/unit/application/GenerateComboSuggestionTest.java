@@ -1,4 +1,6 @@
-package com.recred.backend.application;
+package com.recred.backend.unit.application;
+
+import com.recred.backend.application.*;
 
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ComboSuggestion;
@@ -27,15 +29,18 @@ class GenerateComboSuggestionTest {
     private ProductRepository productRepository;
     @Mock
     private KiosqueroRepository kiosqueroRepository;
+    @Mock
+    private com.recred.backend.domain.repositories.UsuarioRepository usuarioRepository;
 
     private GenerateComboSuggestion useCase;
     private UUID userId;
     private UUID productId;
     private UUID buffetId;
+    private final String cognitoSubject = "test-sub";
 
     @BeforeEach
     void setUp() {
-        useCase = new GenerateComboSuggestion(productRepository, kiosqueroRepository);
+        useCase = new GenerateComboSuggestion(productRepository, kiosqueroRepository, usuarioRepository);
         userId = UUID.randomUUID();
         productId = UUID.randomUUID();
         buffetId = UUID.randomUUID();
@@ -52,32 +57,45 @@ class GenerateComboSuggestionTest {
         Producto suggestion2 = createProduct(UUID.randomUUID(), "Product B2", categoryB);
         Producto suggestion3 = createProduct(UUID.randomUUID(), "Product B3", categoryB);
 
+        com.recred.backend.domain.models.Usuario usuario = new com.recred.backend.domain.models.Usuario();
+        usuario.setId(userId);
+
+        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(usuario));
         when(kiosqueroRepository.findBuffetByUsuarioId(userId)).thenReturn(buffetId);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(productRepository.findBuffetTop3MostSold(buffetId, categoryA.getId()))
                 .thenReturn(List.of(suggestion1, suggestion2, suggestion3));
 
-        ComboSuggestion result = useCase.execute(productId, userId);
+        GenerateComboSuggestionRequest request = new GenerateComboSuggestionRequest(productId, cognitoSubject);
+        GenerateComboSuggestionResponse result = useCase.execute(request);
 
-        assertEquals(productId, result.getIdProduct());
-        assertEquals("Product A", result.getProductName());
-        assertEquals(3, result.getSuggestedProducts().size());
-        assertEquals(suggestion1.getId(), result.getSuggestedProducts().get(0).getId());
+        assertEquals(productId, result.idProduct());
+        assertEquals("Product A", result.productName());
+        assertEquals(3, result.suggestedProducts().size());
+        assertEquals(suggestion1.getId(), result.suggestedProducts().get(0).id());
     }
 
     @Test
     void execute_ShouldThrowException_WhenBuffetNotFound() {
+        com.recred.backend.domain.models.Usuario usuario = new com.recred.backend.domain.models.Usuario();
+        usuario.setId(userId);
+        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(usuario));
         when(kiosqueroRepository.findBuffetByUsuarioId(userId)).thenReturn(null);
 
-        assertThrows(RuntimeException.class, () -> useCase.execute(productId, userId));
+        GenerateComboSuggestionRequest request = new GenerateComboSuggestionRequest(productId, cognitoSubject);
+        assertThrows(RuntimeException.class, () -> useCase.execute(request));
     }
 
     @Test
     void execute_ShouldThrowException_WhenProductNotFound() {
+        com.recred.backend.domain.models.Usuario usuario = new com.recred.backend.domain.models.Usuario();
+        usuario.setId(userId);
+        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(usuario));
         when(kiosqueroRepository.findBuffetByUsuarioId(userId)).thenReturn(buffetId);
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> useCase.execute(productId, userId));
+        GenerateComboSuggestionRequest request = new GenerateComboSuggestionRequest(productId, cognitoSubject);
+        assertThrows(RuntimeException.class, () -> useCase.execute(request));
     }
 
     private Producto createProduct(UUID id, String name, CategoriaProducto category) {

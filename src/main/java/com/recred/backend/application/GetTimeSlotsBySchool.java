@@ -14,7 +14,31 @@ public class GetTimeSlotsBySchool {
         this.repository = repository;
     }
 
-    public List<FranjaHoraria> execute(UUID colegioId) {
+    public List<GetTimeSlotsBySchoolResponse> execute(GetTimeSlotsBySchoolRequest request) {
+        List<FranjaHoraria> slots = this.findTimeSlotsByColegioId(request.colegioId());
+        return this.mapToResponse(slots);
+    }
+
+    private List<FranjaHoraria> findTimeSlotsByColegioId(UUID colegioId) {
         return repository.findAllByColegioId(colegioId);
     }
-}
+
+    private List<GetTimeSlotsBySchoolResponse> mapToResponse(List<FranjaHoraria> slots) {
+        return slots.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    private GetTimeSlotsBySchoolResponse mapToResponse(FranjaHoraria slot) {
+        return new GetTimeSlotsBySchoolResponse(
+                slot.getId(),
+                slot.getColegioId(),
+                slot.getDescripcion(),
+                slot.getHoraInicio(),
+                slot.getHoraFin(),
+                slot.isActivo(),
+                slot.getCupoMaximo(),
+                slot.getMinutosCorte()
+        );
+    }
+}

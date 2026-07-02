@@ -1,8 +1,10 @@
 package com.recred.backend.application;
 
+
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.RolChatMensaje;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +32,7 @@ class SchoolAssistantPendingPurchaseParserTest {
                         "tipo", "COMPRA_RAPIDA",
                         "alumnoId", studentId.toString(),
                         "buffetId", buffetId.toString(),
+                        "fechaRetiro", "2026-06-16",
                         "recreo", "primer recreo",
                         "items", List.of(
                                 Map.of("productoId", productId.toString(), "cantidad", "2"),
@@ -45,6 +48,8 @@ class SchoolAssistantPendingPurchaseParserTest {
         assertTrue(result.isPresent());
         assertEquals(studentId, result.orElseThrow().studentId());
         assertEquals(buffetId, result.orElseThrow().buffetId());
+        assertEquals(LocalDate.of(2026, 6, 16),
+                result.orElseThrow().pickupDate().orElseThrow());
         assertEquals(RecessTime.FIRST_RECESS, result.orElseThrow().recessTime().orElseThrow());
         assertEquals(1, result.orElseThrow().items().size());
         assertEquals(productId, result.orElseThrow().items().get(0).productId());

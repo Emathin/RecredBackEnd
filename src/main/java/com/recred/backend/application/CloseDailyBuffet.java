@@ -1,17 +1,17 @@
 package com.recred.backend.application;
 
-import com.recred.backend.application.ExpireAdvancePurchases.ExpirationResult;
+import com.recred.backend.application.ExpireAdvancePurchasesRequest;
+import com.recred.backend.application.ExpireAdvancePurchasesResponse;
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
 import com.recred.backend.domain.models.DailyBuffetClose;
-import com.recred.backend.domain.models.DailyBuffetReport;
-import com.recred.backend.domain.models.DailyCloseResult;
 import com.recred.backend.domain.repositories.DailyBuffetCloseRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Optional;
 import java.util.UUID;
 
 public class CloseDailyBuffet {
@@ -44,27 +44,36 @@ public class CloseDailyBuffet {
     }
 
     @Transactional
-    public DailyCloseResult execute(UUID buffetId, LocalDate date) {
-        return dailyBuffetCloseRepository.findByBuffetAndDate(buffetId, date)
+    public CloseDailyBuffetResponse execute(CloseDailyBuffetRequest request) {
+        validate(request);
+        return dailyBuffetCloseRepository.findByBuffetAndDate(request.buffetId(), request.date())
                 .map(close -> result(close, true))
-                .orElseGet(() -> close(buffetId, date));
+                .orElseGet(() -> close(request));
     }
 
-    private DailyCloseResult close(UUID buffetId, LocalDate date) {
-        ExpirationResult expiration = expireAdvancePurchases.executeDetailed(
-                buffetId,
-                date.atTime(LocalTime.MAX));
-        DailyBuffetReport report = generateDailyBuffetReport.execute(buffetId, date);
+    private void validate(CloseDailyBuffetRequest request) {
+        required(request, "request is required");
+        required(request.buffetId(), "buffetId is required");
+        required(request.date(), "date is required");
+    }
+
+    private CloseDailyBuffetResponse close(CloseDailyBuffetRequest request) {
+        ExpireAdvancePurchasesResponse expiration = expireAdvancePurchases.execute(
+                new ExpireAdvancePurchasesRequest(
+                        request.buffetId(), request.date().atTime(LocalTime.MAX)
+                )
+        );
+        GenerateDailyBuffetReportResponse report = dailyReport(request.buffetId(), request.date());
         DailyBuffetClose close = dailyBuffetCloseRepository.saveWithInventorySnapshot(
                 new DailyBuffetClose(
                         null,
-                        buffetId,
-                        date,
+                        request.buffetId(),
+                        request.date(),
                         expiration.expiredPurchases(),
                         expiration.releasedReservations(),
                         BigDecimal.ZERO
                 ),
-                report.inventory()
+                report.inventorySnapshotDomain()
         );
         publishDailyReportChanged(close);
         return result(close, false, report);
@@ -78,25 +87,35 @@ public class CloseDailyBuffet {
         ));
     }
 
-    private DailyCloseResult result(DailyBuffetClose close, boolean alreadyClosed) {
+    private CloseDailyBuffetResponse result(DailyBuffetClose close, boolean alreadyClosed) {
         return result(
                 close,
                 alreadyClosed,
-                generateDailyBuffetReport.execute(close.buffetId(), close.date())
+                dailyReport(close.buffetId(), close.date())
         );
     }
 
-    private DailyCloseResult result(
+    private CloseDailyBuffetResponse result(
             DailyBuffetClose close,
             boolean alreadyClosed,
-            DailyBuffetReport report
+            GenerateDailyBuffetReportResponse report
     ) {
-        return new DailyCloseResult(
+        return new CloseDailyBuffetResponse(
                 alreadyClosed,
                 close.expiredPurchases(),
                 close.releasedReservations(),
                 close.refundedCredits(),
                 report
         );
+    }
+
+    private GenerateDailyBuffetReportResponse dailyReport(UUID buffetId, LocalDate date) {
+        return generateDailyBuffetReport.execute(
+                new GenerateDailyBuffetReportRequest(buffetId, date));
+    }
+
+    private <T> T required(T value, String message) {
+        return Optional.ofNullable(value)
+                .orElseThrow(() -> new IllegalArgumentException(message));
     }
 }

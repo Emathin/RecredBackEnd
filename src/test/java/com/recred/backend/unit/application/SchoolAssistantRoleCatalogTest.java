@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+
 import com.recred.backend.domain.models.SchoolAssistantActionType;
 import com.recred.backend.domain.models.SchoolAssistantCapability;
 import com.recred.backend.domain.models.SchoolAssistantRole;

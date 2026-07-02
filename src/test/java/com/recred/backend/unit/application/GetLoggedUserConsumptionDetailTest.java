@@ -1,7 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
-import com.recred.backend.application.StudentConsumptionCommand;
+import com.recred.backend.application.GetLoggedUserConsumptionDetailRequest;
+import com.recred.backend.application.GetLoggedUserConsumptionDetailResponse;
 import com.recred.backend.domain.exceptions.AlumnoRequeridoParaConsumoException;
 import com.recred.backend.domain.exceptions.ConsumoAlumnoNoAutorizadoException;
 import com.recred.backend.domain.exceptions.RangoFechasConsumoInvalidoException;
@@ -10,7 +11,6 @@ import com.recred.backend.domain.models.ConsumptionRequester;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.RolUsuario;
-import com.recred.backend.domain.models.StudentConsumptionDetail;
 import com.recred.backend.domain.models.StudentConsumptionProduct;
 import com.recred.backend.domain.models.StudentConsumptionPurchase;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
@@ -23,7 +23,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,278 +66,266 @@ class GetLoggedUserConsumptionDetailTest {
     }
 
     @Test
-    void studentUserCanSeeOwnConsumptionWithoutSendingStudentId() {
+    void execute_WhenStudentOwnsConsumption_ShouldReturnDefaultPeriodDetail() {
         UUID userId = UUID.randomUUID();
         UUID studentId = UUID.randomUUID();
         StudentConsumptionPurchase purchase = purchase("1200.00");
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.ALUMNO,
-                        studentId
-                )));
-        when(consumptionRepository.findPurchasesByStudentIdAndDateRange(
-                eq(studentId),
-                anyCollection(),
-                eq(LocalDateTime.parse("2026-04-28T00:00:00")),
-                eq(LocalDateTime.parse("2026-05-28T23:59:59.999999999"))
-        )).thenReturn(List.of(purchase));
-
-        StudentConsumptionDetail detail = useCase.execute(
-                COGNITO_SUBJECT,
-                new StudentConsumptionCommand(
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty()
-                )
+        givenAuthenticatedRequester(new ConsumptionRequester(
+                userId,
+                RolUsuario.ALUMNO,
+                studentId
+        ));
+        givenPurchasesFound(
+                studentId,
+                LocalDateTime.parse("2026-04-28T00:00:00"),
+                LocalDateTime.parse("2026-05-28T23:59:59.999999999"),
+                purchase
         );
 
-        assertEquals(studentId, detail.studentId());
-        assertEquals(LocalDate.of(2026, 4, 28), detail.from());
-        assertEquals(LocalDate.of(2026, 5, 28), detail.to());
-        assertEquals(new BigDecimal("1200.00"), detail.totalAmount());
-        assertEquals(1, detail.purchaseCount());
+        GetLoggedUserConsumptionDetailResponse response =
+                whenGettingConsumption(null, null, null);
 
+        assertEquals(studentId, response.studentId());
+        assertEquals(LocalDate.of(2026, 4, 28), response.from());
+        assertEquals(LocalDate.of(2026, 5, 28), response.to());
+        assertEquals(new BigDecimal("1200.00"), response.totalAmount());
+        assertEquals(1, response.purchaseCount());
+        assertEquals("ENTREGADO", response.purchases().get(0).status());
+        assertEquals("CREDITOS", response.purchases().get(0).paymentMethod());
         verify(consumptionRepository).findPurchasesByStudentIdAndDateRange(
                 eq(studentId),
-                eq(Set.of(EstadoCompra.ENTREGADO)),
+                eq(EstadoCompra.studentConsumptionStatuses()),
                 any(),
                 any()
         );
     }
 
     @Test
-    void tutorUserCanSeeAssociatedStudentConsumption() {
+    void execute_WhenTutorCanAccessStudent_ShouldReturnRequestedPeriodDetail() {
         UUID userId = UUID.randomUUID();
         UUID studentId = UUID.randomUUID();
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.PADRE,
-                        null
-                )));
-        when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(true);
-        when(consumptionRepository.findPurchasesByStudentIdAndDateRange(
-                eq(studentId),
-                anyCollection(),
-                eq(LocalDateTime.parse("2026-05-01T00:00:00")),
-                eq(LocalDateTime.parse("2026-05-20T23:59:59.999999999"))
-        )).thenReturn(List.of(purchase("800.00"), purchase("200.00")));
-
-        StudentConsumptionDetail detail = useCase.execute(
-                COGNITO_SUBJECT,
-                new StudentConsumptionCommand(
-                        Optional.of(studentId),
-                        Optional.of(LocalDate.of(2026, 5, 1)),
-                        Optional.of(LocalDate.of(2026, 5, 20))
-                )
+        givenAuthenticatedRequester(new ConsumptionRequester(
+                userId,
+                RolUsuario.PADRE,
+                null
+        ));
+        givenTutorCanAccessStudent(userId, studentId, true);
+        givenPurchasesFound(
+                studentId,
+                LocalDateTime.parse("2026-05-01T00:00:00"),
+                LocalDateTime.parse("2026-05-20T23:59:59.999999999"),
+                purchase("800.00"),
+                purchase("200.00")
         );
 
-        assertEquals(new BigDecimal("1000.00"), detail.totalAmount());
-        assertEquals(2, detail.purchaseCount());
+        GetLoggedUserConsumptionDetailResponse response = whenGettingConsumption(
+                studentId,
+                LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 20)
+        );
+
+        assertEquals(new BigDecimal("1000.00"), response.totalAmount());
+        assertEquals(2, response.purchaseCount());
         verify(accessRepository).tutorCanAccessStudent(userId, studentId);
     }
 
     @Test
-    void tutorUserMustSendStudentId() {
+    void execute_WhenTutorDoesNotSendStudentId_ShouldThrowException() {
         UUID userId = UUID.randomUUID();
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.PADRE,
-                        null
-                )));
+        givenAuthenticatedRequester(new ConsumptionRequester(
+                userId,
+                RolUsuario.PADRE,
+                null
+        ));
 
         assertThrows(
                 AlumnoRequeridoParaConsumoException.class,
-                () -> useCase.execute(
-                        COGNITO_SUBJECT,
-                        new StudentConsumptionCommand(
-                                Optional.empty(),
-                                Optional.empty(),
-                                Optional.empty()
-                        )
-                )
+                () -> whenGettingConsumption(null, null, null)
         );
-        verify(consumptionRepository, never()).findPurchasesByStudentIdAndDateRange(
-                any(),
-                anyCollection(),
-                any(),
-                any()
-        );
+        thenConsumptionWasNotQueried();
     }
 
     @Test
-    void tutorUserCannotSeeUnassociatedStudentConsumption() {
+    void execute_WhenTutorCannotAccessStudent_ShouldThrowException() {
         UUID userId = UUID.randomUUID();
         UUID studentId = UUID.randomUUID();
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.PADRE,
-                        null
-                )));
-        when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(false);
+        givenAuthenticatedRequester(new ConsumptionRequester(
+                userId,
+                RolUsuario.PADRE,
+                null
+        ));
+        givenTutorCanAccessStudent(userId, studentId, false);
 
         assertThrows(
                 ConsumoAlumnoNoAutorizadoException.class,
-                () -> useCase.execute(
-                        COGNITO_SUBJECT,
-                        new StudentConsumptionCommand(
-                                Optional.of(studentId),
-                                Optional.empty(),
-                                Optional.empty()
-                        )
-                )
+                () -> whenGettingConsumption(studentId, null, null)
         );
-        verify(consumptionRepository, never()).findPurchasesByStudentIdAndDateRange(
-                any(),
-                anyCollection(),
-                any(),
-                any()
+        thenConsumptionWasNotQueried();
+    }
+
+    @Test
+    void execute_WhenStudentSendsOwnStudentId_ShouldReturnConsumption() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        givenAuthenticatedRequester(new ConsumptionRequester(
+                userId,
+                RolUsuario.ALUMNO,
+                studentId
+        ));
+        givenAnyPurchasesFound(studentId);
+
+        GetLoggedUserConsumptionDetailResponse response = whenGettingConsumption(
+                studentId,
+                null,
+                null
+        );
+
+        assertEquals(studentId, response.studentId());
+    }
+
+    @Test
+    void execute_WhenStudentSendsAnotherStudentId_ShouldThrowException() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID anotherStudentId = UUID.randomUUID();
+        givenAuthenticatedRequester(new ConsumptionRequester(
+                userId,
+                RolUsuario.ALUMNO,
+                studentId
+        ));
+
+        assertThrows(
+                ConsumoAlumnoNoAutorizadoException.class,
+                () -> whenGettingConsumption(anotherStudentId, null, null)
         );
     }
 
     @Test
-    void studentUserCanSendOwnStudentId() {
+    void execute_WhenStudentHasNoLinkedStudent_ShouldThrowException() {
+        UUID userId = UUID.randomUUID();
+        givenAuthenticatedRequester(new ConsumptionRequester(
+                userId,
+                RolUsuario.ALUMNO,
+                null
+        ));
+
+        assertThrows(
+                ConsumoAlumnoNoAutorizadoException.class,
+                () -> whenGettingConsumption(null, null, null)
+        );
+    }
+
+    @Test
+    void execute_WhenRequesterRoleCannotAccessConsumption_ShouldThrowException() {
         UUID userId = UUID.randomUUID();
         UUID studentId = UUID.randomUUID();
+        givenAuthenticatedRequester(new ConsumptionRequester(
+                userId,
+                RolUsuario.ADMIN,
+                null
+        ));
+
+        assertThrows(
+                ConsumoAlumnoNoAutorizadoException.class,
+                () -> whenGettingConsumption(studentId, null, null)
+        );
+    }
+
+    @Test
+    void execute_WhenDateRangeIsInvalid_ShouldThrowException() {
+        UUID userId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        givenAuthenticatedRequester(new ConsumptionRequester(
+                userId,
+                RolUsuario.ALUMNO,
+                studentId
+        ));
+
+        assertThrows(
+                RangoFechasConsumoInvalidoException.class,
+                () -> whenGettingConsumption(
+                        null,
+                        LocalDate.of(2026, 5, 20),
+                        LocalDate.of(2026, 5, 1)
+                )
+        );
+    }
+
+    @Test
+    void execute_WhenAuthenticatedUserDoesNotExist_ShouldThrowException() {
+        givenAuthenticatedRequesterDoesNotExist();
+
+        assertThrows(
+                UsuarioAutenticadoNoEncontradoException.class,
+                () -> whenGettingConsumption(null, null, null)
+        );
+    }
+
+    @Test
+    void execute_WhenRequestIsNull_ShouldThrowException() {
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(null));
+    }
+
+    private void givenAuthenticatedRequester(ConsumptionRequester requester) {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.ALUMNO,
-                        studentId
-                )));
+                .thenReturn(Optional.of(requester));
+    }
+
+    private void givenAuthenticatedRequesterDoesNotExist() {
+        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenTutorCanAccessStudent(
+            UUID userId,
+            UUID studentId,
+            boolean canAccess
+    ) {
+        when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(canAccess);
+    }
+
+    private void givenAnyPurchasesFound(UUID studentId) {
         when(consumptionRepository.findPurchasesByStudentIdAndDateRange(
                 eq(studentId),
                 anyCollection(),
                 any(),
                 any()
         )).thenReturn(List.of());
+    }
 
-        StudentConsumptionDetail detail = useCase.execute(
+    private void givenPurchasesFound(
+            UUID studentId,
+            LocalDateTime start,
+            LocalDateTime end,
+            StudentConsumptionPurchase... purchases
+    ) {
+        when(consumptionRepository.findPurchasesByStudentIdAndDateRange(
+                eq(studentId),
+                anyCollection(),
+                eq(start),
+                eq(end)
+        )).thenReturn(List.of(purchases));
+    }
+
+    private GetLoggedUserConsumptionDetailResponse whenGettingConsumption(
+            UUID studentId,
+            LocalDate from,
+            LocalDate to
+    ) {
+        return useCase.execute(new GetLoggedUserConsumptionDetailRequest(
                 COGNITO_SUBJECT,
-                new StudentConsumptionCommand(
-                        Optional.of(studentId),
-                        Optional.empty(),
-                        Optional.empty()
-                )
-        );
-
-        assertEquals(studentId, detail.studentId());
+                studentId,
+                from,
+                to
+        ));
     }
 
-    @Test
-    void studentUserCannotSendAnotherStudentId() {
-        UUID userId = UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
-        UUID anotherStudentId = UUID.randomUUID();
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.ALUMNO,
-                        studentId
-                )));
-
-        assertThrows(
-                ConsumoAlumnoNoAutorizadoException.class,
-                () -> useCase.execute(
-                        COGNITO_SUBJECT,
-                        new StudentConsumptionCommand(
-                                Optional.of(anotherStudentId),
-                                Optional.empty(),
-                                Optional.empty()
-                        )
-                )
-        );
-    }
-
-    @Test
-    void studentUserWithoutLinkedStudentCannotSeeConsumption() {
-        UUID userId = UUID.randomUUID();
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.ALUMNO,
-                        null
-                )));
-
-        assertThrows(
-                ConsumoAlumnoNoAutorizadoException.class,
-                () -> useCase.execute(
-                        COGNITO_SUBJECT,
-                        new StudentConsumptionCommand(
-                                Optional.empty(),
-                                Optional.empty(),
-                                Optional.empty()
-                        )
-                )
-        );
-    }
-
-    @Test
-    void adminUserCannotSeeConsumption() {
-        UUID userId = UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.ADMIN,
-                        null
-                )));
-
-        assertThrows(
-                ConsumoAlumnoNoAutorizadoException.class,
-                () -> useCase.execute(
-                        COGNITO_SUBJECT,
-                        new StudentConsumptionCommand(
-                                Optional.of(studentId),
-                                Optional.empty(),
-                                Optional.empty()
-                        )
-                )
-        );
-    }
-
-    @Test
-    void rejectInvalidDateRange() {
-        UUID userId = UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.ALUMNO,
-                        studentId
-                )));
-
-        assertThrows(
-                RangoFechasConsumoInvalidoException.class,
-                () -> useCase.execute(
-                        COGNITO_SUBJECT,
-                        new StudentConsumptionCommand(
-                                Optional.empty(),
-                                Optional.of(LocalDate.of(2026, 5, 20)),
-                                Optional.of(LocalDate.of(2026, 5, 1))
-                        )
-                )
-        );
-    }
-
-    @Test
-    void rejectUnknownAuthenticatedUser() {
-        when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.empty());
-
-        assertThrows(
-                UsuarioAutenticadoNoEncontradoException.class,
-                () -> useCase.execute(
-                        COGNITO_SUBJECT,
-                        new StudentConsumptionCommand(
-                                Optional.empty(),
-                                Optional.empty(),
-                                Optional.empty()
-                        )
-                )
+    private void thenConsumptionWasNotQueried() {
+        verify(consumptionRepository, never()).findPurchasesByStudentIdAndDateRange(
+                any(),
+                anyCollection(),
+                any(),
+                any()
         );
     }
 

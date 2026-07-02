@@ -10,7 +10,8 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Usuario {
+public class
+Usuario {
 
     private UUID id;
     private Colegio colegio;
@@ -26,15 +27,26 @@ public class Usuario {
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
     private String urlFotoPerfil;
-
+    private TipoPlan plan = TipoPlan.GRATUITO;
     private Alumno alumno;
     private Tutor tutor;
     private Kiosquero kiosquero;
+
+    public TipoPlan getPlan() {
+        return plan != null ? plan : TipoPlan.GRATUITO;
+    }
 
     public void asignarTutor(Tutor tutor) {
         this.tutor = tutor;
         if (tutor != null) {
             tutor.setUsuario(this);
+        }
+    }
+
+    public void validatePurchaseForSelf(UUID studentId) {
+        if (this.alumno == null || !this.alumno.getId().equals(studentId)) {
+            throw new SecurityException(
+                    "No autorizado para comprar a nombre de otro alumno");
         }
     }
 }

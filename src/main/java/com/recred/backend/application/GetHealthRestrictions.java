@@ -6,6 +6,7 @@ import com.recred.backend.domain.repositories.AlumnoRepository;
 
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class GetHealthRestrictions {
 
@@ -15,14 +16,30 @@ public class GetHealthRestrictions {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public Set<ClasificacionSalud> ejecutar(UUID alumnoId) {
+    public Set<GetHealthRestrictionsResponse> ejecutar(GetHealthRestrictionsRequest request) {
+        Alumno alumno = this.findAlumnoById(request.alumnoId());
+        return this.mapToResponse(alumno.getRestriccionesSalud());
+    }
 
-        Alumno alumno = alumnoRepository.findById(alumnoId)
-                .orElseThrow(() -> new IllegalArgumentException("El alumno con ID " + alumnoId +
-                        " no existe."));
+    private Alumno findAlumnoById(UUID alumnoId) {
+        return alumnoRepository.findById(alumnoId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El alumno con ID " + alumnoId + " no existe."));
+    }
 
-        Set<ClasificacionSalud> restricciones = alumno.getRestriccionesSalud();
+    private Set<GetHealthRestrictionsResponse> mapToResponse(
+            Set<ClasificacionSalud> restricciones) {
+        return restricciones.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toSet());
+    }
 
-        return restricciones;
+    private GetHealthRestrictionsResponse toResponse(ClasificacionSalud clasificacion) {
+        return new GetHealthRestrictionsResponse(
+                clasificacion.getId(),
+                clasificacion.getDescripcion(),
+                clasificacion.getActivo()
+        );
     }
 }
+

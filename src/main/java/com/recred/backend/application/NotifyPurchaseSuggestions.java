@@ -3,11 +3,11 @@ package com.recred.backend.application;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.domain.models.PushNotification;
-import com.recred.backend.domain.models.SugerenciaIA;
+
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.services.PushNotificationSender;
 import com.recred.backend.domain.services.UsuarioService;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +22,6 @@ public class NotifyPurchaseSuggestions {
     private static final Logger LOGGER = LoggerFactory.getLogger(NotifyPurchaseSuggestions.class);
 
     private final PurchaseSuggestIA purchaseSuggestIA;
-    private final AlumnoRepository alumnoRepository;
     private final PushNotificationSender pushNotificationSender;
     private final UsuarioService usuarioService;
     private final ObjectMapper objectMapper;
@@ -40,12 +39,10 @@ public class NotifyPurchaseSuggestions {
 
     public NotifyPurchaseSuggestions(
             PurchaseSuggestIA purchaseSuggestIA,
-            AlumnoRepository alumnoRepository,
             PushNotificationSender pushNotificationSender,
             UsuarioService usuarioService,
             ObjectMapper objectMapper) {
         this.purchaseSuggestIA = purchaseSuggestIA;
-        this.alumnoRepository = alumnoRepository;
         this.pushNotificationSender = pushNotificationSender;
         this.usuarioService = usuarioService;
         this.objectMapper = objectMapper;
@@ -53,18 +50,10 @@ public class NotifyPurchaseSuggestions {
 
     public PushNotification execute(String cognitoId) {
         LOGGER.info("Buscando sugerencias para el usuario: {}", cognitoId);
-        Optional<SugerenciaIA> sugerenciaOpt = purchaseSuggestIA.execute(cognitoId);
+        Optional<PurchaseSuggestIAResponse> sugerenciaOpt = purchaseSuggestIA.execute(cognitoId);
 
         if (sugerenciaOpt.isPresent()) {
-            SugerenciaIA sugerencia = sugerenciaOpt.get();
-            Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoId);
-            
-            LOGGER.info("Enviando notificación de sugerencia al usuario id: {}",
-                    usuario.getId());
-            String rolName = usuario.getRol() != null ? usuario.getRol().name() : "PENDIENTE";
-            PushNotification notification = createNotification(
-                    usuario.getId(), sugerencia, rolName);
-            pushNotificationSender.send(notification);
+            PushNotification notification = sendNotification(cognitoId, sugerenciaOpt);
             return notification;
         } else {
             LOGGER.info("No se encontró sugerencia activa para notificar al usuario: {}",
@@ -73,33 +62,30 @@ public class NotifyPurchaseSuggestions {
         }
     }
 
-    public PushNotification createNotification(UUID userId, SugerenciaIA sugerencia, String rol) {
+    private PushNotification sendNotification(String cognitoId,
+                                              Optional<PurchaseSuggestIAResponse> sugerenciaOpt) {
+        PurchaseSuggestIAResponse sugerencia = sugerenciaOpt.get();
+        Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoId);
+
+        LOGGER.info("Enviando notificación de sugerencia al usuario id: {}",
+                usuario.getId());
+        String rolName = usuario.getRol() != null ? usuario.getRol().name() : "PENDIENTE";
+        PushNotification notification = createNotification(
+                usuario.getId(), sugerencia, rolName);
+        pushNotificationSender.send(notification);
+        return notification;
+    }
+
+    public PushNotification createNotification(UUID userId,
+                                               PurchaseSuggestIAResponse sugerencia,
+                                               String rol) {
         Random random = new Random();
         String randomMessage = SUGGESTION_MESSAGES[random.nextInt(SUGGESTION_MESSAGES.length)];
         String titulo = "Recomendación para tu recreo";
 
         String productoJson = "{}";
-        if (sugerencia.getProducto() != null) {
-            Map<String, Object> productMap = Map.of(
-                "id", sugerencia.getProducto().getId().toString(),
-                "nombre", sugerencia.getProducto().getNombre(),
-                "precio", sugerencia.getProducto().getPrecio(),
-                "descripcion", sugerencia.getProducto().getDescripcion() != null 
-                        ? sugerencia.getProducto().getDescripcion() : "",
-                "categoria", Map.of(
-                    "id", sugerencia.getProducto().getCategoria() != null 
-                            ? sugerencia.getProducto().getCategoria().getId().toString() : "",
-                    "descripcion", sugerencia.getProducto().getCategoria() != null 
-                            ? sugerencia.getProducto().getCategoria().getDescripcion() : "General"
-                ),
-                "estadoStock", "DISPONIBLE",
-                "clasificacionesSalud", sugerencia.getProducto().getClasificacionesSalud() != null
-                        ? sugerencia.getProducto().getClasificacionesSalud().stream()
-                            .map(c -> Map.of("id", c.getId().toString(),
-                                    "descripcion", c.getDescripcion()))
-                            .toList()
-                        : List.of()
-            );
+        if (sugerencia.sugerencia().producto() != null) {
+            Map<String, Object> productMap = mapProductSuggestion(sugerencia);
 
             try {
                 productoJson = objectMapper.writeValueAsString(productMap);
@@ -113,12 +99,38 @@ public class NotifyPurchaseSuggestions {
                 Map.of(
                         "type", "PURCHASE_SUGGESTION",
                         "rol", rol,
-                        "sugerenciaId", sugerencia.getId().toString(),
+                        "sugerenciaId", sugerencia.sugerencia().id().toString(),
                         "titulo", titulo,
                         "mensaje", randomMessage,
                         "producto", productoJson,
-                        "alumnoId", sugerencia.getAlumnoId().toString()
+                        "alumnoId", sugerencia.sugerencia().alumnoId().toString()
                 )
         );
+    }
+
+    @NotNull
+    private static Map<String, Object> mapProductSuggestion(PurchaseSuggestIAResponse sugerencia) {
+        PurchaseSuggestIAResponse.ProductoDTO producto = sugerencia.sugerencia().producto();
+        Map<String, Object> productMap = Map.of(
+            "id", producto.id().toString(),
+            "nombre", producto.nombre(),
+            "precio", producto.precio() != null ? producto.precio() : 0,
+            "descripcion", producto.descripcion() != null
+                    ? producto.descripcion() : "",
+            "categoria", Map.of(
+                "id", producto.categoriaId() != null
+                        ? producto.categoriaId().toString() : "",
+                "descripcion", producto.categoriaDescripcion() != null
+                        ? producto.categoriaDescripcion() : "General"
+            ),
+            "estadoStock", "DISPONIBLE",
+            "clasificacionesSalud", producto.clasificacionesSalud() != null
+                    ? producto.clasificacionesSalud().stream()
+                        .map(c -> Map.of("id", c.id().toString(),
+                                "descripcion", c.descripcion()))
+                        .toList()
+                    : List.of()
+        );
+        return productMap;
     }
 }

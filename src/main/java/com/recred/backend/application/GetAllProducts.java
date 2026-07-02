@@ -1,6 +1,5 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
 
 import java.util.List;
@@ -14,10 +13,16 @@ public class GetAllProducts {
         this.productRepository = productRepository;
     }
 
-    public List<Producto> execute(UUID buffetId) {
+    public List<ProductResponse> execute(UUID buffetId) {
         if (buffetId != null) {
-            return productRepository.findAllActiveWithStock(buffetId);
+            return productRepository.findAllActiveWithStock(buffetId)
+                    .stream()
+                    .map(ProductResponse::fromDomain)
+                    .toList();
         }
-        return productRepository.findAllActive();
+        return productRepository.findAllActive()
+                .stream()
+                .map(ProductResponse::fromDomain)
+                .toList();
     }
 }

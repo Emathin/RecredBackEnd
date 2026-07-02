@@ -1,12 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.RecessTime;
-import com.recred.backend.domain.models.SchoolAssistantAction;
-import com.recred.backend.domain.models.SchoolAssistantActionStatus;
-import com.recred.backend.domain.models.SchoolAssistantActionType;
-import com.recred.backend.domain.models.SchoolAssistantRequiredInput;
+import com.recred.backend.application.AskSchoolAssistantResponse.ActionResponse;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -15,17 +10,17 @@ import java.util.UUID;
 
 public record SchoolAssistantActionResponse(
         @JsonProperty("tipo")
-        SchoolAssistantActionType type,
+        String type,
         @JsonProperty("estado")
-        SchoolAssistantActionStatus status,
+        String status,
         @JsonProperty("requiereInput")
         boolean requiresInput,
         @JsonProperty("inputsRequeridos")
-        List<SchoolAssistantRequiredInput> requiredInputs,
+        List<String> requiredInputs,
         @JsonProperty("compraId")
         UUID purchaseId,
         @JsonProperty("estadoCompra")
-        EstadoCompra purchaseStatus,
+        String purchaseStatus,
         @JsonProperty("codigoRetiro")
         String withdrawalCode,
         @JsonProperty("total")
@@ -35,7 +30,7 @@ public record SchoolAssistantActionResponse(
         @JsonProperty("datos")
         Map<String, Object> data
 ) {
-    public static SchoolAssistantActionResponse fromDomain(SchoolAssistantAction action) {
+    public static SchoolAssistantActionResponse fromApplication(ActionResponse action) {
         if (action == null) {
             return null;
         }
@@ -49,15 +44,8 @@ public record SchoolAssistantActionResponse(
                 action.purchaseStatus(),
                 action.withdrawalCode(),
                 action.total(),
-                recessLabel(action.recessTime()),
+                action.recessTime(),
                 action.data()
         );
-    }
-
-    private static String recessLabel(RecessTime recessTime) {
-        if (recessTime == null) {
-            return null;
-        }
-        return recessTime.getLabel();
     }
 }

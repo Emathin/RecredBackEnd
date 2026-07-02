@@ -4,8 +4,6 @@ import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 public class AdjustInventoryStock {
 
     private final InventoryAvailabilityService inventoryAvailabilityService;
@@ -15,48 +13,23 @@ public class AdjustInventoryStock {
     }
 
     @Transactional
-    public Inventario execute(
-            UUID buffetId,
-            UUID productId,
-            int stockActual,
-            String motivo,
-            UUID usuarioId
-    ) {
-        return inventoryAvailabilityService.adjustStock(
-                buffetId,
-                productId,
-                stockActual,
-                motivo,
-                usuarioId
-        );
+    public AdjustInventoryStockResponse execute(AdjustInventoryStockRequest request) {
+        Inventario inventory = adjustInventory(request);
+        return AdjustInventoryStockResponse.fromDomain(inventory);
     }
 
-    @Transactional
-    public Inventario execute(AdjustInventoryStockCommand command) {
+    private Inventario adjustInventory(AdjustInventoryStockRequest request) {
         return inventoryAvailabilityService.adjustInventory(
-                command.buffetId(),
-                command.productId(),
-                command.stockActual(),
-                command.stockMinimo(),
-                command.estadoInventario(),
-                command.tipoManejoInventario(),
-                command.disponible(),
-                command.cupoMaximoDiario(),
-                command.motivo(),
-                command.usuarioId()
-        );
-    }
-
-    @Transactional
-    public Inventario execute(InventoryQuickActionCommand command) {
-        return inventoryAvailabilityService.applyQuickAction(
-                command.buffetId(),
-                command.productId(),
-                command.action(),
-                command.quantity(),
-                command.stockMinimo(),
-                command.motivo(),
-                command.usuarioId()
+                request.buffetId(),
+                request.productId(),
+                request.stockActual(),
+                request.stockMinimo(),
+                request.estadoInventario(),
+                request.tipoManejoInventario(),
+                request.disponible(),
+                request.cupoMaximoDiario(),
+                request.motivo(),
+                request.usuarioId()
         );
     }
 }

@@ -16,6 +16,8 @@ import java.util.UUID;
 public class Producto {
 
     private UUID id;
+    private UUID promocionId;
+    private String promocionNombre;
     private CategoriaProducto categoria;
     private String nombre;
     private String descripcion;
@@ -64,6 +66,82 @@ public class Producto {
 
     public void deactivate() {
         this.activo = false;
+    }
+
+    public boolean hasInventoryData() {
+        return stockActual != null
+                || stockReservado != null
+                || stockMinimo != null
+                || cupoMaximoDiario != null
+                || estadoInventario != null
+                || tipoManejoInventario != null;
+    }
+
+    public boolean needsRestock() {
+        return isSoldOut()
+                || estadoInventario == EstadoInventario.BAJO_STOCK
+                || hasLowStock();
+    }
+
+    public boolean hasLowStock() {
+        return getStockDisponible() != null
+                && stockMinimo != null
+                && getStockDisponible() <= stockMinimo;
+    }
+
+    public boolean hasLowStockStatus() {
+        return estadoInventario == EstadoInventario.BAJO_STOCK;
+    }
+
+    public boolean isSoldOut() {
+        if (estadoInventario == EstadoInventario.SIN_STOCK
+                || estadoInventario == EstadoInventario.DESACTIVADO) {
+            return true;
+        }
+
+        return getStockDisponible() != null && getStockDisponible() <= 0;
+    }
+
+    public boolean isAvailableForSale() {
+        return !isSoldOut();
+    }
+
+    public boolean hasAvailableStock() {
+        return getStockDisponible() != null && getStockDisponible() > 0;
+    }
+
+    public TipoManejoInventario inventoryMode() {
+        return tipoManejoInventario == null
+                ? TipoManejoInventario.STOCK_EXACTO
+                : tipoManejoInventario;
+    }
+
+    public Integer configuredDailyCapacity() {
+        if (inventoryMode() != TipoManejoInventario.CUPO_DIARIO) {
+            return null;
+        }
+
+        return cupoMaximoDiario == null ? stockActual : cupoMaximoDiario;
+    }
+
+    public Integer dailyCapacityAvailable() {
+        return inventoryMode() == TipoManejoInventario.CUPO_DIARIO
+                ? getStockDisponible()
+                : null;
+    }
+
+    public boolean hasDailyCapacityLimit() {
+        return inventoryMode() == TipoManejoInventario.CUPO_DIARIO
+                && cupoMaximoDiario != null
+                && cupoMaximoDiario > 0;
+    }
+
+    public int reservedStockOrZero() {
+        return stockReservado == null ? 0 : stockReservado;
+    }
+
+    public BigDecimal priceOrZero() {
+        return precio == null ? BigDecimal.ZERO : precio;
     }
 
     public Integer getStockDisponible() {

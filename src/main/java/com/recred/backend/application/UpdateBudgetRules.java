@@ -20,33 +20,89 @@ public class UpdateBudgetRules {
     }
 
     @Transactional
-    public PresupuestoAlumno execute(UUID budgetId, UpdateBudgetRulesCommand command) {
-        PresupuestoAlumno presupuesto = repository.findById(budgetId)
-                .orElseThrow(() -> new RuntimeException
-                        ("Presupuesto no encontrado con ID: " + budgetId));
+    public UpdateBudgetRulesResponse execute(UpdateBudgetRulesRequest request) {
+        PresupuestoAlumno presupuesto = this.findPresupuesto(request.budgetId());
 
-        List<ReglaPresupuestoCategoria> nuevasReglas = new ArrayList<>();
+        List<ReglaPresupuestoCategoria> nuevasReglas = this.mapCategoryRules(request.rules());
+        presupuesto.setReglasCategoria(nuevasReglas);
 
-        if (command.rules() != null && !command.rules().isEmpty()) {
-            nuevasReglas = command.rules().stream().map(rule -> {
-                CategoriaProducto categoria = new CategoriaProducto();
-                categoria.setId(rule.categoryId());
+        this.validateAndRecalculateBudget(presupuesto);
 
-                return new ReglaPresupuestoCategoria(
-                        null,
-                        categoria,
-                        rule.porcentajeLimite(),
-                        null,
-                        true
+        PresupuestoAlumno saved = this.savePresupuesto(presupuesto);
+        return mapToResponse(saved);
+    }
+
+    private PresupuestoAlumno findPresupuesto(UUID budgetId) {
+        return repository.findById(budgetId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Presupuesto no encontrado con ID: " + budgetId));
+    }
+
+    private List<ReglaPresupuestoCategoria> mapCategoryRules(
+            List<UpdateBudgetRulesRequest.CategoryRuleRequest> rules) {
+        if (rules == null || rules.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return rules.stream()
+                .map(this::mapToRegla)
+                .collect(Collectors.toList());
+    }
+
+    private ReglaPresupuestoCategoria mapToRegla(
+            UpdateBudgetRulesRequest.CategoryRuleRequest rule) {
+        CategoriaProducto categoria = new CategoriaProducto();
+        categoria.setId(rule.categoryId());
+
+        return new ReglaPresupuestoCategoria(
+                null,
+                categoria,
+                rule.porcentajeLimite(),
+                null,
+                true
+        );
+    }
+
+    private void validateAndRecalculateBudget(PresupuestoAlumno presupuesto) {
+        presupuesto.validarPorcentajes();
+        presupuesto.recalcularMontosReglas();
+    }
+
+    private PresupuestoAlumno savePresupuesto(PresupuestoAlumno presupuesto) {
+        return repository.save(presupuesto);
+    }
+
+    private UpdateBudgetRulesResponse mapToResponse(PresupuestoAlumno domain) {
+        List<UpdateBudgetRulesResponse.ReglaPresupuestoCategoriaResponse> rules = null;
+        if (domain.getReglasCategoria() != null) {
+            rules = domain.getReglasCategoria().stream().map(rule -> {
+                UpdateBudgetRulesResponse.CategoriaProductoResponse catResponse = null;
+                if (rule.getCategoria() != null) {
+                    catResponse = new UpdateBudgetRulesResponse.CategoriaProductoResponse(
+                            rule.getCategoria().getId(),
+                            rule.getCategoria().getDescripcion(),
+                            rule.getCategoria().getActivo()
+                    );
+                }
+                return new UpdateBudgetRulesResponse.ReglaPresupuestoCategoriaResponse(
+                        rule.getId(),
+                        catResponse,
+                        rule.getPorcentajeLimite(),
+                        rule.getMontoLimiteCalculado(),
+                        rule.isActivo()
                 );
             }).collect(Collectors.toList());
         }
 
-        presupuesto.setReglasCategoria(nuevasReglas);
-
-        presupuesto.validarPorcentajes();
-        presupuesto.recalcularMontosReglas();
-
-        return repository.save(presupuesto);
+        return new UpdateBudgetRulesResponse(
+                domain.getId(),
+                domain.getAlumnoId(),
+                domain.getCreadoPorUsuarioId(),
+                domain.getMontoLimiteGeneral(),
+                domain.getPeriodo(),
+                domain.getFechaInicio(),
+                domain.isActivo(),
+                rules,
+                domain.getMontoLimite()
+        );
     }
 }

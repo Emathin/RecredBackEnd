@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetActivePromotionsByBuffet;
+import com.recred.backend.application.PromotionResponse;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import org.junit.jupiter.api.Test;
@@ -32,9 +33,9 @@ class GetActivePromotionsByBuffetTest {
         
         when(promotionRepository.findAllActiveByBuffet(buffetId)).thenReturn(List.of(p1));
 
-        List<Promotion> result = getActivePromotionsByBuffet.execute(buffetId);
+        List<PromotionResponse> result = getActivePromotionsByBuffet.execute(buffetId);
 
         assertEquals(1, result.size());
-        assertEquals(p1.getId(), result.get(0).getId());
+        assertEquals(p1.getId(), result.get(0).id());
     }
 }

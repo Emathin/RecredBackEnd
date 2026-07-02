@@ -11,6 +11,7 @@ import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SaveProductCommand;
 import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductPrice;
+import com.recred.backend.application.UpdateProductPriceRequest;
 import com.recred.backend.domain.models.Producto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -72,17 +73,17 @@ public class ProductController {
             @PathVariable UUID productId,
             @RequestParam(required = false) BigDecimal nuevoPrecio,
             @RequestParam(required = false) UUID buffetId,
-            @RequestBody(required = false) UpdateProductPriceRequest request) {
-        updateProductPrice.execute(
+            @RequestBody(required = false) UpdateProductPriceRequestDTO request) {
+        updateProductPrice.execute(new UpdateProductPriceRequest(
                 productId,
                 resolveNewPrice(nuevoPrecio, request),
-                resolveBuffetId(buffetId, request));
+                resolveBuffetId(buffetId, request)));
         return ResponseEntity.ok().build();
     }
 
     private BigDecimal resolveNewPrice(
             BigDecimal queryPrice,
-            UpdateProductPriceRequest request) {
+            UpdateProductPriceRequestDTO request) {
         if (queryPrice != null) {
             return queryPrice;
         }
@@ -92,7 +93,7 @@ public class ProductController {
         throw new IllegalArgumentException("Product price is required");
     }
 
-    private UUID resolveBuffetId(UUID queryBuffetId, UpdateProductPriceRequest request) {
+    private UUID resolveBuffetId(UUID queryBuffetId, UpdateProductPriceRequestDTO request) {
         if (queryBuffetId != null) {
             return queryBuffetId;
         }
@@ -102,7 +103,7 @@ public class ProductController {
         return null;
     }
 
-    public record UpdateProductPriceRequest(BigDecimal nuevoPrecio, UUID buffetId) {
+    public record UpdateProductPriceRequestDTO(BigDecimal nuevoPrecio, UUID buffetId) {
     }
 
     @GetMapping
@@ -110,7 +111,7 @@ public class ProductController {
             @RequestParam(required = false) UUID buffetId) {
         List<ProductResponseDTO> products = getAllProducts.execute(buffetId)
                 .stream()
-                .map(ProductResponseDTO::fromDomain)
+                .map(ProductResponseDTO::fromAppResponse)
                 .toList();
         return ResponseEntity.ok(products);
     }
@@ -138,9 +139,10 @@ public class ProductController {
         List<SaveProductCommand> commands = request.stream()
                 .map(ProductRequestDTO::toSaveCommand)
                 .collect(Collectors.toList());
-        List<Producto> savedProducts = saveBulkProducts.execute(commands);
+        List<com.recred.backend.application.ProductResponse> savedProducts =
+                saveBulkProducts.execute(commands);
         List<ProductResponseDTO> response = savedProducts.stream()
-                .map(ProductResponseDTO::fromDomain)
+                .map(ProductResponseDTO::fromAppResponse)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
@@ -149,14 +151,15 @@ public class ProductController {
     public ResponseEntity<ProductResponseDTO> findById(
             @PathVariable UUID id,
             @RequestParam(required = false) UUID buffetId) {
-        Producto product = getProductById.execute(id, buffetId);
-        return ResponseEntity.ok(ProductResponseDTO.fromDomain(product));
+        com.recred.backend.application.ProductResponse res = getProductById.execute(id, buffetId);
+        return ResponseEntity.ok(ProductResponseDTO.fromAppResponse(res));
     }
 
     @PostMapping
     public ResponseEntity<ProductResponseDTO> create(
             @Valid @RequestBody ProductRequestDTO request) {
-        Producto created = saveProduct.execute(request.toSaveCommand());
+        Producto created = saveProduct.execute(
+                request.toSaveCommand());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ProductResponseDTO.fromDomain(created));
     }

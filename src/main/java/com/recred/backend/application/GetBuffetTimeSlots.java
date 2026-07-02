@@ -3,7 +3,7 @@ package com.recred.backend.application;
 import com.recred.backend.domain.exceptions.BuffetNotFoundException;
 import com.recred.backend.domain.exceptions.PickupTimeSlotNotFoundException;
 import com.recred.backend.domain.models.Buffet;
-import com.recred.backend.domain.models.FranjaHoraria;
+
 import com.recred.backend.domain.repositories.BuffetRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 
@@ -23,7 +23,7 @@ public class GetBuffetTimeSlots {
         this.franjaHorariaRepository = franjaHorariaRepository;
     }
 
-    public List<FranjaHoraria> execute(UUID buffetId) {
+    public List<GetTimeSlotsBySchoolResponse> execute(UUID buffetId) {
         Buffet buffet = buffetRepository.findById(buffetId)
                 .orElseThrow(() -> new BuffetNotFoundException(buffetId));
 
@@ -31,6 +31,18 @@ public class GetBuffetTimeSlots {
             throw new PickupTimeSlotNotFoundException(null, null);
         }
 
-        return franjaHorariaRepository.findAllByColegioId(buffet.getColegio().getId());
+        return franjaHorariaRepository.findAllByColegioId(buffet.getColegio().getId())
+                .stream()
+                .map(slot -> new GetTimeSlotsBySchoolResponse(
+                        slot.getId(),
+                        slot.getColegioId(),
+                        slot.getDescripcion(),
+                        slot.getHoraInicio(),
+                        slot.getHoraFin(),
+                        slot.isActivo(),
+                        slot.getCupoMaximo(),
+                        slot.getMinutosCorte()
+                ))
+                .toList();
     }
 }

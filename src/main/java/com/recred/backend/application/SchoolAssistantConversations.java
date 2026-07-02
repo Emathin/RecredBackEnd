@@ -53,6 +53,11 @@ public class SchoolAssistantConversations {
         return chatSessionRepository.findByStudentId(studentId, page, size);
     }
 
+    public List<ChatSession> findStudentSessions(String cognitoSubject, int page, int size) {
+        UUID studentId = authenticatedStudentId(cognitoSubject);
+        return chatSessionRepository.findByStudentId(studentId, page, size);
+    }
+
     public List<ChatSession> findTutorSessions(String cognitoSubject, int page, int size) {
         return chatSessionRepository.findByUserId(tutorUserId(cognitoSubject), page, size);
     }
@@ -64,6 +69,12 @@ public class SchoolAssistantConversations {
     public List<ChatMessage> findStudentMessages(UUID studentIdOrUserId, UUID sessionId,
                                                  int page, int size) {
         requireStudentSession(studentIdOrUserId, sessionId);
+        return chatMessageRepository.findBySessionId(sessionId, page, size);
+    }
+
+    public List<ChatMessage> findStudentMessages(String cognitoSubject, UUID sessionId,
+                                                 int page, int size) {
+        requireResolvedStudentSession(authenticatedStudentId(cognitoSubject), sessionId);
         return chatMessageRepository.findBySessionId(sessionId, page, size);
     }
 
@@ -84,6 +95,11 @@ public class SchoolAssistantConversations {
         chatSessionRepository.close(sessionId, LocalDateTime.now(clock));
     }
 
+    public void closeStudentSession(String cognitoSubject, UUID sessionId) {
+        requireResolvedStudentSession(authenticatedStudentId(cognitoSubject), sessionId);
+        chatSessionRepository.close(sessionId, LocalDateTime.now(clock));
+    }
+
     public void closeTutorSession(String cognitoSubject, UUID sessionId) {
         requireUserSession(tutorUserId(cognitoSubject), sessionId);
         chatSessionRepository.close(sessionId, LocalDateTime.now(clock));
@@ -97,6 +113,12 @@ public class SchoolAssistantConversations {
     @Transactional
     public void deleteStudentSession(UUID studentIdOrUserId, UUID sessionId) {
         requireStudentSession(studentIdOrUserId, sessionId);
+        deleteSession(sessionId);
+    }
+
+    @Transactional
+    public void deleteStudentSession(String cognitoSubject, UUID sessionId) {
+        requireResolvedStudentSession(authenticatedStudentId(cognitoSubject), sessionId);
         deleteSession(sessionId);
     }
 
@@ -119,6 +141,10 @@ public class SchoolAssistantConversations {
 
     private void requireStudentSession(UUID studentIdOrUserId, UUID sessionId) {
         UUID studentId = resolvedStudentId(studentIdOrUserId);
+        requireResolvedStudentSession(studentId, sessionId);
+    }
+
+    private void requireResolvedStudentSession(UUID studentId, UUID sessionId) {
         chatSessionRepository.findByIdAndStudentId(sessionId, studentId)
                 .orElseThrow(() -> new ChatSessionNotFoundException(sessionId));
     }
@@ -153,6 +179,11 @@ public class SchoolAssistantConversations {
         }
 
         return user.getId();
+    }
+
+    private UUID authenticatedStudentId(String cognitoSubject) {
+        Usuario user = authenticatedUser(cognitoSubject);
+        return resolvedStudentId(user.getId());
     }
 
     private Usuario authenticatedUser(String cognitoSubject) {

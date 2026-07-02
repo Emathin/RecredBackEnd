@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.ManageRestrictions;
+import com.recred.backend.application.ManageRestrictionsRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -53,7 +54,7 @@ class ManageRestrictionsTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(clasificacionRepository.findAllById(nuevasClasificacionesIds)).thenReturn(clasificacionesMock);
 
-        useCase.execute(alumnoId, nuevasClasificacionesIds);
+        useCase.execute(new ManageRestrictionsRequest(alumnoId, nuevasClasificacionesIds));
 
         assertTrue(alumno.getRestriccionesSalud().contains(clasificacion));
         assertEquals(1, alumno.getRestriccionesSalud().size());
@@ -66,7 +67,7 @@ class ManageRestrictionsTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.execute(alumnoId, nuevasClasificacionesIds);
+            useCase.execute(new ManageRestrictionsRequest(alumnoId, nuevasClasificacionesIds));
         });
 
         assertEquals("El alumno con ID " + alumnoId + " no existe.", exception.getMessage());

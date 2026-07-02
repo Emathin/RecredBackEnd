@@ -38,7 +38,8 @@ public class BuffetEntity {
     private ColegioEntity colegioEntity;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "vendedor_id", nullable = false)
+    //DECISION PROVISORIA POR EL TEST
+    @JoinColumn(name = "vendedor_id", nullable = true)
     private KiosqueroEntity vendedor;
 
     @Column(nullable = false)

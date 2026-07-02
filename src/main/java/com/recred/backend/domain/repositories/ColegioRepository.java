@@ -8,4 +8,7 @@ import java.util.UUID;
 public interface ColegioRepository {
     List<Colegio> findAllActive();
     boolean existsActiveById(UUID id);
+    boolean existsByEmail(String email);
+    boolean existsByCue(String cue);
+    Colegio save(Colegio colegio);
 }

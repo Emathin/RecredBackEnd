@@ -7,9 +7,7 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 public class ExpireAdvancePurchases {
 
@@ -31,37 +29,28 @@ public class ExpireAdvancePurchases {
     }
 
     @Transactional
-    public int execute(LocalDateTime now) {
-        return executeDetailed(now).expiredPurchases();
+    public ExpireAdvancePurchasesResponse execute(ExpireAdvancePurchasesRequest request) {
+        List<Purchase> purchases;
+        if (request.buffetId() == null) {
+            purchases = purchaseRepository.findExpiredAdvancePurchases(
+                    request.targetTime().toLocalDate(),
+                    request.targetTime().toLocalTime(),
+                    ACTIVE_ADVANCE_STATUSES);
+        } else {
+            purchases = purchaseRepository.findExpiredAdvancePurchases(
+                    request.buffetId(),
+                    request.targetTime().toLocalDate(),
+                    request.targetTime().toLocalTime(),
+                    ACTIVE_ADVANCE_STATUSES);
+        }
+        return expire(purchases);
     }
 
-    @Transactional
-    public ExpirationResult executeDetailed(LocalDateTime now) {
-        return expire(purchaseRepository.findExpiredAdvancePurchases(
-                now.toLocalDate(),
-                now.toLocalTime(),
-                ACTIVE_ADVANCE_STATUSES));
-    }
-
-    @Transactional
-    public int execute(UUID buffetId, LocalDateTime now) {
-        return executeDetailed(buffetId, now).expiredPurchases();
-    }
-
-    @Transactional
-    public ExpirationResult executeDetailed(UUID buffetId, LocalDateTime now) {
-        return expire(purchaseRepository.findExpiredAdvancePurchases(
-                buffetId,
-                now.toLocalDate(),
-                now.toLocalTime(),
-                ACTIVE_ADVANCE_STATUSES));
-    }
-
-    private ExpirationResult expire(List<Purchase> purchases) {
+    private ExpireAdvancePurchasesResponse expire(List<Purchase> purchases) {
         int releasedReservations = purchases.stream()
                 .mapToInt(this::expire)
                 .sum();
-        return new ExpirationResult(purchases.size(), releasedReservations);
+        return new ExpireAdvancePurchasesResponse(purchases.size(), releasedReservations);
     }
 
     private int expire(Purchase purchase) {
@@ -89,8 +78,5 @@ public class ExpireAdvancePurchases {
                 && (previousStatus == EstadoCompra.PENDIENTE
                 || previousStatus == EstadoCompra.EN_PREPARACION
                 || previousStatus == EstadoCompra.LISTO);
-    }
-
-    public record ExpirationResult(int expiredPurchases, int releasedReservations) {
     }
 }

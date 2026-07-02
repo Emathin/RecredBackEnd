@@ -37,6 +37,19 @@ public class Alumno {
         this.restriccionesSalud = restriccionesSalud != null ? restriccionesSalud : new HashSet<>();
     }
 
+    public static Alumno createFromUser(Usuario usuario, Grado grado) {
+        if (usuario == null) {
+            throw new IllegalArgumentException("El usuario del alumno es obligatorio");
+        }
+
+        Alumno alumno = new Alumno();
+        alumno.setUsuario(usuario);
+        alumno.setUsuarioId(usuario.getId());
+        alumno.setActivo(true);
+        alumno.setGrado(grado);
+        return alumno;
+    }
+
     public void agregarRestriccionSalud(ClasificacionSalud restriccion) {
         if (restriccion != null) {
             boolean yaExiste = this.restriccionesSalud.stream()
@@ -50,6 +63,14 @@ public class Alumno {
 
     public void removerRestriccionSalud(UUID restriccionId) {
         this.restriccionesSalud.removeIf(r -> r.getId().equals(restriccionId));
+    }
+
+    public boolean hasGlobalHealthRestriction(UUID classificationId) {
+        if (classificationId == null) {
+            return false;
+        }
+        return this.restriccionesSalud.stream()
+                .anyMatch(r -> r.getId().equals(classificationId));
     }
 
     public void agregarRestriccionHoraria(RestriccionHoraria restriccion) {

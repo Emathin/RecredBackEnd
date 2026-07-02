@@ -9,6 +9,7 @@ import com.recred.backend.domain.models.SchoolAssistantRole;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -33,13 +34,16 @@ public class SchoolAssistantFixedTopics {
 
     private final SchoolAssistantIntentDetector intentDetector;
     private final SchoolAssistantQuickPurchaseHandler quickPurchaseHandler;
+    private final SchoolAssistantPurchaseCancellationHandler purchaseCancellationHandler;
     private final SchoolAssistantFixedTopicResponses responses;
     private final List<SchoolAssistantFixedTopicHandler> handlers;
+    private final Clock clock;
 
     public SchoolAssistantFixedTopics(
             PurchaseRepository purchaseRepository,
             ProductRepository productRepository,
             CreateAssistantAdvancePurchase createAssistantAdvancePurchase,
+            CancelPresentialPurchase cancelPresentialPurchase,
             Clock clock
     ) {
         SchoolAssistantReplyFormatter replyFormatter = new SchoolAssistantReplyFormatter();
@@ -54,11 +58,18 @@ public class SchoolAssistantFixedTopics {
                 new SchoolAssistantSuggestionFactory();
         SchoolAssistantPendingPurchaseParser pendingPurchaseParser =
                 new SchoolAssistantPendingPurchaseParser(intentDetector);
+        SchoolAssistantPurchasePatternService purchasePatternService =
+                new SchoolAssistantPurchasePatternService(
+                        purchaseRepository,
+                        productRepository,
+                        contentFormatter
+                );
         SchoolAssistantReplyBuilder replyBuilder = new SchoolAssistantReplyBuilder(
                 suggestionFactory
         );
+        this.clock = clock;
         this.quickPurchaseHandler = new SchoolAssistantQuickPurchaseHandler(
-                purchaseRepository,
+                purchasePatternService,
                 productRepository,
                 createAssistantAdvancePurchase,
                 clock,
@@ -69,9 +80,16 @@ public class SchoolAssistantFixedTopics {
                 pendingPurchaseParser,
                 replyBuilder
         );
+        this.purchaseCancellationHandler = new SchoolAssistantPurchaseCancellationHandler(
+                purchaseRepository,
+                cancelPresentialPurchase,
+                contentFormatter,
+                replyBuilder
+        );
         this.responses = new SchoolAssistantFixedTopicResponses(
                 purchaseRepository,
                 productRepository,
+                purchasePatternService,
                 replyFormatter,
                 contentFormatter,
                 tutorFactsFormatter,
@@ -86,11 +104,14 @@ public class SchoolAssistantFixedTopics {
             List<ChatMessage> recentMessages
     ) {
         SchoolAssistantIntent intent = intentDetector.detectIntent(message);
+        LocalDate today = LocalDate.now(clock);
+        Optional<LocalDate> selectedPurchaseDate = intentDetector.purchaseDate(message, today);
         Optional<RecessTime> selectedRecessTime = intentDetector.recessTime(message);
         SchoolAssistantFixedTopicRequest request = new SchoolAssistantFixedTopicRequest(
                 intent,
                 context,
                 recentMessages,
+                selectedPurchaseDate,
                 selectedRecessTime
         );
 
@@ -121,11 +142,13 @@ public class SchoolAssistantFixedTopics {
                 route(request -> isStudentIntent(request,
                                 SchoolAssistantIntent.REPEAT_LAST_PURCHASE),
                         request -> quickPurchaseHandler.repeatLastPurchaseReply(
-                                request.context()
+                                request.context(),
+                                request.selectedPurchaseDate()
                         )),
                 route(request -> isStudentIntent(request, SchoolAssistantIntent.BUY_USUAL),
                         request -> quickPurchaseHandler.buyUsualPurchaseReply(
-                                request.context()
+                                request.context(),
+                                request.selectedPurchaseDate()
                         )),
                 route(request -> isStudentIntent(request,
                                 SchoolAssistantIntent.CONFIRM_PURCHASE),
@@ -138,6 +161,22 @@ public class SchoolAssistantFixedTopics {
                                 request.context(),
                                 request.recentMessages(),
                                 request.selectedRecessTime().orElseThrow()
+                        )),
+                route(this::isStudentPurchaseDateSelection,
+                        request -> quickPurchaseHandler.selectPurchaseDateReply(
+                                request.context(),
+                                request.recentMessages(),
+                                request.selectedPurchaseDate().orElseThrow()
+                        )),
+                route(this::isStudentPurchaseCancellationWithPendingDraft,
+                        request -> quickPurchaseHandler.cancelActionReply(
+                                request.recentMessages()
+                        )),
+                route(request -> isStudentIntent(request,
+                                SchoolAssistantIntent.CANCEL_PURCHASE),
+                        request -> purchaseCancellationHandler.cancelPurchaseReply(
+                                request.context(),
+                                request.recentMessages()
                         )),
                 route(request -> isStudentIntent(request, SchoolAssistantIntent.CANCEL_ACTION),
                         request -> quickPurchaseHandler.cancelActionReply(
@@ -183,6 +222,20 @@ public class SchoolAssistantFixedTopics {
             SchoolAssistantIntent intent
     ) {
         return hasRole(request, SchoolAssistantRole.ALUMNO) && hasIntent(request, intent);
+    }
+
+    private boolean isStudentPurchaseCancellationWithPendingDraft(
+            SchoolAssistantFixedTopicRequest request
+    ) {
+        return isStudentIntent(request, SchoolAssistantIntent.CANCEL_PURCHASE)
+                && quickPurchaseHandler.hasPendingPurchase(request.recentMessages());
+    }
+
+    private boolean isStudentPurchaseDateSelection(
+            SchoolAssistantFixedTopicRequest request
+    ) {
+        return isStudentIntent(request, SchoolAssistantIntent.SELECT_PURCHASE_DATE)
+                && request.selectedPurchaseDate().isPresent();
     }
 
     private boolean isTutorIntent(

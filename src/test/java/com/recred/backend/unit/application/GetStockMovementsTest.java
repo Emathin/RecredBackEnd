@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetStockMovements;
+import com.recred.backend.application.GetStockMovementsRequest;
+import com.recred.backend.application.GetStockMovementsResponse;
 import com.recred.backend.domain.exceptions.InventoryNotFoundException;
 import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.models.MovimientoStock;
@@ -28,15 +30,64 @@ class GetStockMovementsTest {
             inventoryRepository,
             stockMovementRepository
     );
+    private UUID buffetId;
+    private UUID productId;
+    private UUID inventoryId;
+    private MovimientoStock movement;
+    private GetStockMovementsResponse response;
 
     @Test
-    void execute_ShouldReturnMovementsForInventory() {
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        UUID inventoryId = UUID.randomUUID();
+    void execute_WhenInventoryExists_ShouldReturnMovementResponses() {
+        givenInventoryIdentifiers();
+        givenInventoryExists();
+        givenInventoryHasMovements();
+
+        whenGettingStockMovements();
+
+        thenMovementResponsesAreReturned();
+        thenMovementsWereLoadedByInventory();
+    }
+
+    @Test
+    void execute_WhenInventoryDoesNotExist_ShouldThrowException() {
+        givenInventoryIdentifiers();
+        givenInventoryDoesNotExist();
+
+        assertThrows(InventoryNotFoundException.class, this::whenGettingStockMovements);
+    }
+
+    @Test
+    void execute_WhenBuffetIdIsNull_ShouldThrowException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(new GetStockMovementsRequest(null, UUID.randomUUID())));
+    }
+
+    @Test
+    void execute_WhenProductIdIsNull_ShouldThrowException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> useCase.execute(new GetStockMovementsRequest(UUID.randomUUID(), null)));
+    }
+
+    private void givenInventoryIdentifiers() {
+        buffetId = UUID.randomUUID();
+        productId = UUID.randomUUID();
+        inventoryId = UUID.randomUUID();
+    }
+
+    private void givenInventoryExists() {
         Inventario inventory = new Inventario();
         inventory.setId(inventoryId);
-        MovimientoStock movement = new MovimientoStock(
+        when(inventoryRepository.findByBuffetAndProduct(buffetId, productId))
+                .thenReturn(Optional.of(inventory));
+    }
+
+    private void givenInventoryDoesNotExist() {
+        when(inventoryRepository.findByBuffetAndProduct(buffetId, productId))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenInventoryHasMovements() {
+        movement = new MovimientoStock(
                 UUID.randomUUID(),
                 inventoryId,
                 TipoMovimientoStock.AJUSTE,
@@ -46,41 +97,27 @@ class GetStockMovementsTest {
                 "Ajuste",
                 UUID.randomUUID(),
                 null,
-                LocalDateTime.now()
+                LocalDateTime.of(2026, 6, 8, 10, 0)
         );
-
-        when(inventoryRepository.findByBuffetAndProduct(buffetId, productId))
-                .thenReturn(Optional.of(inventory));
         when(stockMovementRepository.findByInventoryId(inventoryId))
                 .thenReturn(List.of(movement));
+    }
 
-        List<MovimientoStock> result = useCase.execute(buffetId, productId);
+    private void whenGettingStockMovements() {
+        response = useCase.execute(new GetStockMovementsRequest(buffetId, productId));
+    }
 
-        assertEquals(List.of(movement), result);
+    private void thenMovementResponsesAreReturned() {
+        GetStockMovementsResponse.StockMovementResponse stockMovement =
+                response.movements().get(0);
+        assertEquals(movement.id(), stockMovement.id());
+        assertEquals(inventoryId, stockMovement.inventarioId());
+        assertEquals("AJUSTE", stockMovement.tipo());
+        assertEquals(4, stockMovement.cantidad());
+        assertEquals("Ajuste", stockMovement.motivo());
+    }
+
+    private void thenMovementsWereLoadedByInventory() {
         verify(stockMovementRepository).findByInventoryId(inventoryId);
-    }
-
-    @Test
-    void execute_WhenInventoryDoesNotExist_ShouldThrowException() {
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-
-        when(inventoryRepository.findByBuffetAndProduct(buffetId, productId))
-                .thenReturn(Optional.empty());
-
-        assertThrows(InventoryNotFoundException.class,
-                () -> useCase.execute(buffetId, productId));
-    }
-
-    @Test
-    void execute_WhenBuffetIdIsNull_ShouldThrowException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(null, UUID.randomUUID()));
-    }
-
-    @Test
-    void execute_WhenProductIdIsNull_ShouldThrowException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(UUID.randomUUID(), null));
     }
 }

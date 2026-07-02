@@ -38,92 +38,113 @@ public class CreateStudentFromParent {
     }
 
     @Transactional
-    public Alumno execute(String parentCognitoSubject, String username, String nombre,
-                          String apellido,
-                          String email, String dni, UUID gradoId) {
-        validate(username, nombre, apellido, email);
+    public CreateStudentFromParentResponse execute(CreateStudentFromParentRequest request) {
+        request.validate();
 
-        Usuario parent = usuarioRepository.findByIdCognito(parentCognitoSubject)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Usuario autenticado no encontrado"));
+        Tutor tutor = findTutorForAuthenticatedParent(request.parentCognitoSubject());
 
-        if (parent.getRol() != RolUsuario.PADRE) {
-            throw new AccessDeniedException("El usuario autenticado no tiene rol PADRE");
-        }
+        ensureEmailAvailable(request.email());
 
-        Tutor tutor = tutorRepository.findByUsuarioId(parent.getId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Tutor no encontrado para el usuario autenticado"));
+        Grado grado = resolveGrade(request.gradoId());
 
-        usuarioRepository.findByEmail(email.trim())
-                .ifPresent(existing -> {
-                    throw new IllegalArgumentException(
-                            "Ya existe un usuario con el email indicado");
-                });
+        Usuario savedStudentUser = createStudentUser(request);
 
-        Grado grado = null;
-        if (gradoId != null) {
-            grado = gradoRepository.findById(gradoId)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "No se encontro el grado indicado"));
-        }
+        Alumno savedChild = alumnoRepository.save(Alumno.createFromUser(savedStudentUser, grado));
+        tutor.addHijo(savedChild);
+        tutorRepository.save(tutor);
 
-        CreatedCognitoUser cognitoUser = cognitoStudentIdentityService.createStudentUser(
+        return CreateStudentFromParentResponse.fromDomain(savedChild);
+    }
+
+    private Usuario createStudentUser(CreateStudentFromParentRequest request) {
+        CreatedCognitoUser cognitoUser = createCognitoStudentUser(
+                request.username(),
+                request.nombre(),
+                request.apellido(),
+                request.email()
+        );
+
+        Usuario studentUser = buildStudentUserFromCognito(
+                cognitoUser.sub(),
+                request.nombre(),
+                request.apellido(),
+                request.email(),
+                request.dni(),
+                request.urlFotoPerfil()
+        );
+
+        return usuarioRepository.save(studentUser);
+    }
+
+    private Usuario buildStudentUserFromCognito(String cognitoSub, String nombre, String apellido,
+                                                String email, String dni, String urlFotoPerfil) {
+        LocalDateTime now = LocalDateTime.now();
+
+        Usuario studentUser = new Usuario();
+        studentUser.setIdCognito(cognitoSub);
+        studentUser.setEmail(email.trim());
+        studentUser.setNombre(nombre.trim());
+        studentUser.setApellido(apellido.trim());
+        studentUser.setDni(normalizeOptional(dni));
+        studentUser.setRol(RolUsuario.ALUMNO);
+        studentUser.setAutenticadoConCognito(true);
+        studentUser.setActivo(true);
+        studentUser.setCreadoEn(now);
+        studentUser.setActualizadoEn(now);
+        studentUser.setUrlFotoPerfil(urlFotoPerfil);
+        return studentUser;
+    }
+
+    private CreatedCognitoUser createCognitoStudentUser(String username, String nombre,
+                                                        String apellido, String email) {
+        return cognitoStudentIdentityService.createStudentUser(
                 normalizeOptional(username),
                 email.trim(),
                 nombre.trim(),
                 apellido.trim()
         );
-
-        Usuario childUser = buildChildUser(nombre, apellido, email, dni, cognitoUser);
-        Usuario savedChildUser = usuarioRepository.save(childUser);
-
-        Alumno child = new Alumno();
-        child.setUsuario(savedChildUser);
-        child.setUsuarioId(savedChildUser.getId());
-        child.setActivo(true);
-        child.setGrado(grado);
-
-        Alumno savedChild = alumnoRepository.save(child);
-        tutor.addHijo(savedChild);
-        tutorRepository.save(tutor);
-
-        return savedChild;
     }
 
-    private Usuario buildChildUser(String nombre, String apellido, String email, String dni,
-                                   CreatedCognitoUser cognitoUser) {
-        LocalDateTime now = LocalDateTime.now();
-
-        Usuario childUser = new Usuario();
-        childUser.setIdCognito(cognitoUser.sub());
-        childUser.setEmail(email.trim());
-        childUser.setNombre(nombre.trim());
-        childUser.setApellido(apellido.trim());
-        childUser.setDni(normalizeOptional(dni));
-        childUser.setRol(RolUsuario.ALUMNO);
-        childUser.setAutenticadoConCognito(true);
-        childUser.setActivo(true);
-        childUser.setCreadoEn(now);
-        childUser.setActualizadoEn(now);
-        return childUser;
+    private Tutor findTutorForAuthenticatedParent(String parentCognitoSubject) {
+        Usuario parent = findAuthenticatedUser(parentCognitoSubject);
+        ensureParentRole(parent);
+        return findTutorByUserId(parent.getId());
     }
 
-    private void validate(String username, String nombre, String apellido, String email) {
-        requireNonBlank(nombre, "El nombre del alumno es obligatorio");
-        requireNonBlank(apellido, "El apellido del alumno es obligatorio");
-        requireNonBlank(email, "El email del alumno es obligatorio");
+    private Usuario findAuthenticatedUser(String cognitoSubject) {
+        return usuarioRepository.findByIdCognito(cognitoSubject)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Usuario autenticado no encontrado"));
+    }
 
-        if (username != null && username.contains("@")) {
-            throw new IllegalArgumentException(
-                    "El username no puede tener formato de email");
+    private void ensureParentRole(Usuario user) {
+        if (user.getRol() != RolUsuario.PADRE) {
+            throw new AccessDeniedException("El usuario autenticado no tiene rol PADRE");
         }
     }
 
-    private void requireNonBlank(String value, String message) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(message);
+    private Tutor findTutorByUserId(UUID userId) {
+        return tutorRepository.findByUsuarioId(userId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Tutor no encontrado para el usuario autenticado"));
+    }
+
+    private void ensureEmailAvailable(String email) {
+        usuarioRepository.findByEmail(email.trim())
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException(
+                            "Ya existe un usuario con el email indicado");
+                });
+    }
+
+    private Grado resolveGrade(UUID gradoId) {
+        if (gradoId == null) {
+            return null;
         }
+
+        return gradoRepository.findById(gradoId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se encontro el grado indicado"));
     }
 
     private String normalizeOptional(String value) {

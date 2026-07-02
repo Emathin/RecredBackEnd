@@ -84,7 +84,7 @@ class LoadBalanceToChildTest {
         when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        loadBalanceToChild.execute(cognitoSub, studentId, amount);
+        loadBalanceToChild.execute(new com.recred.backend.application.LoadBalanceToChildRequest(cognitoSub, studentId, amount));
 
         assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
         verify(walletRepository).save(wallet);
@@ -100,9 +100,9 @@ class LoadBalanceToChildTest {
     @Test
     void execute_shouldThrowException_whenAmountIsZeroOrLess() {
         assertThrows(IllegalArgumentException.class, () ->
-                loadBalanceToChild.execute(cognitoSub, studentId, BigDecimal.ZERO));
+                loadBalanceToChild.execute(new com.recred.backend.application.LoadBalanceToChildRequest(cognitoSub, studentId, BigDecimal.ZERO)));
         assertThrows(IllegalArgumentException.class, () ->
-                loadBalanceToChild.execute(cognitoSub, studentId, new BigDecimal("-10")));
+                loadBalanceToChild.execute(new com.recred.backend.application.LoadBalanceToChildRequest(cognitoSub, studentId, new BigDecimal("-10"))));
 
         verify(walletRepository, never()).save(any());
     }
@@ -112,7 +112,7 @@ class LoadBalanceToChildTest {
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.empty());
 
         assertThrows(SecurityException.class, () ->
-                loadBalanceToChild.execute(cognitoSub, studentId, new BigDecimal("50.00")));
+                loadBalanceToChild.execute(new com.recred.backend.application.LoadBalanceToChildRequest(cognitoSub, studentId, new BigDecimal("50.00"))));
 
         verify(walletRepository, never()).save(any());
     }
@@ -123,7 +123,7 @@ class LoadBalanceToChildTest {
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
 
         assertThrows(SecurityException.class, () ->
-                loadBalanceToChild.execute(cognitoSub, studentId, new BigDecimal("50.00")));
+                loadBalanceToChild.execute(new com.recred.backend.application.LoadBalanceToChildRequest(cognitoSub, studentId, new BigDecimal("50.00"))));
 
         verify(walletRepository, never()).save(any());
     }
@@ -135,7 +135,7 @@ class LoadBalanceToChildTest {
         when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
 
         assertThrows(SecurityException.class, () ->
-                loadBalanceToChild.execute(cognitoSub, studentId, new BigDecimal("50.00")));
+                loadBalanceToChild.execute(new com.recred.backend.application.LoadBalanceToChildRequest(cognitoSub, studentId, new BigDecimal("50.00"))));
 
         verify(walletRepository, never()).save(any());
     }
@@ -147,7 +147,7 @@ class LoadBalanceToChildTest {
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () ->
-                loadBalanceToChild.execute(cognitoSub, studentId, new BigDecimal("50.00")));
+                loadBalanceToChild.execute(new com.recred.backend.application.LoadBalanceToChildRequest(cognitoSub, studentId, new BigDecimal("50.00"))));
 
         verify(walletRepository, never()).save(any());
     }

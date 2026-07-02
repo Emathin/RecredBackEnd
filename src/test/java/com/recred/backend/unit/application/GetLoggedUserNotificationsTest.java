@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetLoggedUserNotifications;
+import com.recred.backend.application.GetLoggedUserNotificationsResponse;
 import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
 import com.recred.backend.domain.models.Notification;
 import com.recred.backend.domain.models.TipoNotificacion;
@@ -52,9 +53,10 @@ class GetLoggedUserNotificationsTest {
         when(notificationRepository.findByUserId(userId, true, 1, 5))
                 .thenReturn(notifications);
 
-        List<Notification> result = useCase.execute(COGNITO_SUBJECT, true, 1, 5);
+        GetLoggedUserNotificationsResponse result = useCase.execute(COGNITO_SUBJECT, true, 1, 5);
 
-        assertEquals(notifications, result);
+        assertEquals(1, result.notifications().size());
+        assertEquals(notifications.get(0).id(), result.notifications().get(0).id());
         verify(notificationRepository).findByUserId(userId, true, 1, 5);
     }
 

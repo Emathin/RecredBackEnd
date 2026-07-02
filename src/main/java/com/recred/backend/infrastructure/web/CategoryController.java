@@ -23,7 +23,7 @@ public class CategoryController {
     public List<CategoryResponse> getCategories() {
         return getAllCategories.execute()
                 .stream()
-                .map(CategoryResponse::fromDomain)
+                .map(res -> new CategoryResponse(res.id(), res.descripcion(), res.activo()))
                 .collect(Collectors.toList());
     }
 }

@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+
 import com.recred.backend.domain.models.SchoolAssistantIntent;
 import org.junit.jupiter.api.Test;
 

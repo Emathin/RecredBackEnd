@@ -1,7 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GenerateDailyBuffetReport;
-import com.recred.backend.domain.models.DailyBuffetReport;
+import com.recred.backend.application.GenerateDailyBuffetReportRequest;
+import com.recred.backend.application.GenerateDailyBuffetReportResponse;
 import com.recred.backend.domain.models.DailyInventorySnapshot;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoInventario;
@@ -64,7 +65,8 @@ class GenerateDailyBuffetReportTest {
                 anyList()
         )).thenReturn(4L);
 
-        DailyBuffetReport report = useCase.execute(buffetId, date);
+        GenerateDailyBuffetReportResponse report = useCase.execute(
+                new GenerateDailyBuffetReportRequest(buffetId, date));
 
         assertEquals(2, report.totalOrders());
         assertEquals(1, report.deliveredOrders());
@@ -114,9 +116,11 @@ class GenerateDailyBuffetReportTest {
         when(dailyBuffetCloseRepository.findInventorySnapshotByBuffetAndDate(buffetId, date))
                 .thenReturn(Optional.of(List.of(snapshot)));
 
-        DailyBuffetReport report = useCase.execute(buffetId, date);
+        GenerateDailyBuffetReportResponse report = useCase.execute(
+                new GenerateDailyBuffetReportRequest(buffetId, date));
 
-        assertEquals(List.of(snapshot), report.inventory());
+        assertEquals(snapshot.productId(), report.inventory().get(0).productId());
+        assertEquals(snapshot.productName(), report.inventory().get(0).productName());
         assertEquals(List.of(), report.soldOutProducts());
         verify(productRepository, never()).findAllActiveWithStock(buffetId);
     }
@@ -177,7 +181,8 @@ class GenerateDailyBuffetReportTest {
                 anyList()
         )).thenReturn(20L);
 
-        DailyBuffetReport report = useCase.execute(buffetId, date);
+        GenerateDailyBuffetReportResponse report = useCase.execute(
+                new GenerateDailyBuffetReportRequest(buffetId, date));
 
         assertEquals(7, report.totalOrders());
         assertEquals(2, report.deliveredOrders());
@@ -195,7 +200,7 @@ class GenerateDailyBuffetReportTest {
                 report.salesByPaymentMethod().get(0).paymentMethod());
         assertEquals(2, report.stockMovements().size());
         assertEquals(List.of(soldOutProduct.getId()), report.soldOutProducts().stream()
-                .map(DailyInventorySnapshot::productId)
+                .map(GenerateDailyBuffetReportResponse.DailyInventorySnapshotResponse::productId)
                 .toList());
         assertEquals(0, report.inventory().stream()
                 .filter(item -> item.productId().equals(saturatedDailyCapacity.getId()))

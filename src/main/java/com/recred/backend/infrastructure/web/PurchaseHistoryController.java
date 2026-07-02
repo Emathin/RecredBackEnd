@@ -1,8 +1,10 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.ObtenerHistorialAlumno;
-import com.recred.backend.application.ObtenerHistorialPendienteAlumno;
-import com.recred.backend.application.ObtenerHistorialTutor;
+import com.recred.backend.application.GetHistoryByStudent;
+import com.recred.backend.application.GetHistoryByStudentRequest;
+import com.recred.backend.application.GetPendingHistoryByStudent;
+import com.recred.backend.application.GetPendingHistoryByStudentRequest;
+import com.recred.backend.application.GetTutorHistory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
@@ -20,23 +22,25 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/purchases")
 public class PurchaseHistoryController {
 
-    private final ObtenerHistorialAlumno obtenerHistorialAlumno;
-    private final ObtenerHistorialTutor obtenerHistorialTutor;
-    private final ObtenerHistorialPendienteAlumno obtenerHistorialPendienteAlumno;
+    private final GetHistoryByStudent getHistoryByStudent;
+    private final GetTutorHistory getTutorHistory;
+    private final GetPendingHistoryByStudent getPendingHistoryByStudent;
 
     public PurchaseHistoryController(
-            ObtenerHistorialAlumno obtenerHistorialAlumno,
-            ObtenerHistorialTutor obtenerHistorialTutor,
-            ObtenerHistorialPendienteAlumno obtenerHistorialPendienteAlumno) {
-        this.obtenerHistorialAlumno = obtenerHistorialAlumno;
-        this.obtenerHistorialTutor = obtenerHistorialTutor;
-        this.obtenerHistorialPendienteAlumno = obtenerHistorialPendienteAlumno;
+            GetHistoryByStudent getHistoryByStudent,
+            GetTutorHistory getTutorHistory,
+            GetPendingHistoryByStudent getPendingHistoryByStudent) {
+        this.getHistoryByStudent = getHistoryByStudent;
+        this.getTutorHistory = getTutorHistory;
+        this.getPendingHistoryByStudent = getPendingHistoryByStudent;
     }
 
     @GetMapping("/alumno/{alumnoId}")
     public ResponseEntity<List<PurchaseResponseDTO>> getHistorialAlumno(
             @PathVariable UUID alumnoId) {
-        List<PurchaseResponseDTO> historial = obtenerHistorialAlumno.execute(alumnoId)
+        List<PurchaseResponseDTO> historial = getHistoryByStudent.execute(
+                new GetHistoryByStudentRequest(alumnoId)
+        )
                 .stream()
                 .map(PurchaseResponseDTO::new)
                 .collect(Collectors.toList());
@@ -47,7 +51,9 @@ public class PurchaseHistoryController {
     @GetMapping("/alumno/{alumnoId}/pendientes")
     public ResponseEntity<List<PurchaseResponseDTO>> getPendientesAlumno(
             @PathVariable UUID alumnoId) {
-        List<PurchaseResponseDTO> pendientes = obtenerHistorialPendienteAlumno.execute(alumnoId)
+        List<PurchaseResponseDTO> pendientes = getPendingHistoryByStudent.execute(
+                new GetPendingHistoryByStudentRequest(alumnoId)
+        )
                 .stream()
                 .map(PurchaseResponseDTO::new)
                 .collect(Collectors.toList());
@@ -57,7 +63,7 @@ public class PurchaseHistoryController {
 
     @GetMapping("/tutor/me")
     public ResponseEntity<List<PurchaseResponseDTO>> getMyHistorial(Authentication authentication) {
-        List<PurchaseResponseDTO> historial = obtenerHistorialTutor
+        List<PurchaseResponseDTO> historial = getTutorHistory
                 .executeByCognitoSubject(cognitoSubject(authentication))
                 .stream()
                 .map(PurchaseResponseDTO::new)
@@ -69,7 +75,7 @@ public class PurchaseHistoryController {
     @GetMapping("/tutor/{tutorId}")
     public ResponseEntity<List<PurchaseResponseDTO>> getHistorialTutor(
             @PathVariable UUID tutorId) {
-        List<PurchaseResponseDTO> historial = obtenerHistorialTutor.execute(tutorId)
+        List<PurchaseResponseDTO> historial = getTutorHistory.execute(tutorId)
                 .stream()
                 .map(PurchaseResponseDTO::new)
                 .collect(Collectors.toList());

@@ -81,6 +81,9 @@ class SchoolAssistantContentFormatter {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("alumnoId", pendingPurchase.studentId().toString());
         data.put("buffetId", pendingPurchase.buffetId().toString());
+        data.put("fechaRetiro", pendingPurchase.pickupDate()
+                .map(LocalDate::toString)
+                .orElse(""));
         data.put("recreo", pendingPurchase.recessTime()
                 .map(RecessTime::name)
                 .orElse(""));
@@ -301,7 +304,7 @@ class SchoolAssistantContentFormatter {
         return dateTime == null ? "sin fecha" : DATE_TIME_FORMAT.format(dateTime);
     }
 
-    private String date(LocalDate date) {
+    String date(LocalDate date) {
         return date == null ? "sin fecha" : DATE_FORMAT.format(date);
     }
 

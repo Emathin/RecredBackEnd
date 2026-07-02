@@ -1,12 +1,17 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.AgregarProductoFavorito;
+import com.recred.backend.application.AddFavoriteProduct;
+import com.recred.backend.application.AddFavoriteProductRequest;
+import com.recred.backend.application.DeleteFavoriteProduct;
+import com.recred.backend.application.DeleteFavoriteProductRequest;
 import com.recred.backend.application.DetectStudentPreferences;
-import com.recred.backend.application.GetFavoritosByAlumno;
+import com.recred.backend.application.DetectStudentPreferencesRequest;
+import com.recred.backend.application.GetFavoritesByStudent;
+import com.recred.backend.application.GetFavoritesByStudentRequest;
 import com.recred.backend.application.GetStudentPreferences;
-import com.recred.backend.application.GetStudentPreferences.StudentPreferenceResult;
-import com.recred.backend.application.RemoverProductoFavorito;
+import com.recred.backend.application.GetStudentPreferencesByUserRequest;
 import com.recred.backend.application.RespondToAISuggestion;
+import com.recred.backend.application.RespondToAISuggestionRequest;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import org.springframework.http.ResponseEntity;
@@ -30,49 +35,52 @@ public class StudentPreferenceController {
     private final GetStudentPreferences getStudentPreferences;
     private final RespondToAISuggestion respondToAISuggestion;
     private final AlumnoRepository alumnoRepository;
-    private final AgregarProductoFavorito agregarProductoFavorito;
-    private final RemoverProductoFavorito removerProductoFavorito;
-    private final GetFavoritosByAlumno getFavoritosByAlumno;
+    private final AddFavoriteProduct addFavoriteProduct;
+    private final DeleteFavoriteProduct deleteFavoriteProduct;
+    private final GetFavoritesByStudent getFavoritesByStudent;
 
     public StudentPreferenceController(
             DetectStudentPreferences detectStudentPreferences,
             GetStudentPreferences getStudentPreferences,
             RespondToAISuggestion respondToAISuggestion,
             AlumnoRepository alumnoRepository,
-            AgregarProductoFavorito agregarProductoFavorito,
-            RemoverProductoFavorito removerProductoFavorito,
-            GetFavoritosByAlumno getFavoritosByAlumno) {
+            AddFavoriteProduct addFavoriteProduct,
+            DeleteFavoriteProduct deleteFavoriteProduct,
+            GetFavoritesByStudent getFavoritesByStudent) {
         this.detectStudentPreferences = detectStudentPreferences;
         this.getStudentPreferences = getStudentPreferences;
         this.respondToAISuggestion = respondToAISuggestion;
         this.alumnoRepository = alumnoRepository;
-        this.agregarProductoFavorito = agregarProductoFavorito;
-        this.removerProductoFavorito = removerProductoFavorito;
-        this.getFavoritosByAlumno = getFavoritosByAlumno;
+        this.addFavoriteProduct = addFavoriteProduct;
+        this.deleteFavoriteProduct = deleteFavoriteProduct;
+        this.getFavoritesByStudent = getFavoritesByStudent;
     }
 
     @PostMapping("/usuarios/{userId}/preferencias/detectar")
-    public ResponseEntity<StudentPreferenceResponse> detect(
+    public ResponseEntity<StudentPreferenceResponseDTO> detect(
             @PathVariable UUID userId,
             @RequestParam("buffetId") UUID buffetId
     ) {
         UUID resolvedAlumnoId = resolveAlumnoId(userId);
-        return detectStudentPreferences.execute(resolvedAlumnoId, buffetId)
-                .map(StudentPreferenceResponse::fromDomain)
+        return detectStudentPreferences
+                .execute(new DetectStudentPreferencesRequest(resolvedAlumnoId, buffetId))
+                .map(StudentPreferenceResponseDTO::fromUseCaseResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
     }
 
     @GetMapping("/usuarios/{userId}/preferencias")
-    public ResponseEntity<List<StudentPreferenceResponse>> getPreferences(
+    public ResponseEntity<List<StudentPreferenceResponseDTO>> getPreferences(
             @PathVariable UUID userId,
             @RequestParam(name = "ultima", required = false, defaultValue = "false") boolean ultima,
             @RequestParam(name = "tipo", required = false) TipoSugerenciaIA tipo
     ) {
-        List<StudentPreferenceResponse> preferences =
-                getStudentPreferences.executeByUserId(userId, ultima, tipo)
+        List<StudentPreferenceResponseDTO> preferences =
+                getStudentPreferences.executeByUserId(
+                        new GetStudentPreferencesByUserRequest(userId, ultima, tipo))
+                        .preferences()
                         .stream()
-                        .map(this::toResponse)
+                        .map(StudentPreferenceResponseDTO::fromApplication)
                         .toList();
 
         return preferences.isEmpty()
@@ -80,23 +88,12 @@ public class StudentPreferenceController {
                 : ResponseEntity.ok(preferences);
     }
 
-    private StudentPreferenceResponse toResponse(StudentPreferenceResult result) {
-        if (result.parentView()) {
-            return StudentPreferenceResponse.fromParentView(
-                    result.suggestion(),
-                    result.child());
-        }
-        return StudentPreferenceResponse.fromStudentView(
-                result.suggestion(),
-                result.child());
-    }
-
     @PatchMapping("/usuarios/{userId}/preferencias/{sugerenciaId}/responder")
     public ResponseEntity<Void> respond(
             @PathVariable UUID sugerenciaId,
             @RequestParam("aceptada") boolean aceptada
     ) {
-        respondToAISuggestion.execute(sugerenciaId, aceptada);
+        respondToAISuggestion.execute(new RespondToAISuggestionRequest(sugerenciaId, aceptada));
         return ResponseEntity.ok().build();
     }
 
@@ -105,7 +102,7 @@ public class StudentPreferenceController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId
     ) {
-        agregarProductoFavorito.execute(alumnoId, productoId);
+        addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId));
         return ResponseEntity.ok().build();
     }
 
@@ -114,7 +111,7 @@ public class StudentPreferenceController {
             @PathVariable UUID alumnoId,
             @PathVariable UUID productoId
     ) {
-        removerProductoFavorito.execute(alumnoId, productoId);
+        deleteFavoriteProduct.execute(new DeleteFavoriteProductRequest(alumnoId, productoId));
         return ResponseEntity.ok().build();
     }
 
@@ -122,10 +119,11 @@ public class StudentPreferenceController {
     public ResponseEntity<List<ProductResponseDTO>> obtenerFavoritos(
             @PathVariable UUID alumnoId
     ) {
-        List<ProductResponseDTO> favoritos = getFavoritosByAlumno.execute(alumnoId)
-                .stream()
-                .map(ProductResponseDTO::fromDomain)
-                .toList();
+        List<ProductResponseDTO> favoritos =
+                getFavoritesByStudent.execute(new GetFavoritesByStudentRequest(alumnoId))
+                        .stream()
+                        .map(ProductResponseDTO::fromUseCaseResponse)
+                        .toList();
         return ResponseEntity.ok(favoritos);
     }
 

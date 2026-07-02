@@ -1,7 +1,12 @@
 package com.recred.backend.web;
 
-import com.recred.backend.application.ObtenerHijosPorPadre;
 import com.recred.backend.application.CreateStudentFromParent;
+import com.recred.backend.application.CreateStudentFromParentRequest;
+import com.recred.backend.application.CreateStudentFromParentResponse;
+import com.recred.backend.application.GetChildrenByTutor;
+import com.recred.backend.application.GetChildrenByTutorRequest;
+import com.recred.backend.application.GetChildrenByTutorResponse;
+import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.Alumno;
@@ -9,9 +14,10 @@ import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.infrastructure.web.TutorController;
-import com.recred.backend.infrastructure.web.StudentDTO;
+import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.infrastructure.web.CreateChildRequest;
+import com.recred.backend.infrastructure.web.StudentDTO;
+import com.recred.backend.infrastructure.web.TutorController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
@@ -25,9 +31,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.List;
 import java.math.BigDecimal;
-import java.util.Set;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -49,7 +54,7 @@ class TutorControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ObtenerHijosPorPadre obtenerHijosPorPadre;
+    private GetChildrenByTutor getChildrenByTutor;
 
     @MockitoBean
     private CreateStudentFromParent createStudentFromParent;
@@ -65,6 +70,12 @@ class TutorControllerTest {
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private UpdateStudentPhoto updateStudentPhoto;
+
+    @MockitoBean
+    private CloudinaryService cloudinaryService;
 
     @Test
     void dadoUnTutorConHijos_cuandoConsultaEndpoint_entoncesRetorna200YListaDeEstudiantes() throws Exception {
@@ -94,7 +105,18 @@ class TutorControllerTest {
         alumno.setGrado(grado);
         alumno.setBilletera(billetera);
 
-        when(obtenerHijosPorPadre.execute(tutorId)).thenReturn(Set.of(alumno));
+        GetChildrenByTutorResponse childResponse = new GetChildrenByTutorResponse(
+                alumnoId,
+                "Lucas",
+                "Pérez",
+                true,
+                "1 A",
+                colegioId,
+                new BigDecimal("150.50"),
+                null
+        );
+        when(getChildrenByTutor.execute(GetChildrenByTutorRequest.byTutorId(tutorId)))
+                .thenReturn(List.of(childResponse));
 
         mockMvc.perform(get("/api/v1/tutores/{tutorId}/hijos", tutorId)
                         .contentType(MediaType.APPLICATION_JSON))
@@ -112,9 +134,18 @@ class TutorControllerTest {
     void dadoUnTutorAutenticado_cuandoConsultaMisHijos_entoncesUsaCognitoSubject()
             throws Exception {
         UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = alumno(alumnoId, "Ana", "Lopez");
-        when(obtenerHijosPorPadre.executeByCognitoSubject("tutor-sub"))
-                .thenReturn(Set.of(alumno));
+        GetChildrenByTutorResponse response = new GetChildrenByTutorResponse(
+                alumnoId,
+                "Ana",
+                "Lopez",
+                true,
+                null,
+                null,
+                BigDecimal.ZERO,
+                null
+        );
+        when(getChildrenByTutor.execute(GetChildrenByTutorRequest.byCognitoSubject("tutor-sub")))
+                .thenReturn(List.of(response));
 
         mockMvc.perform(get("/api/v1/tutores/me/hijos")
                         .principal(new TestingAuthenticationToken("tutor-sub", ""))
@@ -123,23 +154,34 @@ class TutorControllerTest {
                 .andExpect(jsonPath("$[0].id").value(alumnoId.toString()))
                 .andExpect(jsonPath("$[0].nombre").value("Ana"));
 
-        verify(obtenerHijosPorPadre).executeByCognitoSubject("tutor-sub");
+        verify(getChildrenByTutor).execute(GetChildrenByTutorRequest.byCognitoSubject("tutor-sub"));
     }
 
     @Test
     void dadoUnTutorAutenticado_cuandoCreaHijo_entoncesRetornaCreated() throws Exception {
         UUID alumnoId = UUID.randomUUID();
         UUID gradoId = UUID.randomUUID();
-        Alumno alumno = alumno(alumnoId, "Mateo", "Gomez");
-        when(createStudentFromParent.execute(
+        CreateStudentFromParentResponse alumno = new CreateStudentFromParentResponse(
+                alumnoId,
+                "Mateo",
+                "Gomez",
+                true,
+                null,
+                null,
+                null,
+                BigDecimal.ZERO,
+                null
+        );
+        when(createStudentFromParent.execute(new CreateStudentFromParentRequest(
                 "tutor-sub",
                 "mateo",
                 "Mateo",
                 "Gomez",
                 "mateo@test.com",
                 "12345678",
-                gradoId
-        )).thenReturn(alumno);
+                gradoId,
+                null
+        ))).thenReturn(alumno);
 
         mockMvc.perform(post("/api/v1/tutores/me/hijos")
                         .principal(new TestingAuthenticationToken("tutor-sub", ""))
@@ -158,15 +200,16 @@ class TutorControllerTest {
                 .andExpect(jsonPath("$.id").value(alumnoId.toString()))
                 .andExpect(jsonPath("$.nombre").value("Mateo"));
 
-        verify(createStudentFromParent).execute(
+        verify(createStudentFromParent).execute(new CreateStudentFromParentRequest(
                 "tutor-sub",
                 "mateo",
                 "Mateo",
                 "Gomez",
                 "mateo@test.com",
                 "12345678",
-                gradoId
-        );
+                gradoId,
+                null
+        ));
     }
 
     @Test
@@ -174,18 +217,32 @@ class TutorControllerTest {
         UUID tutorId = UUID.randomUUID();
         UUID alumnoId = UUID.randomUUID();
         TutorController controller = new TutorController(
-                obtenerHijosPorPadre,
+                getChildrenByTutor,
                 usuarioService,
-                createStudentFromParent
+                createStudentFromParent,
+                updateStudentPhoto,
+                cloudinaryService
         );
         Usuario usuario = new Usuario();
         com.recred.backend.domain.models.Tutor tutor =
                 new com.recred.backend.domain.models.Tutor();
         tutor.setId(tutorId);
         usuario.setTutor(tutor);
+
+        GetChildrenByTutorResponse responseChild = new GetChildrenByTutorResponse(
+                alumnoId,
+                "Sofia",
+                "Diaz",
+                true,
+                null,
+                null,
+                BigDecimal.ZERO,
+                null
+        );
+
         when(usuarioService.obtenerUsuarioActual("tutor-sub")).thenReturn(usuario);
-        when(obtenerHijosPorPadre.execute(tutorId))
-                .thenReturn(Set.of(alumno(alumnoId, "Sofia", "Diaz")));
+        when(getChildrenByTutor.execute(GetChildrenByTutorRequest.byTutorId(tutorId)))
+                .thenReturn(List.of(responseChild));
 
         ResponseEntity<List<StudentDTO>> response = controller.obtenerHijos(
                 "me",
@@ -195,15 +252,17 @@ class TutorControllerTest {
         assertEquals(200, response.getStatusCode().value());
         assertEquals(alumnoId, response.getBody().get(0).id());
         verify(usuarioService).obtenerUsuarioActual("tutor-sub");
-        verify(obtenerHijosPorPadre).execute(tutorId);
+        verify(getChildrenByTutor).execute(GetChildrenByTutorRequest.byTutorId(tutorId));
     }
 
     @Test
     void obtenerHijosConTutorMeSinPerfilRetornaListaVacia() {
         TutorController controller = new TutorController(
-                obtenerHijosPorPadre,
+                getChildrenByTutor,
                 usuarioService,
-                createStudentFromParent
+                createStudentFromParent,
+                updateStudentPhoto,
+                cloudinaryService
         );
         Usuario usuario = new Usuario();
         when(usuarioService.obtenerUsuarioActual("tutor-sub")).thenReturn(usuario);
@@ -220,9 +279,11 @@ class TutorControllerTest {
     @Test
     void crearHijoSinAutenticacionLanzaCredentialsException() {
         TutorController controller = new TutorController(
-                obtenerHijosPorPadre,
+                getChildrenByTutor,
                 usuarioService,
-                createStudentFromParent
+                createStudentFromParent,
+                updateStudentPhoto,
+                cloudinaryService
         );
         CreateChildRequest request = new CreateChildRequest(
                 "mateo",
@@ -230,7 +291,8 @@ class TutorControllerTest {
                 "Gomez",
                 "mateo@test.com",
                 "12345678",
-                UUID.randomUUID()
+                UUID.randomUUID(),
+                null
         );
 
         assertThrows(AuthenticationCredentialsNotFoundException.class,

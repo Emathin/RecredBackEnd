@@ -1,6 +1,8 @@
 package com.recred.backend.config;
 
 import com.recred.backend.domain.exceptions.NotificationNotFoundException;
+import com.recred.backend.domain.exceptions.FileValidationException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.BuffetNotFoundException;
 import com.recred.backend.domain.exceptions.ImageValidationException;
@@ -77,6 +79,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RestriccionSaludException.class)
     public ResponseEntity<ErrorResponse> handleRestriccionSalud(
             RestriccionSaludException ex) {
+        LOGGER.error("RestriccionSaludException caught: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.CONFLICT, "Conflicto de Restricción Médica",
                 ex.getMessage(), "HEALTH_RESTRICTION");
     }
@@ -90,6 +93,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InsufficientBalanceException.class)
     public ResponseEntity<ErrorResponse>
     handleInsufficientBalance(InsufficientBalanceException ex){
+        LOGGER.error("InsufficientBalanceException caught: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.BAD_REQUEST, "Saldo Insuficiente",
                 ex.getMessage(), "INSUFFICIENT_BALANCE");
     }
@@ -98,6 +102,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleInsufficientStock(
             InsufficientStockException ex
     ) {
+        LOGGER.error("InsufficientStockException caught: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.CONFLICT, "Stock insuficiente", ex.getMessage(),
                 "STOCK_INSUFFICIENT");
     }
@@ -155,6 +160,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handlePickupSlotCapacityExceeded(
             PickupSlotCapacityExceededException ex
     ) {
+        LOGGER.error("PickupSlotCapacityExceededException caught: {}",
+                ex.getMessage(), ex);
         return buildResponse(HttpStatus.CONFLICT, "Cupo de recreo agotado",
                 ex.getMessage(), "TIME_SLOT_CAPACITY_EXCEEDED");
     }
@@ -171,6 +178,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleProductDailyCapacity(
             ProductDailyCapacityExceededException ex
     ) {
+        LOGGER.error("ProductDailyCapacityExceededException caught: {}",
+                ex.getMessage(), ex);
         return buildResponse(HttpStatus.CONFLICT, "Cupo diario de producto agotado",
                 ex.getMessage(), "PRODUCT_DAILY_CAPACITY_EXCEEDED");
     }
@@ -232,6 +241,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse>
     handleValidation(MethodArgumentNotValidException ex){
+        LOGGER.error("MethodArgumentNotValidException caught: {}",
+                ex.getMessage(), ex);
         String details = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .findFirst().orElse("Datos inválidos");
@@ -240,6 +251,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        LOGGER.error("IllegalArgumentException caught: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.BAD_REQUEST, "Regla de Negocio Inválida",
                 ex.getMessage());
     }
@@ -263,6 +275,24 @@ public class GlobalExceptionHandler {
         String mensaje = "No se pudo guardar la información porque entra en conflicto "
                 + "con los datos existentes.";
         return buildResponse(HttpStatus.CONFLICT, "Conflicto de Datos", mensaje);
+    }
+
+    @ExceptionHandler(FileValidationException.class)
+    public ResponseEntity<ErrorResponse> handleFileValidation(FileValidationException ex) {
+        LOGGER.warn("Validación de archivo fallida: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "Validación de Archivo", ex.getMessage());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException ex
+    ) {
+        LOGGER.warn("Tamaño de archivo excedido: {}", ex.getMessage());
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validación de Archivo",
+                "El archivo supera el límite máximo de peso permitido (5MB)"
+        );
     }
 
     @ExceptionHandler(Exception.class)

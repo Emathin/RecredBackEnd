@@ -13,4 +13,8 @@ public record StudentConsumptionDetail(
         int purchaseCount,
         List<StudentConsumptionPurchase> purchases
 ) {
+
+    public List<StudentConsumptionPurchase> purchasesOrEmpty() {
+        return purchases == null ? List.of() : purchases;
+    }
 }

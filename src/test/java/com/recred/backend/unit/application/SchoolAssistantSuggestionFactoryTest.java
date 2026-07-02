@@ -1,5 +1,7 @@
 package com.recred.backend.application;
 
+
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.SchoolAssistantAction;
 import com.recred.backend.domain.models.SchoolAssistantActionStatus;
 import com.recred.backend.domain.models.SchoolAssistantActionType;
@@ -60,6 +62,11 @@ class SchoolAssistantSuggestionFactoryTest {
 
     @Test
     void advancePurchaseActionForStudentReturnsStatusSpecificSuggestions() {
+        List<SchoolAssistantSuggestion> dateSuggestions = factory.suggestions(
+                SchoolAssistantRole.ALUMNO,
+                SchoolAssistantIntent.BUY_USUAL,
+                action(SchoolAssistantActionStatus.ESPERANDO_FECHA)
+        );
         List<SchoolAssistantSuggestion> recessSuggestions = factory.suggestions(
                 SchoolAssistantRole.ALUMNO,
                 SchoolAssistantIntent.BUY_USUAL,
@@ -73,15 +80,28 @@ class SchoolAssistantSuggestionFactoryTest {
         List<SchoolAssistantSuggestion> executedSuggestions = factory.suggestions(
                 SchoolAssistantRole.ALUMNO,
                 SchoolAssistantIntent.BUY_USUAL,
-                action(SchoolAssistantActionStatus.EJECUTADA)
+                action(SchoolAssistantActionStatus.EJECUTADA, EstadoCompra.PENDIENTE)
         );
 
+        assertTrue(dateSuggestions.isEmpty());
         assertEquals(List.of("Primer recreo", "Segundo recreo", "Mediodia", "Salida"),
                 recessSuggestions.stream().map(SchoolAssistantSuggestion::label).toList());
         assertEquals(List.of("Confirmar", "Cancelar"),
                 confirmationSuggestions.stream().map(SchoolAssistantSuggestion::label).toList());
-        assertEquals(List.of("Compra habitual", "Repetir ultima"),
+        assertEquals(List.of("Cancelar pedido", "Codigo retiro", "Compra habitual"),
                 executedSuggestions.stream().map(SchoolAssistantSuggestion::label).toList());
+    }
+
+    @Test
+    void executedAdvancePurchaseWithoutCancelableStatusDoesNotSuggestCancellation() {
+        List<SchoolAssistantSuggestion> suggestions = factory.suggestions(
+                SchoolAssistantRole.ALUMNO,
+                SchoolAssistantIntent.BUY_USUAL,
+                action(SchoolAssistantActionStatus.EJECUTADA, EstadoCompra.LISTO)
+        );
+
+        assertEquals(List.of("Codigo retiro", "Compra habitual"),
+                suggestions.stream().map(SchoolAssistantSuggestion::label).toList());
     }
 
     @Test
@@ -114,13 +134,20 @@ class SchoolAssistantSuggestionFactoryTest {
     }
 
     private SchoolAssistantAction action(SchoolAssistantActionStatus status) {
+        return action(status, null);
+    }
+
+    private SchoolAssistantAction action(
+            SchoolAssistantActionStatus status,
+            EstadoCompra purchaseStatus
+    ) {
         return new SchoolAssistantAction(
                 SchoolAssistantActionType.COMPRA_ANTICIPADA,
                 status,
                 true,
                 List.of(),
                 null,
-                null,
+                purchaseStatus,
                 null,
                 null,
                 null,

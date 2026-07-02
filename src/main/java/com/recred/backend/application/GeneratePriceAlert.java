@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,54 +39,101 @@ public class GeneratePriceAlert {
     }
 
     @Transactional
-    public void execute(Producto producto, BigDecimal oldPrice,
-                        BigDecimal newPrice, UUID buffetId) {
-        List<Alumno> affectedStudents = studentAIProfileRepository
-                .findStudentsWithFavoriteProduct(producto.getId());
+    public void execute(GeneratePriceAlertRequest request) {
+        request.validate();
 
-        LOGGER.info(
-                "price_alert_candidates productId={} affectedStudents={}",
-                producto.getId(),
-                affectedStudents.size()
-        );
+        Producto product = request.product();
+        List<Alumno> affectedStudents = findStudentsWithFavoriteProduct(product);
+
+        generateAlertsForAffectedStudents(request, affectedStudents);
+    }
+
+    private void generateAlertsForAffectedStudents(
+            GeneratePriceAlertRequest request,
+            List<Alumno> affectedStudents
+    ) {
+        Producto product = request.product();
 
         for (Alumno alumno : affectedStudents) {
-            if (hasRecentAlert(alumno.getId(), producto.getId())) {
-                LOGGER.info(
-                        "price_alert_skipped_recent studentId={} productId={}",
-                        alumno.getId(),
-                        producto.getId()
-                );
+            if (shouldSkipRecentAlert(alumno, product)) {
                 continue;
             }
-            priceAlertAIRepository.analyzeImpact(alumno, producto, oldPrice, newPrice)
-                    .map(result -> new PriceAlertSuggestion(
-                            alumno.getId(),
-                            alumno.getUsuarioId(),
-                            producto.getId(),
-                            buffetId,
-                            tutorUserIds(alumno),
-                            producto.getNombre(),
-                            result.titulo(),
-                            result.mensaje(),
-                            oldPrice,
-                            newPrice,
-                            result.razonIA()
-                    ))
-                    .ifPresentOrElse(
-                            sugerenciaIARepository::savePriceAlert,
-                            () -> LOGGER.warn(
-                                    "price_alert_ai_empty studentId={} productId={}",
-                                    alumno.getId(),
-                                    producto.getId()
-                            )
-                    );
+
+            generateAndSaveAlert(alumno, request);
         }
     }
 
+    private List<Alumno> findStudentsWithFavoriteProduct(Producto product) {
+        return studentAIProfileRepository.findStudentsWithFavoriteProduct(product.getId());
+    }
+
+    private boolean shouldSkipRecentAlert(Alumno student, Producto product) {
+        if (!hasRecentAlert(student.getId(), product.getId())) {
+            return false;
+        }
+
+        LOGGER.info(
+                "price_alert_skipped_recent studentId={} productId={}",
+                student.getId(),
+                product.getId()
+        );
+        return true;
+    }
+
+    private void generateAndSaveAlert(Alumno student, GeneratePriceAlertRequest request) {
+        Producto product = request.product();
+        priceAlertAIRepository.analyzeImpact(
+                        student,
+                        product,
+                        request.oldPrice(),
+                        request.newPrice()
+                )
+                .map(result -> buildPriceAlertSuggestion(student, request, result))
+                .ifPresentOrElse(
+                        sugerenciaIARepository::savePriceAlert,
+                        () -> logEmptyAIResult(student, product)
+                );
+    }
+
+    private PriceAlertSuggestion buildPriceAlertSuggestion(
+            Alumno student,
+            GeneratePriceAlertRequest request,
+            PriceAlertAIRepository.PriceAlertResult result
+    ) {
+        Producto product = request.product();
+        return new PriceAlertSuggestion(
+                student.getId(),
+                student.getUsuarioId(),
+                product.getId(),
+                request.buffetId(),
+                tutorUserIds(student),
+                product.getNombre(),
+                result.titulo(),
+                result.mensaje(),
+                request.oldPrice(),
+                request.newPrice(),
+                result.razonIA()
+        );
+    }
+
+    private void logEmptyAIResult(Alumno student, Producto product) {
+        LOGGER.warn(
+                "price_alert_ai_empty studentId={} productId={}",
+                student.getId(),
+                product.getId()
+        );
+    }
+
     private boolean hasRecentAlert(UUID studentId, UUID productId) {
-        LocalDateTime since = LocalDateTime.now(clock).minusHours(COOLDOWN_HOURS);
-        return sugerenciaIARepository.hasRecentPriceAlert(studentId, productId, since);
+        return sugerenciaIARepository.hasRecentPriceAlert(
+                studentId,
+                productId,
+                recentAlertLimit()
+        );
+    }
+
+    private LocalDateTime recentAlertLimit() {
+        return LocalDateTime.now(clock).minusHours(COOLDOWN_HOURS);
     }
 
     private Set<UUID> tutorUserIds(Alumno alumno) {

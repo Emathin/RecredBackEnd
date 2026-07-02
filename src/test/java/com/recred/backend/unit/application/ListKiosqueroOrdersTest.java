@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.ListKiosqueroOrders;
+import com.recred.backend.application.ListKiosqueroOrdersRequest;
+import com.recred.backend.application.ListKiosqueroOrdersResponse;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import org.junit.jupiter.api.Test;
@@ -9,9 +11,13 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class ListKiosqueroOrdersTest {
 
@@ -21,9 +27,12 @@ class ListKiosqueroOrdersTest {
     @Test
     void execute_WhenFiltersAreEmpty_ShouldUseActiveStatusesAndDefaultLimit() {
         UUID buffetId = UUID.randomUUID();
+        givenOrdersFound();
 
-        useCase.execute(buffetId, null, null, null, null);
+        ListKiosqueroOrdersResponse response = whenListingOrders(
+                new ListKiosqueroOrdersRequest(buffetId, null, null, null, null));
 
+        assertEquals(List.of(), response.orders());
         verify(purchaseRepository).findKiosqueroOrders(
                 buffetId,
                 List.of(
@@ -43,8 +52,15 @@ class ListKiosqueroOrdersTest {
         UUID slotId = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 6, 8);
         List<EstadoCompra> statuses = List.of(EstadoCompra.CANCELADO);
+        givenOrdersFound();
 
-        useCase.execute(buffetId, statuses, date, slotId, 250);
+        whenListingOrders(new ListKiosqueroOrdersRequest(
+                buffetId,
+                statuses,
+                date,
+                slotId,
+                250
+        ));
 
         verify(purchaseRepository).findKiosqueroOrders(
                 buffetId,
@@ -58,6 +74,25 @@ class ListKiosqueroOrdersTest {
     @Test
     void execute_WhenBuffetIdIsNull_ShouldThrowException() {
         assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(null, null, null, null, null));
+                () -> whenListingOrders(new ListKiosqueroOrdersRequest(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null)));
+    }
+
+    private void givenOrdersFound() {
+        when(purchaseRepository.findKiosqueroOrders(
+                any(),
+                any(),
+                any(),
+                any(),
+                anyInt()
+        )).thenReturn(List.of());
+    }
+
+    private ListKiosqueroOrdersResponse whenListingOrders(ListKiosqueroOrdersRequest request) {
+        return useCase.execute(request);
     }
 }
