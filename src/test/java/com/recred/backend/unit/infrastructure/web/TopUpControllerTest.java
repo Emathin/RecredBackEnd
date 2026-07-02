@@ -4,7 +4,7 @@ import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.application.GenerateTopUpLink;
 import com.recred.backend.application.GenerateTopUpLinkResponse;
-import com.recred.backend.application.TopUpCommand;
+import com.recred.backend.application.GenerateTopUpLinkRequest;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.ResponseEntity;
@@ -26,14 +26,15 @@ class TopUpControllerTest {
         TopUpController controller = new TopUpController(generateTopUpLink);
         UUID studentId = UUID.randomUUID();
         BigDecimal amount = new BigDecimal("100.00");
-        when(generateTopUpLink.execute(new TopUpCommand(studentId, amount)))
+        when(generateTopUpLink.execute(new GenerateTopUpLinkRequest(studentId, amount)))
                 .thenReturn(new GenerateTopUpLinkResponse("https://pay.test/link"));
 
         ResponseEntity<Map<String, String>> response = controller.requestTopUpLink(
                 new TopUpRequest(studentId, amount)
         );
 
-        ArgumentCaptor<TopUpCommand> captor = ArgumentCaptor.forClass(TopUpCommand.class);
+        ArgumentCaptor<GenerateTopUpLinkRequest> captor =
+                ArgumentCaptor.forClass(GenerateTopUpLinkRequest.class);
         verify(generateTopUpLink).execute(captor.capture());
         assertEquals(studentId, captor.getValue().studentId());
         assertEquals(amount, captor.getValue().amount());

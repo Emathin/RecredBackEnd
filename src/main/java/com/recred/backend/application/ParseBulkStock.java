@@ -17,7 +17,7 @@ public class ParseBulkStock {
 
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
             "application/pdf",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "text/csv",
             "image/jpeg",
             "image/png"
@@ -38,15 +38,15 @@ public class ParseBulkStock {
         this.tipoRepository = tipoRepository;
     }
 
-    public BulkStockParseResponse execute(ParseBulkStockCommand command) {
-        validateFile(command.fileContent(), command.contentType());
+    public BulkStockParseResponse execute(ParseBulkStockRequest request) {
+        validateFile(request.fileContent(), request.contentType());
 
         List<String> availableCategories = categoryRepository.getAllCategories().stream()
                 .map(CategoriaProducto::getDescripcion)
                 .collect(Collectors.toList());
         
         List<RawBulkProduct> rawProducts = bulkStockAnalyzer
-                .analyze(command.fileContent(), command.contentType(), availableCategories);
+                .analyze(request.fileContent(), request.contentType(), availableCategories);
         
         List<BulkProductData> resolvedProducts = rawProducts.stream()
                 .map(this::resolveEntity)

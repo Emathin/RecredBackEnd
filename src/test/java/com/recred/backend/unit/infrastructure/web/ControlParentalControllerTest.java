@@ -118,7 +118,7 @@ class ControlParentalControllerTest {
                 clasificacionId, "Celíaco", true
         );
 
-        when(getHealthRestrictions.ejecutar(new GetHealthRestrictionsRequest(alumnoId)))
+        when(getHealthRestrictions.execute(new GetHealthRestrictionsRequest(alumnoId)))
                 .thenReturn(Set.of(responseItem));
 
         mockMvc.perform(get("/api/v1/control-parental/alumnos/{alumnoId}/obtener-restricciones-salud", alumnoId)
@@ -127,7 +127,7 @@ class ControlParentalControllerTest {
                 .andExpect(jsonPath("$[0].id").value(clasificacionId.toString()))
                 .andExpect(jsonPath("$[0].descripcion").value("Celíaco"));
 
-        verify(getHealthRestrictions).ejecutar(new GetHealthRestrictionsRequest(alumnoId));
+        verify(getHealthRestrictions).execute(new GetHealthRestrictionsRequest(alumnoId));
     }
 
     @Test

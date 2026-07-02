@@ -7,6 +7,7 @@ import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.ApplyInventoryQuickAction;
+import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.GenerateComboSuggestion;
 import com.recred.backend.application.GetActivePromotionsByBuffet;
 import com.recred.backend.application.GetActiveSchools;
@@ -38,7 +39,6 @@ import com.recred.backend.application.UpdatePriceListItemMapping;
 import com.recred.backend.application.RecommendSupplierForProducts;
 import com.recred.backend.infrastructure.gemini.GeminiSupplierPriceListAnalyzer;
 import com.recred.backend.application.AddFavoriteProduct;
-import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.ManualProductLock;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CheckBudgetDates;
@@ -494,77 +494,6 @@ public class UseCases {
     }
 
     @Bean
-    public SchoolAssistantFixedTopics schoolAssistantFixedTopics(
-            PurchaseRepository purchaseRepository,
-            ProductRepository productRepository,
-            CreateAssistantAdvancePurchase createAssistantAdvancePurchase,
-            CancelPresentialPurchase cancelPresentialPurchase,
-            Clock clock) {
-        return new SchoolAssistantFixedTopics(
-                purchaseRepository,
-                productRepository,
-                createAssistantAdvancePurchase,
-                cancelPresentialPurchase,
-                clock);
-    }
-
-    @Bean
-    public AskSchoolAssistant askSchoolAssistant(
-            AlumnoRepository alumnoRepository,
-            WalletRepository walletRepository,
-            SchoolAssistantPaymentRepository paymentRepository,
-            SchoolAssistantPurchaseRepository schoolAssistantPurchaseRepository,
-            SchoolCalendarRepository schoolCalendarRepository,
-            ChatSessionRepository chatSessionRepository,
-            ChatMessageRepository chatMessageRepository,
-            SchoolAssistantResponder schoolAssistantResponder,
-            UsuarioRepository usuarioRepository,
-            TutorRepository tutorRepository,
-            KiosqueroRepository kiosqueroRepository,
-            ProductRepository productRepository,
-            PurchaseRepository purchaseRepository,
-            PresupuestoRepository presupuestoRepository,
-            SchoolAssistantFixedTopics fixedTopics,
-            Clock clock) {
-        return new AskSchoolAssistant(
-                alumnoRepository,
-                walletRepository,
-                paymentRepository,
-                schoolAssistantPurchaseRepository,
-                schoolCalendarRepository,
-                chatSessionRepository,
-                chatMessageRepository,
-                schoolAssistantResponder,
-                usuarioRepository,
-                tutorRepository,
-                kiosqueroRepository,
-                productRepository,
-                purchaseRepository,
-                presupuestoRepository,
-                fixedTopics,
-                clock);
-    }
-
-    @Bean
-    public SchoolAssistantConversations schoolAssistantConversations(
-            ChatSessionRepository chatSessionRepository,
-            ChatMessageRepository chatMessageRepository,
-            AlumnoRepository alumnoRepository,
-            UsuarioRepository usuarioRepository,
-            TutorRepository tutorRepository,
-            KiosqueroRepository kiosqueroRepository,
-            Clock clock) {
-        return new SchoolAssistantConversations(
-                chatSessionRepository,
-                chatMessageRepository,
-                alumnoRepository,
-                usuarioRepository,
-                tutorRepository,
-                kiosqueroRepository,
-                clock);
-    }
-
-    @Bean
     public GetLoggedUserConsumptionDetail getLoggedUserConsumptionDetail(
             ConsumptionAccessRepository consumptionAccessRepository,
             StudentConsumptionRepository studentConsumptionRepository,
@@ -627,35 +556,6 @@ public class UseCases {
                 inventoryAvailabilityService,
                 movimientoBilleteraRepository,
                 productRepository);
-    }
-
-    @Bean
-    public CreateAssistantAdvancePurchase createAssistantAdvancePurchase(
-            AlumnoRepository studentRepository,
-            WalletRepository walletRepository,
-            PurchaseRepository purchaseRepository,
-            RecessTimeSlotResolver recessTimeSlotResolver,
-            ValidadorHorarioService timeValidator,
-            ValidacionRestriccionesService healthValidator,
-            ValidadorPresupuestoService budgetValidator,
-            WithdrawalCodeService withdrawalCodeService,
-            Clock clock,
-            InventoryAvailabilityService inventoryAvailabilityService,
-            AdvancePurchaseRulesService advancePurchaseRulesService,
-            MovimientoBilleteraRepository movimientoBilleteraRepository) {
-        return new CreateAssistantAdvancePurchase(
-                studentRepository,
-                walletRepository,
-                purchaseRepository,
-                recessTimeSlotResolver,
-                timeValidator,
-                healthValidator,
-                budgetValidator,
-                withdrawalCodeService,
-                clock,
-                inventoryAvailabilityService,
-                advancePurchaseRulesService,
-                movimientoBilleteraRepository);
     }
 
     @Bean
@@ -1513,5 +1413,105 @@ public class UseCases {
                 itemListaPrecioProveedorRepository,
                 proveedorRepository,
                 productRepository);
+    }
+
+    @Bean
+    public SchoolAssistantFixedTopics schoolAssistantFixedTopics(
+            PurchaseRepository purchaseRepository,
+            ProductRepository productRepository,
+            CreateAssistantAdvancePurchase createAssistantAdvancePurchase,
+            CancelPresentialPurchase cancelPresentialPurchase,
+            Clock clock) {
+        return new SchoolAssistantFixedTopics(
+                purchaseRepository,
+                productRepository,
+                createAssistantAdvancePurchase,
+                cancelPresentialPurchase,
+                clock);
+    }
+
+    @Bean
+    public AskSchoolAssistant askSchoolAssistant(
+            AlumnoRepository alumnoRepository,
+            WalletRepository walletRepository,
+            SchoolAssistantPaymentRepository paymentRepository,
+            SchoolAssistantPurchaseRepository schoolAssistantPurchaseRepository,
+            SchoolCalendarRepository schoolCalendarRepository,
+            ChatSessionRepository chatSessionRepository,
+            ChatMessageRepository chatMessageRepository,
+            SchoolAssistantResponder schoolAssistantResponder,
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            KiosqueroRepository kiosqueroRepository,
+            ProductRepository productRepository,
+            PurchaseRepository purchaseRepository,
+            PresupuestoRepository presupuestoRepository,
+            SchoolAssistantFixedTopics fixedTopics,
+            Clock clock) {
+        return new AskSchoolAssistant(
+                alumnoRepository,
+                walletRepository,
+                paymentRepository,
+                schoolAssistantPurchaseRepository,
+                schoolCalendarRepository,
+                chatSessionRepository,
+                chatMessageRepository,
+                schoolAssistantResponder,
+                usuarioRepository,
+                tutorRepository,
+                kiosqueroRepository,
+                productRepository,
+                purchaseRepository,
+                presupuestoRepository,
+                fixedTopics,
+                clock);
+    }
+
+    @Bean
+    public SchoolAssistantConversations schoolAssistantConversations(
+            ChatSessionRepository chatSessionRepository,
+            ChatMessageRepository chatMessageRepository,
+            AlumnoRepository alumnoRepository,
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            KiosqueroRepository kiosqueroRepository,
+            Clock clock) {
+        return new SchoolAssistantConversations(
+                chatSessionRepository,
+                chatMessageRepository,
+                alumnoRepository,
+                usuarioRepository,
+                tutorRepository,
+                kiosqueroRepository,
+                clock);
+    }
+
+    @Bean
+    public CreateAssistantAdvancePurchase createAssistantAdvancePurchase(
+            AlumnoRepository studentRepository,
+            WalletRepository walletRepository,
+            PurchaseRepository purchaseRepository,
+            RecessTimeSlotResolver recessTimeSlotResolver,
+            ValidadorHorarioService timeValidator,
+            ValidacionRestriccionesService healthValidator,
+            ValidadorPresupuestoService budgetValidator,
+            WithdrawalCodeService withdrawalCodeService,
+            Clock clock,
+            InventoryAvailabilityService inventoryAvailabilityService,
+            AdvancePurchaseRulesService advancePurchaseRulesService,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        return new CreateAssistantAdvancePurchase(
+                studentRepository,
+                walletRepository,
+                purchaseRepository,
+                recessTimeSlotResolver,
+                timeValidator,
+                healthValidator,
+                budgetValidator,
+                withdrawalCodeService,
+                clock,
+                inventoryAvailabilityService,
+                advancePurchaseRulesService,
+                movimientoBilleteraRepository);
     }
 }

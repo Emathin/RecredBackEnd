@@ -1,8 +1,8 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GenerateTopUpLink;
+import com.recred.backend.application.GenerateTopUpLinkRequest;
 import com.recred.backend.application.GenerateTopUpLinkResponse;
-import com.recred.backend.application.TopUpCommand;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,12 +23,12 @@ public class TopUpController {
 
     @PostMapping("/topup")
     public ResponseEntity<Map<String, String>> requestTopUpLink(@RequestBody TopUpRequest request) {
+        GenerateTopUpLinkRequest topUpRequest = new GenerateTopUpLinkRequest(
+                request.studentId(),
+                request.amount()
+        );
 
-        TopUpCommand command = new TopUpCommand(request.studentId(), request.amount());
-
-
-        GenerateTopUpLinkResponse response = generateTopUpLink.execute(command);
-
+        GenerateTopUpLinkResponse response = generateTopUpLink.execute(topUpRequest);
 
         return ResponseEntity.ok(Map.of("paymentUrl", response.paymentUrl()));
     }

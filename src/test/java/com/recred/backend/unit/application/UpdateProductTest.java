@@ -1,7 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.UpdateProduct;
-import com.recred.backend.application.UpdateProductCommand;
+import com.recred.backend.application.UpdateProductRequest;
 import com.recred.backend.application.ProductResponse;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.CategoriaProducto;
@@ -46,7 +46,7 @@ class UpdateProductTest {
     @Test
     void dadoQueNoExisteProducto_cuandoExecute_entoncesLanzaExcepcion() {
         UUID id = UUID.randomUUID();
-        UpdateProductCommand command = new UpdateProductCommand(
+        UpdateProductRequest command = new UpdateProductRequest(
                 id, "Nombre", "Desc", BigDecimal.TEN, new BigDecimal("0.5"), false, 
                 null, null, null, null, null, null
         );
@@ -59,7 +59,7 @@ class UpdateProductTest {
     @Test
     void dadoQueExisteProductoYComandoValido_cuandoExecute_entoncesActualizaYGuarda() {
         UUID id = UUID.randomUUID();
-        UpdateProductCommand command = new UpdateProductCommand(
+        UpdateProductRequest command = new UpdateProductRequest(
                 id, "Nombre Act", "Desc Act", BigDecimal.TEN, new BigDecimal("0.5"), false, 
                 null, null, null, null, null, null
         );
@@ -83,7 +83,7 @@ class UpdateProductTest {
     void dadoQueVieneDataDeInventario_cuandoExecute_entoncesActualizaStock() {
         UUID id = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        UpdateProductCommand command = new UpdateProductCommand(
+        UpdateProductRequest command = new UpdateProductRequest(
                 id, "Nombre Act", "Desc Act", BigDecimal.TEN, new BigDecimal("0.5"), false, 
                 null, null, buffetId, 100, null, null
         );
@@ -110,7 +110,7 @@ class UpdateProductTest {
         CategoriaProducto category = new CategoriaProducto();
         category.setId(UUID.randomUUID());
         category.setDescripcion("Frutas");
-        UpdateProductCommand command = new UpdateProductCommand(
+        UpdateProductRequest command = new UpdateProductRequest(
                 id, "Nombre Act", "Desc Act", BigDecimal.TEN, new BigDecimal("0.5"), false,
                 UUID.randomUUID(), "Frutas", null, null, null, null
         );
@@ -130,7 +130,7 @@ class UpdateProductTest {
     @Test
     void dadoQueVieneCategoriaNuevaInexistente_cuandoExecute_entoncesCreaCategoria() {
         UUID id = UUID.randomUUID();
-        UpdateProductCommand command = new UpdateProductCommand(
+        UpdateProductRequest command = new UpdateProductRequest(
                 id, "Nombre Act", "Desc Act", BigDecimal.TEN, new BigDecimal("0.5"), false,
                 null, "Nueva Categoria", null, null, null, null
         );
@@ -155,7 +155,7 @@ class UpdateProductTest {
     void dadoQueVieneCategoriaIdSinNombreNuevo_cuandoExecute_entoncesAsignaProxy() {
         UUID id = UUID.randomUUID();
         UUID categoryId = UUID.randomUUID();
-        UpdateProductCommand command = new UpdateProductCommand(
+        UpdateProductRequest command = new UpdateProductRequest(
                 id, "Nombre Act", "Desc Act", BigDecimal.TEN, new BigDecimal("0.5"), false,
                 categoryId, " ", null, null, null, null
         );
@@ -176,7 +176,7 @@ class UpdateProductTest {
         UUID id = UUID.randomUUID();
         UUID healthId = UUID.randomUUID();
         UUID typeId = UUID.randomUUID();
-        UpdateProductCommand command = new UpdateProductCommand(
+        UpdateProductRequest command = new UpdateProductRequest(
                 id, "Nombre Act", "Desc Act", BigDecimal.TEN, new BigDecimal("0.5"), false,
                 null, null, null, null, Set.of(healthId), Set.of(typeId)
         );
@@ -196,7 +196,7 @@ class UpdateProductTest {
     void dadoQueNoExisteInventario_cuandoExecute_entoncesCreaUnoNuevo() {
         UUID id = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        UpdateProductCommand command = new UpdateProductCommand(
+        UpdateProductRequest command = new UpdateProductRequest(
                 id,
                 "Nombre Act",
                 "Desc Act",
@@ -235,7 +235,7 @@ class UpdateProductTest {
     void dadoQueVieneSoloCupoDiario_cuandoNoExisteInventario_entoncesUsaTipoPorDefecto() {
         UUID id = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        UpdateProductCommand command = new UpdateProductCommand(
+        UpdateProductRequest command = new UpdateProductRequest(
                 id,
                 "Nombre Act",
                 "Desc Act",

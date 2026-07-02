@@ -12,9 +12,9 @@ import com.recred.backend.application.ParseBulkStock;
 import com.recred.backend.application.ProductResponse;
 import com.recred.backend.application.SaveBulkProducts;
 import com.recred.backend.application.SaveProduct;
-import com.recred.backend.application.SaveProductCommand;
+import com.recred.backend.application.SaveProductRequest;
 import com.recred.backend.application.UpdateProduct;
-import com.recred.backend.application.UpdateProductCommand;
+import com.recred.backend.application.UpdateProductRequest;
 import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdateProductPriceRequest;
 import com.recred.backend.domain.models.Producto;
@@ -171,8 +171,8 @@ class ProductControllerTest {
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(productId, response.getBody().id());
 
-        ArgumentCaptor<SaveProductCommand> commandCaptor =
-                ArgumentCaptor.forClass(SaveProductCommand.class);
+        ArgumentCaptor<SaveProductRequest> commandCaptor =
+                ArgumentCaptor.forClass(SaveProductRequest.class);
         verify(saveProduct).execute(commandCaptor.capture());
         assertEquals("Yogur", commandCaptor.getValue().nombre());
         assertEquals(buffetId, commandCaptor.getValue().buffetId());
@@ -190,8 +190,8 @@ class ProductControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(productId, response.getBody().id());
 
-        ArgumentCaptor<UpdateProductCommand> commandCaptor =
-                ArgumentCaptor.forClass(UpdateProductCommand.class);
+        ArgumentCaptor<UpdateProductRequest> commandCaptor =
+                ArgumentCaptor.forClass(UpdateProductRequest.class);
         verify(updateProduct).execute(commandCaptor.capture());
         assertEquals(productId, commandCaptor.getValue().id());
         assertEquals(buffetId, commandCaptor.getValue().buffetId());
@@ -222,12 +222,12 @@ class ProductControllerTest {
     }
 
     private void givenProductIsSaved(UUID productId) {
-        when(saveProduct.execute(any(SaveProductCommand.class)))
+        when(saveProduct.execute(any(SaveProductRequest.class)))
                 .thenReturn(ProductResponse.fromDomain(product(productId)));
     }
 
     private void givenProductIsUpdated(UUID productId) {
-        when(updateProduct.execute(any(UpdateProductCommand.class)))
+        when(updateProduct.execute(any(UpdateProductRequest.class)))
                 .thenReturn(ProductResponse.fromDomain(product(productId)));
     }
 

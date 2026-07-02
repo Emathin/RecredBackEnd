@@ -120,7 +120,6 @@ class PurchaseResponseDTOTest {
 
         assertEquals(2, response.getItems().size());
 
-        // Find promo item
         PurchaseItemDTO promoItem = response.getItems().stream()
                 .filter(item -> item.getProductId().equals(promoId))
                 .findFirst()
@@ -130,7 +129,6 @@ class PurchaseResponseDTOTest {
         assertEquals(new BigDecimal("500.00"), promoItem.getUnitPrice());
         assertEquals(true, promoItem.getRequierePreparacion());
 
-        // Find standalone item
         PurchaseItemDTO standaloneItem = response.getItems().stream()
                 .filter(item -> item.getProductId().equals(standaloneId))
                 .findFirst()

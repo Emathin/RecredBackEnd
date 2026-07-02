@@ -84,7 +84,6 @@ class StudentConsumptionJpaRepositoryIT extends AbstractIntegrationTest {
         assertEquals(buffet.getId(), mapped.buffetId());
         assertEquals("Main Buffet", mapped.buffetName());
         
-        // Products should be sorted by product name (Sandwich, Water) -> S, W. So Sandwich is first.
         assertEquals("Sandwich", mapped.products().get(0).productName());
         assertEquals("Water", mapped.products().get(1).productName());
         assertEquals("Food", mapped.products().get(0).categoryName());

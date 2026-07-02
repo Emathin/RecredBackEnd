@@ -72,9 +72,8 @@ class UpdateBudgetRulesTest {
         assertEquals(1, guardado.getReglasCategoria().size());
         assertEquals(new BigDecimal("10.00"), guardado.getReglasCategoria().get(0).getPorcentajeLimite());
  
-        assertEquals(new BigDecimal("500.00"), guardado.getReglasCategoria().get(0).getMontoLimiteCalculado());
-
-        // Assert response values
+        assertEquals(new BigDecimal("500.00"),
+                guardado.getReglasCategoria().get(0).getMontoLimiteCalculado());
         assertEquals(budgetId, response.id());
         assertEquals(1, response.reglasCategoria().size());
         assertEquals(new BigDecimal("10.00"), response.reglasCategoria().get(0).porcentajeLimite());

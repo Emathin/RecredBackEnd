@@ -11,7 +11,7 @@ public class SaveBulkProducts {
     }
 
     public SaveBulkProductsResponse execute(SaveBulkProductsRequest request) {
-        return new SaveBulkProductsResponse(request.commands().stream()
+        return new SaveBulkProductsResponse(request.products().stream()
                 .map(saveProduct::execute)
                 .collect(Collectors.toList()));
     }

@@ -3,9 +3,9 @@ package com.recred.backend.unit.infrastructure.web;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.AskSchoolAssistantRequest;
 import com.recred.backend.application.AskSchoolAssistantResponse;
+import com.recred.backend.application.SchoolAssistantConversationMessageResponse;
+import com.recred.backend.application.SchoolAssistantConversationSessionResponse;
 import com.recred.backend.application.SchoolAssistantConversations;
-import com.recred.backend.domain.models.ChatMessage;
-import com.recred.backend.domain.models.ChatSession;
 import com.recred.backend.domain.models.EstadoChatSesion;
 import com.recred.backend.domain.models.RolChatMensaje;
 import com.recred.backend.domain.models.SchoolAssistantRole;
@@ -257,7 +257,8 @@ class SchoolAssistantControllerTest {
                 new TestingAuthenticationToken("student-sub", "");
         UUID sessionId = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.of(2026, 5, 27, 12, 0);
-        ChatSession session = new ChatSession(
+        SchoolAssistantConversationSessionResponse session =
+                new SchoolAssistantConversationSessionResponse(
                 sessionId,
                 EstadoChatSesion.ABIERTA,
                 now.minusMinutes(5),
@@ -279,7 +280,8 @@ class SchoolAssistantControllerTest {
                 new TestingAuthenticationToken("student-sub", "");
         UUID sessionId = UUID.randomUUID();
         UUID messageId = UUID.randomUUID();
-        ChatMessage message = new ChatMessage(
+        SchoolAssistantConversationMessageResponse message =
+                new SchoolAssistantConversationMessageResponse(
                 messageId,
                 sessionId,
                 RolChatMensaje.USUARIO,
@@ -327,13 +329,15 @@ class SchoolAssistantControllerTest {
         UUID messageId = UUID.randomUUID();
         TestingAuthenticationToken authentication =
                 new TestingAuthenticationToken("tutor-sub", "");
-        ChatSession session = new ChatSession(
+        SchoolAssistantConversationSessionResponse session =
+                new SchoolAssistantConversationSessionResponse(
                 sessionId,
                 EstadoChatSesion.CERRADA,
                 LocalDateTime.of(2026, 5, 27, 11, 0),
                 LocalDateTime.of(2026, 5, 27, 12, 0)
         );
-        ChatMessage message = new ChatMessage(
+        SchoolAssistantConversationMessageResponse message =
+                new SchoolAssistantConversationMessageResponse(
                 messageId,
                 sessionId,
                 RolChatMensaje.ASISTENTE_IA,
@@ -369,13 +373,15 @@ class SchoolAssistantControllerTest {
         UUID messageId = UUID.randomUUID();
         TestingAuthenticationToken authentication =
                 new TestingAuthenticationToken("kiosquero-sub", "");
-        ChatSession session = new ChatSession(
+        SchoolAssistantConversationSessionResponse session =
+                new SchoolAssistantConversationSessionResponse(
                 sessionId,
                 EstadoChatSesion.ABIERTA,
                 LocalDateTime.of(2026, 5, 27, 11, 0),
                 LocalDateTime.of(2026, 5, 27, 12, 0)
         );
-        ChatMessage message = new ChatMessage(
+        SchoolAssistantConversationMessageResponse message =
+                new SchoolAssistantConversationMessageResponse(
                 messageId,
                 sessionId,
                 RolChatMensaje.USUARIO,
@@ -411,4 +417,3 @@ class SchoolAssistantControllerTest {
                 () -> controller.tutorSessions(null, 0, 20));
     }
 }
-

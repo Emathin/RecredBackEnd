@@ -22,13 +22,13 @@ public class PrizeHealthyPurchase {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public PrizeHealthyPurchaseResponse execute(PrizeHealthyPurchaseCommand command) {
-        Purchase currentPurchase = findPurchase(command.compraId());
+    public PrizeHealthyPurchaseResponse execute(PrizeHealthyPurchaseRequest request) {
+        Purchase currentPurchase = findPurchase(request.compraId());
         if (!currentPurchase.hasSuggestion()) {
             return new PrizeHealthyPurchaseResponse();
         }
 
-        reward(command.alumnoId());
+        reward(request.alumnoId());
         return new PrizeHealthyPurchaseResponse();
     }
 

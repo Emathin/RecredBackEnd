@@ -69,7 +69,7 @@ public class LoadStockIAController {
             @jakarta.validation.Valid @RequestBody ProductRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ProductResponseDTO.fromApplication(
-                        saveProduct.execute(request.toSaveCommand())));
+                        saveProduct.execute(request.toSaveRequest())));
     }
 
     private void validateImage(MultipartFile image) {

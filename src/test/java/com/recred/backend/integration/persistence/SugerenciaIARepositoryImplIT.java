@@ -146,7 +146,6 @@ class SugerenciaIARepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void findProductIdsByAlumnoIdAndTipo_ShouldReturnProductIdsFromEntityAndMetadata() {
-        // Arrange
         AlumnoEntity student = generateStudent();
         ProductoEntity product = generateProduct();
         UUID metadataProductId = UUID.randomUUID();
@@ -156,10 +155,8 @@ class SugerenciaIARepositoryImplIT extends AbstractIntegrationTest {
 
         entityManager.flush();
 
-        // Act
         List<UUID> result = repository.findProductIdsByAlumnoIdAndTipo(student.getId(), TipoSugerenciaIA.ALERTA_PRECIO);
 
-        // Assert
         assertContainsProductIds(result, product.getId(), metadataProductId);
     }
 

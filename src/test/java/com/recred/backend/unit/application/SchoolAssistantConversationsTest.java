@@ -17,6 +17,8 @@ import com.recred.backend.domain.repositories.ChatSessionRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
+import com.recred.backend.application.SchoolAssistantConversationMessageResponse;
+import com.recred.backend.application.SchoolAssistantConversationSessionResponse;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -102,7 +104,8 @@ class SchoolAssistantConversationsTest {
         when(chatMessageRepository.findBySessionId(sessionId, 0, 20))
                 .thenReturn(List.of(message));
 
-        List<ChatMessage> messages = conversations.findStudentMessages(
+        List<SchoolAssistantConversationMessageResponse> messages =
+                conversations.findStudentMessages(
                 studentId,
                 sessionId,
                 0,
@@ -129,10 +132,11 @@ class SchoolAssistantConversationsTest {
         when(chatSessionRepository.findByStudentId(studentId, 0, 20))
                 .thenReturn(List.of(session));
 
-        List<ChatSession> sessions = conversations.findStudentSessions(userId, 0, 20);
+        List<SchoolAssistantConversationSessionResponse> sessions =
+                conversations.findStudentSessions(userId, 0, 20);
 
         assertEquals(1, sessions.size());
-        assertEquals(sessionId, sessions.get(0).id());
+        assertEquals(sessionId, sessions.get(0).sessionId());
         verify(chatSessionRepository).findByStudentId(studentId, 0, 20);
     }
 
@@ -156,8 +160,10 @@ class SchoolAssistantConversationsTest {
         when(chatMessageRepository.findBySessionId(sessionId, 0, 20))
                 .thenReturn(List.of(message));
 
-        List<ChatSession> sessions = conversations.findStudentSessions(cognitoSubject, 1, 5);
-        List<ChatMessage> messages = conversations.findStudentMessages(
+        List<SchoolAssistantConversationSessionResponse> sessions =
+                conversations.findStudentSessions(cognitoSubject, 1, 5);
+        List<SchoolAssistantConversationMessageResponse> messages =
+                conversations.findStudentMessages(
                 cognitoSubject,
                 sessionId,
                 0,
@@ -166,8 +172,8 @@ class SchoolAssistantConversationsTest {
         conversations.closeStudentSession(cognitoSubject, sessionId);
         conversations.deleteStudentSession(cognitoSubject, sessionId);
 
-        assertEquals(List.of(session), sessions);
-        assertEquals(List.of(message), messages);
+        assertEquals(session.id(), sessions.get(0).sessionId());
+        assertEquals(message.id(), messages.get(0).id());
         verify(chatSessionRepository).findByStudentId(studentId, 1, 5);
         verify(chatSessionRepository).close(sessionId, NOW);
         verify(chatMessageRepository).deleteBySessionId(sessionId);
@@ -232,9 +238,10 @@ class SchoolAssistantConversationsTest {
         when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.of(tutor));
         when(chatSessionRepository.findByUserId(userId, 1, 5)).thenReturn(List.of(session));
 
-        List<ChatSession> sessions = conversations.findTutorSessions(cognitoSubject, 1, 5);
+        List<SchoolAssistantConversationSessionResponse> sessions =
+                conversations.findTutorSessions(cognitoSubject, 1, 5);
 
-        assertEquals(List.of(session), sessions);
+        assertEquals(session.id(), sessions.get(0).sessionId());
         verify(chatSessionRepository).findByUserId(userId, 1, 5);
     }
 
@@ -250,9 +257,10 @@ class SchoolAssistantConversationsTest {
         when(kiosqueroRepository.findBuffetByUsuarioId(userId)).thenReturn(buffetId);
         when(chatSessionRepository.findByUserId(userId, 2, 10)).thenReturn(List.of(session));
 
-        List<ChatSession> sessions = conversations.findKiosqueroSessions(cognitoSubject, 2, 10);
+        List<SchoolAssistantConversationSessionResponse> sessions =
+                conversations.findKiosqueroSessions(cognitoSubject, 2, 10);
 
-        assertEquals(List.of(session), sessions);
+        assertEquals(session.id(), sessions.get(0).sessionId());
         verify(chatSessionRepository).findByUserId(userId, 2, 10);
     }
 
@@ -284,21 +292,23 @@ class SchoolAssistantConversationsTest {
         when(chatMessageRepository.findBySessionId(sellerSessionId, 1, 5))
                 .thenReturn(List.of(sellerMessage));
 
-        List<ChatMessage> tutorMessages = conversations.findTutorMessages(
+        List<SchoolAssistantConversationMessageResponse> tutorMessages =
+                conversations.findTutorMessages(
                 tutorSubject,
                 tutorSessionId,
                 0,
                 20
         );
-        List<ChatMessage> sellerMessages = conversations.findKiosqueroMessages(
+        List<SchoolAssistantConversationMessageResponse> sellerMessages =
+                conversations.findKiosqueroMessages(
                 sellerSubject,
                 sellerSessionId,
                 1,
                 5
         );
 
-        assertEquals(List.of(tutorMessage), tutorMessages);
-        assertEquals(List.of(sellerMessage), sellerMessages);
+        assertEquals(tutorMessage.id(), tutorMessages.get(0).id());
+        assertEquals(sellerMessage.id(), sellerMessages.get(0).id());
     }
 
     @Test

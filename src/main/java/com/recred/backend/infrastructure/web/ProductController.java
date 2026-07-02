@@ -8,11 +8,11 @@ import com.recred.backend.application.GetAllProductsRequest;
 import com.recred.backend.application.GetProductById;
 import com.recred.backend.application.GetProductByIdRequest;
 import com.recred.backend.application.ParseBulkStock;
-import com.recred.backend.application.ParseBulkStockCommand;
+import com.recred.backend.application.ParseBulkStockRequest;
 import com.recred.backend.application.SaveBulkProducts;
 import com.recred.backend.application.SaveBulkProductsRequest;
 import com.recred.backend.application.SaveProduct;
-import com.recred.backend.application.SaveProductCommand;
+import com.recred.backend.application.SaveProductRequest;
 import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdateProductPriceRequest;
@@ -126,11 +126,11 @@ public class ProductController {
     public ResponseEntity<BulkStockParseResponse> uploadFile(
             @RequestParam("file") MultipartFile file) {
         try {
-            ParseBulkStockCommand command = new ParseBulkStockCommand(
+            ParseBulkStockRequest parseRequest = new ParseBulkStockRequest(
                     file.getBytes(),
                     file.getContentType()
             );
-            BulkStockParseResponse response = parseBulkStock.execute(command);
+            BulkStockParseResponse response = parseBulkStock.execute(parseRequest);
             return ResponseEntity.ok(response);
         } catch (java.io.IOException e) {
             throw new RuntimeException("Error reading uploaded file", e);
@@ -141,11 +141,11 @@ public class ProductController {
     @Operation(summary = "Guarda múltiples productos en una sola transacción")
     public ResponseEntity<List<ProductResponseDTO>> createBulk(
             @Valid @RequestBody List<ProductRequestDTO> request) {
-        List<SaveProductCommand> commands = request.stream()
-                .map(ProductRequestDTO::toSaveCommand)
+        List<SaveProductRequest> products = request.stream()
+                .map(ProductRequestDTO::toSaveRequest)
                 .collect(Collectors.toList());
         List<ProductResponseDTO> response = saveBulkProducts
-                .execute(new SaveBulkProductsRequest(commands))
+                .execute(new SaveBulkProductsRequest(products))
                 .products()
                 .stream()
                 .map(ProductResponseDTO::fromApplication)
@@ -166,7 +166,7 @@ public class ProductController {
             @Valid @RequestBody ProductRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ProductResponseDTO.fromApplication(saveProduct.execute(
-                        request.toSaveCommand())));
+                        request.toSaveRequest())));
     }
 
     @PutMapping("/{id}")
@@ -174,7 +174,7 @@ public class ProductController {
             @PathVariable UUID id,
             @Valid @RequestBody ProductRequestDTO request) {
         return ResponseEntity.ok(ProductResponseDTO.fromApplication(
-                updateProduct.execute(request.toUpdateCommand(id))));
+                updateProduct.execute(request.toUpdateRequest(id))));
     }
 
     @DeleteMapping("/{id}")

@@ -2,7 +2,8 @@ package com.recred.backend.application;
 
 import java.util.UUID;
 
-public record PrizeHealthyPurchaseCommand(
+public record PrizeHealthyPurchaseRequest(
         UUID alumnoId,
         UUID compraId
-) {}
+) {
+}

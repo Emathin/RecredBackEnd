@@ -15,14 +15,14 @@ public class GenerateTopUpLink {
         this.externalPaymentService = externalPaymentService;
     }
 
-    public GenerateTopUpLinkResponse execute(TopUpCommand command) {
+    public GenerateTopUpLinkResponse execute(GenerateTopUpLinkRequest request) {
 
-        if (!alumnoRepository.existsById(command.studentId())) {
+        if (!alumnoRepository.existsById(request.studentId())) {
             throw new RuntimeException("Alumno no encontrado");
         }
 
 
         return new GenerateTopUpLinkResponse(externalPaymentService.createTopUpPreference(
-                command.studentId(), command.amount()));
+                request.studentId(), request.amount()));
     }
 }

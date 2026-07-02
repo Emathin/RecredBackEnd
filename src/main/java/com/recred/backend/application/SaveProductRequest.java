@@ -5,13 +5,12 @@ import java.math.BigDecimal;
 import java.util.Set;
 import java.util.UUID;
 
-public record UpdateProductCommand(
-        UUID id,
+public record SaveProductRequest(
         String nombre,
         String descripcion,
         BigDecimal precio,
         BigDecimal peso,
-        Boolean requierePreparacion,
+        boolean requierePreparacion,
         UUID categoriaId,
         String nuevaCategoriaNombre,
         UUID buffetId,
@@ -22,13 +21,12 @@ public record UpdateProductCommand(
         Integer cupoMaximoDiario,
         String urlImagen
 ) {
-    public UpdateProductCommand(
-            UUID id,
+    public SaveProductRequest(
             String nombre,
             String descripcion,
             BigDecimal precio,
             BigDecimal peso,
-            Boolean requierePreparacion,
+            boolean requierePreparacion,
             UUID categoriaId,
             String nuevaCategoriaNombre,
             UUID buffetId,
@@ -37,7 +35,6 @@ public record UpdateProductCommand(
             Set<UUID> tiposIds
     ) {
         this(
-                id,
                 nombre,
                 descripcion,
                 precio,
@@ -49,7 +46,7 @@ public record UpdateProductCommand(
                 stockActual,
                 clasificacionesSaludIds,
                 tiposIds,
-                TipoManejoInventario.STOCK_EXACTO,
+                null,
                 null,
                 null
         );

@@ -32,52 +32,52 @@ public class UpdateProduct {
     }
 
     @Transactional
-    public ProductResponse execute(UpdateProductCommand command) {
-        Producto existing = productRepository.findActiveById(command.id())
-                .orElseThrow(() -> new ProductNotFoundException(command.id()));
+    public ProductResponse execute(UpdateProductRequest request) {
+        Producto existing = productRepository.findActiveById(request.id())
+                .orElseThrow(() -> new ProductNotFoundException(request.id()));
 
-        applyChanges(existing, command);
+        applyChanges(existing, request);
         Producto saved = productRepository.save(existing);
 
-        if (hasInventoryData(command)) {
-            updateInventory(command, saved.getId());
+        if (hasInventoryData(request)) {
+            updateInventory(request, saved.getId());
         }
 
         return ProductResponse.fromDomain(saved);
     }
 
-    private void applyChanges(Producto product, UpdateProductCommand command) {
-        product.setNombre(command.nombre());
-        product.setDescripcion(command.descripcion());
-        product.setPrecio(command.precio());
-        product.setPeso(command.peso());
-        product.setRequierePreparacion(command.requierePreparacion());
-        product.setUrlImagen(command.urlImagen());
+    private void applyChanges(Producto product, UpdateProductRequest request) {
+        product.setNombre(request.nombre());
+        product.setDescripcion(request.descripcion());
+        product.setPrecio(request.precio());
+        product.setPeso(request.peso());
+        product.setRequierePreparacion(request.requierePreparacion());
+        product.setUrlImagen(request.urlImagen());
 
-        handleCategory(command, product);
-        handleClasificacionesSalud(command, product);
-        handleTipos(command, product);
+        handleCategory(request, product);
+        handleClasificacionesSalud(request, product);
+        handleTipos(request, product);
     }
 
-    private void handleCategory(UpdateProductCommand command, Producto product) {
-        if (hasNewCategoryName(command)) {
+    private void handleCategory(UpdateProductRequest request, Producto product) {
+        if (hasNewCategoryName(request)) {
             CategoriaProducto category = categoryRepository
-                    .findByDescription(command.nuevaCategoriaNombre())
-                    .orElseGet(() -> createAndSaveCategory(command.nuevaCategoriaNombre()));
+                    .findByDescription(request.nuevaCategoriaNombre())
+                    .orElseGet(() -> createAndSaveCategory(request.nuevaCategoriaNombre()));
             product.setCategoria(category);
             return;
         }
 
-        if (command.categoriaId() != null) {
+        if (request.categoriaId() != null) {
             CategoriaProducto categoria = new CategoriaProducto();
-            categoria.setId(command.categoriaId());
+            categoria.setId(request.categoriaId());
             product.setCategoria(categoria);
         }
     }
 
-    private boolean hasNewCategoryName(UpdateProductCommand command) {
-        return command.nuevaCategoriaNombre() != null
-                && !command.nuevaCategoriaNombre().isBlank();
+    private boolean hasNewCategoryName(UpdateProductRequest request) {
+        return request.nuevaCategoriaNombre() != null
+                && !request.nuevaCategoriaNombre().isBlank();
     }
 
     private CategoriaProducto createAndSaveCategory(String name) {
@@ -87,12 +87,12 @@ public class UpdateProduct {
         return categoryRepository.save(category);
     }
 
-    private void handleClasificacionesSalud(UpdateProductCommand command, Producto product) {
-        if (command.clasificacionesSaludIds() == null) {
+    private void handleClasificacionesSalud(UpdateProductRequest request, Producto product) {
+        if (request.clasificacionesSaludIds() == null) {
             return;
         }
 
-        Set<ClasificacionSalud> clasificaciones = command.clasificacionesSaludIds()
+        Set<ClasificacionSalud> clasificaciones = request.clasificacionesSaludIds()
                 .stream().map(id -> {
                     ClasificacionSalud cs = new ClasificacionSalud();
                     cs.setId(id);
@@ -101,12 +101,12 @@ public class UpdateProduct {
         product.setClasificacionesSalud(clasificaciones);
     }
 
-    private void handleTipos(UpdateProductCommand command, Producto product) {
-        if (command.tiposIds() == null) {
+    private void handleTipos(UpdateProductRequest request, Producto product) {
+        if (request.tiposIds() == null) {
             return;
         }
 
-        Set<ClasificacionTipo> tipos = command.tiposIds().stream().map(id -> {
+        Set<ClasificacionTipo> tipos = request.tiposIds().stream().map(id -> {
             ClasificacionTipo ct = new ClasificacionTipo();
             ct.setId(id);
             return ct;
@@ -114,41 +114,41 @@ public class UpdateProduct {
         product.setTipos(tipos);
     }
 
-    private boolean hasInventoryData(UpdateProductCommand command) {
-        return command.buffetId() != null
-                && (command.stockActual() != null
-                || command.tipoManejoInventario() != null
-                || command.cupoMaximoDiario() != null);
+    private boolean hasInventoryData(UpdateProductRequest request) {
+        return request.buffetId() != null
+                && (request.stockActual() != null
+                || request.tipoManejoInventario() != null
+                || request.cupoMaximoDiario() != null);
     }
 
-    private void updateInventory(UpdateProductCommand command, UUID productId) {
+    private void updateInventory(UpdateProductRequest request, UUID productId) {
         Inventario inventario = inventoryRepository
-                .findByBuffetAndProduct(command.buffetId(), productId)
-                .orElseGet(() -> createNewInventory(command, productId));
+                .findByBuffetAndProduct(request.buffetId(), productId)
+                .orElseGet(() -> createNewInventory(request, productId));
 
-        if (command.stockActual() != null) {
-            inventario.setStockActual(command.stockActual());
+        if (request.stockActual() != null) {
+            inventario.setStockActual(request.stockActual());
         }
-        inventario.setTipoManejo(tipoManejo(command));
-        inventario.setCupoMaximoDiario(command.cupoMaximoDiario());
-        inventario.setUrlImagen(command.urlImagen());
+        inventario.setTipoManejo(tipoManejo(request));
+        inventario.setCupoMaximoDiario(request.cupoMaximoDiario());
+        inventario.setUrlImagen(request.urlImagen());
         inventoryRepository.save(inventario);
     }
 
-    private Inventario createNewInventory(UpdateProductCommand command, UUID productId) {
+    private Inventario createNewInventory(UpdateProductRequest request, UUID productId) {
         Inventario inventario = new Inventario();
-        inventario.setBuffetId(command.buffetId());
+        inventario.setBuffetId(request.buffetId());
         inventario.setProductoId(productId);
         inventario.setStockMinimo(Inventario.STOCK_MINIMO_PREDETERMINADO);
         inventario.setEstado(EstadoInventario.DISPONIBLE);
         inventario.setStockReservado(0);
-        inventario.setTipoManejo(tipoManejo(command));
+        inventario.setTipoManejo(tipoManejo(request));
         return inventario;
     }
 
-    private TipoManejoInventario tipoManejo(UpdateProductCommand command) {
-        return command.tipoManejoInventario() == null
+    private TipoManejoInventario tipoManejo(UpdateProductRequest request) {
+        return request.tipoManejoInventario() == null
                 ? TipoManejoInventario.STOCK_EXACTO
-                : command.tipoManejoInventario();
+                : request.tipoManejoInventario();
     }
 }

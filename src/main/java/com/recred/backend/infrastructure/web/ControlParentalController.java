@@ -70,7 +70,7 @@ public class ControlParentalController {
     public ResponseEntity<List<ClasificacionSaludDTO>> obtenerRestriccionesSalud (
             @PathVariable UUID alumnoId) {
 
-        var restriccionesResponse = obtenerRestriccionesUseCase.ejecutar(
+        var restriccionesResponse = obtenerRestriccionesUseCase.execute(
                 new GetHealthRestrictionsRequest(alumnoId)
         );
         List<ClasificacionSaludDTO> respuesta = restriccionesResponse.stream()

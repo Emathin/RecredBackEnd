@@ -64,7 +64,6 @@ public class PurchaseSuggestIA {
     private boolean cumpleReglasVisibilidad(Usuario usuario, LocalDateTime now) {
         return switch (usuario.getRol()) {
             case PADRE -> isVisibleParaPadre(now);
-            // TODO: Configurar restricciones horarias reales para ALUMNO antes de producción.
             case ALUMNO -> true;
             default -> false;
         };

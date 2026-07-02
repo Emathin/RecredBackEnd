@@ -98,7 +98,6 @@ class UpdateBudgetTest {
         BigDecimal montoCalculado = guardado.getReglasCategoria().get(0).getMontoLimiteCalculado();
         assertEquals(new BigDecimal("2000.00"), montoCalculado);
 
-        // Also assert on UpdateBudgetResponse DTO fields
         assertEquals(budgetId, response.id());
         assertEquals(new BigDecimal("10000.00"), response.montoLimiteGeneral());
         assertEquals(PeriodoPresupuesto.SEMANAL, response.periodo());

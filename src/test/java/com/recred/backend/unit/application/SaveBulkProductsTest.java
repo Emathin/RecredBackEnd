@@ -30,12 +30,12 @@ class SaveBulkProductsTest {
 
     @Test
     void execute_debeLlamarASaveProductPorCadaComandoYRetornarListaDeProductos() {
-        SaveProductCommand command1 = new SaveProductCommand(
+        SaveProductRequest command1 = new SaveProductRequest(
                 "Producto 1", "Desc 1", new BigDecimal("100"), new BigDecimal("500"), false,
                 UUID.randomUUID(), null, UUID.randomUUID(), 10,
                 null, null
         );
-        SaveProductCommand command2 = new SaveProductCommand(
+        SaveProductRequest command2 = new SaveProductRequest(
                 "Producto 2", "Desc 2", new BigDecimal("200"), new BigDecimal("200"), false,
                 UUID.randomUUID(), null, UUID.randomUUID(), 5,
                 null, null

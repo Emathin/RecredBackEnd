@@ -1,9 +1,11 @@
 package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
+import com.recred.backend.application.GetHealthRestrictionsCatalogRequest;
+import com.recred.backend.application.GetHealthRestrictionsCatalogResponse;
+import com.recred.backend.application.GetHealthRestrictionsResponse;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
-import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.infrastructure.web.ClasificacionSaludController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
@@ -47,10 +49,13 @@ class ClasificacionSaludControllerTest {
 
     @Test
     void obtenerCatalogo_DeberiaRetornarListaY200Ok() throws Exception {
-        ClasificacionSalud item = new ClasificacionSalud();
-        item.setId(UUID.randomUUID());
-        item.setDescripcion("Vegano");
-        when(obtenerCatalogo.ejecutar()).thenReturn(List.of(item));
+        GetHealthRestrictionsResponse item = new GetHealthRestrictionsResponse(
+                UUID.randomUUID(),
+                "Vegano",
+                true
+        );
+        when(obtenerCatalogo.execute(new GetHealthRestrictionsCatalogRequest()))
+                .thenReturn(new GetHealthRestrictionsCatalogResponse(List.of(item)));
 
         mockMvc.perform(get("/api/v1/clasificaciones-salud")
                         .contentType(MediaType.APPLICATION_JSON))

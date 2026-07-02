@@ -75,7 +75,7 @@ public class NotifyPurchaseSuggestions {
         return PushNotificationResponse.fromDomain(notification);
     }
 
-    public PushNotification createNotification(
+    private PushNotification createNotification(
             UUID userId,
             PurchaseSuggestionResponse suggestion,
             String rol

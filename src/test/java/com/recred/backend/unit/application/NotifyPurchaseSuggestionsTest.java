@@ -134,20 +134,28 @@ class NotifyPurchaseSuggestionsTest {
     }
 
     @Test
-    void createNotification_CuandoLaSugerenciaTieneProducto_SerializaProductoEnData() {
+    void execute_CuandoLaSugerenciaTieneProducto_SerializaProductoEnData() {
         UUID userId = UUID.randomUUID();
         UUID alumnoId = UUID.randomUUID();
+        String cognitoId = "alumno-sub";
         SugerenciaIA sugerencia = SugerenciaIA.builder()
                 .id(UUID.randomUUID())
                 .alumnoId(alumnoId)
                 .producto(producto())
                 .build();
+        Usuario usuario = new Usuario();
+        usuario.setId(userId);
+        usuario.setRol(RolUsuario.ALUMNO);
+        when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
+                .thenReturn(Optional.of(PurchaseSuggestionResponse.fromDomain(sugerencia)));
+        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
 
-        PushNotification notification = useCase.createNotification(
-                userId,
-                PurchaseSuggestionResponse.fromDomain(sugerencia),
-                "ALUMNO"
-        );
+        useCase.execute(new NotifyPurchaseSuggestionsRequest(cognitoId));
+
+        ArgumentCaptor<PushNotification> captor =
+                ArgumentCaptor.forClass(PushNotification.class);
+        verify(pushNotificationSender).send(captor.capture());
+        PushNotification notification = captor.getValue();
 
         assertEquals(userId, notification.userId());
         assertEquals("PURCHASE_SUGGESTION", notification.data().get("type"));
@@ -162,7 +170,7 @@ class NotifyPurchaseSuggestionsTest {
     }
 
     @Test
-    void createNotification_CuandoFallaSerializacion_UsaProductoVacio() throws Exception {
+    void execute_CuandoFallaSerializacion_UsaProductoVacio() throws Exception {
         ObjectMapper failingMapper = mock(ObjectMapper.class);
         when(failingMapper.writeValueAsString(any()))
                 .thenThrow(new JsonProcessingException("boom") {});
@@ -177,18 +185,25 @@ class NotifyPurchaseSuggestionsTest {
                 .alumnoId(UUID.randomUUID())
                 .producto(producto())
                 .build();
+        String cognitoId = "alumno-sub";
+        Usuario usuario = new Usuario();
+        usuario.setId(UUID.randomUUID());
+        usuario.setRol(RolUsuario.ALUMNO);
+        when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
+                .thenReturn(Optional.of(PurchaseSuggestionResponse.fromDomain(sugerencia)));
+        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
 
-        PushNotification notification = failingUseCase.createNotification(
-                UUID.randomUUID(),
-                PurchaseSuggestionResponse.fromDomain(sugerencia),
-                "ALUMNO"
-        );
+        failingUseCase.execute(new NotifyPurchaseSuggestionsRequest(cognitoId));
 
+        ArgumentCaptor<PushNotification> captor =
+                ArgumentCaptor.forClass(PushNotification.class);
+        verify(pushNotificationSender).send(captor.capture());
+        PushNotification notification = captor.getValue();
         assertEquals("{}", notification.data().get("producto"));
     }
 
     @Test
-    void createNotification_CuandoProductoNoTieneCategoriaNiClasificaciones_UsaFallbacks()
+    void execute_CuandoProductoNoTieneCategoriaNiClasificaciones_UsaFallbacks()
             throws Exception {
         Producto producto = new Producto();
         producto.setId(UUID.randomUUID());
@@ -202,12 +217,20 @@ class NotifyPurchaseSuggestionsTest {
                 .alumnoId(UUID.randomUUID())
                 .producto(producto)
                 .build();
+        String cognitoId = "padre-sub";
+        Usuario usuario = new Usuario();
+        usuario.setId(UUID.randomUUID());
+        usuario.setRol(RolUsuario.PADRE);
+        when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
+                .thenReturn(Optional.of(PurchaseSuggestionResponse.fromDomain(sugerencia)));
+        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
 
-        PushNotification notification = useCase.createNotification(
-                UUID.randomUUID(),
-                PurchaseSuggestionResponse.fromDomain(sugerencia),
-                "PADRE"
-        );
+        useCase.execute(new NotifyPurchaseSuggestionsRequest(cognitoId));
+
+        ArgumentCaptor<PushNotification> captor =
+                ArgumentCaptor.forClass(PushNotification.class);
+        verify(pushNotificationSender).send(captor.capture());
+        PushNotification notification = captor.getValue();
 
         Map<String, Object> productoData = objectMapper.readValue(
                 (String) notification.data().get("producto"),

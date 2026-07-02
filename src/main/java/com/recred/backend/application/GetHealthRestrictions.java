@@ -16,7 +16,7 @@ public class GetHealthRestrictions {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public Set<GetHealthRestrictionsResponse> ejecutar(GetHealthRestrictionsRequest request) {
+    public Set<GetHealthRestrictionsResponse> execute(GetHealthRestrictionsRequest request) {
         Alumno alumno = this.findAlumnoById(request.alumnoId());
         return this.mapToResponse(alumno.getRestriccionesSalud());
     }
@@ -42,4 +42,3 @@ public class GetHealthRestrictions {
         );
     }
 }
-

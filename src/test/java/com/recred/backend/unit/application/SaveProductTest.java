@@ -1,7 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.SaveProduct;
-import com.recred.backend.application.SaveProductCommand;
+import com.recred.backend.application.SaveProductRequest;
 import com.recred.backend.application.ProductResponse;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Inventario;
@@ -47,7 +47,7 @@ class SaveProductTest {
     void execute_GuardaProductoEInventario_CuandoVienenDatosCompletos() {
         UUID categoryId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Galletitas",
                 "Deliciosas",
                 new BigDecimal("150.00"),
@@ -76,7 +76,7 @@ class SaveProductTest {
 
     @Test
     void execute_CreaNuevaCategoria_CuandoNoExiste() {
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Producto", "Desc", BigDecimal.TEN, BigDecimal.ONE, false,
                 null, "Nueva Cat", null, null, null, null
         );
@@ -96,7 +96,7 @@ class SaveProductTest {
 
     @Test
     void execute_UsaCategoriaExistente_CuandoSeProveeNombre() {
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Producto", "Desc", BigDecimal.TEN, BigDecimal.ONE, false,
                 null, "Cat Existente", null, null, null, null
         );
@@ -116,7 +116,7 @@ class SaveProductTest {
     void execute_ActualizaInventarioExistente_CuandoYaExiste() {
         UUID buffetId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Prod", "Desc", BigDecimal.TEN, BigDecimal.ONE, false,
                 null, null, buffetId, 100, null, null
         );
@@ -139,7 +139,7 @@ class SaveProductTest {
     void execute_GuardaInventarioSinStockActual_CuandoVieneTipoManejo() {
         UUID buffetId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Prod",
                 "Desc",
                 BigDecimal.TEN,
@@ -174,7 +174,7 @@ class SaveProductTest {
     void execute_MapeaClasificacionesYTipos_CuandoSeProveen() {
         UUID saludId = UUID.randomUUID();
         UUID tipoId = UUID.randomUUID();
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Prod", null, null, null, true,
                 null, null, null, null, Set.of(saludId), Set.of(tipoId)
         );
@@ -191,7 +191,7 @@ class SaveProductTest {
 
     @Test
     void execute_NoAsignaCategoria_CuandoAmbosCamposSonNulos() {
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Prod", null, null, null, true,
                 null, "", null, null, null, null
         );
@@ -206,7 +206,7 @@ class SaveProductTest {
     @Test
     void execute_NoGuardaInventario_CuandoStockEsNulo() {
         UUID buffetId = UUID.randomUUID();
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Prod", null, null, null, true,
                 null, null, buffetId, null, null, null
         );
@@ -220,7 +220,7 @@ class SaveProductTest {
 
     @Test
     void execute_NoGuardaInventario_CuandoBuffetIdEsNulo() {
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Prod", null, null, null, true,
                 null, null, null, 100, null, null
         );

@@ -34,7 +34,6 @@ public class SeasonCalculator {
         } else {
             currentSeason = "Primavera";
             nextSeason = "Verano";
-            // Si estamos antes de fin de año y todavía es primavera, el verano empieza este año
             if (currentMonthDay.isBefore(SUMMER_START)) {
                 nextSeasonDate = SUMMER_START.atYear(currentYear);
             } else {
@@ -42,9 +41,7 @@ public class SeasonCalculator {
             }
         }
 
-        // Caso especial para Verano cruzando el año nuevo
         if (currentSeason.equals("Verano") && currentMonthDay.isBefore(AUTUMN_START)) {
-            // El otoño es este año
             nextSeasonDate = AUTUMN_START.atYear(currentYear);
         }
 
@@ -54,7 +51,7 @@ public class SeasonCalculator {
     }
 
     private static boolean isBetween(MonthDay target, MonthDay start, MonthDay end) {
-        if (start.isAfter(end)) { // Wrap around the year
+        if (start.isAfter(end)) {
             return !target.isBefore(start) || target.isBefore(end);
         }
         return !target.isBefore(start) && target.isBefore(end);
