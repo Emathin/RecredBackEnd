@@ -75,7 +75,6 @@ import com.recred.backend.application.GenerateTopUpLink;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetActivePromotions;
 import com.recred.backend.application.GetLastSummary;
-
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetAllProducts;
 import com.recred.backend.application.GetBuffetByStudent;
@@ -192,7 +191,6 @@ import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.AdvancePurchaseRulesService;
 import com.recred.backend.domain.services.BulkStockAnalyzer;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
-
 import com.recred.backend.domain.services.CognitoStudentIdentityService;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
 import com.recred.backend.domain.services.ExternalPaymentService;
@@ -215,6 +213,11 @@ import com.recred.backend.domain.services.ValidadorHorarioService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.domain.services.WithdrawalCodeServiceImpl;
+import com.recred.backend.application.SaveKiosqueroPayoutConfig;
+import com.recred.backend.application.GetKiosqueroPayoutConfig;
+import com.recred.backend.application.ProcessScheduledPayouts;
+import com.recred.backend.domain.repositories.KiosqueroPayoutConfigRepository;
+import com.recred.backend.domain.services.PayoutPaymentService;
 import com.recred.backend.infrastructure.gemini.GeminiBulkStockAnalyzer;
 import com.recred.backend.infrastructure.gemini.GeminiParentSummaryAnalyzer;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
@@ -297,6 +300,7 @@ public class UseCases {
     public ParentSummaryAnalyzer parentSummaryAnalyzer(GeminiTextClient geminiTextClient) {
         return new GeminiParentSummaryAnalyzer(geminiTextClient);
     }
+
 
     @Bean
     public PurchaseValidatorImpl purchaseValidatorImpl(
@@ -1115,10 +1119,10 @@ public class UseCases {
             ProductRepository productRepository,
             CategoryRepository categoryRepository) {
         return new GenerateSeasonalRecommendation(
-                climaService, 
-                geocodingClient, 
-                geminiSeasonalSuggesterService, 
-                productRepository, 
+                climaService,
+                geocodingClient,
+                geminiSeasonalSuggesterService,
+                productRepository,
                 categoryRepository);
     }
 
@@ -1513,5 +1517,27 @@ public class UseCases {
                 itemListaPrecioProveedorRepository,
                 proveedorRepository,
                 productRepository);
+    }
+
+    @Bean
+    public SaveKiosqueroPayoutConfig saveKiosqueroPayoutConfig(
+            KiosqueroPayoutConfigRepository repository) {
+        return new SaveKiosqueroPayoutConfig(repository);
+    }
+
+    @Bean
+    public GetKiosqueroPayoutConfig getKiosqueroPayoutConfig(
+            KiosqueroPayoutConfigRepository repository) {
+        return new GetKiosqueroPayoutConfig(repository);
+    }
+
+    @Bean
+    public ProcessScheduledPayouts processScheduledPayouts(
+            KiosqueroPayoutConfigRepository repository,
+            PayoutPaymentService paymentService,
+            KiosqueroRepository kiosqueroRepository,
+            PurchaseRepository purchaseRepository) {
+        return new ProcessScheduledPayouts(repository, paymentService,
+                kiosqueroRepository, purchaseRepository);
     }
 }
