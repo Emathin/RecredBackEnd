@@ -21,6 +21,7 @@ import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListInventoryProductsRequest;
 import com.recred.backend.application.ListInventoryProductsResponse;
 import com.recred.backend.application.ListKiosqueroOrders;
+import com.recred.backend.application.ListKiosqueroOperationalAlertsResponse;
 import com.recred.backend.application.ListKiosqueroOrdersRequest;
 import com.recred.backend.application.ListKiosqueroOrdersResponse;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
@@ -279,7 +280,7 @@ class KiosqueroOperationsControllerTest {
     void alerts_ShouldReturnMappedOperationalAlerts() {
         UUID buffetId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        KiosqueroOperationalAlert alert = new KiosqueroOperationalAlert(
+        ListKiosqueroOperationalAlertsResponse.KiosqueroOperationalAlertDTO alert = new ListKiosqueroOperationalAlertsResponse.KiosqueroOperationalAlertDTO(
                 buffetId,
                 OperationalAlertType.DAILY_CAPACITY_LOW,
                 OperationalAlertSeverity.WARNING,
@@ -288,15 +289,16 @@ class KiosqueroOperationsControllerTest {
                 LocalDateTime.of(2026, 6, 15, 10, 0),
                 "Cupo bajo"
         );
-        when(listKiosqueroOperationalAlerts.execute(buffetId)).thenReturn(List.of(alert));
+        ListKiosqueroOperationalAlertsResponse mockResponse = new ListKiosqueroOperationalAlertsResponse(List.of(alert));
+        when(listKiosqueroOperationalAlerts.execute(buffetId)).thenReturn(mockResponse);
 
-        ResponseEntity<List<KiosqueroOperationalAlertResponse>> response =
+        ResponseEntity<ListKiosqueroOperationalAlertsResponse> response =
                 controller.alerts(buffetId, null);
 
-        KiosqueroOperationalAlertResponse body = response.getBody().get(0);
+        ListKiosqueroOperationalAlertsResponse.KiosqueroOperationalAlertDTO body = response.getBody().alerts().get(0);
         assertEquals(buffetId, body.buffetId());
-        assertEquals("DAILY_CAPACITY_LOW", body.type());
-        assertEquals("WARNING", body.severity());
+        assertEquals(OperationalAlertType.DAILY_CAPACITY_LOW, body.type());
+        assertEquals(OperationalAlertSeverity.WARNING, body.severity());
         assertEquals(productId, body.productId());
         assertEquals("Cupo bajo", body.message());
         verify(listKiosqueroOperationalAlerts).execute(buffetId);

@@ -23,19 +23,33 @@ public class GetLoggedUserNotifications {
         this.notificationRepository = notificationRepository;
     }
 
-    public List<Notification> execute(String cognitoSubject, boolean unreadOnly,
+    public GetLoggedUserNotificationsResponse execute(String cognitoSubject, boolean unreadOnly,
                                       int page, int size) {
         validatePagination(page, size);
 
         Usuario usuario = usuarioRepository.findByIdCognito(cognitoSubject)
                 .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(cognitoSubject));
 
-        return notificationRepository.findByUserId(
+        List<Notification> notifications = notificationRepository.findByUserId(
                 usuario.getId(),
                 unreadOnly,
                 page,
                 size
         );
+        
+        List<GetLoggedUserNotificationsResponse.NotificationDTO> dtos = notifications.stream()
+                .map(n -> new GetLoggedUserNotificationsResponse.NotificationDTO(
+                        n.id(),
+                        n.type(),
+                        n.title(),
+                        n.message(),
+                        n.read(),
+                        n.createdAt(),
+                        n.readAt()
+                ))
+                .toList();
+                
+        return new GetLoggedUserNotificationsResponse(dtos);
     }
 
     private void validatePagination(int page, int size) {

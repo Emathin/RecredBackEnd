@@ -45,7 +45,7 @@ public class ListKiosqueroOperationalAlerts {
         this.clock = clock;
     }
 
-    public List<KiosqueroOperationalAlert> execute(UUID buffetId) {
+    public ListKiosqueroOperationalAlertsResponse execute(UUID buffetId) {
         LocalDateTime now = LocalDateTime.now(clock);
         List<Purchase> activeOrders = purchaseRepository.findByBuffetAndStatuses(
                 buffetId,
@@ -59,7 +59,21 @@ public class ListKiosqueroOperationalAlerts {
         addPendingAlerts(buffetId, now, activeOrders, alerts);
         addPickupAlerts(buffetId, now, activeOrders, alerts);
         addDailyCapacityAlerts(buffetId, now, products, alerts);
-        return alerts;
+        
+        List<ListKiosqueroOperationalAlertsResponse.KiosqueroOperationalAlertDTO> dtos =
+                alerts.stream()
+                .map(a -> new ListKiosqueroOperationalAlertsResponse.KiosqueroOperationalAlertDTO(
+                        a.buffetId(),
+                        a.type(),
+                        a.severity(),
+                        a.productId(),
+                        a.purchaseId(),
+                        a.occurredAt(),
+                        a.message()
+                ))
+                .toList();
+                
+        return new ListKiosqueroOperationalAlertsResponse(dtos);
     }
 
     private void addPendingAlerts(

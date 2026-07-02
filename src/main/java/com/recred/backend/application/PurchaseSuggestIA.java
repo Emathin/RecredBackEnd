@@ -4,7 +4,10 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.SugerenciaIA;
+import com.recred.backend.application.PurchaseSuggestIAResponse.ClasificacionSaludDTO;
+import com.recred.backend.application.PurchaseSuggestIAResponse.ProductoDTO;
+import com.recred.backend.application.PurchaseSuggestIAResponse.SugerenciaIADTO;
+
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.domain.services.UsuarioService;
@@ -36,7 +39,7 @@ public class PurchaseSuggestIA {
         this.clock = clock;
     }
 
-    public Optional<SugerenciaIA> execute(String cognitoId) {
+    public Optional<PurchaseSuggestIAResponse> execute(String cognitoId) {
         Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoId);
         LocalDateTime now = LocalDateTime.now(clock);
 
@@ -58,7 +61,37 @@ public class PurchaseSuggestIA {
         return suggestions.stream()
                 .filter(s -> s.getAceptada() == null)
                 .max(Comparator.comparing(SugerenciaIAEntity::getCreadoEn))
-                .map(SugerenciaIAEntity::toDomain);
+                .map(SugerenciaIAEntity::toDomain)
+                .map(s -> new PurchaseSuggestIAResponse(
+                        new SugerenciaIADTO(
+                                s.getId(),
+                                s.getAlumnoId(),
+                                s.getBuffetId(),
+                                s.getProductoId(),
+                                s.getProducto() != null ? new ProductoDTO(
+                                        s.getProducto().getId(),
+                                        s.getProducto().getNombre(),
+                                        s.getProducto().getUrlImagen(),
+                                        s.getProducto().getPrecio(),
+                                        s.getProducto().getDescripcion(),
+                                        s.getProducto().getCategoria() != null 
+                                                ? s.getProducto().getCategoria().getId() 
+                                                : null,
+                                        s.getProducto().getCategoria() != null 
+                                                ? s.getProducto().getCategoria().getDescripcion() 
+                                                : null,
+                                        s.getProducto().getClasificacionesSalud() != null ?
+                                                s.getProducto().getClasificacionesSalud().stream()
+                                                        .map(c -> new ClasificacionSaludDTO(
+                                                                c.getId(), c.getDescripcion()))
+                                                        .toList() : List.of()
+                                ) : null,
+                                s.getTipo(),
+                                s.getTitulo(),
+                                s.getMensaje(),
+                                s.getMetadata()
+                        )
+                ));
     }
 
     private boolean cumpleReglasVisibilidad(Usuario usuario, LocalDateTime now) {
