@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.web;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.recred.backend.application.SeasonalRecommendationResponse;
 
 public class RecommendationResponseDTO {
     @JsonProperty("sugerencias")
@@ -71,5 +72,24 @@ public class RecommendationResponseDTO {
 
     public void setCurrentWeather(WeatherDTO currentWeather) {
         this.currentWeather = currentWeather;
+    }
+
+    public static RecommendationResponseDTO fromApplication(
+            SeasonalRecommendationResponse response
+    ) {
+        RecommendationResponseDTO dto = new RecommendationResponseDTO();
+        dto.setSugerences(response.suggestions() == null ? null : response.suggestions().stream()
+                .map(SugerenciaDTO::fromApplication)
+                .toList());
+        dto.setPromocionalTip(response.promotionalTip());
+        dto.setSuggestedPromotion(SuggestedPromotionDTO.fromApplication(
+                response.suggestedPromotion()
+        ));
+        dto.setCreatedPromotion(PromotionResponseDTO.fromApplication(
+                response.createdPromotion()
+        ));
+        dto.setSeasonInfo(SeasonInfoDTO.fromApplication(response.seasonInfo()));
+        dto.setCurrentWeather(WeatherDTO.fromApplication(response.currentWeather()));
+        return dto;
     }
 }

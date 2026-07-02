@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetProductsByBuffetUser;
+import com.recred.backend.application.GetProductsByBuffetUserRequest;
+import com.recred.backend.application.GetProductsByBuffetUserResponse;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -38,10 +40,11 @@ class GetProductsByBuffetUserTest {
         when(kiosqueroRepository.findBuffetByUsuarioId(userId)).thenReturn(buffetId);
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(producto));
 
-        List<Producto> resultado = getProductsByBuffetUser.execute(userId);
+        GetProductsByBuffetUserResponse resultado =
+                getProductsByBuffetUser.execute(new GetProductsByBuffetUserRequest(userId));
 
-        assertEquals(1, resultado.size());
-        assertEquals(producto, resultado.get(0));
+        assertEquals(1, resultado.products().size());
+        assertEquals(producto.getId(), resultado.products().get(0).id());
         verify(kiosqueroRepository, times(1)).findBuffetByUsuarioId(userId);
         verify(productRepository, times(1)).findAllActiveWithStock(buffetId);
     }
@@ -53,10 +56,11 @@ class GetProductsByBuffetUserTest {
 
         when(productRepository.findAllActive()).thenReturn(List.of(producto));
 
-        List<Producto> resultado = getProductsByBuffetUser.execute(null);
+        GetProductsByBuffetUserResponse resultado =
+                getProductsByBuffetUser.execute(new GetProductsByBuffetUserRequest(null));
 
-        assertEquals(1, resultado.size());
-        assertEquals(producto, resultado.get(0));
+        assertEquals(1, resultado.products().size());
+        assertEquals(producto.getId(), resultado.products().get(0).id());
         verifyNoInteractions(kiosqueroRepository);
         verify(productRepository, times(1)).findAllActive();
     }

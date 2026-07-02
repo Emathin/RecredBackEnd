@@ -39,13 +39,14 @@ public class GeneratePriceAlert {
     }
 
     @Transactional
-    public void execute(GeneratePriceAlertRequest request) {
+    public GeneratePriceAlertResponse execute(GeneratePriceAlertRequest request) {
         request.validate();
 
         Producto product = request.product();
         List<Alumno> affectedStudents = findStudentsWithFavoriteProduct(product);
 
         generateAlertsForAffectedStudents(request, affectedStudents);
+        return new GeneratePriceAlertResponse();
     }
 
     private void generateAlertsForAffectedStudents(

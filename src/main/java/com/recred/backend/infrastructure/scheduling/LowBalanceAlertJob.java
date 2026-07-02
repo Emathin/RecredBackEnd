@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.scheduling;
 
 import com.recred.backend.application.GenerateLowBalanceAlerts;
+import com.recred.backend.application.GenerateLowBalanceAlertsRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,7 +22,7 @@ public class LowBalanceAlertJob {
     public void executeLowBalanceAlerts() {
         LOGGER.info("Starting LowBalanceAlertJob execution");
         try {
-            generateLowBalanceAlerts.execute();
+            generateLowBalanceAlerts.execute(new GenerateLowBalanceAlertsRequest());
             LOGGER.info("Successfully executed LowBalanceAlertJob");
         } catch (Exception e) {
             LOGGER.error("Error executing LowBalanceAlertJob: ", e);

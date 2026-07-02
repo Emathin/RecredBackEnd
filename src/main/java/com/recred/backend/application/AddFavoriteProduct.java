@@ -27,7 +27,7 @@ public class AddFavoriteProduct {
     }
 
     @Transactional
-    public void execute(AddFavoriteProductRequest request) {
+    public AddFavoriteProductResponse execute(AddFavoriteProductRequest request) {
         UUID alumnoId = request.alumnoId();
         UUID productoId = request.productoId();
 
@@ -43,6 +43,7 @@ public class AddFavoriteProduct {
 
         alumno.agregarProductoFavorito(producto);
         alumnoRepository.save(alumno);
+        return new AddFavoriteProductResponse();
     }
 
     private void isTutorFree(Alumno alumno, UUID productoId) {

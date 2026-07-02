@@ -3,8 +3,6 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.PromotionRepository;
 
-import java.util.UUID;
-
 public class GetPromotionById {
 
     private final PromotionRepository promotionRepository;
@@ -13,8 +11,12 @@ public class GetPromotionById {
         this.promotionRepository = promotionRepository;
     }
 
-    public Promotion execute(UUID id) {
-        return promotionRepository.findById(id)
+    public CreatePromotionResponse execute(GetPromotionByIdRequest request) {
+        return CreatePromotionResponse.fromDomain(promotion(request));
+    }
+
+    private Promotion promotion(GetPromotionByIdRequest request) {
+        return promotionRepository.findById(request.id())
                 .orElseThrow(() -> new IllegalArgumentException("Promotion not found."));
     }
 }

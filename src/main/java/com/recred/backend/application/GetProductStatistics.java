@@ -34,23 +34,27 @@ public class GetProductStatistics {
     }
 
     @Transactional(readOnly = true)
-    public ProductSaleStatistics execute(UUID productId, UUID kiosqueroId) {
-        Producto producto = productRepository.findById(productId)
+    public ProductSaleStatisticsResponse execute(GetProductStatisticsRequest request) {
+        return ProductSaleStatisticsResponse.fromDomain(statistics(request));
+    }
+
+    private ProductSaleStatistics statistics(GetProductStatisticsRequest request) {
+        Producto producto = productRepository.findById(request.productId())
                 .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
         
-        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(kiosqueroId);
+        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(request.kiosqueroId());
         if (buffetId == null) {
             throw new IllegalArgumentException("Kiosquero no encontrado o sin buffet asociado");
         }
         LocalDateTime since = LocalDateTime.now().minusDays(15);
 
         Long ventas = productStatisticsJpaRepository
-                .countTotalSalesByProductAndBuffet(productId, buffetId, since);
+                .countTotalSalesByProductAndBuffet(request.productId(), buffetId, since);
         Long clientes = productStatisticsJpaRepository
-                .countDistinctCustomersByProductAndBuffet(productId, buffetId, since);
+                .countDistinctCustomersByProductAndBuffet(request.productId(), buffetId, since);
         
         List<LocalDate> salesDates = productStatisticsJpaRepository
-                .getSalesDatesByProduct(productId, buffetId, since);
+                .getSalesDatesByProduct(request.productId(), buffetId, since);
         long diasConVentas = salesDates.stream().distinct().count();
         long diasSinVenta = 15 - diasConVentas;
 
@@ -66,16 +70,18 @@ public class GetProductStatistics {
                         .multiply(BigDecimal.valueOf(100)) : BigDecimal.ZERO;
 
         int rankingGeneral = IntStream.range(0, generalRankings.size())
-                .filter(i -> ((UUID) generalRankings.get(i)[0]).equals(productId))
+                .filter(i -> ((UUID) generalRankings.get(i)[0]).equals(request.productId()))
                 .findFirst().orElse(-1) + 1;
 
         List<Object[]> catRankings = productStatisticsJpaRepository
                 .getSalesRankingsByCategory(buffetId, producto.getCategoria().getId(), since);
         int rankingCat = IntStream.range(0, catRankings.size())
-                .filter(i -> ((UUID) catRankings.get(i)[0]).equals(productId))
+                .filter(i -> ((UUID) catRankings.get(i)[0]).equals(request.productId()))
                 .findFirst().orElse(-1) + 1;
         
-        Integer stock = productStatisticsJpaRepository.getStockActual(productId, buffetId);
+        Integer stock = productStatisticsJpaRepository.getStockActual(
+                request.productId(),
+                buffetId);
         BigDecimal avgPriceCat = productStatisticsJpaRepository
                 .getAveragePriceByCategory(producto.getCategoria().getId());
         BigDecimal avgSalesCat = productStatisticsJpaRepository

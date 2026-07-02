@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.recred.backend.application.SuggestedPromotionResponse;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -62,5 +63,19 @@ public class SuggestedPromotionDTO {
 
     public void setProductIds(List<String> productIds) {
         this.productIds = productIds;
+    }
+
+    public static SuggestedPromotionDTO fromApplication(SuggestedPromotionResponse response) {
+        if (response == null) {
+            return null;
+        }
+
+        SuggestedPromotionDTO dto = new SuggestedPromotionDTO();
+        dto.setName(response.name());
+        dto.setDiscountPercentage(response.discountPercentage());
+        dto.setTargetCategories(response.targetCategories());
+        dto.setImagen(response.image());
+        dto.setProductIds(response.productIds());
+        return dto;
     }
 }

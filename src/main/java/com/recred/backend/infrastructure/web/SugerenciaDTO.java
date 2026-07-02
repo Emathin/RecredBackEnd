@@ -1,5 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.SeasonalSuggestionResponse;
+
 public class SugerenciaDTO {
     private String categoria;
     private String accion;
@@ -59,5 +61,19 @@ public class SugerenciaDTO {
     public void setTopProductos(
             java.util.List<com.recred.backend.infrastructure.web.MenuProductoDTO> topProductos) {
         this.topProductos = topProductos;
+    }
+
+    public static SugerenciaDTO fromApplication(SeasonalSuggestionResponse response) {
+        SugerenciaDTO dto = new SugerenciaDTO(
+                response.category(),
+                response.action(),
+                response.reason(),
+                response.icon()
+        );
+        dto.setTopProductos(response.topProducts() == null ? null : response.topProducts()
+                .stream()
+                .map(MenuProductoDTO::fromApplication)
+                .toList());
+        return dto;
     }
 }

@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetTutorHistory;
+import com.recred.backend.application.GetTutorHistoryRequest;
+import com.recred.backend.application.GetTutorHistoryResponse;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -35,13 +37,15 @@ class GetTutorHistoryTest {
     void dadoTutorConComprasDeHijos_cuandoSeEjecuta_entoncesRetornaListaDeCompras() {
         UUID tutorId = UUID.randomUUID();
         Purchase compra = new Purchase();
+        compra.setId(UUID.randomUUID());
         List<Purchase> comprasMock = List.of(compra);
 
         when(purchaseRepository.findHistorialByTutor(tutorId)).thenReturn(comprasMock);
 
-        List<Purchase> resultado = obtenerHistorialTutor.execute(tutorId);
+        GetTutorHistoryResponse resultado = obtenerHistorialTutor.execute(
+                GetTutorHistoryRequest.byTutorId(tutorId));
 
-        assertEquals(1, resultado.size());
+        assertEquals(1, resultado.purchases().size());
         verify(purchaseRepository, times(1)).findHistorialByTutor(tutorId);
     }
 
@@ -51,13 +55,16 @@ class GetTutorHistoryTest {
         UUID tutorId = UUID.randomUUID();
         Tutor tutor = new Tutor();
         tutor.setId(tutorId);
-        List<Purchase> purchases = List.of(new Purchase());
+        Purchase purchase = new Purchase();
+        purchase.setId(UUID.randomUUID());
+        List<Purchase> purchases = List.of(purchase);
         when(tutorRepository.findByUsuarioIdCognito(subject)).thenReturn(Optional.of(tutor));
         when(purchaseRepository.findHistorialByTutor(tutorId)).thenReturn(purchases);
 
-        List<Purchase> result = obtenerHistorialTutor.executeByCognitoSubject(subject);
+        GetTutorHistoryResponse result = obtenerHistorialTutor.execute(
+                GetTutorHistoryRequest.byCognitoSubject(subject));
 
-        assertEquals(purchases, result);
+        assertEquals(purchase.getId(), result.purchases().get(0).id());
         verify(purchaseRepository).findHistorialByTutor(tutorId);
     }
 
@@ -67,7 +74,8 @@ class GetTutorHistoryTest {
         when(tutorRepository.findByUsuarioIdCognito(subject)).thenReturn(Optional.empty());
 
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> obtenerHistorialTutor.executeByCognitoSubject(subject));
+                () -> obtenerHistorialTutor.execute(
+                        GetTutorHistoryRequest.byCognitoSubject(subject)));
 
         assertEquals("Tutor no encontrado para el usuario autenticado", exception.getMessage());
     }

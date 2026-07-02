@@ -3,6 +3,7 @@ package com.recred.backend.unit.infrastructure.scheduling;
 import com.recred.backend.infrastructure.scheduling.*;
 
 import com.recred.backend.application.GeneratePurchaseRecommendation;
+import com.recred.backend.application.GeneratePurchaseRecommendationRequest;
 import com.recred.backend.domain.models.TipoNotificacion;
 import com.recred.backend.domain.repositories.SuggestionAiRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
@@ -78,7 +79,7 @@ class PushPurchaseRecommendationsTest {
                 eventCaptor.getValue().notification().data().get("sugerenciaIaId"));
         assertEquals(TipoNotificacion.SUGERENCIA_IA.name(),
                 eventCaptor.getValue().notification().data().get("tipo"));
-        verify(generatePurchaseRecommendation).execute();
+        verify(generatePurchaseRecommendation).execute(new GeneratePurchaseRecommendationRequest());
     }
 
     private NotificacionEntity notification(

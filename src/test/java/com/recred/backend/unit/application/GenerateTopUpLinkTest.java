@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GenerateTopUpLink;
+import com.recred.backend.application.GenerateTopUpLinkResponse;
 import com.recred.backend.application.TopUpCommand;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.services.ExternalPaymentService;
@@ -39,9 +40,9 @@ class GenerateTopUpLinkTest {
         when(alumnoRepository.existsById(studentId)).thenReturn(true);
         when(externalPaymentService.createTopUpPreference(studentId, amount)).thenReturn(expectedUrl);
 
-        String result = generateTopUpLink.execute(command);
+        GenerateTopUpLinkResponse result = generateTopUpLink.execute(command);
 
-        assertEquals(expectedUrl, result);
+        assertEquals(expectedUrl, result.paymentUrl());
     }
 
     @Test

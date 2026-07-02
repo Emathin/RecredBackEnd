@@ -13,7 +13,13 @@ public class GetAllCategories {
         this.categoryRepository = categoryRepository;
     }
 
-    public List<CategoriaProducto> execute() {
+    public GetAllCategoriesResponse execute(GetAllCategoriesRequest request) {
+        return new GetAllCategoriesResponse(categories().stream()
+                .map(CategoryResponse::fromDomain)
+                .toList());
+    }
+
+    private List<CategoriaProducto> categories() {
         return categoryRepository.getAllCategories();
     }
 }

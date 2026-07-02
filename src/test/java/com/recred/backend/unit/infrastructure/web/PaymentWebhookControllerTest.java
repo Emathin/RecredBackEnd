@@ -1,6 +1,7 @@
 package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.application.ConfirmPaymentAndCredit;
+import com.recred.backend.application.ConfirmPaymentAndCreditRequest;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import com.recred.backend.infrastructure.web.PaymentWebhookController;
 import org.junit.jupiter.api.Test;
@@ -50,7 +51,7 @@ class PaymentWebhookControllerTest {
         ResponseEntity<Void> response = paymentWebhookController.handleWebhook(signature, requestId, body, params);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmPaymentAndCredit).execute("999");
+        verify(confirmPaymentAndCredit).execute(new ConfirmPaymentAndCreditRequest("999"));
     }
 
     @Test
@@ -69,7 +70,8 @@ class PaymentWebhookControllerTest {
         ResponseEntity<Void> response = paymentWebhookController.handleWebhook(signature, requestId, body, params);
 
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        verify(confirmPaymentAndCredit, never()).execute(anyString());
+        verify(confirmPaymentAndCredit, never())
+                .execute(any(ConfirmPaymentAndCreditRequest.class));
     }
 
     @Test
@@ -81,7 +83,8 @@ class PaymentWebhookControllerTest {
         ResponseEntity<Void> response = paymentWebhookController.handleWebhook(null, null, body, params);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmPaymentAndCredit, never()).execute(anyString());
+        verify(confirmPaymentAndCredit, never())
+                .execute(any(ConfirmPaymentAndCreditRequest.class));
     }
 
     @Test
@@ -95,7 +98,7 @@ class PaymentWebhookControllerTest {
                 paymentWebhookController.handleWebhook(null, null, body, params);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmPaymentAndCredit).execute("888");
+        verify(confirmPaymentAndCredit).execute(new ConfirmPaymentAndCreditRequest("888"));
     }
 
     @Test
@@ -108,7 +111,7 @@ class PaymentWebhookControllerTest {
                 paymentWebhookController.handleWebhook(null, null, null, params);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmPaymentAndCredit).execute("777");
+        verify(confirmPaymentAndCredit).execute(new ConfirmPaymentAndCreditRequest("777"));
     }
 
     @Test
@@ -124,7 +127,8 @@ class PaymentWebhookControllerTest {
 
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
         verify(externalPaymentService).isValidSignature("sig", "req", "666");
-        verify(confirmPaymentAndCredit, never()).execute(anyString());
+        verify(confirmPaymentAndCredit, never())
+                .execute(any(ConfirmPaymentAndCreditRequest.class));
     }
 
     @Test
@@ -139,7 +143,7 @@ class PaymentWebhookControllerTest {
                 paymentWebhookController.handleWebhook(null, null, body, params);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmPaymentAndCredit).execute("555");
+        verify(confirmPaymentAndCredit).execute(new ConfirmPaymentAndCreditRequest("555"));
     }
 
     @Test
@@ -153,11 +157,11 @@ class PaymentWebhookControllerTest {
         Map<String, String> params = new HashMap<>();
 
         when(externalPaymentService.isValidSignature(anyString(), anyString(), anyString())).thenReturn(true);
-        doThrow(new RuntimeException("DB Error")).when(confirmPaymentAndCredit).execute("999");
+        doThrow(new RuntimeException("DB Error")).when(confirmPaymentAndCredit)
+                .execute(new ConfirmPaymentAndCreditRequest("999"));
 
         ResponseEntity<Void> response = paymentWebhookController.handleWebhook(signature, "req-id", body, params);
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
     }
 }
-

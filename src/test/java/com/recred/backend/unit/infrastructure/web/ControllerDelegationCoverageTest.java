@@ -13,9 +13,10 @@ import com.recred.backend.application.FindPurchaseSuggestionRequest;
 import com.recred.backend.application.FindPurchaseSuggestionResponse;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetProductStatistics;
+import com.recred.backend.application.GetProductStatisticsRequest;
+import com.recred.backend.application.ProductSaleStatisticsResponse;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
-import com.recred.backend.domain.models.ProductSaleStatistics;
 import com.recred.backend.infrastructure.entities.NotificacionEntity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -87,11 +88,28 @@ class ControllerDelegationCoverageTest {
     void salesControllerShouldDelegateToProductStatisticsUseCase() {
         UUID kiosqueroId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        ProductSaleStatistics statistics = new ProductSaleStatistics();
-        when(getProductStatistics.execute(productId, kiosqueroId)).thenReturn(statistics);
+        ProductSaleStatisticsResponse statistics = new ProductSaleStatisticsResponse(
+                productId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+        when(getProductStatistics.execute(new GetProductStatisticsRequest(productId, kiosqueroId)))
+                .thenReturn(statistics);
         SalesController controller = new SalesController(getProductStatistics);
 
-        ResponseEntity<ProductSaleStatistics> response =
+        ResponseEntity<ProductSaleStatisticsResponse> response =
                 controller.getProductStatistics(kiosqueroId, productId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -113,7 +131,7 @@ class ControllerDelegationCoverageTest {
                         null
                 ))
         );
-        when(checkBudgetDates.execute(studentId, request)).thenReturn(expected);
+        when(checkBudgetDates.execute(request.withStudentId(studentId))).thenReturn(expected);
         BudgetController controller = new BudgetController(
                 createBudget,
                 updateBudget,
@@ -130,4 +148,3 @@ class ControllerDelegationCoverageTest {
         assertSame(expected, response.getBody());
     }
 }
-

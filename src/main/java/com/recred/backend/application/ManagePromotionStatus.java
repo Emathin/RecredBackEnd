@@ -18,7 +18,7 @@ public class ManagePromotionStatus {
     }
 
     @Transactional
-    public void execute() {
+    public ManagePromotionStatusResponse execute(ManagePromotionStatusRequest request) {
         LocalDateTime today = LocalDateTime.now().with(LocalTime.MIN);
         LocalDateTime tomorrow = today.plusDays(1);
 
@@ -31,5 +31,6 @@ public class ManagePromotionStatus {
                 promotionRepository.save(promotion);
             }
         }
+        return new ManagePromotionStatusResponse();
     }
 }

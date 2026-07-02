@@ -34,11 +34,12 @@ public class ApproveSchoolRegistration {
     }
 
     @Transactional
-    public void execute(ApproveSchoolRegistrationRequest request) {
+    public ApproveSchoolRegistrationResponse execute(ApproveSchoolRegistrationRequest request) {
         SchoolRegistrationRequest registration = fetchPendingRegistration(request.registrationId());
         Colegio newColegio = createAndSaveColegio(registration);
         createAndSaveDirectorUser(registration, newColegio);
         updateRegistrationStatus(registration);
+        return new ApproveSchoolRegistrationResponse();
     }
 
     private SchoolRegistrationRequest fetchPendingRegistration(UUID id) {

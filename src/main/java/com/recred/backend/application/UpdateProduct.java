@@ -32,7 +32,7 @@ public class UpdateProduct {
     }
 
     @Transactional
-    public Producto execute(UpdateProductCommand command) {
+    public ProductResponse execute(UpdateProductCommand command) {
         Producto existing = productRepository.findActiveById(command.id())
                 .orElseThrow(() -> new ProductNotFoundException(command.id()));
 
@@ -43,7 +43,7 @@ public class UpdateProduct {
             updateInventory(command, saved.getId());
         }
 
-        return saved;
+        return ProductResponse.fromDomain(saved);
     }
 
     private void applyChanges(Producto product, UpdateProductCommand command) {

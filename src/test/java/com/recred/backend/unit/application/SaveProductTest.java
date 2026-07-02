@@ -2,6 +2,7 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SaveProductCommand;
+import com.recred.backend.application.ProductResponse;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.models.Producto;
@@ -65,10 +66,10 @@ class SaveProductTest {
         when(productRepository.save(any(Producto.class))).thenReturn(savedProduct);
         when(inventoryRepository.findByBuffetAndProduct(any(), any())).thenReturn(java.util.Optional.empty());
 
-        Producto result = saveProduct.execute(command);
+        ProductResponse result = saveProduct.execute(command);
 
         assertNotNull(result);
-        assertEquals(50, result.getStockActual());
+        assertEquals(50, result.stockActual());
         verify(productRepository).save(any(Producto.class));
         verify(inventoryRepository).save(any(Inventario.class));
     }
@@ -86,10 +87,10 @@ class SaveProductTest {
         when(categoryRepository.save(any(CategoriaProducto.class))).thenReturn(newCat);
         when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
 
-        Producto result = saveProduct.execute(command);
+        ProductResponse result = saveProduct.execute(command);
 
-        assertNotNull(result.getCategoria());
-        assertEquals("Nueva Cat", result.getCategoria().getDescripcion());
+        assertNotNull(result.categoria());
+        assertEquals("Nueva Cat", result.categoria().descripcion());
         verify(categoryRepository).save(any(CategoriaProducto.class));
     }
 
@@ -105,9 +106,10 @@ class SaveProductTest {
         when(categoryRepository.findByDescription("Cat Existente")).thenReturn(java.util.Optional.of(existingCat));
         when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
 
-        Producto result = saveProduct.execute(command);
+        ProductResponse result = saveProduct.execute(command);
 
-        assertEquals(existingCat, result.getCategoria());
+        assertEquals(existingCat.getId(), result.categoria().id());
+        assertEquals(existingCat.getDescripcion(), result.categoria().descripcion());
     }
 
     @Test
@@ -159,12 +161,12 @@ class SaveProductTest {
         when(inventoryRepository.findByBuffetAndProduct(buffetId, productId))
                 .thenReturn(java.util.Optional.empty());
 
-        Producto result = saveProduct.execute(command);
+        ProductResponse result = saveProduct.execute(command);
 
-        assertNull(result.getStockActual());
-        assertNull(result.getStockDisponible());
-        assertEquals(TipoManejoInventario.CUPO_DIARIO, result.getTipoManejoInventario());
-        assertEquals(20, result.getCupoMaximoDiario());
+        assertNull(result.stockActual());
+        assertNull(result.stockDisponible());
+        assertEquals(TipoManejoInventario.CUPO_DIARIO.name(), result.tipoManejoInventario());
+        assertEquals(20, result.cupoMaximoDiario());
         verify(inventoryRepository).save(any(Inventario.class));
     }
 
@@ -179,12 +181,12 @@ class SaveProductTest {
 
         when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
 
-        Producto result = saveProduct.execute(command);
+        ProductResponse result = saveProduct.execute(command);
 
-        assertEquals(1, result.getClasificacionesSalud().size());
-        assertEquals(saludId, result.getClasificacionesSalud().iterator().next().getId());
-        assertEquals(1, result.getTipos().size());
-        assertEquals(tipoId, result.getTipos().iterator().next().getId());
+        assertEquals(1, result.clasificacionesSalud().size());
+        assertEquals(saludId, result.clasificacionesSalud().iterator().next().id());
+        assertEquals(1, result.tipos().size());
+        assertEquals(tipoId, result.tipos().iterator().next().id());
     }
 
     @Test
@@ -196,9 +198,9 @@ class SaveProductTest {
 
         when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
 
-        Producto result = saveProduct.execute(command);
+        ProductResponse result = saveProduct.execute(command);
 
-        assertNull(result.getCategoria());
+        assertNull(result.categoria());
     }
 
     @Test

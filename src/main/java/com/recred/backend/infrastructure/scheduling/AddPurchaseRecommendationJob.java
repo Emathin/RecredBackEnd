@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.scheduling;
 
 import com.recred.backend.application.GeneratePurchaseRecommendation;
+import com.recred.backend.application.GeneratePurchaseRecommendationRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,6 @@ public class AddPurchaseRecommendationJob {
 
     @Scheduled(cron = "${product-recommendation.cron:0 30 12 * * *}")
     public void run() {
-        generatePurchaseRecommendation.execute();
+        generatePurchaseRecommendation.execute(new GeneratePurchaseRecommendationRequest());
     }
 }

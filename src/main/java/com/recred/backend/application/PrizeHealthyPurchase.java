@@ -21,12 +21,12 @@ public class PrizeHealthyPurchase {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public void execute(PrizeHealthyPurchaseCommand command) {
+    public PrizeHealthyPurchaseResponse execute(PrizeHealthyPurchaseCommand command) {
         Purchase currentPurchase = purchaseRepository.findById(command.compraId())
                 .orElseThrow(() -> new PurchaseNotFoundException(command.compraId()));
 
         if (currentPurchase.getSuggestionId() == null) {
-            return;
+            return new PrizeHealthyPurchaseResponse();
         }
 
         long healthyPurchasesLast15Days = purchaseRepository.countHealthyPurchasesByAlumno(
@@ -46,6 +46,7 @@ public class PrizeHealthyPurchase {
 
         alumno.addRewardPoints(level.getPoints());
         alumnoRepository.save(alumno);
+        return new PrizeHealthyPurchaseResponse();
     }
 
     private RewardLevel determineLevel(long last7Days, long last15Days) {

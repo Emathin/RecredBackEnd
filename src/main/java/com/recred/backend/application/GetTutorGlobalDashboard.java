@@ -136,13 +136,14 @@ public class GetTutorGlobalDashboard {
                 }
             }
         } catch (Exception e) {
-            // Fallback to ZERO
         }
         return spent;
     }
 
     private HealthSummaryResponse buildHealthSummary(Alumno alumno) {
-        StudentRewardResponse reward = getStudentRewardStatus.execute(alumno.getId());
+        StudentRewardResponse reward = getStudentRewardStatus.execute(
+                new GetStudentRewardStatusRequest(alumno.getId())
+        );
         return new HealthSummaryResponse(
                 reward.currentLevel(),
                 reward.totalPoints(),

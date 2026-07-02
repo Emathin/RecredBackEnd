@@ -12,10 +12,11 @@ public class RemoveHealthRestrictions {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public void execute(RemoveHealthRestrictionsRequest request) {
+    public RemoveHealthRestrictionsResponse execute(RemoveHealthRestrictionsRequest request) {
         Alumno alumno = this.findAlumnoById(request.alumnoId());
         alumno.removerRestriccionSalud(request.clasificacionId());
         alumnoRepository.save(alumno);
+        return new RemoveHealthRestrictionsResponse();
     }
 
     private Alumno findAlumnoById(UUID id) {
@@ -23,4 +24,3 @@ public class RemoveHealthRestrictions {
                 .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
     }
 }
-

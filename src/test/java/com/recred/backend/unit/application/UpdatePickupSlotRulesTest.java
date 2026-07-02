@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.UpdatePickupSlotRules;
+import com.recred.backend.application.UpdatePickupSlotRulesRequest;
+import com.recred.backend.application.UpdatePickupSlotRulesResponse;
 import com.recred.backend.domain.exceptions.PickupSlotRulesNotFoundException;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
@@ -27,10 +29,11 @@ class UpdatePickupSlotRulesTest {
         when(repository.findById(slotId)).thenReturn(Optional.of(slot));
         when(repository.save(slot)).thenReturn(slot);
 
-        FranjaHoraria result = useCase.execute(slotId, 20, 15);
+        UpdatePickupSlotRulesResponse result = useCase.execute(
+                new UpdatePickupSlotRulesRequest(slotId, 20, 15));
 
-        assertEquals(20, result.getCupoMaximo());
-        assertEquals(15, result.getMinutosCorte());
+        assertEquals(20, result.cupoMaximo());
+        assertEquals(15, result.minutosCorte());
         verify(repository).save(slot);
     }
 
@@ -44,9 +47,10 @@ class UpdatePickupSlotRulesTest {
         when(repository.findById(slotId)).thenReturn(Optional.of(slot));
         when(repository.save(slot)).thenReturn(slot);
 
-        FranjaHoraria result = useCase.execute(slotId, 20, null);
+        UpdatePickupSlotRulesResponse result = useCase.execute(
+                new UpdatePickupSlotRulesRequest(slotId, 20, null));
 
-        assertEquals(0, result.getMinutosCorte());
+        assertEquals(0, result.minutosCorte());
     }
 
     @Test
@@ -58,7 +62,7 @@ class UpdatePickupSlotRulesTest {
         when(repository.findById(slotId)).thenReturn(Optional.of(new FranjaHoraria()));
 
         assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(slotId, 20, -1));
+                () -> useCase.execute(new UpdatePickupSlotRulesRequest(slotId, 20, -1)));
     }
 
     @Test
@@ -70,6 +74,6 @@ class UpdatePickupSlotRulesTest {
         when(repository.findById(slotId)).thenReturn(Optional.empty());
 
         assertThrows(PickupSlotRulesNotFoundException.class,
-                () -> useCase.execute(slotId, 20, 15));
+                () -> useCase.execute(new UpdatePickupSlotRulesRequest(slotId, 20, 15)));
     }
 }

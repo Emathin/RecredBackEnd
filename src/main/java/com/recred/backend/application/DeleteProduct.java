@@ -5,8 +5,6 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 public class DeleteProduct {
 
     private final ProductRepository productRepository;
@@ -16,11 +14,12 @@ public class DeleteProduct {
     }
 
     @Transactional
-    public void execute(UUID id) {
-        Producto product = productRepository.findActiveById(id)
-                .orElseThrow(() -> new ProductNotFoundException(id));
+    public DeleteProductResponse execute(DeleteProductRequest request) {
+        Producto product = productRepository.findActiveById(request.id())
+                .orElseThrow(() -> new ProductNotFoundException(request.id()));
 
         product.deactivate();
         productRepository.save(product);
+        return new DeleteProductResponse(product.getId());
     }
 }

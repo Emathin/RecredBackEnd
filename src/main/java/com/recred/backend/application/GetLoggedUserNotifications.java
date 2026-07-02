@@ -1,7 +1,6 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
-import com.recred.backend.domain.models.Notification;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.NotificationRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
@@ -23,19 +22,25 @@ public class GetLoggedUserNotifications {
         this.notificationRepository = notificationRepository;
     }
 
-    public List<Notification> execute(String cognitoSubject, boolean unreadOnly,
-                                      int page, int size) {
-        validatePagination(page, size);
+    public GetLoggedUserNotificationsResponse execute(
+            GetLoggedUserNotificationsRequest request
+    ) {
+        validatePagination(request.page(), request.size());
 
-        Usuario usuario = usuarioRepository.findByIdCognito(cognitoSubject)
-                .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(cognitoSubject));
+        Usuario usuario = usuarioRepository.findByIdCognito(request.cognitoSubject())
+                .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(
+                        request.cognitoSubject()));
 
-        return notificationRepository.findByUserId(
+        List<UserNotificationResponse> notifications = notificationRepository.findByUserId(
                 usuario.getId(),
-                unreadOnly,
-                page,
-                size
-        );
+                request.unreadOnly(),
+                request.page(),
+                request.size()
+        ).stream()
+                .map(UserNotificationResponse::fromDomain)
+                .toList();
+
+        return new GetLoggedUserNotificationsResponse(notifications);
     }
 
     private void validatePagination(int page, int size) {

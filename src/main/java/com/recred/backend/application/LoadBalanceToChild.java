@@ -34,7 +34,7 @@ public class LoadBalanceToChild {
     }
 
     @Transactional
-    public void execute(LoadBalanceToChildRequest request) {
+    public LoadBalanceToChildResponse execute(LoadBalanceToChildRequest request) {
         request.validate();
 
         Usuario padre = getPadreValidate(request.cognitoSub());
@@ -48,6 +48,7 @@ public class LoadBalanceToChild {
         walletRepository.save(billetera);
 
         registerLoadMovement(billetera, student, request.amount(), padre.getId());
+        return new LoadBalanceToChildResponse();
     }
 
     private Usuario getPadreValidate(String cognitoSub) {
@@ -87,4 +88,3 @@ public class LoadBalanceToChild {
         );
     }
 }
-

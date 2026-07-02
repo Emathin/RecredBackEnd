@@ -3,7 +3,6 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.*;
 
 import com.recred.backend.domain.models.CategoriaProducto;
-import com.recred.backend.domain.models.ProductSaleStatistics;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -102,23 +101,24 @@ class GetProductStatisticsTest {
         when(productStatisticsJpaRepository.getAverageStockByCategory(categoryId, buffetId))
                 .thenReturn(new BigDecimal("10.00"));
 
-        ProductSaleStatistics result = getProductStatistics.execute(productId, kiosqueroId);
+        ProductSaleStatisticsResponse result = getProductStatistics.execute(
+                new GetProductStatisticsRequest(productId, kiosqueroId));
 
-        assertEquals(productId, result.getProductoId());
-        assertEquals("Alfajor", result.getNombre());
-        assertEquals("Golosinas", result.getCategoria());
-        assertEquals(new BigDecimal("45.00"), result.getPrecioActual());
-        assertEquals(12L, result.getVentasPeriodo());
-        assertEquals(13L, result.getDiasSinVenta());
-        assertEquals(new BigDecimal("37.5000"), result.getParticipacionVentas());
-        assertEquals(2, result.getRankingGeneral());
-        assertEquals(1, result.getRankingCategoria());
-        assertEquals(5L, result.getClientesDistintos());
-        assertEquals(8, result.getStockActual());
-        assertEquals(new BigDecimal("30.00"), result.getPromedioPrecioCategoria());
-        assertEquals(new BigDecimal("6.50"), result.getPromedioVentasCategoria());
-        assertEquals(new BigDecimal("10.00"), result.getStockPromedioCategoria());
-        assertEquals(new BigDecimal("15.00"), result.getDiferenciaPrecioCategoria());
+        assertEquals(productId, result.productoId());
+        assertEquals("Alfajor", result.nombre());
+        assertEquals("Golosinas", result.categoria());
+        assertEquals(new BigDecimal("45.00"), result.precioActual());
+        assertEquals(12L, result.ventasPeriodo());
+        assertEquals(13L, result.diasSinVenta());
+        assertEquals(new BigDecimal("37.5000"), result.participacionVentas());
+        assertEquals(2, result.rankingGeneral());
+        assertEquals(1, result.rankingCategoria());
+        assertEquals(5L, result.clientesDistintos());
+        assertEquals(8, result.stockActual());
+        assertEquals(new BigDecimal("30.00"), result.promedioPrecioCategoria());
+        assertEquals(new BigDecimal("6.50"), result.promedioVentasCategoria());
+        assertEquals(new BigDecimal("10.00"), result.stockPromedioCategoria());
+        assertEquals(new BigDecimal("15.00"), result.diferenciaPrecioCategoria());
     }
 
     @Test
@@ -163,16 +163,17 @@ class GetProductStatisticsTest {
         when(productStatisticsJpaRepository.getAverageStockByCategory(categoryId, buffetId))
                 .thenReturn(null);
 
-        ProductSaleStatistics result = getProductStatistics.execute(productId, kiosqueroId);
+        ProductSaleStatisticsResponse result = getProductStatistics.execute(
+                new GetProductStatisticsRequest(productId, kiosqueroId));
 
-        assertEquals(0L, result.getVentasPeriodo());
-        assertEquals(15L, result.getDiasSinVenta());
-        assertEquals(BigDecimal.ZERO, result.getParticipacionVentas());
-        assertEquals(0, result.getRankingGeneral());
-        assertEquals(0, result.getRankingCategoria());
-        assertEquals(0L, result.getClientesDistintos());
-        assertEquals(0, result.getStockActual());
-        assertEquals(BigDecimal.ZERO, result.getDiferenciaPrecioCategoria());
+        assertEquals(0L, result.ventasPeriodo());
+        assertEquals(15L, result.diasSinVenta());
+        assertEquals(BigDecimal.ZERO, result.participacionVentas());
+        assertEquals(0, result.rankingGeneral());
+        assertEquals(0, result.rankingCategoria());
+        assertEquals(0L, result.clientesDistintos());
+        assertEquals(0, result.stockActual());
+        assertEquals(BigDecimal.ZERO, result.diferenciaPrecioCategoria());
     }
 
     @Test
@@ -182,7 +183,8 @@ class GetProductStatisticsTest {
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class, () ->
-                getProductStatistics.execute(productId, kiosqueroId));
+                getProductStatistics.execute(
+                        new GetProductStatisticsRequest(productId, kiosqueroId)));
         verify(kiosqueroRepository, never()).findBuffetByUsuarioId(any());
     }
 
@@ -196,7 +198,8 @@ class GetProductStatisticsTest {
         when(kiosqueroRepository.findBuffetByUsuarioId(kiosqueroId)).thenReturn(null);
 
         assertThrows(IllegalArgumentException.class, () ->
-                getProductStatistics.execute(productId, kiosqueroId));
+                getProductStatistics.execute(
+                        new GetProductStatisticsRequest(productId, kiosqueroId)));
         verify(productStatisticsJpaRepository, never()).countTotalSalesByProductAndBuffet(
                 any(),
                 any(),

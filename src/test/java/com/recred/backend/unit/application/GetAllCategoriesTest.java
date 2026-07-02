@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetAllCategories;
+import com.recred.backend.application.GetAllCategoriesRequest;
+import com.recred.backend.application.GetAllCategoriesResponse;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.repositories.CategoryRepository;
 import org.junit.jupiter.api.Test;
@@ -33,10 +35,11 @@ class GetAllCategoriesTest {
 
         when(categoryRepository.getAllCategories()).thenReturn(mockCats);
 
-        List<CategoriaProducto> result = getAllCategories.execute();
+        GetAllCategoriesResponse result = getAllCategories.execute(
+                new GetAllCategoriesRequest());
 
         assertNotNull(result);
-        assertEquals(2, result.size());
+        assertEquals(2, result.categories().size());
         verify(categoryRepository).getAllCategories();
     }
 }

@@ -1,9 +1,12 @@
 package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.application.GetProductsByBuffetUser;
+import com.recred.backend.application.GetProductsByBuffetUserRequest;
+import com.recred.backend.application.GetProductsByBuffetUserResponse;
 import com.recred.backend.application.GetScheduledPickups;
 import com.recred.backend.application.GetScheduledPickupsRequest;
 import com.recred.backend.application.GetScheduledPickupsResponse;
+import com.recred.backend.application.ProductResponse;
 import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
@@ -63,7 +66,9 @@ class BuffetControllerTest {
         producto.setId(UUID.randomUUID());
         producto.setNombre("Producto de Prueba");
 
-        when(getProductsByBuffetUser.execute(userId)).thenReturn(List.of(producto));
+        when(getProductsByBuffetUser.execute(new GetProductsByBuffetUserRequest(userId)))
+                .thenReturn(new GetProductsByBuffetUserResponse(
+                        List.of(ProductResponse.fromDomain(producto))));
 
         ResponseEntity<List<ProductResponseDTO>> response = buffetController.findAllByUserId(userId);
 
@@ -71,7 +76,8 @@ class BuffetControllerTest {
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
         assertEquals(producto.getId(), response.getBody().get(0).id());
-        verify(getProductsByBuffetUser, times(1)).execute(userId);
+        verify(getProductsByBuffetUser, times(1))
+                .execute(new GetProductsByBuffetUserRequest(userId));
     }
 
     @Test

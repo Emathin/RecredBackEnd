@@ -22,10 +22,11 @@ public class SubmitSchoolRegistration {
         this.usuarioRepository = usuarioRepository;
     }
 
-    public void execute(SubmitSchoolRegistrationRequest request) {
+    public SubmitSchoolRegistrationResponse execute(SubmitSchoolRegistrationRequest request) {
         validateRequest(request);
         SchoolRegistrationRequest newRequest = buildRequestEntity(request);
         repository.save(newRequest);
+        return new SubmitSchoolRegistrationResponse();
     }
 
     private void validateRequest(SubmitSchoolRegistrationRequest req) {

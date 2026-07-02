@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.ManagePromotionStatus;
+import com.recred.backend.application.ManagePromotionStatusRequest;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.domain.repositories.PromotionRepository;
@@ -41,7 +42,7 @@ class ManagePromotionStatusTest {
         when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
                 .thenReturn(List.of(draftPromotion));
 
-        managePromotionStatus.execute();
+        managePromotionStatus.execute(new ManagePromotionStatusRequest());
 
         verify(promotionRepository)
                 .save(argThat(p -> p.getId().equals(promotionId) && p.getStatus() == PromotionStatus.ACTIVE));
@@ -55,7 +56,7 @@ class ManagePromotionStatusTest {
         when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
                 .thenReturn(List.of(activePromotion));
 
-        managePromotionStatus.execute();
+        managePromotionStatus.execute(new ManagePromotionStatusRequest());
 
         verify(promotionRepository, never()).save(any(Promotion.class));
     }

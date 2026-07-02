@@ -42,7 +42,7 @@ public class GenerateLowBalanceAlerts {
         this.pushNotificationSender = pushNotificationSender;
     }
 
-    public void execute() {
+    public GenerateLowBalanceAlertsResponse execute(GenerateLowBalanceAlertsRequest request) {
         LOGGER.info("Starting low balance alert generation...");
         List<UUID> studentsWithLowBalance = 
                 walletRepository.findAlumnoIdsWithLowBalance(LOW_BALANCE_THRESHOLD);
@@ -75,6 +75,7 @@ public class GenerateLowBalanceAlerts {
                 }
             }
         }
+        return new GenerateLowBalanceAlertsResponse();
     }
 
     private void sendNotification(

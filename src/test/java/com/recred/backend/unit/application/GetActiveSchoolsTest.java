@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetActiveSchools;
+import com.recred.backend.application.GetActiveSchoolsRequest;
 import com.recred.backend.application.GetActiveSchoolsResponse;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.repositories.ColegioRepository;
@@ -48,7 +49,7 @@ class GetActiveSchoolsTest {
     }
 
     private GetActiveSchoolsResponse whenGettingActiveSchools() {
-        return getActiveSchools.execute();
+        return getActiveSchools.execute(new GetActiveSchoolsRequest());
     }
 
     private Colegio school(String name) {

@@ -4,6 +4,7 @@ import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.ProductRecommendationResult;
+import com.recred.backend.domain.models.ProductSaleStatistics;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -39,9 +40,12 @@ public class GenerateProductChangeRecommendation {
         this.getProductStatistics = getProductStatistics;
     }
 
-    public void execute() {
+    public GenerateProductChangeRecommendationResponse execute(
+            GenerateProductChangeRecommendationRequest request
+    ) {
         List<UUID> kiosqueroIds = kiosqueroRepository.findAllIds();
         kiosqueroIds.forEach(this::generateForKiosquero);
+        return new GenerateProductChangeRecommendationResponse();
     }
 
     private void generateForKiosquero(UUID sellerId) {
@@ -70,9 +74,31 @@ public class GenerateProductChangeRecommendation {
     }
 
     private void analyzeAndRegister(ProductChangeRecommendation product, UUID actorId) {
-        product.setSaleStatistics(getProductStatistics.execute(product.getId(), actorId));
+        ProductSaleStatisticsResponse statistics = getProductStatistics.execute(
+                new GetProductStatisticsRequest(product.getId(), actorId));
+        product.setSaleStatistics(toDomain(statistics));
         Optional<ProductChangeAnalysis> aiAnalysis = productChangeAnalyzer.analyze(product);
         ProductRecommendationResult result = new ProductRecommendationResult(product, aiAnalysis);
         aiEventRepository.registerProductChangeRecommendation(result);
+    }
+
+    private ProductSaleStatistics toDomain(ProductSaleStatisticsResponse statistics) {
+        return ProductSaleStatistics.builder()
+                .productoId(statistics.productoId())
+                .nombre(statistics.nombre())
+                .categoria(statistics.categoria())
+                .precioActual(statistics.precioActual())
+                .ventasPeriodo(statistics.ventasPeriodo())
+                .participacionVentas(statistics.participacionVentas())
+                .rankingGeneral(statistics.rankingGeneral())
+                .rankingCategoria(statistics.rankingCategoria())
+                .promedioVentasCategoria(statistics.promedioVentasCategoria())
+                .promedioPrecioCategoria(statistics.promedioPrecioCategoria())
+                .diferenciaPrecioCategoria(statistics.diferenciaPrecioCategoria())
+                .diasSinVenta(statistics.diasSinVenta())
+                .clientesDistintos(statistics.clientesDistintos())
+                .stockActual(statistics.stockActual())
+                .stockPromedioCategoria(statistics.stockPromedioCategoria())
+                .build();
     }
 }

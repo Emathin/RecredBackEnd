@@ -26,7 +26,7 @@ public class DeleteFavoriteCart {
     }
 
     @Transactional
-    public void execute(DeleteFavoriteCartRequest request) {
+    public DeleteFavoriteCartResponse execute(DeleteFavoriteCartRequest request) {
         String cognitoSub = request.cognitoSub();
         UUID cartId = request.cartId();
 
@@ -38,6 +38,7 @@ public class DeleteFavoriteCart {
         analizarAutorizacionParaEliminarCarrito(tutor, carrito);
 
         carritoFavoritoRepository.delete(cartId);
+        return new DeleteFavoriteCartResponse();
     }
 
     private Usuario findUsuarioByCognito(String cognitoSub) {

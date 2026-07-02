@@ -11,6 +11,7 @@ import com.recred.backend.application.GetDailyBuffetCloseStatus;
 import com.recred.backend.application.GetDailyBuffetCloseStatusRequest;
 import com.recred.backend.application.GetDailyBuffetCloseStatusResponse;
 import com.recred.backend.application.GetBuffetTimeSlots;
+import com.recred.backend.application.GetBuffetTimeSlotsRequest;
 import com.recred.backend.application.GetKiosqueroDashboard;
 import com.recred.backend.application.GetKiosqueroDashboardRequest;
 import com.recred.backend.application.GetKiosqueroDashboardResponse;
@@ -22,9 +23,11 @@ import com.recred.backend.application.ListInventoryProductsResponse.InventoryPro
 import com.recred.backend.application.ListKiosqueroOrders;
 import com.recred.backend.application.ListKiosqueroOrdersRequest;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
+import com.recred.backend.application.ListKiosqueroOperationalAlertsRequest;
 import com.recred.backend.application.UpdatePickupSlotRules;
+import com.recred.backend.application.UpdatePickupSlotRulesRequest;
+import com.recred.backend.application.UpdatePickupSlotRulesResponse;
 import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.FranjaHoraria;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -123,9 +126,11 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(listKiosqueroOperationalAlerts.execute(buffetId)
+        return ResponseEntity.ok(listKiosqueroOperationalAlerts
+                .execute(new ListKiosqueroOperationalAlertsRequest(buffetId))
+                .alerts()
                 .stream()
-                .map(KiosqueroOperationalAlertResponse::fromDomain)
+                .map(KiosqueroOperationalAlertResponse::fromApplication)
                 .toList());
     }
 
@@ -155,9 +160,10 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(getBuffetTimeSlots.execute(buffetId)
+        return ResponseEntity.ok(getBuffetTimeSlots
+                .execute(new GetBuffetTimeSlotsRequest(buffetId))
                 .stream()
-                .map(TimeSlotResponse::fromDomain)
+                .map(TimeSlotResponse::fromUseCaseResponse)
                 .toList());
     }
 
@@ -239,12 +245,13 @@ public class KiosqueroOperationsController {
             @PathVariable UUID slotId,
             @Valid @RequestBody PickupSlotRulesRequest request
     ) {
-        FranjaHoraria slot = updatePickupSlotRules.execute(
-                slotId,
-                request.cupoMaximo(),
-                request.minutosCorte()
-        );
-        return ResponseEntity.ok(PickupSlotRulesResponse.fromDomain(slot));
+        UpdatePickupSlotRulesResponse slot = updatePickupSlotRules.execute(
+                new UpdatePickupSlotRulesRequest(
+                        slotId,
+                        request.cupoMaximo(),
+                        request.minutosCorte()
+                ));
+        return ResponseEntity.ok(PickupSlotRulesResponse.fromApplication(slot));
     }
 
     private LocalDate requestedDate(LocalDate date) {
@@ -282,15 +289,15 @@ public class KiosqueroOperationsController {
             Integer cupoMaximo,
             Integer minutosCorte
     ) {
-        static PickupSlotRulesResponse fromDomain(FranjaHoraria slot) {
+        static PickupSlotRulesResponse fromApplication(UpdatePickupSlotRulesResponse slot) {
             return new PickupSlotRulesResponse(
-                    slot.getId(),
-                    slot.getColegioId(),
-                    slot.getDescripcion(),
-                    slot.getHoraInicio(),
-                    slot.getHoraFin(),
-                    slot.getCupoMaximo(),
-                    slot.getMinutosCorte()
+                    slot.id(),
+                    slot.colegioId(),
+                    slot.descripcion(),
+                    slot.horaInicio(),
+                    slot.horaFin(),
+                    slot.cupoMaximo(),
+                    slot.minutosCorte()
             );
         }
     }

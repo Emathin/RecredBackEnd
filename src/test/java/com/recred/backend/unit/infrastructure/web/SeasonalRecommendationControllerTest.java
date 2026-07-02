@@ -1,0 +1,102 @@
+package com.recred.backend.unit.infrastructure.web;
+
+import com.recred.backend.application.GenerateSeasonalRecommendation;
+import com.recred.backend.application.SeasonalRecommendationResponse;
+import com.recred.backend.application.SeasonalSuggestionResponse;
+import com.recred.backend.config.CustomAuthenticationEntryPoint;
+import com.recred.backend.config.CustomJwtAuthenticationConverter;
+import com.recred.backend.infrastructure.web.SeasonalRecommendationController;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
+import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(
+        controllers = SeasonalRecommendationController.class,
+        excludeAutoConfiguration = {SecurityAutoConfiguration.class, OAuth2ResourceServerAutoConfiguration.class}
+)
+class SeasonalRecommendationControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private GenerateSeasonalRecommendation useCase;
+
+    @MockitoBean
+    private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
+
+    @MockitoBean
+    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
+    @Test
+    void dadoQueElCasoDeUsoRespondeCorrectamente_cuandoSeLlamaAlEndpoint_entoncesRetorna200ConJson() throws Exception {
+        SeasonalRecommendationResponse respuesta = new SeasonalRecommendationResponse(
+                List.of(new SeasonalSuggestionResponse(
+                        "Bebidas Frias",
+                        "AUMENTAR",
+                        "Clima caluroso.",
+                        null,
+                        List.of()
+                )),
+                "Promo 2x1 en helados.",
+                null,
+                null,
+                null,
+                null
+        );
+        when(useCase.execute(any())).thenReturn(respuesta);
+
+        mockMvc.perform(get("/api/v1/recomendations/seasonal")
+                        .param("latitude", "-34.7")
+                        .param("longitude", "-58.47")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tip_promocional").value("Promo 2x1 en helados."))
+                .andExpect(jsonPath("$.sugerencias[0].categoria").value("Bebidas Frias"))
+                .andExpect(jsonPath("$.sugerencias[0].accion").value("AUMENTAR"));
+    }
+
+    @Test
+    void dadoQueFaltaElParametroLatitude_cuandoSeLlamaAlEndpoint_entoncesRetornaError() throws Exception {
+        mockMvc.perform(get("/api/v1/recomendations/seasonal")
+                        .param("longitude", "-58.47")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void dadoQueFaltaElParametroLongitude_cuandoSeLlamaAlEndpoint_entoncesRetornaError() throws Exception {
+        mockMvc.perform(get("/api/v1/recomendations/seasonal")
+                        .param("latitude", "-34.7")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void dadoQueElCasoDeUsoLanzaExcepcion_cuandoSeLlamaAlEndpoint_entoncesRetorna500() throws Exception {
+        when(useCase.execute(any()))
+                .thenThrow(new RuntimeException("Weather service is currently unavailable"));
+
+        mockMvc.perform(get("/api/v1/recomendations/seasonal")
+                        .param("latitude", "-34.7")
+                        .param("longitude", "-58.47")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isInternalServerError());
+    }
+}

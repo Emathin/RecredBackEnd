@@ -1,7 +1,11 @@
 package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.application.GetLoggedUserNotifications;
+import com.recred.backend.application.GetLoggedUserNotificationsRequest;
+import com.recred.backend.application.GetLoggedUserNotificationsResponse;
 import com.recred.backend.application.SetNotificationAsAlreadyRead;
+import com.recred.backend.application.SetNotificationAsAlreadyReadRequest;
+import com.recred.backend.application.UserNotificationResponse;
 import com.recred.backend.config.GlobalExceptionHandler;
 import com.recred.backend.domain.exceptions.NotificationNotFoundException;
 import com.recred.backend.domain.models.Notification;
@@ -48,8 +52,14 @@ class NotificationControllerTest {
     @Test
     void getMyNotificationsReturnsAuthenticatedUserNotifications() throws Exception {
         UUID notificationId = UUID.randomUUID();
-        when(getLoggedUserNotifications.execute("cognito-sub", true, 1, 5))
-                .thenReturn(List.of(notification(notificationId)));
+        when(getLoggedUserNotifications.execute(new GetLoggedUserNotificationsRequest(
+                "cognito-sub",
+                true,
+                1,
+                5
+        ))).thenReturn(new GetLoggedUserNotificationsResponse(List.of(
+                UserNotificationResponse.fromDomain(notification(notificationId))
+        )));
 
         mockMvc.perform(get("/api/v1/notifications/me")
                         .principal(authentication())
@@ -65,7 +75,12 @@ class NotificationControllerTest {
                 .andExpect(jsonPath("$[0].createdAt").value("2026-06-02T14:30:00"))
                 .andExpect(jsonPath("$[0].readAt").doesNotExist());
 
-        verify(getLoggedUserNotifications).execute("cognito-sub", true, 1, 5);
+        verify(getLoggedUserNotifications).execute(new GetLoggedUserNotificationsRequest(
+                "cognito-sub",
+                true,
+                1,
+                5
+        ));
     }
 
     @Test
@@ -76,14 +91,17 @@ class NotificationControllerTest {
                         .principal(authentication()))
                 .andExpect(status().isOk());
 
-        verify(setNotificationAsAlreadyRead).execute(notificationId);
+        verify(setNotificationAsAlreadyRead).execute(new SetNotificationAsAlreadyReadRequest(
+                notificationId
+        ));
     }
 
     @Test
     void markAsReadNotFoundReturns404() throws Exception {
         UUID notificationId = UUID.randomUUID();
         doThrow(new NotificationNotFoundException("Not found"))
-                .when(setNotificationAsAlreadyRead).execute(notificationId);
+                .when(setNotificationAsAlreadyRead).execute(
+                        new SetNotificationAsAlreadyReadRequest(notificationId));
 
         mockMvc.perform(put("/api/v1/notifications/{id}/already-read", notificationId)
                         .principal(authentication()))
@@ -112,4 +130,3 @@ class NotificationControllerTest {
         return new JwtAuthenticationToken(jwt);
     }
 }
-

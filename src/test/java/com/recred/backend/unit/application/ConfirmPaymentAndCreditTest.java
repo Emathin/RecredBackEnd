@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.ConfirmPaymentAndCredit;
+import com.recred.backend.application.ConfirmPaymentAndCreditRequest;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.PaymentDetails;
 import com.recred.backend.domain.models.PaymentStatus;
@@ -47,7 +48,7 @@ class ConfirmPaymentAndCreditTest {
         when(externalPaymentService.getPaymentDetails(paymentId)).thenReturn(details);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        confirmPaymentAndCredit.execute(paymentId);
+        confirmPaymentAndCredit.execute(new ConfirmPaymentAndCreditRequest(paymentId));
 
         assertEquals(amount, wallet.getSaldoCreditos());
         verify(walletRepository).save(wallet);
@@ -70,7 +71,7 @@ class ConfirmPaymentAndCreditTest {
         when(externalPaymentService.getPaymentDetails(paymentId)).thenReturn(details);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        useCase.execute(paymentId);
+        useCase.execute(new ConfirmPaymentAndCreditRequest(paymentId));
 
         assertEquals(amount, wallet.getSaldoCreditos());
         verify(walletRepository).save(wallet);
@@ -97,7 +98,7 @@ class ConfirmPaymentAndCreditTest {
         when(externalPaymentService.getPaymentDetails(paymentId)).thenReturn(details);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        useCase.execute(paymentId);
+        useCase.execute(new ConfirmPaymentAndCreditRequest(paymentId));
 
         verify(movimientoBilleteraRepository).registrarMovimientoSistema(
                 eq(wallet.getId()),
@@ -117,7 +118,9 @@ class ConfirmPaymentAndCreditTest {
         when(externalPaymentService.getPaymentDetails(paymentId)).thenReturn(details);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> confirmPaymentAndCredit.execute(paymentId));
+        assertThrows(RuntimeException.class,
+                () -> confirmPaymentAndCredit.execute(
+                        new ConfirmPaymentAndCreditRequest(paymentId)));
 
         verify(walletRepository, never()).save(any());
     }
@@ -130,7 +133,7 @@ class ConfirmPaymentAndCreditTest {
 
         when(externalPaymentService.getPaymentDetails(paymentId)).thenReturn(details);
 
-        confirmPaymentAndCredit.execute(paymentId);
+        confirmPaymentAndCredit.execute(new ConfirmPaymentAndCreditRequest(paymentId));
 
         verify(walletRepository, never()).save(any());
     }

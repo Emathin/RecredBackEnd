@@ -5,7 +5,6 @@ import com.recred.backend.application.LoadStockIARequest;
 import com.recred.backend.application.LoadStockIAResponse;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.domain.exceptions.ImageValidationException;
-import com.recred.backend.domain.models.Producto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -68,9 +67,9 @@ public class LoadStockIAController {
     @PostMapping("/save-product")
     public ResponseEntity<ProductResponseDTO> saveProduct(
             @jakarta.validation.Valid @RequestBody ProductRequestDTO request) {
-        Producto createdProduct = saveProduct.execute(request.toSaveCommand());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ProductResponseDTO.fromDomain(createdProduct));
+                .body(ProductResponseDTO.fromApplication(
+                        saveProduct.execute(request.toSaveCommand())));
     }
 
     private void validateImage(MultipartFile image) {

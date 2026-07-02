@@ -3,7 +3,9 @@ package com.recred.backend.unit.infrastructure.scheduling;
 import com.recred.backend.infrastructure.scheduling.*;
 
 import com.recred.backend.application.AddProductRecommendation;
+import com.recred.backend.application.AddProductRecommendationRequest;
 import com.recred.backend.application.GeneratePurchaseRecommendation;
+import com.recred.backend.application.GeneratePurchaseRecommendationRequest;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.Mockito.mock;
@@ -18,7 +20,7 @@ class RecommendationJobTest {
 
         job.run();
 
-        verify(useCase).execute();
+        verify(useCase).execute(new AddProductRecommendationRequest());
     }
 
     @Test
@@ -28,6 +30,6 @@ class RecommendationJobTest {
 
         job.run();
 
-        verify(useCase).execute();
+        verify(useCase).execute(new GeneratePurchaseRecommendationRequest());
     }
 }

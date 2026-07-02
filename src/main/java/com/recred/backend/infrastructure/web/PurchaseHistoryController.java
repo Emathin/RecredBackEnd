@@ -5,6 +5,7 @@ import com.recred.backend.application.GetHistoryByStudentRequest;
 import com.recred.backend.application.GetPendingHistoryByStudent;
 import com.recred.backend.application.GetPendingHistoryByStudentRequest;
 import com.recred.backend.application.GetTutorHistory;
+import com.recred.backend.application.GetTutorHistoryRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
@@ -64,7 +65,8 @@ public class PurchaseHistoryController {
     @GetMapping("/tutor/me")
     public ResponseEntity<List<PurchaseResponseDTO>> getMyHistorial(Authentication authentication) {
         List<PurchaseResponseDTO> historial = getTutorHistory
-                .executeByCognitoSubject(cognitoSubject(authentication))
+                .execute(GetTutorHistoryRequest.byCognitoSubject(cognitoSubject(authentication)))
+                .purchases()
                 .stream()
                 .map(PurchaseResponseDTO::new)
                 .collect(Collectors.toList());
@@ -75,7 +77,9 @@ public class PurchaseHistoryController {
     @GetMapping("/tutor/{tutorId}")
     public ResponseEntity<List<PurchaseResponseDTO>> getHistorialTutor(
             @PathVariable UUID tutorId) {
-        List<PurchaseResponseDTO> historial = getTutorHistory.execute(tutorId)
+        List<PurchaseResponseDTO> historial = getTutorHistory
+                .execute(GetTutorHistoryRequest.byTutorId(tutorId))
+                .purchases()
                 .stream()
                 .map(PurchaseResponseDTO::new)
                 .collect(Collectors.toList());

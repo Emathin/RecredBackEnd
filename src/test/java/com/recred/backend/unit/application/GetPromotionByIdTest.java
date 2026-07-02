@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetPromotionById;
+import com.recred.backend.application.GetPromotionByIdRequest;
+import com.recred.backend.application.CreatePromotionResponse;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import org.junit.jupiter.api.Test;
@@ -35,10 +37,10 @@ class GetPromotionByIdTest {
 
         when(promotionRepository.findById(id)).thenReturn(Optional.of(promotion));
 
-        Promotion result = getPromotionById.execute(id);
+        CreatePromotionResponse result = getPromotionById.execute(new GetPromotionByIdRequest(id));
 
         assertNotNull(result);
-        assertEquals(id, result.getId());
+        assertEquals(id, result.id());
         verify(promotionRepository).findById(id);
     }
 
@@ -47,7 +49,8 @@ class GetPromotionByIdTest {
         UUID id = UUID.randomUUID();
         when(promotionRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> getPromotionById.execute(id));
+        assertThrows(IllegalArgumentException.class,
+                () -> getPromotionById.execute(new GetPromotionByIdRequest(id)));
         verify(promotionRepository).findById(id);
     }
 }

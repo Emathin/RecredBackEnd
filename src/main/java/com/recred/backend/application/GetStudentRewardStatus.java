@@ -5,8 +5,6 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.RewardLevel;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 
-import java.util.UUID;
-
 public class GetStudentRewardStatus {
 
     private final AlumnoRepository alumnoRepository;
@@ -15,9 +13,9 @@ public class GetStudentRewardStatus {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public StudentRewardResponse execute(UUID alumnoId) {
-        Alumno alumno = alumnoRepository.findById(alumnoId)
-                .orElseThrow(() -> new AlumnoNoEncontradoException(alumnoId));
+    public StudentRewardResponse execute(GetStudentRewardStatusRequest request) {
+        Alumno alumno = alumnoRepository.findById(request.alumnoId())
+                .orElseThrow(() -> new AlumnoNoEncontradoException(request.alumnoId()));
 
         RewardLevel currentLevel = alumno.calculateCurrentLevel();
         Integer nextPoints = alumno.getPointsToNextLevel();

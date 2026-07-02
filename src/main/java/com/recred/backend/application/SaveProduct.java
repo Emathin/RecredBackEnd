@@ -29,7 +29,7 @@ public class SaveProduct {
         this.categoryRepository = categoryRepository;
     }
 
-    public Producto execute(SaveProductCommand command) {
+    public ProductResponse execute(SaveProductCommand command) {
         Producto producto = mapToModel(command);
         Producto savedProduct = productRepository.save(producto);
 
@@ -44,7 +44,7 @@ public class SaveProduct {
             savedProduct.setCupoMaximoDiario(command.cupoMaximoDiario());
         }
 
-        return savedProduct;
+        return ProductResponse.fromDomain(savedProduct);
     }
 
     private void saveInventory(SaveProductCommand command, Producto savedProduct) {

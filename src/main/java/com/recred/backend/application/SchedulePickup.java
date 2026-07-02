@@ -29,7 +29,7 @@ public class SchedulePickup {
         this.budgetValidator = budgetValidator;
     }
 
-    public void execute(SchedulePickupRequest request) {
+    public SchedulePickupResponse execute(SchedulePickupRequest request) {
         Alumno student = this.createAlumno(request.studentId());
         LocalDateTime projectedPickupTime = this.calculateProjectedPickupTime(
                 request.pickupDate(), request.pickupSlot());
@@ -41,6 +41,7 @@ public class SchedulePickup {
 
         this.validateBudget(request.studentId(), montoTotalCarrito,
                 montosPorCategoria, projectedPickupTime);
+        return new SchedulePickupResponse();
     }
 
     private Alumno createAlumno(UUID studentId) {

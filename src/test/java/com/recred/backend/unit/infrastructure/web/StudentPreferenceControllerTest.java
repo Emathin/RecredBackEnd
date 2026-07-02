@@ -11,7 +11,7 @@ import com.recred.backend.application.GetFavoritesByStudent;
 import com.recred.backend.application.GetFavoritesByStudentRequest;
 import com.recred.backend.application.GetFavoritesByStudentResponse;
 import com.recred.backend.application.GetStudentPreferences;
-import com.recred.backend.application.GetStudentPreferencesByUserRequest;
+import com.recred.backend.application.GetStudentPreferencesRequest;
 import com.recred.backend.application.GetStudentPreferencesResponse;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.RespondToAISuggestionRequest;
@@ -278,7 +278,7 @@ class StudentPreferenceControllerTest {
     private void givenPreferencesByUser(
             UUID userId,
             GetStudentPreferencesResponse.Preference... preferences) {
-        when(getStudentPreferences.executeByUserId(userPreferencesRequest(userId)))
+        when(getStudentPreferences.execute(userPreferencesRequest(userId)))
                 .thenReturn(new GetStudentPreferencesResponse(List.of(preferences)));
     }
 
@@ -318,8 +318,8 @@ class StudentPreferenceControllerTest {
         return controller.obtenerFavoritos(studentId);
     }
 
-    private GetStudentPreferencesByUserRequest userPreferencesRequest(UUID userId) {
-        return new GetStudentPreferencesByUserRequest(userId, false, null);
+    private GetStudentPreferencesRequest userPreferencesRequest(UUID userId) {
+        return GetStudentPreferencesRequest.byUser(userId, false, null);
     }
 
     private GetFavoritesByStudentResponse favoriteProduct(UUID productId) {
@@ -348,4 +348,3 @@ class StudentPreferenceControllerTest {
         );
     }
 }
-

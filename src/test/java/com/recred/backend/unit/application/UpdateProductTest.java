@@ -2,6 +2,7 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductCommand;
+import com.recred.backend.application.ProductResponse;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Inventario;
@@ -69,8 +70,9 @@ class UpdateProductTest {
         when(productRepository.findActiveById(id)).thenReturn(Optional.of(existing));
         when(productRepository.save(existing)).thenReturn(existing);
 
-        Producto result = updateProduct.execute(command);
+        ProductResponse result = updateProduct.execute(command);
 
+        assertEquals(id, result.id());
         assertEquals("Nombre Act", existing.getNombre());
         assertEquals("Desc Act", existing.getDescripcion());
         verify(productRepository).save(existing);

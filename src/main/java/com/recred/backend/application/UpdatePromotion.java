@@ -19,22 +19,15 @@ public class UpdatePromotion {
         this.promotionRepository = promotionRepository;
     }
 
-    public Promotion execute(
-            UUID id, 
-            List<UUID> productIds, 
-            BigDecimal discountPercentage, 
-            String name, 
-            LocalDateTime startDate, 
-            LocalDateTime endDate) {
-            
-        Promotion promotion = promotionRepository.findById(id)
+    public CreatePromotionResponse execute(UpdatePromotionRequest request) {
+        Promotion promotion = promotionRepository.findById(request.id())
                 .orElseThrow(() -> new IllegalArgumentException("Promotion not found."));
                 
-        if (productIds != null && !productIds.isEmpty()) {
-            if (!hasMinimumProducts(productIds)) {
+        if (request.productIds() != null && !request.productIds().isEmpty()) {
+            if (!hasMinimumProducts(request.productIds())) {
                 throw new IllegalArgumentException("A promotion requires at least 2 products.");
             }
-            List<Producto> products = productIds.stream().map(productId -> {
+            List<Producto> products = request.productIds().stream().map(productId -> {
                 Producto p = new Producto();
                 p.setId(productId);
                 return p;
@@ -42,24 +35,24 @@ public class UpdatePromotion {
             promotion.setProducts(products);
         }
         
-        if (discountPercentage != null) {
-            if (!isDiscountValid(discountPercentage)) {
+        if (request.discountPercentage() != null) {
+            if (!isDiscountValid(request.discountPercentage())) {
                 throw new IllegalArgumentException(
                         "Discount percentage must be between 0 and 100.");
             }
-            promotion.setDiscountPercentage(discountPercentage);
+            promotion.setDiscountPercentage(request.discountPercentage());
         }
         
-        if (name != null) {
-            promotion.setName(name);
+        if (request.name() != null) {
+            promotion.setName(request.name());
         }
         
-        if (startDate != null) {
-            promotion.setStartDate(startDate);
+        if (request.startDate() != null) {
+            promotion.setStartDate(request.startDate());
         }
         
-        if (endDate != null) {
-            promotion.setEndDate(endDate);
+        if (request.endDate() != null) {
+            promotion.setEndDate(request.endDate());
         }
         
         if (!isDateRangeValid(promotion.getStartDate(), promotion.getEndDate())) {
@@ -72,7 +65,7 @@ public class UpdatePromotion {
             promotion.setStatus(PromotionStatus.DRAFT);
         }
 
-        return promotionRepository.save(promotion);
+        return CreatePromotionResponse.fromDomain(promotionRepository.save(promotion));
     }
 
     private boolean hasMinimumProducts(List<UUID> productIds) {

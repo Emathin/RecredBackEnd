@@ -106,8 +106,8 @@ public class PurchaseController {
                         .toList()
         );
 
-        CreateAdvancePurchaseResponse useCaseResponse =
-                createAdvancePurchase.execute(useCaseRequest, cognitoSubject(authentication));
+        CreateAdvancePurchaseResponse useCaseResponse = createAdvancePurchase.execute(
+                useCaseRequest.withCognitoSub(cognitoSubject(authentication)));
 
         return ResponseEntity.ok(new AdvancePurchaseResponse(
                 useCaseResponse.orderId(),

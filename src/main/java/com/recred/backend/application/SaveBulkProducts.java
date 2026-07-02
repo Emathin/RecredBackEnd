@@ -1,8 +1,5 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Producto;
-
-import java.util.List;
 import java.util.stream.Collectors;
 
 public class SaveBulkProducts {
@@ -13,9 +10,9 @@ public class SaveBulkProducts {
         this.saveProduct = saveProduct;
     }
 
-    public List<Producto> execute(List<SaveProductCommand> commands) {
-        return commands.stream()
+    public SaveBulkProductsResponse execute(SaveBulkProductsRequest request) {
+        return new SaveBulkProductsResponse(request.commands().stream()
                 .map(saveProduct::execute)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
     }
 }

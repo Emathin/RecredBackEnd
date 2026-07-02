@@ -8,6 +8,8 @@ import com.recred.backend.application.GenerateDailyBuffetReport;
 import com.recred.backend.application.GenerateDailyBuffetReportRequest;
 import com.recred.backend.application.GenerateDailyBuffetReportResponse;
 import com.recred.backend.application.GetBuffetTimeSlots;
+import com.recred.backend.application.GetBuffetTimeSlotsRequest;
+import com.recred.backend.application.GetTimeSlotsBySchoolResponse;
 import com.recred.backend.application.GetDailyBuffetCloseStatus;
 import com.recred.backend.application.GetDailyBuffetCloseStatusRequest;
 import com.recred.backend.application.GetDailyBuffetCloseStatusResponse;
@@ -24,7 +26,12 @@ import com.recred.backend.application.ListKiosqueroOrders;
 import com.recred.backend.application.ListKiosqueroOrdersRequest;
 import com.recred.backend.application.ListKiosqueroOrdersResponse;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
+import com.recred.backend.application.ListKiosqueroOperationalAlertsRequest;
+import com.recred.backend.application.ListKiosqueroOperationalAlertsResponse;
+import com.recred.backend.application.OperationalAlertResponse;
 import com.recred.backend.application.UpdatePickupSlotRules;
+import com.recred.backend.application.UpdatePickupSlotRulesRequest;
+import com.recred.backend.application.UpdatePickupSlotRulesResponse;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.DailyBuffetClose;
 import com.recred.backend.domain.models.EstadoCompra;
@@ -278,16 +285,18 @@ class KiosqueroOperationsControllerTest {
     void alerts_ShouldReturnMappedOperationalAlerts() {
         UUID buffetId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        KiosqueroOperationalAlert alert = new KiosqueroOperationalAlert(
+        OperationalAlertResponse alert = new OperationalAlertResponse(
                 buffetId,
-                OperationalAlertType.DAILY_CAPACITY_LOW,
-                OperationalAlertSeverity.WARNING,
+                OperationalAlertType.DAILY_CAPACITY_LOW.name(),
+                OperationalAlertSeverity.WARNING.name(),
                 productId,
                 null,
                 LocalDateTime.of(2026, 6, 15, 10, 0),
                 "Cupo bajo"
         );
-        when(listKiosqueroOperationalAlerts.execute(buffetId)).thenReturn(List.of(alert));
+        when(listKiosqueroOperationalAlerts.execute(
+                new ListKiosqueroOperationalAlertsRequest(buffetId)))
+                .thenReturn(new ListKiosqueroOperationalAlertsResponse(List.of(alert)));
 
         ResponseEntity<List<KiosqueroOperationalAlertResponse>> response =
                 controller.alerts(buffetId, null);
@@ -298,7 +307,8 @@ class KiosqueroOperationsControllerTest {
         assertEquals("WARNING", body.severity());
         assertEquals(productId, body.productId());
         assertEquals("Cupo bajo", body.message());
-        verify(listKiosqueroOperationalAlerts).execute(buffetId);
+        verify(listKiosqueroOperationalAlerts)
+                .execute(new ListKiosqueroOperationalAlertsRequest(buffetId));
     }
 
     @Test
@@ -356,7 +366,17 @@ class KiosqueroOperationsControllerTest {
         slot.setCupoMaximo(30);
         slot.setMinutosCorte(10);
 
-        when(getBuffetTimeSlots.execute(buffetId)).thenReturn(List.of(slot));
+        when(getBuffetTimeSlots.execute(new GetBuffetTimeSlotsRequest(buffetId)))
+                .thenReturn(List.of(new GetTimeSlotsBySchoolResponse(
+                        slotId,
+                        colegioId,
+                        "Primer recreo",
+                        LocalTime.of(9, 30),
+                        LocalTime.of(9, 45),
+                        true,
+                        30,
+                        10
+                )));
 
         ResponseEntity<List<TimeSlotResponse>> response = controller.timeSlots(buffetId, null);
 
@@ -366,19 +386,24 @@ class KiosqueroOperationsControllerTest {
         assertEquals("Primer recreo", body.descripcion());
         assertEquals(30, body.cupoMaximo());
         assertEquals(10, body.minutosCorte());
-        verify(getBuffetTimeSlots).execute(buffetId);
+        verify(getBuffetTimeSlots).execute(new GetBuffetTimeSlotsRequest(buffetId));
     }
 
     @Test
     void updatePickupSlotRules_ShouldDelegateToUseCase() {
         UUID slotId = UUID.randomUUID();
-        FranjaHoraria slot = new FranjaHoraria();
-        slot.setId(slotId);
-        slot.setDescripcion("Primer recreo");
-        slot.setCupoMaximo(10);
-        slot.setMinutosCorte(20);
-
-        when(updatePickupSlotRules.execute(slotId, 10, 20)).thenReturn(slot);
+        UpdatePickupSlotRulesRequest useCaseRequest =
+                new UpdatePickupSlotRulesRequest(slotId, 10, 20);
+        when(updatePickupSlotRules.execute(useCaseRequest))
+                .thenReturn(new UpdatePickupSlotRulesResponse(
+                        slotId,
+                        null,
+                        "Primer recreo",
+                        null,
+                        null,
+                        10,
+                        20
+                ));
 
         ResponseEntity<KiosqueroOperationsController.PickupSlotRulesResponse> response =
                 controller.updatePickupSlotRules(
@@ -388,7 +413,7 @@ class KiosqueroOperationsControllerTest {
 
         assertEquals(10, response.getBody().cupoMaximo());
         assertEquals(20, response.getBody().minutosCorte());
-        verify(updatePickupSlotRules).execute(slotId, 10, 20);
+        verify(updatePickupSlotRules).execute(useCaseRequest);
     }
 
     private GenerateDailyBuffetReportResponse report(UUID buffetId, LocalDate date) {
@@ -477,4 +502,3 @@ class KiosqueroOperationsControllerTest {
         return purchase;
     }
 }
-

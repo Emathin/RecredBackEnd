@@ -112,10 +112,9 @@ public class CreateAdvancePurchase {
     }
 
     @Transactional
-    public CreateAdvancePurchaseResponse execute(
-            CreateAdvancePurchaseRequest request, String cognitoSub) {
+    public CreateAdvancePurchaseResponse execute(CreateAdvancePurchaseRequest request) {
         validateRequest(request);
-        Usuario user = authenticatedUser(cognitoSub);
+        Usuario user = authenticatedUser(request.cognitoSub());
 
         Map<UUID, String> codes = new HashMap<>();
         Purchase firstPurchase = null;

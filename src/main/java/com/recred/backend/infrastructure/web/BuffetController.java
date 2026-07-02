@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetProductsByBuffetUser;
+import com.recred.backend.application.GetProductsByBuffetUserRequest;
 import com.recred.backend.application.GetScheduledPickups;
 import com.recred.backend.application.GetScheduledPickupsRequest;
 import com.recred.backend.domain.models.EstadoCompra;
@@ -40,9 +41,11 @@ public class BuffetController {
     public ResponseEntity<List<ProductResponseDTO>> findAllByUserId(
             @PathVariable UUID userId) {
         List<ProductResponseDTO> products =
-                getProductsByBuffetUser.execute(userId)
+                getProductsByBuffetUser
+                .execute(new GetProductsByBuffetUserRequest(userId))
+                .products()
                 .stream()
-                .map(ProductResponseDTO::fromDomain)
+                .map(ProductResponseDTO::fromApplication)
                 .toList();
         return ResponseEntity.ok(products);
     }

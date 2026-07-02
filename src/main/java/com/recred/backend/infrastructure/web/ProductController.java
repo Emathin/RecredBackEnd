@@ -2,17 +2,20 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.BulkStockParseResponse;
 import com.recred.backend.application.DeleteProduct;
+import com.recred.backend.application.DeleteProductRequest;
 import com.recred.backend.application.GetAllProducts;
+import com.recred.backend.application.GetAllProductsRequest;
 import com.recred.backend.application.GetProductById;
+import com.recred.backend.application.GetProductByIdRequest;
 import com.recred.backend.application.ParseBulkStock;
 import com.recred.backend.application.ParseBulkStockCommand;
 import com.recred.backend.application.SaveBulkProducts;
+import com.recred.backend.application.SaveBulkProductsRequest;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SaveProductCommand;
 import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdateProductPriceRequest;
-import com.recred.backend.domain.models.Producto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -109,9 +112,11 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<List<ProductResponseDTO>> findAll(
             @RequestParam(required = false) UUID buffetId) {
-        List<ProductResponseDTO> products = getAllProducts.execute(buffetId)
+        List<ProductResponseDTO> products = getAllProducts
+                .execute(new GetAllProductsRequest(buffetId))
+                .products()
                 .stream()
-                .map(ProductResponseDTO::fromDomain)
+                .map(ProductResponseDTO::fromApplication)
                 .toList();
         return ResponseEntity.ok(products);
     }
@@ -139,10 +144,11 @@ public class ProductController {
         List<SaveProductCommand> commands = request.stream()
                 .map(ProductRequestDTO::toSaveCommand)
                 .collect(Collectors.toList());
-        List<Producto> savedProducts = saveBulkProducts.execute(
-                commands);
-        List<ProductResponseDTO> response = savedProducts.stream()
-                .map(ProductResponseDTO::fromDomain)
+        List<ProductResponseDTO> response = saveBulkProducts
+                .execute(new SaveBulkProductsRequest(commands))
+                .products()
+                .stream()
+                .map(ProductResponseDTO::fromApplication)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
@@ -151,30 +157,29 @@ public class ProductController {
     public ResponseEntity<ProductResponseDTO> findById(
             @PathVariable UUID id,
             @RequestParam(required = false) UUID buffetId) {
-        Producto product = getProductById.execute(id, buffetId);
-        return ResponseEntity.ok(ProductResponseDTO.fromDomain(product));
+        return ResponseEntity.ok(ProductResponseDTO.fromApplication(
+                getProductById.execute(new GetProductByIdRequest(id, buffetId))));
     }
 
     @PostMapping
     public ResponseEntity<ProductResponseDTO> create(
             @Valid @RequestBody ProductRequestDTO request) {
-        Producto created = saveProduct.execute(
-                request.toSaveCommand());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ProductResponseDTO.fromDomain(created));
+                .body(ProductResponseDTO.fromApplication(saveProduct.execute(
+                        request.toSaveCommand())));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponseDTO> update(
             @PathVariable UUID id,
             @Valid @RequestBody ProductRequestDTO request) {
-        Producto updated = updateProduct.execute(request.toUpdateCommand(id));
-        return ResponseEntity.ok(ProductResponseDTO.fromDomain(updated));
+        return ResponseEntity.ok(ProductResponseDTO.fromApplication(
+                updateProduct.execute(request.toUpdateCommand(id))));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        deleteProduct.execute(id);
+        deleteProduct.execute(new DeleteProductRequest(id));
         return ResponseEntity.noContent().build();
     }
 }

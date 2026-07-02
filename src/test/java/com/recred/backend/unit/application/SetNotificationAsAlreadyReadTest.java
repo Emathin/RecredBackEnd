@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
-import com.recred.backend.application.*;
+import com.recred.backend.application.SetNotificationAsAlreadyRead;
+import com.recred.backend.application.SetNotificationAsAlreadyReadRequest;
 
 import com.recred.backend.domain.exceptions.NotificationNotFoundException;
 import com.recred.backend.domain.repositories.NotificationRepository;
@@ -29,7 +30,7 @@ class SetNotificationAsAlreadyReadTest {
     @Test
     void execute_ShouldCallRepository() {
         UUID id = UUID.randomUUID();
-        setNotificationAsAlreadyRead.execute(id);
+        setNotificationAsAlreadyRead.execute(new SetNotificationAsAlreadyReadRequest(id));
         verify(notificationRepository).markAsRead(id);
     }
 
@@ -41,9 +42,10 @@ class SetNotificationAsAlreadyReadTest {
 
         NotificationNotFoundException ex = assertThrows(
                 NotificationNotFoundException.class,
-                () -> setNotificationAsAlreadyRead.execute(id)
+                () -> setNotificationAsAlreadyRead.execute(
+                        new SetNotificationAsAlreadyReadRequest(id))
         );
-        assertEquals("La notificación no existe: " + id, ex.getMessage());
+        assertEquals("La notificacion no existe: " + id, ex.getMessage());
     }
 
     @Test
@@ -52,6 +54,8 @@ class SetNotificationAsAlreadyReadTest {
         doThrow(new RuntimeException("Database error"))
                 .when(notificationRepository).markAsRead(id);
 
-        assertThrows(RuntimeException.class, () -> setNotificationAsAlreadyRead.execute(id));
+        assertThrows(RuntimeException.class,
+                () -> setNotificationAsAlreadyRead.execute(
+                        new SetNotificationAsAlreadyReadRequest(id)));
     }
 }

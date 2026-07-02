@@ -3,6 +3,7 @@ package com.recred.backend.unit.infrastructure.web;
 import com.recred.backend.infrastructure.web.*;
 
 import com.recred.backend.application.GenerateTopUpLink;
+import com.recred.backend.application.GenerateTopUpLinkResponse;
 import com.recred.backend.application.TopUpCommand;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,7 +27,7 @@ class TopUpControllerTest {
         UUID studentId = UUID.randomUUID();
         BigDecimal amount = new BigDecimal("100.00");
         when(generateTopUpLink.execute(new TopUpCommand(studentId, amount)))
-                .thenReturn("https://pay.test/link");
+                .thenReturn(new GenerateTopUpLinkResponse("https://pay.test/link"));
 
         ResponseEntity<Map<String, String>> response = controller.requestTopUpLink(
                 new TopUpRequest(studentId, amount)
@@ -39,4 +40,3 @@ class TopUpControllerTest {
         assertEquals("https://pay.test/link", response.getBody().get("paymentUrl"));
     }
 }
-

@@ -14,7 +14,6 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 
-import com.recred.backend.infrastructure.web.MenuProductoDTO;
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
@@ -57,11 +56,11 @@ public class GenerateBuffetMenu {
     }
 
     @Transactional(readOnly = true)
-    public List<MenuProductoDTO> execute(
-            UUID alumnoId,
-            UUID buffetId,
-            LocalDateTime momentoConsulta
-    ) {
+    public GenerateBuffetMenuResponse execute(GenerateBuffetMenuRequest request) {
+        UUID alumnoId = request.alumnoId();
+        UUID buffetId = request.buffetId();
+        LocalDateTime momentoConsulta = request.momentoConsulta();
+
         if (buffetId == null) {
             throw new IllegalArgumentException("buffetId is required");
         }
@@ -102,7 +101,7 @@ public class GenerateBuffetMenu {
         BigDecimal presupuestoFinalParaLambda = presupuestoGeneralDisponible;
         Map<UUID, BigDecimal> presupuestoCategoriaFinal = presupuestoCategoriaDisponible;
 
-        return catalogo.stream()
+        return new GenerateBuffetMenuResponse(catalogo.stream()
                 .map(producto -> menuItem(
                         alumno,
                         producto,
@@ -111,7 +110,7 @@ public class GenerateBuffetMenu {
                         presupuestoFinalParaLambda,
                         presupuestoCategoriaFinal
                 ))
-                .toList();
+                .toList());
     }
 
     private Map<UUID, BigDecimal> presupuestoCategoriaDisponible(
@@ -137,7 +136,7 @@ public class GenerateBuffetMenu {
         return disponible;
     }
 
-    private MenuProductoDTO menuItem(
+    private MenuProductResponse menuItem(
             Alumno alumno,
             Producto producto,
             UUID buffetId,
@@ -148,35 +147,35 @@ public class GenerateBuffetMenu {
         applyDailyCapacity(buffetId, producto, momentoLocal);
 
         if (estaBloqueadoManual(alumno, producto)) {
-            return MenuProductoDTO.bloqueado(producto, "Bloqueado por el tutor");
+            return MenuProductResponse.bloqueado(producto, "Bloqueado por el tutor");
         }
 
         if (sinCupoDiario(producto)) {
-            return MenuProductoDTO.bloqueado(producto, "Cupo diario agotado");
+            return MenuProductResponse.bloqueado(producto, "Cupo diario agotado");
         }
 
         if (!tieneDisponibilidad(producto)) {
-            return MenuProductoDTO.bloqueado(producto, "Sin disponibilidad");
+            return MenuProductResponse.bloqueado(producto, "Sin disponibilidad");
         }
 
         Optional<String> conflictosSalud = conflictosSalud(alumno, producto);
         if (conflictosSalud.isPresent()) {
-            return MenuProductoDTO.bloqueado(producto, "Contiene: " + conflictosSalud.get());
+            return MenuProductResponse.bloqueado(producto, "Contiene: " + conflictosSalud.get());
         }
 
         if (fueraDeHorario(alumno, producto, momentoLocal)) {
-            return MenuProductoDTO.bloqueado(producto, "No permitido en este horario");
+            return MenuProductResponse.bloqueado(producto, "No permitido en este horario");
         }
 
         if (superaPresupuestoGeneral(producto, presupuestoGeneralDisponible)) {
-            return MenuProductoDTO.bloqueado(producto, "Supera el limite de gasto");
+            return MenuProductResponse.bloqueado(producto, "Supera el limite de gasto");
         }
 
         if (superaPresupuestoCategoria(producto, presupuestoCategoriaDisponible)) {
-            return MenuProductoDTO.bloqueado(producto, "Supera limite de su categoria");
+            return MenuProductResponse.bloqueado(producto, "Supera limite de su categoria");
         }
 
-        return MenuProductoDTO.permitido(producto);
+        return MenuProductResponse.permitido(producto);
     }
 
     private boolean estaBloqueadoManual(Alumno alumno, Producto producto) {

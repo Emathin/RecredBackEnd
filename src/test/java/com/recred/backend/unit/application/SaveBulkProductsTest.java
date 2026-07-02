@@ -2,7 +2,6 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.*;
 
-import com.recred.backend.domain.models.Producto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -42,24 +41,46 @@ class SaveBulkProductsTest {
                 null, null
         );
 
-        Producto producto1 = new Producto();
-        producto1.setId(UUID.randomUUID());
-        producto1.setNombre("Producto 1");
-
-        Producto producto2 = new Producto();
-        producto2.setId(UUID.randomUUID());
-        producto2.setNombre("Producto 2");
+        ProductResponse producto1 = productResponse(UUID.randomUUID(), "Producto 1");
+        ProductResponse producto2 = productResponse(UUID.randomUUID(), "Producto 2");
 
         when(saveProduct.execute(command1)).thenReturn(producto1);
         when(saveProduct.execute(command2)).thenReturn(producto2);
 
-        List<Producto> resultado = saveBulkProducts.execute(List.of(command1, command2));
+        SaveBulkProductsResponse resultado =
+                saveBulkProducts.execute(new SaveBulkProductsRequest(List.of(command1, command2)));
 
-        assertEquals(2, resultado.size());
-        assertEquals("Producto 1", resultado.get(0).getNombre());
-        assertEquals("Producto 2", resultado.get(1).getNombre());
+        assertEquals(2, resultado.products().size());
+        assertEquals("Producto 1", resultado.products().get(0).nombre());
+        assertEquals("Producto 2", resultado.products().get(1).nombre());
 
         verify(saveProduct, times(1)).execute(command1);
         verify(saveProduct, times(1)).execute(command2);
+    }
+
+    private ProductResponse productResponse(UUID id, String name) {
+        return new ProductResponse(
+                id,
+                name,
+                null,
+                null,
+                null,
+                false,
+                true,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                java.util.Set.of(),
+                java.util.Set.of()
+        );
     }
 }

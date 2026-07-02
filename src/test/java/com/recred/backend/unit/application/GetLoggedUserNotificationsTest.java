@@ -1,6 +1,9 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetLoggedUserNotifications;
+import com.recred.backend.application.GetLoggedUserNotificationsRequest;
+import com.recred.backend.application.GetLoggedUserNotificationsResponse;
+import com.recred.backend.application.UserNotificationResponse;
 import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
 import com.recred.backend.domain.models.Notification;
 import com.recred.backend.domain.models.TipoNotificacion;
@@ -52,9 +55,9 @@ class GetLoggedUserNotificationsTest {
         when(notificationRepository.findByUserId(userId, true, 1, 5))
                 .thenReturn(notifications);
 
-        List<Notification> result = useCase.execute(COGNITO_SUBJECT, true, 1, 5);
+        GetLoggedUserNotificationsResponse result = useCase.execute(request(true, 1, 5));
 
-        assertEquals(notifications, result);
+        assertEquals(notifications.get(0).id(), result.notifications().get(0).id());
         verify(notificationRepository).findByUserId(userId, true, 1, 5);
     }
 
@@ -64,7 +67,7 @@ class GetLoggedUserNotificationsTest {
 
         assertThrows(
                 UsuarioAutenticadoNoEncontradoException.class,
-                () -> useCase.execute(COGNITO_SUBJECT, false, 0, 20)
+                () -> useCase.execute(request(false, 0, 20))
         );
 
         verify(notificationRepository, never()).findByUserId(
@@ -79,11 +82,11 @@ class GetLoggedUserNotificationsTest {
     void executeRejectsInvalidPagination() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> useCase.execute(COGNITO_SUBJECT, false, -1, 20)
+                () -> useCase.execute(request(false, -1, 20))
         );
         assertThrows(
                 IllegalArgumentException.class,
-                () -> useCase.execute(COGNITO_SUBJECT, false, 0, 101)
+                () -> useCase.execute(request(false, 0, 101))
         );
 
         verify(usuarioRepository, never()).findByIdCognito(COGNITO_SUBJECT);
@@ -98,6 +101,19 @@ class GetLoggedUserNotificationsTest {
                 false,
                 LocalDateTime.of(2026, 6, 2, 14, 30),
                 null
+        );
+    }
+
+    private GetLoggedUserNotificationsRequest request(
+            boolean unreadOnly,
+            int page,
+            int size
+    ) {
+        return new GetLoggedUserNotificationsRequest(
+                COGNITO_SUBJECT,
+                unreadOnly,
+                page,
+                size
         );
     }
 }

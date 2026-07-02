@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.AddProductRecommendation;
+import com.recred.backend.application.AddProductRecommendationRequest;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.SugerenciaIA;
@@ -87,7 +88,7 @@ public class AddProductRecommendationTest {
         when(productStatisticsRepository.calculateTotalRevenueByProduct(any(), any()))
                 .thenReturn(new java.math.BigDecimal("5000"));
 
-        useCase.execute();
+        useCase.execute(new AddProductRecommendationRequest());
 
         verify(aiEventRepository).registerProductAdditionRecommendation(producto, kiosquero, buffetId);
         verify(sugerenciaIARepository).save(any(SugerenciaIA.class));
@@ -101,7 +102,7 @@ public class AddProductRecommendationTest {
         when(productRepository.findBestSoldProductsNotInStock(buffetId))
                 .thenReturn(List.of());
 
-        useCase.execute();
+        useCase.execute(new AddProductRecommendationRequest());
 
         verify(aiEventRepository, never()).registerProductAdditionRecommendation(any(), any(), any());
         verify(notificationRepository, never()).save(any(), any(), any());

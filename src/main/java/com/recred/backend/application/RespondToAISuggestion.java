@@ -16,11 +16,12 @@ public class RespondToAISuggestion {
     }
 
     @Transactional
-    public void execute(RespondToAISuggestionRequest request) {
+    public RespondToAISuggestionResponse execute(RespondToAISuggestionRequest request) {
         request.validate();
 
         findSuggestion(request)
                 .ifPresent(suggestion -> respondToSuggestion(suggestion, request.accepted()));
+        return new RespondToAISuggestionResponse();
     }
 
     private Optional<SugerenciaIAEntity> findSuggestion(RespondToAISuggestionRequest request) {

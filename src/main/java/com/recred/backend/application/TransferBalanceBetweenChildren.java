@@ -40,7 +40,9 @@ public class TransferBalanceBetweenChildren {
     }
 
     @Transactional
-    public void execute(TransferBalanceBetweenChildrenRequest request) {
+    public TransferBalanceBetweenChildrenResponse execute(
+            TransferBalanceBetweenChildrenRequest request
+    ) {
         request.validate();
 
         Usuario padre = getPadreValidate(request.cognitoSub());
@@ -64,6 +66,7 @@ public class TransferBalanceBetweenChildren {
         handleMicrocreditPayment(toStudentId(request), toWallet, request.amount(), padre.getId());
 
         walletRepository.save(toWallet);
+        return new TransferBalanceBetweenChildrenResponse();
     }
 
     private Usuario getPadreValidate(String cognitoSub) {

@@ -15,7 +15,7 @@ public class UpdateTutorDashboardConfig {
         this.tutorRepository = tutorRepository;
     }
 
-    public void execute(UpdateTutorDashboardConfigRequest request) {
+    public UpdateTutorDashboardConfigResponse execute(UpdateTutorDashboardConfigRequest request) {
         request.validate();
 
         Tutor tutor = findTutor(request.cognitoSubject());
@@ -23,6 +23,7 @@ public class UpdateTutorDashboardConfig {
 
         tutor.setDashboardConfig(request.dashboardConfig());
         tutorRepository.save(tutor);
+        return new UpdateTutorDashboardConfigResponse();
     }
 
     private Tutor findTutor(String cognitoSubject) {
@@ -59,7 +60,6 @@ public class UpdateTutorDashboardConfig {
                 return root.size();
             }
         } catch (Exception e) {
-            // If invalid JSON, treat as not exceeding
         }
         return 0;
     }

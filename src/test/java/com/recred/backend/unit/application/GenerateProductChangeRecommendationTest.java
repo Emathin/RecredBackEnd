@@ -1,7 +1,9 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GenerateProductChangeRecommendation;
+import com.recred.backend.application.GenerateProductChangeRecommendationRequest;
 import com.recred.backend.application.GetProductStatistics;
+import com.recred.backend.application.ProductSaleStatisticsResponse;
 import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
@@ -58,6 +60,8 @@ public class GenerateProductChangeRecommendationTest {
         when(kiosqueroRepository.findAllIds()).thenReturn(List.of(sellerId1, sellerId2));
         when(kiosqueroRepository.findBuffetById(sellerId1)).thenReturn(buffetId1);
         when(kiosqueroRepository.findBuffetById(sellerId2)).thenReturn(buffetId2);
+        when(kiosqueroRepository.findUsuarioIdById(sellerId1)).thenReturn(UUID.randomUUID());
+        when(kiosqueroRepository.findUsuarioIdById(sellerId2)).thenReturn(UUID.randomUUID());
 
         ProductChangeRecommendation product1 = buildProduct(buffetId1);
         ProductChangeRecommendation product2 = buildProduct(buffetId2);
@@ -70,9 +74,10 @@ public class GenerateProductChangeRecommendationTest {
         ProductChangeAnalysis analysis = new ProductChangeAnalysis(
                 "Resumen", List.of(), List.of(), "model"
         );
+        when(getProductStatistics.execute(any())).thenReturn(statistics());
         when(productChangeAnalyzer.analyze(any())).thenReturn(Optional.of(analysis));
 
-        useCase.execute();
+        useCase.execute(new GenerateProductChangeRecommendationRequest());
 
         verify(kiosqueroRepository).findAllIds();
         verify(kiosqueroRepository).findBuffetById(sellerId1);
@@ -89,13 +94,15 @@ public class GenerateProductChangeRecommendationTest {
         when(kiosqueroRepository.findAllIds()).thenReturn(List.of(failingSellerId, sellerId));
         when(kiosqueroRepository.findBuffetById(failingSellerId)).thenReturn(null);
         when(kiosqueroRepository.findBuffetById(sellerId)).thenReturn(buffetId);
+        when(kiosqueroRepository.findUsuarioIdById(sellerId)).thenReturn(UUID.randomUUID());
 
         ProductChangeRecommendation product = buildProduct(buffetId);
         when(productRepository.findBuffetTop5LeastSoldProducts(buffetId))
                 .thenReturn(List.of(product));
+        when(getProductStatistics.execute(any())).thenReturn(statistics());
         when(productChangeAnalyzer.analyze(product)).thenReturn(Optional.empty());
 
-        useCase.execute();
+        useCase.execute(new GenerateProductChangeRecommendationRequest());
 
         verify(kiosqueroRepository).findBuffetById(failingSellerId);
         verify(kiosqueroRepository).findBuffetById(sellerId);
@@ -107,7 +114,7 @@ public class GenerateProductChangeRecommendationTest {
     void executeShouldNotRegisterWhenNoKiosqueros() {
         when(kiosqueroRepository.findAllIds()).thenReturn(List.of());
 
-        useCase.execute();
+        useCase.execute(new GenerateProductChangeRecommendationRequest());
 
         verify(productRepository, never()).findBuffetTop5LeastSoldProducts(any());
         verify(aiEventRepository, never()).registerProductChangeRecommendation(any());
@@ -120,5 +127,25 @@ public class GenerateProductChangeRecommendationTest {
         product.setNombre("Alfajor");
         product.setPrecio(new BigDecimal("500.00"));
         return product;
+    }
+
+    private ProductSaleStatisticsResponse statistics() {
+        return new ProductSaleStatisticsResponse(
+                UUID.randomUUID(),
+                "Alfajor",
+                "Snacks",
+                new BigDecimal("500.00"),
+                1L,
+                BigDecimal.ONE,
+                1,
+                1,
+                BigDecimal.ONE,
+                BigDecimal.ONE,
+                BigDecimal.ZERO,
+                0L,
+                1L,
+                10,
+                BigDecimal.TEN
+        );
     }
 }

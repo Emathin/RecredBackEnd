@@ -2,8 +2,13 @@ package com.recred.backend.unit.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recred.backend.application.NotifyPurchaseSuggestionsRequest;
+import com.recred.backend.application.NotifyPurchaseSuggestionsResponse;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
+import com.recred.backend.application.PurchaseSuggestIARequest;
+import com.recred.backend.application.PurchaseSuggestionResponse;
 import com.recred.backend.application.PurchaseSuggestIA;
+import com.recred.backend.application.PushNotificationResponse;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.Producto;
@@ -69,11 +74,12 @@ class NotifyPurchaseSuggestionsTest {
         usuario.setId(userId);
         usuario.setRol(RolUsuario.ALUMNO);
 
-        when(purchaseSuggestIA.execute(cognitoId)).thenReturn(Optional.of(sugerencia));
+        when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
+                .thenReturn(Optional.of(PurchaseSuggestionResponse.fromDomain(sugerencia)));
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
 
 
-        useCase.execute(cognitoId);
+        useCase.execute(new NotifyPurchaseSuggestionsRequest(cognitoId));
 
 
         ArgumentCaptor<PushNotification> captor = ArgumentCaptor.forClass(PushNotification.class);
@@ -96,9 +102,10 @@ class NotifyPurchaseSuggestionsTest {
     void execute_CuandoNoHaySugerencia_NoEnviaNada() {
 
         String cognitoId = "cognito-id-test";
-        when(purchaseSuggestIA.execute(cognitoId)).thenReturn(Optional.empty());
+        when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
+                .thenReturn(Optional.empty());
 
-        useCase.execute(cognitoId);
+        useCase.execute(new NotifyPurchaseSuggestionsRequest(cognitoId));
 
         verifyNoInteractions(pushNotificationSender);
     }
@@ -114,13 +121,16 @@ class NotifyPurchaseSuggestionsTest {
                 .build();
         Usuario usuario = new Usuario();
         usuario.setId(userId);
-        when(purchaseSuggestIA.execute(cognitoId)).thenReturn(Optional.of(sugerencia));
+        when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
+                .thenReturn(Optional.of(PurchaseSuggestionResponse.fromDomain(sugerencia)));
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
 
-        PushNotification notification = useCase.execute(cognitoId);
+        NotifyPurchaseSuggestionsResponse response = useCase.execute(
+                new NotifyPurchaseSuggestionsRequest(cognitoId));
+        PushNotificationResponse notification = response.notification();
 
         assertEquals("PENDIENTE", notification.data().get("rol"));
-        verify(pushNotificationSender).send(notification);
+        verify(pushNotificationSender).send(any(PushNotification.class));
     }
 
     @Test
@@ -135,7 +145,7 @@ class NotifyPurchaseSuggestionsTest {
 
         PushNotification notification = useCase.createNotification(
                 userId,
-                sugerencia,
+                PurchaseSuggestionResponse.fromDomain(sugerencia),
                 "ALUMNO"
         );
 
@@ -170,7 +180,7 @@ class NotifyPurchaseSuggestionsTest {
 
         PushNotification notification = failingUseCase.createNotification(
                 UUID.randomUUID(),
-                sugerencia,
+                PurchaseSuggestionResponse.fromDomain(sugerencia),
                 "ALUMNO"
         );
 
@@ -195,7 +205,7 @@ class NotifyPurchaseSuggestionsTest {
 
         PushNotification notification = useCase.createNotification(
                 UUID.randomUUID(),
-                sugerencia,
+                PurchaseSuggestionResponse.fromDomain(sugerencia),
                 "PADRE"
         );
 

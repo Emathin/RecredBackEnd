@@ -170,7 +170,8 @@ class CreateAdvancePurchaseUseCaseTest {
     void execute_WhenTutorBuysForOwnChild_ShouldCreateAdvancePurchase() {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
-        CreateAdvancePurchaseResponse response = useCase.execute(request(buffetId, suggestionId), "sub");
+        CreateAdvancePurchaseResponse response =
+                execute(request(buffetId, suggestionId), "sub");
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
@@ -201,7 +202,8 @@ class CreateAdvancePurchaseUseCaseTest {
         user.setRol(RolUsuario.ALUMNO);
         user.setAlumno(student);
 
-        CreateAdvancePurchaseResponse response = useCase.execute(request(buffetId, null), "sub");
+        CreateAdvancePurchaseResponse response =
+                execute(request(buffetId, null), "sub");
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
@@ -229,7 +231,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(productRepository.findActiveByIdWithStock(productId, defaultBuffetId))
                 .thenReturn(Optional.of(product));
 
-        useCase.execute(request(null, null), "sub");
+        execute(request(null, null), "sub");
 
         verify(inventoryAvailabilityService).reserve(eq(defaultBuffetId), anyMap());
     }
@@ -240,7 +242,8 @@ class CreateAdvancePurchaseUseCaseTest {
         otherTutor.setId(UUID.randomUUID());
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(otherTutor));
 
-        assertThrows(SecurityException.class, () -> useCase.execute(request(buffetId, null), "sub"));
+        assertThrows(SecurityException.class,
+                () -> execute(request(buffetId, null), "sub"));
 
         verifyNoInteractions(productRepository, walletRepository, inventoryAvailabilityService);
         verify(purchaseRepository, never()).save(any());
@@ -253,7 +256,8 @@ class CreateAdvancePurchaseUseCaseTest {
         user.setRol(RolUsuario.ALUMNO);
         user.setAlumno(otherStudent);
 
-        assertThrows(SecurityException.class, () -> useCase.execute(request(buffetId, null), "sub"));
+        assertThrows(SecurityException.class,
+                () -> execute(request(buffetId, null), "sub"));
 
         verifyNoInteractions(tutorRepository, productRepository, walletRepository);
         verify(purchaseRepository, never()).save(any());
@@ -265,7 +269,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
         assertThrows(InsufficientBalanceException.class,
-                () -> useCase.execute(request(buffetId, null), "sub"));
+                () -> execute(request(buffetId, null), "sub"));
 
         verify(inventoryAvailabilityService, never()).reserve(any(), anyMap());
         verify(walletRepository, never()).save(any());
@@ -276,14 +280,14 @@ class CreateAdvancePurchaseUseCaseTest {
     void execute_WhenOrdersAreEmpty_ShouldThrowException() {
         CreateAdvancePurchaseRequest request = new CreateAdvancePurchaseRequest(List.of());
 
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(request, "sub"));
+        assertThrows(IllegalArgumentException.class, () -> execute(request, "sub"));
 
         verifyNoInteractions(usuarioRepository);
     }
 
     @Test
     void execute_WhenRequestIsNull_ShouldThrowException() {
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(null, "sub"));
+        assertThrows(IllegalArgumentException.class, () -> execute(null, "sub"));
 
         verifyNoInteractions(usuarioRepository);
     }
@@ -292,7 +296,7 @@ class CreateAdvancePurchaseUseCaseTest {
     void execute_WhenOrdersAreNull_ShouldThrowException() {
         CreateAdvancePurchaseRequest request = new CreateAdvancePurchaseRequest(null);
 
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(request, "sub"));
+        assertThrows(IllegalArgumentException.class, () -> execute(request, "sub"));
 
         verifyNoInteractions(usuarioRepository);
     }
@@ -302,7 +306,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(usuarioRepository.findByIdCognito("missing-sub")).thenReturn(Optional.empty());
 
         assertThrows(SecurityException.class,
-                () -> useCase.execute(request(buffetId, null), "missing-sub"));
+                () -> execute(request(buffetId, null), "missing-sub"));
 
         verifyNoInteractions(alumnoRepository, productRepository, walletRepository);
     }
@@ -312,7 +316,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
 
         assertThrows(AlumnoNoEncontradoException.class,
-                () -> useCase.execute(request(buffetId, null), "sub"));
+                () -> execute(request(buffetId, null), "sub"));
 
         verifyNoInteractions(productRepository, walletRepository);
     }
@@ -322,7 +326,7 @@ class CreateAdvancePurchaseUseCaseTest {
         user.setRol(RolUsuario.VENDEDOR);
 
         assertThrows(SecurityException.class,
-                () -> useCase.execute(request(buffetId, null), "sub"));
+                () -> execute(request(buffetId, null), "sub"));
 
         verifyNoInteractions(tutorRepository, productRepository, walletRepository);
     }
@@ -332,7 +336,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
 
         assertThrows(SecurityException.class,
-                () -> useCase.execute(request(buffetId, null), "sub"));
+                () -> execute(request(buffetId, null), "sub"));
 
         verifyNoInteractions(productRepository, walletRepository);
     }
@@ -346,7 +350,7 @@ class CreateAdvancePurchaseUseCaseTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(request(null, null), "sub"));
+                () -> execute(request(null, null), "sub"));
 
         verifyNoInteractions(productRepository, walletRepository);
     }
@@ -356,7 +360,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
         assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(request(null, null), "sub"));
+                () -> execute(request(null, null), "sub"));
 
         verifyNoInteractions(buffetRepository, productRepository, walletRepository);
     }
@@ -366,7 +370,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
         assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(request(buffetId, null, null, List.of(item())), "sub"));
+                () -> execute(request(buffetId, null, null, List.of(item())), "sub"));
 
         verifyNoInteractions(productRepository, walletRepository);
     }
@@ -376,7 +380,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
         assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(request(buffetId, null, "20-06-2026",
+                () -> execute(request(buffetId, null, "20-06-2026",
                         List.of(item())), "sub"));
 
         verifyNoInteractions(productRepository, walletRepository);
@@ -387,7 +391,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
         assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(request(buffetId, null, "2026-06-20", List.of()), "sub"));
+                () -> execute(request(buffetId, null, "2026-06-20", List.of()), "sub"));
 
         verifyNoInteractions(productRepository, walletRepository);
     }
@@ -397,7 +401,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
         assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(request(buffetId, null, "2026-06-20", null), "sub"));
+                () -> execute(request(buffetId, null, "2026-06-20", null), "sub"));
 
         verifyNoInteractions(productRepository, walletRepository);
     }
@@ -409,7 +413,7 @@ class CreateAdvancePurchaseUseCaseTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(ProductNotFoundException.class,
-                () -> useCase.execute(request(buffetId, null), "sub"));
+                () -> execute(request(buffetId, null), "sub"));
 
         verifyNoInteractions(walletRepository);
     }
@@ -420,7 +424,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
 
         assertThrows(IllegalStateException.class,
-                () -> useCase.execute(request(buffetId, null), "sub"));
+                () -> execute(request(buffetId, null), "sub"));
 
         verify(inventoryAvailabilityService, never()).reserve(any(), anyMap());
     }
@@ -430,7 +434,8 @@ class CreateAdvancePurchaseUseCaseTest {
         product.setPrecio(null);
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
-        CreateAdvancePurchaseResponse response = useCase.execute(request(buffetId, null), "sub");
+        CreateAdvancePurchaseResponse response =
+                execute(request(buffetId, null), "sub");
 
         assertEquals(0.0, response.total());
         assertEquals(new BigDecimal("100.00"), wallet.getSaldoCreditos());
@@ -455,7 +460,8 @@ class CreateAdvancePurchaseUseCaseTest {
         );
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
-        CreateAdvancePurchaseResponse response = localUseCase.execute(request(buffetId, null), "sub");
+        CreateAdvancePurchaseResponse response =
+                execute(localUseCase, request(buffetId, null), "sub");
 
         assertEquals(purchaseId.toString(), response.orderId());
     }
@@ -482,7 +488,7 @@ class CreateAdvancePurchaseUseCaseTest {
         );
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
 
-        localUseCase.execute(request(buffetId, null), "sub");
+        execute(localUseCase, request(buffetId, null), "sub");
 
         verify(movementRepository).registrarMovimiento(
                 eq(wallet.getId()),
@@ -495,6 +501,21 @@ class CreateAdvancePurchaseUseCaseTest {
 
     private CreateAdvancePurchaseRequest request(UUID requestBuffetId, UUID requestSuggestionId) {
         return request(requestBuffetId, requestSuggestionId, "2026-06-20", List.of(item()));
+    }
+
+    private CreateAdvancePurchaseResponse execute(
+            CreateAdvancePurchaseRequest request,
+            String cognitoSub
+    ) {
+        return execute(useCase, request, cognitoSub);
+    }
+
+    private CreateAdvancePurchaseResponse execute(
+            CreateAdvancePurchase useCase,
+            CreateAdvancePurchaseRequest request,
+            String cognitoSub
+    ) {
+        return useCase.execute(request == null ? null : request.withCognitoSub(cognitoSub));
     }
 
     private CreateAdvancePurchaseRequest request(
@@ -543,7 +564,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+                () -> execute(promotionRequest(buffetId, promotionId), "sub"));
         assertEquals("Promotion is not active", exception.getMessage());
     }
 
@@ -562,7 +583,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+                () -> execute(promotionRequest(buffetId, promotionId), "sub"));
         assertEquals("Promotion does not belong to this buffet", exception.getMessage());
     }
 
@@ -582,7 +603,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+                () -> execute(promotionRequest(buffetId, promotionId), "sub"));
         assertEquals("Promotion has not started yet", exception.getMessage());
     }
 
@@ -603,7 +624,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+                () -> execute(promotionRequest(buffetId, promotionId), "sub"));
         assertEquals("Promotion has ended", exception.getMessage());
     }
 
@@ -627,7 +648,7 @@ class CreateAdvancePurchaseUseCaseTest {
         when(productRepository.findActiveByIdWithStock(productId, buffetId)).thenReturn(Optional.empty());
 
         assertThrows(ProductNotFoundException.class,
-                () -> useCase.execute(promotionRequest(buffetId, promotionId), "sub"));
+                () -> execute(promotionRequest(buffetId, promotionId), "sub"));
     }
 
     private CreateAdvancePurchaseRequest promotionRequest(UUID requestBuffetId, UUID promotionId) {

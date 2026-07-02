@@ -45,7 +45,15 @@ public class ListKiosqueroOperationalAlerts {
         this.clock = clock;
     }
 
-    public List<KiosqueroOperationalAlert> execute(UUID buffetId) {
+    public ListKiosqueroOperationalAlertsResponse execute(
+            ListKiosqueroOperationalAlertsRequest request
+    ) {
+        return new ListKiosqueroOperationalAlertsResponse(alerts(request.buffetId()).stream()
+                .map(OperationalAlertResponse::fromDomain)
+                .toList());
+    }
+
+    private List<KiosqueroOperationalAlert> alerts(UUID buffetId) {
         LocalDateTime now = LocalDateTime.now(clock);
         List<Purchase> activeOrders = purchaseRepository.findByBuffetAndStatuses(
                 buffetId,
