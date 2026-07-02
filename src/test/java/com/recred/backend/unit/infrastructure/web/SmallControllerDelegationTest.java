@@ -1,17 +1,7 @@
 package com.recred.backend.unit.infrastructure.web;
 
+import com.recred.backend.application.*;
 import com.recred.backend.infrastructure.web.*;
-import com.recred.backend.application.GenerateBuffetMenu;
-import com.recred.backend.application.GenerateLowBalanceAlerts;
-import com.recred.backend.application.GetAllCategories;
-import com.recred.backend.application.GetBuffetByStudent;
-import com.recred.backend.application.GetBuffetByStudentRequest;
-import com.recred.backend.application.GetBuffetByStudentResponse;
-import com.recred.backend.application.GetTimeSlotsBySchool;
-import com.recred.backend.application.GetTimeSlotsBySchoolRequest;
-import com.recred.backend.application.GetTimeSlotsBySchoolResponse;
-import com.recred.backend.application.GetTutorGlobalDashboard;
-import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.PushNotification;
@@ -142,7 +132,15 @@ class SmallControllerDelegationTest {
         CategoriaProducto category = new CategoriaProducto();
         category.setId(UUID.randomUUID());
         category.setDescripcion("Bebidas");
-        when(getAllCategories.execute()).thenReturn(List.of(category));
+
+        CategoryProductResponse mockCategoryResponse = new CategoryProductResponse(
+                category.getId(),
+                category.getDescripcion(),
+                true
+        );
+        List<CategoryProductResponse> mockCategories = List.of(mockCategoryResponse);
+
+        when(getAllCategories.execute()).thenReturn(mockCategories);
         CategoryController controller = new CategoryController(getAllCategories);
 
         List<CategoryResponse> response = controller.getCategories();
@@ -150,6 +148,7 @@ class SmallControllerDelegationTest {
         assertEquals(1, response.size());
         assertEquals(category.getId(), response.get(0).id());
     }
+
 
     @Test
     void menuBuffetControllerShouldUseProvidedDateAndMapBuffetOptional() {

@@ -1,6 +1,5 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.repositories.CategoryRepository;
 
 import java.util.List;
@@ -13,7 +12,10 @@ public class GetAllCategories {
         this.categoryRepository = categoryRepository;
     }
 
-    public List<CategoriaProducto> execute() {
-        return categoryRepository.getAllCategories();
+    public List<CategoryProductResponse> execute() {
+        return categoryRepository.getAllCategories()
+                .stream()
+                .map(CategoryProductResponse::fromDomain)
+                .toList();
     }
 }

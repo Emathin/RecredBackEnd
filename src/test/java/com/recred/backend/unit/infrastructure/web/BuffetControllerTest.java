@@ -63,7 +63,8 @@ class BuffetControllerTest {
         producto.setId(UUID.randomUUID());
         producto.setNombre("Producto de Prueba");
 
-        when(getProductsByBuffetUser.execute(userId)).thenReturn(List.of(producto));
+        when(getProductsByBuffetUser.execute(userId))
+                .thenReturn(List.of(com.recred.backend.application.ProductResponse.fromDomain(producto)));
 
         ResponseEntity<List<ProductResponseDTO>> response = buffetController.findAllByUserId(userId);
 
