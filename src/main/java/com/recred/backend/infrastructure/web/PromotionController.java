@@ -54,7 +54,7 @@ public class PromotionController {
     @GetMapping
     public ResponseEntity<List<PromotionResponseDTO>> listActivePromotions() {
         List<PromotionResponseDTO> response = getActivePromotions.execute().stream()
-                .map(PromotionResponseDTO::fromDomain)
+                .map(PromotionResponseDTO::fromAppResponse)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
@@ -63,15 +63,15 @@ public class PromotionController {
     public ResponseEntity<List<PromotionResponseDTO>> listActivePromotionsByBuffet(
             @PathVariable UUID buffetId) {
         List<PromotionResponseDTO> response = getActivePromotionsByBuffet.execute(buffetId).stream()
-                .map(PromotionResponseDTO::fromDomain)
+                .map(PromotionResponseDTO::fromAppResponse)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<PromotionResponseDTO> getPromotionById(@PathVariable UUID id) {
-        Promotion promotion = getPromotionById.execute(id);
-        return ResponseEntity.ok(PromotionResponseDTO.fromDomain(promotion));
+        com.recred.backend.application.PromotionResponse promotion = getPromotionById.execute(id);
+        return ResponseEntity.ok(PromotionResponseDTO.fromAppResponse(promotion));
     }
 
     @PostMapping

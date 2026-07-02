@@ -23,6 +23,21 @@ public class PromotionResponseDTO {
     private UUID buffetId;
     private String imageUrl;
 
+    public static PromotionResponseDTO fromAppResponse(
+            com.recred.backend.application.PromotionResponse res) {
+        PromotionResponseDTO dto = new PromotionResponseDTO();
+        dto.setId(res.id());
+        dto.setName(res.name());
+        dto.setDiscountPercentage(res.discountPercentage());
+        dto.setStartDate(res.startDate());
+        dto.setEndDate(res.endDate());
+        dto.setStatus(res.status());
+        dto.setImageUrl(res.imageUrl());
+        dto.setProductIds(res.productIds());
+        dto.setBuffetId(res.buffetId());
+        return dto;
+    }
+
     public static PromotionResponseDTO fromDomain(Promotion promotion) {
         PromotionResponseDTO dto = new PromotionResponseDTO();
         dto.setId(promotion.getId());

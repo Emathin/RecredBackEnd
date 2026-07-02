@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetActivePromotions;
+import com.recred.backend.application.PromotionResponse;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,7 @@ class GetActivePromotionsTest {
 
         when(promotionRepository.findAllActive()).thenReturn(mockPromos);
 
-        List<Promotion> result = getActivePromotions.execute();
+        List<PromotionResponse> result = getActivePromotions.execute();
 
         assertNotNull(result);
         assertEquals(2, result.size());

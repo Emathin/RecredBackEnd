@@ -22,8 +22,7 @@ public class RecommendationResponseDTO {
     @JsonProperty("clima_actual")
     private WeatherDTO currentWeather;
 
-    public RecommendationResponseDTO() {
-    }
+    public RecommendationResponseDTO() {}
 
     public List<SugerenciaDTO> getSugerences() {
         return sugerences;
