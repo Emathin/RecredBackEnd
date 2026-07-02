@@ -112,6 +112,29 @@ public record ProductResponseDTO(
         );
     }
 
+    public static ProductResponseDTO fromAppResponse(
+            com.recred.backend.application.ProductResponse res) {
+        CategoryDTO catDTO = res.categoria() == null ? null
+                : new CategoryDTO(res.categoria().id(), res.categoria().descripcion());
+
+        Set<ClasificacionDTO> saludDTO = res.clasificacionesSalud().stream()
+                .map(c -> new ClasificacionDTO(c.id(), c.descripcion()))
+                .collect(Collectors.toSet());
+
+        Set<ClasificacionDTO> tipoDTO = res.tipos().stream()
+                .map(c -> new ClasificacionDTO(c.id(), c.descripcion()))
+                .collect(Collectors.toSet());
+
+        return new ProductResponseDTO(
+                res.id(), res.nombre(), res.descripcion(), res.precio(), res.peso(),
+                res.requierePreparacion(), res.activo(), res.creadoEn(), res.actualizadoEn(),
+                res.stockActual(), res.stockReservado(), res.stockMinimo(), res.stockDisponible(),
+                res.estadoInventario(), res.tipoManejoInventario(), res.cupoMaximoDiario(),
+                res.cupoDisponibleDia(), res.urlImagen(), res.urlImagen(),
+                catDTO, saludDTO, tipoDTO
+        );
+    }
+
     public static ProductResponseDTO fromInventoryProduct(InventoryProductResponse response) {
         return new ProductResponseDTO(
                 response.id(),
