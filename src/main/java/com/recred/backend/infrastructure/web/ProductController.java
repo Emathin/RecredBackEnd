@@ -111,7 +111,7 @@ public class ProductController {
             @RequestParam(required = false) UUID buffetId) {
         List<ProductResponseDTO> products = getAllProducts.execute(buffetId)
                 .stream()
-                .map(ProductResponseDTO::fromDomain)
+                .map(ProductResponseDTO::fromAppResponse)
                 .toList();
         return ResponseEntity.ok(products);
     }
@@ -139,10 +139,10 @@ public class ProductController {
         List<SaveProductCommand> commands = request.stream()
                 .map(ProductRequestDTO::toSaveCommand)
                 .collect(Collectors.toList());
-        List<Producto> savedProducts = saveBulkProducts.execute(
-                commands);
+        List<com.recred.backend.application.ProductResponse> savedProducts =
+                saveBulkProducts.execute(commands);
         List<ProductResponseDTO> response = savedProducts.stream()
-                .map(ProductResponseDTO::fromDomain)
+                .map(ProductResponseDTO::fromAppResponse)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
@@ -151,8 +151,8 @@ public class ProductController {
     public ResponseEntity<ProductResponseDTO> findById(
             @PathVariable UUID id,
             @RequestParam(required = false) UUID buffetId) {
-        Producto product = getProductById.execute(id, buffetId);
-        return ResponseEntity.ok(ProductResponseDTO.fromDomain(product));
+        com.recred.backend.application.ProductResponse res = getProductById.execute(id, buffetId);
+        return ResponseEntity.ok(ProductResponseDTO.fromAppResponse(res));
     }
 
     @PostMapping

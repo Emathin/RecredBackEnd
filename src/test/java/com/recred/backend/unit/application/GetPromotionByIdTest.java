@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetPromotionById;
+import com.recred.backend.application.PromotionResponse;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import org.junit.jupiter.api.Test;
@@ -35,10 +36,10 @@ class GetPromotionByIdTest {
 
         when(promotionRepository.findById(id)).thenReturn(Optional.of(promotion));
 
-        Promotion result = getPromotionById.execute(id);
+        PromotionResponse result = getPromotionById.execute(id);
 
         assertNotNull(result);
-        assertEquals(id, result.getId());
+        assertEquals(id, result.id());
         verify(promotionRepository).findById(id);
     }
 

@@ -22,6 +22,7 @@ import com.recred.backend.application.ListInventoryProductsResponse.InventoryPro
 import com.recred.backend.application.ListKiosqueroOrders;
 import com.recred.backend.application.ListKiosqueroOrdersRequest;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
+import com.recred.backend.application.ListKiosqueroOperationalAlertsResponse;
 import com.recred.backend.application.UpdatePickupSlotRules;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.FranjaHoraria;
@@ -118,15 +119,12 @@ public class KiosqueroOperationsController {
     }
 
     @GetMapping("/{buffetId}/alerts")
-    public ResponseEntity<List<KiosqueroOperationalAlertResponse>> alerts(
+    public ResponseEntity<ListKiosqueroOperationalAlertsResponse> alerts(
             @PathVariable UUID buffetId,
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(listKiosqueroOperationalAlerts.execute(buffetId)
-                .stream()
-                .map(KiosqueroOperationalAlertResponse::fromDomain)
-                .toList());
+        return ResponseEntity.ok(listKiosqueroOperationalAlerts.execute(buffetId));
     }
 
     @GetMapping("/{buffetId}/dashboard")
@@ -157,7 +155,7 @@ public class KiosqueroOperationsController {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
         return ResponseEntity.ok(getBuffetTimeSlots.execute(buffetId)
                 .stream()
-                .map(TimeSlotResponse::fromDomain)
+                .map(TimeSlotResponse::fromUseCaseResponse)
                 .toList());
     }
 

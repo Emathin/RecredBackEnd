@@ -42,7 +42,7 @@ public class BuffetController {
         List<ProductResponseDTO> products =
                 getProductsByBuffetUser.execute(userId)
                 .stream()
-                .map(ProductResponseDTO::fromDomain)
+                .map(ProductResponseDTO::fromAppResponse)
                 .toList();
         return ResponseEntity.ok(products);
     }

@@ -36,8 +36,9 @@ class GetBuffetTimeSlotsTest {
         UUID buffetId = UUID.randomUUID();
         UUID colegioId = UUID.randomUUID();
         Buffet buffet = buffet(colegioId);
+        UUID slotId = UUID.randomUUID();
         FranjaHoraria slot = new FranjaHoraria(
-                UUID.randomUUID(),
+                slotId,
                 colegioId,
                 "Primer recreo",
                 LocalTime.of(9, 30),
@@ -48,9 +49,12 @@ class GetBuffetTimeSlotsTest {
         when(buffetRepository.findById(buffetId)).thenReturn(Optional.of(buffet));
         when(franjaHorariaRepository.findAllByColegioId(colegioId)).thenReturn(List.of(slot));
 
-        List<FranjaHoraria> result = useCase.execute(buffetId);
+        List<com.recred.backend.application.GetTimeSlotsBySchoolResponse> result = useCase.execute(buffetId);
 
-        assertEquals(List.of(slot), result);
+        assertEquals(1, result.size());
+        assertEquals(slotId, result.get(0).id());
+        assertEquals("Primer recreo", result.get(0).descripcion());
+        assertEquals(LocalTime.of(9, 30), result.get(0).horaInicio());
         verify(franjaHorariaRepository).findAllByColegioId(colegioId);
     }
 

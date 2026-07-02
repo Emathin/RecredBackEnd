@@ -1,5 +1,6 @@
 package com.recred.backend.unit.application;
 
+import com.recred.backend.application.CategoryProductResponse;
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.repositories.CategoryRepository;
@@ -33,7 +34,7 @@ class GetAllCategoriesTest {
 
         when(categoryRepository.getAllCategories()).thenReturn(mockCats);
 
-        List<CategoriaProducto> result = getAllCategories.execute();
+        List<CategoryProductResponse> result = getAllCategories.execute();
 
         assertNotNull(result);
         assertEquals(2, result.size());

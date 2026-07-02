@@ -1,6 +1,7 @@
 package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.application.GetLoggedUserNotifications;
+import com.recred.backend.application.GetLoggedUserNotificationsResponse;
 import com.recred.backend.application.SetNotificationAsAlreadyRead;
 import com.recred.backend.config.GlobalExceptionHandler;
 import com.recred.backend.domain.exceptions.NotificationNotFoundException;
@@ -49,7 +50,7 @@ class NotificationControllerTest {
     void getMyNotificationsReturnsAuthenticatedUserNotifications() throws Exception {
         UUID notificationId = UUID.randomUUID();
         when(getLoggedUserNotifications.execute("cognito-sub", true, 1, 5))
-                .thenReturn(List.of(notification(notificationId)));
+                .thenReturn(new GetLoggedUserNotificationsResponse(List.of(notificationDTO(notificationId))));
 
         mockMvc.perform(get("/api/v1/notifications/me")
                         .principal(authentication())
@@ -57,13 +58,13 @@ class NotificationControllerTest {
                         .param("page", "1")
                         .param("size", "5"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(notificationId.toString()))
-                .andExpect(jsonPath("$[0].type").value("SISTEMA"))
-                .andExpect(jsonPath("$[0].title").value("Title"))
-                .andExpect(jsonPath("$[0].message").value("Message"))
-                .andExpect(jsonPath("$[0].read").value(false))
-                .andExpect(jsonPath("$[0].createdAt").value("2026-06-02T14:30:00"))
-                .andExpect(jsonPath("$[0].readAt").doesNotExist());
+                .andExpect(jsonPath("$.notifications[0].id").value(notificationId.toString()))
+                .andExpect(jsonPath("$.notifications[0].type").value("SISTEMA"))
+                .andExpect(jsonPath("$.notifications[0].title").value("Title"))
+                .andExpect(jsonPath("$.notifications[0].message").value("Message"))
+                .andExpect(jsonPath("$.notifications[0].read").value(false))
+                .andExpect(jsonPath("$.notifications[0].createdAt").value("2026-06-02T14:30:00"))
+                .andExpect(jsonPath("$.notifications[0].readAt").doesNotExist());
 
         verify(getLoggedUserNotifications).execute("cognito-sub", true, 1, 5);
     }
@@ -90,8 +91,8 @@ class NotificationControllerTest {
                 .andExpect(status().isNotFound());
     }
 
-    private Notification notification(UUID notificationId) {
-        return new Notification(
+    private GetLoggedUserNotificationsResponse.NotificationDTO notificationDTO(UUID notificationId) {
+        return new GetLoggedUserNotificationsResponse.NotificationDTO(
                 notificationId,
                 TipoNotificacion.SISTEMA,
                 "Title",

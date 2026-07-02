@@ -1,17 +1,13 @@
 package com.recred.backend.unit.infrastructure.web;
 
-import com.recred.backend.domain.models.Alumno;
-import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.MedioPago;
-import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.Purchase;
+import com.recred.backend.application.GetHistoryByStudentResponse;
 import com.recred.backend.infrastructure.web.PurchaseItemDTO;
 import com.recred.backend.infrastructure.web.PurchaseResponseDTO;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,26 +22,23 @@ class PurchaseResponseDTOTest {
         UUID studentId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         LocalDateTime date = LocalDateTime.now();
-        Producto product = new Producto();
-        product.setId(productId);
 
-        Purchase purchase = new Purchase();
-        purchase.setId(purchaseId);
-        purchase.setStudent(student(studentId));
-        purchase.setTotalAmount(new BigDecimal("15.00"));
-        purchase.setStatus(EstadoCompra.PENDIENTE);
-        purchase.setPaymentMethod(MedioPago.CREDITOS);
-        purchase.setDate(date);
-        purchase.setItems(Map.of(product, 3));
+        GetHistoryByStudentResponse responseDto = new GetHistoryByStudentResponse(
+                purchaseId, studentId, new BigDecimal("15.00"), "PENDIENTE", "A preparar",
+                "CREDITOS", date, List.of(new GetHistoryByStudentResponse.Item(
+                        productId, "Producto 1", 3, new BigDecimal("5.00"),
+                        false, 10, null, null
+                )), "PRESENCIAL", null, null, null, null, null
+        );
 
-        PurchaseResponseDTO response = new PurchaseResponseDTO(purchase);
+        PurchaseResponseDTO response = new PurchaseResponseDTO(responseDto);
 
         assertEquals(purchaseId, response.getId());
         assertEquals(studentId, response.getStudentId());
         assertEquals(new BigDecimal("15.00"), response.getTotalAmount());
-        assertEquals(EstadoCompra.PENDIENTE.name(), response.getStatus());
+        assertEquals("PENDIENTE", response.getStatus());
         assertEquals("A preparar", response.getStatusLabel());
-        assertEquals(MedioPago.CREDITOS.name(), response.getPaymentMethod());
+        assertEquals("CREDITOS", response.getPaymentMethod());
         assertEquals(date, response.getDate());
         assertEquals(productId, response.getItems().get(0).getProductId());
         assertEquals(3, response.getItems().get(0).getQuantity());
@@ -53,10 +46,11 @@ class PurchaseResponseDTOTest {
 
     @Test
     void constructor_WithNullableFields_ShouldKeepNullableResponseFieldsNull() {
-        Purchase purchase = new Purchase();
-        purchase.setItems(null);
+        GetHistoryByStudentResponse responseDto = new GetHistoryByStudentResponse(
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null
+        );
 
-        PurchaseResponseDTO response = new PurchaseResponseDTO(purchase);
+        PurchaseResponseDTO response = new PurchaseResponseDTO(responseDto);
 
         assertNull(response.getStudentId());
         assertNull(response.getStatus());
@@ -67,31 +61,28 @@ class PurchaseResponseDTOTest {
 
     @Test
     void dadoPurchaseCompleto_cuandoMapeaADTO_entoncesMapeaCorrectamenteLosItems() {
+        UUID alfajorId = UUID.randomUUID();
 
-        Producto alfajor = new Producto();
-        alfajor.setId(UUID.randomUUID());
-        alfajor.setNombre("Alfajor Jorgito");
-        alfajor.setPrecio(new BigDecimal("500.00"));
+        GetHistoryByStudentResponse responseDto = new GetHistoryByStudentResponse(
+                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("1000.00"),
+                "ENTREGADO", "Entregado", "CREDITOS", LocalDateTime.now(),
+                List.of(new GetHistoryByStudentResponse.Item(
+                        alfajorId, "Alfajor Jorgito", 2, new BigDecimal("500.00"),
+                        false, null, null, null
+                )),
+                "PRESENCIAL", null, null, null, null, null
+        );
 
-        Purchase compra = new Purchase();
-        compra.setId(UUID.randomUUID());
-        compra.setTotalAmount(new BigDecimal("1000.00"));
-        compra.setStatus(EstadoCompra.ENTREGADO);
-        compra.setPaymentMethod(MedioPago.CREDITOS);
-        compra.setDate(LocalDateTime.now());
-        compra.setItems(Map.of(alfajor, 2));
+        PurchaseResponseDTO dto = new PurchaseResponseDTO(responseDto);
 
-
-        PurchaseResponseDTO dto = new PurchaseResponseDTO(compra);
-
-        assertEquals(compra.getId(), dto.getId());
+        assertEquals(responseDto.id(), dto.getId());
         assertEquals(new BigDecimal("1000.00"), dto.getTotalAmount());
         assertEquals("ENTREGADO", dto.getStatus());
         assertNotNull(dto.getItems());
         assertEquals(1, dto.getItems().size());
 
         PurchaseItemDTO itemDto = dto.getItems().get(0);
-        assertEquals(alfajor.getId(), itemDto.getProductId());
+        assertEquals(alfajorId, itemDto.getProductId());
         assertEquals("Alfajor Jorgito", itemDto.getProductName());
         assertEquals(2, itemDto.getQuantity());
         assertEquals(new BigDecimal("500.00"), itemDto.getUnitPrice());
@@ -101,40 +92,31 @@ class PurchaseResponseDTOTest {
     void constructor_WithPromotionItems_ShouldGroupThem() {
         UUID promoId = UUID.randomUUID();
         String promoName = "Promo Coca+Alfajor";
+        UUID product1Id = UUID.randomUUID();
+        UUID product2Id = UUID.randomUUID();
+        UUID standaloneId = UUID.randomUUID();
 
-        Producto product1 = new Producto();
-        product1.setId(UUID.randomUUID());
-        product1.setNombre("Coca-Cola");
-        product1.setPrecio(new BigDecimal("300.00"));
-        product1.setRequierePreparacion(false);
-        product1.setPromocionId(promoId);
-        product1.setPromocionNombre(promoName);
+        GetHistoryByStudentResponse responseDto = new GetHistoryByStudentResponse(
+                UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("650.00"),
+                "PENDIENTE", "A preparar", "CREDITOS", LocalDateTime.now(),
+                List.of(
+                        new GetHistoryByStudentResponse.Item(
+                                product1Id, "Coca-Cola", 1, new BigDecimal("300.00"),
+                                false, null, promoId, promoName
+                        ),
+                        new GetHistoryByStudentResponse.Item(
+                                product2Id, "Alfajor", 1, new BigDecimal("200.00"),
+                                true, null, promoId, promoName
+                        ),
+                        new GetHistoryByStudentResponse.Item(
+                                standaloneId, "Chocolate", 1, new BigDecimal("150.00"),
+                                false, null, null, null
+                        )
+                ),
+                "PRESENCIAL", null, null, null, null, null
+        );
 
-        Producto product2 = new Producto();
-        product2.setId(UUID.randomUUID());
-        product2.setNombre("Alfajor");
-        product2.setPrecio(new BigDecimal("200.00"));
-        product2.setRequierePreparacion(true);
-        product2.setPromocionId(promoId);
-        product2.setPromocionNombre(promoName);
-
-        Producto standalone = new Producto();
-        standalone.setId(UUID.randomUUID());
-        standalone.setNombre("Chocolate");
-        standalone.setPrecio(new BigDecimal("150.00"));
-        standalone.setRequierePreparacion(false);
-
-        Purchase purchase = new Purchase();
-        purchase.setId(UUID.randomUUID());
-        purchase.setTotalAmount(new BigDecimal("650.00"));
-        purchase.setStatus(EstadoCompra.PENDIENTE);
-        purchase.setItems(Map.of(
-                product1, 1,
-                product2, 1,
-                standalone, 1
-        ));
-
-        PurchaseResponseDTO response = new PurchaseResponseDTO(purchase);
+        PurchaseResponseDTO response = new PurchaseResponseDTO(responseDto);
 
         assertEquals(2, response.getItems().size());
 
@@ -150,19 +132,13 @@ class PurchaseResponseDTOTest {
 
         // Find standalone item
         PurchaseItemDTO standaloneItem = response.getItems().stream()
-                .filter(item -> item.getProductId().equals(standalone.getId()))
+                .filter(item -> item.getProductId().equals(standaloneId))
                 .findFirst()
                 .orElseThrow();
         assertEquals("Chocolate", standaloneItem.getProductName());
         assertEquals(1, standaloneItem.getQuantity());
         assertEquals(new BigDecimal("150.00"), standaloneItem.getUnitPrice());
         assertEquals(false, standaloneItem.getRequierePreparacion());
-    }
-
-    private Alumno student(UUID studentId) {
-        Alumno student = new Alumno();
-        student.setId(studentId);
-        return student;
     }
 }
 

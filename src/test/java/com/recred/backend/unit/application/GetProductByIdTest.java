@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetProductById;
+import com.recred.backend.application.ProductResponse;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -38,9 +39,9 @@ class GetProductByIdTest {
         producto.setId(id);
         when(productRepository.findActiveById(id)).thenReturn(Optional.of(producto));
 
-        Producto result = getProductById.execute(id, null);
+        ProductResponse result = getProductById.execute(id, null);
 
-        assertEquals(id, result.getId());
+        assertEquals(id, result.id());
         verify(productRepository).findActiveById(id);
     }
 
@@ -61,9 +62,9 @@ class GetProductByIdTest {
         producto.setId(id);
         when(productRepository.findActiveByIdWithStock(id, buffetId)).thenReturn(Optional.of(producto));
 
-        Producto result = getProductById.execute(id, buffetId);
+        ProductResponse result = getProductById.execute(id, buffetId);
 
-        assertEquals(id, result.getId());
+        assertEquals(id, result.id());
         verify(productRepository).findActiveByIdWithStock(id, buffetId);
     }
 

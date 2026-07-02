@@ -12,6 +12,7 @@ import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductCommand;
 import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdateProductPriceRequest;
+import com.recred.backend.application.ProductResponse;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.infrastructure.web.ProductController;
 import com.recred.backend.infrastructure.web.ProductRequestDTO;
@@ -203,11 +204,15 @@ class ProductControllerTest {
     }
 
     private void givenProductsForBuffet(UUID buffetId, Producto... products) {
-        when(getAllProducts.execute(buffetId)).thenReturn(List.of(products));
+        List<ProductResponse> responses = List.of(products).stream()
+                .map(ProductResponse::fromDomain)
+                .toList();
+        when(getAllProducts.execute(buffetId)).thenReturn(responses);
     }
 
     private void givenProductExists(UUID productId, UUID buffetId) {
-        when(getProductById.execute(productId, buffetId)).thenReturn(product(productId));
+        when(getProductById.execute(productId, buffetId))
+                .thenReturn(ProductResponse.fromDomain(product(productId)));
     }
 
     private void givenProductIsSaved(UUID productId) {

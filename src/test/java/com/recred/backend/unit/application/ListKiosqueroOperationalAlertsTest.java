@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
+import com.recred.backend.application.ListKiosqueroOperationalAlertsResponse;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.KiosqueroOperationalAlert;
 import com.recred.backend.domain.models.OperationalAlertType;
@@ -55,7 +56,7 @@ class ListKiosqueroOperationalAlertsTest {
                 anyList()
         )).thenReturn(4L);
 
-        List<KiosqueroOperationalAlert> alerts = useCase.execute(buffetId);
+        ListKiosqueroOperationalAlertsResponse alerts = useCase.execute(buffetId);
 
         assertTrue(hasAlert(alerts, OperationalAlertType.MANY_PENDING_ORDERS));
         assertTrue(hasAlert(alerts, OperationalAlertType.ORDER_UPCOMING_PICKUP));
@@ -89,7 +90,7 @@ class ListKiosqueroOperationalAlertsTest {
                 ));
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of());
 
-        List<KiosqueroOperationalAlert> alerts = useCase.execute(buffetId);
+        ListKiosqueroOperationalAlertsResponse alerts = useCase.execute(buffetId);
 
         assertTrue(hasAlert(alerts, OperationalAlertType.ORDER_ACCUMULATION));
         assertTrue(hasAlert(alerts, OperationalAlertType.ORDER_EXPIRED));
@@ -116,17 +117,17 @@ class ListKiosqueroOperationalAlertsTest {
                 .thenReturn(List.of(orderWithoutStart));
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
 
-        List<KiosqueroOperationalAlert> alerts = useCase.execute(buffetId);
+        ListKiosqueroOperationalAlertsResponse alerts = useCase.execute(buffetId);
 
         assertFalse(hasAlert(alerts, OperationalAlertType.ORDER_UPCOMING_PICKUP));
         assertFalse(hasAlert(alerts, OperationalAlertType.DAILY_CAPACITY_LOW));
     }
 
     private boolean hasAlert(
-            List<KiosqueroOperationalAlert> alerts,
+            ListKiosqueroOperationalAlertsResponse alerts,
             OperationalAlertType type
     ) {
-        return alerts.stream().anyMatch(alert -> alert.type() == type);
+        return alerts.alerts().stream().anyMatch(alert -> alert.type() == type);
     }
 
     private Purchase pendingOrder(UUID buffetId, Producto product) {

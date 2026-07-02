@@ -10,6 +10,7 @@ import com.recred.backend.application.GetActivePromotions;
 import com.recred.backend.application.GetActivePromotionsByBuffet;
 import com.recred.backend.application.GetPromotionById;
 import com.recred.backend.application.UpdatePromotion;
+import com.recred.backend.application.PromotionResponse;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
@@ -61,7 +62,7 @@ class PromotionControllerTest {
         UUID promotionId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         Promotion promotion = promotion(promotionId, productId);
-        when(getActivePromotions.execute()).thenReturn(List.of(promotion));
+        when(getActivePromotions.execute()).thenReturn(List.of(PromotionResponse.fromDomain(promotion)));
 
         ResponseEntity<List<PromotionResponseDTO>> response =
                 controller.listActivePromotions();
@@ -78,7 +79,7 @@ class PromotionControllerTest {
         UUID promotionId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         Promotion promotion = promotion(promotionId, productId);
-        when(getActivePromotionsByBuffet.execute(buffetId)).thenReturn(List.of(promotion));
+        when(getActivePromotionsByBuffet.execute(buffetId)).thenReturn(List.of(PromotionResponse.fromDomain(promotion)));
 
         ResponseEntity<List<PromotionResponseDTO>> response =
                 controller.listActivePromotionsByBuffet(buffetId);
@@ -94,7 +95,7 @@ class PromotionControllerTest {
         UUID promotionId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         when(getPromotionById.execute(promotionId))
-                .thenReturn(promotion(promotionId, productId));
+                .thenReturn(PromotionResponse.fromDomain(promotion(promotionId, productId)));
 
         ResponseEntity<PromotionResponseDTO> response =
                 controller.getPromotionById(promotionId);

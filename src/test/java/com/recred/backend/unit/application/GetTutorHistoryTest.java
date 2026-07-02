@@ -35,13 +35,15 @@ class GetTutorHistoryTest {
     void dadoTutorConComprasDeHijos_cuandoSeEjecuta_entoncesRetornaListaDeCompras() {
         UUID tutorId = UUID.randomUUID();
         Purchase compra = new Purchase();
+        compra.setId(UUID.randomUUID());
         List<Purchase> comprasMock = List.of(compra);
 
         when(purchaseRepository.findHistorialByTutor(tutorId)).thenReturn(comprasMock);
 
-        List<Purchase> resultado = obtenerHistorialTutor.execute(tutorId);
+        List<com.recred.backend.application.GetHistoryByStudentResponse> resultado = obtenerHistorialTutor.execute(tutorId);
 
         assertEquals(1, resultado.size());
+        assertEquals(compra.getId(), resultado.get(0).id());
         verify(purchaseRepository, times(1)).findHistorialByTutor(tutorId);
     }
 
@@ -51,13 +53,16 @@ class GetTutorHistoryTest {
         UUID tutorId = UUID.randomUUID();
         Tutor tutor = new Tutor();
         tutor.setId(tutorId);
-        List<Purchase> purchases = List.of(new Purchase());
+        Purchase purchase = new Purchase();
+        purchase.setId(UUID.randomUUID());
+        List<Purchase> purchases = List.of(purchase);
         when(tutorRepository.findByUsuarioIdCognito(subject)).thenReturn(Optional.of(tutor));
         when(purchaseRepository.findHistorialByTutor(tutorId)).thenReturn(purchases);
 
-        List<Purchase> result = obtenerHistorialTutor.executeByCognitoSubject(subject);
+        List<com.recred.backend.application.GetHistoryByStudentResponse> result = obtenerHistorialTutor.executeByCognitoSubject(subject);
 
-        assertEquals(purchases, result);
+        assertEquals(1, result.size());
+        assertEquals(purchase.getId(), result.get(0).id());
         verify(purchaseRepository).findHistorialByTutor(tutorId);
     }
 
