@@ -85,8 +85,6 @@ public class UpdatePurchaseStatus {
         handleStatusChangeSideEffects(purchase, previousStatus, request.requestedStatus());
         Purchase savedPurchase = purchaseRepository.save(purchase);
         publishOperationalEvent(savedPurchase, request.requestedStatus());
-        // Usamos 'purchase' (pre-save) porque tiene el alumno con nombre completo cargado.
-        // El id ya fue actualizado por purchaseRepository.save() en el objeto original.
         notifyTutorsOnStatusChange(purchase, previousStatus, request.requestedStatus());
         return response(savedPurchase);
     }
@@ -103,8 +101,7 @@ public class UpdatePurchaseStatus {
                 savedPurchase.studentIdOrNull(),
                 savedPurchase.statusName(),
                 savedPurchase.statusLabel(),
-                savedPurchase.getDate()
-        );
+                savedPurchase.getDate());
     }
 
     private Purchase findPurchase(UUID purchaseId) {
@@ -115,8 +112,7 @@ public class UpdatePurchaseStatus {
     private void handleStatusChangeSideEffects(
             Purchase purchase,
             EstadoCompra previousStatus,
-            EstadoCompra requestedStatus
-    ) {
+            EstadoCompra requestedStatus) {
         handleInventoryUpdates(purchase, previousStatus, requestedStatus);
         handleRefundIfNecessary(purchase, requestedStatus);
     }
@@ -124,8 +120,7 @@ public class UpdatePurchaseStatus {
     private void handleInventoryUpdates(
             Purchase purchase,
             EstadoCompra previousStatus,
-            EstadoCompra requestedStatus
-    ) {
+            EstadoCompra requestedStatus) {
         if (purchase.shouldConsumeReservationWhenChangingTo(requestedStatus)) {
             inventoryAvailabilityService.consumeReservation(
                     purchase.getBuffetId(),
@@ -160,8 +155,7 @@ public class UpdatePurchaseStatus {
 
     private void refund(Purchase purchase) {
         Billetera wallet = walletRepository.findByStudentId(purchase.requireStudentId())
-                .orElseThrow(() ->
-                        new IllegalStateException("Student wallet not found for refund."));
+                .orElseThrow(() -> new IllegalStateException("Student wallet not found for refund."));
         wallet.credit(purchase.getTotalAmount());
         walletRepository.save(wallet);
         registerRefundMovement(wallet, purchase);
@@ -236,8 +230,7 @@ public class UpdatePurchaseStatus {
             return;
         }
 
-        java.util.List<com.recred.backend.domain.models.Tutor> tutors =
-                tutorRepository.findByAlumnoId(studentId);
+        java.util.List<com.recred.backend.domain.models.Tutor> tutors = tutorRepository.findByAlumnoId(studentId);
         if (tutors == null || tutors.isEmpty()) {
             return;
         }
@@ -248,33 +241,29 @@ public class UpdatePurchaseStatus {
             }
             UUID tutorUserId = tutor.getUsuario().getId();
 
-            com.recred.backend.domain.models.Notification notification =
-                    new com.recred.backend.domain.models.Notification(
-                            null,
-                            com.recred.backend.domain.models.TipoNotificacion.ESTADO_COMPRA,
-                            title,
-                            message,
-                            false,
-                            java.time.LocalDateTime.now(),
-                            null,
-                            studentId,
-                            null,
-                            purchase.getId(),
-                            null
-                    );
+            com.recred.backend.domain.models.Notification notification = new com.recred.backend.domain.models.Notification(
+                    null,
+                    com.recred.backend.domain.models.TipoNotificacion.ESTADO_COMPRA,
+                    title,
+                    message,
+                    false,
+                    java.time.LocalDateTime.now(),
+                    null,
+                    studentId,
+                    null,
+                    purchase.getId(),
+                    null);
             notificationRepository.save(notification, tutorUserId);
 
             java.util.Map<String, String> data = new java.util.HashMap<>();
             data.put("alumnoId", studentId.toString());
             data.put("compraId", purchase.getId().toString());
 
-            com.recred.backend.domain.models.PushNotification pushNotification =
-                    new com.recred.backend.domain.models.PushNotification(
-                            tutorUserId,
-                            title,
-                            message,
-                            data
-                    );
+            com.recred.backend.domain.models.PushNotification pushNotification = new com.recred.backend.domain.models.PushNotification(
+                    tutorUserId,
+                    title,
+                    message,
+                    data);
             pushNotificationSender.send(pushNotification);
         }
     }
