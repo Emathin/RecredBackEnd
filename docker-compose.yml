@@ -2,7 +2,7 @@ name: recred
 
 services:
   db:
-    image: postgres:17
+    image: postgres:16
     container_name: recred-db
     restart: unless-stopped
     env_file:
