@@ -6,6 +6,5 @@ public class NoOpTutorInvitationEmailSender implements TutorInvitationEmailSende
 
     @Override
     public void sendInvitation(TutorInvitation invitation, String invitationLink) {
-        // Intencionalmente vacio: en local el link queda disponible en la respuesta.
     }
 }
