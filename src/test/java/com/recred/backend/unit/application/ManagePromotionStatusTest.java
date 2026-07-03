@@ -29,6 +29,7 @@ class ManagePromotionStatusTest {
     @BeforeEach
     void setUp() {
         managePromotionStatus = new ManagePromotionStatus(promotionRepository);
+        lenient().when(promotionRepository.findAllActive()).thenReturn(List.of());
     }
 
     @Test
@@ -59,5 +60,23 @@ class ManagePromotionStatusTest {
         managePromotionStatus.execute(new ManagePromotionStatusRequest());
 
         verify(promotionRepository, never()).save(any(Promotion.class));
+    }
+
+    @Test
+    void execute_ShouldExpireActivePromotionsWhenEndDateHasPassed() {
+        UUID promotionId = UUID.randomUUID();
+        Promotion endedPromotion = new Promotion();
+        endedPromotion.setId(promotionId);
+        endedPromotion.setStatus(PromotionStatus.ACTIVE);
+        endedPromotion.setEndDate(LocalDateTime.now().minusDays(1));
+
+        when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
+                .thenReturn(List.of());
+        when(promotionRepository.findAllActive()).thenReturn(List.of(endedPromotion));
+
+        managePromotionStatus.execute(new ManagePromotionStatusRequest());
+
+        verify(promotionRepository)
+                .save(argThat(p -> p.getId().equals(promotionId) && p.getStatus() == PromotionStatus.EXPIRED));
     }
 }
