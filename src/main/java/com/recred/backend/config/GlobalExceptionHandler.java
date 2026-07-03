@@ -11,6 +11,7 @@ import com.recred.backend.domain.exceptions.InsufficientStockException;
 import com.recred.backend.domain.exceptions.InventoryNotFoundException;
 import com.recred.backend.domain.exceptions.InventoryOperationException;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
+import com.recred.backend.domain.exceptions.InvalidTimeSlotException;
 import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
 import com.recred.backend.domain.exceptions.PickupCutoffTimeExceededException;
 import com.recred.backend.domain.exceptions.PickupSlotCapacityExceededException;
@@ -24,6 +25,10 @@ import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
+import com.recred.backend.domain.exceptions.SchoolNotFoundException;
+import com.recred.backend.domain.exceptions.TimeSlotInUseException;
+import com.recred.backend.domain.exceptions.TimeSlotNotFoundException;
+import com.recred.backend.domain.exceptions.TimeSlotOverlapException;
 import com.recred.backend.domain.exceptions.TutorNoEncontradoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -172,6 +177,36 @@ public class GlobalExceptionHandler {
     ) {
         return buildResponse(HttpStatus.NOT_FOUND, "Franja horaria no encontrada",
                 ex.getMessage(), "TIME_SLOT_NOT_FOUND");
+    }
+
+    @ExceptionHandler(TimeSlotNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTimeSlotNotFound(TimeSlotNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Franja horaria no encontrada",
+                ex.getMessage(), "TIME_SLOT_NOT_FOUND");
+    }
+
+    @ExceptionHandler(InvalidTimeSlotException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidTimeSlot(InvalidTimeSlotException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Franja horaria invalida",
+                ex.getMessage(), "INVALID_TIME_SLOT");
+    }
+
+    @ExceptionHandler(TimeSlotOverlapException.class)
+    public ResponseEntity<ErrorResponse> handleTimeSlotOverlap(TimeSlotOverlapException ex) {
+        return buildResponse(HttpStatus.CONFLICT, "Franja horaria superpuesta",
+                ex.getMessage(), "TIME_SLOT_OVERLAP");
+    }
+
+    @ExceptionHandler(TimeSlotInUseException.class)
+    public ResponseEntity<ErrorResponse> handleTimeSlotInUse(TimeSlotInUseException ex) {
+        return buildResponse(HttpStatus.CONFLICT, "Franja horaria en uso",
+                ex.getMessage(), "TIME_SLOT_IN_USE");
+    }
+
+    @ExceptionHandler(SchoolNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleSchoolNotFound(SchoolNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Colegio no encontrado",
+                ex.getMessage(), "SCHOOL_NOT_FOUND");
     }
 
     @ExceptionHandler(ProductDailyCapacityExceededException.class)

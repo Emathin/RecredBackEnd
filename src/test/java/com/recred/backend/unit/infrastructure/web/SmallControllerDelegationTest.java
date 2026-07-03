@@ -12,8 +12,14 @@ import com.recred.backend.application.GetBuffetByStudentResponse;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.GetTimeSlotsBySchoolRequest;
 import com.recred.backend.application.GetTimeSlotsBySchoolResponse;
+import com.recred.backend.application.CreateTimeSlot;
+import com.recred.backend.application.DeactivateTimeSlot;
+import com.recred.backend.application.GetTimeSlot;
+import com.recred.backend.application.ListSchoolTimeSlots;
+import com.recred.backend.application.ReactivateTimeSlot;
 import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.MenuProductResponse;
+import com.recred.backend.application.UpdateTimeSlot;
 import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Producto;
@@ -54,6 +60,20 @@ class SmallControllerDelegationTest {
     private UpdateTutorDashboardConfig updateTutorDashboardConfig;
     @Mock
     private GetTimeSlotsBySchool getTimeSlotsBySchool;
+    @Mock
+    private ListSchoolTimeSlots listSchoolTimeSlots;
+    @Mock
+    private GetTimeSlot getTimeSlot;
+    @Mock
+    private CreateTimeSlot createTimeSlot;
+    @Mock
+    private UpdateTimeSlot updateTimeSlot;
+    @Mock
+    private DeactivateTimeSlot deactivateTimeSlot;
+    @Mock
+    private ReactivateTimeSlot reactivateTimeSlot;
+    @Mock
+    private SchoolAccessGuard schoolAccessGuard;
     @Mock
     private GenerateLowBalanceAlerts generateLowBalanceAlerts;
     @Mock
@@ -114,9 +134,19 @@ class SmallControllerDelegationTest {
                 10
         );
         when(getTimeSlotsBySchool.execute(new GetTimeSlotsBySchoolRequest(schoolId))).thenReturn(List.of(slot));
-        FranjaHorariaController controller = new FranjaHorariaController(getTimeSlotsBySchool);
+        FranjaHorariaController controller = new FranjaHorariaController(
+                getTimeSlotsBySchool,
+                listSchoolTimeSlots,
+                getTimeSlot,
+                createTimeSlot,
+                updateTimeSlot,
+                deactivateTimeSlot,
+                reactivateTimeSlot,
+                schoolAccessGuard
+        );
 
-        ResponseEntity<List<TimeSlotResponse>> response = controller.obtenerFranjas(schoolId);
+        ResponseEntity<List<TimeSlotResponse>> response =
+                controller.obtenerFranjas(schoolId, false, null);
 
         assertEquals(1, response.getBody().size());
         assertEquals(slot.id(), response.getBody().get(0).id());

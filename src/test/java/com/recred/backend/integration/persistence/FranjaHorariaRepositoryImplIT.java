@@ -91,6 +91,40 @@ class FranjaHorariaRepositoryImplIT extends AbstractIntegrationTest {
         assertEquals(2, result.size());
     }
 
+    @Test
+    void findAllByColegioIdIncludingInactive_ShouldReturnInactiveEntities() {
+        ColegioEntity school = generateSchoolEntity();
+        generateTimeSlotEntity(school, true);
+        generateTimeSlotEntity(school, false);
+
+        List<FranjaHoraria> result =
+                repository.findAllByColegioIdIncludingInactive(school.getId());
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().anyMatch(slot -> !slot.isActivo()));
+    }
+
+    @Test
+    void existsActiveOverlap_ShouldIgnoreInactiveAndExcludedSlots() {
+        ColegioEntity school = generateSchoolEntity();
+        FranjaHorariaEntity activeSlot = generateTimeSlotEntity(school, true);
+        generateTimeSlotEntity(school, false);
+
+        boolean overlap = repository.existsActiveOverlap(
+                school.getId(),
+                null,
+                LocalTime.of(9, 5),
+                LocalTime.of(9, 10));
+        boolean excludedOverlap = repository.existsActiveOverlap(
+                school.getId(),
+                activeSlot.getId(),
+                LocalTime.of(9, 5),
+                LocalTime.of(9, 10));
+
+        assertTrue(overlap);
+        assertTrue(!excludedOverlap);
+    }
+
     private ColegioEntity generateSchoolEntity() {
         if (this.cachedSchool == null) {
             ColegioEntity school = new ColegioEntity();
@@ -104,12 +138,16 @@ class FranjaHorariaRepositoryImplIT extends AbstractIntegrationTest {
     }
 
     private FranjaHorariaEntity generateTimeSlotEntity(ColegioEntity school) {
+        return generateTimeSlotEntity(school, true);
+    }
+
+    private FranjaHorariaEntity generateTimeSlotEntity(ColegioEntity school, boolean active) {
         FranjaHorariaEntity entity = new FranjaHorariaEntity();
         entity.setColegioEntity(school);
         entity.setDescripcion("Morning break");
         entity.setHoraInicio(LocalTime.of(9, 0));
         entity.setHoraFin(LocalTime.of(9, 15));
-        entity.setActivo(true);
+        entity.setActivo(active);
         entity.setCupoMaximo(20);
         entity.setMinutosCorte(5);
         return springDataRepository.save(entity);

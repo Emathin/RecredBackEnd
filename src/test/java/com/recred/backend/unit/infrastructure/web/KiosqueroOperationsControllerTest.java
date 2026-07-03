@@ -47,6 +47,7 @@ import com.recred.backend.infrastructure.web.KiosqueroAccessGuard;
 import com.recred.backend.infrastructure.web.KiosqueroOperationalAlertResponse;
 import com.recred.backend.infrastructure.web.KiosqueroOperationsController;
 import com.recred.backend.infrastructure.web.KiosqueroOrderResponse;
+import com.recred.backend.infrastructure.web.SchoolAccessGuard;
 import com.recred.backend.infrastructure.web.TimeSlotResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -87,6 +88,7 @@ class KiosqueroOperationsControllerTest {
     private final GetKiosqueroDashboard getKiosqueroDashboard =
             mock(GetKiosqueroDashboard.class);
     private final KiosqueroAccessGuard kiosqueroAccessGuard = mock(KiosqueroAccessGuard.class);
+    private final SchoolAccessGuard schoolAccessGuard = mock(SchoolAccessGuard.class);
     private final KiosqueroOperationsController controller =
             new KiosqueroOperationsController(
                     closeDailyBuffet,
@@ -99,7 +101,8 @@ class KiosqueroOperationsControllerTest {
                     listInventoryProducts,
                     listKiosqueroOperationalAlerts,
                     getKiosqueroDashboard,
-                    kiosqueroAccessGuard
+                    kiosqueroAccessGuard,
+                    schoolAccessGuard
             );
 
     @Test
@@ -408,11 +411,13 @@ class KiosqueroOperationsControllerTest {
         ResponseEntity<KiosqueroOperationsController.PickupSlotRulesResponse> response =
                 controller.updatePickupSlotRules(
                         slotId,
-                        new KiosqueroOperationsController.PickupSlotRulesRequest(10, 20)
+                        new KiosqueroOperationsController.PickupSlotRulesRequest(10, 20),
+                        null
                 );
 
         assertEquals(10, response.getBody().cupoMaximo());
         assertEquals(20, response.getBody().minutosCorte());
+        verify(schoolAccessGuard).requireTimeSlotAccess(null, slotId);
         verify(updatePickupSlotRules).execute(useCaseRequest);
     }
 

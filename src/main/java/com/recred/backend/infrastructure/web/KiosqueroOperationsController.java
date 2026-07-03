@@ -66,6 +66,7 @@ public class KiosqueroOperationsController {
     private final ListKiosqueroOperationalAlerts listKiosqueroOperationalAlerts;
     private final GetKiosqueroDashboard getKiosqueroDashboard;
     private final KiosqueroAccessGuard kiosqueroAccessGuard;
+    private final SchoolAccessGuard schoolAccessGuard;
 
     public KiosqueroOperationsController(
             CloseDailyBuffet closeDailyBuffet,
@@ -78,7 +79,8 @@ public class KiosqueroOperationsController {
             ListInventoryProducts listInventoryProducts,
             ListKiosqueroOperationalAlerts listKiosqueroOperationalAlerts,
             GetKiosqueroDashboard getKiosqueroDashboard,
-            KiosqueroAccessGuard kiosqueroAccessGuard
+            KiosqueroAccessGuard kiosqueroAccessGuard,
+            SchoolAccessGuard schoolAccessGuard
     ) {
         this.closeDailyBuffet = closeDailyBuffet;
         this.getDailyBuffetCloseStatus = getDailyBuffetCloseStatus;
@@ -91,6 +93,7 @@ public class KiosqueroOperationsController {
         this.listKiosqueroOperationalAlerts = listKiosqueroOperationalAlerts;
         this.getKiosqueroDashboard = getKiosqueroDashboard;
         this.kiosqueroAccessGuard = kiosqueroAccessGuard;
+        this.schoolAccessGuard = schoolAccessGuard;
     }
 
     @GetMapping("/{buffetId}/orders")
@@ -243,8 +246,10 @@ public class KiosqueroOperationsController {
     @PatchMapping("/time-slots/{slotId}/rules")
     public ResponseEntity<PickupSlotRulesResponse> updatePickupSlotRules(
             @PathVariable UUID slotId,
-            @Valid @RequestBody PickupSlotRulesRequest request
+            @Valid @RequestBody PickupSlotRulesRequest request,
+            Authentication authentication
     ) {
+        schoolAccessGuard.requireTimeSlotAccess(authentication, slotId);
         UpdatePickupSlotRulesResponse slot = updatePickupSlotRules.execute(
                 new UpdatePickupSlotRulesRequest(
                         slotId,

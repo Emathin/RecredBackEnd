@@ -71,6 +71,10 @@ public interface PurchaseRepository {
                         LocalDate pickupDate,
                         List<EstadoCompra> statuses);
 
+        boolean existsActiveFutureScheduledByPickupSlotId(UUID pickupSlotId,
+                        LocalDate fromDate,
+                        List<EstadoCompra> statuses);
+
         long sumScheduledProductQuantity(UUID buffetId,
                         UUID productId,
                         LocalDate pickupDate,

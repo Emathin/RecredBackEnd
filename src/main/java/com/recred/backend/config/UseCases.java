@@ -48,9 +48,11 @@ import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreatePromotion;
+import com.recred.backend.application.CreateTimeSlot;
 import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateTimeRestriction;
+import com.recred.backend.application.DeactivateTimeSlot;
 import com.recred.backend.application.DeleteFavoriteCart;
 import com.recred.backend.application.DeleteProduct;
 import com.recred.backend.application.DeletePromotion;
@@ -122,6 +124,9 @@ import com.recred.backend.application.PredictStudentSpending;
 import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.PurchaseSuggestIA;
+import com.recred.backend.application.GetTimeSlot;
+import com.recred.backend.application.ListSchoolTimeSlots;
+import com.recred.backend.application.ReactivateTimeSlot;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.DeleteFavoriteProduct;
 import com.recred.backend.application.RespondToAISuggestion;
@@ -138,6 +143,7 @@ import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePurchaseStatus;
+import com.recred.backend.application.UpdateTimeSlot;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.application.UploadProductImage;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
@@ -646,6 +652,49 @@ public class UseCases {
     public GetTimeSlotsBySchool getTimeSlotsBySchool(
             FranjaHorariaRepository franjaHorariaRepository) {
         return new GetTimeSlotsBySchool(franjaHorariaRepository);
+    }
+
+    @Bean
+    public ListSchoolTimeSlots listSchoolTimeSlots(
+            FranjaHorariaRepository franjaHorariaRepository) {
+        return new ListSchoolTimeSlots(franjaHorariaRepository);
+    }
+
+    @Bean
+    public GetTimeSlot getTimeSlot(FranjaHorariaRepository franjaHorariaRepository) {
+        return new GetTimeSlot(franjaHorariaRepository);
+    }
+
+    @Bean
+    public CreateTimeSlot createTimeSlot(
+            FranjaHorariaRepository franjaHorariaRepository,
+            ColegioRepository colegioRepository) {
+        return new CreateTimeSlot(franjaHorariaRepository, colegioRepository);
+    }
+
+    @Bean
+    public UpdateTimeSlot updateTimeSlot(
+            FranjaHorariaRepository franjaHorariaRepository,
+            ColegioRepository colegioRepository,
+            PurchaseRepository purchaseRepository,
+            Clock clock) {
+        return new UpdateTimeSlot(
+                franjaHorariaRepository,
+                colegioRepository,
+                purchaseRepository,
+                clock);
+    }
+
+    @Bean
+    public DeactivateTimeSlot deactivateTimeSlot(
+            FranjaHorariaRepository franjaHorariaRepository) {
+        return new DeactivateTimeSlot(franjaHorariaRepository);
+    }
+
+    @Bean
+    public ReactivateTimeSlot reactivateTimeSlot(
+            FranjaHorariaRepository franjaHorariaRepository) {
+        return new ReactivateTimeSlot(franjaHorariaRepository);
     }
 
     @Bean

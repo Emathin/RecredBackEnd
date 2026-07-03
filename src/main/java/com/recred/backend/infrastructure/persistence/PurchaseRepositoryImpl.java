@@ -399,6 +399,17 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
+    public boolean existsActiveFutureScheduledByPickupSlotId(
+            UUID pickupSlotId,
+            LocalDate fromDate,
+            List<EstadoCompra> statuses) {
+        return springDataRepository.existsActiveFutureScheduledByPickupSlotId(
+                pickupSlotId,
+                fromDate,
+                statuses);
+    }
+
+    @Override
     public long sumScheduledProductQuantity(UUID buffetId,
             UUID productId,
             LocalDate pickupDate,
