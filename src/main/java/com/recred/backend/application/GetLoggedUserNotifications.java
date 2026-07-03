@@ -45,7 +45,11 @@ public class GetLoggedUserNotifications {
                         n.message(),
                         n.read(),
                         n.createdAt(),
-                        n.readAt()
+                        n.readAt(),
+                        n.studentId(),
+                        n.productId(),
+                        n.purchaseId(),
+                        n.suggestionId()
                 ))
                 .toList();
                 
