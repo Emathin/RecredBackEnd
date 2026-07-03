@@ -686,13 +686,19 @@ public class UseCases {
             InventoryAvailabilityService inventoryAvailabilityService,
             WalletRepository walletRepository,
             KiosqueroRealtimeEventPublisher realtimeEventPublisher,
-            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+            MovimientoBilleteraRepository movimientoBilleteraRepository,
+            TutorRepository tutorRepository,
+            NotificationRepository notificationRepository,
+            PushNotificationSender pushNotificationSender) {
         return new UpdatePurchaseStatus(
                 purchaseRepository,
                 inventoryAvailabilityService,
                 walletRepository,
                 realtimeEventPublisher,
-                movimientoBilleteraRepository);
+                movimientoBilleteraRepository,
+                tutorRepository,
+                notificationRepository,
+                pushNotificationSender);
     }
 
     @Bean
