@@ -58,6 +58,8 @@ public class SecurityConfig {
                         .authorizeHttpRequests(auth -> auth
                                 .requestMatchers("/ping", "/actuator/health").permitAll()
                                 .requestMatchers("/api/v1/school-registrations").permitAll()
+                                .requestMatchers(HttpMethod.GET,
+                                        "/api/v1/invitaciones/tutor/**").permitAll()
                                 .requestMatchers("/swagger-ui.html",
                                         "/swagger-ui/**",
                                         "/v3/api-docs",

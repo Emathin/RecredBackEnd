@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +18,27 @@ public interface SpringDataUsuarioRepository extends
     Optional<UsuarioEntity> findByIdCognito(String idCognito);
 
     Optional<UsuarioEntity> findByEmail(String email);
+
+    Optional<UsuarioEntity> findFirstByEmailOrderByActualizadoEnDescCreadoEnDesc(String email);
+
+    @Modifying
+    @Query("""
+            UPDATE UsuarioEntity u
+            SET u.nombre = :nombre,
+                u.apellido = :apellido,
+                u.telefono = :telefono,
+                u.dni = :dni,
+                u.actualizadoEn = :actualizadoEn
+            WHERE u.idCognito = :idCognito
+            """)
+    void updateProfile(
+            @Param("idCognito") String idCognito,
+            @Param("nombre") String nombre,
+            @Param("apellido") String apellido,
+            @Param("telefono") String telefono,
+            @Param("dni") String dni,
+            @Param("actualizadoEn") LocalDateTime actualizadoEn
+    );
 
     @Modifying
     @Query("""

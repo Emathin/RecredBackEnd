@@ -21,7 +21,7 @@ public class BuffetRepositoryImpl implements BuffetRepository {
     @Override
     @Transactional(readOnly = true)
     public Optional<Buffet> findById(UUID id) {
-        return springDataBuffetRepository.findById(id).map(BuffetEntity::toDomain);
+        return springDataBuffetRepository.findByIdWithSchool(id).map(BuffetEntity::toDomain);
     }
 
     @Override

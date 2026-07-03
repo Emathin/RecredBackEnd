@@ -4,10 +4,12 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.TutorSchoolStatus;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.GradoRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
+import com.recred.backend.domain.repositories.TutorSchoolRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.services.CognitoStudentIdentityService;
 import com.recred.backend.domain.services.CreatedCognitoUser;
@@ -23,17 +25,20 @@ public class CreateStudentFromParent {
     private final TutorRepository tutorRepository;
     private final AlumnoRepository alumnoRepository;
     private final GradoRepository gradoRepository;
+    private final TutorSchoolRepository tutorSchoolRepository;
     private final CognitoStudentIdentityService cognitoStudentIdentityService;
 
     public CreateStudentFromParent(UsuarioRepository usuarioRepository,
                                    TutorRepository tutorRepository,
                                    AlumnoRepository alumnoRepository,
                                    GradoRepository gradoRepository,
+                                   TutorSchoolRepository tutorSchoolRepository,
                                    CognitoStudentIdentityService cognitoStudentIdentityService) {
         this.usuarioRepository = usuarioRepository;
         this.tutorRepository = tutorRepository;
         this.alumnoRepository = alumnoRepository;
         this.gradoRepository = gradoRepository;
+        this.tutorSchoolRepository = tutorSchoolRepository;
         this.cognitoStudentIdentityService = cognitoStudentIdentityService;
     }
 
@@ -46,6 +51,7 @@ public class CreateStudentFromParent {
         ensureEmailAvailable(request.email());
 
         Grado grado = resolveGrade(request.gradoId());
+        validateTutorSchoolAccess(tutor, grado);
 
         Usuario savedStudentUser = createStudentUser(request);
 
@@ -145,6 +151,24 @@ public class CreateStudentFromParent {
         return gradoRepository.findById(gradoId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No se encontro el grado indicado"));
+    }
+
+    private void validateTutorSchoolAccess(Tutor tutor, Grado grade) {
+        if (grade == null) {
+            return;
+        }
+        if (grade.getColegio() == null || grade.getColegio().getId() == null) {
+            throw new IllegalArgumentException("El grado indicado no tiene colegio asociado");
+        }
+        boolean associated = tutorSchoolRepository.existsByTutorIdAndSchoolIdAndStatus(
+                tutor.getId(),
+                grade.getColegio().getId(),
+                TutorSchoolStatus.ACTIVE
+        );
+        if (!associated) {
+            throw new AccessDeniedException(
+                    "El tutor no esta asociado al colegio del grado indicado");
+        }
     }
 
     private String normalizeOptional(String value) {

@@ -6,6 +6,7 @@ import com.recred.backend.application.CreateStudentFromParentResponse;
 import com.recred.backend.application.GetChildrenByTutor;
 import com.recred.backend.application.GetChildrenByTutorRequest;
 import com.recred.backend.application.GetChildrenByTutorResponse;
+import com.recred.backend.application.GetTutorSchools;
 import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
@@ -58,6 +59,9 @@ class TutorControllerTest {
 
     @MockitoBean
     private CreateStudentFromParent createStudentFromParent;
+
+    @MockitoBean
+    private GetTutorSchools getTutorSchools;
 
     @MockitoBean
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
@@ -213,6 +217,25 @@ class TutorControllerTest {
     }
 
     @Test
+    void givenAuthenticatedTutor_whenGettingMySchools_thenReturnsAssociatedSchools()
+            throws Exception {
+        UUID schoolId = UUID.randomUUID();
+        Colegio school = new Colegio();
+        school.setId(schoolId);
+        school.setNombre("Colegio Norte");
+        when(getTutorSchools.execute("tutor-sub")).thenReturn(List.of(school));
+
+        mockMvc.perform(get("/api/v1/tutores/me/colegios")
+                        .principal(new TestingAuthenticationToken("tutor-sub", ""))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(schoolId.toString()))
+                .andExpect(jsonPath("$[0].nombre").value("Colegio Norte"));
+
+        verify(getTutorSchools).execute("tutor-sub");
+    }
+
+    @Test
     void obtenerHijosConTutorMeUsaTutorDelUsuarioActual() {
         UUID tutorId = UUID.randomUUID();
         UUID alumnoId = UUID.randomUUID();
@@ -221,7 +244,8 @@ class TutorControllerTest {
                 usuarioService,
                 createStudentFromParent,
                 updateStudentPhoto,
-                cloudinaryService
+                cloudinaryService,
+                getTutorSchools
         );
         Usuario usuario = new Usuario();
         com.recred.backend.domain.models.Tutor tutor =
@@ -262,7 +286,8 @@ class TutorControllerTest {
                 usuarioService,
                 createStudentFromParent,
                 updateStudentPhoto,
-                cloudinaryService
+                cloudinaryService,
+                getTutorSchools
         );
         Usuario usuario = new Usuario();
         when(usuarioService.obtenerUsuarioActual("tutor-sub")).thenReturn(usuario);
@@ -283,7 +308,8 @@ class TutorControllerTest {
                 usuarioService,
                 createStudentFromParent,
                 updateStudentPhoto,
-                cloudinaryService
+                cloudinaryService,
+                getTutorSchools
         );
         CreateChildRequest request = new CreateChildRequest(
                 "mateo",

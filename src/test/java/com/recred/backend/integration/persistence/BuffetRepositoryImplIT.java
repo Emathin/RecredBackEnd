@@ -42,6 +42,7 @@ class BuffetRepositoryImplIT extends AbstractIntegrationTest {
 
     private UUID buffetId;
     private UUID studentId;
+    private UUID schoolId;
 
     @BeforeEach
     void setUp() {
@@ -55,6 +56,7 @@ class BuffetRepositoryImplIT extends AbstractIntegrationTest {
         assertTrue(result.isPresent());
         assertEquals(buffetId, result.get().getId());
         assertEquals("Buffet central", result.get().getNombre());
+        assertEquals(schoolId, result.get().getColegio().getId());
     }
 
     @Test
@@ -64,6 +66,7 @@ class BuffetRepositoryImplIT extends AbstractIntegrationTest {
         assertTrue(result.isPresent());
         assertEquals(buffetId, result.get().getId());
         assertEquals("Buffet central", result.get().getNombre());
+        assertEquals(schoolId, result.get().getColegio().getId());
     }
 
 
@@ -76,6 +79,7 @@ class BuffetRepositoryImplIT extends AbstractIntegrationTest {
 
     private void prepareRelationalEnvironment() {
         ColegioEntity school = generateSchool();
+        this.schoolId = school.getId();
         BuffetEntity buffet = generateBuffet(school);
         KiosqueroEntity vendor = generateVendor(buffet);
 

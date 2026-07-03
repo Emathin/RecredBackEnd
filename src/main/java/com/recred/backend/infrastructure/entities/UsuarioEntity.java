@@ -152,6 +152,7 @@ public class UsuarioEntity {
         if (this.kiosquero != null) {
             Kiosquero k = new Kiosquero();
             k.setId(this.kiosquero.getId());
+            k.setCuit(this.kiosquero.getCuit());
             k.setBuffet(buffet(this.kiosquero));
             usuario.setKiosquero(k);
         }
