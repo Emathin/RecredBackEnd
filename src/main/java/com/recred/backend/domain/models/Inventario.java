@@ -71,7 +71,10 @@ public class Inventario {
             return;
         }
 
-        validarReserva(cantidad);
+        if (cantidad > reservedStockOrZero()) {
+            throw new InventoryOperationException("No se puede consumir más stock del reservado.");
+        }
+
         stockActual = currentStockOrZero() - cantidad;
         stockReservado = reservedStockOrZero() - cantidad;
         actualizarEstado();
@@ -84,7 +87,10 @@ public class Inventario {
             return;
         }
 
-        validarReserva(cantidad);
+        if (cantidad > reservedStockOrZero()) {
+            throw new InventoryOperationException("No se puede liberar más stock del reservado.");
+        }
+
         stockReservado = reservedStockOrZero() - cantidad;
         actualizarEstado();
     }
@@ -176,12 +182,7 @@ public class Inventario {
         }
     }
 
-    private void validarReserva(int cantidad) {
-        if (reservedStockOrZero() < cantidad) {
-            throw new InventoryOperationException(
-                    "No hay reserva suficiente para liberar o consumir.");
-        }
-    }
+
 
     private void validarCantidad(int cantidad) {
         if (cantidad <= 0) {
