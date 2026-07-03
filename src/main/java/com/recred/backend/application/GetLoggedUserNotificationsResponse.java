@@ -16,7 +16,11 @@ public record GetLoggedUserNotificationsResponse(
             String message,
             Boolean read,
             LocalDateTime createdAt,
-            LocalDateTime readAt
+            LocalDateTime readAt,
+            UUID studentId,
+            UUID productId,
+            UUID purchaseId,
+            UUID suggestionId
     ) {
     }
 }
