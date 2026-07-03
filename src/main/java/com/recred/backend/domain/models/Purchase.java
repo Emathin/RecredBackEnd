@@ -120,6 +120,16 @@ public class Purchase {
         }
     }
 
+    public void revertCancellation() {
+        if (this.status != EstadoCompra.CANCELADO) {
+            throw new IllegalStateException("Purchase is not cancelled.");
+        }
+        this.status = EstadoCompra.PENDIENTE;
+        if (this.tipo == TipoCompra.ANTICIPADA) {
+            this.withdrawalStatus = EstadoRetiro.PROGRAMADO;
+        }
+    }
+
     public void validateCancellationWindow(FranjaHoraria pickupSlot, java.time.LocalDateTime now) {
         if (this.tipo != TipoCompra.ANTICIPADA ||
                 this.pickupSlotId == null || this.pickupDate == null) {

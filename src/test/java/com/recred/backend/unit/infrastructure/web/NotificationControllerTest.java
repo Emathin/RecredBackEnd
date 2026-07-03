@@ -116,6 +116,10 @@ class NotificationControllerTest {
                 "Message",
                 false,
                 LocalDateTime.of(2026, 6, 2, 14, 30),
+                null,
+                null,
+                null,
+                null,
                 null
         );
     }

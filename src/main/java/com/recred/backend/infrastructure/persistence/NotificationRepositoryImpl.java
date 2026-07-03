@@ -70,7 +70,15 @@ public class NotificationRepositoryImpl implements NotificationRepository {
                 entity.getMensaje(),
                 entity.getLeida(),
                 entity.getCreadoEn(),
-                entity.getLeidaEn()
+                entity.getLeidaEn(),
+                entity.getAlumnoEntity() != null
+                        ? entity.getAlumnoEntity().getId() : null,
+                entity.getProductoEntity() != null
+                        ? entity.getProductoEntity().getId() : null,
+                entity.getCompraEntity() != null
+                        ? entity.getCompraEntity().getId() : null,
+                entity.getSugerenciaIaEntity() != null
+                        ? entity.getSugerenciaIaEntity().getId() : null
         );
     }
 }

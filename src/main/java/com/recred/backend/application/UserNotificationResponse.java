@@ -12,7 +12,11 @@ public record UserNotificationResponse(
         String message,
         Boolean read,
         LocalDateTime createdAt,
-        LocalDateTime readAt
+        LocalDateTime readAt,
+        UUID studentId,
+        UUID productId,
+        UUID purchaseId,
+        UUID suggestionId
 ) {
 
     public static UserNotificationResponse fromDomain(Notification notification) {
@@ -23,7 +27,11 @@ public record UserNotificationResponse(
                 notification.message(),
                 notification.read(),
                 notification.createdAt(),
-                notification.readAt()
+                notification.readAt(),
+                notification.studentId(),
+                notification.productId(),
+                notification.purchaseId(),
+                notification.suggestionId()
         );
     }
 }

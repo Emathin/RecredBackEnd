@@ -37,6 +37,8 @@ public class PurchaseController {
     private final GetPurchaseStatus getPurchaseStatus;
     private final UpdatePurchaseStatus updatePurchaseStatus;
     private final CancelPresentialPurchase cancelPresentialPurchase;
+    private final com.recred.backend.application.RevertPurchaseCancellation 
+            revertPurchaseCancellation;
     private final CreateAdvancePurchase createAdvancePurchase;
     private final KiosqueroAccessGuard kiosqueroAccessGuard;
     private final PurchaseAccessGuard purchaseAccessGuard;
@@ -46,6 +48,8 @@ public class PurchaseController {
                               GetPurchaseStatus getPurchaseStatus,
                               UpdatePurchaseStatus updatePurchaseStatus,
                               CancelPresentialPurchase cancelPresentialPurchase,
+                              com.recred.backend.application.RevertPurchaseCancellation 
+                                      revertPurchaseCancellation,
                               CreateAdvancePurchase createAdvancePurchase,
                               KiosqueroAccessGuard kiosqueroAccessGuard,
                               PurchaseAccessGuard purchaseAccessGuard) {
@@ -54,6 +58,7 @@ public class PurchaseController {
         this.getPurchaseStatus = getPurchaseStatus;
         this.updatePurchaseStatus = updatePurchaseStatus;
         this.cancelPresentialPurchase = cancelPresentialPurchase;
+        this.revertPurchaseCancellation = revertPurchaseCancellation;
         this.createAdvancePurchase = createAdvancePurchase;
         this.kiosqueroAccessGuard = kiosqueroAccessGuard;
         this.purchaseAccessGuard = purchaseAccessGuard;
@@ -175,6 +180,17 @@ public class PurchaseController {
         purchaseAccessGuard.requirePurchaseAccess(authentication, id);
         cancelPresentialPurchase.execute(
                 new com.recred.backend.application.CancelPresentialPurchaseRequest(id));
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{id}/revert")
+    public ResponseEntity<Void> revertPurchase(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        purchaseAccessGuard.requirePurchaseAccess(authentication, id);
+        revertPurchaseCancellation.execute(
+                new com.recred.backend.application.RevertPurchaseCancellationRequest(id));
         return ResponseEntity.ok().build();
     }
 
