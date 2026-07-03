@@ -803,6 +803,17 @@ public class UseCases {
     }
 
     @Bean
+    public com.recred.backend.application.RevertPurchaseCancellation revertPurchaseCancellation(
+            PurchaseRepository purchaseRepository,
+            WalletRepository walletRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        return new com.recred.backend.application.RevertPurchaseCancellation(
+                purchaseRepository,
+                walletRepository,
+                movimientoBilleteraRepository);
+    }
+
+    @Bean
     public ManageRestrictions administrarRestricciones(
             AlumnoRepository alumnoRepository,
             ClasificacionSaludRepository clasificacionRepository) {
