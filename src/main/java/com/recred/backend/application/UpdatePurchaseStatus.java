@@ -155,7 +155,8 @@ public class UpdatePurchaseStatus {
 
     private void refund(Purchase purchase) {
         Billetera wallet = walletRepository.findByStudentId(purchase.requireStudentId())
-                .orElseThrow(() -> new IllegalStateException("Student wallet not found for refund."));
+                .orElseThrow(() -> new IllegalStateException(
+                        "Student wallet not found for refund."));
         wallet.credit(purchase.getTotalAmount());
         walletRepository.save(wallet);
         registerRefundMovement(wallet, purchase);
@@ -230,7 +231,8 @@ public class UpdatePurchaseStatus {
             return;
         }
 
-        java.util.List<com.recred.backend.domain.models.Tutor> tutors = tutorRepository.findByAlumnoId(studentId);
+        java.util.List<com.recred.backend.domain.models.Tutor> tutors =
+                tutorRepository.findByAlumnoId(studentId);
         if (tutors == null || tutors.isEmpty()) {
             return;
         }
@@ -241,8 +243,9 @@ public class UpdatePurchaseStatus {
             }
             UUID tutorUserId = tutor.getUsuario().getId();
 
-            com.recred.backend.domain.models.Notification notification = new com.recred.backend.domain.models.Notification(
-                    null,
+            com.recred.backend.domain.models.Notification notification =
+                    new com.recred.backend.domain.models.Notification(
+                            null,
                     com.recred.backend.domain.models.TipoNotificacion.ESTADO_COMPRA,
                     title,
                     message,
@@ -259,8 +262,9 @@ public class UpdatePurchaseStatus {
             data.put("alumnoId", studentId.toString());
             data.put("compraId", purchase.getId().toString());
 
-            com.recred.backend.domain.models.PushNotification pushNotification = new com.recred.backend.domain.models.PushNotification(
-                    tutorUserId,
+            com.recred.backend.domain.models.PushNotification pushNotification =
+                    new com.recred.backend.domain.models.PushNotification(
+                            tutorUserId,
                     title,
                     message,
                     data);
