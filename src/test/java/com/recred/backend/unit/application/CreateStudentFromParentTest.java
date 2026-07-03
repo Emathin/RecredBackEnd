@@ -4,13 +4,16 @@ import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateStudentFromParentRequest;
 import com.recred.backend.application.CreateStudentFromParentResponse;
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.TutorSchoolStatus;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.GradoRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
+import com.recred.backend.domain.repositories.TutorSchoolRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.services.CognitoStudentIdentityService;
 import com.recred.backend.domain.services.CreatedCognitoUser;
@@ -55,6 +58,8 @@ class CreateStudentFromParentTest {
     @Mock
     private TutorRepository tutorRepository;
     @Mock
+    private TutorSchoolRepository tutorSchoolRepository;
+    @Mock
     private AlumnoRepository alumnoRepository;
     @Mock
     private GradoRepository gradoRepository;
@@ -78,6 +83,7 @@ class CreateStudentFromParentTest {
                 tutorRepository,
                 alumnoRepository,
                 gradoRepository,
+                tutorSchoolRepository,
                 cognitoStudentIdentityService);
     }
 
@@ -90,6 +96,7 @@ class CreateStudentFromParentTest {
         givenParentWithTutor();
         givenEmailAvailable(TRIMMED_EMAIL);
         givenGradeExists(grado);
+        givenTutorAssociatedToSchool(grado);
         givenCognitoCreatesStudent(TRIMMED_USERNAME, TRIMMED_EMAIL);
         givenEntitiesArePersistedWith(savedEntities);
 
@@ -170,6 +177,23 @@ class CreateStudentFromParentTest {
     }
 
     @Test
+    void tutorCannotCreateStudentInUnassociatedSchool() {
+        Grado grado = grado(UUID.randomUUID());
+
+        givenParentWithTutor();
+        givenEmailAvailable(DEFAULT_EMAIL);
+        givenGradeExists(grado);
+        givenTutorNotAssociatedToSchool(grado);
+
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class,
+                () -> createStudentFromParent.execute(requestWithGrade(grado.getId())));
+
+        assertEquals("El tutor no esta asociado al colegio del grado indicado",
+                exception.getMessage());
+        assertStopsBeforeExternalUserCreation();
+    }
+
+    @Test
     void emailLikeUsernameIsRejected() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> createStudentFromParent.execute(requestWithUsername(DEFAULT_EMAIL)));
@@ -237,6 +261,9 @@ class CreateStudentFromParentTest {
     private Grado grado(UUID id) {
         Grado grado = new Grado();
         grado.setId(id);
+        Colegio school = new Colegio();
+        school.setId(UUID.randomUUID());
+        grado.setColegio(school);
         return grado;
     }
 
@@ -276,6 +303,22 @@ class CreateStudentFromParentTest {
 
     private void givenGradeExists(Grado grado) {
         when(gradoRepository.findById(grado.getId())).thenReturn(Optional.of(grado));
+    }
+
+    private void givenTutorAssociatedToSchool(Grado grado) {
+        when(tutorSchoolRepository.existsByTutorIdAndSchoolIdAndStatus(
+                any(),
+                org.mockito.ArgumentMatchers.eq(grado.getColegio().getId()),
+                org.mockito.ArgumentMatchers.eq(TutorSchoolStatus.ACTIVE)))
+                .thenReturn(true);
+    }
+
+    private void givenTutorNotAssociatedToSchool(Grado grado) {
+        when(tutorSchoolRepository.existsByTutorIdAndSchoolIdAndStatus(
+                any(),
+                org.mockito.ArgumentMatchers.eq(grado.getColegio().getId()),
+                org.mockito.ArgumentMatchers.eq(TutorSchoolStatus.ACTIVE)))
+                .thenReturn(false);
     }
 
     private void givenMissingGrade(UUID gradoId) {

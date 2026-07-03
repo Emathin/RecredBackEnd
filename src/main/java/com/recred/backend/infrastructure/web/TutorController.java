@@ -6,6 +6,7 @@ import com.recred.backend.application.CreateStudentFromParentResponse;
 import com.recred.backend.application.GetChildrenByTutor;
 import com.recred.backend.application.GetChildrenByTutorRequest;
 import com.recred.backend.application.GetChildrenByTutorResponse;
+import com.recred.backend.application.GetTutorSchools;
 import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.application.UpdateStudentPhotoRequest;
 import com.recred.backend.application.UpdateStudentPhotoResponse;
@@ -40,17 +41,20 @@ public class TutorController {
     private final CreateStudentFromParent createStudentFromParent;
     private final UpdateStudentPhoto updateStudentPhoto;
     private final CloudinaryService cloudinaryService;
+    private final GetTutorSchools getTutorSchools;
 
     public TutorController(GetChildrenByTutor getChildrenByTutor,
                            UsuarioService usuarioService,
                            CreateStudentFromParent createStudentFromParent,
                            UpdateStudentPhoto updateStudentPhoto,
-                           CloudinaryService cloudinaryService) {
+                           CloudinaryService cloudinaryService,
+                           GetTutorSchools getTutorSchools) {
         this.getChildrenByTutor = getChildrenByTutor;
         this.usuarioService = usuarioService;
         this.createStudentFromParent = createStudentFromParent;
         this.updateStudentPhoto = updateStudentPhoto;
         this.cloudinaryService = cloudinaryService;
+        this.getTutorSchools = getTutorSchools;
     }
 
     @GetMapping("/me/hijos")
@@ -81,6 +85,17 @@ public class TutorController {
                 )));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(alumno);
+    }
+
+    @GetMapping("/me/colegios")
+    public ResponseEntity<List<SchoolResponseDTO>> obtenerMisColegios(
+            Authentication authentication) {
+        List<SchoolResponseDTO> schools = getTutorSchools.execute(cognitoSubject(authentication))
+                .stream()
+                .map(SchoolResponseDTO::fromDomain)
+                .toList();
+
+        return ResponseEntity.ok(schools);
     }
 
     @GetMapping("/{tutorId}/hijos")
