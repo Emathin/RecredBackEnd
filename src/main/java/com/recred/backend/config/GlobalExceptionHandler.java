@@ -12,6 +12,7 @@ import com.recred.backend.domain.exceptions.InventoryNotFoundException;
 import com.recred.backend.domain.exceptions.InventoryOperationException;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
+import com.recred.backend.domain.exceptions.KiosqueroPayoutConfigNotFoundException;
 import com.recred.backend.domain.exceptions.PickupCutoffTimeExceededException;
 import com.recred.backend.domain.exceptions.PickupSlotCapacityExceededException;
 import com.recred.backend.domain.exceptions.PickupSlotRulesNotFoundException;
@@ -220,6 +221,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleKiosqueroNotFound(
             KiosqueroNotFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Kiosquero no encontrado",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(KiosqueroPayoutConfigNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleKiosqueroPayoutConfigNotFound(
+            KiosqueroPayoutConfigNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Configuración no encontrada",
                 ex.getMessage());
     }
 

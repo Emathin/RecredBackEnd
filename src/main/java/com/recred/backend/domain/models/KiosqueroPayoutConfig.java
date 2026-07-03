@@ -18,10 +18,38 @@ public class KiosqueroPayoutConfig {
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
 
+    public void validateIntervalConfig() {
+        if (this.unidadIntervalo == null) {
+            throw new IllegalArgumentException("La unidad de intervalo es obligatoria.");
+        }
+        boolean isValid = false;
+        switch (this.unidadIntervalo.name()) {
+            case "DAYS":
+                isValid = (this.cantidadIntervalo == 1 || this.cantidadIntervalo == 10);
+                break;
+            case "WEEKS":
+                isValid = (this.cantidadIntervalo == 1 || this.cantidadIntervalo == 2);
+                break;
+            case "MONTHS":
+                isValid = (this.cantidadIntervalo == 1 
+                        || this.cantidadIntervalo == 2 
+                        || this.cantidadIntervalo == 3);
+                break;
+            default:
+                throw new IllegalArgumentException("Unidad de intervalo no soportada.");
+        }
+        if (!isValid) {
+            throw new IllegalArgumentException(
+                    "Intervalo inválido. Valores permitidos: " 
+                    + "DAYS (1 o 10), WEEKS (1 o 2), MONTHS (1, 2 o 3).");
+        }
+    }
+
     public void calculateNextPayout(LocalDate baseDate) {
         if (this.unidadIntervalo == null || this.cantidadIntervalo <= 0) {
             return;
         }
+        validateIntervalConfig();
         
         ChronoUnit unit = ChronoUnit.valueOf(this.unidadIntervalo.name());
         this.proximaEjecucion = baseDate.plus(this.cantidadIntervalo, unit);
