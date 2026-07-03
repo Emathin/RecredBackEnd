@@ -18,6 +18,8 @@ public interface SpringDataUsuarioRepository extends
 
     Optional<UsuarioEntity> findByEmail(String email);
 
+    Optional<UsuarioEntity> findFirstByEmailOrderByActualizadoEnDescCreadoEnDesc(String email);
+
     @Modifying
     @Query("""
             UPDATE UsuarioEntity u
