@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.entities;
 import com.recred.backend.domain.models.IntervalUnit;
 import com.recred.backend.domain.models.KiosqueroPayoutConfig;
 import com.recred.backend.domain.models.PayoutScheduleStatus;
+import org.springframework.data.domain.Persistable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -24,11 +25,11 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "kiosquero_payout_configs")
+@Table(name = "configuracion_cobro_kiosqueros")
 @Getter
 @Setter
 @NoArgsConstructor
-public class KiosqueroPayoutConfigEntity {
+public class KiosqueroPayoutConfigEntity implements Persistable<UUID> {
 
     @Id
     @Column(name = "kiosquero_id")
@@ -39,13 +40,13 @@ public class KiosqueroPayoutConfigEntity {
     @JoinColumn(name = "kiosquero_id")
     private KiosqueroEntity kiosquero;
 
-    @Column(name = "destination_cvu", nullable = false, length = 50)
+    @Column(name = "cvu_destino", nullable = false, length = 50)
     private String destinationCvu;
 
-    @Column(name = "destination_cuit", nullable = false, length = 20)
+    @Column(name = "cuit_destino", nullable = false, length = 20)
     private String destinationCuit;
 
-    @Column(name = "account_holder_name", nullable = false, length = 150)
+    @Column(name = "titular_cuenta", nullable = false, length = 150)
     private String accountHolderName;
 
     @Column(name = "cantidad_intervalo", nullable = false)
@@ -87,5 +88,15 @@ public class KiosqueroPayoutConfigEntity {
         domain.setCreadoEn(this.creadoEn);
         domain.setActualizadoEn(this.actualizadoEn);
         return domain;
+    }
+
+    @Override
+    public UUID getId() {
+        return this.kiosqueroId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return this.creadoEn == null;
     }
 }

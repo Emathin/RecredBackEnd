@@ -31,6 +31,9 @@ public class SaveKiosqueroPayoutConfig {
         config.setUnidadIntervalo(command.unidadIntervalo());
         config.setEstado(command.estado());
         
+
+        config.validateIntervalConfig();
+        
         if (config.getProximaEjecucion() == null) {
             config.calculateNextPayout(LocalDate.now());
         }
