@@ -11,6 +11,9 @@ import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
+import com.recred.backend.domain.repositories.TutorRepository;
+import com.recred.backend.domain.repositories.NotificationRepository;
+import com.recred.backend.domain.services.PushNotificationSender;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +26,9 @@ public class UpdatePurchaseStatus {
     private final WalletRepository walletRepository;
     private final KiosqueroRealtimeEventPublisher realtimeEventPublisher;
     private final MovimientoBilleteraRepository movimientoBilleteraRepository;
+    private final TutorRepository tutorRepository;
+    private final NotificationRepository notificationRepository;
+    private final PushNotificationSender pushNotificationSender;
 
     public UpdatePurchaseStatus(
             PurchaseRepository purchaseRepository,
@@ -47,11 +53,27 @@ public class UpdatePurchaseStatus {
             WalletRepository walletRepository,
             KiosqueroRealtimeEventPublisher realtimeEventPublisher,
             MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        this(purchaseRepository, inventoryAvailabilityService, walletRepository,
+                realtimeEventPublisher, movimientoBilleteraRepository, null, null, null);
+    }
+
+    public UpdatePurchaseStatus(
+            PurchaseRepository purchaseRepository,
+            InventoryAvailabilityService inventoryAvailabilityService,
+            WalletRepository walletRepository,
+            KiosqueroRealtimeEventPublisher realtimeEventPublisher,
+            MovimientoBilleteraRepository movimientoBilleteraRepository,
+            TutorRepository tutorRepository,
+            NotificationRepository notificationRepository,
+            PushNotificationSender pushNotificationSender) {
         this.purchaseRepository = purchaseRepository;
         this.inventoryAvailabilityService = inventoryAvailabilityService;
         this.walletRepository = walletRepository;
         this.realtimeEventPublisher = realtimeEventPublisher;
         this.movimientoBilleteraRepository = movimientoBilleteraRepository;
+        this.tutorRepository = tutorRepository;
+        this.notificationRepository = notificationRepository;
+        this.pushNotificationSender = pushNotificationSender;
     }
 
     @Transactional
@@ -63,6 +85,9 @@ public class UpdatePurchaseStatus {
         handleStatusChangeSideEffects(purchase, previousStatus, request.requestedStatus());
         Purchase savedPurchase = purchaseRepository.save(purchase);
         publishOperationalEvent(savedPurchase, request.requestedStatus());
+        // Usamos 'purchase' (pre-save) porque tiene el alumno con nombre completo cargado.
+        // El id ya fue actualizado por purchaseRepository.save() en el objeto original.
+        notifyTutorsOnStatusChange(purchase, previousStatus, request.requestedStatus());
         return response(savedPurchase);
     }
 
@@ -151,5 +176,106 @@ public class UpdatePurchaseStatus {
                 TipoMovimientoBilletera.REEMBOLSO,
                 purchase.getTotalAmount(),
                 "Reembolso por rechazo de compra");
+    }
+
+    private void notifyTutorsOnStatusChange(
+            Purchase purchase,
+            EstadoCompra previousStatus,
+            EstadoCompra requestedStatus) {
+        if (tutorRepository == null
+                || notificationRepository == null
+                || pushNotificationSender == null) {
+            return;
+        }
+        if (previousStatus == requestedStatus) {
+            return;
+        }
+
+        String title;
+        String message;
+        String studentName = purchase.getStudent() != null
+                ? purchase.getStudent().getNombre()
+                : "El alumno";
+
+        switch (requestedStatus) {
+            case EN_PREPARACION -> {
+                title = "Pedido en preparación";
+                message = "El pedido de " + studentName + " está en preparación.";
+            }
+            case LISTO -> {
+                title = "Pedido listo para retirar";
+                message = "El pedido de " + studentName + " está listo para retirar.";
+            }
+            case ENTREGADO -> {
+                title = "Pedido entregado";
+                message = "El pedido de " + studentName + " fue entregado.";
+            }
+            case CANCELADO -> {
+                title = "Pedido cancelado";
+                message = "El pedido de " + studentName + " fue cancelado.";
+            }
+            case RECHAZADO -> {
+                title = "Pedido rechazado";
+                message = "El pedido de " + studentName + " fue rechazado.";
+            }
+            case VENCIDO -> {
+                title = "Pedido vencido";
+                message = "El pedido de " + studentName + " ha vencido.";
+            }
+            case NO_RETIRADO -> {
+                title = "Pedido no retirado";
+                message = "El pedido de " + studentName + " no fue retirado.";
+            }
+            default -> {
+                return;
+            }
+        }
+
+        UUID studentId = purchase.studentIdOrNull();
+        if (studentId == null) {
+            return;
+        }
+
+        java.util.List<com.recred.backend.domain.models.Tutor> tutors =
+                tutorRepository.findByAlumnoId(studentId);
+        if (tutors == null || tutors.isEmpty()) {
+            return;
+        }
+
+        for (com.recred.backend.domain.models.Tutor tutor : tutors) {
+            if (tutor.getUsuario() == null) {
+                continue;
+            }
+            UUID tutorUserId = tutor.getUsuario().getId();
+
+            com.recred.backend.domain.models.Notification notification =
+                    new com.recred.backend.domain.models.Notification(
+                            null,
+                            com.recred.backend.domain.models.TipoNotificacion.ESTADO_COMPRA,
+                            title,
+                            message,
+                            false,
+                            java.time.LocalDateTime.now(),
+                            null,
+                            studentId,
+                            null,
+                            purchase.getId(),
+                            null
+                    );
+            notificationRepository.save(notification, tutorUserId);
+
+            java.util.Map<String, String> data = new java.util.HashMap<>();
+            data.put("alumnoId", studentId.toString());
+            data.put("compraId", purchase.getId().toString());
+
+            com.recred.backend.domain.models.PushNotification pushNotification =
+                    new com.recred.backend.domain.models.PushNotification(
+                            tutorUserId,
+                            title,
+                            message,
+                            data
+                    );
+            pushNotificationSender.send(pushNotification);
+        }
     }
 }

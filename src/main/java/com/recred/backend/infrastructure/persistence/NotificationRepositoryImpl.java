@@ -3,7 +3,12 @@ package com.recred.backend.infrastructure.persistence;
 import com.recred.backend.domain.models.Notification;
 import com.recred.backend.domain.repositories.NotificationRepository;
 import com.recred.backend.infrastructure.entities.NotificacionEntity;
+import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.CompraEntity;
+import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import com.recred.backend.infrastructure.persistence.SpringDataUsuarioRepository;
+import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
@@ -15,11 +20,14 @@ public class NotificationRepositoryImpl implements NotificationRepository {
 
     private final NotificacionJpaRepository notificationJpaRepository;
     private final SpringDataUsuarioRepository usuarioRepository;
+    private final EntityManager entityManager;
 
     public NotificationRepositoryImpl(NotificacionJpaRepository notificationJpaRepository,
-                                      SpringDataUsuarioRepository usuarioRepository) {
+                                      SpringDataUsuarioRepository usuarioRepository,
+                                      EntityManager entityManager) {
         this.notificationJpaRepository = notificationJpaRepository;
         this.usuarioRepository = usuarioRepository;
+        this.entityManager = entityManager;
     }
 
     @Override
@@ -58,6 +66,23 @@ public class NotificationRepositoryImpl implements NotificationRepository {
         entity.setCreadoEn(notification.createdAt() !=
                 null ? notification.createdAt() : java.time.LocalDateTime.now());
         entity.setLeidaEn(notification.readAt());
+        
+        if (notification.studentId() != null) {
+            entity.setAlumnoEntity(entityManager.getReference(
+                    AlumnoEntity.class, notification.studentId()));
+        }
+        if (notification.productId() != null) {
+            entity.setProductoEntity(entityManager.getReference(
+                    ProductoEntity.class, notification.productId()));
+        }
+        if (notification.purchaseId() != null) {
+            entity.setCompraEntity(entityManager.getReference(
+                    CompraEntity.class, notification.purchaseId()));
+        }
+        if (notification.suggestionId() != null) {
+            entity.setSugerenciaIaEntity(entityManager.getReference(
+                    SugerenciaIAEntity.class, notification.suggestionId()));
+        }
         
         notificationJpaRepository.save(entity);
     }
