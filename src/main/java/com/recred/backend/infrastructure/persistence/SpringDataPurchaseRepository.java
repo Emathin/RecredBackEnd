@@ -126,6 +126,27 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
 
         @Query("""
                         select purchase
+                        from CompraEntity purchase
+                        left join RetiroProgramadoEntity pickup
+                        on pickup.compraEntity = purchase
+                        where purchase.buffetEntity.id = :buffetId
+                        and (
+                            (pickup.id is not null and pickup.fechaProgramada
+                            between :startDate and :endDate)
+                            or (pickup.id is null and purchase.fechaHora
+                            between :start and :end)
+                        )
+                        order by purchase.fechaHora asc
+                        """)
+        List<CompraEntity> findByBuffetAndPickupOrCreationDateRange(
+                        @Param("buffetId") UUID buffetId,
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate,
+                        @Param("start") LocalDateTime start,
+                        @Param("end") LocalDateTime end);
+
+        @Query("""
+                        select purchase
                         from CompraAnticipadaEntity purchase
                         join purchase.retiroProgramadoEntity pickup
                         where purchase.estado in :statuses

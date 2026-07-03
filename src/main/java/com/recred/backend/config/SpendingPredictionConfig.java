@@ -15,7 +15,7 @@ public class SpendingPredictionConfig {
 
     @Bean
     public Clock applicationClock() {
-        return Clock.systemDefaultZone();
+        return Clock.system(java.time.ZoneId.of("America/Argentina/Buenos_Aires"));
     }
 
     @Bean

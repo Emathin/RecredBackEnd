@@ -222,12 +222,15 @@ public class Purchase {
     }
 
     public boolean happenedBetween(LocalDate from, LocalDate to) {
-        if (date == null) {
+        LocalDate effectiveDate = this.tipo == TipoCompra.ANTICIPADA && this.pickupDate != null
+                ? this.pickupDate
+                : (date != null ? date.toLocalDate() : null);
+
+        if (effectiveDate == null) {
             return false;
         }
 
-        LocalDate purchaseDate = date.toLocalDate();
-        return !purchaseDate.isBefore(from) && !purchaseDate.isAfter(to);
+        return !effectiveDate.isBefore(from) && !effectiveDate.isAfter(to);
     }
 
     public boolean hasDate() {
@@ -235,7 +238,9 @@ public class Purchase {
     }
 
     public LocalDate purchaseDate() {
-        return date.toLocalDate();
+        return this.tipo == TipoCompra.ANTICIPADA && this.pickupDate != null
+                ? this.pickupDate
+                : (date != null ? date.toLocalDate() : LocalDate.now());
     }
 
     public BigDecimal totalAmountOrZero() {
