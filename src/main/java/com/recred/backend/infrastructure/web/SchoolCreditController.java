@@ -91,10 +91,10 @@ public class SchoolCreditController {
     public ResponseEntity<GetActiveSchoolCreditResponse> getActiveCredit(
             @PathVariable UUID studentId) {
         try {
-            return getActiveSchoolCredit.execute(
+            GetActiveSchoolCreditResponse response = getActiveSchoolCredit.execute(
                             new GetActiveSchoolCreditRequest(studentId))
-                    .map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
+                    .orElse(null);
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
