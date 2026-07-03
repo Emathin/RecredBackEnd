@@ -49,6 +49,8 @@ class PurchaseControllerTest {
     @Mock
     private CancelPresentialPurchase cancelPresentialPurchase;
     @Mock
+    private com.recred.backend.application.RevertPurchaseCancellation revertPurchaseCancellation;
+    @Mock
     private CreateAdvancePurchase createAdvancePurchase;
     @Mock
     private KiosqueroAccessGuard kiosqueroAccessGuard;
@@ -65,6 +67,7 @@ class PurchaseControllerTest {
                 getPurchaseStatus,
                 updatePurchaseStatus,
                 cancelPresentialPurchase,
+                revertPurchaseCancellation,
                 createAdvancePurchase,
                 kiosqueroAccessGuard,
                 purchaseAccessGuard
@@ -130,6 +133,19 @@ class PurchaseControllerTest {
         verify(purchaseAccessGuard).requirePurchaseAccess(authentication, purchaseId);
         verify(kiosqueroAccessGuard).requireBuffetAccess(authentication, buffetId);
         verify(updatePurchaseStatus).execute(request);
+    }
+
+    @Test
+    void revertPurchase_ShouldRequireAccessAndDelegateWithRequest() {
+        UUID purchaseId = UUID.randomUUID();
+        Authentication authentication = mock(Authentication.class);
+
+        ResponseEntity<Void> response = controller.revertPurchase(purchaseId, authentication);
+
+        assertEquals(200, response.getStatusCode().value());
+        verify(purchaseAccessGuard).requirePurchaseAccess(authentication, purchaseId);
+        verify(revertPurchaseCancellation).execute(
+                new com.recred.backend.application.RevertPurchaseCancellationRequest(purchaseId));
     }
 
     private void givenPurchaseStatusFound(

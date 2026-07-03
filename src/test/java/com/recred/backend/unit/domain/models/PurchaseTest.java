@@ -222,6 +222,24 @@ class PurchaseTest {
     }
 
     @Test
+    void revertCancellation_WhenPurchaseIsCancelled_ShouldUpdateStatus() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.CANCELADO);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+
+        purchase.revertCancellation();
+
+        assertEquals(EstadoCompra.PENDIENTE, purchase.getStatus());
+        assertEquals(EstadoRetiro.PROGRAMADO, purchase.getWithdrawalStatus());
+    }
+
+    @Test
+    void revertCancellation_WhenPurchaseIsNotCancelled_ShouldThrowException() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+
+        assertThrows(IllegalStateException.class, purchase::revertCancellation);
+    }
+
+    @Test
     void dashboardStatusQueries_ShouldExposePurchaseBusinessState() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.ENTREGADO);
         purchase.setTipo(TipoCompra.ANTICIPADA);

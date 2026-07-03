@@ -14,27 +14,36 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.recred.backend.domain.repositories.KiosqueroRepository;
 
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/kiosqueros/{kiosqueroId}/payout-config")
+@RequestMapping("/api/v1/kiosqueros/{usuarioId}/payout-config")
 public class KiosqueroPayoutConfigController {
 
     private final SaveKiosqueroPayoutConfig saveKiosqueroPayoutConfig;
     private final GetKiosqueroPayoutConfig getKiosqueroPayoutConfig;
+    private final KiosqueroRepository kiosqueroRepository;
 
     public KiosqueroPayoutConfigController(
             SaveKiosqueroPayoutConfig saveKiosqueroPayoutConfig,
-            GetKiosqueroPayoutConfig getKiosqueroPayoutConfig) {
+            GetKiosqueroPayoutConfig getKiosqueroPayoutConfig,
+            KiosqueroRepository kiosqueroRepository) {
         this.saveKiosqueroPayoutConfig = saveKiosqueroPayoutConfig;
         this.getKiosqueroPayoutConfig = getKiosqueroPayoutConfig;
+        this.kiosqueroRepository = kiosqueroRepository;
     }
 
     @PostMapping
     public ResponseEntity<SaveKiosqueroPayoutConfigResponse> saveConfig(
-            @PathVariable UUID kiosqueroId,
+            @PathVariable UUID usuarioId,
             @RequestBody SaveKiosqueroPayoutConfigCommand command) {
+        
+        UUID kiosqueroId = kiosqueroRepository.findKiosqueroIdByUsuarioId(usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Kiosquero no encontrado para el usuario: " + usuarioId));
+
         SaveKiosqueroPayoutConfigCommand safeCommand = new SaveKiosqueroPayoutConfigCommand(
                 kiosqueroId,
                 command.destinationCvu(),
@@ -51,7 +60,12 @@ public class KiosqueroPayoutConfigController {
 
     @GetMapping
     public ResponseEntity<GetKiosqueroPayoutConfigResponse> getConfig(
-            @PathVariable UUID kiosqueroId) {
+            @PathVariable UUID usuarioId) {
+        
+        UUID kiosqueroId = kiosqueroRepository.findKiosqueroIdByUsuarioId(usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Kiosquero no encontrado para el usuario: " + usuarioId));
+
         GetKiosqueroPayoutConfigCommand command = new GetKiosqueroPayoutConfigCommand(kiosqueroId);
         GetKiosqueroPayoutConfigResponse response = getKiosqueroPayoutConfig.execute(command);
         return ResponseEntity.ok(response);
