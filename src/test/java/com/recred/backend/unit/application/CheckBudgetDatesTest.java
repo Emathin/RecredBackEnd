@@ -60,7 +60,8 @@ class CheckBudgetDatesTest {
                 any(LocalDateTime.class)
         )).thenReturn(Optional.empty());
 
-        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(
+                request.withStudentId(studentId));
 
         assertEquals(2, response.validationResults().size());
         assertFalse(response.validationResults().get(0).blocked());
@@ -77,7 +78,8 @@ class CheckBudgetDatesTest {
                 List.of()
         );
 
-        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(
+                request.withStudentId(studentId));
 
         assertEquals(1, response.validationResults().size());
         assertTrue(response.validationResults().get(0).blocked());
@@ -115,7 +117,8 @@ class CheckBudgetDatesTest {
                 any(LocalDateTime.class)
         )).thenReturn(Optional.of(expectedReason));
 
-        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(
+                request.withStudentId(studentId));
 
         assertEquals(1, response.validationResults().size());
         assertTrue(response.validationResults().get(0).blocked());
@@ -136,7 +139,7 @@ class CheckBudgetDatesTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> checkBudgetDates.execute(studentId, request)
+                () -> checkBudgetDates.execute(request.withStudentId(studentId))
         );
         assertEquals("Product or Promotion not found: " + productId, exception.getMessage());
     }
@@ -166,7 +169,8 @@ class CheckBudgetDatesTest {
                 any(LocalDateTime.class)
         )).thenReturn(Optional.empty());
 
-        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(
+                request.withStudentId(studentId));
 
         assertEquals(1, response.validationResults().size());
         assertFalse(response.validationResults().get(0).blocked());
@@ -206,7 +210,8 @@ class CheckBudgetDatesTest {
                 any(LocalDateTime.class)
         )).thenReturn(Optional.empty());
 
-        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(
+                request.withStudentId(studentId));
 
         assertEquals(1, response.validationResults().size());
         assertFalse(response.validationResults().get(0).blocked());

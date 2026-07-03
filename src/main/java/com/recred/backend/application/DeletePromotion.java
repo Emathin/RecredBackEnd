@@ -4,8 +4,6 @@ import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.domain.repositories.PromotionRepository;
 
-import java.util.UUID;
-
 public class DeletePromotion {
 
     private final PromotionRepository promotionRepository;
@@ -14,10 +12,11 @@ public class DeletePromotion {
         this.promotionRepository = promotionRepository;
     }
 
-    public void execute(UUID id) {
-        Promotion promotion = promotionRepository.findById(id)
+    public DeletePromotionResponse execute(DeletePromotionRequest request) {
+        Promotion promotion = promotionRepository.findById(request.id())
                 .orElseThrow(() -> new IllegalArgumentException("Promotion not found."));
         promotion.setStatus(PromotionStatus.REJECTED);
         promotionRepository.save(promotion);
+        return new DeletePromotionResponse(promotion.getId());
     }
 }

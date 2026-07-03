@@ -44,4 +44,11 @@ public class Tutor {
                     "No autorizado para comprar a nombre de este alumno");
         }
     }
+
+    public Alumno childOrThrow(UUID studentId, String message) {
+        return hijos.stream()
+                .filter(child -> child.getId().equals(studentId))
+                .findFirst()
+                .orElseThrow(() -> new SecurityException(message));
+    }
 }

@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GenerateLowBalanceAlerts;
+import com.recred.backend.application.GenerateLowBalanceAlertsRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,7 +20,7 @@ public class LowBalanceAlertController {
     @PostMapping
     public ResponseEntity<String> triggerLowBalanceAlerts() {
         try {
-            generateLowBalanceAlerts.execute();
+            generateLowBalanceAlerts.execute(new GenerateLowBalanceAlertsRequest());
             return ResponseEntity.ok("Low balance alerts triggered successfully.");
         } catch (Exception e) {
             return ResponseEntity.internalServerError()

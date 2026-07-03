@@ -53,34 +53,68 @@ public class ProcessPresentialPurchase {
 
     @Transactional
     public ProcessPresentialPurchaseResponse execute(ProcessPresentialPurchaseRequest request) {
+        UUID buffetId = requireBuffetId(request);
+        Alumno student = findStudent(request.studentId());
+        Map<Producto, Integer> resolvedCart = resolveCart(request.cart());
+        Purchase purchase = validatedPurchase(student, resolvedCart, buffetId);
+        Billetera wallet = validatedWallet(request.studentId(), purchase.getTotalAmount());
+        processPaymentAndInventory(buffetId, resolvedCart, wallet, purchase.getTotalAmount());
+        Purchase savedPurchase = saveAndRegister(purchase, wallet, student);
+        return response(savedPurchase);
+    }
+
+    private UUID requireBuffetId(ProcessPresentialPurchaseRequest request) {
         if (request.buffetId() == null) {
             throw new IllegalArgumentException("buffetId is required");
         }
+        return request.buffetId();
+    }
 
-        Alumno student = findStudent(request.studentId());
-        Map<Producto, Integer> resolvedCart = resolveCart(request.cart());
-
+    private Purchase validatedPurchase(
+            Alumno student,
+            Map<Producto, Integer> resolvedCart,
+            UUID buffetId
+    ) {
         Purchase purchase = new Purchase(
                 student,
                 resolvedCart,
                 MedioPago.CREDITOS,
                 student.getId(),
                 BuyerType.STUDENT,
-                request.buffetId()
+                buffetId
         );
-
         purchaseValidator.validate(purchase);
-        BigDecimal totalAmount = purchase.getTotalAmount();
-        
-        Billetera wallet = getStudentWallet(request.studentId());
-        validateWalletBalance(wallet, totalAmount, request.studentId());
+        return purchase;
+    }
 
-        inventoryAvailabilityService.consumeDirectly(request.buffetId(), resolvedCart);
+    private Billetera validatedWallet(UUID studentId, BigDecimal totalAmount) {
+        Billetera wallet = getStudentWallet(studentId);
+        validateWalletBalance(wallet, totalAmount, studentId);
+        return wallet;
+    }
+
+    private void processPaymentAndInventory(
+            UUID buffetId,
+            Map<Producto, Integer> resolvedCart,
+            Billetera wallet,
+            BigDecimal totalAmount
+    ) {
+        inventoryAvailabilityService.consumeDirectly(buffetId, resolvedCart);
         debitWalletAndSave(wallet, totalAmount);
-        
+    }
+
+    private Purchase saveAndRegister(Purchase purchase, Billetera wallet, Alumno student) {
         Purchase savedPurchase = purchaseRepository.save(purchase);
-        registerMovement(wallet, student, totalAmount, "Compra presencial en buffet");
-        
+        registerMovement(
+                wallet,
+                student,
+                purchase.getTotalAmount(),
+                "Compra presencial en buffet"
+        );
+        return savedPurchase;
+    }
+
+    private ProcessPresentialPurchaseResponse response(Purchase savedPurchase) {
         return new ProcessPresentialPurchaseResponse(
                 savedPurchase.getId(),
                 savedPurchase.getTotalAmount(),

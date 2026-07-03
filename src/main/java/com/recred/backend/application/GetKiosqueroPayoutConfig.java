@@ -11,23 +11,27 @@ public class GetKiosqueroPayoutConfig {
         this.repository = repository;
     }
 
-    public GetKiosqueroPayoutConfigResponse execute(GetKiosqueroPayoutConfigCommand command) {
+    public GetKiosqueroPayoutConfigResponse execute(GetKiosqueroPayoutConfigRequest request) {
         KiosqueroPayoutConfig config = repository
-                .findByKiosqueroId(command.kiosqueroId())
+                .findByKiosqueroId(request.kiosqueroId())
                 .orElseThrow(() -> new KiosqueroPayoutConfigNotFoundException(
-                        command.kiosqueroId()
+                        request.kiosqueroId()
                 ));
-        
+
+        return toResponse(config);
+    }
+
+    private GetKiosqueroPayoutConfigResponse toResponse(KiosqueroPayoutConfig config) {
         return new GetKiosqueroPayoutConfigResponse(
-            config.getKiosqueroId(),
-            config.getDestinationCvu(),
-            config.getDestinationCuit(),
-            config.getAccountHolderName(),
-            config.getCantidadIntervalo(),
-            config.getUnidadIntervalo(),
-            config.getEstado(),
-            config.getProximaEjecucion(),
-            config.getUltimaEjecucion()
+                config.getKiosqueroId(),
+                config.getDestinationCvu(),
+                config.getDestinationCuit(),
+                config.getAccountHolderName(),
+                config.getCantidadIntervalo(),
+                config.getUnidadIntervalo(),
+                config.getEstado(),
+                config.getProximaEjecucion(),
+                config.getUltimaEjecucion()
         );
     }
 }

@@ -3,6 +3,7 @@ package com.recred.backend.unit.infrastructure.scheduling;
 import com.recred.backend.infrastructure.scheduling.ProductChangeRecomendationJob;
 
 import com.recred.backend.application.GenerateProductChangeRecommendation;
+import com.recred.backend.application.GenerateProductChangeRecommendationRequest;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.Mockito.mock;
@@ -17,6 +18,6 @@ class ProductChangeRecomendationJobTest {
 
         job.run();
 
-        verify(useCase).execute();
+        verify(useCase).execute(new GenerateProductChangeRecommendationRequest());
     }
 }

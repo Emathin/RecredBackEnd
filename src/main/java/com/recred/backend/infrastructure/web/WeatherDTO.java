@@ -1,5 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.WeatherResponse;
+
 public class WeatherDTO {
     private Double temperature;
     private String condition;
@@ -48,5 +50,18 @@ public class WeatherDTO {
 
     public void setProvincia(String provincia) {
         this.provincia = provincia;
+    }
+
+    public static WeatherDTO fromApplication(WeatherResponse response) {
+        if (response == null) {
+            return null;
+        }
+
+        return new WeatherDTO(
+                response.temperature(),
+                response.condition(),
+                response.city(),
+                response.province()
+        );
     }
 }

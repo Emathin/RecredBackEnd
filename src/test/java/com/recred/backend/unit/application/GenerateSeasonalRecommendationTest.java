@@ -2,6 +2,8 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.CreatePromotion;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
+import com.recred.backend.application.GenerateSeasonalRecommendationRequest;
+import com.recred.backend.application.SeasonalRecommendationResponse;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.openMeteo.NominatimGeocodingClient;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
@@ -69,12 +71,12 @@ class GenerateSeasonalRecommendationTest {
         when(geminiSuggesterMock.getSeasonalRecommendations(anyString(), anyDouble(), anyString(), anyString()))
                 .thenReturn(recomendacionSimulada);
 
-        RecommendationResponseDTO resultado = useCase.execute(-34.7, -58.47, null);
+        SeasonalRecommendationResponse resultado = execute(-34.7, -58.47, null);
 
         assertNotNull(resultado);
-        assertEquals("Promo 2x1 en helados.", resultado.getPromocionalTip());
-        assertEquals(1, resultado.getSugerences().size());
-        assertEquals("Helados y Congelados", resultado.getSugerences().get(0).getCategoria());
+        assertEquals("Promo 2x1 en helados.", resultado.promotionalTip());
+        assertEquals(1, resultado.suggestions().size());
+        assertEquals("Helados y Congelados", resultado.suggestions().get(0).category());
     }
 
     @Test
@@ -83,7 +85,7 @@ class GenerateSeasonalRecommendationTest {
                 .thenThrow(new RuntimeException("Weather service is currently unavailable"));
 
         RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
-            useCase.execute(-34.7, -58.47, null);
+            execute(-34.7, -58.47, null);
         });
 
         assertEquals("Weather service is currently unavailable", excepcion.getMessage());
@@ -101,7 +103,7 @@ class GenerateSeasonalRecommendationTest {
                 .thenThrow(new RuntimeException("Failed to generate seasonal recommendations from AI."));
 
         RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
-            useCase.execute(-34.7, -58.47, null);
+            execute(-34.7, -58.47, null);
         });
 
         assertEquals("Failed to generate seasonal recommendations from AI.", excepcion.getMessage());
@@ -119,7 +121,7 @@ class GenerateSeasonalRecommendationTest {
         when(geminiSuggesterMock.getSeasonalRecommendations(anyString(), anyDouble(), anyString(), anyString()))
                 .thenReturn(recomendacionSimulada);
 
-        useCase.execute(10.0, 20.0, null);
+        execute(10.0, 20.0, null);
 
         InOrder ordenDeInvocacion = inOrder(climaServiceMock, categoryRepository, geminiSuggesterMock);
         ordenDeInvocacion.verify(climaServiceMock).getCurrentWeather(10.0, 20.0);
@@ -149,11 +151,11 @@ class GenerateSeasonalRecommendationTest {
                 product(productId, "Bebidas frias"),
                 product(secondProductId, "Bebidas frias")
         ));
-        RecommendationResponseDTO resultado = useCase.execute(-34.7, -58.47, null);
+        SeasonalRecommendationResponse resultado = execute(-34.7, -58.47, null);
 
-        assertNull(resultado.getCreatedPromotion());
-        assertNotNull(resultado.getSuggestedPromotion().getProductIds());
-        assertEquals(2, resultado.getSuggestedPromotion().getProductIds().size());
+        assertNull(resultado.createdPromotion());
+        assertNotNull(resultado.suggestedPromotion().productIds());
+        assertEquals(2, resultado.suggestedPromotion().productIds().size());
     }
 
     @Test
@@ -177,11 +179,11 @@ class GenerateSeasonalRecommendationTest {
                 product(matchedProductId, "Bebidas calientes"),
                 product(fallbackProductId, "Snacks")
         ));
-        RecommendationResponseDTO resultado = useCase.execute(-34.7, -58.47, null);
+        SeasonalRecommendationResponse resultado = execute(-34.7, -58.47, null);
 
-        assertNull(resultado.getCreatedPromotion());
-        assertNotNull(resultado.getSuggestedPromotion().getProductIds());
-        assertEquals(2, resultado.getSuggestedPromotion().getProductIds().size());
+        assertNull(resultado.createdPromotion());
+        assertNotNull(resultado.suggestedPromotion().productIds());
+        assertEquals(2, resultado.suggestedPromotion().productIds().size());
     }
 
     private Producto product(UUID productId, String categoryDescription) {
@@ -193,5 +195,17 @@ class GenerateSeasonalRecommendationTest {
         product.setId(productId);
         product.setCategoria(category);
         return product;
+    }
+
+    private SeasonalRecommendationResponse execute(
+            Double latitude,
+            Double longitude,
+            UUID buffetId
+    ) {
+        return useCase.execute(new GenerateSeasonalRecommendationRequest(
+                latitude,
+                longitude,
+                buffetId
+        ));
     }
 }

@@ -17,9 +17,11 @@ import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreatePromotion;
+import com.recred.backend.application.CreateTimeSlot;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateSupplier;
 import com.recred.backend.application.CreateTimeRestriction;
+import com.recred.backend.application.DeactivateTimeSlot;
 import com.recred.backend.application.DeleteFavoriteCart;
 import com.recred.backend.application.DeleteFavoriteProduct;
 import com.recred.backend.application.DeleteProduct;
@@ -111,7 +113,10 @@ import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.ProcessScheduledPayouts;
 import com.recred.backend.application.PurchaseSuggestIA;
+import com.recred.backend.application.GetTimeSlot;
+import com.recred.backend.application.ListSchoolTimeSlots;
 import com.recred.backend.application.RecommendSupplierForProducts;
+import com.recred.backend.application.ReactivateTimeSlot;
 import com.recred.backend.application.RejectSchoolRegistration;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
@@ -134,6 +139,7 @@ import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePurchaseStatus;
 import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.application.UpdateSupplier;
+import com.recred.backend.application.UpdateTimeSlot;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.application.UploadProductImage;
@@ -397,8 +403,9 @@ public class UseCases {
 
     @Bean
     public RecessTimeSlotResolver recessTimeSlotResolver(
-            FranjaHorariaRepository franjaHorariaRepository) {
-        return new RecessTimeSlotResolver(franjaHorariaRepository);
+            FranjaHorariaRepository franjaHorariaRepository,
+            BuffetRepository buffetRepository) {
+        return new RecessTimeSlotResolver(franjaHorariaRepository, buffetRepository);
     }
 
     @Bean
@@ -597,77 +604,6 @@ public class UseCases {
     }
 
     @Bean
-    public SchoolAssistantFixedTopics schoolAssistantFixedTopics(
-            PurchaseRepository purchaseRepository,
-            ProductRepository productRepository,
-            CreateAssistantAdvancePurchase createAssistantAdvancePurchase,
-            CancelPresentialPurchase cancelPresentialPurchase,
-            Clock clock) {
-        return new SchoolAssistantFixedTopics(
-                purchaseRepository,
-                productRepository,
-                createAssistantAdvancePurchase,
-                cancelPresentialPurchase,
-                clock);
-    }
-
-    @Bean
-    public AskSchoolAssistant askSchoolAssistant(
-            AlumnoRepository alumnoRepository,
-            WalletRepository walletRepository,
-            SchoolAssistantPaymentRepository paymentRepository,
-            SchoolAssistantPurchaseRepository schoolAssistantPurchaseRepository,
-            SchoolCalendarRepository schoolCalendarRepository,
-            ChatSessionRepository chatSessionRepository,
-            ChatMessageRepository chatMessageRepository,
-            SchoolAssistantResponder schoolAssistantResponder,
-            UsuarioRepository usuarioRepository,
-            TutorRepository tutorRepository,
-            KiosqueroRepository kiosqueroRepository,
-            ProductRepository productRepository,
-            PurchaseRepository purchaseRepository,
-            PresupuestoRepository presupuestoRepository,
-            SchoolAssistantFixedTopics fixedTopics,
-            Clock clock) {
-        return new AskSchoolAssistant(
-                alumnoRepository,
-                walletRepository,
-                paymentRepository,
-                schoolAssistantPurchaseRepository,
-                schoolCalendarRepository,
-                chatSessionRepository,
-                chatMessageRepository,
-                schoolAssistantResponder,
-                usuarioRepository,
-                tutorRepository,
-                kiosqueroRepository,
-                productRepository,
-                purchaseRepository,
-                presupuestoRepository,
-                fixedTopics,
-                clock);
-    }
-
-    @Bean
-    public SchoolAssistantConversations schoolAssistantConversations(
-            ChatSessionRepository chatSessionRepository,
-            ChatMessageRepository chatMessageRepository,
-            AlumnoRepository alumnoRepository,
-            UsuarioRepository usuarioRepository,
-            TutorRepository tutorRepository,
-            KiosqueroRepository kiosqueroRepository,
-            Clock clock) {
-        return new SchoolAssistantConversations(
-                chatSessionRepository,
-                chatMessageRepository,
-                alumnoRepository,
-                usuarioRepository,
-                tutorRepository,
-                kiosqueroRepository,
-                clock);
-    }
-
-    @Bean
     public GetLoggedUserConsumptionDetail getLoggedUserConsumptionDetail(
             ConsumptionAccessRepository consumptionAccessRepository,
             StudentConsumptionRepository studentConsumptionRepository,
@@ -730,35 +666,6 @@ public class UseCases {
                 inventoryAvailabilityService,
                 movimientoBilleteraRepository,
                 productRepository);
-    }
-
-    @Bean
-    public CreateAssistantAdvancePurchase createAssistantAdvancePurchase(
-            AlumnoRepository studentRepository,
-            WalletRepository walletRepository,
-            PurchaseRepository purchaseRepository,
-            RecessTimeSlotResolver recessTimeSlotResolver,
-            ValidadorHorarioService timeValidator,
-            ValidacionRestriccionesService healthValidator,
-            ValidadorPresupuestoService budgetValidator,
-            WithdrawalCodeService withdrawalCodeService,
-            Clock clock,
-            InventoryAvailabilityService inventoryAvailabilityService,
-            AdvancePurchaseRulesService advancePurchaseRulesService,
-            MovimientoBilleteraRepository movimientoBilleteraRepository) {
-        return new CreateAssistantAdvancePurchase(
-                studentRepository,
-                walletRepository,
-                purchaseRepository,
-                recessTimeSlotResolver,
-                timeValidator,
-                healthValidator,
-                budgetValidator,
-                withdrawalCodeService,
-                clock,
-                inventoryAvailabilityService,
-                advancePurchaseRulesService,
-                movimientoBilleteraRepository);
     }
 
     @Bean
@@ -860,6 +767,49 @@ public class UseCases {
     public GetTimeSlotsBySchool getTimeSlotsBySchool(
             FranjaHorariaRepository franjaHorariaRepository) {
         return new GetTimeSlotsBySchool(franjaHorariaRepository);
+    }
+
+    @Bean
+    public ListSchoolTimeSlots listSchoolTimeSlots(
+            FranjaHorariaRepository franjaHorariaRepository) {
+        return new ListSchoolTimeSlots(franjaHorariaRepository);
+    }
+
+    @Bean
+    public GetTimeSlot getTimeSlot(FranjaHorariaRepository franjaHorariaRepository) {
+        return new GetTimeSlot(franjaHorariaRepository);
+    }
+
+    @Bean
+    public CreateTimeSlot createTimeSlot(
+            FranjaHorariaRepository franjaHorariaRepository,
+            ColegioRepository colegioRepository) {
+        return new CreateTimeSlot(franjaHorariaRepository, colegioRepository);
+    }
+
+    @Bean
+    public UpdateTimeSlot updateTimeSlot(
+            FranjaHorariaRepository franjaHorariaRepository,
+            ColegioRepository colegioRepository,
+            PurchaseRepository purchaseRepository,
+            Clock clock) {
+        return new UpdateTimeSlot(
+                franjaHorariaRepository,
+                colegioRepository,
+                purchaseRepository,
+                clock);
+    }
+
+    @Bean
+    public DeactivateTimeSlot deactivateTimeSlot(
+            FranjaHorariaRepository franjaHorariaRepository) {
+        return new DeactivateTimeSlot(franjaHorariaRepository);
+    }
+
+    @Bean
+    public ReactivateTimeSlot reactivateTimeSlot(
+            FranjaHorariaRepository franjaHorariaRepository) {
+        return new ReactivateTimeSlot(franjaHorariaRepository);
     }
 
     @Bean
@@ -1630,9 +1580,110 @@ public class UseCases {
     }
 
     @Bean
+    public SchoolAssistantFixedTopics schoolAssistantFixedTopics(
+            PurchaseRepository purchaseRepository,
+            ProductRepository productRepository,
+            CreateAssistantAdvancePurchase createAssistantAdvancePurchase,
+            CancelPresentialPurchase cancelPresentialPurchase,
+            Clock clock) {
+        return new SchoolAssistantFixedTopics(
+                purchaseRepository,
+                productRepository,
+                createAssistantAdvancePurchase,
+                cancelPresentialPurchase,
+                clock);
+    }
+
+    @Bean
+    public AskSchoolAssistant askSchoolAssistant(
+            AlumnoRepository alumnoRepository,
+            WalletRepository walletRepository,
+            SchoolAssistantPaymentRepository paymentRepository,
+            SchoolAssistantPurchaseRepository schoolAssistantPurchaseRepository,
+            SchoolCalendarRepository schoolCalendarRepository,
+            ChatSessionRepository chatSessionRepository,
+            ChatMessageRepository chatMessageRepository,
+            SchoolAssistantResponder schoolAssistantResponder,
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            KiosqueroRepository kiosqueroRepository,
+            ProductRepository productRepository,
+            PurchaseRepository purchaseRepository,
+            PresupuestoRepository presupuestoRepository,
+            SchoolAssistantFixedTopics fixedTopics,
+            Clock clock) {
+        return new AskSchoolAssistant(
+                alumnoRepository,
+                walletRepository,
+                paymentRepository,
+                schoolAssistantPurchaseRepository,
+                schoolCalendarRepository,
+                chatSessionRepository,
+                chatMessageRepository,
+                schoolAssistantResponder,
+                usuarioRepository,
+                tutorRepository,
+                kiosqueroRepository,
+                productRepository,
+                purchaseRepository,
+                presupuestoRepository,
+                fixedTopics,
+                clock);
+    }
+
+    @Bean
+    public SchoolAssistantConversations schoolAssistantConversations(
+            ChatSessionRepository chatSessionRepository,
+            ChatMessageRepository chatMessageRepository,
+            AlumnoRepository alumnoRepository,
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            KiosqueroRepository kiosqueroRepository,
+            Clock clock) {
+        return new SchoolAssistantConversations(
+                chatSessionRepository,
+                chatMessageRepository,
+                alumnoRepository,
+                usuarioRepository,
+                tutorRepository,
+                kiosqueroRepository,
+                clock);
+    }
+
+    @Bean
+    public CreateAssistantAdvancePurchase createAssistantAdvancePurchase(
+            AlumnoRepository studentRepository,
+            WalletRepository walletRepository,
+            PurchaseRepository purchaseRepository,
+            RecessTimeSlotResolver recessTimeSlotResolver,
+            ValidadorHorarioService timeValidator,
+            ValidacionRestriccionesService healthValidator,
+            ValidadorPresupuestoService budgetValidator,
+            WithdrawalCodeService withdrawalCodeService,
+            Clock clock,
+            InventoryAvailabilityService inventoryAvailabilityService,
+            AdvancePurchaseRulesService advancePurchaseRulesService,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        return new CreateAssistantAdvancePurchase(
+                studentRepository,
+                walletRepository,
+                purchaseRepository,
+                recessTimeSlotResolver,
+                timeValidator,
+                healthValidator,
+                budgetValidator,
+                withdrawalCodeService,
+                clock,
+                inventoryAvailabilityService,
+                advancePurchaseRulesService,
+                movimientoBilleteraRepository);
+    }
+
+    @Bean
     public SaveKiosqueroPayoutConfig saveKiosqueroPayoutConfig(
-            KiosqueroPayoutConfigRepository repository) {
-        return new SaveKiosqueroPayoutConfig(repository);
+            KiosqueroPayoutConfigRepository repository,
+            Clock clock) {
+        return new SaveKiosqueroPayoutConfig(repository, clock);
     }
 
     @Bean
@@ -1646,8 +1697,9 @@ public class UseCases {
             KiosqueroPayoutConfigRepository repository,
             PayoutPaymentService paymentService,
             KiosqueroRepository kiosqueroRepository,
-            PurchaseRepository purchaseRepository) {
+            PurchaseRepository purchaseRepository,
+            Clock clock) {
         return new ProcessScheduledPayouts(repository, paymentService,
-                kiosqueroRepository, purchaseRepository);
+                kiosqueroRepository, purchaseRepository, clock);
     }
 }

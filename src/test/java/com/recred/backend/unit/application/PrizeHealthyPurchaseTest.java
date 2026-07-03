@@ -1,7 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.PrizeHealthyPurchase;
-import com.recred.backend.application.PrizeHealthyPurchaseCommand;
+import com.recred.backend.application.PrizeHealthyPurchaseRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RewardLevel;
@@ -40,7 +40,7 @@ class PrizeHealthyPurchaseTest {
         UUID alumnoId = UUID.randomUUID();
         UUID compraId = UUID.randomUUID();
         UUID suggestionId = UUID.randomUUID();
-        PrizeHealthyPurchaseCommand command = new PrizeHealthyPurchaseCommand(alumnoId, compraId);
+        PrizeHealthyPurchaseRequest command = new PrizeHealthyPurchaseRequest(alumnoId, compraId);
 
         Purchase purchase = new Purchase();
         purchase.setSuggestionId(suggestionId);
@@ -64,7 +64,7 @@ class PrizeHealthyPurchaseTest {
         UUID alumnoId = UUID.randomUUID();
         UUID compraId = UUID.randomUUID();
         UUID suggestionId = UUID.randomUUID();
-        PrizeHealthyPurchaseCommand command = new PrizeHealthyPurchaseCommand(alumnoId, compraId);
+        PrizeHealthyPurchaseRequest command = new PrizeHealthyPurchaseRequest(alumnoId, compraId);
 
         Purchase purchase = new Purchase();
         purchase.setSuggestionId(suggestionId);
@@ -88,7 +88,7 @@ class PrizeHealthyPurchaseTest {
         UUID alumnoId = UUID.randomUUID();
         UUID compraId = UUID.randomUUID();
         UUID suggestionId = UUID.randomUUID();
-        PrizeHealthyPurchaseCommand command = new PrizeHealthyPurchaseCommand(alumnoId, compraId);
+        PrizeHealthyPurchaseRequest command = new PrizeHealthyPurchaseRequest(alumnoId, compraId);
 
         Purchase purchase = new Purchase();
         purchase.setSuggestionId(suggestionId);
@@ -118,7 +118,7 @@ class PrizeHealthyPurchaseTest {
     void execute_NoDebeHacerNada_CuandoLaCompraNoTieneSugerencia() {
         UUID alumnoId = UUID.randomUUID();
         UUID compraId = UUID.randomUUID();
-        PrizeHealthyPurchaseCommand command = new PrizeHealthyPurchaseCommand(alumnoId, compraId);
+        PrizeHealthyPurchaseRequest command = new PrizeHealthyPurchaseRequest(alumnoId, compraId);
 
         Purchase purchase = new Purchase();
         purchase.setSuggestionId(null);

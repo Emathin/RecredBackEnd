@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.ConfirmPaymentAndCredit;
+import com.recred.backend.application.ConfirmPaymentAndCreditRequest;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import com.recred.backend.infrastructure.mercadopago.MercadoPagoWebhookParser;
 import com.recred.backend.infrastructure.mercadopago.WebhookEvent;
@@ -54,7 +55,9 @@ public class PaymentWebhookController {
         }
 
         try {
-            confirmPaymentAndCredit.execute(event.paymentId());
+            confirmPaymentAndCredit.execute(new ConfirmPaymentAndCreditRequest(
+                    event.paymentId()
+            ));
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

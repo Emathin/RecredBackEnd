@@ -2,17 +2,21 @@ package com.recred.backend.unit.infrastructure.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.DeleteProduct;
+import com.recred.backend.application.DeleteProductRequest;
 import com.recred.backend.application.GetAllProducts;
+import com.recred.backend.application.GetAllProductsRequest;
+import com.recred.backend.application.GetAllProductsResponse;
 import com.recred.backend.application.GetProductById;
+import com.recred.backend.application.GetProductByIdRequest;
 import com.recred.backend.application.ParseBulkStock;
+import com.recred.backend.application.ProductResponse;
 import com.recred.backend.application.SaveBulkProducts;
 import com.recred.backend.application.SaveProduct;
-import com.recred.backend.application.SaveProductCommand;
+import com.recred.backend.application.SaveProductRequest;
 import com.recred.backend.application.UpdateProduct;
-import com.recred.backend.application.UpdateProductCommand;
+import com.recred.backend.application.UpdateProductRequest;
 import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdateProductPriceRequest;
-import com.recred.backend.application.ProductResponse;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.infrastructure.web.ProductController;
 import com.recred.backend.infrastructure.web.ProductRequestDTO;
@@ -132,27 +136,27 @@ class ProductControllerTest {
     void findAllReturnsMappedProducts() {
         UUID buffetId = randomUUID();
         UUID productId = randomUUID();
-        givenProductsForBuffet(buffetId, product(productId));
+        givenProductsForBuffet(buffetId, ProductResponse.fromDomain(product(productId)));
 
         ResponseEntity<List<ProductResponseDTO>> response = whenFindingAllProducts(buffetId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(productId, response.getBody().get(0).id());
         assertEquals("Yogur", response.getBody().get(0).nombre());
-        verify(getAllProducts).execute(buffetId);
+        verify(getAllProducts).execute(new GetAllProductsRequest(buffetId));
     }
 
     @Test
     void findByIdReturnsMappedProduct() {
         UUID productId = randomUUID();
         UUID buffetId = randomUUID();
-        givenProductExists(productId, buffetId);
+        givenProductExists(productId, buffetId, ProductResponse.fromDomain(product(productId)));
 
         ResponseEntity<ProductResponseDTO> response = whenFindingProductById(productId, buffetId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(productId, response.getBody().id());
-        verify(getProductById).execute(productId, buffetId);
+        verify(getProductById).execute(new GetProductByIdRequest(productId, buffetId));
     }
 
     @Test
@@ -167,8 +171,8 @@ class ProductControllerTest {
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(productId, response.getBody().id());
 
-        ArgumentCaptor<SaveProductCommand> commandCaptor =
-                ArgumentCaptor.forClass(SaveProductCommand.class);
+        ArgumentCaptor<SaveProductRequest> commandCaptor =
+                ArgumentCaptor.forClass(SaveProductRequest.class);
         verify(saveProduct).execute(commandCaptor.capture());
         assertEquals("Yogur", commandCaptor.getValue().nombre());
         assertEquals(buffetId, commandCaptor.getValue().buffetId());
@@ -186,8 +190,8 @@ class ProductControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(productId, response.getBody().id());
 
-        ArgumentCaptor<UpdateProductCommand> commandCaptor =
-                ArgumentCaptor.forClass(UpdateProductCommand.class);
+        ArgumentCaptor<UpdateProductRequest> commandCaptor =
+                ArgumentCaptor.forClass(UpdateProductRequest.class);
         verify(updateProduct).execute(commandCaptor.capture());
         assertEquals(productId, commandCaptor.getValue().id());
         assertEquals(buffetId, commandCaptor.getValue().buffetId());
@@ -200,29 +204,31 @@ class ProductControllerTest {
         ResponseEntity<Void> response = whenDeletingProduct(productId);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        verify(deleteProduct).execute(productId);
+        verify(deleteProduct).execute(new DeleteProductRequest(productId));
     }
 
-    private void givenProductsForBuffet(UUID buffetId, Producto... products) {
-        List<ProductResponse> responses = List.of(products).stream()
-                .map(ProductResponse::fromDomain)
-                .toList();
-        when(getAllProducts.execute(buffetId)).thenReturn(responses);
+    private void givenProductsForBuffet(UUID buffetId, ProductResponse... products) {
+        when(getAllProducts.execute(new GetAllProductsRequest(buffetId)))
+                .thenReturn(new GetAllProductsResponse(List.of(products)));
     }
 
-    private void givenProductExists(UUID productId, UUID buffetId) {
-        when(getProductById.execute(productId, buffetId))
-                .thenReturn(ProductResponse.fromDomain(product(productId)));
+    private void givenProductExists(
+            UUID productId,
+            UUID buffetId,
+            ProductResponse product
+    ) {
+        when(getProductById.execute(new GetProductByIdRequest(productId, buffetId)))
+                .thenReturn(product);
     }
 
     private void givenProductIsSaved(UUID productId) {
-        when(saveProduct.execute(any(SaveProductCommand.class)))
-                .thenReturn(product(productId));
+        when(saveProduct.execute(any(SaveProductRequest.class)))
+                .thenReturn(ProductResponse.fromDomain(product(productId)));
     }
 
     private void givenProductIsUpdated(UUID productId) {
-        when(updateProduct.execute(any(UpdateProductCommand.class)))
-                .thenReturn(product(productId));
+        when(updateProduct.execute(any(UpdateProductRequest.class)))
+                .thenReturn(ProductResponse.fromDomain(product(productId)));
     }
 
     private ResultActions whenUpdatingPriceWithQueryParams(
@@ -310,4 +316,3 @@ class ProductControllerTest {
         return product;
     }
 }
-

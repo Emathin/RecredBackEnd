@@ -19,6 +19,5 @@ public record EnableSchoolCreditRequest(
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Credit amount must be greater than zero");
         }
-        // installments can be null, it will default to 1 in the logic
     }
 }

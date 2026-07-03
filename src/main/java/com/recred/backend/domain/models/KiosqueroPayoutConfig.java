@@ -6,6 +6,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 public class KiosqueroPayoutConfig {
+    private static final String INVALID_INTERVAL_MESSAGE =
+            "Intervalo invalido. Valores permitidos: "
+            + "DAYS (1 o 10), WEEKS (1 o 2), MONTHS (1, 2 o 3).";
+
     private UUID kiosqueroId;
     private String destinationCvu;
     private String destinationCuit;
@@ -22,27 +26,31 @@ public class KiosqueroPayoutConfig {
         if (this.unidadIntervalo == null) {
             throw new IllegalArgumentException("La unidad de intervalo es obligatoria.");
         }
-        boolean isValid = false;
-        switch (this.unidadIntervalo.name()) {
-            case "DAYS":
-                isValid = (this.cantidadIntervalo == 1 || this.cantidadIntervalo == 10);
-                break;
-            case "WEEKS":
-                isValid = (this.cantidadIntervalo == 1 || this.cantidadIntervalo == 2);
-                break;
-            case "MONTHS":
-                isValid = (this.cantidadIntervalo == 1 
-                        || this.cantidadIntervalo == 2 
-                        || this.cantidadIntervalo == 3);
-                break;
-            default:
-                throw new IllegalArgumentException("Unidad de intervalo no soportada.");
+        if (!isValidIntervalConfig()) {
+            throw new IllegalArgumentException(INVALID_INTERVAL_MESSAGE);
         }
-        if (!isValid) {
-            throw new IllegalArgumentException(
-                    "Intervalo inválido. Valores permitidos: " 
-                    + "DAYS (1 o 10), WEEKS (1 o 2), MONTHS (1, 2 o 3).");
-        }
+    }
+
+    public boolean isValidIntervalConfig() {
+        return switch (this.unidadIntervalo) {
+            case DAYS -> isValidDaysInterval();
+            case WEEKS -> isValidWeeksInterval();
+            case MONTHS -> isValidMonthsInterval();
+        };
+    }
+
+    private boolean isValidDaysInterval() {
+        return this.cantidadIntervalo == 1 || this.cantidadIntervalo == 10;
+    }
+
+    private boolean isValidWeeksInterval() {
+        return this.cantidadIntervalo == 1 || this.cantidadIntervalo == 2;
+    }
+
+    private boolean isValidMonthsInterval() {
+        return this.cantidadIntervalo == 1
+                || this.cantidadIntervalo == 2
+                || this.cantidadIntervalo == 3;
     }
 
     public void calculateNextPayout(LocalDate baseDate) {
@@ -50,7 +58,7 @@ public class KiosqueroPayoutConfig {
             return;
         }
         validateIntervalConfig();
-        
+
         ChronoUnit unit = ChronoUnit.valueOf(this.unidadIntervalo.name());
         this.proximaEjecucion = baseDate.plus(this.cantidadIntervalo, unit);
     }

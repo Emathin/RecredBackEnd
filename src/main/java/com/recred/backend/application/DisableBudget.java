@@ -13,10 +13,11 @@ public class DisableBudget {
         this.repository = repository;
     }
 
-    public void execute(DisableBudgetRequest request) {
+    public DisableBudgetResponse execute(DisableBudgetRequest request) {
         PresupuestoAlumno presupuesto = this.findPresupuestoById(request.budgetId());
         presupuesto.setActivo(false);
         repository.save(presupuesto);
+        return new DisableBudgetResponse();
     }
 
     private PresupuestoAlumno findPresupuestoById(UUID id) {

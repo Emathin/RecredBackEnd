@@ -4,10 +4,6 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.application.PurchaseSuggestIAResponse.ClasificacionSaludDTO;
-import com.recred.backend.application.PurchaseSuggestIAResponse.ProductoDTO;
-import com.recred.backend.application.PurchaseSuggestIAResponse.SugerenciaIADTO;
-
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.domain.services.UsuarioService;
@@ -39,8 +35,8 @@ public class PurchaseSuggestIA {
         this.clock = clock;
     }
 
-    public Optional<PurchaseSuggestIAResponse> execute(String cognitoId) {
-        Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoId);
+    public Optional<PurchaseSuggestionResponse> execute(PurchaseSuggestIARequest request) {
+        Usuario usuario = usuarioService.obtenerUsuarioActual(request.cognitoId());
         LocalDateTime now = LocalDateTime.now(clock);
 
         if (!cumpleReglasVisibilidad(usuario, now)) {
@@ -62,42 +58,12 @@ public class PurchaseSuggestIA {
                 .filter(s -> s.getAceptada() == null)
                 .max(Comparator.comparing(SugerenciaIAEntity::getCreadoEn))
                 .map(SugerenciaIAEntity::toDomain)
-                .map(s -> new PurchaseSuggestIAResponse(
-                        new SugerenciaIADTO(
-                                s.getId(),
-                                s.getAlumnoId(),
-                                s.getBuffetId(),
-                                s.getProductoId(),
-                                s.getProducto() != null ? new ProductoDTO(
-                                        s.getProducto().getId(),
-                                        s.getProducto().getNombre(),
-                                        s.getProducto().getUrlImagen(),
-                                        s.getProducto().getPrecio(),
-                                        s.getProducto().getDescripcion(),
-                                        s.getProducto().getCategoria() != null 
-                                                ? s.getProducto().getCategoria().getId() 
-                                                : null,
-                                        s.getProducto().getCategoria() != null 
-                                                ? s.getProducto().getCategoria().getDescripcion() 
-                                                : null,
-                                        s.getProducto().getClasificacionesSalud() != null ?
-                                                s.getProducto().getClasificacionesSalud().stream()
-                                                        .map(c -> new ClasificacionSaludDTO(
-                                                                c.getId(), c.getDescripcion()))
-                                                        .toList() : List.of()
-                                ) : null,
-                                s.getTipo(),
-                                s.getTitulo(),
-                                s.getMensaje(),
-                                s.getMetadata()
-                        )
-                ));
+                .map(PurchaseSuggestionResponse::fromDomain);
     }
 
     private boolean cumpleReglasVisibilidad(Usuario usuario, LocalDateTime now) {
         return switch (usuario.getRol()) {
             case PADRE -> isVisibleParaPadre(now);
-            // TODO: Configurar restricciones horarias reales para ALUMNO antes de producción.
             case ALUMNO -> true;
             default -> false;
         };

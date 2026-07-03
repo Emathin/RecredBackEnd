@@ -92,7 +92,7 @@ class GeneratePurchaseRecommendationTest {
         when(aiEventRepository.registerPurchaseRecommendation(any())).thenReturn(eventId);
         when(suggestionAiRepository.save(any(), any())).thenReturn(suggestion);
 
-        useCase.execute();
+        useCase.execute(new GeneratePurchaseRecommendationRequest());
 
         ArgumentCaptor<PurchaseRecommendationResult> resultCaptor =
                 ArgumentCaptor.forClass(PurchaseRecommendationResult.class);

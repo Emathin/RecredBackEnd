@@ -67,7 +67,7 @@ class OpenMeteoWeatherClientTest {
   })
   void dadoUnCodigoDeClima_cuandoSeTraduce_entoncesRetornaLaCondicionCorrecta(Integer codigo,
       String condicionEsperada) {
-    String resultado = weatherClient.translateWeatherCode(codigo); // REVISAR
+    String resultado = weatherClient.translateWeatherCode(codigo);
 
     assertEquals(condicionEsperada, resultado);
   }

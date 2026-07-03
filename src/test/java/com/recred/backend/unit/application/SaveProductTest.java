@@ -1,7 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.SaveProduct;
-import com.recred.backend.application.SaveProductCommand;
+import com.recred.backend.application.SaveProductRequest;
+import com.recred.backend.application.ProductResponse;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.models.Producto;
@@ -46,7 +47,7 @@ class SaveProductTest {
     void execute_GuardaProductoEInventario_CuandoVienenDatosCompletos() {
         UUID categoryId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Galletitas",
                 "Deliciosas",
                 new BigDecimal("150.00"),
@@ -65,17 +66,17 @@ class SaveProductTest {
         when(productRepository.save(any(Producto.class))).thenReturn(savedProduct);
         when(inventoryRepository.findByBuffetAndProduct(any(), any())).thenReturn(java.util.Optional.empty());
 
-        Producto result = saveProduct.execute(command);
+        ProductResponse result = saveProduct.execute(command);
 
         assertNotNull(result);
-        assertEquals(50, result.getStockActual());
+        assertEquals(50, result.stockActual());
         verify(productRepository).save(any(Producto.class));
         verify(inventoryRepository).save(any(Inventario.class));
     }
 
     @Test
     void execute_CreaNuevaCategoria_CuandoNoExiste() {
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Producto", "Desc", BigDecimal.TEN, BigDecimal.ONE, false,
                 null, "Nueva Cat", null, null, null, null
         );
@@ -86,16 +87,16 @@ class SaveProductTest {
         when(categoryRepository.save(any(CategoriaProducto.class))).thenReturn(newCat);
         when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
 
-        Producto result = saveProduct.execute(command);
+        ProductResponse result = saveProduct.execute(command);
 
-        assertNotNull(result.getCategoria());
-        assertEquals("Nueva Cat", result.getCategoria().getDescripcion());
+        assertNotNull(result.categoria());
+        assertEquals("Nueva Cat", result.categoria().descripcion());
         verify(categoryRepository).save(any(CategoriaProducto.class));
     }
 
     @Test
     void execute_UsaCategoriaExistente_CuandoSeProveeNombre() {
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Producto", "Desc", BigDecimal.TEN, BigDecimal.ONE, false,
                 null, "Cat Existente", null, null, null, null
         );
@@ -105,16 +106,17 @@ class SaveProductTest {
         when(categoryRepository.findByDescription("Cat Existente")).thenReturn(java.util.Optional.of(existingCat));
         when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
 
-        Producto result = saveProduct.execute(command);
+        ProductResponse result = saveProduct.execute(command);
 
-        assertEquals(existingCat, result.getCategoria());
+        assertEquals(existingCat.getId(), result.categoria().id());
+        assertEquals(existingCat.getDescripcion(), result.categoria().descripcion());
     }
 
     @Test
     void execute_ActualizaInventarioExistente_CuandoYaExiste() {
         UUID buffetId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Prod", "Desc", BigDecimal.TEN, BigDecimal.ONE, false,
                 null, null, buffetId, 100, null, null
         );
@@ -137,7 +139,7 @@ class SaveProductTest {
     void execute_GuardaInventarioSinStockActual_CuandoVieneTipoManejo() {
         UUID buffetId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Prod",
                 "Desc",
                 BigDecimal.TEN,
@@ -159,12 +161,12 @@ class SaveProductTest {
         when(inventoryRepository.findByBuffetAndProduct(buffetId, productId))
                 .thenReturn(java.util.Optional.empty());
 
-        Producto result = saveProduct.execute(command);
+        ProductResponse result = saveProduct.execute(command);
 
-        assertNull(result.getStockActual());
-        assertNull(result.getStockDisponible());
-        assertEquals(TipoManejoInventario.CUPO_DIARIO, result.getTipoManejoInventario());
-        assertEquals(20, result.getCupoMaximoDiario());
+        assertNull(result.stockActual());
+        assertNull(result.stockDisponible());
+        assertEquals(TipoManejoInventario.CUPO_DIARIO.name(), result.tipoManejoInventario());
+        assertEquals(20, result.cupoMaximoDiario());
         verify(inventoryRepository).save(any(Inventario.class));
     }
 
@@ -172,39 +174,39 @@ class SaveProductTest {
     void execute_MapeaClasificacionesYTipos_CuandoSeProveen() {
         UUID saludId = UUID.randomUUID();
         UUID tipoId = UUID.randomUUID();
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Prod", null, null, null, true,
                 null, null, null, null, Set.of(saludId), Set.of(tipoId)
         );
 
         when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
 
-        Producto result = saveProduct.execute(command);
+        ProductResponse result = saveProduct.execute(command);
 
-        assertEquals(1, result.getClasificacionesSalud().size());
-        assertEquals(saludId, result.getClasificacionesSalud().iterator().next().getId());
-        assertEquals(1, result.getTipos().size());
-        assertEquals(tipoId, result.getTipos().iterator().next().getId());
+        assertEquals(1, result.clasificacionesSalud().size());
+        assertEquals(saludId, result.clasificacionesSalud().iterator().next().id());
+        assertEquals(1, result.tipos().size());
+        assertEquals(tipoId, result.tipos().iterator().next().id());
     }
 
     @Test
     void execute_NoAsignaCategoria_CuandoAmbosCamposSonNulos() {
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Prod", null, null, null, true,
                 null, "", null, null, null, null
         );
 
         when(productRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
 
-        Producto result = saveProduct.execute(command);
+        ProductResponse result = saveProduct.execute(command);
 
-        assertNull(result.getCategoria());
+        assertNull(result.categoria());
     }
 
     @Test
     void execute_NoGuardaInventario_CuandoStockEsNulo() {
         UUID buffetId = UUID.randomUUID();
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Prod", null, null, null, true,
                 null, null, buffetId, null, null, null
         );
@@ -218,7 +220,7 @@ class SaveProductTest {
 
     @Test
     void execute_NoGuardaInventario_CuandoBuffetIdEsNulo() {
-        SaveProductCommand command = new SaveProductCommand(
+        SaveProductRequest command = new SaveProductRequest(
                 "Prod", null, null, null, true,
                 null, null, null, 100, null, null
         );

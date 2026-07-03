@@ -1,7 +1,6 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetStudentPreferences;
-import com.recred.backend.application.GetStudentPreferencesByUserRequest;
 import com.recred.backend.application.GetStudentPreferencesRequest;
 import com.recred.backend.application.GetStudentPreferencesResponse;
 import com.recred.backend.domain.models.Alumno;
@@ -195,7 +194,7 @@ class GetStudentPreferencesTest {
             boolean onlyLast,
             TipoSugerenciaIA type
     ) {
-        return getStudentPreferences.executeByUserId(userRequest(userId, onlyLast, type));
+        return getStudentPreferences.execute(userRequest(userId, onlyLast, type));
     }
 
     private GetStudentPreferencesResponse whenGettingStudentPreferences(
@@ -253,12 +252,12 @@ class GetStudentPreferencesTest {
         return new GetStudentPreferencesRequest(alumnoId, onlyLast, type);
     }
 
-    private GetStudentPreferencesByUserRequest userRequest(
+    private GetStudentPreferencesRequest userRequest(
             UUID userId,
             boolean onlyLast,
             TipoSugerenciaIA type
     ) {
-        return new GetStudentPreferencesByUserRequest(userId, onlyLast, type);
+        return GetStudentPreferencesRequest.byUser(userId, onlyLast, type);
     }
 
     private ParentPreferenceScenario parentPreferenceScenario() {

@@ -4,6 +4,7 @@ import com.recred.backend.application.GetFavoritesByStudentResponse;
 import com.recred.backend.application.ListInventoryProductsResponse.CategoryResponse;
 import com.recred.backend.application.ListInventoryProductsResponse.ClassificationResponse;
 import com.recred.backend.application.ListInventoryProductsResponse.InventoryProductResponse;
+import com.recred.backend.application.ProductResponse;
 import com.recred.backend.domain.models.Producto;
 
 import java.math.BigDecimal;
@@ -36,6 +37,33 @@ public record ProductResponseDTO(
         Set<ClasificacionDTO> clasificacionesSalud,
         Set<ClasificacionDTO> tipos
 ) {
+
+    public static ProductResponseDTO fromApplication(ProductResponse response) {
+        return new ProductResponseDTO(
+                response.id(),
+                response.nombre(),
+                response.descripcion(),
+                response.precio(),
+                response.peso(),
+                response.requierePreparacion(),
+                response.activo(),
+                response.creadoEn(),
+                response.actualizadoEn(),
+                response.stockActual(),
+                response.stockReservado(),
+                response.stockMinimo(),
+                response.stockDisponible(),
+                response.estadoInventario(),
+                response.tipoManejoInventario(),
+                response.cupoMaximoDiario(),
+                response.cupoDisponibleDia(),
+                response.urlImagen(),
+                response.urlImagen(),
+                category(response.categoria()),
+                productClassifications(response.clasificacionesSalud()),
+                productClassifications(response.tipos())
+        );
+    }
 
     public static ProductResponseDTO fromUseCaseResponse(GetFavoritesByStudentResponse response) {
         CategoryDTO categoriaDTO = null;
@@ -86,13 +114,13 @@ public record ProductResponseDTO(
 
     public static ProductResponseDTO fromAppResponse(
             com.recred.backend.application.ProductResponse res) {
-        CategoryDTO catDTO = res.categoria() == null ? null 
+        CategoryDTO catDTO = res.categoria() == null ? null
                 : new CategoryDTO(res.categoria().id(), res.categoria().descripcion());
-        
+
         Set<ClasificacionDTO> saludDTO = res.clasificacionesSalud().stream()
                 .map(c -> new ClasificacionDTO(c.id(), c.descripcion()))
                 .collect(Collectors.toSet());
-                
+
         Set<ClasificacionDTO> tipoDTO = res.tipos().stream()
                 .map(c -> new ClasificacionDTO(c.id(), c.descripcion()))
                 .collect(Collectors.toSet());
@@ -186,6 +214,28 @@ public record ProductResponseDTO(
 
     private static Set<ClasificacionDTO> classifications(
             Set<ClassificationResponse> classifications
+    ) {
+        if (classifications == null) {
+            return Set.of();
+        }
+
+        return classifications.stream()
+                .map(classification -> new ClasificacionDTO(
+                        classification.id(),
+                        classification.descripcion()))
+                .collect(Collectors.toSet());
+    }
+
+    private static CategoryDTO category(ProductResponse.CategoryResponse category) {
+        if (category == null) {
+            return null;
+        }
+
+        return new CategoryDTO(category.id(), category.descripcion());
+    }
+
+    private static Set<ClasificacionDTO> productClassifications(
+            Set<ProductResponse.ClassificationResponse> classifications
     ) {
         if (classifications == null) {
             return Set.of();

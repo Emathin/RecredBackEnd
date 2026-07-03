@@ -1,6 +1,7 @@
 package com.recred.backend.unit.infrastructure.scheduling;
 
 import com.recred.backend.application.GenerateLowBalanceAlerts;
+import com.recred.backend.application.GenerateLowBalanceAlertsRequest;
 import com.recred.backend.infrastructure.scheduling.LowBalanceAlertJob;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,16 +25,16 @@ class LowBalanceAlertJobTest {
     void execute_DeberiaLlamarAlCasoDeUso() {
         lowBalanceAlertJob.executeLowBalanceAlerts();
 
-        verify(generateLowBalanceAlerts).execute();
+        verify(generateLowBalanceAlerts).execute(new GenerateLowBalanceAlertsRequest());
     }
 
     @Test
     void execute_WhenUseCaseFails_ShouldCatchException() {
-        doThrow(new RuntimeException("boom")).when(generateLowBalanceAlerts).execute();
+        doThrow(new RuntimeException("boom")).when(generateLowBalanceAlerts)
+                .execute(new GenerateLowBalanceAlertsRequest());
 
         lowBalanceAlertJob.executeLowBalanceAlerts();
 
-        verify(generateLowBalanceAlerts).execute();
+        verify(generateLowBalanceAlerts).execute(new GenerateLowBalanceAlertsRequest());
     }
 }
-

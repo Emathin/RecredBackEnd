@@ -22,12 +22,13 @@ public class ManageRestrictions {
         this.healthClassificationRepository = healthClassificationRepository;
     }
 
-    public void execute(ManageRestrictionsRequest request) {
+    public ManageRestrictionsResponse execute(ManageRestrictionsRequest request) {
         Alumno student = this.findStudentById(request.studentId());
         Set<ClasificacionSalud> newRestrictions =
                 getRestrictionsByIds(request.newClassificationIds());
         student.setRestriccionesSalud(newRestrictions);
         studentRepository.save(student);
+        return new ManageRestrictionsResponse();
     }
 
     private Alumno findStudentById(UUID studentId) {

@@ -1,5 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.CreatePromotionResponse;
+import com.recred.backend.application.SeasonalCreatedPromotionResponse;
 import com.recred.backend.domain.models.Promotion;
 import lombok.Getter;
 import lombok.Setter;
@@ -58,6 +60,38 @@ public class PromotionResponseDTO {
             dto.setBuffetId(promotion.getBuffet().getId());
         }
         
+        return dto;
+    }
+
+    public static PromotionResponseDTO fromApplication(CreatePromotionResponse promotion) {
+        PromotionResponseDTO dto = new PromotionResponseDTO();
+        dto.setId(promotion.id());
+        dto.setName(promotion.name());
+        dto.setDiscountPercentage(promotion.discountPercentage());
+        dto.setStartDate(promotion.startDate());
+        dto.setEndDate(promotion.endDate());
+        dto.setStatus(promotion.status().name());
+        dto.setImageUrl(promotion.imageUrl());
+        dto.setProductIds(promotion.productIds());
+        dto.setBuffetId(promotion.buffetId());
+        return dto;
+    }
+
+    public static PromotionResponseDTO fromApplication(SeasonalCreatedPromotionResponse promotion) {
+        if (promotion == null) {
+            return null;
+        }
+
+        PromotionResponseDTO dto = new PromotionResponseDTO();
+        dto.setId(promotion.id());
+        dto.setName(promotion.name());
+        dto.setDiscountPercentage(promotion.discountPercentage());
+        dto.setStartDate(promotion.startDate());
+        dto.setEndDate(promotion.endDate());
+        dto.setStatus(promotion.status());
+        dto.setImageUrl(promotion.imageUrl());
+        dto.setProductIds(promotion.productIds());
+        dto.setBuffetId(promotion.buffetId());
         return dto;
     }
 }

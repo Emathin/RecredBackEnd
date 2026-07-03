@@ -4,6 +4,7 @@ import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.GetLoggedUserConsumptionDetailRequest;
 import com.recred.backend.application.GetLoggedUserConsumptionDetailResponse;
 import com.recred.backend.application.GetStudentRewardStatus;
+import com.recred.backend.application.GetStudentRewardStatusRequest;
 import com.recred.backend.application.StudentRewardResponse;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -55,7 +56,8 @@ class StudentConsumptionControllerTest {
         StudentRewardResponse response = new StudentRewardResponse(
                 50, "BRONZE", "Mensaje", 50, "SILVER"
         );
-        when(getStudentRewardStatus.execute(alumnoId)).thenReturn(response);
+        when(getStudentRewardStatus.execute(new GetStudentRewardStatusRequest(alumnoId)))
+                .thenReturn(response);
 
         mockMvc.perform(get("/api/v1/consumos/alumnos/{alumnoId}/recompensas-saludables", alumnoId))
                 .andExpect(status().isOk())
@@ -64,7 +66,7 @@ class StudentConsumptionControllerTest {
                 .andExpect(jsonPath("$.pointsToNextLevel").value(50))
                 .andExpect(jsonPath("$.nextLevelName").value("SILVER"));
 
-        verify(getStudentRewardStatus).execute(alumnoId);
+        verify(getStudentRewardStatus).execute(new GetStudentRewardStatusRequest(alumnoId));
     }
 
     @Test
@@ -149,4 +151,3 @@ class StudentConsumptionControllerTest {
         return new JwtAuthenticationToken(jwt);
     }
 }
-

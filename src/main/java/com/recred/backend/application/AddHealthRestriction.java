@@ -18,7 +18,7 @@ public class AddHealthRestriction {
         this.clasificacionRepository = clasificacionRepository;
     }
 
-    public void execute(AddHealthRestrictionRequest request) {
+    public AddHealthRestrictionResponse execute(AddHealthRestrictionRequest request) {
         Alumno student = this.findAlumnoById(request.studentId());
 
         ClasificacionSalud classification =
@@ -27,6 +27,7 @@ public class AddHealthRestriction {
         student.agregarRestriccionSalud(classification);
 
         alumnoRepository.save(student);
+        return new AddHealthRestrictionResponse();
     }
 
     private Alumno findAlumnoById(UUID id) {

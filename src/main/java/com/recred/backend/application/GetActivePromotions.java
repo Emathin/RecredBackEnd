@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.PromotionRepository;
 
 import java.util.List;
@@ -12,9 +13,13 @@ public class GetActivePromotions {
         this.promotionRepository = promotionRepository;
     }
 
-    public List<PromotionResponse> execute() {
-        return promotionRepository.findAllActive().stream()
-                .map(PromotionResponse::fromDomain)
-                .collect(java.util.stream.Collectors.toList());
+    public GetActivePromotionsResponse execute(GetActivePromotionsRequest request) {
+        return new GetActivePromotionsResponse(promotions().stream()
+                .map(CreatePromotionResponse::fromDomain)
+                .toList());
+    }
+
+    private List<Promotion> promotions() {
+        return promotionRepository.findAllActive();
     }
 }

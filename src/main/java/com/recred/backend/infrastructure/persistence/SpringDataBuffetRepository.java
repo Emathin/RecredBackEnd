@@ -13,9 +13,16 @@ public interface SpringDataBuffetRepository extends JpaRepository<BuffetEntity, 
 
     @Query("""
         SELECT b FROM BuffetEntity b
+        JOIN FETCH b.colegioEntity
+        WHERE b.id = :id
+    """)
+    Optional<BuffetEntity> findByIdWithSchool(@Param("id") UUID id);
+
+    @Query("""
+        SELECT b FROM BuffetEntity b
+        JOIN FETCH b.colegioEntity
         JOIN AlumnoEntity a ON a.gradoEntity.colegioEntity.id = b.colegioEntity.id
         WHERE a.id = :alumnoId AND b.activo = true
     """)
     Optional<BuffetEntity> findByAlumnoId(@Param("alumnoId") UUID alumnoId);
 }
-

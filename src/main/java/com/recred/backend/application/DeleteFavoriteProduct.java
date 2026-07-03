@@ -16,10 +16,11 @@ public class DeleteFavoriteProduct {
     }
 
     @Transactional
-    public void execute(DeleteFavoriteProductRequest request) {
+    public DeleteFavoriteProductResponse execute(DeleteFavoriteProductRequest request) {
         Alumno alumno = this.findAlumnoById(request.alumnoId());
         alumno.removerProductoFavorito(request.productoId());
         alumnoRepository.save(alumno);
+        return new DeleteFavoriteProductResponse();
     }
 
     private Alumno findAlumnoById(UUID alumnoId) {

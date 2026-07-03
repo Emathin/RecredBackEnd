@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetProductById;
+import com.recred.backend.application.GetProductByIdRequest;
 import com.recred.backend.application.ProductResponse;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.Producto;
@@ -39,7 +40,7 @@ class GetProductByIdTest {
         producto.setId(id);
         when(productRepository.findActiveById(id)).thenReturn(Optional.of(producto));
 
-        ProductResponse result = getProductById.execute(id, null);
+        ProductResponse result = getProductById.execute(new GetProductByIdRequest(id, null));
 
         assertEquals(id, result.id());
         verify(productRepository).findActiveById(id);
@@ -50,7 +51,8 @@ class GetProductByIdTest {
         UUID id = UUID.randomUUID();
         when(productRepository.findActiveById(id)).thenReturn(Optional.empty());
 
-        assertThrows(ProductNotFoundException.class, () -> getProductById.execute(id, null));
+        assertThrows(ProductNotFoundException.class,
+                () -> getProductById.execute(new GetProductByIdRequest(id, null)));
         verify(productRepository).findActiveById(id);
     }
 
@@ -62,7 +64,8 @@ class GetProductByIdTest {
         producto.setId(id);
         when(productRepository.findActiveByIdWithStock(id, buffetId)).thenReturn(Optional.of(producto));
 
-        ProductResponse result = getProductById.execute(id, buffetId);
+        ProductResponse result = getProductById.execute(
+                new GetProductByIdRequest(id, buffetId));
 
         assertEquals(id, result.id());
         verify(productRepository).findActiveByIdWithStock(id, buffetId);
@@ -74,7 +77,8 @@ class GetProductByIdTest {
         UUID buffetId = UUID.randomUUID();
         when(productRepository.findActiveByIdWithStock(id, buffetId)).thenReturn(Optional.empty());
 
-        assertThrows(ProductNotFoundException.class, () -> getProductById.execute(id, buffetId));
+        assertThrows(ProductNotFoundException.class,
+                () -> getProductById.execute(new GetProductByIdRequest(id, buffetId)));
         verify(productRepository).findActiveByIdWithStock(id, buffetId);
     }
 }

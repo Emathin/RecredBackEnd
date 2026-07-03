@@ -250,6 +250,10 @@ public class Purchase {
         return withdrawalCode != null && !withdrawalCode.isBlank();
     }
 
+    public boolean hasSuggestion() {
+        return suggestionId != null;
+    }
+
     public boolean hasStudentId() {
         return studentIdOrNull() != null;
     }

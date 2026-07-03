@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.DeleteProduct;
+import com.recred.backend.application.DeleteProductRequest;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -38,7 +39,7 @@ class DeleteProductTest {
         producto.setActivo(true);
         when(productRepository.findActiveById(id)).thenReturn(Optional.of(producto));
 
-        deleteProduct.execute(id);
+        deleteProduct.execute(new DeleteProductRequest(id));
 
         assertFalse(producto.getActivo());
         verify(productRepository).save(producto);
@@ -49,7 +50,8 @@ class DeleteProductTest {
         UUID id = UUID.randomUUID();
         when(productRepository.findActiveById(id)).thenReturn(Optional.empty());
 
-        assertThrows(ProductNotFoundException.class, () -> deleteProduct.execute(id));
+        assertThrows(ProductNotFoundException.class,
+                () -> deleteProduct.execute(new DeleteProductRequest(id)));
         verify(productRepository, never()).save(any());
     }
 }

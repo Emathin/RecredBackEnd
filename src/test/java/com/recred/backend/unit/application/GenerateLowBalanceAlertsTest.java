@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GenerateLowBalanceAlerts;
+import com.recred.backend.application.GenerateLowBalanceAlertsRequest;
 import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
@@ -66,7 +67,7 @@ class GenerateLowBalanceAlertsTest {
         when(tutorRepository.findByAlumnoId(studentId))
                 .thenReturn(List.of(tutor));
 
-        generateLowBalanceAlerts.execute();
+        generateLowBalanceAlerts.execute(new GenerateLowBalanceAlertsRequest());
 
         verify(pushNotificationSender, times(2)).send(notificationCaptor.capture());
         List<PushNotification> sentNotifications = notificationCaptor.getAllValues();
@@ -87,7 +88,7 @@ class GenerateLowBalanceAlertsTest {
         when(walletRepository.findAlumnoIdsWithLowBalance(any()))
                 .thenReturn(List.of());
 
-        generateLowBalanceAlerts.execute();
+        generateLowBalanceAlerts.execute(new GenerateLowBalanceAlertsRequest());
 
         verifyNoInteractions(alumnoRepository, tutorRepository, pushNotificationSender);
     }

@@ -42,36 +42,56 @@ public class GetTutorGlobalDashboard {
 
     public GetTutorGlobalDashboardResponse execute(GetTutorGlobalDashboardRequest request) {
         request.validate();
+        Tutor tutor = findTutor(request.cognitoSubject());
+        DashboardTotals dashboardTotals = dashboardTotals(tutor.getHijos());
+        return response(tutor, dashboardTotals);
+    }
 
-        Tutor tutor = tutorRepository.findByUsuarioIdCognito(request.cognitoSubject())
+    private Tutor findTutor(String cognitoSubject) {
+        return tutorRepository.findByUsuarioIdCognito(cognitoSubject)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Tutor no encontrado para el usuario autenticado"));
+    }
 
-        Set<Alumno> hijos = tutor.getHijos();
-
+    private DashboardTotals dashboardTotals(Set<Alumno> hijos) {
         BigDecimal totalBalance = BigDecimal.ZERO;
         BigDecimal totalDebt = BigDecimal.ZERO;
-        List<ChildDashboardResponse> childrenDashboards = new ArrayList<>();
+        List<ChildDashboardResponse> dashboards = new ArrayList<>();
 
         for (Alumno alumno : hijos) {
-            BigDecimal balance = getBalance(alumno);
-            BigDecimal debt = getDebt(alumno);
-            totalBalance = totalBalance.add(balance);
-            totalDebt = totalDebt.add(debt);
-
-            List<GetHistoryByStudentResponse> historial = getHistoryByStudent.execute(
-                    new GetHistoryByStudentRequest(alumno.getId())
-            );
-
-            childrenDashboards.add(buildChildDashboard(alumno, balance, debt, historial));
+            ChildAmounts amounts = childAmounts(alumno);
+            totalBalance = totalBalance.add(amounts.balance());
+            totalDebt = totalDebt.add(amounts.debt());
+            dashboards.add(childDashboard(alumno, amounts));
         }
 
-        String dashboardConfig = tutor.getDashboardConfig();
-        String planStr = tutor.getUsuario() != null 
-                ? tutor.getUsuario().getPlan().name() : "GRATUITO";
+        return new DashboardTotals(totalBalance, totalDebt, dashboards);
+    }
 
-        return new GetTutorGlobalDashboardResponse("ME", totalBalance, totalDebt,
-                dashboardConfig, childrenDashboards, planStr);
+    private ChildAmounts childAmounts(Alumno alumno) {
+        return new ChildAmounts(getBalance(alumno), getDebt(alumno));
+    }
+
+    private ChildDashboardResponse childDashboard(Alumno alumno, ChildAmounts amounts) {
+        List<GetHistoryByStudentResponse> historial = getHistoryByStudent.execute(
+                new GetHistoryByStudentRequest(alumno.getId())
+        );
+        return buildChildDashboard(alumno, amounts.balance(), amounts.debt(), historial);
+    }
+
+    private GetTutorGlobalDashboardResponse response(
+            Tutor tutor,
+            DashboardTotals dashboardTotals
+    ) {
+        String planStr = tutor.getUsuario() != null
+                ? tutor.getUsuario().getPlan().name() : "GRATUITO";
+        return new GetTutorGlobalDashboardResponse(
+                "ME",
+                dashboardTotals.totalBalance(),
+                dashboardTotals.totalDebt(),
+                tutor.getDashboardConfig(),
+                dashboardTotals.childrenDashboards(),
+                planStr);
     }
 
     private BigDecimal getBalance(Alumno alumno) {
@@ -136,13 +156,14 @@ public class GetTutorGlobalDashboard {
                 }
             }
         } catch (Exception e) {
-            // Fallback to ZERO
         }
         return spent;
     }
 
     private HealthSummaryResponse buildHealthSummary(Alumno alumno) {
-        StudentRewardResponse reward = getStudentRewardStatus.execute(alumno.getId());
+        StudentRewardResponse reward = getStudentRewardStatus.execute(
+                new GetStudentRewardStatusRequest(alumno.getId())
+        );
         return new HealthSummaryResponse(
                 reward.currentLevel(),
                 reward.totalPoints(),
@@ -220,5 +241,15 @@ public class GetTutorGlobalDashboard {
             name += " y " + (p.items().size() - 1) + " más";
         }
         return name;
+    }
+
+    private record DashboardTotals(
+            BigDecimal totalBalance,
+            BigDecimal totalDebt,
+            List<ChildDashboardResponse> childrenDashboards
+    ) {
+    }
+
+    private record ChildAmounts(BigDecimal balance, BigDecimal debt) {
     }
 }

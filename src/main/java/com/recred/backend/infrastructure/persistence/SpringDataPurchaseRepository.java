@@ -172,6 +172,19 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
                         @Param("statuses") List<EstadoCompra> statuses);
 
         @Query("""
+                        select count(purchase) > 0
+                        from CompraAnticipadaEntity purchase
+                        join purchase.retiroProgramadoEntity pickup
+                        where pickup.franja.id = :pickupSlotId
+                        and pickup.fechaProgramada >= :fromDate
+                        and purchase.estado in :statuses
+                        """)
+        boolean existsActiveFutureScheduledByPickupSlotId(
+                        @Param("pickupSlotId") UUID pickupSlotId,
+                        @Param("fromDate") LocalDate fromDate,
+                        @Param("statuses") List<EstadoCompra> statuses);
+
+        @Query("""
                         select coalesce(sum(detail.cantidad), 0)
                         from CompraAnticipadaEntity purchase
                         join purchase.retiroProgramadoEntity pickup

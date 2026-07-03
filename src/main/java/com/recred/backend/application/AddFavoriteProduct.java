@@ -3,7 +3,6 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Tutor;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
@@ -27,28 +26,21 @@ public class AddFavoriteProduct {
     }
 
     @Transactional
-    public void execute(AddFavoriteProductRequest request) {
-        UUID alumnoId = request.alumnoId();
-        UUID productoId = request.productoId();
-
-        Alumno alumno = this.findAlumnoById(alumnoId);
-        Producto producto = this.findById(productoId);
-        List<Tutor> tutores = this.findTutoresByAlumnoId(alumnoId);
-
-        boolean isFree = this.isFree(tutores);
-
-        if (isFree) {
-            this.isTutorFree(alumno, productoId);
-        }
-
+    public AddFavoriteProductResponse execute(AddFavoriteProductRequest request) {
+        Alumno alumno = findAlumnoById(request.alumnoId());
+        Producto producto = findById(request.productoId());
+        validateFreePlanLimit(alumno, request.productoId(), request.alumnoId());
         alumno.agregarProductoFavorito(producto);
         alumnoRepository.save(alumno);
+        return new AddFavoriteProductResponse();
     }
 
-    private void isTutorFree(Alumno alumno, UUID productoId) {
-        boolean alreadyFavorite = alumno.getProductosFavoritos().stream()
-                .anyMatch(p -> p.getId().equals(productoId));
-        if (!alreadyFavorite && alumno.getProductosFavoritos().size() >= 5) {
+    private void validateFreePlanLimit(Alumno alumno, UUID productoId, UUID alumnoId) {
+        if (!hasOnlyFreeTutors(alumnoId)) {
+            return;
+        }
+
+        if (alumno.exceedsFavoriteProductLimit(productoId, 5)) {
             throw new IllegalArgumentException(
                     "Límite de productos favoritos alcanzado para cuenta gratuita (máximo 5)");
         }
@@ -64,13 +56,10 @@ public class AddFavoriteProduct {
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
     }
 
-    private List<Tutor> findTutoresByAlumnoId(UUID alumnoId) {
-        return tutorRepository.findByAlumnoId(alumnoId);
-    }
-
-    private boolean isFree(List<Tutor> tutores) {
+    private boolean hasOnlyFreeTutors(UUID alumnoId) {
+        List<Tutor> tutores = tutorRepository.findByAlumnoId(alumnoId);
         return tutores.isEmpty() || tutores.stream()
-                .allMatch(t -> t.getUsuario() == null
-                        || t.getUsuario().getPlan() == TipoPlan.GRATUITO);
+                .allMatch(tutor -> tutor.getUsuario() == null
+                        || tutor.getUsuario().hasFreePlan());
     }
 }

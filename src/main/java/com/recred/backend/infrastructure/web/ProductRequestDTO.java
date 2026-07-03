@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.SaveProductCommand;
-import com.recred.backend.application.UpdateProductCommand;
+import com.recred.backend.application.SaveProductRequest;
+import com.recred.backend.application.UpdateProductRequest;
 import com.recred.backend.domain.models.TipoManejoInventario;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -28,8 +28,8 @@ public record ProductRequestDTO(
         String urlImagen
 ) {
 
-    public SaveProductCommand toSaveCommand() {
-        return new SaveProductCommand(
+    public SaveProductRequest toSaveRequest() {
+        return new SaveProductRequest(
                 nombre,
                 descripcion,
                 precio,
@@ -47,8 +47,8 @@ public record ProductRequestDTO(
         );
     }
 
-    public UpdateProductCommand toUpdateCommand(UUID id) {
-        return new UpdateProductCommand(
+    public UpdateProductRequest toUpdateRequest(UUID id) {
+        return new UpdateProductRequest(
                 id,
                 nombre,
                 descripcion,

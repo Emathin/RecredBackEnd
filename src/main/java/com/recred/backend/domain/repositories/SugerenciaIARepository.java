@@ -11,12 +11,10 @@ import java.util.UUID;
 
 public interface SugerenciaIARepository {
     SugerenciaIA save(SugerenciaIA sugerencia);
-//...
 
     void guardar(SugerenciaIAEntity sugerencia);
 
     void savePriceAlert(PriceAlertSuggestion suggestion);
-// ...
 
     boolean hasRecentPriceAlert(UUID studentId, UUID productId, LocalDateTime since);
 

@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetAllCategories;
+import com.recred.backend.application.GetAllCategoriesRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,9 +22,10 @@ public class CategoryController {
 
     @GetMapping
     public List<CategoryResponse> getCategories() {
-        return getAllCategories.execute()
+        return getAllCategories.execute(new GetAllCategoriesRequest())
+                .categories()
                 .stream()
-                .map(res -> new CategoryResponse(res.id(), res.descripcion(), res.activo()))
+                .map(CategoryResponse::fromApplication)
                 .collect(Collectors.toList());
     }
 }

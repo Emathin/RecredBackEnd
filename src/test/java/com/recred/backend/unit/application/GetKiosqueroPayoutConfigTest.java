@@ -1,7 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetKiosqueroPayoutConfig;
-import com.recred.backend.application.GetKiosqueroPayoutConfigCommand;
+import com.recred.backend.application.GetKiosqueroPayoutConfigRequest;
 import com.recred.backend.application.GetKiosqueroPayoutConfigResponse;
 import com.recred.backend.domain.exceptions.KiosqueroPayoutConfigNotFoundException;
 import com.recred.backend.domain.models.IntervalUnit;
@@ -38,7 +38,7 @@ class GetKiosqueroPayoutConfigTest {
     @Test
     void execute_WhenConfigExists_ShouldReturnResponse() {
         UUID kiosqueroId = UUID.randomUUID();
-        GetKiosqueroPayoutConfigCommand command = new GetKiosqueroPayoutConfigCommand(kiosqueroId);
+        GetKiosqueroPayoutConfigRequest request = new GetKiosqueroPayoutConfigRequest(kiosqueroId);
 
         KiosqueroPayoutConfig config = new KiosqueroPayoutConfig();
         config.setKiosqueroId(kiosqueroId);
@@ -51,7 +51,7 @@ class GetKiosqueroPayoutConfigTest {
 
         when(repository.findByKiosqueroId(kiosqueroId)).thenReturn(Optional.of(config));
 
-        GetKiosqueroPayoutConfigResponse response = useCase.execute(command);
+        GetKiosqueroPayoutConfigResponse response = useCase.execute(request);
 
         assertNotNull(response);
         assertEquals(kiosqueroId, response.kiosqueroId());
@@ -61,10 +61,10 @@ class GetKiosqueroPayoutConfigTest {
     @Test
     void execute_WhenConfigDoesNotExist_ShouldThrowException() {
         UUID kiosqueroId = UUID.randomUUID();
-        GetKiosqueroPayoutConfigCommand command = new GetKiosqueroPayoutConfigCommand(kiosqueroId);
+        GetKiosqueroPayoutConfigRequest request = new GetKiosqueroPayoutConfigRequest(kiosqueroId);
 
         when(repository.findByKiosqueroId(kiosqueroId)).thenReturn(Optional.empty());
 
-        assertThrows(KiosqueroPayoutConfigNotFoundException.class, () -> useCase.execute(command));
+        assertThrows(KiosqueroPayoutConfigNotFoundException.class, () -> useCase.execute(request));
     }
 }

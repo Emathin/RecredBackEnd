@@ -6,7 +6,15 @@ import com.recred.backend.domain.models.RecessTime;
 import java.util.List;
 import java.util.UUID;
 
-public record CreateAdvancePurchaseRequest(List<OrderRequest> orders) {
+public record CreateAdvancePurchaseRequest(String cognitoSub, List<OrderRequest> orders) {
+
+    public CreateAdvancePurchaseRequest(List<OrderRequest> orders) {
+        this(null, orders);
+    }
+
+    public CreateAdvancePurchaseRequest withCognitoSub(String cognitoSub) {
+        return new CreateAdvancePurchaseRequest(cognitoSub, orders);
+    }
 
     public record OrderRequest(
             UUID studentId,

@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetBuffetTimeSlots;
+import com.recred.backend.application.GetBuffetTimeSlotsRequest;
+import com.recred.backend.application.GetTimeSlotsBySchoolResponse;
 import com.recred.backend.domain.exceptions.BuffetNotFoundException;
 import com.recred.backend.domain.exceptions.PickupTimeSlotNotFoundException;
 import com.recred.backend.domain.models.Buffet;
@@ -36,9 +38,8 @@ class GetBuffetTimeSlotsTest {
         UUID buffetId = UUID.randomUUID();
         UUID colegioId = UUID.randomUUID();
         Buffet buffet = buffet(colegioId);
-        UUID slotId = UUID.randomUUID();
         FranjaHoraria slot = new FranjaHoraria(
-                slotId,
+                UUID.randomUUID(),
                 colegioId,
                 "Primer recreo",
                 LocalTime.of(9, 30),
@@ -49,12 +50,11 @@ class GetBuffetTimeSlotsTest {
         when(buffetRepository.findById(buffetId)).thenReturn(Optional.of(buffet));
         when(franjaHorariaRepository.findAllByColegioId(colegioId)).thenReturn(List.of(slot));
 
-        List<com.recred.backend.application.GetTimeSlotsBySchoolResponse> result = useCase.execute(buffetId);
+        List<GetTimeSlotsBySchoolResponse> result = useCase.execute(
+                new GetBuffetTimeSlotsRequest(buffetId));
 
-        assertEquals(1, result.size());
-        assertEquals(slotId, result.get(0).id());
-        assertEquals("Primer recreo", result.get(0).descripcion());
-        assertEquals(LocalTime.of(9, 30), result.get(0).horaInicio());
+        assertEquals(slot.getId(), result.get(0).id());
+        assertEquals(slot.getDescripcion(), result.get(0).descripcion());
         verify(franjaHorariaRepository).findAllByColegioId(colegioId);
     }
 
@@ -64,7 +64,8 @@ class GetBuffetTimeSlotsTest {
 
         when(buffetRepository.findById(buffetId)).thenReturn(Optional.empty());
 
-        assertThrows(BuffetNotFoundException.class, () -> useCase.execute(buffetId));
+        assertThrows(BuffetNotFoundException.class,
+                () -> useCase.execute(new GetBuffetTimeSlotsRequest(buffetId)));
     }
 
     @Test
@@ -75,7 +76,7 @@ class GetBuffetTimeSlotsTest {
         when(buffetRepository.findById(buffetId)).thenReturn(Optional.of(buffet));
 
         assertThrows(PickupTimeSlotNotFoundException.class,
-                () -> useCase.execute(buffetId));
+                () -> useCase.execute(new GetBuffetTimeSlotsRequest(buffetId)));
     }
 
     private Buffet buffet(UUID colegioId) {

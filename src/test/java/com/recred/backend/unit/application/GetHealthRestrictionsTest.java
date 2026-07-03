@@ -48,7 +48,8 @@ class GetHealthRestrictionsTest {
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        Set<GetHealthRestrictionsResponse> resultado = useCase.ejecutar(new GetHealthRestrictionsRequest(alumnoId));
+        Set<GetHealthRestrictionsResponse> resultado =
+                useCase.execute(new GetHealthRestrictionsRequest(alumnoId));
 
         assertNotNull(resultado);
         assertEquals(1, resultado.size());
@@ -62,7 +63,7 @@ class GetHealthRestrictionsTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.ejecutar(new GetHealthRestrictionsRequest(alumnoId));
+            useCase.execute(new GetHealthRestrictionsRequest(alumnoId));
         });
 
         assertEquals("El alumno con ID " + alumnoId + " no existe.", exception.getMessage());

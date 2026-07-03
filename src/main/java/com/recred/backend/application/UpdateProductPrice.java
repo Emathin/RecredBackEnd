@@ -21,7 +21,7 @@ public class UpdateProductPrice {
     }
 
     @Transactional
-    public void execute(UpdateProductPriceRequest request) {
+    public UpdateProductPriceResponse execute(UpdateProductPriceRequest request) {
         request.validate();
 
         Producto product = findProduct(request.productId());
@@ -31,6 +31,7 @@ public class UpdateProductPrice {
             updatePrice(product, request);
             publishPriceChanged(product, oldPrice, request);
         }
+        return new UpdateProductPriceResponse();
     }
 
     private Producto findProduct(UUID productId) {

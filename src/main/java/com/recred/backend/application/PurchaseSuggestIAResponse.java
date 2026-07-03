@@ -32,7 +32,7 @@ public record PurchaseSuggestIAResponse(
             String categoriaDescripcion,
             List<ClasificacionSaludDTO> clasificacionesSalud
     ) {}
-    
+
     public record ClasificacionSaludDTO(
             UUID id,
             String descripcion

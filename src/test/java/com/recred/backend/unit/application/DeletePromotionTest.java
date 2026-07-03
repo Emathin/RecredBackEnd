@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.DeletePromotion;
+import com.recred.backend.application.DeletePromotionRequest;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.domain.repositories.PromotionRepository;
@@ -38,7 +39,7 @@ class DeletePromotionTest {
 
         when(promotionRepository.findById(id)).thenReturn(Optional.of(promotion));
 
-        deletePromotion.execute(id);
+        deletePromotion.execute(new DeletePromotionRequest(id));
 
         assertEquals(PromotionStatus.REJECTED, promotion.getStatus());
         verify(promotionRepository).save(promotion);
@@ -49,7 +50,8 @@ class DeletePromotionTest {
         UUID id = UUID.randomUUID();
         when(promotionRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> deletePromotion.execute(id));
+        assertThrows(IllegalArgumentException.class,
+                () -> deletePromotion.execute(new DeletePromotionRequest(id)));
         verify(promotionRepository, never()).save(any());
     }
 }

@@ -34,6 +34,10 @@ public class GetStudentPreferences {
     public GetStudentPreferencesResponse execute(GetStudentPreferencesRequest request) {
         request.validate();
 
+        if (request.isByUser()) {
+            return preferencesForUser(request);
+        }
+
         List<SugerenciaIAEntity> preferences = findPreferences(request);
         List<SugerenciaIAEntity> selectedPreferences = selectPreferences(preferences, request);
 
@@ -62,10 +66,7 @@ public class GetStudentPreferences {
     }
 
     @Transactional
-    public GetStudentPreferencesResponse executeByUserId(
-            GetStudentPreferencesByUserRequest request) {
-        request.validate();
-
+    private GetStudentPreferencesResponse preferencesForUser(GetStudentPreferencesRequest request) {
         Optional<Tutor> tutor = findTutorForUser(request.userId());
         if (tutor.isPresent()) {
             return preferencesForParent(tutor.orElseThrow(), request.type());

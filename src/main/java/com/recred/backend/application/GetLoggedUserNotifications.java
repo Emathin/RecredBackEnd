@@ -1,11 +1,9 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
-import com.recred.backend.domain.models.Notification;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.NotificationRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
-
 import java.util.List;
 
 public class GetLoggedUserNotifications {
@@ -23,37 +21,31 @@ public class GetLoggedUserNotifications {
         this.notificationRepository = notificationRepository;
     }
 
-    public GetLoggedUserNotificationsResponse execute(String cognitoSubject, boolean unreadOnly,
-                                      int page, int size) {
-        validatePagination(page, size);
+    public GetLoggedUserNotificationsResponse execute(
+            GetLoggedUserNotificationsRequest request
+    ) {
+        validatePagination(request.page(), request.size());
+        Usuario usuario = authenticatedUser(request.cognitoSubject());
+        return new GetLoggedUserNotificationsResponse(notifications(usuario, request));
+    }
 
-        Usuario usuario = usuarioRepository.findByIdCognito(cognitoSubject)
+    private Usuario authenticatedUser(String cognitoSubject) {
+        return usuarioRepository.findByIdCognito(cognitoSubject)
                 .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(cognitoSubject));
+    }
 
-        List<Notification> notifications = notificationRepository.findByUserId(
+    private List<UserNotificationResponse> notifications(
+            Usuario usuario,
+            GetLoggedUserNotificationsRequest request
+    ) {
+        return notificationRepository.findByUserId(
                 usuario.getId(),
-                unreadOnly,
-                page,
-                size
-        );
-        
-        List<GetLoggedUserNotificationsResponse.NotificationDTO> dtos = notifications.stream()
-                .map(n -> new GetLoggedUserNotificationsResponse.NotificationDTO(
-                        n.id(),
-                        n.type(),
-                        n.title(),
-                        n.message(),
-                        n.read(),
-                        n.createdAt(),
-                        n.readAt(),
-                        n.studentId(),
-                        n.productId(),
-                        n.purchaseId(),
-                        n.suggestionId()
-                ))
+                request.unreadOnly(),
+                request.page(),
+                request.size()
+        ).stream()
+                .map(UserNotificationResponse::fromDomain)
                 .toList();
-                
-        return new GetLoggedUserNotificationsResponse(dtos);
     }
 
     private void validatePagination(int page, int size) {

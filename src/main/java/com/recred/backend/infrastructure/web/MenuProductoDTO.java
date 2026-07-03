@@ -1,5 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.MenuProductCategoryResponse;
+import com.recred.backend.application.MenuProductResponse;
 import com.recred.backend.domain.models.Producto;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -48,6 +50,27 @@ public record MenuProductoDTO(
         return fromProduct(producto, true, motivo);
     }
 
+    public static MenuProductoDTO fromApplication(MenuProductResponse product) {
+        return new MenuProductoDTO(
+                product.id(),
+                product.nombre(),
+                product.descripcion(),
+                product.precio(),
+                product.stockActual(),
+                product.stockReservado(),
+                product.stockMinimo(),
+                product.stockDisponible(),
+                product.estadoInventario(),
+                product.tipoManejoInventario(),
+                product.cupoMaximoDiario(),
+                product.cupoDisponibleDia(),
+                product.bloqueado(),
+                product.motivoBloqueo(),
+                category(product.categoria()),
+                product.urlImagen()
+        );
+    }
+
     private static MenuProductoDTO fromProduct(
             Producto producto,
             Boolean bloqueado,
@@ -86,5 +109,13 @@ public record MenuProductoDTO(
                 producto.getCategoria().getId(),
                 producto.getCategoria().getDescripcion()
         );
+    }
+
+    private static CategoryDTO category(MenuProductCategoryResponse category) {
+        if (category == null) {
+            return null;
+        }
+
+        return new CategoryDTO(category.id(), category.descripcion());
     }
 }

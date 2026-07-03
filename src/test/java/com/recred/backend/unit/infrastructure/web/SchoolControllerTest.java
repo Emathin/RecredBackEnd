@@ -1,6 +1,7 @@
 package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.application.GetActiveSchools;
+import com.recred.backend.application.GetActiveSchoolsRequest;
 import com.recred.backend.application.GetActiveSchoolsResponse;
 import com.recred.backend.application.GetGradesBySchool;
 import com.recred.backend.application.GetGradesBySchoolRequest;
@@ -55,7 +56,7 @@ class SchoolControllerTest {
         SchoolResponseDTO school = firstOkBody(response);
         assertEquals(schoolId, school.id());
         assertEquals("North School", school.nombre());
-        verify(getActiveSchools).execute();
+        verify(getActiveSchools).execute(new GetActiveSchoolsRequest());
     }
 
     @Test
@@ -84,7 +85,7 @@ class SchoolControllerTest {
     }
 
     private void givenActiveSchools(Colegio... schools) {
-        when(getActiveSchools.execute())
+        when(getActiveSchools.execute(new GetActiveSchoolsRequest()))
                 .thenReturn(GetActiveSchoolsResponse.fromDomain(List.of(schools)));
     }
 
@@ -133,4 +134,3 @@ class SchoolControllerTest {
         return response.getBody().get(0);
     }
 }
-

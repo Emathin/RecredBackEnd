@@ -21,17 +21,20 @@ public class GetTutorHistory {
     }
 
     @Transactional(readOnly = true)
-    public List<GetHistoryByStudentResponse> execute(UUID tutorId) {
-        return mapToResponse(purchaseRepository.findHistorialByTutor(tutorId));
+    public GetTutorHistoryResponse execute(GetTutorHistoryRequest request) {
+        List<Purchase> purchases = purchaseRepository.findHistorialByTutor(tutorId(request));
+        return new GetTutorHistoryResponse(mapToResponse(purchases));
     }
 
-    @Transactional(readOnly = true)
-    public List<GetHistoryByStudentResponse> executeByCognitoSubject(String cognitoSubject) {
-        UUID tutorId = tutorRepository.findByUsuarioIdCognito(cognitoSubject)
+    private UUID tutorId(GetTutorHistoryRequest request) {
+        if (request.tutorId() != null) {
+            return request.tutorId();
+        }
+
+        return tutorRepository.findByUsuarioIdCognito(request.cognitoSubject())
                 .orElseThrow(() -> new RuntimeException(
                         "Tutor no encontrado para el usuario autenticado"))
                 .getId();
-        return mapToResponse(purchaseRepository.findHistorialByTutor(tutorId));
     }
 
     private List<GetHistoryByStudentResponse> mapToResponse(List<Purchase> purchases) {
@@ -54,8 +57,6 @@ public class GetTutorHistory {
         String withdrawalStatus = purchase.getWithdrawalStatus() != null
                 ? purchase.getWithdrawalStatus().name() : null;
 
-        List<GetHistoryByStudentResponse.Item> items = mapToResponseItems(purchase);
-
         return new GetHistoryByStudentResponse(
                 purchase.getId(),
                 studentId,
@@ -64,7 +65,7 @@ public class GetTutorHistory {
                 statusLabel,
                 paymentMethod,
                 purchase.getDate(),
-                items,
+                mapToResponseItems(purchase),
                 tipo,
                 purchase.getWithdrawalCode(),
                 purchase.getPickupSlotDescription(),
@@ -78,6 +79,7 @@ public class GetTutorHistory {
         if (purchase.getItems() == null) {
             return null;
         }
+
         return purchase.getItems().entrySet().stream()
                 .map(entry -> new GetHistoryByStudentResponse.Item(
                         entry.getKey().getId(),

@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetTutorHistory;
+import com.recred.backend.application.GetTutorHistoryRequest;
+import com.recred.backend.application.GetTutorHistoryResponse;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -40,10 +42,10 @@ class GetTutorHistoryTest {
 
         when(purchaseRepository.findHistorialByTutor(tutorId)).thenReturn(comprasMock);
 
-        List<com.recred.backend.application.GetHistoryByStudentResponse> resultado = obtenerHistorialTutor.execute(tutorId);
+        GetTutorHistoryResponse resultado = obtenerHistorialTutor.execute(
+                GetTutorHistoryRequest.byTutorId(tutorId));
 
-        assertEquals(1, resultado.size());
-        assertEquals(compra.getId(), resultado.get(0).id());
+        assertEquals(1, resultado.purchases().size());
         verify(purchaseRepository, times(1)).findHistorialByTutor(tutorId);
     }
 
@@ -59,10 +61,10 @@ class GetTutorHistoryTest {
         when(tutorRepository.findByUsuarioIdCognito(subject)).thenReturn(Optional.of(tutor));
         when(purchaseRepository.findHistorialByTutor(tutorId)).thenReturn(purchases);
 
-        List<com.recred.backend.application.GetHistoryByStudentResponse> result = obtenerHistorialTutor.executeByCognitoSubject(subject);
+        GetTutorHistoryResponse result = obtenerHistorialTutor.execute(
+                GetTutorHistoryRequest.byCognitoSubject(subject));
 
-        assertEquals(1, result.size());
-        assertEquals(purchase.getId(), result.get(0).id());
+        assertEquals(purchase.getId(), result.purchases().get(0).id());
         verify(purchaseRepository).findHistorialByTutor(tutorId);
     }
 
@@ -72,7 +74,8 @@ class GetTutorHistoryTest {
         when(tutorRepository.findByUsuarioIdCognito(subject)).thenReturn(Optional.empty());
 
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> obtenerHistorialTutor.executeByCognitoSubject(subject));
+                () -> obtenerHistorialTutor.execute(
+                        GetTutorHistoryRequest.byCognitoSubject(subject)));
 
         assertEquals("Tutor no encontrado para el usuario autenticado", exception.getMessage());
     }

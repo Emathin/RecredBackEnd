@@ -127,7 +127,7 @@ class CreateAssistantAdvancePurchaseTest {
         FranjaHoraria slot = timeSlot();
 
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(recessTimeSlotResolver.resolve(student, RecessTime.FIRST_RECESS))
+        when(recessTimeSlotResolver.resolveByBuffet(buffetId, RecessTime.FIRST_RECESS))
                 .thenReturn(slot);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
         when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("ABC123");
@@ -168,6 +168,29 @@ class CreateAssistantAdvancePurchaseTest {
         verify(advancePurchaseRulesService).validate(buffetId, slot, pickupDate, cart);
         verify(inventoryAvailabilityService).reserve(buffetId, cart);
         verify(walletRepository).save(wallet);
+        verify(recessTimeSlotResolver).resolveByBuffet(buffetId, RecessTime.FIRST_RECESS);
+    }
+
+    @Test
+    void execute_WhenStudentHasNoGrade_ShouldResolvePickupSlotByBuffet() {
+        LocalDate pickupDate = LocalDate.of(2026, 5, 27);
+        Alumno student = studentWithoutGrade();
+        Map<Producto, Integer> cart = Map.of(product, 1);
+        FranjaHoraria slot = timeSlot();
+
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(recessTimeSlotResolver.resolveByBuffet(buffetId, RecessTime.FIRST_RECESS))
+                .thenReturn(slot);
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("ABC123");
+        when(purchaseRepository.save(any(Purchase.class))).thenAnswer(invocation ->
+                invocation.getArgument(0));
+
+        CreateAssistantAdvancePurchaseResponse result =
+                useCase.execute(request(buffetId, cart, pickupDate));
+
+        assertEquals(slotId, result.pickupSlotId());
+        verify(recessTimeSlotResolver).resolveByBuffet(buffetId, RecessTime.FIRST_RECESS);
     }
 
     @Test
@@ -178,7 +201,7 @@ class CreateAssistantAdvancePurchaseTest {
         FranjaHoraria slot = timeSlot();
 
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(recessTimeSlotResolver.resolve(student, RecessTime.FIRST_RECESS))
+        when(recessTimeSlotResolver.resolveByBuffet(buffetId, RecessTime.FIRST_RECESS))
                 .thenReturn(slot);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
         doThrow(new InsufficientStockException(product.getId(), 2, 1))
@@ -219,7 +242,7 @@ class CreateAssistantAdvancePurchaseTest {
         FranjaHoraria slot = timeSlot();
 
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(recessTimeSlotResolver.resolve(student, RecessTime.FIRST_RECESS))
+        when(recessTimeSlotResolver.resolveByBuffet(buffetId, RecessTime.FIRST_RECESS))
                 .thenReturn(slot);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
 
@@ -237,7 +260,7 @@ class CreateAssistantAdvancePurchaseTest {
         FranjaHoraria slot = timeSlot();
 
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(recessTimeSlotResolver.resolve(student, RecessTime.FIRST_RECESS))
+        when(recessTimeSlotResolver.resolveByBuffet(buffetId, RecessTime.FIRST_RECESS))
                 .thenReturn(slot);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
@@ -261,7 +284,7 @@ class CreateAssistantAdvancePurchaseTest {
         CreateAssistantAdvancePurchase useCaseWithMovements = useCaseWithMovements();
 
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(recessTimeSlotResolver.resolve(student, RecessTime.FIRST_RECESS))
+        when(recessTimeSlotResolver.resolveByBuffet(buffetId, RecessTime.FIRST_RECESS))
                 .thenReturn(slot);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
         when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("ABC123");
@@ -299,7 +322,7 @@ class CreateAssistantAdvancePurchaseTest {
         CreateAssistantAdvancePurchase useCaseWithMovements = useCaseWithMovements();
 
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(recessTimeSlotResolver.resolve(student, RecessTime.FIRST_RECESS))
+        when(recessTimeSlotResolver.resolveByBuffet(buffetId, RecessTime.FIRST_RECESS))
                 .thenReturn(slot);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
         when(withdrawalCodeService.generateCode(any(Purchase.class))).thenReturn("ABC123");
@@ -324,6 +347,12 @@ class CreateAssistantAdvancePurchaseTest {
         Alumno student = new Alumno();
         student.setId(studentId);
         student.setGrado(grade);
+        return student;
+    }
+
+    private Alumno studentWithoutGrade() {
+        Alumno student = new Alumno();
+        student.setId(studentId);
         return student;
     }
 

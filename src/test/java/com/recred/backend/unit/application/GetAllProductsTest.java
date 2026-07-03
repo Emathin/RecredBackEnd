@@ -1,7 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetAllProducts;
-import com.recred.backend.application.ProductResponse;
+import com.recred.backend.application.GetAllProductsRequest;
+import com.recred.backend.application.GetAllProductsResponse;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,9 +37,10 @@ class GetAllProductsTest {
         producto.setId(UUID.randomUUID());
         when(productRepository.findAllActive()).thenReturn(List.of(producto));
 
-        List<ProductResponse> result = getAllProducts.execute(null);
+        GetAllProductsResponse result = getAllProducts.execute(new GetAllProductsRequest(null));
 
-        assertEquals(1, result.size());
+        assertEquals(1, result.products().size());
+        assertEquals(producto.getId(), result.products().get(0).id());
         verify(productRepository).findAllActive();
     }
 
@@ -49,9 +51,10 @@ class GetAllProductsTest {
         producto.setId(UUID.randomUUID());
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(producto));
 
-        List<ProductResponse> result = getAllProducts.execute(buffetId);
+        GetAllProductsResponse result = getAllProducts.execute(new GetAllProductsRequest(buffetId));
 
-        assertEquals(1, result.size());
+        assertEquals(1, result.products().size());
+        assertEquals(producto.getId(), result.products().get(0).id());
         verify(productRepository).findAllActiveWithStock(buffetId);
     }
 }

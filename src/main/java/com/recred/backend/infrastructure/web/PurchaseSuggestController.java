@@ -4,10 +4,12 @@ import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAdvancePurchaseRequest;
 import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
+import com.recred.backend.application.NotifyPurchaseSuggestionsRequest;
+import com.recred.backend.application.NotifyPurchaseSuggestionsResponse;
+import com.recred.backend.application.PushNotificationResponse;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.RespondToAISuggestionRequest;
 import com.recred.backend.domain.models.BuyerType;
-import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
@@ -54,16 +56,18 @@ public class PurchaseSuggestController {
     }
 
     @PostMapping("/test-notificacion")
-    public ResponseEntity<PushNotification> testNotification(
+    public ResponseEntity<PushNotificationResponse> testNotification(
             Authentication authentication,
             @RequestBody(required = false) TestSuggestionRequest testRequest) {
         String subject = (testRequest != null && testRequest.testCognitoId() != null) 
                 ? testRequest.testCognitoId() 
                 : cognitoSubject(authentication);
         
-        PushNotification notification = notifyPurchaseSuggestions.execute(subject);
-        return notification != null 
-                ? ResponseEntity.ok(notification) 
+        NotifyPurchaseSuggestionsResponse response = notifyPurchaseSuggestions.execute(
+                new NotifyPurchaseSuggestionsRequest(subject)
+        );
+        return response.notification() != null
+                ? ResponseEntity.ok(response.notification())
                 : ResponseEntity.noContent().build();
     }
 
@@ -118,7 +122,7 @@ public class PurchaseSuggestController {
                 new CreateAdvancePurchaseRequest(List.of(order));
 
         CreateAdvancePurchaseResponse useCaseResponse =
-                createAdvancePurchase.execute(request, subject);
+                createAdvancePurchase.execute(request.withCognitoSub(subject));
 
         return ResponseEntity.ok(new AdvancePurchaseResponse(
                 useCaseResponse.orderId(),

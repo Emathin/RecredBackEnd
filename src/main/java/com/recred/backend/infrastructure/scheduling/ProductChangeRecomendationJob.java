@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.scheduling;
 
 import com.recred.backend.application.GenerateProductChangeRecommendation;
+import com.recred.backend.application.GenerateProductChangeRecommendationRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,8 @@ public class ProductChangeRecomendationJob {
 
     @Scheduled(cron = "0 00 23 1,15 * *")
     public void run() {
-        generateProductChangeRecommendation.execute();
+        generateProductChangeRecommendation.execute(
+                new GenerateProductChangeRecommendationRequest()
+        );
     }
 }

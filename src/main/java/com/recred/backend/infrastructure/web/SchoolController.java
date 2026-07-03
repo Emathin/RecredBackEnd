@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetActiveSchools;
+import com.recred.backend.application.GetActiveSchoolsRequest;
 import com.recred.backend.application.GetGradesBySchool;
 import com.recred.backend.application.GetGradesBySchoolRequest;
 import com.recred.backend.domain.exceptions.SchoolNotFoundException;
@@ -32,7 +33,8 @@ public class SchoolController {
 
     @GetMapping
     public ResponseEntity<List<SchoolResponseDTO>> getSchools() {
-        List<SchoolResponseDTO> schools = getActiveSchools.execute()
+        List<SchoolResponseDTO> schools = getActiveSchools
+                .execute(new GetActiveSchoolsRequest())
                 .schools()
                 .stream()
                 .map(SchoolResponseDTO::fromApplication)

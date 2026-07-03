@@ -1,5 +1,7 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.models.ClasificacionTipo;
 import com.recred.backend.domain.models.Producto;
 
 import java.math.BigDecimal;
@@ -32,59 +34,79 @@ public record ProductResponse(
         Set<ClassificationResponse> tipos
 ) {
 
-    public static ProductResponse fromDomain(Producto producto) {
-        CategoryResponse categoryResponse = null;
-        if (producto.getCategoria() != null) {
-            categoryResponse = new CategoryResponse(
-                    producto.getCategoria().getId(),
-                    producto.getCategoria().getDescripcion()
-            );
-        }
-
-        Set<ClassificationResponse> saludResponses = producto.getClasificacionesSalud() == null
-                ? Set.of()
-                : producto.getClasificacionesSalud().stream()
-                        .map(cs -> new ClassificationResponse(cs.getId(), cs.getDescripcion()))
-                        .collect(Collectors.toSet());
-
-        Set<ClassificationResponse> tiposResponses = producto.getTipos() == null
-                ? Set.of()
-                : producto.getTipos().stream()
-                        .map(ct -> new ClassificationResponse(ct.getId(), ct.getDescripcion()))
-                        .collect(Collectors.toSet());
-
+    public static ProductResponse fromDomain(Producto product) {
         return new ProductResponse(
-                producto.getId(),
-                producto.getNombre(),
-                producto.getDescripcion(),
-                producto.getPrecio(),
-                producto.getPeso(),
-                producto.getRequierePreparacion(),
-                producto.getActivo(),
-                producto.getCreadoEn(),
-                producto.getActualizadoEn(),
-                producto.getStockActual(),
-                producto.getStockReservado(),
-                producto.getStockMinimo(),
-                producto.getStockDisponible(),
-                producto.getEstadoInventario() == null
+                product.getId(),
+                product.getNombre(),
+                product.getDescripcion(),
+                product.getPrecio(),
+                product.getPeso(),
+                product.getRequierePreparacion(),
+                product.getActivo(),
+                product.getCreadoEn(),
+                product.getActualizadoEn(),
+                product.getStockActual(),
+                product.getStockReservado(),
+                product.getStockMinimo(),
+                product.getStockDisponible(),
+                product.getEstadoInventario() == null
                         ? null
-                        : producto.getEstadoInventario().name(),
-                producto.getTipoManejoInventario() == null
+                        : product.getEstadoInventario().name(),
+                product.getTipoManejoInventario() == null
                         ? null
-                        : producto.getTipoManejoInventario().name(),
-                producto.getCupoMaximoDiario(),
-                producto.getCupoDisponibleDia(),
-                producto.getUrlImagen(),
-                categoryResponse,
-                saludResponses,
-                tiposResponses
+                        : product.getTipoManejoInventario().name(),
+                product.getCupoMaximoDiario(),
+                product.getCupoDisponibleDia(),
+                product.getUrlImagen(),
+                CategoryResponse.fromDomain(product),
+                ClassificationResponse.fromHealthClassifications(
+                        product.getClasificacionesSalud()),
+                ClassificationResponse.fromTypeClassifications(product.getTipos())
         );
     }
 
     public record CategoryResponse(UUID id, String descripcion) {
+
+        private static CategoryResponse fromDomain(Producto product) {
+            if (product.getCategoria() == null) {
+                return null;
+            }
+
+            return new CategoryResponse(
+                    product.getCategoria().getId(),
+                    product.getCategoria().getDescripcion()
+            );
+        }
     }
 
     public record ClassificationResponse(UUID id, String descripcion) {
+
+        private static Set<ClassificationResponse> fromHealthClassifications(
+                Set<ClasificacionSalud> classifications
+        ) {
+            if (classifications == null) {
+                return Set.of();
+            }
+
+            return classifications.stream()
+                    .map(classification -> new ClassificationResponse(
+                            classification.getId(),
+                            classification.getDescripcion()))
+                    .collect(Collectors.toSet());
+        }
+
+        private static Set<ClassificationResponse> fromTypeClassifications(
+                Set<ClasificacionTipo> classifications
+        ) {
+            if (classifications == null) {
+                return Set.of();
+            }
+
+            return classifications.stream()
+                    .map(classification -> new ClassificationResponse(
+                            classification.getId(),
+                            classification.getDescripcion()))
+                    .collect(Collectors.toSet());
+        }
     }
 }

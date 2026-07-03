@@ -73,7 +73,8 @@ public class BudgetController {
     public ResponseEntity<CheckBudgetDatesResponse> checkDates(
             @PathVariable UUID studentId,
             @RequestBody CheckBudgetDatesRequest request) {
-        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(
+                request.withStudentId(studentId));
         return ResponseEntity.ok(response);
     }
 

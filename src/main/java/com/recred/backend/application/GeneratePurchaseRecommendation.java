@@ -42,9 +42,12 @@ public class GeneratePurchaseRecommendation {
         this.suggestionAiRepository = suggestionAiRepository;
     }
 
-    public void execute() {
+    public GeneratePurchaseRecommendationResponse execute(
+            GeneratePurchaseRecommendationRequest request
+    ) {
         List<ConsumptionAlertCandidate> candidates = studentRepository.findActiveCandidates();
         candidates.forEach(this::processCandidate);
+        return new GeneratePurchaseRecommendationResponse();
     }
 
     private void processCandidate(ConsumptionAlertCandidate candidate) {

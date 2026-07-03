@@ -48,46 +48,84 @@ public class SchoolAssistantConversations {
         this.clock = clock;
     }
 
-    public List<ChatSession> findStudentSessions(UUID studentIdOrUserId, int page, int size) {
+    public List<SchoolAssistantConversationSessionResponse> findStudentSessions(
+            UUID studentIdOrUserId,
+            int page,
+            int size
+    ) {
         UUID studentId = resolvedStudentId(studentIdOrUserId);
-        return chatSessionRepository.findByStudentId(studentId, page, size);
+        return sessionResponses(chatSessionRepository.findByStudentId(studentId, page, size));
     }
 
-    public List<ChatSession> findStudentSessions(String cognitoSubject, int page, int size) {
+    public List<SchoolAssistantConversationSessionResponse> findStudentSessions(
+            String cognitoSubject,
+            int page,
+            int size
+    ) {
         UUID studentId = authenticatedStudentId(cognitoSubject);
-        return chatSessionRepository.findByStudentId(studentId, page, size);
+        return sessionResponses(chatSessionRepository.findByStudentId(studentId, page, size));
     }
 
-    public List<ChatSession> findTutorSessions(String cognitoSubject, int page, int size) {
-        return chatSessionRepository.findByUserId(tutorUserId(cognitoSubject), page, size);
+    public List<SchoolAssistantConversationSessionResponse> findTutorSessions(
+            String cognitoSubject,
+            int page,
+            int size
+    ) {
+        return sessionResponses(chatSessionRepository.findByUserId(
+                tutorUserId(cognitoSubject),
+                page,
+                size));
     }
 
-    public List<ChatSession> findKiosqueroSessions(String cognitoSubject, int page, int size) {
-        return chatSessionRepository.findByUserId(kiosqueroUserId(cognitoSubject), page, size);
+    public List<SchoolAssistantConversationSessionResponse> findKiosqueroSessions(
+            String cognitoSubject,
+            int page,
+            int size
+    ) {
+        return sessionResponses(chatSessionRepository.findByUserId(
+                kiosqueroUserId(cognitoSubject),
+                page,
+                size));
     }
 
-    public List<ChatMessage> findStudentMessages(UUID studentIdOrUserId, UUID sessionId,
-                                                 int page, int size) {
+    public List<SchoolAssistantConversationMessageResponse> findStudentMessages(
+            UUID studentIdOrUserId,
+            UUID sessionId,
+            int page,
+            int size
+    ) {
         requireStudentSession(studentIdOrUserId, sessionId);
-        return chatMessageRepository.findBySessionId(sessionId, page, size);
+        return messageResponses(chatMessageRepository.findBySessionId(sessionId, page, size));
     }
 
-    public List<ChatMessage> findStudentMessages(String cognitoSubject, UUID sessionId,
-                                                 int page, int size) {
+    public List<SchoolAssistantConversationMessageResponse> findStudentMessages(
+            String cognitoSubject,
+            UUID sessionId,
+            int page,
+            int size
+    ) {
         requireResolvedStudentSession(authenticatedStudentId(cognitoSubject), sessionId);
-        return chatMessageRepository.findBySessionId(sessionId, page, size);
+        return messageResponses(chatMessageRepository.findBySessionId(sessionId, page, size));
     }
 
-    public List<ChatMessage> findTutorMessages(String cognitoSubject, UUID sessionId,
-                                               int page, int size) {
+    public List<SchoolAssistantConversationMessageResponse> findTutorMessages(
+            String cognitoSubject,
+            UUID sessionId,
+            int page,
+            int size
+    ) {
         requireUserSession(tutorUserId(cognitoSubject), sessionId);
-        return chatMessageRepository.findBySessionId(sessionId, page, size);
+        return messageResponses(chatMessageRepository.findBySessionId(sessionId, page, size));
     }
 
-    public List<ChatMessage> findKiosqueroMessages(String cognitoSubject, UUID sessionId,
-                                                   int page, int size) {
+    public List<SchoolAssistantConversationMessageResponse> findKiosqueroMessages(
+            String cognitoSubject,
+            UUID sessionId,
+            int page,
+            int size
+    ) {
         requireUserSession(kiosqueroUserId(cognitoSubject), sessionId);
-        return chatMessageRepository.findBySessionId(sessionId, page, size);
+        return messageResponses(chatMessageRepository.findBySessionId(sessionId, page, size));
     }
 
     public void closeStudentSession(UUID studentIdOrUserId, UUID sessionId) {
@@ -137,6 +175,22 @@ public class SchoolAssistantConversations {
     private void deleteSession(UUID sessionId) {
         chatMessageRepository.deleteBySessionId(sessionId);
         chatSessionRepository.deleteById(sessionId);
+    }
+
+    private List<SchoolAssistantConversationSessionResponse> sessionResponses(
+            List<ChatSession> sessions
+    ) {
+        return sessions.stream()
+                .map(SchoolAssistantConversationSessionResponse::fromDomain)
+                .toList();
+    }
+
+    private List<SchoolAssistantConversationMessageResponse> messageResponses(
+            List<ChatMessage> messages
+    ) {
+        return messages.stream()
+                .map(SchoolAssistantConversationMessageResponse::fromDomain)
+                .toList();
     }
 
     private void requireStudentSession(UUID studentIdOrUserId, UUID sessionId) {

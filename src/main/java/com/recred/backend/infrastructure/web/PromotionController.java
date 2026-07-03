@@ -4,13 +4,15 @@ import com.recred.backend.application.CreatePromotion;
 import com.recred.backend.application.CreatePromotionRequest;
 import com.recred.backend.application.CreatePromotionResponse;
 import com.recred.backend.application.DeletePromotion;
+import com.recred.backend.application.DeletePromotionRequest;
 import com.recred.backend.application.GetActivePromotions;
+import com.recred.backend.application.GetActivePromotionsRequest;
 import com.recred.backend.application.GetActivePromotionsByBuffet;
+import com.recred.backend.application.GetActivePromotionsByBuffetRequest;
 import com.recred.backend.application.GetPromotionById;
+import com.recred.backend.application.GetPromotionByIdRequest;
 import com.recred.backend.application.UpdatePromotion;
-import com.recred.backend.domain.models.Buffet;
-import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.Promotion;
+import com.recred.backend.application.UpdatePromotionRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,8 +55,11 @@ public class PromotionController {
 
     @GetMapping
     public ResponseEntity<List<PromotionResponseDTO>> listActivePromotions() {
-        List<PromotionResponseDTO> response = getActivePromotions.execute().stream()
-                .map(PromotionResponseDTO::fromAppResponse)
+        List<PromotionResponseDTO> response = getActivePromotions
+                .execute(new GetActivePromotionsRequest())
+                .promotions()
+                .stream()
+                .map(PromotionResponseDTO::fromApplication)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
@@ -62,16 +67,19 @@ public class PromotionController {
     @GetMapping("/buffet/{buffetId}")
     public ResponseEntity<List<PromotionResponseDTO>> listActivePromotionsByBuffet(
             @PathVariable UUID buffetId) {
-        List<PromotionResponseDTO> response = getActivePromotionsByBuffet.execute(buffetId).stream()
-                .map(PromotionResponseDTO::fromAppResponse)
+        List<PromotionResponseDTO> response = getActivePromotionsByBuffet
+                .execute(new GetActivePromotionsByBuffetRequest(buffetId))
+                .promotions()
+                .stream()
+                .map(PromotionResponseDTO::fromApplication)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<PromotionResponseDTO> getPromotionById(@PathVariable UUID id) {
-        com.recred.backend.application.PromotionResponse promotion = getPromotionById.execute(id);
-        return ResponseEntity.ok(PromotionResponseDTO.fromAppResponse(promotion));
+        return ResponseEntity.ok(PromotionResponseDTO.fromApplication(
+                getPromotionById.execute(new GetPromotionByIdRequest(id))));
     }
 
     @PostMapping
@@ -89,51 +97,27 @@ public class PromotionController {
                         request.getImageUrl()
                 )
         );
-        Promotion promotion = new Promotion();
-        promotion.setId(response.id());
-        promotion.setName(response.name());
-        promotion.setDiscountPercentage(response.discountPercentage());
-        promotion.setStartDate(response.startDate());
-        promotion.setEndDate(response.endDate());
-        promotion.setStatus(response.status());
-        promotion.setImageUrl(response.imageUrl());
-        
-        if (response.buffetId() != null) {
-            Buffet buffet = new Buffet();
-            buffet.setId(response.buffetId());
-            promotion.setBuffet(buffet);
-        }
-        
-        if (response.productIds() != null && !response.productIds().isEmpty()) {
-            List<Producto> products = response.productIds().stream().map(id -> {
-                Producto p = new Producto();
-                p.setId(id);
-                return p;
-            }).collect(Collectors.toList());
-            promotion.setProducts(products);
-        }
-        
-        return ResponseEntity.ok(PromotionResponseDTO.fromDomain(promotion));
+        return ResponseEntity.ok(PromotionResponseDTO.fromApplication(response));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<PromotionResponseDTO> updatePromotion(
             @PathVariable UUID id, 
             @RequestBody PromotionRequestDTO request) {
-        Promotion promotion = updatePromotion.execute(
+        CreatePromotionResponse response = updatePromotion.execute(new UpdatePromotionRequest(
                 id,
                 request.getProductIds(),
                 request.getDiscountPercentage(),
                 request.getName(),
                 request.getStartDate(),
                 request.getEndDate()
-        );
-        return ResponseEntity.ok(PromotionResponseDTO.fromDomain(promotion));
+        ));
+        return ResponseEntity.ok(PromotionResponseDTO.fromApplication(response));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePromotion(@PathVariable UUID id) {
-        deletePromotion.execute(id);
+        deletePromotion.execute(new DeletePromotionRequest(id));
         return ResponseEntity.noContent().build();
     }
 }

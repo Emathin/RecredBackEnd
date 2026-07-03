@@ -1,7 +1,6 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Tutor;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,7 +14,7 @@ public class UpdateTutorDashboardConfig {
         this.tutorRepository = tutorRepository;
     }
 
-    public void execute(UpdateTutorDashboardConfigRequest request) {
+    public UpdateTutorDashboardConfigResponse execute(UpdateTutorDashboardConfigRequest request) {
         request.validate();
 
         Tutor tutor = findTutor(request.cognitoSubject());
@@ -23,6 +22,7 @@ public class UpdateTutorDashboardConfig {
 
         tutor.setDashboardConfig(request.dashboardConfig());
         tutorRepository.save(tutor);
+        return new UpdateTutorDashboardConfigResponse();
     }
 
     private Tutor findTutor(String cognitoSubject) {
@@ -32,7 +32,7 @@ public class UpdateTutorDashboardConfig {
     }
 
     private void validatePlanLimits(Tutor tutor, String dashboardConfig) {
-        if (tutor.getUsuario() != null && tutor.getUsuario().getPlan() == TipoPlan.GRATUITO) {
+        if (tutor.getUsuario() != null && tutor.getUsuario().hasFreePlan()) {
             int cardsCount = countCards(dashboardConfig);
             if (cardsCount > 5) {
                 throw new IllegalArgumentException(
@@ -59,7 +59,6 @@ public class UpdateTutorDashboardConfig {
                 return root.size();
             }
         } catch (Exception e) {
-            // If invalid JSON, treat as not exceeding
         }
         return 0;
     }

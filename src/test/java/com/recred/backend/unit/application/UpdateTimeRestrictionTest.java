@@ -64,7 +64,6 @@ class UpdateTimeRestrictionTest {
         assertEquals(nuevaCategoriaId, guardada.getCategoria().getId());
         assertEquals(nuevaClasificacionId, guardada.getClasificacionSalud().getId());
 
-        // Assert response values
         assertNotNull(response);
         assertEquals(nuevoTimeSlotId, response.franjaHoraria().id());
         assertEquals(nuevaCategoriaId, response.categoria().id());
@@ -98,7 +97,6 @@ class UpdateTimeRestrictionTest {
         assertNull(guardada.getCategoria());
         assertNull(guardada.getClasificacionSalud());
 
-        // Assert response values
         assertNotNull(response);
         assertEquals(nuevoTimeSlotId, response.franjaHoraria().id());
         assertNull(response.categoria());

@@ -10,6 +10,7 @@ import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -49,6 +50,19 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
         return springDataUsuarioRepository.findFirstByEmailOrderByActualizadoEnDescCreadoEnDesc(
                         email)
                 .map(UsuarioEntity::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public void updateProfile(String idCognito, String nombre, String apellido,
+                              String telefono, String dni, LocalDateTime actualizadoEn) {
+        springDataUsuarioRepository.updateProfile(
+                idCognito,
+                nombre,
+                apellido,
+                telefono,
+                dni,
+                actualizadoEn);
     }
 
     private UsuarioEntity toEntity(Usuario usuario) {

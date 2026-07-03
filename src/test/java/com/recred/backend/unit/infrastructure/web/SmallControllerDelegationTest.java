@@ -1,7 +1,26 @@
 package com.recred.backend.unit.infrastructure.web;
 
-import com.recred.backend.application.*;
 import com.recred.backend.infrastructure.web.*;
+import com.recred.backend.application.GenerateBuffetMenu;
+import com.recred.backend.application.GenerateBuffetMenuRequest;
+import com.recred.backend.application.GenerateBuffetMenuResponse;
+import com.recred.backend.application.GenerateLowBalanceAlerts;
+import com.recred.backend.application.GetAllCategories;
+import com.recred.backend.application.GetBuffetByStudent;
+import com.recred.backend.application.GetBuffetByStudentRequest;
+import com.recred.backend.application.GetBuffetByStudentResponse;
+import com.recred.backend.application.GetTimeSlotsBySchool;
+import com.recred.backend.application.GetTimeSlotsBySchoolRequest;
+import com.recred.backend.application.GetTimeSlotsBySchoolResponse;
+import com.recred.backend.application.CreateTimeSlot;
+import com.recred.backend.application.DeactivateTimeSlot;
+import com.recred.backend.application.GetTimeSlot;
+import com.recred.backend.application.ListSchoolTimeSlots;
+import com.recred.backend.application.ReactivateTimeSlot;
+import com.recred.backend.application.GetTutorGlobalDashboard;
+import com.recred.backend.application.MenuProductResponse;
+import com.recred.backend.application.UpdateTimeSlot;
+import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.PushNotification;
@@ -41,6 +60,20 @@ class SmallControllerDelegationTest {
     private UpdateTutorDashboardConfig updateTutorDashboardConfig;
     @Mock
     private GetTimeSlotsBySchool getTimeSlotsBySchool;
+    @Mock
+    private ListSchoolTimeSlots listSchoolTimeSlots;
+    @Mock
+    private GetTimeSlot getTimeSlot;
+    @Mock
+    private CreateTimeSlot createTimeSlot;
+    @Mock
+    private UpdateTimeSlot updateTimeSlot;
+    @Mock
+    private DeactivateTimeSlot deactivateTimeSlot;
+    @Mock
+    private ReactivateTimeSlot reactivateTimeSlot;
+    @Mock
+    private SchoolAccessGuard schoolAccessGuard;
     @Mock
     private GenerateLowBalanceAlerts generateLowBalanceAlerts;
     @Mock
@@ -101,9 +134,19 @@ class SmallControllerDelegationTest {
                 10
         );
         when(getTimeSlotsBySchool.execute(new GetTimeSlotsBySchoolRequest(schoolId))).thenReturn(List.of(slot));
-        FranjaHorariaController controller = new FranjaHorariaController(getTimeSlotsBySchool);
+        FranjaHorariaController controller = new FranjaHorariaController(
+                getTimeSlotsBySchool,
+                listSchoolTimeSlots,
+                getTimeSlot,
+                createTimeSlot,
+                updateTimeSlot,
+                deactivateTimeSlot,
+                reactivateTimeSlot,
+                schoolAccessGuard
+        );
 
-        ResponseEntity<List<TimeSlotResponse>> response = controller.obtenerFranjas(schoolId);
+        ResponseEntity<List<TimeSlotResponse>> response =
+                controller.obtenerFranjas(schoolId, false, null);
 
         assertEquals(1, response.getBody().size());
         assertEquals(slot.id(), response.getBody().get(0).id());
@@ -119,7 +162,8 @@ class SmallControllerDelegationTest {
 
         assertEquals(HttpStatus.OK, ok.getStatusCode());
 
-        doThrow(new RuntimeException("boom")).when(generateLowBalanceAlerts).execute();
+        doThrow(new RuntimeException("boom")).when(generateLowBalanceAlerts)
+                .execute(new com.recred.backend.application.GenerateLowBalanceAlertsRequest());
 
         ResponseEntity<String> error = controller.triggerLowBalanceAlerts();
 
@@ -132,15 +176,10 @@ class SmallControllerDelegationTest {
         CategoriaProducto category = new CategoriaProducto();
         category.setId(UUID.randomUUID());
         category.setDescripcion("Bebidas");
-
-        CategoryProductResponse mockCategoryResponse = new CategoryProductResponse(
-                category.getId(),
-                category.getDescripcion(),
-                true
-        );
-        List<CategoryProductResponse> mockCategories = List.of(mockCategoryResponse);
-
-        when(getAllCategories.execute()).thenReturn(mockCategories);
+        when(getAllCategories.execute(new com.recred.backend.application
+                .GetAllCategoriesRequest())).thenReturn(new com.recred.backend.application
+                .GetAllCategoriesResponse(List.of(com.recred.backend.application
+                        .CategoryResponse.fromDomain(category))));
         CategoryController controller = new CategoryController(getAllCategories);
 
         List<CategoryResponse> response = controller.getCategories();
@@ -149,15 +188,15 @@ class SmallControllerDelegationTest {
         assertEquals(category.getId(), response.get(0).id());
     }
 
-
     @Test
     void menuBuffetControllerShouldUseProvidedDateAndMapBuffetOptional() {
         UUID alumnoId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         LocalDateTime dateTime = LocalDateTime.of(2026, 6, 15, 10, 0);
-        MenuProductoDTO item = MenuProductoDTO.permitido(
+        MenuProductResponse item = MenuProductResponse.permitido(
                 product("Jugo", new BigDecimal("10.00"))
         );
+        MenuProductoDTO itemDto = MenuProductoDTO.fromApplication(item);
         GetBuffetByStudentResponse responseBuffet = new GetBuffetByStudentResponse(
                 buffetId,
                 "Buffet",
@@ -168,7 +207,11 @@ class SmallControllerDelegationTest {
                 null,
                 null
         );
-        when(generateBuffetMenu.execute(alumnoId, buffetId, dateTime)).thenReturn(List.of(item));
+        when(generateBuffetMenu.execute(new GenerateBuffetMenuRequest(
+                alumnoId,
+                buffetId,
+                dateTime
+        ))).thenReturn(new GenerateBuffetMenuResponse(List.of(item)));
         when(getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId))).thenReturn(Optional.of(responseBuffet));
         MenuBuffetController controller = new MenuBuffetController(
                 generateBuffetMenu,
@@ -179,7 +222,7 @@ class SmallControllerDelegationTest {
                 controller.obtenerMenu(alumnoId, buffetId, dateTime);
         ResponseEntity<AlumnoBuffetResponseDTO> buffetResponse = controller.obtenerBuffet(alumnoId);
 
-        assertEquals(List.of(item), menu.getBody());
+        assertEquals(List.of(itemDto), menu.getBody());
         assertEquals(buffetId, buffetResponse.getBody().id());
     }
 
@@ -187,8 +230,8 @@ class SmallControllerDelegationTest {
     void menuBuffetControllerShouldUseNowWhenDateIsMissingAndReturnNotFoundBuffet() {
         UUID alumnoId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
-        when(generateBuffetMenu.execute(eq(alumnoId), eq(buffetId), any(LocalDateTime.class)))
-                .thenReturn(List.of());
+        when(generateBuffetMenu.execute(any(GenerateBuffetMenuRequest.class)))
+                .thenReturn(new GenerateBuffetMenuResponse(List.of()));
         when(getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId))).thenReturn(Optional.empty());
         MenuBuffetController controller = new MenuBuffetController(
                 generateBuffetMenu,
@@ -224,4 +267,3 @@ class SmallControllerDelegationTest {
         return product;
     }
 }
-
