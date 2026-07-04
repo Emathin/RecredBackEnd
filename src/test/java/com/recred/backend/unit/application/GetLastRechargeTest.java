@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -36,11 +37,13 @@ class GetLastRechargeTest {
         Billetera wallet = new Billetera();
         wallet.setId(walletId);
         student.setBilletera(wallet);
+        GetLastRechargeRequest request = new GetLastRechargeRequest(studentId);
+
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(movimientoBilleteraRepository.obtenerUltimoMontoCarga(walletId))
                 .thenReturn(new BigDecimal("250.00"));
 
-        GetLastRechargeResponse response = useCase.execute(new GetLastRechargeRequest(studentId));
+        GetLastRechargeResponse response = useCase.execute(request);
 
         assertEquals(new BigDecimal("250.00"), response.amount());
         verify(movimientoBilleteraRepository).obtenerUltimoMontoCarga(walletId);
@@ -49,9 +52,11 @@ class GetLastRechargeTest {
     @Test
     void executeShouldReturnZeroWhenStudentHasNoWallet() {
         UUID studentId = UUID.randomUUID();
+        GetLastRechargeRequest request = new GetLastRechargeRequest(studentId);
+
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(new Alumno()));
 
-        GetLastRechargeResponse response = useCase.execute(new GetLastRechargeRequest(studentId));
+        GetLastRechargeResponse response = useCase.execute(request);
 
         assertEquals(BigDecimal.ZERO, response.amount());
     }
@@ -59,11 +64,15 @@ class GetLastRechargeTest {
     @Test
     void executeShouldFailWhenStudentDoesNotExist() {
         UUID studentId = UUID.randomUUID();
+        GetLastRechargeRequest request = new GetLastRechargeRequest(studentId);
+
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
+
+        Executable execution = () -> useCase.execute(request);
 
         IllegalArgumentException missingStudent = assertThrows(
                 IllegalArgumentException.class,
-                () -> useCase.execute(new GetLastRechargeRequest(studentId))
+                execution
         );
 
         assertEquals("Student not found", missingStudent.getMessage());
@@ -71,9 +80,13 @@ class GetLastRechargeTest {
 
     @Test
     void executeShouldFailWhenRequestIsInvalid() {
+        GetLastRechargeRequest request = new GetLastRechargeRequest(null);
+
+        Executable execution = () -> useCase.execute(request);
+
         IllegalArgumentException invalidRequest = assertThrows(
                 IllegalArgumentException.class,
-                () -> useCase.execute(new GetLastRechargeRequest(null))
+                execution
         );
 
         assertEquals("studentId cannot be null", invalidRequest.getMessage());

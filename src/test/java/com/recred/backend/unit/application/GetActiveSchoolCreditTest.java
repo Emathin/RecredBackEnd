@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -35,11 +36,12 @@ class GetActiveSchoolCreditTest {
         credit.setAmount(new BigDecimal("1500.00"));
         credit.setStatus(CreditStatus.ACTIVE);
         credit.setInstallments(3);
+        GetActiveSchoolCreditRequest request = new GetActiveSchoolCreditRequest(studentId);
+
         when(repository.findByStudentIdAndStatus(studentId, CreditStatus.ACTIVE))
                 .thenReturn(Optional.of(credit));
 
-        Optional<GetActiveSchoolCreditResponse> response =
-                useCase.execute(new GetActiveSchoolCreditRequest(studentId));
+        Optional<GetActiveSchoolCreditResponse> response = useCase.execute(request);
 
         assertTrue(response.isPresent());
         assertEquals(creditId, response.get().creditId());
@@ -52,20 +54,25 @@ class GetActiveSchoolCreditTest {
     @Test
     void executeShouldReturnEmptyWhenActiveCreditDoesNotExist() {
         UUID studentId = UUID.randomUUID();
+        GetActiveSchoolCreditRequest request = new GetActiveSchoolCreditRequest(studentId);
+
         when(repository.findByStudentIdAndStatus(studentId, CreditStatus.ACTIVE))
                 .thenReturn(Optional.empty());
 
-        Optional<GetActiveSchoolCreditResponse> response =
-                useCase.execute(new GetActiveSchoolCreditRequest(studentId));
+        Optional<GetActiveSchoolCreditResponse> response = useCase.execute(request);
 
         assertFalse(response.isPresent());
     }
 
     @Test
     void executeShouldValidateRequestBeforeRepository() {
+        GetActiveSchoolCreditRequest request = new GetActiveSchoolCreditRequest(null);
+
+        Executable execution = () -> useCase.execute(request);
+
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> useCase.execute(new GetActiveSchoolCreditRequest(null))
+                execution
         );
 
         assertEquals("studentId cannot be null", exception.getMessage());

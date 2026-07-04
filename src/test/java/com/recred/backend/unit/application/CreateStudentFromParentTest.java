@@ -20,6 +20,7 @@ import com.recred.backend.domain.services.CreatedCognitoUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -118,45 +119,50 @@ class CreateStudentFromParentTest {
 
     @Test
     void nonParentUserCannotCreateStudent() {
+        CreateStudentFromParentRequest request = defaultRequest();
         givenAuthenticatedUserWithRole(RolUsuario.ALUMNO);
 
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class,
-                () -> createStudentFromParent.execute(defaultRequest()));
+        Executable execution = () -> createStudentFromParent.execute(request);
 
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class, execution);
         assertEquals("El usuario autenticado no tiene rol PADRE", exception.getMessage());
         assertStopsBeforeExternalUserCreation();
     }
 
     @Test
     void missingAuthenticatedUserShouldThrowException() {
+        CreateStudentFromParentRequest request = defaultRequest();
+
         when(usuarioRepository.findByIdCognito(PARENT_SUB)).thenReturn(Optional.empty());
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> createStudentFromParent.execute(defaultRequest()));
+        Executable execution = () -> createStudentFromParent.execute(request);
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("Usuario autenticado no encontrado", exception.getMessage());
         assertStopsBeforeExternalUserCreation();
     }
 
     @Test
     void missingTutorShouldThrowException() {
+        CreateStudentFromParentRequest request = defaultRequest();
         givenAuthenticatedParentWithoutTutor();
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> createStudentFromParent.execute(defaultRequest()));
+        Executable execution = () -> createStudentFromParent.execute(request);
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("Tutor no encontrado para el usuario autenticado", exception.getMessage());
         assertStopsBeforeExternalUserCreation();
     }
 
     @Test
     void duplicatedEmailStopsBeforeCreatingCognitoUser() {
+        CreateStudentFromParentRequest request = requestWithEmail(" " + DEFAULT_EMAIL + " ");
         givenParentWithTutor();
         givenDuplicatedEmail(DEFAULT_EMAIL);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> createStudentFromParent.execute(requestWithEmail(" " + DEFAULT_EMAIL + " ")));
+        Executable execution = () -> createStudentFromParent.execute(request);
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("Ya existe un usuario con el email indicado", exception.getMessage());
         assertStopsBeforeExternalUserCreation();
     }
@@ -164,14 +170,15 @@ class CreateStudentFromParentTest {
     @Test
     void missingGradeStopsBeforeCreatingCognitoUser() {
         UUID gradoId = UUID.randomUUID();
+        CreateStudentFromParentRequest request = requestWithGrade(gradoId);
 
         givenParentWithTutor();
         givenEmailAvailable(DEFAULT_EMAIL);
         givenMissingGrade(gradoId);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> createStudentFromParent.execute(requestWithGrade(gradoId)));
+        Executable execution = () -> createStudentFromParent.execute(request);
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("No se encontro el grado indicado", exception.getMessage());
         assertStopsBeforeExternalUserCreation();
     }
@@ -179,15 +186,16 @@ class CreateStudentFromParentTest {
     @Test
     void tutorCannotCreateStudentInUnassociatedSchool() {
         Grado grado = grado(UUID.randomUUID());
+        CreateStudentFromParentRequest request = requestWithGrade(grado.getId());
 
         givenParentWithTutor();
         givenEmailAvailable(DEFAULT_EMAIL);
         givenGradeExists(grado);
         givenTutorNotAssociatedToSchool(grado);
 
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class,
-                () -> createStudentFromParent.execute(requestWithGrade(grado.getId())));
+        Executable execution = () -> createStudentFromParent.execute(request);
 
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class, execution);
         assertEquals("El tutor no esta asociado al colegio del grado indicado",
                 exception.getMessage());
         assertStopsBeforeExternalUserCreation();
@@ -195,9 +203,11 @@ class CreateStudentFromParentTest {
 
     @Test
     void emailLikeUsernameIsRejected() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> createStudentFromParent.execute(requestWithUsername(DEFAULT_EMAIL)));
+        CreateStudentFromParentRequest request = requestWithUsername(DEFAULT_EMAIL);
 
+        Executable execution = () -> createStudentFromParent.execute(request);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("El username no puede tener formato de email", exception.getMessage());
         verify(usuarioRepository, never()).findByIdCognito(any());
         assertStopsBeforeExternalUserCreation();
@@ -240,13 +250,14 @@ class CreateStudentFromParentTest {
 
     @Test
     void cognitoFailureStopsLocalPersistence() {
+        CreateStudentFromParentRequest request = defaultRequest();
         givenParentWithTutor();
         givenEmailAvailable(DEFAULT_EMAIL);
         givenCognitoFails();
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> createStudentFromParent.execute(defaultRequest()));
+        Executable execution = () -> createStudentFromParent.execute(request);
 
+        IllegalStateException exception = assertThrows(IllegalStateException.class, execution);
         assertEquals("No se pudo crear el usuario en Cognito", exception.getMessage());
         assertLocalEntitiesWereNotPersisted();
     }
@@ -464,9 +475,9 @@ class CreateStudentFromParentTest {
 
     private void assertRequiredFieldIsRejected(CreateStudentFromParentRequest request,
                                                String expectedMessage) {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> createStudentFromParent.execute(request));
+        Executable execution = () -> createStudentFromParent.execute(request);
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals(expectedMessage, exception.getMessage());
         verify(usuarioRepository, never()).findByIdCognito(any());
         assertStopsBeforeExternalUserCreation();

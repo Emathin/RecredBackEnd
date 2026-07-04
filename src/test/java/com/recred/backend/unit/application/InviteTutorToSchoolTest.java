@@ -16,6 +16,7 @@ import com.recred.backend.domain.services.TutorInvitationEmailSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -135,15 +136,15 @@ class InviteTutorToSchoolTest {
         givenInvitationIsSaved();
         doThrow(new RuntimeException("smtp down")).when(emailSender)
                 .sendInvitation(any(TutorInvitation.class), any(String.class));
-
-        InviteTutorToSchool.TutorInvitationResult result = useCase.execute(
-                DIRECTOR_SUBJECT,
+        InviteTutorToSchool.TutorInvitationCommand command =
                 new InviteTutorToSchool.TutorInvitationCommand(
                         "parent@test.com",
                         " ",
                         null,
                         "\t"
-                ));
+                );
+
+        InviteTutorToSchool.TutorInvitationResult result = useCase.execute(DIRECTOR_SUBJECT, command);
 
         verify(invitationRepository).save(invitationCaptor.capture());
         TutorInvitation saved = invitationCaptor.getValue();
@@ -160,11 +161,9 @@ class InviteTutorToSchoolTest {
     void givenMissingDirector_whenInvitingTutor_thenFails() {
         when(userRepository.findByIdCognito(DIRECTOR_SUBJECT)).thenReturn(Optional.empty());
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> whenInvitingTutor()
-        );
+        Executable execution = this::whenInvitingTutor;
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("No se encontro el usuario autenticado", exception.getMessage());
         verifyNoInteractions(invitationRepository, emailSender);
     }
@@ -175,7 +174,9 @@ class InviteTutorToSchoolTest {
         user.setRol(RolUsuario.PADRE);
         when(userRepository.findByIdCognito(DIRECTOR_SUBJECT)).thenReturn(Optional.of(user));
 
-        assertThrows(AccessDeniedException.class, () -> whenInvitingTutor());
+        Executable execution = this::whenInvitingTutor;
+
+        assertThrows(AccessDeniedException.class, execution);
         verifyNoInteractions(invitationRepository, emailSender);
     }
 
@@ -185,11 +186,9 @@ class InviteTutorToSchoolTest {
         director.setRol(RolUsuario.DIRECTIVO_COLEGIO);
         when(userRepository.findByIdCognito(DIRECTOR_SUBJECT)).thenReturn(Optional.of(director));
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> whenInvitingTutor()
-        );
+        Executable execution = this::whenInvitingTutor;
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("El usuario autenticado no tiene un colegio asignado",
                 exception.getMessage());
         verifyNoInteractions(invitationRepository, emailSender);
@@ -198,19 +197,17 @@ class InviteTutorToSchoolTest {
     @Test
     void givenInvalidEmail_whenInvitingTutor_thenFails() {
         givenDirectorWithSchool();
+        InviteTutorToSchool.TutorInvitationCommand command =
+                new InviteTutorToSchool.TutorInvitationCommand(
+                        "no-es-email",
+                        "Ana",
+                        "Gomez",
+                        null
+                );
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> useCase.execute(
-                        DIRECTOR_SUBJECT,
-                        new InviteTutorToSchool.TutorInvitationCommand(
-                                "no-es-email",
-                                "Ana",
-                                "Gomez",
-                                null
-                        ))
-        );
+        Executable execution = () -> useCase.execute(DIRECTOR_SUBJECT, command);
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("El email no es valido", exception.getMessage());
         verifyNoInteractions(invitationRepository, emailSender);
     }

@@ -11,6 +11,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -44,14 +45,16 @@ class UpdateSupplierTest {
     @Test
     void executeShouldUpdateSupplierWhenOwnerMatches() {
         Proveedor supplier = supplier(kioskOwnerId);
+        UpdateSupplierRequest request = request(
+                "  Nuevo proveedor  ",
+                kioskOwnerId
+        );
+
         when(repository.findById(supplierId)).thenReturn(Optional.of(supplier));
         when(repository.save(any(Proveedor.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        SupplierDetailsResponse response = useCase.execute(request(
-                "  Nuevo proveedor  ",
-                kioskOwnerId
-        ));
+        SupplierDetailsResponse response = useCase.execute(request);
 
         ArgumentCaptor<Proveedor> captor = ArgumentCaptor.forClass(Proveedor.class);
         verify(repository).save(captor.capture());
@@ -63,37 +66,48 @@ class UpdateSupplierTest {
 
     @Test
     void executeShouldRejectMissingSupplierId() {
+        UpdateSupplierRequest request = new UpdateSupplierRequest(
+                null,
+                kioskOwnerId,
+                "Proveedor",
+                null,
+                null,
+                null,
+                null
+        );
+
+        Executable execution = () -> useCase.execute(request);
+
         assertEquals("supplierId is required",
                 assertThrows(IllegalArgumentException.class,
-                        () -> useCase.execute(new UpdateSupplierRequest(
-                                null,
-                                kioskOwnerId,
-                                "Proveedor",
-                                null,
-                                null,
-                                null,
-                                null
-                        ))).getMessage());
+                        execution).getMessage());
     }
 
     @Test
     void executeShouldRejectMissingSupplier() {
+        UpdateSupplierRequest request = request(
+                "Proveedor",
+                kioskOwnerId
+        );
+
         when(repository.findById(supplierId)).thenReturn(Optional.empty());
+
+        Executable execution = () -> useCase.execute(request);
 
         assertEquals("Supplier not found",
                 assertThrows(IllegalArgumentException.class,
-                        () -> useCase.execute(request(
-                                "Proveedor",
-                                kioskOwnerId
-                        ))).getMessage());
+                        execution).getMessage());
     }
 
     @Test
     void executeShouldRejectSupplierFromAnotherOwner() {
+        UpdateSupplierRequest request = request("Proveedor", kioskOwnerId);
+
         when(repository.findById(supplierId)).thenReturn(Optional.of(supplier(UUID.randomUUID())));
 
-        assertThrows(AccessDeniedException.class,
-                () -> useCase.execute(request("Proveedor", kioskOwnerId)));
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(AccessDeniedException.class, execution);
 
         verify(repository, never()).save(any(Proveedor.class));
     }

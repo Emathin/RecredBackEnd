@@ -7,6 +7,7 @@ import com.recred.backend.domain.repositories.AlumnoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -40,9 +41,11 @@ class RemoveHealthRestrictionsTest {
 
     @Test
     void ejecutar_ConDatosValidos_DeberiaRemoverYGuardar() {
+        RemoveHealthRestrictionsRequest request = new RemoveHealthRestrictionsRequest(alumnoId, clasificacionId);
+
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        useCase.execute(new RemoveHealthRestrictionsRequest(alumnoId, clasificacionId));
+        useCase.execute(request);
 
         verify(alumno).removerRestriccionSalud(clasificacionId);
         verify(alumnoRepository).save(alumno);
@@ -50,11 +53,13 @@ class RemoveHealthRestrictionsTest {
 
     @Test
     void ejecutar_CuandoAlumnoNoExiste_DeberiaLanzarExcepcion() {
+        RemoveHealthRestrictionsRequest request = new RemoveHealthRestrictionsRequest(alumnoId, clasificacionId);
+
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.execute(new RemoveHealthRestrictionsRequest(alumnoId, clasificacionId));
-        });
+        Executable execution = () -> useCase.execute(request);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
 
         assertEquals("El alumno no existe.", exception.getMessage());
         verify(alumnoRepository, never()).save(any());

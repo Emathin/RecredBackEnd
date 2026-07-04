@@ -8,6 +8,7 @@ import com.recred.backend.domain.repositories.ProveedorRepository;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.springframework.security.access.AccessDeniedException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,11 +28,11 @@ class DeleteSupplierTest {
         UUID supplierId = UUID.randomUUID();
         UUID kioskOwnerId = UUID.randomUUID();
         Proveedor supplier = supplier(supplierId, kioskOwnerId);
+        DeleteSupplierRequest request = new DeleteSupplierRequest(supplierId, kioskOwnerId);
+
         when(repository.findById(supplierId)).thenReturn(Optional.of(supplier));
 
-        DeleteSupplierResponse response = useCase.execute(
-                new DeleteSupplierRequest(supplierId, kioskOwnerId)
-        );
+        DeleteSupplierResponse response = useCase.execute(request);
 
         assertEquals(supplierId, response.id());
         verify(repository).delete(supplier);
@@ -41,11 +42,15 @@ class DeleteSupplierTest {
     void executeShouldFailWhenSupplierDoesNotExist() {
         UUID supplierId = UUID.randomUUID();
         UUID kioskOwnerId = UUID.randomUUID();
+        DeleteSupplierRequest request = new DeleteSupplierRequest(supplierId, kioskOwnerId);
+
         when(repository.findById(supplierId)).thenReturn(Optional.empty());
+
+        Executable execution = () -> useCase.execute(request);
 
         IllegalArgumentException notFound = assertThrows(
                 IllegalArgumentException.class,
-                () -> useCase.execute(new DeleteSupplierRequest(supplierId, kioskOwnerId))
+                execution
         );
 
         assertEquals("Supplier not found", notFound.getMessage());
@@ -58,12 +63,16 @@ class DeleteSupplierTest {
         UUID supplierId = UUID.randomUUID();
         UUID kioskOwnerId = UUID.randomUUID();
         UUID otherOwnerId = UUID.randomUUID();
+        DeleteSupplierRequest request = new DeleteSupplierRequest(supplierId, kioskOwnerId);
+
         when(repository.findById(supplierId))
                 .thenReturn(Optional.of(supplier(supplierId, otherOwnerId)));
 
+        Executable execution = () -> useCase.execute(request);
+
         AccessDeniedException denied = assertThrows(
                 AccessDeniedException.class,
-                () -> useCase.execute(new DeleteSupplierRequest(supplierId, kioskOwnerId))
+                execution
         );
 
         assertEquals("You do not have access to delete this supplier", denied.getMessage());
@@ -73,9 +82,13 @@ class DeleteSupplierTest {
 
     @Test
     void executeShouldValidateSupplierId() {
+        DeleteSupplierRequest request = new DeleteSupplierRequest(null, UUID.randomUUID());
+
+        Executable execution = () -> useCase.execute(request);
+
         IllegalArgumentException missingSupplier = assertThrows(
                 IllegalArgumentException.class,
-                () -> useCase.execute(new DeleteSupplierRequest(null, UUID.randomUUID()))
+                execution
         );
 
         assertEquals("supplierId is required", missingSupplier.getMessage());
@@ -83,9 +96,13 @@ class DeleteSupplierTest {
 
     @Test
     void executeShouldValidateKioskOwnerId() {
+        DeleteSupplierRequest request = new DeleteSupplierRequest(UUID.randomUUID(), null);
+
+        Executable execution = () -> useCase.execute(request);
+
         IllegalArgumentException missingOwner = assertThrows(
                 IllegalArgumentException.class,
-                () -> useCase.execute(new DeleteSupplierRequest(UUID.randomUUID(), null))
+                execution
         );
 
         assertEquals("kioskOwnerId is required", missingOwner.getMessage());

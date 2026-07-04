@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -72,11 +73,9 @@ class GetTutorInvitationTest {
         when(repository.findByTokenHash(tokenService.hash(token)))
                 .thenReturn(Optional.empty());
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> useCase.execute(token)
-        );
+        Executable execution = () -> useCase.execute(token);
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("No se encontro la invitacion", exception.getMessage());
     }
 

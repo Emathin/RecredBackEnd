@@ -9,6 +9,7 @@ import com.recred.backend.domain.repositories.ColegioRepository;
 import com.recred.backend.domain.repositories.GradoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -63,7 +64,9 @@ class GetGradesBySchoolTest {
 
         givenSchoolDoesNotExist(schoolId);
 
-        assertThrows(SchoolNotFoundException.class, () -> whenGettingGrades(schoolId));
+        Executable execution = () -> whenGettingGrades(schoolId);
+
+        assertThrows(SchoolNotFoundException.class, execution);
         verify(schoolRepository).existsActiveById(schoolId);
         verifyNoInteractions(gradeRepository);
     }

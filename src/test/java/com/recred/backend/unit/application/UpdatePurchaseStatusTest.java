@@ -21,6 +21,7 @@ import com.recred.backend.domain.services.InventoryAvailabilityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -100,21 +101,25 @@ class UpdatePurchaseStatusTest {
     void execute_WhenPurchaseNotFound_ShouldThrowException() {
         givenPurchaseDoesNotExist();
 
-        assertThrows(PurchaseNotFoundException.class,
-                () -> whenUpdatingStatusTo(EstadoCompra.EN_PREPARACION));
+        Executable execution = () -> whenUpdatingStatusTo(EstadoCompra.EN_PREPARACION);
+
+        assertThrows(PurchaseNotFoundException.class, execution);
     }
 
     @Test
     void execute_WhenRequestedStatusIsCancelado_ShouldThrowException() {
         givenPurchaseExists();
 
-        assertThrows(InvalidPurchaseStatusTransitionException.class,
-                () -> whenUpdatingStatusTo(EstadoCompra.CANCELADO));
+        Executable execution = () -> whenUpdatingStatusTo(EstadoCompra.CANCELADO);
+
+        assertThrows(InvalidPurchaseStatusTransitionException.class, execution);
     }
 
     @Test
     void execute_WhenRequestIsNull_ShouldThrowException() {
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(null));
+        Executable execution = () -> useCase.execute(null);
+
+        assertThrows(IllegalArgumentException.class, execution);
     }
 
     @Test

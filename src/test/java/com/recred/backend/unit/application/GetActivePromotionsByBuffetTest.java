@@ -31,11 +31,13 @@ class GetActivePromotionsByBuffetTest {
         UUID buffetId = UUID.randomUUID();
         Promotion p1 = new Promotion();
         p1.setId(UUID.randomUUID());
+        GetActivePromotionsByBuffetRequest request =
+                new GetActivePromotionsByBuffetRequest(buffetId);
         
         when(promotionRepository.findAllActiveByBuffet(buffetId)).thenReturn(List.of(p1));
 
         GetActivePromotionsByBuffetResponse result = getActivePromotionsByBuffet
-                .execute(new GetActivePromotionsByBuffetRequest(buffetId));
+                .execute(request);
 
         assertEquals(1, result.promotions().size());
         assertEquals(p1.getId(), result.promotions().get(0).id());

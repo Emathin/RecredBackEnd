@@ -13,6 +13,7 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -53,9 +54,11 @@ class GetPresentialPurchaseTest {
 
     @Test
     void execute_WhenPurchaseExists_ShouldReturnResponse() {
+        GetPresentialPurchaseRequest request = new GetPresentialPurchaseRequest(purchaseId);
+
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
 
-        GetPresentialPurchaseResponse response = useCase.execute(new GetPresentialPurchaseRequest(purchaseId));
+        GetPresentialPurchaseResponse response = useCase.execute(request);
 
         assertNotNull(response);
         assertEquals(purchaseId, response.id());
@@ -64,10 +67,13 @@ class GetPresentialPurchaseTest {
 
     @Test
     void execute_WhenPurchaseDoesNotExist_ShouldThrowException() {
+        GetPresentialPurchaseRequest request = new GetPresentialPurchaseRequest(purchaseId);
+
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.empty());
 
-        assertThrows(PurchaseNotFoundException.class,
-                () -> useCase.execute(new GetPresentialPurchaseRequest(purchaseId)));
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(PurchaseNotFoundException.class, execution);
     }
 
     @Test
@@ -89,10 +95,11 @@ class GetPresentialPurchaseTest {
                 firstPromoItem, 2,
                 secondPromoItem, 2
         ));
+        GetPresentialPurchaseRequest request = new GetPresentialPurchaseRequest(purchaseId);
+
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
 
-        GetPresentialPurchaseResponse response = useCase.execute(
-                new GetPresentialPurchaseRequest(purchaseId));
+        GetPresentialPurchaseResponse response = useCase.execute(request);
 
         assertEquals("CREDITOS", response.paymentMethod());
         assertEquals("ANTICIPADA", response.tipo());
@@ -113,10 +120,11 @@ class GetPresentialPurchaseTest {
     void execute_WhenPurchaseHasNullFields_ShouldReturnNullableResponseFields() {
         purchase.setStatus(null);
         purchase.setItems(null);
+        GetPresentialPurchaseRequest request = new GetPresentialPurchaseRequest(purchaseId);
+
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
 
-        GetPresentialPurchaseResponse response = useCase.execute(
-                new GetPresentialPurchaseRequest(purchaseId));
+        GetPresentialPurchaseResponse response = useCase.execute(request);
 
         assertEquals(purchaseId, response.id());
         assertNull(response.status());

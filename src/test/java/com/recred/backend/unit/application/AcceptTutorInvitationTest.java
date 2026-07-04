@@ -17,6 +17,7 @@ import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -111,11 +112,9 @@ class AcceptTutorInvitationTest {
     void givenMissingInvitation_whenAccepting_thenFails() {
         when(invitationRepository.findByTokenHash(any())).thenReturn(Optional.empty());
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> whenAcceptingInvitation()
-        );
+        Executable execution = this::whenAcceptingInvitation;
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("No se encontro la invitacion", exception.getMessage());
         verifyNoInteractions(userRepository, tutorRepository, tutorSchoolRepository);
     }
@@ -125,11 +124,9 @@ class AcceptTutorInvitationTest {
         TutorInvitation invitation = invitation(TutorInvitationStatus.ACCEPTED);
         when(invitationRepository.findByTokenHash(any())).thenReturn(Optional.of(invitation));
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> whenAcceptingInvitation()
-        );
+        Executable execution = this::whenAcceptingInvitation;
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("La invitacion no esta pendiente", exception.getMessage());
         verifyNoInteractions(userRepository, tutorRepository, tutorSchoolRepository);
     }
@@ -141,11 +138,9 @@ class AcceptTutorInvitationTest {
         when(invitationRepository.findByTokenHash(any())).thenReturn(Optional.of(invitation));
         givenInvitationIsSaved();
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> whenAcceptingInvitation()
-        );
+        Executable execution = this::whenAcceptingInvitation;
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("La invitacion esta vencida", exception.getMessage());
         verify(invitationRepository).save(invitationCaptor.capture());
         assertEquals(TutorInvitationStatus.EXPIRED, invitationCaptor.getValue().getStatus());
@@ -155,17 +150,19 @@ class AcceptTutorInvitationTest {
     @Test
     void givenDifferentAuthenticatedEmail_whenAccepting_thenFails() {
         givenPendingInvitation();
+        AcceptTutorInvitationRequest request = new AcceptTutorInvitationRequest(
+                TOKEN,
+                COGNITO_SUBJECT,
+                "other@test.com",
+                "Ana",
+                "Gomez",
+                null,
+                null
+        );
 
-        assertThrows(AccessDeniedException.class,
-                () -> useCase.execute(new AcceptTutorInvitationRequest(
-                        TOKEN,
-                        COGNITO_SUBJECT,
-                        "other@test.com",
-                        "Ana",
-                        "Gomez",
-                        null,
-                        null
-                )));
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(AccessDeniedException.class, execution);
         verifyNoInteractions(userRepository, tutorRepository, tutorSchoolRepository);
     }
 
@@ -206,8 +203,7 @@ class AcceptTutorInvitationTest {
         givenTutorDoesNotExistThenExists();
         givenNoTutorSchoolLink();
         givenInvitationIsSaved();
-
-        useCase.execute(new AcceptTutorInvitationRequest(
+        AcceptTutorInvitationRequest request = new AcceptTutorInvitationRequest(
                 TOKEN,
                 COGNITO_SUBJECT,
                 "parent@test.com",
@@ -215,7 +211,9 @@ class AcceptTutorInvitationTest {
                 null,
                 " ",
                 ""
-        ));
+        );
+
+        useCase.execute(request);
 
         verify(userRepository, times(2)).save(userCaptor.capture());
         Usuario savedUser = userCaptor.getAllValues().get(0);

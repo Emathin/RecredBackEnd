@@ -69,6 +69,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -290,7 +291,9 @@ class AskSchoolAssistantTest {
     void execute_WhenMessageIsBlank_ShouldThrowException() {
         givenAuthenticatedStudent(studentId);
 
-        assertThrows(InvalidChatMessageException.class, () -> whenStudentAsks(" "));
+        Executable execution = () -> whenStudentAsks(" ");
+
+        assertThrows(InvalidChatMessageException.class, execution);
 
         verify(chatSessionRepository, never()).startForStudent(any(), any());
     }
@@ -299,7 +302,9 @@ class AskSchoolAssistantTest {
     void execute_WhenMessageIsNull_ShouldThrowException() {
         givenAuthenticatedStudent(studentId);
 
-        assertThrows(InvalidChatMessageException.class, () -> whenStudentAsks(null));
+        Executable execution = () -> whenStudentAsks(null);
+
+        assertThrows(InvalidChatMessageException.class, execution);
 
         verify(chatSessionRepository, never()).startForStudent(any(), any());
     }
@@ -311,7 +316,9 @@ class AskSchoolAssistantTest {
         when(alumnoRepository.existsById(userId)).thenReturn(false);
         when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.empty());
 
-        assertThrows(AlumnoNoEncontradoException.class, () -> whenStudentAsks("saldo"));
+        Executable execution = () -> whenStudentAsks("saldo");
+
+        assertThrows(AlumnoNoEncontradoException.class, execution);
     }
 
     @Test
@@ -320,8 +327,9 @@ class AskSchoolAssistantTest {
         when(chatSessionRepository.findOpenByIdAndStudentId(sessionId, studentId))
                 .thenReturn(Optional.empty());
 
-        assertThrows(ChatSessionNotFoundException.class,
-                () -> whenStudentAsks(sessionId, "saldo"));
+        Executable execution = () -> whenStudentAsks(sessionId, "saldo");
+
+        assertThrows(ChatSessionNotFoundException.class, execution);
 
         verify(chatMessageRepository, never()).save(any());
     }
@@ -410,8 +418,9 @@ class AskSchoolAssistantTest {
         when(chatSessionRepository.findOpenByIdAndUserId(sessionId, userId))
                 .thenReturn(Optional.empty());
 
-        assertThrows(ChatSessionNotFoundException.class,
-                () -> whenTutorAsks(sessionId, "hijos"));
+        Executable execution = () -> whenTutorAsks(sessionId, "hijos");
+
+        assertThrows(ChatSessionNotFoundException.class, execution);
     }
 
     @Test
@@ -514,8 +523,9 @@ class AskSchoolAssistantTest {
     void execute_WhenAuthenticatedUserDoesNotExist_ShouldThrowException() {
         when(usuarioRepository.findByIdCognito(TUTOR_SUBJECT)).thenReturn(Optional.empty());
 
-        assertThrows(UsuarioAutenticadoNoEncontradoException.class,
-                () -> whenTutorAsks("hijos"));
+        Executable execution = () -> whenTutorAsks("hijos");
+
+        assertThrows(UsuarioAutenticadoNoEncontradoException.class, execution);
     }
 
     @Test
@@ -525,7 +535,9 @@ class AskSchoolAssistantTest {
                 .thenReturn(Optional.of(user(userId)));
         when(tutorRepository.findByUsuarioIdCognito(TUTOR_SUBJECT)).thenReturn(Optional.empty());
 
-        assertThrows(TutorNoEncontradoException.class, () -> whenTutorAsks("hijos"));
+        Executable execution = () -> whenTutorAsks("hijos");
+
+        assertThrows(TutorNoEncontradoException.class, execution);
     }
 
     @Test
@@ -535,7 +547,9 @@ class AskSchoolAssistantTest {
                 .thenReturn(Optional.of(user(userId)));
         when(kiosqueroRepository.findBuffetByUsuarioId(userId)).thenReturn(null);
 
-        assertThrows(KiosqueroNotFoundException.class, () -> whenKiosqueroAsks("stock"));
+        Executable execution = () -> whenKiosqueroAsks("stock");
+
+        assertThrows(KiosqueroNotFoundException.class, execution);
     }
 
     @Test
@@ -589,14 +603,23 @@ class AskSchoolAssistantTest {
 
     @Test
     void execute_WhenRequestIsNull_ShouldThrowException() {
-        assertThrows(IllegalArgumentException.class, () -> askSchoolAssistant.execute(null));
+        Executable execution = () -> askSchoolAssistant.execute(null);
+
+        assertThrows(IllegalArgumentException.class, execution);
     }
 
     @Test
     void execute_WhenRoleIsNull_ShouldThrowException() {
-        assertThrows(IllegalArgumentException.class, () -> askSchoolAssistant.execute(
-                new AskSchoolAssistantRequest(STUDENT_SUBJECT, null, null, "saldo")
-        ));
+        AskSchoolAssistantRequest request = new AskSchoolAssistantRequest(
+                STUDENT_SUBJECT,
+                null,
+                null,
+                "saldo"
+        );
+
+        Executable execution = () -> askSchoolAssistant.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
     }
 
     private void givenAuthenticatedStudent(UUID studentId) {

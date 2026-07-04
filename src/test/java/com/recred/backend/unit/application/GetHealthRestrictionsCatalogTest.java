@@ -30,10 +30,11 @@ class GetHealthRestrictionsCatalogTest {
     void execute_DeberiaRetornarListaDelRepositorio() {
         ClasificacionSalud item = new ClasificacionSalud();
         item.setDescripcion("Sin TACC");
+        GetHealthRestrictionsCatalogRequest request = new GetHealthRestrictionsCatalogRequest();
+
         when(repository.findAll()).thenReturn(List.of(item));
 
-        GetHealthRestrictionsCatalogResponse resultado =
-                useCase.execute(new GetHealthRestrictionsCatalogRequest());
+        GetHealthRestrictionsCatalogResponse resultado = useCase.execute(request);
 
         assertEquals(1, resultado.restrictions().size());
         assertEquals("Sin TACC", resultado.restrictions().get(0).descripcion());

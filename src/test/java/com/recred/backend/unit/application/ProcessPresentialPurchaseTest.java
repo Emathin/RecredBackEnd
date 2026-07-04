@@ -24,6 +24,7 @@ import com.recred.backend.domain.services.PurchaseValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -169,9 +170,9 @@ class ProcessPresentialPurchaseTest {
         ProcessPresentialPurchaseRequest badRequest = new ProcessPresentialPurchaseRequest(
                 studentId, request.cart(), null
         );
-        assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(badRequest));
+        Executable execution = () -> useCase.execute(badRequest);
 
+        assertThrows(IllegalArgumentException.class, execution);
         verifyNoInteractions(studentRepository, walletRepository, purchaseRepository);
     }
 
@@ -179,9 +180,9 @@ class ProcessPresentialPurchaseTest {
     void execute_WhenStudentNotFound_ShouldThrowException() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
 
-        assertThrows(AlumnoNoEncontradoException.class,
-                () -> useCase.execute(request));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(AlumnoNoEncontradoException.class, execution);
         verifyNoInteractions(
                 purchaseValidator,
                 walletRepository,
@@ -196,9 +197,9 @@ class ProcessPresentialPurchaseTest {
         when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        assertThrows(InsufficientBalanceException.class,
-                () -> useCase.execute(request));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(InsufficientBalanceException.class, execution);
         verify(purchaseValidator).validate(any(Purchase.class));
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
@@ -211,9 +212,9 @@ class ProcessPresentialPurchaseTest {
         when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalStateException.class,
-                () -> useCase.execute(request));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(IllegalStateException.class, execution);
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
         verifyNoInteractions(inventoryAvailabilityService);
@@ -227,9 +228,9 @@ class ProcessPresentialPurchaseTest {
                 .when(purchaseValidator)
                 .validate(any(Purchase.class));
 
-        assertThrows(RestriccionSaludException.class,
-                () -> useCase.execute(request));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(RestriccionSaludException.class, execution);
         verifyNoInteractions(walletRepository, purchaseRepository, inventoryAvailabilityService);
     }
 
@@ -241,9 +242,9 @@ class ProcessPresentialPurchaseTest {
                 .when(purchaseValidator)
                 .validate(any(Purchase.class));
 
-        assertThrows(RestriccionHorariaException.class,
-                () -> useCase.execute(request));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(RestriccionHorariaException.class, execution);
         verifyNoInteractions(walletRepository, purchaseRepository, inventoryAvailabilityService);
     }
 

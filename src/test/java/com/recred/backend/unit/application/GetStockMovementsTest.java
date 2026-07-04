@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -53,19 +54,27 @@ class GetStockMovementsTest {
         givenInventoryIdentifiers();
         givenInventoryDoesNotExist();
 
-        assertThrows(InventoryNotFoundException.class, this::whenGettingStockMovements);
+        Executable execution = this::whenGettingStockMovements;
+
+        assertThrows(InventoryNotFoundException.class, execution);
     }
 
     @Test
     void execute_WhenBuffetIdIsNull_ShouldThrowException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(new GetStockMovementsRequest(null, UUID.randomUUID())));
+        GetStockMovementsRequest request = new GetStockMovementsRequest(null, UUID.randomUUID());
+
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
     }
 
     @Test
     void execute_WhenProductIdIsNull_ShouldThrowException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(new GetStockMovementsRequest(UUID.randomUUID(), null)));
+        GetStockMovementsRequest request = new GetStockMovementsRequest(UUID.randomUUID(), null);
+
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
     }
 
     private void givenInventoryIdentifiers() {

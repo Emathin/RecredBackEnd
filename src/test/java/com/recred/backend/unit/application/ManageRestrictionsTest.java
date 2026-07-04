@@ -9,6 +9,7 @@ import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -50,11 +51,12 @@ class ManageRestrictionsTest {
         clasificacion.setId(clasificacionId);
         List<UUID> nuevasClasificacionesIds = List.of(clasificacionId);
         List<ClasificacionSalud> clasificacionesMock = List.of(clasificacion);
+        ManageRestrictionsRequest request = new ManageRestrictionsRequest(alumnoId, nuevasClasificacionesIds);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(clasificacionRepository.findAllById(nuevasClasificacionesIds)).thenReturn(clasificacionesMock);
 
-        useCase.execute(new ManageRestrictionsRequest(alumnoId, nuevasClasificacionesIds));
+        useCase.execute(request);
 
         assertTrue(alumno.getRestriccionesSalud().contains(clasificacion));
         assertEquals(1, alumno.getRestriccionesSalud().size());
@@ -64,11 +66,13 @@ class ManageRestrictionsTest {
     @Test
     void ejecutar_CuandoAlumnoNoExiste_DeberiaLanzarExcepcion() {
         List<UUID> nuevasClasificacionesIds = List.of(clasificacionId);
+        ManageRestrictionsRequest request = new ManageRestrictionsRequest(alumnoId, nuevasClasificacionesIds);
+
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.execute(new ManageRestrictionsRequest(alumnoId, nuevasClasificacionesIds));
-        });
+        Executable execution = () -> useCase.execute(request);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
 
         assertEquals("El alumno con ID " + alumnoId + " no existe.", exception.getMessage());
         verify(clasificacionRepository, never()).findAllById(any());

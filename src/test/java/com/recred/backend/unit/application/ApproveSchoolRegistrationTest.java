@@ -16,6 +16,7 @@ import com.recred.backend.domain.services.CognitoDirectorIdentityService;
 import com.recred.backend.domain.services.CreatedCognitoUser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -54,6 +55,7 @@ class ApproveSchoolRegistrationTest {
     @Test
     void execute_ApprovesRequestCreatesSchoolAndUser() {
         UUID requestId = UUID.randomUUID();
+        ApproveSchoolRegistrationRequest request = new ApproveSchoolRegistrationRequest(requestId);
         SchoolRegistrationRequest requestEntity = new SchoolRegistrationRequest();
         requestEntity.setId(requestId);
         requestEntity.setStatus(SchoolRegistrationStatus.PENDING);
@@ -75,7 +77,6 @@ class ApproveSchoolRegistrationTest {
         CreatedCognitoUser cognitoUser = new CreatedCognitoUser("sub-123", "director-123");
         when(cognitoService.createDirectorUser("johndoe123", "john@doe.com", "John", "Doe")).thenReturn(cognitoUser);
 
-        ApproveSchoolRegistrationRequest request = new ApproveSchoolRegistrationRequest(requestId);
         useCase.execute(request);
 
         assertEquals(SchoolRegistrationStatus.APPROVED, requestEntity.getStatus());
@@ -102,11 +103,13 @@ class ApproveSchoolRegistrationTest {
     @Test
     void execute_ThrowsException_WhenRequestNotFound() {
         UUID requestId = UUID.randomUUID();
-        when(repository.findById(requestId)).thenReturn(Optional.empty());
-
         ApproveSchoolRegistrationRequest request = new ApproveSchoolRegistrationRequest(requestId);
 
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(request));
+        when(repository.findById(requestId)).thenReturn(Optional.empty());
+
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
     }
 
     @Test
@@ -115,17 +118,19 @@ class ApproveSchoolRegistrationTest {
         SchoolRegistrationRequest requestEntity = new SchoolRegistrationRequest();
         requestEntity.setId(requestId);
         requestEntity.setStatus(SchoolRegistrationStatus.REJECTED);
+        ApproveSchoolRegistrationRequest request = new ApproveSchoolRegistrationRequest(requestId);
 
         when(repository.findById(requestId)).thenReturn(Optional.of(requestEntity));
 
-        ApproveSchoolRegistrationRequest request = new ApproveSchoolRegistrationRequest(requestId);
+        Executable execution = () -> useCase.execute(request);
 
-        assertThrows(IllegalStateException.class, () -> useCase.execute(request));
+        assertThrows(IllegalStateException.class, execution);
     }
 
     @Test
     void execute_WhenUsernameExists_RetriesWithSuffix() {
         UUID requestId = UUID.randomUUID();
+        ApproveSchoolRegistrationRequest request = new ApproveSchoolRegistrationRequest(requestId);
         SchoolRegistrationRequest requestEntity = new SchoolRegistrationRequest();
         requestEntity.setId(requestId);
         requestEntity.setStatus(SchoolRegistrationStatus.PENDING);
@@ -152,7 +157,7 @@ class ApproveSchoolRegistrationTest {
                 eq("Doe")))
                 .thenReturn(new CreatedCognitoUser("sub-retry", "director-retry"));
 
-        useCase.execute(new ApproveSchoolRegistrationRequest(requestId));
+        useCase.execute(request);
 
         ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
         verify(usuarioRepository).save(usuarioCaptor.capture());

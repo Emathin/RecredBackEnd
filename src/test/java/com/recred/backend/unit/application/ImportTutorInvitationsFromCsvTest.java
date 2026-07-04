@@ -5,6 +5,7 @@ import com.recred.backend.application.InviteTutorToSchool;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -31,15 +32,15 @@ class ImportTutorInvitationsFromCsvTest {
 
     @Test
     void givenCsvWithDuplicateEmail_whenImporting_thenReportsDuplicateAndContinues() {
+        String csv = """
+                email,nombre,apellido,telefono
+                parent@test.com,Ana,Gomez,1111
+                parent@test.com,Ana,Gomez,1111
+                """;
         givenInvitationIsCreated();
 
-        ImportTutorInvitationsFromCsv.TutorInvitationImportResult result = useCase.execute(
-                DIRECTOR_SUBJECT,
-                """
-                        email,nombre,apellido,telefono
-                        parent@test.com,Ana,Gomez,1111
-                        parent@test.com,Ana,Gomez,1111
-                        """);
+        ImportTutorInvitationsFromCsv.TutorInvitationImportResult result =
+                useCase.execute(DIRECTOR_SUBJECT, csv);
 
         assertEquals(2, result.totalRows());
         assertEquals(1, result.createdInvitations());
@@ -50,17 +51,21 @@ class ImportTutorInvitationsFromCsvTest {
 
     @Test
     void givenBlankCsv_whenImporting_thenThrowsEmptyFileError() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(DIRECTOR_SUBJECT, " "));
+        String csv = " ";
 
+        Executable execution = () -> useCase.execute(DIRECTOR_SUBJECT, csv);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("El archivo CSV esta vacio", exception.getMessage());
     }
 
     @Test
     void givenHeaderWithoutEmail_whenImporting_thenThrowsHeaderError() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(DIRECTOR_SUBJECT, "nombre,apellido\nAna,Gomez"));
+        String csv = "nombre,apellido\nAna,Gomez";
 
+        Executable execution = () -> useCase.execute(DIRECTOR_SUBJECT, csv);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("El archivo CSV debe incluir una columna email", exception.getMessage());
     }
 
@@ -82,16 +87,16 @@ class ImportTutorInvitationsFromCsvTest {
                         null,
                         "ALREADY_ASSOCIATED"))
                 .thenThrow(new IllegalArgumentException("El email no es valido"));
+        String csv = """
+                email,firstName,lastName,phone
+                created@test.com,Ana,Gomez,1111
+                resent@test.com,Juan,Perez,2222
+                associated@test.com,Lu,Diaz,3333
+                invalid@test.com,Bad,Mail,4444
+                """;
 
-        ImportTutorInvitationsFromCsv.TutorInvitationImportResult result = useCase.execute(
-                DIRECTOR_SUBJECT,
-                """
-                        email,firstName,lastName,phone
-                        created@test.com,Ana,Gomez,1111
-                        resent@test.com,Juan,Perez,2222
-                        associated@test.com,Lu,Diaz,3333
-                        invalid@test.com,Bad,Mail,4444
-                        """);
+        ImportTutorInvitationsFromCsv.TutorInvitationImportResult result =
+                useCase.execute(DIRECTOR_SUBJECT, csv);
 
         assertEquals(4, result.totalRows());
         assertEquals(1, result.createdInvitations());
@@ -104,11 +109,11 @@ class ImportTutorInvitationsFromCsvTest {
 
     @Test
     void givenQuotedCsvValues_whenImporting_thenParsesEscapedQuotesAndMissingColumns() {
+        String csv = "email,nombre\n\"parent@test.com\",\"Ana \"\"Nani\"\"\"\n\n";
         givenInvitationIsCreated();
 
-        ImportTutorInvitationsFromCsv.TutorInvitationImportResult result = useCase.execute(
-                DIRECTOR_SUBJECT,
-                "email,nombre\n\"parent@test.com\",\"Ana \"\"Nani\"\"\"\n\n");
+        ImportTutorInvitationsFromCsv.TutorInvitationImportResult result =
+                useCase.execute(DIRECTOR_SUBJECT, csv);
 
         assertEquals(2, result.totalRows());
         assertEquals(1, result.createdInvitations());
