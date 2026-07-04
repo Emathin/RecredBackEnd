@@ -7,6 +7,7 @@ import com.recred.backend.domain.models.SchoolRegistrationStatus;
 import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,13 +32,13 @@ class RejectSchoolRegistrationTest {
     @Test
     void execute_UpdatesStatusToRejected_WhenRequestIsPending() {
         UUID requestId = UUID.randomUUID();
+        RejectSchoolRegistrationRequest request = new RejectSchoolRegistrationRequest(requestId);
         SchoolRegistrationRequest requestEntity = new SchoolRegistrationRequest();
         requestEntity.setId(requestId);
         requestEntity.setStatus(SchoolRegistrationStatus.PENDING);
 
         when(repository.findById(requestId)).thenReturn(Optional.of(requestEntity));
 
-        RejectSchoolRegistrationRequest request = new RejectSchoolRegistrationRequest(requestId);
         useCase.execute(request);
 
         assertEquals(SchoolRegistrationStatus.REJECTED, requestEntity.getStatus());
@@ -47,11 +48,13 @@ class RejectSchoolRegistrationTest {
     @Test
     void execute_ThrowsException_WhenRequestNotFound() {
         UUID requestId = UUID.randomUUID();
-        when(repository.findById(requestId)).thenReturn(Optional.empty());
-
         RejectSchoolRegistrationRequest request = new RejectSchoolRegistrationRequest(requestId);
 
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(request));
+        when(repository.findById(requestId)).thenReturn(Optional.empty());
+
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
     }
 
     @Test
@@ -60,11 +63,12 @@ class RejectSchoolRegistrationTest {
         SchoolRegistrationRequest requestEntity = new SchoolRegistrationRequest();
         requestEntity.setId(requestId);
         requestEntity.setStatus(SchoolRegistrationStatus.APPROVED);
+        RejectSchoolRegistrationRequest request = new RejectSchoolRegistrationRequest(requestId);
 
         when(repository.findById(requestId)).thenReturn(Optional.of(requestEntity));
 
-        RejectSchoolRegistrationRequest request = new RejectSchoolRegistrationRequest(requestId);
+        Executable execution = () -> useCase.execute(request);
 
-        assertThrows(IllegalStateException.class, () -> useCase.execute(request));
+        assertThrows(IllegalStateException.class, execution);
     }
 }

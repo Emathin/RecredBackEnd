@@ -15,6 +15,7 @@ import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 public class EnableSchoolCreditTest {
@@ -71,23 +73,29 @@ public class EnableSchoolCreditTest {
 
     @Test
     void execute_successfulWithZeroExpenses() {
-        Alumno alumnoMock = new Alumno(); alumnoMock.setId(studentId);
+        Alumno alumnoMock = new Alumno();
+        alumnoMock.setId(studentId);
         alumnoMock.setBilletera(wallet);
-        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumnoMock));
-
         SchoolCredit saved = new SchoolCredit();
         saved.setId(UUID.randomUUID());
         saved.setStudentId(studentId);
         saved.setAmount(new BigDecimal("2000.00"));
         saved.setStatus(CreditStatus.ACTIVE);
         saved.setInstallments(3);
+        EnableSchoolCreditRequest request = new EnableSchoolCreditRequest(
+                tutorId,
+                studentId,
+                new BigDecimal("2000.00"),
+                3
+        );
+
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumnoMock));
         when(schoolCreditRepository.save(any(SchoolCredit.class))).thenReturn(saved);
 
-        com.recred.backend.application.EnableSchoolCreditResponse result = enableSchoolCredit.execute(new com.recred.backend.application.EnableSchoolCreditRequest(tutorId, studentId, new BigDecimal("2000.00"), 3));
+        EnableSchoolCreditResponse result = enableSchoolCredit.execute(request);
 
         assertNotNull(result);
-        
         assertEquals(new BigDecimal("2000.00"), result.amount());
         assertEquals(CreditStatus.ACTIVE.name(), result.status());
         assertEquals(3, result.installments());
@@ -97,17 +105,26 @@ public class EnableSchoolCreditTest {
 
     @Test
     void execute_successfulWithExpenses() {
-        Alumno alumnoMock = new Alumno(); alumnoMock.setId(studentId);
+        Alumno alumnoMock = new Alumno();
+        alumnoMock.setId(studentId);
         alumnoMock.setBilletera(wallet);
-        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumnoMock));
-
         SchoolCredit saved = new SchoolCredit();
         saved.setId(UUID.randomUUID());
-        saved.setAmount(BigDecimal.valueOf(110.0)); saved.setStatus(CreditStatus.ACTIVE); saved.setInstallments(1);
+        saved.setAmount(BigDecimal.valueOf(110.0));
+        saved.setStatus(CreditStatus.ACTIVE);
+        saved.setInstallments(1);
+        EnableSchoolCreditRequest request = new EnableSchoolCreditRequest(
+                tutorId,
+                studentId,
+                BigDecimal.valueOf(110.0),
+                1
+        );
+
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumnoMock));
         when(schoolCreditRepository.save(any(SchoolCredit.class))).thenReturn(saved);
 
-        com.recred.backend.application.EnableSchoolCreditResponse result = enableSchoolCredit.execute(new com.recred.backend.application.EnableSchoolCreditRequest(tutorId, studentId, BigDecimal.valueOf(110.0), 1));
+        EnableSchoolCreditResponse result = enableSchoolCredit.execute(request);
 
         assertNotNull(result);
         assertEquals(0, wallet.getSaldoCreditos().compareTo(BigDecimal.valueOf(110.0)));
@@ -117,16 +134,127 @@ public class EnableSchoolCreditTest {
 
     @Test
     void execute_throwsWhenActiveCreditExists() {
-        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
-        Alumno alumnoMock2 = new Alumno(); 
-        alumnoMock2.setId(studentId); 
+        Alumno alumnoMock2 = new Alumno();
+        alumnoMock2.setId(studentId);
         Billetera activeWallet = new Billetera();
         activeWallet.setCreditoHabilitado(true);
         alumnoMock2.setBilletera(activeWallet);
+        EnableSchoolCreditRequest request = new EnableSchoolCreditRequest(
+                tutorId,
+                studentId,
+                new BigDecimal("1000.00"),
+                1
+        );
+
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumnoMock2));
 
-        assertThrows(ActiveCreditExistsException.class, () -> {
-            enableSchoolCredit.execute(new com.recred.backend.application.EnableSchoolCreditRequest(tutorId, studentId, new BigDecimal("1000.00"), 1));
+        Executable execution = () -> enableSchoolCredit.execute(request);
+
+        assertThrows(ActiveCreditExistsException.class, execution);
+    }
+
+    @Test
+    void execute_whenStudentHasNoWallet_createsWalletAndUsesDefaultInstallments() {
+        Alumno alumno = new Alumno();
+        alumno.setId(studentId);
+        EnableSchoolCreditRequest request = new EnableSchoolCreditRequest(
+                tutorId,
+                studentId,
+                new BigDecimal("1500.00"),
+                0
+        );
+
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
+        when(schoolCreditRepository.save(any(SchoolCredit.class))).thenAnswer(invocation -> {
+            SchoolCredit credit = invocation.getArgument(0);
+            credit.setId(UUID.randomUUID());
+            return credit;
         });
+
+        EnableSchoolCreditResponse result = enableSchoolCredit.execute(request);
+
+        assertEquals(1, result.installments());
+        assertEquals(true, alumno.getBilletera().getCreditoHabilitado());
+        assertEquals(new BigDecimal("1500.00"), alumno.getBilletera().getSaldoCreditos());
+        verify(alumnoRepository).save(alumno);
+        verify(walletRepository).save(alumno.getBilletera());
+    }
+
+    @Test
+    void execute_whenTutorOrStudentDoesNotExist_throwsBusinessError() {
+        EnableSchoolCreditRequest request = new EnableSchoolCreditRequest(
+                tutorId,
+                studentId,
+                new BigDecimal("1000.00"),
+                1
+        );
+
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.empty(),
+                Optional.of(new Tutor()));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
+
+        Executable missingTutorExecution = () -> enableSchoolCredit.execute(request);
+        IllegalArgumentException missingTutor = assertThrows(
+                IllegalArgumentException.class,
+                missingTutorExecution
+        );
+        Executable missingStudentExecution = () -> enableSchoolCredit.execute(request);
+        IllegalArgumentException missingStudent = assertThrows(
+                IllegalArgumentException.class,
+                missingStudentExecution
+        );
+
+        assertEquals("Tutor not found", missingTutor.getMessage());
+        assertEquals("Student not found", missingStudent.getMessage());
+        verifyNoInteractions(schoolCreditRepository, walletRepository);
+    }
+
+    @Test
+    void execute_whenRequestIsInvalid_throwsBeforeRepositories() {
+        EnableSchoolCreditRequest missingTutorRequest = new EnableSchoolCreditRequest(
+                null,
+                studentId,
+                new BigDecimal("1000.00"),
+                1
+        );
+        EnableSchoolCreditRequest missingStudentRequest = new EnableSchoolCreditRequest(
+                tutorId,
+                null,
+                new BigDecimal("1000.00"),
+                1
+        );
+        EnableSchoolCreditRequest invalidAmountRequest = new EnableSchoolCreditRequest(
+                tutorId,
+                studentId,
+                BigDecimal.ZERO,
+                1
+        );
+
+        Executable missingTutorExecution = () -> enableSchoolCredit.execute(missingTutorRequest);
+        IllegalArgumentException missingTutor = assertThrows(
+                IllegalArgumentException.class,
+                missingTutorExecution
+        );
+        Executable missingStudentExecution = () -> enableSchoolCredit.execute(
+                missingStudentRequest
+        );
+        IllegalArgumentException missingStudent = assertThrows(
+                IllegalArgumentException.class,
+                missingStudentExecution
+        );
+        Executable invalidAmountExecution = () -> enableSchoolCredit.execute(
+                invalidAmountRequest
+        );
+        IllegalArgumentException invalidAmount = assertThrows(
+                IllegalArgumentException.class,
+                invalidAmountExecution
+        );
+
+        assertEquals("tutorId cannot be null", missingTutor.getMessage());
+        assertEquals("studentId cannot be null", missingStudent.getMessage());
+        assertEquals("Credit amount must be greater than zero", invalidAmount.getMessage());
+        verifyNoInteractions(tutorRepository, alumnoRepository, schoolCreditRepository);
     }
 }

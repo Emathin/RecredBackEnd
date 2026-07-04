@@ -11,6 +11,7 @@ import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -57,15 +58,15 @@ class GetFavoriteCartsByTutorTest {
         tutor.setId(tutorId);
         CarritoFavorito cart = new CarritoFavorito();
         cart.setId(UUID.randomUUID());
+        GetFavoriteCartsByTutorRequest request =
+                new GetFavoriteCartsByTutorRequest(cognitoSub, alumnoId, productoId);
 
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
         when(carritoFavoritoRepository.findByTutorIdAndFilters(tutorId, alumnoId, productoId))
                 .thenReturn(List.of(cart));
 
-        List<GetFavoriteCartsByTutorResponse> result = useCase.execute(
-                new GetFavoriteCartsByTutorRequest(cognitoSub, alumnoId, productoId)
-        );
+        List<GetFavoriteCartsByTutorResponse> result = useCase.execute(request);
 
         GetFavoriteCartsByTutorResponse expected = new GetFavoriteCartsByTutorResponse(
                 cart.getId(),
@@ -83,10 +84,14 @@ class GetFavoriteCartsByTutorTest {
     @Test
     void execute_WhenUserDoesNotExist_ShouldThrowSecurityException() {
         String cognitoSub = "sub";
+        GetFavoriteCartsByTutorRequest request =
+                new GetFavoriteCartsByTutorRequest(cognitoSub, UUID.randomUUID(), UUID.randomUUID());
+
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.empty());
 
-        assertThrows(SecurityException.class,
-                () -> useCase.execute(new GetFavoriteCartsByTutorRequest(cognitoSub, UUID.randomUUID(), UUID.randomUUID())));
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(SecurityException.class, execution);
 
         verifyNoInteractions(tutorRepository, carritoFavoritoRepository);
     }
@@ -97,11 +102,15 @@ class GetFavoriteCartsByTutorTest {
         UUID userId = UUID.randomUUID();
         Usuario usuario = new Usuario();
         usuario.setId(userId);
+        GetFavoriteCartsByTutorRequest request =
+                new GetFavoriteCartsByTutorRequest(cognitoSub, UUID.randomUUID(), UUID.randomUUID());
+
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
 
-        assertThrows(SecurityException.class,
-                () -> useCase.execute(new GetFavoriteCartsByTutorRequest(cognitoSub, UUID.randomUUID(), UUID.randomUUID())));
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(SecurityException.class, execution);
 
         verifyNoInteractions(carritoFavoritoRepository);
     }

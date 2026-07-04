@@ -16,6 +16,7 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -105,8 +106,9 @@ class GetPurchaseStatusTest {
         givenPurchaseExists();
         givenAuthenticatedRequesterDoesNotExist();
 
-        assertThrows(UsuarioAutenticadoNoEncontradoException.class,
-                this::whenGettingPurchaseStatus);
+        Executable execution = this::whenGettingPurchaseStatus;
+
+        assertThrows(UsuarioAutenticadoNoEncontradoException.class, execution);
     }
 
     @Test
@@ -119,8 +121,9 @@ class GetPurchaseStatusTest {
         givenPurchaseExists();
         givenAuthenticatedRequester(requester);
 
-        assertThrows(PurchaseAccessDeniedException.class,
-                this::whenGettingPurchaseStatus);
+        Executable execution = this::whenGettingPurchaseStatus;
+
+        assertThrows(PurchaseAccessDeniedException.class, execution);
     }
 
     @Test
@@ -134,8 +137,9 @@ class GetPurchaseStatusTest {
         givenPurchaseExists();
         givenAuthenticatedRequester(requester);
 
-        assertThrows(PurchaseAccessDeniedException.class,
-                this::whenGettingPurchaseStatus);
+        Executable execution = this::whenGettingPurchaseStatus;
+
+        assertThrows(PurchaseAccessDeniedException.class, execution);
     }
 
     @Test
@@ -149,8 +153,9 @@ class GetPurchaseStatusTest {
         givenPurchaseExists();
         givenAuthenticatedRequester(requester);
 
-        assertThrows(PurchaseAccessDeniedException.class,
-                this::whenGettingPurchaseStatus);
+        Executable execution = this::whenGettingPurchaseStatus;
+
+        assertThrows(PurchaseAccessDeniedException.class, execution);
     }
 
     @Test
@@ -164,8 +169,9 @@ class GetPurchaseStatusTest {
         givenAuthenticatedRequester(requester);
         givenTutorCanAccessStudent(false);
 
-        assertThrows(PurchaseAccessDeniedException.class,
-                this::whenGettingPurchaseStatus);
+        Executable execution = this::whenGettingPurchaseStatus;
+
+        assertThrows(PurchaseAccessDeniedException.class, execution);
 
         verify(accessRepository).tutorCanAccessStudent(userId, studentId);
     }
@@ -180,16 +186,18 @@ class GetPurchaseStatusTest {
         givenPurchaseExists();
         givenAuthenticatedRequester(requester);
 
-        assertThrows(PurchaseAccessDeniedException.class,
-                this::whenGettingPurchaseStatus);
+        Executable execution = this::whenGettingPurchaseStatus;
+
+        assertThrows(PurchaseAccessDeniedException.class, execution);
     }
 
     @Test
     void execute_WhenPurchaseDoesNotExist_ShouldThrowException() {
         givenPurchaseDoesNotExist();
 
-        assertThrows(PurchaseNotFoundException.class,
-                this::whenGettingPurchaseStatus);
+        Executable execution = this::whenGettingPurchaseStatus;
+
+        assertThrows(PurchaseNotFoundException.class, execution);
 
         verifyNoInteractions(accessRepository);
     }

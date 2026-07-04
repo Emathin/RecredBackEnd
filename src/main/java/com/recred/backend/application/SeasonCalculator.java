@@ -41,8 +41,9 @@ public class SeasonCalculator {
             }
         }
 
-        if (currentSeason.equals("Verano") && currentMonthDay.isBefore(AUTUMN_START)) {
-            nextSeasonDate = AUTUMN_START.atYear(currentYear);
+        if (currentSeason.equals("Verano")) {
+            int autumnYear = currentMonthDay.isBefore(AUTUMN_START) ? currentYear : currentYear + 1;
+            nextSeasonDate = AUTUMN_START.atYear(autumnYear);
         }
 
         int daysRemaining = (int) ChronoUnit.DAYS.between(date, nextSeasonDate);

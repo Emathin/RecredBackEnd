@@ -18,6 +18,7 @@ import com.recred.backend.domain.repositories.ColegioRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -56,6 +57,15 @@ class TimeSlotManagementUseCasesTest {
         CreateTimeSlot useCase = new CreateTimeSlot(
                 franjaHorariaRepository,
                 colegioRepository);
+        CreateTimeSlotRequest request = new CreateTimeSlotRequest(
+                colegioId,
+                " Primer recreo ",
+                LocalTime.of(9, 0),
+                LocalTime.of(9, 15),
+                30,
+                null
+        );
+
         when(colegioRepository.existsActiveById(colegioId)).thenReturn(true);
         when(franjaHorariaRepository.existsActiveOverlap(
                 eq(colegioId),
@@ -68,14 +78,7 @@ class TimeSlotManagementUseCasesTest {
             return slot;
         });
 
-        TimeSlotDetailsResponse response = useCase.execute(new CreateTimeSlotRequest(
-                colegioId,
-                " Primer recreo ",
-                LocalTime.of(9, 0),
-                LocalTime.of(9, 15),
-                30,
-                null
-        ));
+        TimeSlotDetailsResponse response = useCase.execute(request);
 
         assertEquals(slotId, response.id());
         assertEquals("Primer recreo", response.descripcion());
@@ -89,6 +92,15 @@ class TimeSlotManagementUseCasesTest {
         CreateTimeSlot useCase = new CreateTimeSlot(
                 franjaHorariaRepository,
                 colegioRepository);
+        CreateTimeSlotRequest request = new CreateTimeSlotRequest(
+                colegioId,
+                "Primer recreo",
+                LocalTime.of(9, 0),
+                LocalTime.of(9, 15),
+                null,
+                0
+        );
+
         when(colegioRepository.existsActiveById(colegioId)).thenReturn(true);
         when(franjaHorariaRepository.existsActiveOverlap(
                 eq(colegioId),
@@ -96,15 +108,9 @@ class TimeSlotManagementUseCasesTest {
                 eq(LocalTime.of(9, 0)),
                 eq(LocalTime.of(9, 15)))).thenReturn(true);
 
-        assertThrows(TimeSlotOverlapException.class,
-                () -> useCase.execute(new CreateTimeSlotRequest(
-                        colegioId,
-                        "Primer recreo",
-                        LocalTime.of(9, 0),
-                        LocalTime.of(9, 15),
-                        null,
-                        0
-                )));
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(TimeSlotOverlapException.class, execution);
         verify(franjaHorariaRepository, never()).save(any(FranjaHoraria.class));
     }
 
@@ -115,6 +121,15 @@ class TimeSlotManagementUseCasesTest {
         UpdateTimeSlot useCase = updateUseCase();
         FranjaHoraria existing = slot(slotId, colegioId, "Primer recreo",
                 LocalTime.of(9, 0), LocalTime.of(9, 15), true);
+        UpdateTimeSlotRequest request = new UpdateTimeSlotRequest(
+                colegioId,
+                slotId,
+                "Segundo recreo",
+                LocalTime.of(10, 0),
+                LocalTime.of(10, 15),
+                40,
+                5
+        );
 
         when(colegioRepository.existsActiveById(colegioId)).thenReturn(true);
         when(franjaHorariaRepository.findByIdAndColegioId(slotId, colegioId))
@@ -124,16 +139,9 @@ class TimeSlotManagementUseCasesTest {
                 eq(LocalDate.of(2026, 7, 2)),
                 any())).thenReturn(true);
 
-        assertThrows(TimeSlotInUseException.class,
-                () -> useCase.execute(new UpdateTimeSlotRequest(
-                        colegioId,
-                        slotId,
-                        "Segundo recreo",
-                        LocalTime.of(10, 0),
-                        LocalTime.of(10, 15),
-                        40,
-                        5
-                )));
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(TimeSlotInUseException.class, execution);
         verify(franjaHorariaRepository, never()).save(any(FranjaHoraria.class));
     }
 
@@ -144,6 +152,15 @@ class TimeSlotManagementUseCasesTest {
         UpdateTimeSlot useCase = updateUseCase();
         FranjaHoraria existing = slot(slotId, colegioId, "Primer recreo",
                 LocalTime.of(9, 0), LocalTime.of(9, 15), true);
+        UpdateTimeSlotRequest request = new UpdateTimeSlotRequest(
+                colegioId,
+                slotId,
+                "Primer recreo",
+                LocalTime.of(9, 0),
+                LocalTime.of(9, 15),
+                40,
+                5
+        );
 
         when(colegioRepository.existsActiveById(colegioId)).thenReturn(true);
         when(franjaHorariaRepository.findByIdAndColegioId(slotId, colegioId))
@@ -155,15 +172,7 @@ class TimeSlotManagementUseCasesTest {
                 LocalTime.of(9, 15))).thenReturn(false);
         when(franjaHorariaRepository.save(existing)).thenReturn(existing);
 
-        TimeSlotDetailsResponse response = useCase.execute(new UpdateTimeSlotRequest(
-                colegioId,
-                slotId,
-                "Primer recreo",
-                LocalTime.of(9, 0),
-                LocalTime.of(9, 15),
-                40,
-                5
-        ));
+        TimeSlotDetailsResponse response = useCase.execute(request);
 
         assertEquals(40, response.cupoMaximo());
         assertEquals(5, response.minutosCorte());
@@ -178,13 +187,13 @@ class TimeSlotManagementUseCasesTest {
         DeactivateTimeSlot useCase = new DeactivateTimeSlot(franjaHorariaRepository);
         FranjaHoraria existing = slot(slotId, colegioId, "Primer recreo",
                 LocalTime.of(9, 0), LocalTime.of(9, 15), true);
+        DeactivateTimeSlotRequest request = new DeactivateTimeSlotRequest(colegioId, slotId);
 
         when(franjaHorariaRepository.findByIdAndColegioId(slotId, colegioId))
                 .thenReturn(Optional.of(existing));
         when(franjaHorariaRepository.save(existing)).thenReturn(existing);
 
-        TimeSlotDetailsResponse response = useCase.execute(
-                new DeactivateTimeSlotRequest(colegioId, slotId));
+        TimeSlotDetailsResponse response = useCase.execute(request);
 
         assertFalse(response.activo());
         verify(franjaHorariaRepository).save(existing);
@@ -197,6 +206,7 @@ class TimeSlotManagementUseCasesTest {
         ReactivateTimeSlot useCase = new ReactivateTimeSlot(franjaHorariaRepository);
         FranjaHoraria existing = slot(slotId, colegioId, "Primer recreo",
                 LocalTime.of(9, 0), LocalTime.of(9, 15), false);
+        ReactivateTimeSlotRequest request = new ReactivateTimeSlotRequest(colegioId, slotId);
 
         when(franjaHorariaRepository.findByIdAndColegioId(slotId, colegioId))
                 .thenReturn(Optional.of(existing));
@@ -206,8 +216,9 @@ class TimeSlotManagementUseCasesTest {
                 LocalTime.of(9, 0),
                 LocalTime.of(9, 15))).thenReturn(true);
 
-        assertThrows(TimeSlotOverlapException.class,
-                () -> useCase.execute(new ReactivateTimeSlotRequest(colegioId, slotId)));
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(TimeSlotOverlapException.class, execution);
         verify(franjaHorariaRepository, never()).save(any(FranjaHoraria.class));
     }
 
@@ -217,12 +228,12 @@ class TimeSlotManagementUseCasesTest {
         ListSchoolTimeSlots useCase = new ListSchoolTimeSlots(franjaHorariaRepository);
         FranjaHoraria inactive = slot(UUID.randomUUID(), colegioId, "Salida",
                 LocalTime.of(12, 0), LocalTime.of(12, 15), false);
+        ListSchoolTimeSlotsRequest request = new ListSchoolTimeSlotsRequest(colegioId, true);
 
         when(franjaHorariaRepository.findAllByColegioIdIncludingInactive(colegioId))
                 .thenReturn(List.of(inactive));
 
-        List<TimeSlotDetailsResponse> response = useCase.execute(
-                new ListSchoolTimeSlotsRequest(colegioId, true));
+        List<TimeSlotDetailsResponse> response = useCase.execute(request);
 
         assertEquals(1, response.size());
         assertFalse(response.get(0).activo());

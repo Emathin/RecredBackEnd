@@ -43,19 +43,19 @@ class SaveBulkProductsTest {
 
         ProductResponse producto1 = productResponse(UUID.randomUUID(), "Producto 1");
         ProductResponse producto2 = productResponse(UUID.randomUUID(), "Producto 2");
+        SaveBulkProductsRequest request = new SaveBulkProductsRequest(List.of(command1, command2));
 
         when(saveProduct.execute(command1)).thenReturn(producto1);
         when(saveProduct.execute(command2)).thenReturn(producto2);
 
-        SaveBulkProductsResponse resultado =
-                saveBulkProducts.execute(new SaveBulkProductsRequest(List.of(command1, command2)));
+        SaveBulkProductsResponse resultado = saveBulkProducts.execute(request);
 
         assertEquals(2, resultado.products().size());
         assertEquals("Producto 1", resultado.products().get(0).nombre());
         assertEquals("Producto 2", resultado.products().get(1).nombre());
 
-        verify(saveProduct, times(1)).execute(command1);
-        verify(saveProduct, times(1)).execute(command2);
+        verify(saveProduct).execute(command1);
+        verify(saveProduct).execute(command2);
     }
 
     private ProductResponse productResponse(UUID id, String name) {

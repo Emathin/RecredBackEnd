@@ -22,6 +22,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -82,6 +83,13 @@ class UploadSupplierPriceListTest {
         List<RawSupplierPriceItem> rawItems = rawItems();
         List<Producto> activeProducts = activeProducts();
         ListaPrecioProveedor savedPriceList = savedPriceList();
+        UploadSupplierPriceListRequest request = request(
+                kioskOwnerId,
+                supplierId,
+                fileContent,
+                originalFilename,
+                contentType
+        );
 
         when(proveedorRepository.findById(supplierId)).thenReturn(Optional.of(supplier));
         when(storageService.uploadFile(
@@ -99,13 +107,7 @@ class UploadSupplierPriceListTest {
         when(itemListaPrecioProveedorRepository.saveAll(anyList()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        UploadSupplierPriceListResponse result = uploadSupplierPriceList.execute(request(
-                kioskOwnerId,
-                supplierId,
-                fileContent,
-                originalFilename,
-                contentType
-        ));
+        UploadSupplierPriceListResponse result = uploadSupplierPriceList.execute(request);
 
         assertNotNull(result);
         assertEquals(savedPriceList.getId(), result.id());
@@ -123,15 +125,19 @@ class UploadSupplierPriceListTest {
     @Test
     void executeWhenSupplierDoesNotBelongToKioskOwnerThrowsAccessDeniedException() {
         UUID anotherKioskOwnerId = UUID.randomUUID();
-        when(proveedorRepository.findById(supplierId)).thenReturn(Optional.of(supplier));
-
-        assertThrows(AccessDeniedException.class, () -> uploadSupplierPriceList.execute(request(
+        UploadSupplierPriceListRequest request = request(
                 anotherKioskOwnerId,
                 supplierId,
                 fileContent,
                 "precios.pdf",
                 "application/pdf"
-        )));
+        );
+
+        when(proveedorRepository.findById(supplierId)).thenReturn(Optional.of(supplier));
+
+        Executable execution = () -> uploadSupplierPriceList.execute(request);
+
+        assertThrows(AccessDeniedException.class, execution);
 
         verify(proveedorRepository).findById(supplierId);
         verifyNoInteractions(
@@ -145,16 +151,19 @@ class UploadSupplierPriceListTest {
     @Test
     void executeWhenFileSizeExceedsLimitThrowsFileValidationException() {
         byte[] largeFileContent = new byte[6 * 1024 * 1024];
+        UploadSupplierPriceListRequest request = request(
+                kioskOwnerId,
+                supplierId,
+                largeFileContent,
+                "precios.pdf",
+                "application/pdf"
+        );
+
+        Executable execution = () -> uploadSupplierPriceList.execute(request);
 
         FileValidationException exception = assertThrows(
                 FileValidationException.class,
-                () -> uploadSupplierPriceList.execute(request(
-                        kioskOwnerId,
-                        supplierId,
-                        largeFileContent,
-                        "precios.pdf",
-                        "application/pdf"
-                ))
+                execution
         );
 
         assertEquals("File exceeds the maximum allowed size (5MB)", exception.getMessage());
@@ -168,15 +177,19 @@ class UploadSupplierPriceListTest {
 
     @Test
     void executeWhenMimeTypeIsInvalidThrowsFileValidationException() {
+        UploadSupplierPriceListRequest request = request(
+                kioskOwnerId,
+                supplierId,
+                fileContent,
+                "precios.png",
+                "image/png"
+        );
+
+        Executable execution = () -> uploadSupplierPriceList.execute(request);
+
         FileValidationException exception = assertThrows(
                 FileValidationException.class,
-                () -> uploadSupplierPriceList.execute(request(
-                        kioskOwnerId,
-                        supplierId,
-                        fileContent,
-                        "precios.png",
-                        "image/png"
-                ))
+                execution
         );
 
         assertEquals(

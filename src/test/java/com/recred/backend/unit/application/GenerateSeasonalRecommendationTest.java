@@ -7,6 +7,8 @@ import com.recred.backend.application.SeasonalRecommendationResponse;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.openMeteo.NominatimGeocodingClient;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
+import com.recred.backend.infrastructure.web.GeocodingResponseDTO;
+import com.recred.backend.infrastructure.web.PromotionResponseDTO;
 import com.recred.backend.infrastructure.web.RecommendationResponseDTO;
 import com.recred.backend.infrastructure.web.SuggestedPromotionDTO;
 import com.recred.backend.infrastructure.web.SugerenciaDTO;
@@ -25,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -186,6 +189,55 @@ class GenerateSeasonalRecommendationTest {
         assertEquals(2, resultado.suggestedPromotion().productIds().size());
     }
 
+    @Test
+    void dadoGeocodingYPromocionCreada_cuandoSeEjecuta_entoncesMapeaUbicacionYPromocion() {
+        UUID buffetId = UUID.randomUUID();
+        UUID promotionId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        WeatherDTO climaSimulado = new WeatherDTO(12.5, "Frio");
+        when(climaServiceMock.getCurrentWeather(anyDouble(), anyDouble()))
+                .thenReturn(climaSimulado);
+        when(geocodingClientMock.getReverseGeocoding(anyDouble(), anyDouble()))
+                .thenReturn(geocoding("Tandil", "Buenos Aires"));
+
+        RecommendationResponseDTO recomendacion = new RecommendationResponseDTO();
+        recomendacion.setPromocionalTip("Sumar productos calientes.");
+        SuggestedPromotionDTO suggestedPromotion = new SuggestedPromotionDTO();
+        suggestedPromotion.setName("Combo caliente");
+        suggestedPromotion.setDiscountPercentage(new BigDecimal("10.00"));
+        suggestedPromotion.setTargetCategories(List.of());
+        suggestedPromotion.setImagen("combo.png");
+        recomendacion.setSuggestedPromotion(suggestedPromotion);
+        recomendacion.setCreatedPromotion(createdPromotion(promotionId, productId, buffetId));
+
+        CategoriaProducto activeCategory = category("Infusiones", true);
+        CategoriaProducto inactiveCategory = category("Oculta", false);
+        when(categoryRepository.getAllCategories()).thenReturn(List.of(
+                activeCategory,
+                inactiveCategory
+        ));
+        when(geminiSuggesterMock.getSeasonalRecommendations(
+                anyString(),
+                eq(12.5),
+                eq("Frio"),
+                eq("Infusiones")))
+                .thenReturn(recomendacion);
+        when(productRepository.findAllActiveWithStock(buffetId))
+                .thenReturn(List.of(product(productId, "Infusiones")));
+
+        SeasonalRecommendationResponse resultado = execute(-37.32, -59.13, buffetId);
+
+        assertNull(resultado.suggestions());
+        assertEquals("Tandil", resultado.currentWeather().city());
+        assertEquals("Buenos Aires", resultado.currentWeather().province());
+        assertEquals("Combo caliente", resultado.suggestedPromotion().name());
+        assertEquals(List.of(), resultado.suggestedPromotion().targetCategories());
+        assertNull(resultado.suggestedPromotion().productIds());
+        assertEquals(promotionId, resultado.createdPromotion().id());
+        assertEquals(productId, resultado.createdPromotion().productIds().get(0));
+        assertEquals(buffetId, resultado.createdPromotion().buffetId());
+    }
+
     private Producto product(UUID productId, String categoryDescription) {
         CategoriaProducto category = new CategoriaProducto();
         category.setId(UUID.randomUUID());
@@ -195,6 +247,41 @@ class GenerateSeasonalRecommendationTest {
         product.setId(productId);
         product.setCategoria(category);
         return product;
+    }
+
+    private CategoriaProducto category(String description, boolean active) {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(UUID.randomUUID());
+        category.setDescripcion(description);
+        category.setActivo(active);
+        return category;
+    }
+
+    private GeocodingResponseDTO geocoding(String town, String state) {
+        GeocodingResponseDTO geocoding = new GeocodingResponseDTO();
+        GeocodingResponseDTO.Address address = new GeocodingResponseDTO.Address();
+        address.setTown(town);
+        address.setState(state);
+        geocoding.setAddress(address);
+        return geocoding;
+    }
+
+    private PromotionResponseDTO createdPromotion(
+            UUID promotionId,
+            UUID productId,
+            UUID buffetId
+    ) {
+        PromotionResponseDTO promotion = new PromotionResponseDTO();
+        promotion.setId(promotionId);
+        promotion.setName("Promo caliente");
+        promotion.setDiscountPercentage(new BigDecimal("15.00"));
+        promotion.setStartDate(LocalDateTime.of(2026, 7, 4, 8, 0));
+        promotion.setEndDate(LocalDateTime.of(2026, 7, 5, 20, 0));
+        promotion.setStatus("DRAFT");
+        promotion.setProductIds(List.of(productId));
+        promotion.setBuffetId(buffetId);
+        promotion.setImageUrl("promo.png");
+        return promotion;
     }
 
     private SeasonalRecommendationResponse execute(

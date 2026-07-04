@@ -39,11 +39,12 @@ class ManagePromotionStatusTest {
         draftPromotion.setId(promotionId);
         draftPromotion.setStatus(PromotionStatus.DRAFT);
         draftPromotion.setStartDate(LocalDateTime.now().minusDays(1));
+        ManagePromotionStatusRequest request = new ManagePromotionStatusRequest();
 
         when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
                 .thenReturn(List.of(draftPromotion));
 
-        managePromotionStatus.execute(new ManagePromotionStatusRequest());
+        managePromotionStatus.execute(request);
 
         verify(promotionRepository)
                 .save(argThat(p -> p.getId().equals(promotionId) && p.getStatus() == PromotionStatus.ACTIVE));
@@ -53,11 +54,12 @@ class ManagePromotionStatusTest {
     void execute_ShouldNotActivateAlreadyActivePromotions() {
         Promotion activePromotion = new Promotion();
         activePromotion.setStatus(PromotionStatus.ACTIVE);
+        ManagePromotionStatusRequest request = new ManagePromotionStatusRequest();
 
         when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
                 .thenReturn(List.of(activePromotion));
 
-        managePromotionStatus.execute(new ManagePromotionStatusRequest());
+        managePromotionStatus.execute(request);
 
         verify(promotionRepository, never()).save(any(Promotion.class));
     }
@@ -69,12 +71,13 @@ class ManagePromotionStatusTest {
         endedPromotion.setId(promotionId);
         endedPromotion.setStatus(PromotionStatus.ACTIVE);
         endedPromotion.setEndDate(LocalDateTime.now().minusDays(1));
+        ManagePromotionStatusRequest request = new ManagePromotionStatusRequest();
 
         when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
                 .thenReturn(List.of());
         when(promotionRepository.findAllActive()).thenReturn(List.of(endedPromotion));
 
-        managePromotionStatus.execute(new ManagePromotionStatusRequest());
+        managePromotionStatus.execute(request);
 
         verify(promotionRepository)
                 .save(argThat(p -> p.getId().equals(promotionId) && p.getStatus() == PromotionStatus.EXPIRED));

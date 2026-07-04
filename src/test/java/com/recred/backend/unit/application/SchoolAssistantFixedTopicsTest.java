@@ -186,6 +186,39 @@ class SchoolAssistantFixedTopicsTest {
     }
 
     @Test
+    void confirmationAsksRecessWhenPendingPurchaseAlreadyHasDate() {
+        Producto product = product("Yogur", new BigDecimal("900.00"));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "confirmar",
+                studentContext(new BigDecimal("5000.00")),
+                List.of(assistantMessage(pendingMetadata(
+                        product.getId(),
+                        1,
+                        LocalDate.of(2026, 5, 28),
+                        null
+                )))
+        );
+
+        assertTrue(reply.isPresent());
+        SchoolAssistantFixedReply answer = reply.orElseThrow();
+        assertTrue(answer.answer().contains("Para terminar, elegi el recreo de retiro"));
+        assertTrue(answer.answer().contains("primer recreo"));
+        assertEquals(SchoolAssistantActionStatus.ESPERANDO_RECREO, answer.action().status());
+        assertEquals(List.of(SchoolAssistantRequiredInput.RECREO),
+                answer.action().requiredInputs());
+        assertEquals(List.of("Primer recreo", "Segundo recreo", "Mediodia", "Salida"),
+                answer.suggestions().stream()
+                        .map(suggestion -> suggestion.label())
+                        .toList());
+
+        Map<?, ?> action = (Map<?, ?>) answer.metadata().get("accionPendienteChatbot");
+        assertEquals("2026-05-28", action.get("fechaRetiro"));
+        assertFalse(action.containsKey("recreo"));
+        verifyNoInteractions(createAssistantAdvancePurchase);
+    }
+
+    @Test
     void selectsPurchaseDateForPendingPurchase() {
         Producto product = product("Yogur", new BigDecimal("900.00"));
 
@@ -203,6 +236,36 @@ class SchoolAssistantFixedTopicsTest {
                 .metadata()
                 .get("accionPendienteChatbot");
         assertEquals("2026-05-28", action.get("fechaRetiro"));
+    }
+
+    @Test
+    void repeatLastPurchaseWithSelectedDateAsksForRecess() {
+        Producto product = product("Agua", new BigDecimal("700.00"));
+        Purchase purchase = purchase(product, 2, NOW.minusDays(1));
+
+        when(purchaseRepository.findHistorialByAlumno(studentId)).thenReturn(List.of(purchase));
+        when(productRepository.findActiveById(product.getId())).thenReturn(Optional.of(product));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "repeti mi ultima compra 28/5/2026",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        SchoolAssistantFixedReply answer = reply.orElseThrow();
+        assertTrue(answer.answer()
+                .contains("Puedo repetir tu ultima compra con estos productos"));
+        assertTrue(answer.answer().contains("Total estimado: $1400.00"));
+        assertTrue(answer.answer().contains("Listo, la dejo para el 28/5/2026"));
+        assertEquals(SchoolAssistantIntent.SELECT_PURCHASE_DATE, answer.intent());
+        assertEquals(SchoolAssistantActionStatus.ESPERANDO_RECREO, answer.action().status());
+        assertEquals(List.of(SchoolAssistantRequiredInput.RECREO),
+                answer.action().requiredInputs());
+
+        Map<?, ?> action = (Map<?, ?>) answer.metadata().get("accionPendienteChatbot");
+        assertEquals("2026-05-28", action.get("fechaRetiro"));
+        assertFalse(action.containsKey("recreo"));
     }
 
     @Test

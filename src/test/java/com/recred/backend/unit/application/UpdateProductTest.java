@@ -14,6 +14,7 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -53,7 +54,10 @@ class UpdateProductTest {
 
         when(productRepository.findActiveById(id)).thenReturn(Optional.empty());
 
-        assertThrows(ProductNotFoundException.class, () -> updateProduct.execute(command));
+        Executable execution = () -> updateProduct.execute(command);
+
+        assertThrows(ProductNotFoundException.class, execution);
+        verify(productRepository, never()).save(any());
     }
 
     @Test
