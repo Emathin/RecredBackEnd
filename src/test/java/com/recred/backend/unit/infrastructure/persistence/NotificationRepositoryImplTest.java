@@ -11,6 +11,7 @@ import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.persistence.NotificacionJpaRepository;
 import com.recred.backend.infrastructure.persistence.NotificationRepositoryImpl;
 import com.recred.backend.infrastructure.persistence.SpringDataUsuarioRepository;
+import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -41,13 +42,17 @@ class NotificationRepositoryImplTest {
     @Mock
     private SpringDataUsuarioRepository usuarioRepository;
 
+    @Mock
+    private EntityManager entityManager;
+
     private NotificationRepositoryImpl repository;
 
     @BeforeEach
     void setUp() {
         repository = new NotificationRepositoryImpl(
                 notificationJpaRepository,
-                usuarioRepository
+                usuarioRepository,
+                entityManager
         );
     }
 
