@@ -29,8 +29,7 @@ public class TutorAccessGuard {
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             PresupuestoRepository presupuestoRepository,
-            RestriccionHorariaRepository restriccionHorariaRepository
-    ) {
+            RestriccionHorariaRepository restriccionHorariaRepository) {
         this.usuarioRepository = usuarioRepository;
         this.tutorRepository = tutorRepository;
         this.presupuestoRepository = presupuestoRepository;
@@ -53,7 +52,6 @@ public class TutorAccessGuard {
             return;
         }
 
-        // Si es ALUMNO, debe coincidir con su propio ID
         if (usuario.getRol() == RolUsuario.ALUMNO) {
             if (usuario.getAlumno() != null && usuario.getAlumno().getId().equals(studentId)) {
                 return;
@@ -61,7 +59,6 @@ public class TutorAccessGuard {
             throw new AccessDeniedException("No tiene permisos sobre este alumno");
         }
 
-        // Si es PADRE, debe ser uno de sus hijos
         if (usuario.getRol() == RolUsuario.PADRE) {
             Tutor tutor = tutorRepository.findByUsuarioId(usuario.getId())
                     .orElseThrow(() -> new AccessDeniedException(
