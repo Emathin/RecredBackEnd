@@ -57,6 +57,13 @@ public interface PurchaseRepository {
                         LocalDateTime start,
                         LocalDateTime end);
 
+        List<Purchase> findByBuffetAndPickupOrCreationDateRange(
+                        UUID buffetId,
+                        LocalDate startDate,
+                        LocalDate endDate,
+                        LocalDateTime start,
+                        LocalDateTime end);
+
         List<Purchase> findExpiredAdvancePurchases(LocalDate date,
                         LocalTime time,
                         List<EstadoCompra> statuses);

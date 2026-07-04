@@ -210,7 +210,8 @@ class GetKiosqueroDashboardTest {
                 stockMovementRepository
         );
 
-        when(purchaseRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
+        when(purchaseRepository.findByBuffetAndPickupOrCreationDateRange(
+                eq(buffetId), any(), any(), any(), any()))
                 .thenReturn(purchases);
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(inventory);
         when(stockMovementRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
@@ -324,11 +325,14 @@ class GetKiosqueroDashboardTest {
             LocalDate from,
             LocalDate to
     ) {
-        verify(scenario.purchaseRepository()).findByBuffetAndDateRange(
-                buffetId,
-                from.atStartOfDay(),
-                to.plusDays(1).atStartOfDay().minusNanos(1)
-        );
+        verify(scenario.purchaseRepository())
+                .findByBuffetAndPickupOrCreationDateRange(
+                        buffetId,
+                        from,
+                        to,
+                        from.atStartOfDay(),
+                        to.plusDays(1).atStartOfDay().minusNanos(1)
+                );
         verify(scenario.stockMovementRepository()).findByBuffetAndDateRange(
                 buffetId,
                 from.atStartOfDay(),
