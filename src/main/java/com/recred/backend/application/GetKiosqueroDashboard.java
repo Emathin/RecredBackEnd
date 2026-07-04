@@ -133,8 +133,10 @@ public class GetKiosqueroDashboard {
 
     private List<Purchase> purchases(UUID buffetId, DashboardPeriod period) {
         DateTimeRange purchaseRange = range(period.trendStart(), period.trendEnd());
-        return purchaseRepository.findByBuffetAndDateRange(
+        return purchaseRepository.findByBuffetAndPickupOrCreationDateRange(
                 buffetId,
+                period.trendStart(),
+                period.trendEnd(),
                 purchaseRange.start(),
                 purchaseRange.end()
         );

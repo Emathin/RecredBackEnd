@@ -71,6 +71,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handlePresupuestoExcedido(
             PresupuestoExcedidoException ex) {
 
+        LOGGER.warn(
+                "Devolviendo error BUDGET_RESTRICTION (400): {} - RequestId: {}",
+                ex.getMessage(),
+                currentRequestId()
+        );
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.BAD_REQUEST.value());
@@ -357,6 +362,13 @@ public class GlobalExceptionHandler {
             String message,
             String code
     ) {
+        LOGGER.warn(
+                "Devolviendo error {} ({}): {} - RequestId: {}",
+                status,
+                code,
+                message,
+                currentRequestId()
+        );
         ErrorResponse response = new ErrorResponse(code, error, message,
                 LocalDateTime.now(), status.value(), currentRequestId());
         return ResponseEntity.status(status).body(response);

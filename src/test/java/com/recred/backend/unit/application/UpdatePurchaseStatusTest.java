@@ -37,8 +37,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import com.recred.backend.domain.repositories.TutorRepository;
+import com.recred.backend.domain.repositories.NotificationRepository;
+import com.recred.backend.domain.services.PushNotificationSender;
+import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.Usuario;
+
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class UpdatePurchaseStatusTest {
@@ -53,6 +60,12 @@ class UpdatePurchaseStatusTest {
     private KiosqueroRealtimeEventPublisher realtimeEventPublisher;
     @Mock
     private MovimientoBilleteraRepository movimientoBilleteraRepository;
+    @Mock
+    private TutorRepository tutorRepository;
+    @Mock
+    private NotificationRepository notificationRepository;
+    @Mock
+    private PushNotificationSender pushNotificationSender;
 
     @InjectMocks
     private UpdatePurchaseStatus useCase;
@@ -161,6 +174,39 @@ class UpdatePurchaseStatusTest {
         verify(inventoryAvailabilityService).releaseReservation(
                 buffetId, purchase.getItems(), purchaseId);
         verify(realtimeEventPublisher).publish(any(KiosqueroRealtimeEvent.class));
+    }
+
+    @Test
+    void execute_WhenStatusChanges_ShouldNotifyStudentTutors() {
+        purchase.setStatus(EstadoCompra.PENDIENTE);
+
+        Alumno student = new Alumno();
+        UUID studentId = UUID.randomUUID();
+        student.setId(studentId);
+        student.setNombre("Juan");
+        purchase.setStudent(student);
+
+        Tutor tutor = new Tutor();
+        tutor.setId(UUID.randomUUID());
+        Usuario tutorUser = new Usuario();
+        UUID tutorUserId = UUID.randomUUID();
+        tutorUser.setId(tutorUserId);
+        tutor.setUsuario(tutorUser);
+
+        givenPurchaseExists();
+        givenPurchaseCanBeSaved();
+        when(tutorRepository.findByAlumnoId(studentId))
+                .thenReturn(java.util.List.of(tutor));
+
+        whenUpdatingStatusTo(EstadoCompra.EN_PREPARACION);
+
+        verify(notificationRepository).save(
+                any(com.recred.backend.domain.models.Notification.class),
+                eq(tutorUserId)
+        );
+        verify(pushNotificationSender).send(
+                any(com.recred.backend.domain.models.PushNotification.class)
+        );
     }
 
     private void givenPurchaseExists() {
