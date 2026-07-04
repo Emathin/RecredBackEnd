@@ -84,7 +84,7 @@ public class GetStudentWalletSummary {
         LocalDate to = request.to().orElse(LocalDate.now(clock));
         LocalDate from = request.from().orElse(to.minusDays(DEFAULT_LOOKBACK_DAYS));
         validateDateRange(from, to);
-        return new DateRange(from, to);
+        return new DateRange(from, to, clock);
     }
 
     private Billetera findWallet(UUID studentId) {
@@ -243,14 +243,18 @@ public class GetStudentWalletSummary {
                 .divide(total, 2, RoundingMode.HALF_UP);
     }
 
-    private record DateRange(LocalDate from, LocalDate to) {
+    private record DateRange(LocalDate from, LocalDate to, Clock clock) {
 
         private LocalDateTime startDateTime() {
-            return from.atStartOfDay();
+            java.time.ZoneId appZone = clock.getZone();
+            java.time.ZonedDateTime zdt = from.atStartOfDay().atZone(appZone);
+            return zdt.withZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime();
         }
 
         private LocalDateTime endDateTime() {
-            return to.atTime(LocalTime.MAX);
+            java.time.ZoneId appZone = clock.getZone();
+            java.time.ZonedDateTime zdt = to.atTime(LocalTime.MAX).atZone(appZone);
+            return zdt.withZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime();
         }
     }
 }
