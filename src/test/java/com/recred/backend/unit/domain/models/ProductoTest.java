@@ -107,45 +107,64 @@ class ProductoTest {
     }
 
     @Test
-    void needsRestock_ShouldReturnTrueForLowStockOrSoldOutProducts() {
+    void dadoProductoConStockBajo_cuandoNeedsRestock_entoncesRetornaTrue() {
         Producto lowStock = new Producto();
         lowStock.setStockActual(2);
         lowStock.setStockDisponible(1);
         lowStock.setStockMinimo(2);
+
+        assertTrue(lowStock.hasLowStock());
+        assertTrue(lowStock.needsRestock());
+    }
+
+    @Test
+    void dadoProductoSinStock_cuandoNeedsRestock_entoncesRetornaTrue() {
         Producto soldOut = new Producto();
         soldOut.setEstadoInventario(EstadoInventario.SIN_STOCK);
+
+        assertTrue(soldOut.isSoldOut());
+        assertTrue(soldOut.needsRestock());
+    }
+
+    @Test
+    void dadoProductoDisponible_cuandoNeedsRestock_entoncesRetornaFalse() {
         Producto available = new Producto();
         available.setStockActual(10);
         available.setStockDisponible(8);
         available.setStockMinimo(2);
         available.setEstadoInventario(EstadoInventario.DISPONIBLE);
 
-        assertTrue(lowStock.hasLowStock());
-        assertTrue(lowStock.needsRestock());
-        assertTrue(soldOut.isSoldOut());
-        assertTrue(soldOut.needsRestock());
         assertFalse(available.needsRestock());
     }
 
     @Test
-    void isSoldOut_ShouldReturnTrueForDisabledOrWithoutAvailableStock() {
+    void dadoProductoDesactivado_cuandoIsSoldOut_entoncesRetornaTrue() {
         Producto disabled = new Producto();
         disabled.setEstadoInventario(EstadoInventario.DESACTIVADO);
+
+        assertTrue(disabled.isSoldOut());
+    }
+
+    @Test
+    void dadoProductoSinStockDisponible_cuandoIsSoldOut_entoncesRetornaTrue() {
         Producto withoutAvailableStock = new Producto();
         withoutAvailableStock.setStockDisponible(0);
         withoutAvailableStock.setEstadoInventario(EstadoInventario.DISPONIBLE);
 
-        assertTrue(disabled.isSoldOut());
         assertTrue(withoutAvailableStock.isSoldOut());
     }
 
     @Test
-    void reservedStockOrZeroAndPriceOrZero_ShouldNormalizeNullableValues() {
+    void dadoStockReservadoYPrecioNulos_cuandoNormalizaValores_entoncesRetornaCeros() {
         Producto producto = new Producto();
 
         assertEquals(0, producto.reservedStockOrZero());
         assertEquals(BigDecimal.ZERO, producto.priceOrZero());
+    }
 
+    @Test
+    void dadoStockReservadoYPrecioConfigurados_cuandoNormalizaValores_entoncesRetornaValores() {
+        Producto producto = new Producto();
         producto.setStockReservado(4);
         producto.setPrecio(new BigDecimal("15.00"));
 
@@ -161,7 +180,7 @@ class ProductoTest {
     }
 
     @Test
-    void dailyCapacity_WhenProductUsesDailyCapacity_ShouldExposeConfiguredValues() {
+    void dadoProductoConCupoDiarioSinLimite_cuandoConsultaCupo_entoncesUsaStockActual() {
         Producto producto = new Producto();
         producto.setTipoManejoInventario(TipoManejoInventario.CUPO_DIARIO);
         producto.setStockActual(20);
@@ -171,6 +190,12 @@ class ProductoTest {
         assertEquals(20, producto.configuredDailyCapacity());
         assertEquals(15, producto.dailyCapacityAvailable());
         assertFalse(producto.hasDailyCapacityLimit());
+    }
+
+    @Test
+    void dadoProductoConCupoDiarioConLimite_cuandoConsultaCupo_entoncesTieneLimiteYEstaDisponible() {
+        Producto producto = new Producto();
+        producto.setTipoManejoInventario(TipoManejoInventario.CUPO_DIARIO);
         producto.setCupoMaximoDiario(20);
 
         assertTrue(producto.hasDailyCapacityLimit());
@@ -186,22 +211,43 @@ class ProductoTest {
     }
 
     @Test
-    void activeAndStockHelpers_ShouldExposeAvailabilityStates() {
+    void dadoProductoNuevo_cuandoIsActive_entoncesRetornaTrue() {
         Producto producto = new Producto();
 
         assertTrue(producto.isActive());
+    }
+
+    @Test
+    void dadoProductoActivo_cuandoDeactivate_entoncesQuedaInactivo() {
+        Producto producto = new Producto();
+
         producto.deactivate();
 
         assertFalse(producto.isActive());
+    }
+
+    @Test
+    void dadoProductoSinStockActual_cuandoConsultaStockDisponible_entoncesNoTieneStockDisponible() {
+        Producto producto = new Producto();
+
         assertNull(producto.getStockDisponible());
         assertFalse(producto.hasAvailableStock());
+    }
 
+    @Test
+    void dadoProductoConStockYReservaMenor_cuandoConsultaStockDisponible_entoncesCalculaDisponible() {
+        Producto producto = new Producto();
         producto.setStockActual(5);
         producto.setStockReservado(2);
 
         assertEquals(3, producto.getStockDisponible());
         assertTrue(producto.hasAvailableStock());
+    }
 
+    @Test
+    void dadoProductoConReservaMayorAlStock_cuandoConsultaDisponibilidad_entoncesQuedaSinStock() {
+        Producto producto = new Producto();
+        producto.setStockActual(5);
         producto.setStockReservado(10);
 
         assertEquals(0, producto.getStockDisponible());
@@ -210,7 +256,7 @@ class ProductoTest {
     }
 
     @Test
-    void dailyCapacity_ShouldApplyReservationsAndDetectExhaustion() {
+    void dadoProductoConStockExacto_cuandoAplicaCupoDiario_entoncesIgnoraCupo() {
         Producto exactStock = new Producto();
         exactStock.setTipoManejoInventario(TipoManejoInventario.STOCK_EXACTO);
         exactStock.setCupoMaximoDiario(10);
@@ -219,7 +265,10 @@ class ProductoTest {
         assertNull(exactStock.dailyCapacityAvailable());
         exactStock.applyDailyCapacity(3);
         assertNull(exactStock.getCupoDisponibleDia());
+    }
 
+    @Test
+    void dadoProductoConCupoDiario_cuandoAplicaReservaMenorAlLimite_entoncesCalculaDisponible() {
         Producto dailyCapacity = new Producto();
         dailyCapacity.setTipoManejoInventario(TipoManejoInventario.CUPO_DIARIO);
         dailyCapacity.setCupoMaximoDiario(10);
@@ -228,6 +277,13 @@ class ProductoTest {
 
         assertEquals(6, dailyCapacity.getCupoDisponibleDia());
         assertFalse(dailyCapacity.isDailyCapacityExhausted());
+    }
+
+    @Test
+    void dadoProductoConCupoDiario_cuandoAplicaReservaMayorAlLimite_entoncesAgotaCupo() {
+        Producto dailyCapacity = new Producto();
+        dailyCapacity.setTipoManejoInventario(TipoManejoInventario.CUPO_DIARIO);
+        dailyCapacity.setCupoMaximoDiario(10);
 
         dailyCapacity.applyDailyCapacity(12);
 
@@ -236,58 +292,225 @@ class ProductoTest {
     }
 
     @Test
-    void priceAndCategoryBudget_ShouldCompareAgainstAvailableAmounts() {
-        UUID categoryId = UUID.randomUUID();
-        CategoriaProducto category = new CategoriaProducto();
-        category.setId(categoryId);
-        category.setDescripcion("Golosinas");
-        Producto producto = new Producto();
-        producto.setCategoria(category);
-        producto.setPrecio(new BigDecimal("100.00"));
+    void dadoMontoDisponibleNulo_cuandoExceedsPrice_entoncesRetornaFalse() {
+        Producto producto = productoConPrecio(new BigDecimal("100.00"));
 
         assertFalse(producto.exceedsPrice(null));
-        assertFalse(producto.exceedsPrice(new BigDecimal("150.00")));
-        assertTrue(producto.exceedsPrice(new BigDecimal("50.00")));
-        assertFalse(producto.exceedsCategoryBudget(null));
-        assertFalse(new Producto().exceedsCategoryBudget(Map.of(categoryId,
-                new BigDecimal("50.00"))));
-        assertTrue(producto.exceedsCategoryBudget(Map.of(categoryId,
-                new BigDecimal("50.00"))));
     }
 
     @Test
-    void categoryDescriptionAndHealthClassification_ShouldHandleNullsAndMatches() {
-        UUID classificationId = UUID.randomUUID();
-        ClasificacionSalud classification = new ClasificacionSalud();
-        classification.setId(classificationId);
-        CategoriaProducto category = new CategoriaProducto();
-        category.setDescripcion("Bebidas frias");
-        Producto producto = new Producto();
-        producto.setCategoria(category);
-        producto.setClasificacionesSalud(Set.of(classification));
+    void dadoMontoDisponibleMayorAlPrecio_cuandoExceedsPrice_entoncesRetornaFalse() {
+        Producto producto = productoConPrecio(new BigDecimal("100.00"));
+
+        assertFalse(producto.exceedsPrice(new BigDecimal("150.00")));
+    }
+
+    @Test
+    void dadoMontoDisponibleMenorAlPrecio_cuandoExceedsPrice_entoncesRetornaTrue() {
+        Producto producto = productoConPrecio(new BigDecimal("100.00"));
+
+        assertTrue(producto.exceedsPrice(new BigDecimal("50.00")));
+    }
+
+    @Test
+    void dadoPresupuestoPorCategoriaNulo_cuandoExceedsCategoryBudget_entoncesRetornaFalse() {
+        Producto producto = productoConCategoriaYPrecio(UUID.randomUUID(), new BigDecimal("100.00"));
+
+        assertFalse(producto.exceedsCategoryBudget(null));
+    }
+
+    @Test
+    void dadoProductoSinCategoria_cuandoExceedsCategoryBudget_entoncesRetornaFalse() {
+        UUID categoryId = UUID.randomUUID();
+
+        assertFalse(new Producto().exceedsCategoryBudget(Map.of(categoryId, new BigDecimal("50.00"))));
+    }
+
+    @Test
+    void dadoPresupuestoDeCategoriaMenorAlPrecio_cuandoExceedsCategoryBudget_entoncesRetornaTrue() {
+        UUID categoryId = UUID.randomUUID();
+        Producto producto = productoConCategoriaYPrecio(categoryId, new BigDecimal("100.00"));
+
+        assertTrue(producto.exceedsCategoryBudget(Map.of(categoryId, new BigDecimal("50.00"))));
+    }
+
+    @Test
+    void dadoDescripcionesNulas_cuandoMatchesAnyCategoryDescription_entoncesRetornaFalse() {
+        Producto producto = productoConCategoria("Bebidas frias");
 
         assertFalse(producto.matchesAnyCategoryDescription(null));
-        assertFalse(producto.matchesAnyCategoryDescription(List.of()));
-        assertFalse(producto.matchesCategoryDescription(null));
-        assertTrue(producto.matchesAnyCategoryDescription(List.of("frias")));
-        assertTrue(producto.matchesCategoryDescription("BEBIDAS"));
-        assertFalse(producto.hasHealthClassification(null));
-        assertFalse(producto.hasHealthClassification(new ClasificacionSalud()));
-        assertTrue(producto.hasHealthClassification(classification));
+    }
 
+    @Test
+    void dadoDescripcionesVacias_cuandoMatchesAnyCategoryDescription_entoncesRetornaFalse() {
+        Producto producto = productoConCategoria("Bebidas frias");
+
+        assertFalse(producto.matchesAnyCategoryDescription(List.of()));
+    }
+
+    @Test
+    void dadoDescripcionNula_cuandoMatchesCategoryDescription_entoncesRetornaFalse() {
+        Producto producto = productoConCategoria("Bebidas frias");
+
+        assertFalse(producto.matchesCategoryDescription(null));
+    }
+
+    @Test
+    void dadoDescripcionParcial_cuandoMatchesAnyCategoryDescription_entoncesRetornaTrue() {
+        Producto producto = productoConCategoria("Bebidas frias");
+
+        assertTrue(producto.matchesAnyCategoryDescription(List.of("frias")));
+    }
+
+    @Test
+    void dadoDescripcionConDistintasMayusculas_cuandoMatchesCategoryDescription_entoncesRetornaTrue() {
+        Producto producto = productoConCategoria("Bebidas frias");
+
+        assertTrue(producto.matchesCategoryDescription("BEBIDAS"));
+    }
+
+    @Test
+    void dadoClasificacionNula_cuandoHasHealthClassification_entoncesRetornaFalse() {
+        Producto producto = productoConClasificacion(clasificacionConId(UUID.randomUUID()));
+
+        assertFalse(producto.hasHealthClassification(null));
+    }
+
+    @Test
+    void dadoClasificacionSinId_cuandoHasHealthClassification_entoncesRetornaFalse() {
+        Producto producto = productoConClasificacion(clasificacionConId(UUID.randomUUID()));
+
+        assertFalse(producto.hasHealthClassification(new ClasificacionSalud()));
+    }
+
+    @Test
+    void dadoClasificacionExistente_cuandoHasHealthClassification_entoncesRetornaTrue() {
+        ClasificacionSalud classification = clasificacionConId(UUID.randomUUID());
+        Producto producto = productoConClasificacion(classification);
+
+        assertTrue(producto.hasHealthClassification(classification));
+    }
+
+    @Test
+    void dadoProductoSinClasificaciones_cuandoHasHealthClassification_entoncesRetornaFalse() {
+        ClasificacionSalud classification = clasificacionConId(UUID.randomUUID());
+        Producto producto = productoConClasificacion(classification);
         producto.setClasificacionesSalud(null);
 
         assertFalse(producto.hasHealthClassification(classification));
     }
 
     @Test
-    void purchaseIdentityCopyAndDiscount_ShouldUseProductPriceAndPromotion() {
+    void dadoProductoConId_cuandoIdAsString_entoncesRetornaIdComoTexto() {
         UUID productId = UUID.randomUUID();
+        Producto producto = productoParaCompra(productId);
+
+        assertEquals(productId.toString(), producto.idAsString());
+    }
+
+    @Test
+    void dadoProductoSinId_cuandoIdAsString_entoncesRetornaNull() {
+        Producto producto = new Producto();
+
+        assertNull(producto.idAsString());
+    }
+
+    @Test
+    void dadoProductoYPromocion_cuandoDiscountedFor_entoncesAplicaDescuentoYPromocion() {
         UUID promotionId = UUID.randomUUID();
+        Producto producto = productoParaCompra(UUID.randomUUID());
+        Promotion promotion = promotion(promotionId);
+
+        Producto discounted = producto.discountedFor(promotion);
+
+        assertEquals(new BigDecimal("75.00"), discounted.getPrecio());
+        assertEquals(promotionId, discounted.getPromocionId());
+        assertEquals("Promo", discounted.getPromocionNombre());
+    }
+
+    @Test
+    void dadoProducto_cuandoCopyForPurchase_entoncesCopiaCamposDeCompra() {
+        Producto producto = productoParaCompra(UUID.randomUUID());
+
+        Producto copied = producto.copyForPurchase();
+
+        assertEquals(producto.getNombre(), copied.getNombre());
+        assertEquals(producto.getStockActual(), copied.getStockActual());
+    }
+
+    @Test
+    void dadoProductoConMismaIdentidadDeCompra_cuandoHasSamePurchaseIdentityAs_entoncesRetornaTrue() {
+        UUID productId = UUID.randomUUID();
+        Producto producto = productoParaCompra(productId);
+        Producto samePurchaseProduct = productoConPrecio(new BigDecimal("100.00"));
+        samePurchaseProduct.setId(productId);
+
+        assertTrue(producto.hasSamePurchaseIdentityAs(samePurchaseProduct));
+    }
+
+    @Test
+    void dadoProductoConDistintaPromocion_cuandoHasSamePurchaseIdentityAs_entoncesRetornaFalse() {
+        UUID productId = UUID.randomUUID();
+        Producto producto = productoParaCompra(productId);
+        Producto samePurchaseProduct = productoConPrecio(new BigDecimal("100.00"));
+        samePurchaseProduct.setId(productId);
+        samePurchaseProduct.setPromocionId(UUID.randomUUID());
+
+        assertFalse(producto.hasSamePurchaseIdentityAs(samePurchaseProduct));
+    }
+
+    @Test
+    void dadoProductoNulo_cuandoHasSamePurchaseIdentityAs_entoncesRetornaFalse() {
+        Producto producto = productoParaCompra(UUID.randomUUID());
+
+        assertFalse(producto.hasSamePurchaseIdentityAs(null));
+    }
+
+    private Producto productoConPrecio(BigDecimal precio) {
+        Producto producto = new Producto();
+        producto.setPrecio(precio);
+        return producto;
+    }
+
+    private Producto productoConCategoriaYPrecio(UUID categoryId, BigDecimal precio) {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(categoryId);
+        category.setDescripcion("Golosinas");
+        Producto producto = new Producto();
+        producto.setCategoria(category);
+        producto.setPrecio(precio);
+        return producto;
+    }
+
+    private Producto productoConCategoria(String descripcion) {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setDescripcion(descripcion);
+        Producto producto = new Producto();
+        producto.setCategoria(category);
+        return producto;
+    }
+
+    private Producto productoConClasificacion(ClasificacionSalud classification) {
+        Producto producto = new Producto();
+        producto.setClasificacionesSalud(Set.of(classification));
+        return producto;
+    }
+
+    private ClasificacionSalud clasificacionConId(UUID classificationId) {
+        ClasificacionSalud classification = new ClasificacionSalud();
+        classification.setId(classificationId);
+        return classification;
+    }
+
+    private Promotion promotion(UUID promotionId) {
         Promotion promotion = new Promotion();
         promotion.setId(promotionId);
         promotion.setName("Promo");
         promotion.setDiscountPercentage(new BigDecimal("25.00"));
+        return promotion;
+    }
+
+    private Producto productoParaCompra(UUID productId) {
         Producto producto = new Producto();
         producto.setId(productId);
         producto.setNombre("Alfajor");
@@ -295,24 +518,6 @@ class ProductoTest {
         producto.setStockActual(10);
         producto.setStockReservado(1);
         producto.setCupoDisponibleDia(4);
-
-        Producto discounted = producto.discountedFor(promotion);
-        Producto copied = producto.copyForPurchase();
-
-        assertEquals(productId.toString(), producto.idAsString());
-        assertEquals(new BigDecimal("75.00"), discounted.getPrecio());
-        assertEquals(promotionId, discounted.getPromocionId());
-        assertEquals("Promo", discounted.getPromocionNombre());
-        assertEquals(producto.getNombre(), copied.getNombre());
-        assertEquals(producto.getStockActual(), copied.getStockActual());
-        Producto samePurchaseProduct = new Producto();
-        samePurchaseProduct.setId(productId);
-        samePurchaseProduct.setPrecio(new BigDecimal("100.00"));
-        assertTrue(producto.hasSamePurchaseIdentityAs(samePurchaseProduct));
-        samePurchaseProduct.setPromocionId(UUID.randomUUID());
-        assertFalse(producto.hasSamePurchaseIdentityAs(samePurchaseProduct));
-        assertFalse(producto.hasSamePurchaseIdentityAs(null));
-        producto.setId(null);
-        assertNull(producto.idAsString());
+        return producto;
     }
 }

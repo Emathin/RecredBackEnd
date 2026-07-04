@@ -118,7 +118,7 @@ class CreatePromotionTest {
     }
 
     @Test
-    void execute_shouldThrowException_whenDiscountPercentageIsInvalid() {
+    void execute_shouldThrowException_whenDiscountPercentageIsZero() {
         List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
         String name = "Promo Fail";
         LocalDateTime start = LocalDateTime.now();
@@ -127,12 +127,45 @@ class CreatePromotionTest {
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(new CreatePromotionRequest(productIds, BigDecimal.ZERO, name, start, end, null, false, null))
         );
+
+        verify(promotionRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldThrowException_whenDiscountPercentageIsNegative() {
+        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+        String name = "Promo Fail";
+        LocalDateTime start = LocalDateTime.now();
+        LocalDateTime end = LocalDateTime.now().plusDays(1);
+
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(new CreatePromotionRequest(productIds, new BigDecimal("-5"), name, start, end, null, false, null))
         );
+
+        verify(promotionRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldThrowException_whenDiscountPercentageIsGreaterThan100() {
+        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+        String name = "Promo Fail";
+        LocalDateTime start = LocalDateTime.now();
+        LocalDateTime end = LocalDateTime.now().plusDays(1);
+
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(new CreatePromotionRequest(productIds, new BigDecimal("101"), name, start, end, null, false, null))
         );
+
+        verify(promotionRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldThrowException_whenDiscountPercentageIsNull() {
+        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+        String name = "Promo Fail";
+        LocalDateTime start = LocalDateTime.now();
+        LocalDateTime end = LocalDateTime.now().plusDays(1);
+
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(new CreatePromotionRequest(productIds, null, name, start, end, null, false, null))
         );
@@ -141,7 +174,7 @@ class CreatePromotionTest {
     }
 
     @Test
-    void execute_shouldThrowException_whenDateRangeIsInvalid() {
+    void execute_shouldThrowException_whenStartDateIsAfterEndDate() {
         List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
         BigDecimal discount = new BigDecimal("15");
         String name = "Promo Fail";
@@ -151,9 +184,31 @@ class CreatePromotionTest {
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(new CreatePromotionRequest(productIds, discount, name, start, end, null, false, null))
         );
+
+        verify(promotionRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldThrowException_whenStartDateIsNull() {
+        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+        BigDecimal discount = new BigDecimal("15");
+        String name = "Promo Fail";
+        LocalDateTime end = LocalDateTime.now().plusDays(2);
+
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(new CreatePromotionRequest(productIds, discount, name, null, end, null, false, null))
         );
+
+        verify(promotionRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldThrowException_whenEndDateIsNull() {
+        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+        BigDecimal discount = new BigDecimal("15");
+        String name = "Promo Fail";
+        LocalDateTime start = LocalDateTime.now().plusDays(5);
+
         assertThrows(IllegalArgumentException.class, () ->
                 createPromotion.execute(new CreatePromotionRequest(productIds, discount, name, start, null, null, false, null))
         );

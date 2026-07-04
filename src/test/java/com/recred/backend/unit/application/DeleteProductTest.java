@@ -8,6 +8,7 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -37,9 +38,11 @@ class DeleteProductTest {
         Producto producto = new Producto();
         producto.setId(id);
         producto.setActivo(true);
+        DeleteProductRequest request = new DeleteProductRequest(id);
+
         when(productRepository.findActiveById(id)).thenReturn(Optional.of(producto));
 
-        deleteProduct.execute(new DeleteProductRequest(id));
+        deleteProduct.execute(request);
 
         assertFalse(producto.getActivo());
         verify(productRepository).save(producto);
@@ -48,10 +51,13 @@ class DeleteProductTest {
     @Test
     void dadoQueNoExisteProducto_cuandoExecute_entoncesLanzaExcepcion() {
         UUID id = UUID.randomUUID();
+        DeleteProductRequest request = new DeleteProductRequest(id);
+
         when(productRepository.findActiveById(id)).thenReturn(Optional.empty());
 
-        assertThrows(ProductNotFoundException.class,
-                () -> deleteProduct.execute(new DeleteProductRequest(id)));
+        Executable execution = () -> deleteProduct.execute(request);
+
+        assertThrows(ProductNotFoundException.class, execution);
         verify(productRepository, never()).save(any());
     }
 }

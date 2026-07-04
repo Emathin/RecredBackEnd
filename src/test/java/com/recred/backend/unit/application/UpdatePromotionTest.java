@@ -148,12 +148,20 @@ class UpdatePromotionTest {
     }
 
     @Test
-    void execute_shouldThrowException_whenUpdatedDiscountIsInvalid() {
+    void execute_shouldThrowException_whenUpdatedDiscountIsZero() {
         when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
 
         assertThrows(IllegalArgumentException.class, () ->
                 updatePromotion.execute(new UpdatePromotionRequest(
                         promoId, null, BigDecimal.ZERO, null, null, null)));
+
+        verify(promotionRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldThrowException_whenUpdatedDiscountIsGreaterThan100() {
+        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
+
         assertThrows(IllegalArgumentException.class, () ->
                 updatePromotion.execute(new UpdatePromotionRequest(
                         promoId, null, new BigDecimal("105"), null, null, null)));

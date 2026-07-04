@@ -21,26 +21,36 @@ class SeasonCalculatorTest {
     }
 
     @Test
-    void calculateCurrentSeasonShouldReturnAutumnWinterAndSpring() {
-        SeasonInfoResponse autumn = SeasonCalculator.calculateCurrentSeason(
+    void calculateCurrentSeasonShouldReturnAutumn() {
+        SeasonInfoResponse response = SeasonCalculator.calculateCurrentSeason(
                 LocalDate.of(2026, 4, 1)
         );
-        SeasonInfoResponse winter = SeasonCalculator.calculateCurrentSeason(
+
+        assertEquals("Oto\u00f1o", response.currentSeason());
+        assertEquals("Invierno", response.nextSeason());
+        assertEquals(81, response.daysRemaining());
+    }
+
+    @Test
+    void calculateCurrentSeasonShouldReturnWinter() {
+        SeasonInfoResponse response = SeasonCalculator.calculateCurrentSeason(
                 LocalDate.of(2026, 7, 1)
         );
-        SeasonInfoResponse spring = SeasonCalculator.calculateCurrentSeason(
+
+        assertEquals("Invierno", response.currentSeason());
+        assertEquals("Primavera", response.nextSeason());
+        assertEquals(82, response.daysRemaining());
+    }
+
+    @Test
+    void calculateCurrentSeasonShouldReturnSpring() {
+        SeasonInfoResponse response = SeasonCalculator.calculateCurrentSeason(
                 LocalDate.of(2026, 10, 1)
         );
 
-        assertEquals("Oto\u00f1o", autumn.currentSeason());
-        assertEquals("Invierno", autumn.nextSeason());
-        assertEquals(81, autumn.daysRemaining());
-        assertEquals("Invierno", winter.currentSeason());
-        assertEquals("Primavera", winter.nextSeason());
-        assertEquals(82, winter.daysRemaining());
-        assertEquals("Primavera", spring.currentSeason());
-        assertEquals("Verano", spring.nextSeason());
-        assertEquals(81, spring.daysRemaining());
+        assertEquals("Primavera", response.currentSeason());
+        assertEquals("Verano", response.nextSeason());
+        assertEquals(81, response.daysRemaining());
     }
 
     @Test

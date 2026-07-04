@@ -13,7 +13,6 @@ import org.springframework.security.access.AccessDeniedException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -39,40 +38,56 @@ class DeleteSupplierTest {
     }
 
     @Test
-    void executeShouldFailWhenSupplierDoesNotExistOrBelongsToAnotherOwner() {
+    void executeShouldFailWhenSupplierDoesNotExist() {
         UUID supplierId = UUID.randomUUID();
         UUID kioskOwnerId = UUID.randomUUID();
-        UUID otherOwnerId = UUID.randomUUID();
-        when(repository.findById(supplierId))
-                .thenReturn(Optional.empty(), Optional.of(supplier(supplierId, otherOwnerId)));
+        when(repository.findById(supplierId)).thenReturn(Optional.empty());
 
         IllegalArgumentException notFound = assertThrows(
                 IllegalArgumentException.class,
                 () -> useCase.execute(new DeleteSupplierRequest(supplierId, kioskOwnerId))
         );
+
+        assertEquals("Supplier not found", notFound.getMessage());
+        verify(repository).findById(supplierId);
+        verifyNoMoreInteractions(repository);
+    }
+
+    @Test
+    void executeShouldFailWhenSupplierBelongsToAnotherOwner() {
+        UUID supplierId = UUID.randomUUID();
+        UUID kioskOwnerId = UUID.randomUUID();
+        UUID otherOwnerId = UUID.randomUUID();
+        when(repository.findById(supplierId))
+                .thenReturn(Optional.of(supplier(supplierId, otherOwnerId)));
+
         AccessDeniedException denied = assertThrows(
                 AccessDeniedException.class,
                 () -> useCase.execute(new DeleteSupplierRequest(supplierId, kioskOwnerId))
         );
 
-        assertEquals("Supplier not found", notFound.getMessage());
         assertEquals("You do not have access to delete this supplier", denied.getMessage());
-        verify(repository, times(2)).findById(supplierId);
+        verify(repository).findById(supplierId);
         verifyNoMoreInteractions(repository);
     }
 
     @Test
-    void executeShouldValidateRequest() {
+    void executeShouldValidateSupplierId() {
         IllegalArgumentException missingSupplier = assertThrows(
                 IllegalArgumentException.class,
                 () -> useCase.execute(new DeleteSupplierRequest(null, UUID.randomUUID()))
         );
+
+        assertEquals("supplierId is required", missingSupplier.getMessage());
+    }
+
+    @Test
+    void executeShouldValidateKioskOwnerId() {
         IllegalArgumentException missingOwner = assertThrows(
                 IllegalArgumentException.class,
                 () -> useCase.execute(new DeleteSupplierRequest(UUID.randomUUID(), null))
         );
 
-        assertEquals("supplierId is required", missingSupplier.getMessage());
         assertEquals("kioskOwnerId is required", missingOwner.getMessage());
     }
 

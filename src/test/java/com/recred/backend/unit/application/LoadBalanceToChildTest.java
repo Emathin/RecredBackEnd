@@ -98,9 +98,15 @@ class LoadBalanceToChildTest {
     }
 
     @Test
-    void execute_shouldThrowException_whenAmountIsZeroOrLess() {
+    void execute_shouldThrowException_whenAmountIsZero() {
         assertThrows(IllegalArgumentException.class, () ->
                 loadBalanceToChild.execute(new com.recred.backend.application.LoadBalanceToChildRequest(cognitoSub, studentId, BigDecimal.ZERO)));
+
+        verify(walletRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldThrowException_whenAmountIsNegative() {
         assertThrows(IllegalArgumentException.class, () ->
                 loadBalanceToChild.execute(new com.recred.backend.application.LoadBalanceToChildRequest(cognitoSub, studentId, new BigDecimal("-10"))));
 

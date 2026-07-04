@@ -7,6 +7,7 @@ import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -36,10 +37,11 @@ class DeletePromotionTest {
         Promotion promotion = new Promotion();
         promotion.setId(id);
         promotion.setStatus(PromotionStatus.ACTIVE);
+        DeletePromotionRequest request = new DeletePromotionRequest(id);
 
         when(promotionRepository.findById(id)).thenReturn(Optional.of(promotion));
 
-        deletePromotion.execute(new DeletePromotionRequest(id));
+        deletePromotion.execute(request);
 
         assertEquals(PromotionStatus.REJECTED, promotion.getStatus());
         verify(promotionRepository).save(promotion);
@@ -48,10 +50,13 @@ class DeletePromotionTest {
     @Test
     void execute_shouldThrowException_whenPromotionDoesNotExist() {
         UUID id = UUID.randomUUID();
+        DeletePromotionRequest request = new DeletePromotionRequest(id);
+
         when(promotionRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class,
-                () -> deletePromotion.execute(new DeletePromotionRequest(id)));
+        Executable execution = () -> deletePromotion.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
         verify(promotionRepository, never()).save(any());
     }
 }

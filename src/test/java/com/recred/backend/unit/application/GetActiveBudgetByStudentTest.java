@@ -43,10 +43,11 @@ class GetActiveBudgetByStudentTest {
         presupuesto.setId(UUID.randomUUID());
         presupuesto.setAlumnoId(studentId);
         presupuesto.setActivo(true);
+        GetActiveBudgetByStudentRequest request = new GetActiveBudgetByStudentRequest(studentId);
 
         when(repository.findActivoByAlumnoId(studentId)).thenReturn(Optional.of(presupuesto));
 
-        Optional<GetActiveBudgetByStudentResponse> resultado = getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId));
+        Optional<GetActiveBudgetByStudentResponse> resultado = getActiveBudgetByStudent.execute(request);
 
         assertTrue(resultado.isPresent());
         assertEquals(presupuesto.getId(), resultado.get().id());
@@ -90,12 +91,11 @@ class GetActiveBudgetByStudentTest {
                 true,
                 List.of(categoryRule, uncategorizedRule)
         );
+        GetActiveBudgetByStudentRequest request = new GetActiveBudgetByStudentRequest(studentId);
 
         when(repository.findActivoByAlumnoId(studentId)).thenReturn(Optional.of(budget));
 
-        Optional<GetActiveBudgetByStudentResponse> result = getActiveBudgetByStudent.execute(
-                new GetActiveBudgetByStudentRequest(studentId)
-        );
+        Optional<GetActiveBudgetByStudentResponse> result = getActiveBudgetByStudent.execute(request);
 
         assertTrue(result.isPresent());
         GetActiveBudgetByStudentResponse response = result.orElseThrow();
@@ -127,12 +127,11 @@ class GetActiveBudgetByStudentTest {
         budget.setId(UUID.randomUUID());
         budget.setAlumnoId(studentId);
         budget.setReglasCategoria(null);
+        GetActiveBudgetByStudentRequest request = new GetActiveBudgetByStudentRequest(studentId);
 
         when(repository.findActivoByAlumnoId(studentId)).thenReturn(Optional.of(budget));
 
-        Optional<GetActiveBudgetByStudentResponse> result = getActiveBudgetByStudent.execute(
-                new GetActiveBudgetByStudentRequest(studentId)
-        );
+        Optional<GetActiveBudgetByStudentResponse> result = getActiveBudgetByStudent.execute(request);
 
         assertTrue(result.isPresent());
         assertNull(result.orElseThrow().reglasCategoria());
@@ -141,9 +140,11 @@ class GetActiveBudgetByStudentTest {
     @Test
     void execute_CuandoNoHayPresupuestoActivo_RetornaOptionalVacio() {
         UUID studentId = UUID.randomUUID();
+        GetActiveBudgetByStudentRequest request = new GetActiveBudgetByStudentRequest(studentId);
+
         when(repository.findActivoByAlumnoId(studentId)).thenReturn(Optional.empty());
 
-        Optional<GetActiveBudgetByStudentResponse> resultado = getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId));
+        Optional<GetActiveBudgetByStudentResponse> resultado = getActiveBudgetByStudent.execute(request);
 
         assertFalse(resultado.isPresent());
         verify(repository).findActivoByAlumnoId(studentId);

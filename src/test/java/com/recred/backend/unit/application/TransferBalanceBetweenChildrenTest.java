@@ -183,9 +183,15 @@ class TransferBalanceBetweenChildrenTest {
     }
 
     @Test
-    void execute_shouldThrowException_whenAmountIsZeroOrLess() {
+    void execute_shouldThrowException_whenAmountIsZero() {
         assertThrows(IllegalArgumentException.class, () ->
                 transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, BigDecimal.ZERO)));
+
+        verify(walletRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldThrowException_whenAmountIsNegative() {
         assertThrows(IllegalArgumentException.class, () ->
                 transferUseCase.execute(new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(cognitoSub, fromId, toId, new BigDecimal("-5"))));
 

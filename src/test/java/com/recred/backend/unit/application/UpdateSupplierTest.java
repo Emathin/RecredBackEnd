@@ -62,7 +62,7 @@ class UpdateSupplierTest {
     }
 
     @Test
-    void executeShouldRejectInvalidRequestsAndMissingSupplier() {
+    void executeShouldRejectMissingSupplierId() {
         assertEquals("supplierId is required",
                 assertThrows(IllegalArgumentException.class,
                         () -> useCase.execute(new UpdateSupplierRequest(
@@ -74,7 +74,10 @@ class UpdateSupplierTest {
                                 null,
                                 null
                         ))).getMessage());
+    }
 
+    @Test
+    void executeShouldRejectMissingSupplier() {
         when(repository.findById(supplierId)).thenReturn(Optional.empty());
 
         assertEquals("Supplier not found",

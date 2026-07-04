@@ -12,10 +12,12 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,32 +45,31 @@ class AddFavoriteProductTest {
     void dadoDatosValidos_cuandoExecute_entoncesAgregaFavoritoYGuarda() {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        Producto producto = new Producto();
-        producto.setId(productoId);
+        Alumno alumno = alumno(alumnoId);
+        Producto producto = producto(productoId);
+        AddFavoriteProductRequest request = request(alumnoId, productoId);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(productRepository.findById(productoId)).thenReturn(Optional.of(producto));
 
-        addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId));
+        addFavoriteProduct.execute(request);
 
         assertTrue(alumno.getProductosFavoritos().contains(producto));
-        verify(alumnoRepository, times(1)).save(alumno);
+        verify(alumnoRepository).save(alumno);
     }
 
     @Test
     void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
+        AddFavoriteProductRequest request = request(alumnoId, productoId);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId))
-        );
-        assertEquals("Alumno no encontrado", exception.getMessage());
+        Executable execution = () -> addFavoriteProduct.execute(request);
 
+        RuntimeException exception = assertThrows(RuntimeException.class, execution);
+        assertEquals("Alumno no encontrado", exception.getMessage());
         verify(productRepository, never()).findById(any());
         verify(alumnoRepository, never()).save(any());
     }
@@ -77,17 +78,16 @@ class AddFavoriteProductTest {
     void dadoProductoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
+        Alumno alumno = alumno(alumnoId);
+        AddFavoriteProductRequest request = request(alumnoId, productoId);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(productRepository.findById(productoId)).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId))
-        );
-        assertEquals("Producto no encontrado", exception.getMessage());
+        Executable execution = () -> addFavoriteProduct.execute(request);
 
+        RuntimeException exception = assertThrows(RuntimeException.class, execution);
+        assertEquals("Producto no encontrado", exception.getMessage());
         verify(alumnoRepository, never()).save(any());
     }
 
@@ -95,30 +95,18 @@ class AddFavoriteProductTest {
     void dadoPlanGratuitoYMasDe5Favoritos_cuandoExecute_entoncesLanzaExcepcion() {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-
-        for (int i = 0; i < 5; i++) {
-            Producto p = new Producto();
-            p.setId(UUID.randomUUID());
-            alumno.agregarProductoFavorito(p);
-        }
-
-        Producto nuevoProducto = new Producto();
-        nuevoProducto.setId(productoId);
-
-        Usuario usuario = new Usuario();
-        usuario.setPlan(TipoPlan.GRATUITO);
-        Tutor tutor = new Tutor();
-        tutor.setUsuario(usuario);
+        Alumno alumno = alumnoConFavoritos(alumnoId, 5);
+        Producto nuevoProducto = producto(productoId);
+        Tutor tutor = tutorConPlan(TipoPlan.GRATUITO);
+        AddFavoriteProductRequest request = request(alumnoId, productoId);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(productRepository.findById(productoId)).thenReturn(Optional.of(nuevoProducto));
-        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(java.util.List.of(tutor));
+        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(List.of(tutor));
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId))
-        );
+        Executable execution = () -> addFavoriteProduct.execute(request);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("Límite de productos favoritos alcanzado para cuenta gratuita (máximo 5)", exception.getMessage());
         verify(alumnoRepository, never()).save(any());
     }
@@ -127,31 +115,50 @@ class AddFavoriteProductTest {
     void dadoPlanPremiumYMasDe5Favoritos_cuandoExecute_entoncesAgregaYGuarda() {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-
-        for (int i = 0; i < 5; i++) {
-            Producto p = new Producto();
-            p.setId(UUID.randomUUID());
-            alumno.agregarProductoFavorito(p);
-        }
-
-        Producto nuevoProducto = new Producto();
-        nuevoProducto.setId(productoId);
-
-        Usuario usuario = new Usuario();
-        usuario.setPlan(TipoPlan.PREMIUM);
-        Tutor tutor = new Tutor();
-        tutor.setUsuario(usuario);
+        Alumno alumno = alumnoConFavoritos(alumnoId, 5);
+        Producto nuevoProducto = producto(productoId);
+        Tutor tutor = tutorConPlan(TipoPlan.PREMIUM);
+        AddFavoriteProductRequest request = request(alumnoId, productoId);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(productRepository.findById(productoId)).thenReturn(Optional.of(nuevoProducto));
-        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(java.util.List.of(tutor));
+        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(List.of(tutor));
 
-        addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId));
+        addFavoriteProduct.execute(request);
 
         assertTrue(alumno.getProductosFavoritos().contains(nuevoProducto));
         assertEquals(6, alumno.getProductosFavoritos().size());
-        verify(alumnoRepository, times(1)).save(alumno);
+        verify(alumnoRepository).save(alumno);
+    }
+
+    private Alumno alumno(UUID alumnoId) {
+        Alumno alumno = new Alumno();
+        alumno.setId(alumnoId);
+        return alumno;
+    }
+
+    private Alumno alumnoConFavoritos(UUID alumnoId, int cantidad) {
+        Alumno alumno = alumno(alumnoId);
+        for (int i = 0; i < cantidad; i++)
+            alumno.agregarProductoFavorito(producto(UUID.randomUUID()));
+        return alumno;
+    }
+
+    private Producto producto(UUID productoId) {
+        Producto producto = new Producto();
+        producto.setId(productoId);
+        return producto;
+    }
+
+    private Tutor tutorConPlan(TipoPlan plan) {
+        Usuario usuario = new Usuario();
+        usuario.setPlan(plan);
+        Tutor tutor = new Tutor();
+        tutor.setUsuario(usuario);
+        return tutor;
+    }
+
+    private AddFavoriteProductRequest request(UUID alumnoId, UUID productoId) {
+        return new AddFavoriteProductRequest(alumnoId, productoId);
     }
 }

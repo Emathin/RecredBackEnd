@@ -55,37 +55,52 @@ class GetSupplierTest {
     }
 
     @Test
-    void executeShouldFailWhenMissingOrOwnedByAnotherKiosquero() {
+    void executeShouldFailWhenSupplierDoesNotExist() {
         UUID supplierId = UUID.randomUUID();
         UUID kioskOwnerId = UUID.randomUUID();
-        when(repository.findById(supplierId))
-                .thenReturn(Optional.empty(), Optional.of(supplier(supplierId, UUID.randomUUID())));
+        when(repository.findById(supplierId)).thenReturn(Optional.empty());
 
         IllegalArgumentException notFound = assertThrows(
                 IllegalArgumentException.class,
                 () -> useCase.execute(new GetSupplierRequest(supplierId, kioskOwnerId))
         );
+
+        assertEquals("Supplier not found", notFound.getMessage());
+    }
+
+    @Test
+    void executeShouldFailWhenSupplierBelongsToAnotherKiosquero() {
+        UUID supplierId = UUID.randomUUID();
+        UUID kioskOwnerId = UUID.randomUUID();
+        when(repository.findById(supplierId))
+                .thenReturn(Optional.of(supplier(supplierId, UUID.randomUUID())));
+
         AccessDeniedException denied = assertThrows(
                 AccessDeniedException.class,
                 () -> useCase.execute(new GetSupplierRequest(supplierId, kioskOwnerId))
         );
 
-        assertEquals("Supplier not found", notFound.getMessage());
         assertEquals("You do not have access to this supplier", denied.getMessage());
     }
 
     @Test
-    void executeShouldValidateRequestBeforeRepository() {
+    void executeShouldValidateSupplierIdBeforeRepository() {
         IllegalArgumentException missingSupplier = assertThrows(
                 IllegalArgumentException.class,
                 () -> useCase.execute(new GetSupplierRequest(null, UUID.randomUUID()))
         );
+
+        assertEquals("supplierId is required", missingSupplier.getMessage());
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void executeShouldValidateKioskOwnerIdBeforeRepository() {
         IllegalArgumentException missingOwner = assertThrows(
                 IllegalArgumentException.class,
                 () -> useCase.execute(new GetSupplierRequest(UUID.randomUUID(), null))
         );
 
-        assertEquals("supplierId is required", missingSupplier.getMessage());
         assertEquals("kioskOwnerId is required", missingOwner.getMessage());
         verifyNoInteractions(repository);
     }

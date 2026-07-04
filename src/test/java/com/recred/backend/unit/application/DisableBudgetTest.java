@@ -6,6 +6,7 @@ import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,6 +16,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,9 +33,14 @@ class DisableBudgetTest {
     @Test
     void execute_PresupuestoNoExiste_LanzaExcepcion() {
         UUID budgetId = UUID.randomUUID();
+        DisableBudgetRequest request = new DisableBudgetRequest(budgetId);
+
         when(repository.findById(budgetId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> disableBudget.execute(new DisableBudgetRequest(budgetId)));
+        Executable execution = () -> disableBudget.execute(request);
+
+        assertThrows(RuntimeException.class, execution);
+        verify(repository, never()).save(any());
     }
 
     @Test
@@ -41,10 +49,11 @@ class DisableBudgetTest {
         PresupuestoAlumno presupuesto = new PresupuestoAlumno();
         presupuesto.setId(budgetId);
         presupuesto.setActivo(true);
+        DisableBudgetRequest request = new DisableBudgetRequest(budgetId);
 
         when(repository.findById(budgetId)).thenReturn(Optional.of(presupuesto));
 
-        disableBudget.execute(new DisableBudgetRequest(budgetId));
+        disableBudget.execute(request);
 
         assertFalse(presupuesto.isActivo(), "El presupuesto debería haber sido desactivado");
         verify(repository).save(presupuesto);

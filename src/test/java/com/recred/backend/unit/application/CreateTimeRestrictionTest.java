@@ -15,6 +15,7 @@ import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,7 +53,6 @@ class CreateTimeRestrictionTest {
     private String cognitoSub;
     private Usuario usuario;
     private Alumno alumno;
-    private CreateTimeRestrictionRequest request;
 
     @BeforeEach
     void setUp() {
@@ -66,35 +67,31 @@ class CreateTimeRestrictionTest {
 
         alumno = new Alumno();
         alumno.setId(studentId);
+    }
 
-        request = new CreateTimeRestrictionRequest(
+    @Test
+    void execute_WithValidDataAndCategory_ShouldCreateRestriction() {
+        CreateTimeRestrictionRequest request = new CreateTimeRestrictionRequest(
                 studentId,
                 timeSlotId,
                 categoryId,
                 null,
                 cognitoSub
         );
-    }
-
-    @Test
-    void execute_WithValidDataAndCategory_ShouldCreateRestriction() {
-        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(repository.findAllByAlumnoEntityId(studentId)).thenReturn(new ArrayList<>());
-        
         RestriccionHoraria saved = new RestriccionHoraria();
         saved.setId(UUID.randomUUID());
         saved.setAlumnoId(studentId);
-        
         FranjaHoraria fh = new FranjaHoraria();
         fh.setId(timeSlotId);
         saved.setFranjaHoraria(fh);
-        
         CategoriaProducto cp = new CategoriaProducto();
         cp.setId(categoryId);
         saved.setCategoria(cp);
-        
         saved.setCreadoPorUsuarioId(usuario.getId());
+
+        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
+        when(repository.findAllByAlumnoEntityId(studentId)).thenReturn(new ArrayList<>());
         when(repository.save(any(RestriccionHoraria.class))).thenReturn(saved);
 
         CreateTimeRestrictionResponse response = useCase.execute(request);
@@ -108,8 +105,13 @@ class CreateTimeRestrictionTest {
 
     @Test
     void execute_WhenClassificationAlreadyExistsGlobally_ShouldThrowException() {
-        request = new CreateTimeRestrictionRequest(studentId, timeSlotId, null, classificationId, cognitoSub);
-        
+        CreateTimeRestrictionRequest request = new CreateTimeRestrictionRequest(
+                studentId,
+                timeSlotId,
+                null,
+                classificationId,
+                cognitoSub
+        );
         ClasificacionSalud globalRestriction = new ClasificacionSalud();
         globalRestriction.setId(classificationId);
         alumno.getRestriccionesSalud().add(globalRestriction);
@@ -117,31 +119,39 @@ class CreateTimeRestrictionTest {
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, 
-                () -> useCase.execute(request));
+        Executable execution = () -> useCase.execute(request);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("Student already has this health restriction assigned globally.", ex.getMessage());
+        verify(repository, never()).save(any());
     }
 
     @Test
     void execute_WhenRestrictionAlreadyExistsForTimeSlot_ShouldThrowException() {
-        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        
+        CreateTimeRestrictionRequest request = new CreateTimeRestrictionRequest(
+                studentId,
+                timeSlotId,
+                categoryId,
+                null,
+                cognitoSub
+        );
         RestriccionHoraria existing = new RestriccionHoraria();
         existing.setActiva(true);
-        
         FranjaHoraria fh = new FranjaHoraria();
         fh.setId(timeSlotId);
         existing.setFranjaHoraria(fh);
-        
         CategoriaProducto cp = new CategoriaProducto();
         cp.setId(categoryId);
         existing.setCategoria(cp);
-        
+
+        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
         when(repository.findAllByAlumnoEntityId(studentId)).thenReturn(List.of(existing));
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, 
-                () -> useCase.execute(request));
+        Executable execution = () -> useCase.execute(request);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("Student already has an active restriction for this category or type in the selected time slot.", ex.getMessage());
+        verify(repository, never()).save(any());
     }
 }

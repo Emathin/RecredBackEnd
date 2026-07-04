@@ -57,7 +57,7 @@ class GetLastRechargeTest {
     }
 
     @Test
-    void executeShouldFailWhenStudentDoesNotExistOrRequestIsInvalid() {
+    void executeShouldFailWhenStudentDoesNotExist() {
         UUID studentId = UUID.randomUUID();
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
 
@@ -65,12 +65,17 @@ class GetLastRechargeTest {
                 IllegalArgumentException.class,
                 () -> useCase.execute(new GetLastRechargeRequest(studentId))
         );
+
+        assertEquals("Student not found", missingStudent.getMessage());
+    }
+
+    @Test
+    void executeShouldFailWhenRequestIsInvalid() {
         IllegalArgumentException invalidRequest = assertThrows(
                 IllegalArgumentException.class,
                 () -> useCase.execute(new GetLastRechargeRequest(null))
         );
 
-        assertEquals("Student not found", missingStudent.getMessage());
         assertEquals("studentId cannot be null", invalidRequest.getMessage());
     }
 }

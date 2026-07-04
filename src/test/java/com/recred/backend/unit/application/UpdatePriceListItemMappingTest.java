@@ -90,14 +90,17 @@ class UpdatePriceListItemMappingTest {
     }
 
     @Test
-    void executeShouldValidateRequestAndMissingAssociations() {
+    void executeShouldValidateKioskOwnerId() {
         assertThrows(IllegalArgumentException.class,
                 () -> useCase.execute(new UpdatePriceListItemMappingRequest(
                         null,
                         itemId,
                         inventoryProductId
                 )));
+    }
 
+    @Test
+    void executeShouldFailWhenItemDoesNotExist() {
         when(itemRepository.findById(itemId)).thenReturn(Optional.empty());
 
         assertEquals("Price list item not found",
@@ -110,7 +113,7 @@ class UpdatePriceListItemMappingTest {
     }
 
     @Test
-    void executeShouldFailWhenPriceListOrSupplierDoNotExist() {
+    void executeShouldFailWhenPriceListDoesNotExist() {
         ItemListaPrecioProveedor item = item();
         when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
         when(listaRepository.findById(priceListId)).thenReturn(Optional.empty());
@@ -122,8 +125,13 @@ class UpdatePriceListItemMappingTest {
                                 itemId,
                                 inventoryProductId
                         ))).getMessage());
+    }
 
+    @Test
+    void executeShouldFailWhenSupplierDoesNotExist() {
+        ItemListaPrecioProveedor item = item();
         ListaPrecioProveedor priceList = priceList();
+        when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
         when(listaRepository.findById(priceListId)).thenReturn(Optional.of(priceList));
         when(proveedorRepository.findById(supplierId)).thenReturn(Optional.empty());
 

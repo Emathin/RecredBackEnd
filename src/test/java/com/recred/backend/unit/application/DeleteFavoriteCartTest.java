@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -47,11 +48,13 @@ class DeleteFavoriteCartTest {
         Tutor tutor = tutor(tutorId);
         CarritoFavorito cart = new CarritoFavorito();
         cart.setTutor(tutor(tutorId));
+        DeleteFavoriteCartRequest request = new DeleteFavoriteCartRequest("tutor-sub", cartId);
+
         when(usuarioRepository.findByIdCognito("tutor-sub")).thenReturn(Optional.of(user));
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
         when(carritoFavoritoRepository.findById(cartId)).thenReturn(Optional.of(cart));
 
-        useCase.execute(new DeleteFavoriteCartRequest("tutor-sub", cartId));
+        useCase.execute(request);
 
         verify(carritoFavoritoRepository).delete(cartId);
     }
@@ -59,10 +62,13 @@ class DeleteFavoriteCartTest {
     @Test
     void executeThrowsWhenAuthenticatedUserDoesNotExist() {
         UUID cartId = UUID.randomUUID();
+        DeleteFavoriteCartRequest request = new DeleteFavoriteCartRequest("tutor-sub", cartId);
+
         when(usuarioRepository.findByIdCognito("tutor-sub")).thenReturn(Optional.empty());
 
-        assertThrows(SecurityException.class, () -> useCase.execute(new DeleteFavoriteCartRequest("tutor-sub", cartId)));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(SecurityException.class, execution);
         verify(carritoFavoritoRepository, never()).delete(cartId);
     }
 
@@ -70,12 +76,15 @@ class DeleteFavoriteCartTest {
     void executeThrowsWhenTutorProfileDoesNotExist() {
         UUID userId = UUID.randomUUID();
         UUID cartId = UUID.randomUUID();
+        DeleteFavoriteCartRequest request = new DeleteFavoriteCartRequest("tutor-sub", cartId);
+
         when(usuarioRepository.findByIdCognito("tutor-sub"))
                 .thenReturn(Optional.of(user(userId)));
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
 
-        assertThrows(SecurityException.class, () -> useCase.execute(new DeleteFavoriteCartRequest("tutor-sub", cartId)));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(SecurityException.class, execution);
         verify(carritoFavoritoRepository, never()).delete(cartId);
     }
 
@@ -83,14 +92,17 @@ class DeleteFavoriteCartTest {
     void executeThrowsWhenCartDoesNotExist() {
         UUID userId = UUID.randomUUID();
         UUID cartId = UUID.randomUUID();
+        DeleteFavoriteCartRequest request = new DeleteFavoriteCartRequest("tutor-sub", cartId);
+
         when(usuarioRepository.findByIdCognito("tutor-sub"))
                 .thenReturn(Optional.of(user(userId)));
         when(tutorRepository.findByUsuarioId(userId))
                 .thenReturn(Optional.of(tutor(UUID.randomUUID())));
         when(carritoFavoritoRepository.findById(cartId)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(new DeleteFavoriteCartRequest("tutor-sub", cartId)));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(IllegalArgumentException.class, execution);
         verify(carritoFavoritoRepository, never()).delete(cartId);
     }
 
@@ -100,14 +112,17 @@ class DeleteFavoriteCartTest {
         UUID cartId = UUID.randomUUID();
         CarritoFavorito cart = new CarritoFavorito();
         cart.setTutor(tutor(UUID.randomUUID()));
+        DeleteFavoriteCartRequest request = new DeleteFavoriteCartRequest("tutor-sub", cartId);
+
         when(usuarioRepository.findByIdCognito("tutor-sub"))
                 .thenReturn(Optional.of(user(userId)));
         when(tutorRepository.findByUsuarioId(userId))
                 .thenReturn(Optional.of(tutor(UUID.randomUUID())));
         when(carritoFavoritoRepository.findById(cartId)).thenReturn(Optional.of(cart));
 
-        assertThrows(SecurityException.class, () -> useCase.execute(new DeleteFavoriteCartRequest("tutor-sub", cartId)));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(SecurityException.class, execution);
         verify(carritoFavoritoRepository, never()).delete(cartId);
     }
 

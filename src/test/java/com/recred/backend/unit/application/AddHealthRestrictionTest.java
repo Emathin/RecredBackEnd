@@ -9,6 +9,7 @@ import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -50,10 +51,12 @@ class AddHealthRestrictionTest {
 
     @Test
     void ejecutar_ConDatosValidos_DeberiaAgregarYGuardar() {
+        AddHealthRestrictionRequest request = new AddHealthRestrictionRequest(alumnoId, clasificacionId);
+
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(clasificacionRepository.findById(clasificacionId)).thenReturn(Optional.of(clasificacion));
 
-        useCase.execute(new AddHealthRestrictionRequest(alumnoId, clasificacionId));
+        useCase.execute(request);
 
         assertTrue(alumno.getRestriccionesSalud().contains(clasificacion));
         verify(alumnoRepository).save(alumno);
@@ -61,12 +64,13 @@ class AddHealthRestrictionTest {
 
     @Test
     void ejecutar_CuandoAlumnoNoExiste_DeberiaLanzarExcepcion() {
+        AddHealthRestrictionRequest request = new AddHealthRestrictionRequest(alumnoId, clasificacionId);
+
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.execute(new AddHealthRestrictionRequest(alumnoId, clasificacionId));
-        });
+        Executable execution = () -> useCase.execute(request);
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("El alumno no existe.", exception.getMessage());
         verify(clasificacionRepository, never()).findById(any());
         verify(alumnoRepository, never()).save(any());
@@ -74,12 +78,14 @@ class AddHealthRestrictionTest {
 
     @Test
     void ejecutar_CuandoClasificacionNoExiste_DeberiaLanzarExcepcion() {
+        AddHealthRestrictionRequest request = new AddHealthRestrictionRequest(alumnoId, clasificacionId);
+
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
         when(clasificacionRepository.findById(clasificacionId)).thenReturn(Optional.empty());
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.execute(new AddHealthRestrictionRequest(alumnoId, clasificacionId));
-        });
+        Executable execution = () -> useCase.execute(request);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
 
         assertEquals("La clasificación médica no existe.", exception.getMessage());
         verify(alumnoRepository, never()).save(any());
