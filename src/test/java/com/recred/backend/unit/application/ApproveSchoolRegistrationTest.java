@@ -8,6 +8,7 @@ import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.SchoolRegistrationRequest;
 import com.recred.backend.domain.models.SchoolRegistrationStatus;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.exceptions.UsernameExistsException;
 import com.recred.backend.domain.repositories.ColegioRepository;
 import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
@@ -27,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -118,5 +121,42 @@ class ApproveSchoolRegistrationTest {
         ApproveSchoolRegistrationRequest request = new ApproveSchoolRegistrationRequest(requestId);
 
         assertThrows(IllegalStateException.class, () -> useCase.execute(request));
+    }
+
+    @Test
+    void execute_WhenUsernameExists_RetriesWithSuffix() {
+        UUID requestId = UUID.randomUUID();
+        SchoolRegistrationRequest requestEntity = new SchoolRegistrationRequest();
+        requestEntity.setId(requestId);
+        requestEntity.setStatus(SchoolRegistrationStatus.PENDING);
+        requestEntity.setSchoolName("Test School");
+        requestEntity.setDirectorFirstName("John");
+        requestEntity.setDirectorLastName("Doe");
+        requestEntity.setDirectorEmail("john@doe.com");
+        requestEntity.setDirectorUsername("johndoe123");
+
+        Colegio savedColegio = new Colegio();
+        savedColegio.setId(UUID.randomUUID());
+        when(repository.findById(requestId)).thenReturn(Optional.of(requestEntity));
+        when(colegioRepository.save(any(Colegio.class))).thenReturn(savedColegio);
+        when(cognitoService.createDirectorUser(
+                "johndoe123",
+                "john@doe.com",
+                "John",
+                "Doe"))
+                .thenThrow(new UsernameExistsException("exists"));
+        when(cognitoService.createDirectorUser(
+                startsWith("johndoe123-"),
+                eq("john@doe.com"),
+                eq("John"),
+                eq("Doe")))
+                .thenReturn(new CreatedCognitoUser("sub-retry", "director-retry"));
+
+        useCase.execute(new ApproveSchoolRegistrationRequest(requestId));
+
+        ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
+        verify(usuarioRepository).save(usuarioCaptor.capture());
+        assertEquals("sub-retry", usuarioCaptor.getValue().getIdCognito());
+        assertEquals(SchoolRegistrationStatus.APPROVED, requestEntity.getStatus());
     }
 }

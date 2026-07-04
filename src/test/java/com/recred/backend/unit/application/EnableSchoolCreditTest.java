@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 public class EnableSchoolCreditTest {
@@ -128,5 +129,104 @@ public class EnableSchoolCreditTest {
         assertThrows(ActiveCreditExistsException.class, () -> {
             enableSchoolCredit.execute(new com.recred.backend.application.EnableSchoolCreditRequest(tutorId, studentId, new BigDecimal("1000.00"), 1));
         });
+    }
+
+    @Test
+    void execute_whenStudentHasNoWallet_createsWalletAndUsesDefaultInstallments() {
+        Alumno alumno = new Alumno();
+        alumno.setId(studentId);
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
+        when(schoolCreditRepository.save(any(SchoolCredit.class))).thenAnswer(invocation -> {
+            SchoolCredit credit = invocation.getArgument(0);
+            credit.setId(UUID.randomUUID());
+            return credit;
+        });
+
+        com.recred.backend.application.EnableSchoolCreditResponse result =
+                enableSchoolCredit.execute(new com.recred.backend.application
+                        .EnableSchoolCreditRequest(
+                                tutorId,
+                                studentId,
+                                new BigDecimal("1500.00"),
+                                0
+                        ));
+
+        assertEquals(1, result.installments());
+        assertEquals(true, alumno.getBilletera().getCreditoHabilitado());
+        assertEquals(new BigDecimal("1500.00"), alumno.getBilletera().getSaldoCreditos());
+        verify(alumnoRepository).save(alumno);
+        verify(walletRepository).save(alumno.getBilletera());
+    }
+
+    @Test
+    void execute_whenTutorOrStudentDoesNotExist_throwsBusinessError() {
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.empty(),
+                Optional.of(new Tutor()));
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
+
+        IllegalArgumentException missingTutor = assertThrows(
+                IllegalArgumentException.class,
+                () -> enableSchoolCredit.execute(new com.recred.backend.application
+                        .EnableSchoolCreditRequest(
+                                tutorId,
+                                studentId,
+                                new BigDecimal("1000.00"),
+                                1
+                        ))
+        );
+        IllegalArgumentException missingStudent = assertThrows(
+                IllegalArgumentException.class,
+                () -> enableSchoolCredit.execute(new com.recred.backend.application
+                        .EnableSchoolCreditRequest(
+                                tutorId,
+                                studentId,
+                                new BigDecimal("1000.00"),
+                                1
+                        ))
+        );
+
+        assertEquals("Tutor not found", missingTutor.getMessage());
+        assertEquals("Student not found", missingStudent.getMessage());
+        verifyNoInteractions(schoolCreditRepository, walletRepository);
+    }
+
+    @Test
+    void execute_whenRequestIsInvalid_throwsBeforeRepositories() {
+        IllegalArgumentException missingTutor = assertThrows(
+                IllegalArgumentException.class,
+                () -> enableSchoolCredit.execute(new com.recred.backend.application
+                        .EnableSchoolCreditRequest(
+                                null,
+                                studentId,
+                                new BigDecimal("1000.00"),
+                                1
+                        ))
+        );
+        IllegalArgumentException missingStudent = assertThrows(
+                IllegalArgumentException.class,
+                () -> enableSchoolCredit.execute(new com.recred.backend.application
+                        .EnableSchoolCreditRequest(
+                                tutorId,
+                                null,
+                                new BigDecimal("1000.00"),
+                                1
+                        ))
+        );
+        IllegalArgumentException invalidAmount = assertThrows(
+                IllegalArgumentException.class,
+                () -> enableSchoolCredit.execute(new com.recred.backend.application
+                        .EnableSchoolCreditRequest(
+                                tutorId,
+                                studentId,
+                                BigDecimal.ZERO,
+                                1
+                        ))
+        );
+
+        assertEquals("tutorId cannot be null", missingTutor.getMessage());
+        assertEquals("studentId cannot be null", missingStudent.getMessage());
+        assertEquals("Credit amount must be greater than zero", invalidAmount.getMessage());
+        verifyNoInteractions(tutorRepository, alumnoRepository, schoolCreditRepository);
     }
 }

@@ -72,5 +72,74 @@ class GeminiBulkStockAnalyzerTest {
 
         assertTrue(result.isEmpty());
     }
-}
 
+    @Test
+    void analyze_ShouldCleanFencedJsonAndDefaultMissingLabelsToEmptyLists() {
+        String jsonResponse = """
+                ```json
+                {
+                  "productos": [
+                    {
+                      "nombre": "Producto 2",
+                      "descripcion": "Desc 2",
+                      "precio": 50,
+                      "peso": 250,
+                      "requiere_preparacion": true,
+                      "categoria_nombre": "Cat 2",
+                      "stock_actual": 4
+                    }
+                  ]
+                }
+                ```
+                """;
+        when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
+                .thenReturn(Optional.of(new GeminiTextResponse(jsonResponse, "model")));
+
+        List<RawBulkProduct> result = analyzer.analyze(
+                "dummy".getBytes(),
+                "application/pdf",
+                List.of("Cat 2")
+        );
+
+        assertEquals(1, result.size());
+        assertEquals("Producto 2", result.get(0).nombre());
+        assertTrue(result.get(0).requierePreparacion());
+        assertTrue(result.get(0).saludEtiquetas().isEmpty());
+        assertTrue(result.get(0).tipoEtiquetas().isEmpty());
+    }
+
+    @Test
+    void analyze_ShouldReturnEmptyList_WhenProductsAreNullOrJsonIsInvalid() {
+        when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
+                .thenReturn(Optional.of(new GeminiTextResponse("{\"productos\": null}", "model")))
+                .thenReturn(Optional.of(new GeminiTextResponse("{", "model")));
+
+        List<RawBulkProduct> nullProducts = analyzer.analyze(
+                "dummy".getBytes(),
+                "application/pdf",
+                List.of()
+        );
+        List<RawBulkProduct> invalidJson = analyzer.analyze(
+                "dummy".getBytes(),
+                "application/pdf",
+                List.of()
+        );
+
+        assertTrue(nullProducts.isEmpty());
+        assertTrue(invalidJson.isEmpty());
+    }
+
+    @Test
+    void analyze_ShouldReturnEmptyList_WhenGeminiClientThrows() {
+        when(geminiTextClient.generateWithFile(anyString(), any(byte[].class), anyString()))
+                .thenThrow(new RuntimeException("gemini down"));
+
+        List<RawBulkProduct> result = analyzer.analyze(
+                "dummy".getBytes(),
+                "application/pdf",
+                List.of("Cat 1")
+        );
+
+        assertTrue(result.isEmpty());
+    }
+}

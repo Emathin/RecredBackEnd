@@ -8,6 +8,8 @@ import com.recred.backend.application.GetChildrenByTutorRequest;
 import com.recred.backend.application.GetChildrenByTutorResponse;
 import com.recred.backend.application.GetTutorSchools;
 import com.recred.backend.application.UpdateStudentPhoto;
+import com.recred.backend.application.UpdateStudentPhotoRequest;
+import com.recred.backend.application.UpdateStudentPhotoResponse;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.Alumno;
@@ -20,6 +22,7 @@ import com.recred.backend.infrastructure.web.CreateChildRequest;
 import com.recred.backend.infrastructure.web.StudentDTO;
 import com.recred.backend.infrastructure.web.TutorController;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
@@ -31,14 +34,20 @@ import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -323,6 +332,81 @@ class TutorControllerTest {
 
         assertThrows(AuthenticationCredentialsNotFoundException.class,
                 () -> controller.crearHijo(null, request));
+    }
+
+    @Test
+    void subirFotoHijoSubeImagenYActualizaAlumno() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID colegioId = UUID.randomUUID();
+        TutorController controller = new TutorController(
+                getChildrenByTutor,
+                usuarioService,
+                createStudentFromParent,
+                updateStudentPhoto,
+                cloudinaryService,
+                getTutorSchools
+        );
+        MockMultipartFile foto = new MockMultipartFile(
+                "foto",
+                "avatar.png",
+                "image/png",
+                "imagen".getBytes()
+        );
+        String url = "https://cdn.test/avatar.png";
+        UpdateStudentPhotoRequest request =
+                new UpdateStudentPhotoRequest("tutor-sub", alumnoId, url);
+        UpdateStudentPhotoResponse updateResponse = new UpdateStudentPhotoResponse(
+                alumnoId,
+                "Sofia",
+                "Diaz",
+                true,
+                "2 B",
+                colegioId,
+                new BigDecimal("25.00"),
+                url
+        );
+
+        when(cloudinaryService.uploadImage(any(byte[].class), eq("avatar.png")))
+                .thenReturn(url);
+        when(updateStudentPhoto.execute(request)).thenReturn(updateResponse);
+
+        ResponseEntity<StudentDTO> response = controller.subirFotoHijo(
+                new TestingAuthenticationToken("tutor-sub", ""),
+                alumnoId,
+                foto
+        );
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(alumnoId, response.getBody().id());
+        assertEquals("Sofia", response.getBody().nombre());
+        assertEquals(url, response.getBody().urlFotoPerfil());
+        verify(cloudinaryService).uploadImage(any(byte[].class), eq("avatar.png"));
+        verify(updateStudentPhoto).execute(request);
+    }
+
+    @Test
+    void subirFotoHijoCuandoNoPuedeLeerImagenLanzaRuntimeException() throws Exception {
+        UUID alumnoId = UUID.randomUUID();
+        TutorController controller = new TutorController(
+                getChildrenByTutor,
+                usuarioService,
+                createStudentFromParent,
+                updateStudentPhoto,
+                cloudinaryService,
+                getTutorSchools
+        );
+        MultipartFile foto = mock(MultipartFile.class);
+        when(foto.getBytes()).thenThrow(new IOException("boom"));
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> controller.subirFotoHijo(
+                        new TestingAuthenticationToken("tutor-sub", ""),
+                        alumnoId,
+                        foto
+                ));
+
+        assertEquals("Error al leer la imagen", exception.getMessage());
+        verifyNoInteractions(cloudinaryService, updateStudentPhoto);
     }
 
     private Alumno alumno(UUID alumnoId, String nombre, String apellido) {

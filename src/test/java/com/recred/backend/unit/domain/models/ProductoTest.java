@@ -5,11 +5,14 @@ import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.ProductoMedida;
+import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.TipoManejoInventario;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -180,5 +183,136 @@ class ProductoTest {
         producto.setEstadoInventario(EstadoInventario.BAJO_STOCK);
 
         assertTrue(producto.hasLowStockStatus());
+    }
+
+    @Test
+    void activeAndStockHelpers_ShouldExposeAvailabilityStates() {
+        Producto producto = new Producto();
+
+        assertTrue(producto.isActive());
+        producto.deactivate();
+
+        assertFalse(producto.isActive());
+        assertNull(producto.getStockDisponible());
+        assertFalse(producto.hasAvailableStock());
+
+        producto.setStockActual(5);
+        producto.setStockReservado(2);
+
+        assertEquals(3, producto.getStockDisponible());
+        assertTrue(producto.hasAvailableStock());
+
+        producto.setStockReservado(10);
+
+        assertEquals(0, producto.getStockDisponible());
+        assertTrue(producto.isSoldOut());
+        assertFalse(producto.isAvailableForSale());
+    }
+
+    @Test
+    void dailyCapacity_ShouldApplyReservationsAndDetectExhaustion() {
+        Producto exactStock = new Producto();
+        exactStock.setTipoManejoInventario(TipoManejoInventario.STOCK_EXACTO);
+        exactStock.setCupoMaximoDiario(10);
+
+        assertNull(exactStock.configuredDailyCapacity());
+        assertNull(exactStock.dailyCapacityAvailable());
+        exactStock.applyDailyCapacity(3);
+        assertNull(exactStock.getCupoDisponibleDia());
+
+        Producto dailyCapacity = new Producto();
+        dailyCapacity.setTipoManejoInventario(TipoManejoInventario.CUPO_DIARIO);
+        dailyCapacity.setCupoMaximoDiario(10);
+
+        dailyCapacity.applyDailyCapacity(4);
+
+        assertEquals(6, dailyCapacity.getCupoDisponibleDia());
+        assertFalse(dailyCapacity.isDailyCapacityExhausted());
+
+        dailyCapacity.applyDailyCapacity(12);
+
+        assertEquals(0, dailyCapacity.getCupoDisponibleDia());
+        assertTrue(dailyCapacity.isDailyCapacityExhausted());
+    }
+
+    @Test
+    void priceAndCategoryBudget_ShouldCompareAgainstAvailableAmounts() {
+        UUID categoryId = UUID.randomUUID();
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(categoryId);
+        category.setDescripcion("Golosinas");
+        Producto producto = new Producto();
+        producto.setCategoria(category);
+        producto.setPrecio(new BigDecimal("100.00"));
+
+        assertFalse(producto.exceedsPrice(null));
+        assertFalse(producto.exceedsPrice(new BigDecimal("150.00")));
+        assertTrue(producto.exceedsPrice(new BigDecimal("50.00")));
+        assertFalse(producto.exceedsCategoryBudget(null));
+        assertFalse(new Producto().exceedsCategoryBudget(Map.of(categoryId,
+                new BigDecimal("50.00"))));
+        assertTrue(producto.exceedsCategoryBudget(Map.of(categoryId,
+                new BigDecimal("50.00"))));
+    }
+
+    @Test
+    void categoryDescriptionAndHealthClassification_ShouldHandleNullsAndMatches() {
+        UUID classificationId = UUID.randomUUID();
+        ClasificacionSalud classification = new ClasificacionSalud();
+        classification.setId(classificationId);
+        CategoriaProducto category = new CategoriaProducto();
+        category.setDescripcion("Bebidas frias");
+        Producto producto = new Producto();
+        producto.setCategoria(category);
+        producto.setClasificacionesSalud(Set.of(classification));
+
+        assertFalse(producto.matchesAnyCategoryDescription(null));
+        assertFalse(producto.matchesAnyCategoryDescription(List.of()));
+        assertFalse(producto.matchesCategoryDescription(null));
+        assertTrue(producto.matchesAnyCategoryDescription(List.of("frias")));
+        assertTrue(producto.matchesCategoryDescription("BEBIDAS"));
+        assertFalse(producto.hasHealthClassification(null));
+        assertFalse(producto.hasHealthClassification(new ClasificacionSalud()));
+        assertTrue(producto.hasHealthClassification(classification));
+
+        producto.setClasificacionesSalud(null);
+
+        assertFalse(producto.hasHealthClassification(classification));
+    }
+
+    @Test
+    void purchaseIdentityCopyAndDiscount_ShouldUseProductPriceAndPromotion() {
+        UUID productId = UUID.randomUUID();
+        UUID promotionId = UUID.randomUUID();
+        Promotion promotion = new Promotion();
+        promotion.setId(promotionId);
+        promotion.setName("Promo");
+        promotion.setDiscountPercentage(new BigDecimal("25.00"));
+        Producto producto = new Producto();
+        producto.setId(productId);
+        producto.setNombre("Alfajor");
+        producto.setPrecio(new BigDecimal("100.00"));
+        producto.setStockActual(10);
+        producto.setStockReservado(1);
+        producto.setCupoDisponibleDia(4);
+
+        Producto discounted = producto.discountedFor(promotion);
+        Producto copied = producto.copyForPurchase();
+
+        assertEquals(productId.toString(), producto.idAsString());
+        assertEquals(new BigDecimal("75.00"), discounted.getPrecio());
+        assertEquals(promotionId, discounted.getPromocionId());
+        assertEquals("Promo", discounted.getPromocionNombre());
+        assertEquals(producto.getNombre(), copied.getNombre());
+        assertEquals(producto.getStockActual(), copied.getStockActual());
+        Producto samePurchaseProduct = new Producto();
+        samePurchaseProduct.setId(productId);
+        samePurchaseProduct.setPrecio(new BigDecimal("100.00"));
+        assertTrue(producto.hasSamePurchaseIdentityAs(samePurchaseProduct));
+        samePurchaseProduct.setPromocionId(UUID.randomUUID());
+        assertFalse(producto.hasSamePurchaseIdentityAs(samePurchaseProduct));
+        assertFalse(producto.hasSamePurchaseIdentityAs(null));
+        producto.setId(null);
+        assertNull(producto.idAsString());
     }
 }
