@@ -57,7 +57,8 @@ public class SecurityConfig {
                                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                         .authorizeHttpRequests(auth -> auth
                                 .requestMatchers("/ping", "/actuator/health").permitAll()
-                                .requestMatchers("/api/v1/school-registrations").permitAll()
+                                .requestMatchers(HttpMethod.POST, 
+                                        "/api/v1/school-registrations").permitAll()
                                 .requestMatchers(HttpMethod.GET,
                                         "/api/v1/invitaciones/tutor/**").permitAll()
                                 .requestMatchers("/swagger-ui.html",

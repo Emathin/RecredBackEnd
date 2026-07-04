@@ -292,6 +292,12 @@ public class UseCases {
     }
 
     @Bean
+    public com.recred.backend.application.GetSchoolRegistrations getSchoolRegistrations(
+            SchoolRegistrationRequestRepository repository) {
+        return new com.recred.backend.application.GetSchoolRegistrations(repository);
+    }
+
+    @Bean
     public GenerateParentSummary generateParentSummary(
             TutorRepository tutorRepository,
             PurchaseRepository purchaseRepository,
