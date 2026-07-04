@@ -1,11 +1,11 @@
-package com.recred.backend.infrastructure.web;
+package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Nivel;
 import com.recred.backend.domain.models.SchoolRegistrationRequest;
 
 import java.util.UUID;
 
-public record SchoolRegistrationResponseDTO(
+public record GetSchoolRegistrationsResponse(
         UUID id,
         String schoolName,
         String schoolEmail,
@@ -21,8 +21,8 @@ public record SchoolRegistrationResponseDTO(
         String status,
         String createdAt
 ) {
-    public static SchoolRegistrationResponseDTO fromDomain(SchoolRegistrationRequest req) {
-        return new SchoolRegistrationResponseDTO(
+    public static GetSchoolRegistrationsResponse fromDomain(SchoolRegistrationRequest req) {
+        return new GetSchoolRegistrationsResponse(
                 req.getId(),
                 req.getSchoolName(),
                 req.getSchoolEmail(),

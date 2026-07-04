@@ -5,9 +5,11 @@ import com.recred.backend.application.ApproveSchoolRegistration;
 import com.recred.backend.application.RejectSchoolRegistration;
 import com.recred.backend.application.SubmitSchoolRegistration;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
+import com.recred.backend.application.GetSchoolRegistrations;
+import com.recred.backend.application.GetSchoolRegistrationsResponse;
 import com.recred.backend.domain.models.SchoolRegistrationRequest;
 import com.recred.backend.domain.models.SchoolRegistrationStatus;
-import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepository;
+import com.recred.backend.infrastructure.web.AdminAccessGuard;
 import com.recred.backend.infrastructure.web.SchoolRegistrationController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,7 +68,10 @@ class SchoolRegistrationControllerTest {
     private RejectSchoolRegistration rejectUseCase;
 
     @MockitoBean
-    private SchoolRegistrationRequestRepository repository;
+    private GetSchoolRegistrations getSchoolRegistrationsUseCase;
+
+    @MockitoBean
+    private AdminAccessGuard adminAccessGuard;
 
     private UUID requestId;
     private TestingAuthenticationToken adminAuth;
@@ -123,8 +128,10 @@ class SchoolRegistrationControllerTest {
         mockRequest.setId(requestId);
         mockRequest.setSchoolName("Test School");
 
-        when(repository.findByStatus(SchoolRegistrationStatus.PENDING))
-                .thenReturn(Collections.singletonList(mockRequest));
+        GetSchoolRegistrationsResponse response = GetSchoolRegistrationsResponse.fromDomain(mockRequest);
+
+        when(getSchoolRegistrationsUseCase.execute("PENDING"))
+                .thenReturn(Collections.singletonList(response));
 
         mockMvc.perform(get("/api/v1/school-registrations")
                         .param("status", "PENDING")
