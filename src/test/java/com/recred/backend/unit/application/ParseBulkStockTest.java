@@ -14,6 +14,7 @@ import com.recred.backend.domain.repositories.ClasificacionTipoRepository;
 import com.recred.backend.domain.services.BulkStockAnalyzer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -96,7 +97,9 @@ class ParseBulkStockTest {
     void execute_LanzaExcepcion_CuandoArchivoEstaVacio() {
         ParseBulkStockRequest command = new ParseBulkStockRequest(new byte[0], "application/pdf");
 
-        assertThrows(FileValidationException.class, () -> parseBulkStock.execute(command));
+        Executable execution = () -> parseBulkStock.execute(command);
+
+        assertThrows(FileValidationException.class, execution);
     }
 
     @Test
@@ -105,7 +108,9 @@ class ParseBulkStockTest {
                 "content".getBytes(),
                 "application/invalid");
 
-        assertThrows(FileValidationException.class, () -> parseBulkStock.execute(command));
+        Executable execution = () -> parseBulkStock.execute(command);
+
+        assertThrows(FileValidationException.class, execution);
     }
 
     @Test

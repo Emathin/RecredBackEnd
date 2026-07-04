@@ -6,6 +6,7 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,25 +31,26 @@ class ManualProductUnlockTest {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
         Alumno alumno = new Alumno();
+        ManualProductUnlockRequest request = new ManualProductUnlockRequest(alumnoId, productoId);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        manualProductUnlock.execute(new ManualProductUnlockRequest(alumnoId, productoId));
+        manualProductUnlock.execute(request);
 
-        verify(alumnoRepository, times(1)).save(alumno);
+        verify(alumnoRepository).save(alumno);
     }
 
     @Test
     void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
+        ManualProductUnlockRequest request = new ManualProductUnlockRequest(alumnoId, productoId);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () ->
-                manualProductUnlock.execute(new ManualProductUnlockRequest(alumnoId, productoId))
-        );
+        Executable execution = () -> manualProductUnlock.execute(request);
 
+        assertThrows(RuntimeException.class, execution);
         verify(alumnoRepository, never()).save(any());
     }
 }

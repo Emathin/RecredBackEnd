@@ -28,7 +28,8 @@ class LoadStockIATest {
 
     @Test
     void execute_DeberiaLlamarAlServicioYRetornarResultado() {
-        LoadStockIARequest request = new LoadStockIARequest("content".getBytes(), "test.jpg", "image/jpeg", "content".length());
+        byte[] fileBytes = "content".getBytes();
+        LoadStockIARequest request = new LoadStockIARequest(fileBytes, "test.jpg", "image/jpeg", fileBytes.length);
         LoadStockIAResponse expectedResponse = new LoadStockIAResponse("Test", "Desc", "100", "si", "no", "si", "si", null);
         String expectedImageUrl = "http://cloudinary.com/image.jpg";
 

@@ -8,6 +8,7 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -38,10 +39,11 @@ class GetFavoritesByStudentTest {
         Producto producto = new Producto();
         producto.setId(UUID.randomUUID());
         alumno.agregarProductoFavorito(producto);
+        GetFavoritesByStudentRequest request = new GetFavoritesByStudentRequest(alumnoId);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        Set<GetFavoritesByStudentResponse> resultado = getFavoritesByStudent.execute(new GetFavoritesByStudentRequest(alumnoId));
+        Set<GetFavoritesByStudentResponse> resultado = getFavoritesByStudent.execute(request);
 
         assertEquals(1, resultado.size());
         GetFavoritesByStudentResponse response = resultado.iterator().next();
@@ -52,12 +54,13 @@ class GetFavoritesByStudentTest {
     @Test
     void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
         UUID alumnoId = UUID.randomUUID();
+        GetFavoritesByStudentRequest request = new GetFavoritesByStudentRequest(alumnoId);
+
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () ->
-                getFavoritesByStudent.execute(new GetFavoritesByStudentRequest(alumnoId))
-        );
+        Executable execution = () -> getFavoritesByStudent.execute(request);
 
+        assertThrows(RuntimeException.class, execution);
         verify(alumnoRepository, times(1)).findById(alumnoId);
     }
 }

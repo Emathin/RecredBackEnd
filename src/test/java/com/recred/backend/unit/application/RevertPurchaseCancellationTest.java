@@ -15,6 +15,7 @@ import com.recred.backend.domain.repositories.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -25,7 +26,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -92,7 +92,9 @@ class RevertPurchaseCancellationTest {
         
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
         
-        assertThrows(IllegalStateException.class, () -> revertPurchaseCancellation.execute(request));
+        Executable execution = () -> revertPurchaseCancellation.execute(request);
+
+        assertThrows(IllegalStateException.class, execution);
     }
     
     @Test
@@ -115,6 +117,8 @@ class RevertPurchaseCancellationTest {
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
         when(walletRepository.findByStudentId(student.getId())).thenReturn(Optional.of(wallet));
         
-        assertThrows(IllegalStateException.class, () -> revertPurchaseCancellation.execute(request));
+        Executable execution = () -> revertPurchaseCancellation.execute(request);
+
+        assertThrows(IllegalStateException.class, execution);
     }
 }

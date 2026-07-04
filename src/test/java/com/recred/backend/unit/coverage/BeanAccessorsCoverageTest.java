@@ -39,20 +39,29 @@ class BeanAccessorsCoverageTest {
 
     @TestFactory
     Stream<DynamicTest> beanAccessorsShouldRoundTripValues() throws Exception {
-        return classes().stream()
-                .filter(this::isConcreteClass)
-                .filter(this::hasNoArgsConstructor)
-                .map(type -> DynamicTest.dynamicTest(type.getName(), () -> coverBean(type)));
+        List<Class<?>> classes = givenClassesToCover();
+
+        Stream<Class<?>> beans = whenSelectingConcreteBeans(classes);
+
+        return beans.map(type -> DynamicTest.dynamicTest(
+                type.getName(),
+                () -> thenBeanAccessorsRoundTripValues(type)
+        ));
     }
 
     @TestFactory
     Stream<DynamicTest> recordComponentsShouldExposeConstructorValues() throws Exception {
-        return classes().stream()
-                .filter(Class::isRecord)
-                .map(type -> DynamicTest.dynamicTest(type.getName(), () -> coverRecord(type)));
+        List<Class<?>> classes = givenClassesToCover();
+
+        Stream<Class<?>> records = whenSelectingRecords(classes);
+
+        return records.map(type -> DynamicTest.dynamicTest(
+                type.getName(),
+                () -> thenRecordComponentsExposeConstructorValues(type)
+        ));
     }
 
-    private List<Class<?>> classes() throws Exception {
+    private List<Class<?>> givenClassesToCover() throws Exception {
         Path classesRoot = Path.of(System.getProperty("user.dir"), "target", "classes");
         List<Class<?>> types = new ArrayList<>();
 
@@ -75,6 +84,17 @@ class BeanAccessorsCoverageTest {
                 .distinct()
                 .sorted(Comparator.comparing(Class::getName))
                 .toList();
+    }
+
+    private Stream<Class<?>> whenSelectingConcreteBeans(List<Class<?>> classes) {
+        return classes.stream()
+                .filter(this::isConcreteClass)
+                .filter(this::hasNoArgsConstructor);
+    }
+
+    private Stream<Class<?>> whenSelectingRecords(List<Class<?>> classes) {
+        return classes.stream()
+                .filter(Class::isRecord);
     }
 
     private String className(Path classesRoot, Path classFile) {
@@ -105,20 +125,48 @@ class BeanAccessorsCoverageTest {
         return noArgsConstructor(type).isPresent();
     }
 
-    private void coverBean(Class<?> type) throws Exception {
-        Object instance = instantiate(type);
+    private void thenBeanAccessorsRoundTripValues(Class<?> type) throws Exception {
+        Object instance = givenInstanceOf(type);
 
         for (Method setter : setters(type)) {
-            Object value = sampleValue(setter.getParameterTypes()[0]);
-            setter.setAccessible(true);
-            setter.invoke(instance, value);
-            Optional<Method> getter = getter(type, setter);
-            if (getter.isPresent()) {
-                Method getterMethod = getter.get();
-                getterMethod.setAccessible(true);
-                assertSameOrEquals(value, getterMethod.invoke(instance));
-            }
+            Object value = givenSampleValueFor(setter);
+
+            whenSetterReceivesValue(instance, setter, value);
+
+            thenMatchingGetterReturnsValue(type, setter, instance, value);
         }
+    }
+
+    private Object givenInstanceOf(Class<?> type) throws ReflectiveOperationException {
+        return instantiate(type);
+    }
+
+    private Object givenSampleValueFor(Method setter) {
+        return sampleValue(setter.getParameterTypes()[0]);
+    }
+
+    private void whenSetterReceivesValue(
+            Object instance,
+            Method setter,
+            Object value
+    ) throws ReflectiveOperationException {
+        setter.setAccessible(true);
+        setter.invoke(instance, value);
+    }
+
+    private void thenMatchingGetterReturnsValue(
+            Class<?> type,
+            Method setter,
+            Object instance,
+            Object value
+    ) throws ReflectiveOperationException {
+        Optional<Method> getter = getter(type, setter);
+        if (getter.isEmpty())
+            return;
+
+        Method getterMethod = getter.get();
+        getterMethod.setAccessible(true);
+        assertSameOrEquals(value, getterMethod.invoke(instance));
     }
 
     private List<Method> setters(Class<?> type) {
@@ -143,7 +191,7 @@ class BeanAccessorsCoverageTest {
                 .findFirst();
     }
 
-    private void coverRecord(Class<?> type) throws Exception {
+    private void thenRecordComponentsExposeConstructorValues(Class<?> type) throws Exception {
         RecordComponent[] recordComponents = type.getRecordComponents();
         Class<?>[] parameterTypes = Stream.of(recordComponents)
                 .map(RecordComponent::getType)
@@ -155,7 +203,7 @@ class BeanAccessorsCoverageTest {
                 .toArray();
         Object record;
         try {
-            record = constructor.newInstance(args);
+            record = whenInstantiatingRecord(constructor, args);
         } catch (ReflectiveOperationException | RuntimeException ignored) {
             return;
         }
@@ -171,6 +219,13 @@ class BeanAccessorsCoverageTest {
             accessor.setAccessible(true);
             assertSameOrEquals(args[i], accessor.invoke(record));
         }
+    }
+
+    private Object whenInstantiatingRecord(
+            Constructor<?> constructor,
+            Object[] args
+    ) throws ReflectiveOperationException {
+        return constructor.newInstance(args);
     }
 
     private Object instantiate(Class<?> type) throws ReflectiveOperationException {

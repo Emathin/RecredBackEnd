@@ -15,6 +15,7 @@ import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -120,14 +121,16 @@ class GetCartSuggestionsTest {
     @Test
     void execute_WhenAlumnoDoesNotExist_ShouldThrowException() {
         UUID alumnoId = randomUUID();
+        UUID buffetId = randomUUID();
         givenStudentDoesNotExist(alumnoId);
 
-        assertThrows(RuntimeException.class,
-                () -> whenSuggestionsAreRequested(
-                        alumnoId,
-                        randomUUID(),
-                        Set.of(),
-                        DEFAULT_LIMIT));
+        Executable execution = () -> whenSuggestionsAreRequested(
+                alumnoId,
+                buffetId,
+                Set.of(),
+                DEFAULT_LIMIT);
+
+        assertThrows(RuntimeException.class, execution);
         verifyNoInteractions(productRepository, purchaseRepository, sugerenciaIARepository);
     }
 

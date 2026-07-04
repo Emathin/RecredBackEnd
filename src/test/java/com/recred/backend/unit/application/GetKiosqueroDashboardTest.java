@@ -16,6 +16,7 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.StockMovementRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -235,7 +236,9 @@ class GetKiosqueroDashboardTest {
             GetKiosqueroDashboard useCase,
             GetKiosqueroDashboardRequest request
     ) {
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(request));
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
     }
 
     private void thenOperationalSummaryMatches(GetKiosqueroDashboardResponse dashboard) {

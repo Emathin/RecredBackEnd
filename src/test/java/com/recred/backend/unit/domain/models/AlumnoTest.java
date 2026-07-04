@@ -207,29 +207,85 @@ class AlumnoTest {
     }
 
     @Test
-    void calculateCurrentLevelShouldReturnBronzeSilverAndGold() {
-        alumno.setPuntosRecompensa(null);
-        assertEquals(RewardLevel.BRONZE, alumno.calculateCurrentLevel());
+    void dadoPuntosNulos_cuandoCalculateCurrentLevel_entoncesRetornaBronze() {
+        givenPuntosRecompensa(null);
 
-        alumno.setPuntosRecompensa(99);
-        assertEquals(RewardLevel.BRONZE, alumno.calculateCurrentLevel());
+        RewardLevel level = whenCalculatingCurrentLevel();
 
-        alumno.setPuntosRecompensa(100);
-        assertEquals(RewardLevel.SILVER, alumno.calculateCurrentLevel());
-
-        alumno.setPuntosRecompensa(250);
-        assertEquals(RewardLevel.GOLD, alumno.calculateCurrentLevel());
+        thenCurrentLevelIs(RewardLevel.BRONZE, level);
     }
 
     @Test
-    void getPointsToNextLevelShouldHandleAllLevels() {
-        alumno.setPuntosRecompensa(null);
-        assertEquals(100, alumno.getPointsToNextLevel());
+    void dadoPuntosMenoresASilver_cuandoCalculateCurrentLevel_entoncesRetornaBronze() {
+        givenPuntosRecompensa(99);
 
-        alumno.setPuntosRecompensa(120);
-        assertEquals(130, alumno.getPointsToNextLevel());
+        RewardLevel level = whenCalculatingCurrentLevel();
 
-        alumno.setPuntosRecompensa(260);
-        assertEquals(0, alumno.getPointsToNextLevel());
+        thenCurrentLevelIs(RewardLevel.BRONZE, level);
+    }
+
+    @Test
+    void dadoPuntosSilver_cuandoCalculateCurrentLevel_entoncesRetornaSilver() {
+        givenPuntosRecompensa(100);
+
+        RewardLevel level = whenCalculatingCurrentLevel();
+
+        thenCurrentLevelIs(RewardLevel.SILVER, level);
+    }
+
+    @Test
+    void dadoPuntosGold_cuandoCalculateCurrentLevel_entoncesRetornaGold() {
+        givenPuntosRecompensa(250);
+
+        RewardLevel level = whenCalculatingCurrentLevel();
+
+        thenCurrentLevelIs(RewardLevel.GOLD, level);
+    }
+
+    @Test
+    void dadoPuntosNulos_cuandoGetPointsToNextLevel_entoncesRetornaPuntosParaSilver() {
+        givenPuntosRecompensa(null);
+
+        int pointsToNextLevel = whenGettingPointsToNextLevel();
+
+        thenPointsToNextLevelAre(100, pointsToNextLevel);
+    }
+
+    @Test
+    void dadoPuntosSilver_cuandoGetPointsToNextLevel_entoncesRetornaPuntosParaGold() {
+        givenPuntosRecompensa(120);
+
+        int pointsToNextLevel = whenGettingPointsToNextLevel();
+
+        thenPointsToNextLevelAre(130, pointsToNextLevel);
+    }
+
+    @Test
+    void dadoPuntosGold_cuandoGetPointsToNextLevel_entoncesRetornaCero() {
+        givenPuntosRecompensa(260);
+
+        int pointsToNextLevel = whenGettingPointsToNextLevel();
+
+        thenPointsToNextLevelAre(0, pointsToNextLevel);
+    }
+
+    private void givenPuntosRecompensa(Integer puntos) {
+        alumno.setPuntosRecompensa(puntos);
+    }
+
+    private RewardLevel whenCalculatingCurrentLevel() {
+        return alumno.calculateCurrentLevel();
+    }
+
+    private int whenGettingPointsToNextLevel() {
+        return alumno.getPointsToNextLevel();
+    }
+
+    private void thenCurrentLevelIs(RewardLevel expected, RewardLevel actual) {
+        assertEquals(expected, actual);
+    }
+
+    private void thenPointsToNextLevelAre(int expected, int actual) {
+        assertEquals(expected, actual);
     }
 }

@@ -88,11 +88,17 @@ class UpdateProductPriceTest {
     }
 
     @Test
-    void rejectNullOrNonPositivePrices() {
+    void rejectZeroPrice() {
         UUID productId = randomUUID();
 
         assertThrows(IllegalArgumentException.class,
                 () -> whenUpdatingPrice(productId, BigDecimal.ZERO, null));
+    }
+
+    @Test
+    void rejectNullPrice() {
+        UUID productId = randomUUID();
+
         assertThrows(IllegalArgumentException.class,
                 () -> whenUpdatingPrice(productId, null, null));
     }

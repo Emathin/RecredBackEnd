@@ -8,6 +8,7 @@ import com.recred.backend.domain.models.PresupuestoAlumno;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,20 +39,9 @@ class CreateBudgetTest {
 
     @Test
     void execute_CreaPresupuesto_CalculaReglas_YLoGuarda() {
-
-        when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> {
-            PresupuestoAlumno p = (PresupuestoAlumno) i.getArguments()[0];
-            p.setId(UUID.randomUUID());
-            if (p.getReglasCategoria() != null) {
-                p.getReglasCategoria().forEach(r -> r.setId(UUID.randomUUID()));
-            }
-            return p;
-        });
-
         UUID studentId = UUID.randomUUID();
         UUID creadorId = UUID.randomUUID();
         UUID categoryId = UUID.randomUUID();
-
         CreateBudgetRequest request = new CreateBudgetRequest(
                 studentId,
                 creadorId,
@@ -59,6 +50,14 @@ class CreateBudgetTest {
                 LocalDate.now(),
                 List.of(new CreateBudgetRequest.CategoryRuleRequest(categoryId, new BigDecimal("10.00")))
         );
+
+        when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> {
+            PresupuestoAlumno p = (PresupuestoAlumno) i.getArguments()[0];
+            p.setId(UUID.randomUUID());
+            if (p.getReglasCategoria() != null)
+                p.getReglasCategoria().forEach(r -> r.setId(UUID.randomUUID()));
+            return p;
+        });
 
         CreateBudgetResponse resultado = createBudget.execute(request);
 
@@ -104,9 +103,10 @@ class CreateBudgetTest {
                 )
         );
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                createBudget.execute(request)
-        );
+        Executable execution = () -> createBudget.execute(request);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertTrue(exception.getMessage().contains("La suma de los porcentajes no puede superar el 100%"));
+        verify(repository, never()).save(any());
     }
 }

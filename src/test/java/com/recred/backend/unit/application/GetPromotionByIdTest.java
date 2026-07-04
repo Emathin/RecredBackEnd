@@ -7,6 +7,7 @@ import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -34,10 +35,11 @@ class GetPromotionByIdTest {
         UUID id = UUID.randomUUID();
         Promotion promotion = new Promotion();
         promotion.setId(id);
+        GetPromotionByIdRequest request = new GetPromotionByIdRequest(id);
 
         when(promotionRepository.findById(id)).thenReturn(Optional.of(promotion));
 
-        CreatePromotionResponse result = getPromotionById.execute(new GetPromotionByIdRequest(id));
+        CreatePromotionResponse result = getPromotionById.execute(request);
 
         assertNotNull(result);
         assertEquals(id, result.id());
@@ -47,10 +49,13 @@ class GetPromotionByIdTest {
     @Test
     void execute_shouldThrowException_whenPromotionDoesNotExist() {
         UUID id = UUID.randomUUID();
+        GetPromotionByIdRequest request = new GetPromotionByIdRequest(id);
+
         when(promotionRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class,
-                () -> getPromotionById.execute(new GetPromotionByIdRequest(id)));
+        Executable execution = () -> getPromotionById.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
         verify(promotionRepository).findById(id);
     }
 }

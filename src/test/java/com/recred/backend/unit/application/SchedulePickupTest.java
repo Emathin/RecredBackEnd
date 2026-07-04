@@ -10,6 +10,7 @@ import com.recred.backend.domain.services.ValidacionRestriccionesService;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -50,8 +51,14 @@ class SchedulePickupTest {
         LocalDate pickupDate = LocalDate.of(2026, 6, 1);
         FranjaHoraria pickupSlot = new FranjaHoraria();
         pickupSlot.setHoraInicio(LocalTime.of(10, 0));
+        SchedulePickupRequest request = new SchedulePickupRequest(
+                studentId,
+                cart,
+                pickupSlot,
+                pickupDate
+        );
 
-        schedulePickup.execute(new SchedulePickupRequest(studentId, cart, pickupSlot, pickupDate));
+        schedulePickup.execute(request);
 
         LocalDateTime expectedTime = LocalDateTime.of(2026, 6, 1, 10, 0);
 
@@ -79,13 +86,14 @@ class SchedulePickupTest {
         LocalDate pickupDate = LocalDate.of(2026, 6, 1);
         FranjaHoraria pickupSlot = new FranjaHoraria();
         pickupSlot.setHoraInicio(LocalTime.of(10, 0));
-
-        schedulePickup.execute(new SchedulePickupRequest(
+        SchedulePickupRequest request = new SchedulePickupRequest(
                 studentId,
                 Set.of(productWithCategory, freeProductWithCategory, productWithoutCategory),
                 pickupSlot,
                 pickupDate
-        ));
+        );
+
+        schedulePickup.execute(request);
 
         verify(budgetValidator).validarPresupuesto(
                 eq(studentId),
@@ -110,13 +118,19 @@ class SchedulePickupTest {
         FranjaHoraria pickupSlot = new FranjaHoraria();
         pickupSlot.setHoraInicio(LocalTime.of(10, 0));
         LocalDateTime expectedTime = LocalDateTime.of(2026, 6, 1, 10, 0);
+        SchedulePickupRequest request = new SchedulePickupRequest(
+                studentId,
+                cart,
+                pickupSlot,
+                pickupDate
+        );
 
         doThrow(new RuntimeException("Time invalid"))
                 .when(timeValidator).validarCompra(any(), eq(cart), eq(expectedTime));
 
-        assertThrows(RuntimeException.class, () ->
-                schedulePickup.execute(new SchedulePickupRequest(studentId, cart, pickupSlot, pickupDate))
-        );
+        Executable execution = () -> schedulePickup.execute(request);
+
+        assertThrows(RuntimeException.class, execution);
     }
 
     @Test
@@ -126,13 +140,19 @@ class SchedulePickupTest {
         LocalDate pickupDate = LocalDate.of(2026, 6, 1);
         FranjaHoraria pickupSlot = new FranjaHoraria();
         pickupSlot.setHoraInicio(LocalTime.of(10, 0));
+        SchedulePickupRequest request = new SchedulePickupRequest(
+                studentId,
+                cart,
+                pickupSlot,
+                pickupDate
+        );
 
         doThrow(new RuntimeException("Health restrictions violated"))
                 .when(healthValidator).validarCompra(any(), eq(cart));
 
-        assertThrows(RuntimeException.class, () ->
-                schedulePickup.execute(new SchedulePickupRequest(studentId, cart, pickupSlot, pickupDate))
-        );
+        Executable execution = () -> schedulePickup.execute(request);
+
+        assertThrows(RuntimeException.class, execution);
     }
 
     @Test
@@ -143,12 +163,18 @@ class SchedulePickupTest {
         FranjaHoraria pickupSlot = new FranjaHoraria();
         pickupSlot.setHoraInicio(LocalTime.of(10, 0));
         LocalDateTime expectedTime = LocalDateTime.of(2026, 6, 1, 10, 0);
+        SchedulePickupRequest request = new SchedulePickupRequest(
+                studentId,
+                cart,
+                pickupSlot,
+                pickupDate
+        );
 
         doThrow(new RuntimeException("Budget exceeded"))
                 .when(budgetValidator).validarPresupuesto(eq(studentId), any(), any(), eq(expectedTime));
 
-        assertThrows(RuntimeException.class, () ->
-                schedulePickup.execute(new SchedulePickupRequest(studentId, cart, pickupSlot, pickupDate))
-        );
+        Executable execution = () -> schedulePickup.execute(request);
+
+        assertThrows(RuntimeException.class, execution);
     }
 }

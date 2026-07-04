@@ -7,6 +7,7 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -36,26 +37,27 @@ class DeleteFavoriteProductTest {
         Producto producto = new Producto();
         producto.setId(productoId);
         alumno.agregarProductoFavorito(producto);
+        DeleteFavoriteProductRequest request = new DeleteFavoriteProductRequest(alumnoId, productoId);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        deleteFavoriteProduct.execute(new DeleteFavoriteProductRequest(alumnoId, productoId));
+        deleteFavoriteProduct.execute(request);
 
         assertFalse(alumno.getProductosFavoritos().contains(producto));
-        verify(alumnoRepository, times(1)).save(alumno);
+        verify(alumnoRepository).save(alumno);
     }
 
     @Test
     void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
+        DeleteFavoriteProductRequest request = new DeleteFavoriteProductRequest(alumnoId, productoId);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () ->
-                deleteFavoriteProduct.execute(new DeleteFavoriteProductRequest(alumnoId, productoId))
-        );
+        Executable execution = () -> deleteFavoriteProduct.execute(request);
 
+        assertThrows(RuntimeException.class, execution);
         verify(alumnoRepository, never()).save(any());
     }
 }
