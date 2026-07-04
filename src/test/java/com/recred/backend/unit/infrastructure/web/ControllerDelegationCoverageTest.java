@@ -55,6 +55,10 @@ class ControllerDelegationCoverageTest {
     private UpdateBudgetRules updateBudgetRules;
     @Mock
     private CheckBudgetDates checkBudgetDates;
+    @Mock
+    private TutorAccessGuard tutorAccessGuard;
+    @Mock
+    private org.springframework.security.core.Authentication authentication;
 
     @Test
     void purchaseRecommendationControllerShouldDelegateTodayAndTomorrow() {
@@ -138,11 +142,12 @@ class ControllerDelegationCoverageTest {
                 disableBudget,
                 getActiveBudgetByStudent,
                 updateBudgetRules,
-                checkBudgetDates
+                checkBudgetDates,
+                tutorAccessGuard
         );
 
         ResponseEntity<CheckBudgetDatesResponse> response =
-                controller.checkDates(studentId, request);
+                controller.checkDates(studentId, request, authentication);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertSame(expected, response.getBody());
