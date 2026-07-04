@@ -19,6 +19,7 @@ import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.infrastructure.web.ActualizarRestriccionesDTO;
 import com.recred.backend.infrastructure.web.ControlParentalController;
+import com.recred.backend.infrastructure.web.TutorAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,6 +90,9 @@ class ControlParentalControllerTest {
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private TutorAccessGuard tutorAccessGuard;
 
     private UUID alumnoId;
     private UUID clasificacionId;

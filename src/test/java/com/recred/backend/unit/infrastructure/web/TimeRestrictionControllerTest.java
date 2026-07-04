@@ -21,6 +21,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import org.springframework.security.core.Authentication;
+
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
@@ -42,6 +44,10 @@ class TimeRestrictionControllerTest {
     private UpdateTimeRestriction updateTimeRestriction;
     @Mock
     private DisableTimeRestriction disableTimeRestriction;
+    @Mock
+    private TutorAccessGuard tutorAccessGuard;
+    @Mock
+    private Authentication authentication;
 
     private TimeRestrictionController controller;
 
@@ -51,7 +57,8 @@ class TimeRestrictionControllerTest {
                 createTimeRestriction,
                 getTimeRestrictionsByStudent,
                 updateTimeRestriction,
-                disableTimeRestriction
+                disableTimeRestriction,
+                tutorAccessGuard
         );
     }
 
@@ -76,7 +83,7 @@ class TimeRestrictionControllerTest {
         Principal principal = () -> "cognito-sub";
         when(createTimeRestriction.execute(any(CreateTimeRestrictionRequest.class))).thenReturn(responseMock);
 
-        ResponseEntity<CreateTimeRestrictionResponse> response = controller.create(request, principal);
+        ResponseEntity<CreateTimeRestrictionResponse> response = controller.create(request, principal, authentication);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(responseMock, response.getBody());
@@ -97,7 +104,7 @@ class TimeRestrictionControllerTest {
         when(getTimeRestrictionsByStudent.execute(new GetTimeRestrictionsByStudentRequest(studentId)))
                 .thenReturn(List.of(responseDto));
 
-        ResponseEntity<List<GetTimeRestrictionsByStudentResponse>> response = controller.getByStudent(studentId);
+        ResponseEntity<List<GetTimeRestrictionsByStudentResponse>> response = controller.getByStudent(studentId, authentication);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(List.of(responseDto), response.getBody());
@@ -129,7 +136,7 @@ class TimeRestrictionControllerTest {
         );
         when(updateTimeRestriction.execute(expectedRequest)).thenReturn(responseMock);
 
-        ResponseEntity<UpdateTimeRestrictionResponse> response = controller.update(restrictionId, requestBody);
+        ResponseEntity<UpdateTimeRestrictionResponse> response = controller.update(restrictionId, requestBody, authentication);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(responseMock, response.getBody());
@@ -139,7 +146,7 @@ class TimeRestrictionControllerTest {
     void disable_ShouldReturnNoContent() {
         UUID restrictionId = UUID.randomUUID();
 
-        ResponseEntity<Void> response = controller.disable(restrictionId);
+        ResponseEntity<Void> response = controller.disable(restrictionId, authentication);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         assertNull(response.getBody());

@@ -14,6 +14,7 @@ import com.recred.backend.application.UpdateTimeRestrictionResponse;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,22 +35,27 @@ public class TimeRestrictionController {
     private final GetTimeRestrictionsByStudent getTimeRestrictionsByStudent;
     private final UpdateTimeRestriction updateTimeRestriction;
     private final DisableTimeRestriction disableTimeRestriction;
+    private final TutorAccessGuard tutorAccessGuard;
 
     public TimeRestrictionController(
             CreateTimeRestriction createTimeRestriction,
             GetTimeRestrictionsByStudent getTimeRestrictionsByStudent,
             UpdateTimeRestriction updateTimeRestriction,
-            DisableTimeRestriction disableTimeRestriction) {
+            DisableTimeRestriction disableTimeRestriction,
+            TutorAccessGuard tutorAccessGuard) {
         this.createTimeRestriction = createTimeRestriction;
         this.getTimeRestrictionsByStudent = getTimeRestrictionsByStudent;
         this.updateTimeRestriction = updateTimeRestriction;
         this.disableTimeRestriction = disableTimeRestriction;
+        this.tutorAccessGuard = tutorAccessGuard;
     }
 
     @PostMapping
     public ResponseEntity<CreateTimeRestrictionResponse> create(
             @RequestBody CreateTimeRestrictionRequest command,
-            java.security.Principal principal) {
+            java.security.Principal principal,
+            Authentication authentication) {
+        tutorAccessGuard.requireStrictTutorStudentAccess(authentication, command.studentId());
         CreateTimeRestrictionRequest request = new CreateTimeRestrictionRequest(
                 command.studentId(),
                 command.timeSlotId(),
@@ -63,7 +69,8 @@ public class TimeRestrictionController {
 
     @GetMapping("/student/{studentId}")
     public ResponseEntity<List<GetTimeRestrictionsByStudentResponse>>
-    getByStudent(@PathVariable UUID studentId) {
+    getByStudent(@PathVariable UUID studentId, Authentication authentication) {
+        tutorAccessGuard.requireStudentAccess(authentication, studentId);
         List<GetTimeRestrictionsByStudentResponse> restrictions =
                 getTimeRestrictionsByStudent.execute(
                         new GetTimeRestrictionsByStudentRequest(studentId));
@@ -73,7 +80,9 @@ public class TimeRestrictionController {
     @PutMapping("/{id}")
     public ResponseEntity<UpdateTimeRestrictionResponse> update(
             @PathVariable UUID id,
-            @RequestBody UpdateTimeRestrictionRequest requestBody) {
+            @RequestBody UpdateTimeRestrictionRequest requestBody,
+            Authentication authentication) {
+        tutorAccessGuard.requireTimeRestrictionAccess(authentication, id);
         UpdateTimeRestrictionRequest request = new UpdateTimeRestrictionRequest(
                 id,
                 requestBody.timeSlotId(),
@@ -85,7 +94,8 @@ public class TimeRestrictionController {
     }
 
     @PatchMapping("/{id}/disable")
-    public ResponseEntity<Void> disable(@PathVariable UUID id) {
+    public ResponseEntity<Void> disable(@PathVariable UUID id, Authentication authentication) {
+        tutorAccessGuard.requireTimeRestrictionAccess(authentication, id);
         disableTimeRestriction.execute(new DisableTimeRestrictionRequest(id));
         return ResponseEntity.noContent().build();
     }
