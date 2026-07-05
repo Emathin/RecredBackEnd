@@ -43,6 +43,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.recred.backend.infrastructure.web.TutorAccessGuard;
+
 @ExtendWith(MockitoExtension.class)
 class BudgetControllerTest {
 
@@ -62,6 +64,9 @@ class BudgetControllerTest {
 
     @Mock
     private UpdateBudgetRules updateBudgetRules;
+
+    @Mock
+    private TutorAccessGuard tutorAccessGuard;
 
     @InjectMocks
     private BudgetController budgetController;

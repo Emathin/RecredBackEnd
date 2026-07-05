@@ -19,6 +19,7 @@ import com.recred.backend.domain.models.TipoNotificacion;
 import com.recred.backend.infrastructure.web.BudgetController;
 import com.recred.backend.infrastructure.web.PurchaseRecommendationController;
 import com.recred.backend.infrastructure.web.SalesController;
+import com.recred.backend.infrastructure.web.TutorAccessGuard;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -57,6 +58,10 @@ class ControllerDelegationCoverageTest {
     private UpdateBudgetRules updateBudgetRules;
     @Mock
     private CheckBudgetDates checkBudgetDates;
+    @Mock
+    private TutorAccessGuard tutorAccessGuard;
+    @Mock
+    private org.springframework.security.core.Authentication authentication;
 
     @Test
     void purchaseRecommendationControllerShouldDelegateToday() {
@@ -268,7 +273,8 @@ class ControllerDelegationCoverageTest {
                 disableBudget,
                 getActiveBudgetByStudent,
                 updateBudgetRules,
-                checkBudgetDates
+                checkBudgetDates,
+                tutorAccessGuard
         );
     }
 
@@ -277,7 +283,7 @@ class ControllerDelegationCoverageTest {
             UUID studentId,
             CheckBudgetDatesRequest request
     ) {
-        return controller.checkDates(studentId, request);
+        return controller.checkDates(studentId, request, authentication);
     }
 
     private void thenBudgetDatesAreReturned(
