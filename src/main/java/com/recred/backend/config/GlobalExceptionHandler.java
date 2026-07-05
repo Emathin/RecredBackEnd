@@ -1,6 +1,7 @@
 package com.recred.backend.config;
 
 import com.recred.backend.domain.exceptions.NotificationNotFoundException;
+import com.recred.backend.domain.exceptions.UsernameExistsException;
 import com.recred.backend.domain.exceptions.FileValidationException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
@@ -99,6 +100,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAlumnoNoEncontrado(AlumnoNoEncontradoException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Alumno no encontrado",
                 ex.getMessage());
+    }
+
+    @ExceptionHandler(UsernameExistsException.class)
+    public ResponseEntity<ErrorResponse> handleUsernameExists(UsernameExistsException ex) {
+        return buildResponse(HttpStatus.CONFLICT, "Usuario duplicado",
+                ex.getMessage(), "USERNAME_EXISTS");
     }
 
     @ExceptionHandler(InsufficientBalanceException.class)

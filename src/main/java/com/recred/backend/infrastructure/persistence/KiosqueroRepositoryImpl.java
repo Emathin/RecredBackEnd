@@ -52,4 +52,13 @@ public class KiosqueroRepositoryImpl implements KiosqueroRepository {
 
         return kiosqueros;
     }
+
+    @Override
+    @Transactional
+    public Kiosquero save(Kiosquero kiosquero) {
+        KiosqueroEntity entity = KiosqueroEntity.fromDomain(kiosquero);
+        KiosqueroEntity savedEntity = springDataKiosqueroRepository.save(entity);
+        return savedEntity.toDomain();
+    }
 }
+

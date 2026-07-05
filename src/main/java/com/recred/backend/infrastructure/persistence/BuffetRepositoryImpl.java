@@ -30,4 +30,13 @@ public class BuffetRepositoryImpl implements BuffetRepository {
         return springDataBuffetRepository.findByAlumnoId(alumnoId)
                 .map(BuffetEntity::toDomain);
     }
+
+    @Override
+    @Transactional
+    public Buffet save(Buffet buffet) {
+        BuffetEntity entity = BuffetEntity.fromDomain(buffet);
+        BuffetEntity savedEntity = springDataBuffetRepository.save(entity);
+        return savedEntity.toDomain();
+    }
 }
+
