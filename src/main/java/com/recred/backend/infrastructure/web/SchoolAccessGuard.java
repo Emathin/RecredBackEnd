@@ -78,7 +78,33 @@ public class SchoolAccessGuard {
         requireSchoolAccess(authentication, schoolId);
     }
 
+    public void requireSchoolDirectorAccess(Authentication authentication, UUID schoolId) {
+        Usuario usuario = authenticatedUser(authentication);
+
+        if (usuario.getRol() == RolUsuario.ADMIN) {
+            return;
+        }
+
+        if (usuario.getRol() == RolUsuario.DIRECTIVO_COLEGIO
+                && belongsToUserSchool(usuario, schoolId)) {
+            return;
+        }
+
+        throw new AccessDeniedException(
+                "No tiene permisos de directivo sobre el colegio " + schoolId);
+    }
+
+    public void requireBuffetDirectorAccess(Authentication authentication, UUID buffetId) {
+        UUID schoolId = buffetRepository.findById(buffetId)
+                .map(Buffet::getColegio)
+                .map(com.recred.backend.domain.models.Colegio::getId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Buffet no encontrado o sin colegio asociado"));
+        requireSchoolDirectorAccess(authentication, schoolId);
+    }
+
     private Usuario authenticatedUser(Authentication authentication) {
+
         String subject = Optional.ofNullable(authentication)
                 .map(Authentication::getName)
                 .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
