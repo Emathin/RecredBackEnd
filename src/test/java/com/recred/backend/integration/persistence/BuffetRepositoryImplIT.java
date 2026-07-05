@@ -15,9 +15,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.List;
 
 @Transactional
 class BuffetRepositoryImplIT extends AbstractIntegrationTest {
@@ -70,6 +71,18 @@ class BuffetRepositoryImplIT extends AbstractIntegrationTest {
         assertEquals(buffetId, result.get().getId());
         assertEquals("Buffet central", result.get().getNombre());
         assertEquals(schoolId, result.get().getColegio().getId());
+    }
+
+    @Test
+    void findByColegioId_WhenBuffetsExist_ShouldMapToDomain() {
+        List<Buffet> result = repository.findByColegioId(schoolId);
+
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.size());
+        assertEquals(buffetId, result.get(0).getId());
+        assertEquals("Buffet central", result.get(0).getNombre());
+        assertEquals(schoolId, result.get(0).getColegio().getId());
+        assertNotNull(result.get(0).getVendedor());
     }
 
     @Test

@@ -6,8 +6,10 @@ import com.recred.backend.infrastructure.entities.BuffetEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 public class BuffetRepositoryImpl implements BuffetRepository {
@@ -29,6 +31,14 @@ public class BuffetRepositoryImpl implements BuffetRepository {
     public Optional<Buffet> findByAlumnoId(UUID alumnoId) {
         return springDataBuffetRepository.findByAlumnoId(alumnoId)
                 .map(BuffetEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Buffet> findByColegioId(UUID colegioId) {
+        return springDataBuffetRepository.findByColegioEntityId(colegioId).stream()
+                .map(BuffetEntity::toDomain)
+                .collect(Collectors.toList());
     }
 
     @Override

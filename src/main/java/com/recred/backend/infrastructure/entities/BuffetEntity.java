@@ -109,6 +109,11 @@ public class BuffetEntity {
             kiosqueroDominio.setId(this.vendedor.getId());
             kiosqueroDominio.setCuit(this.vendedor.getCuit());
 
+            if (this.vendedor.getUsuario() != null
+                    && org.hibernate.Hibernate.isInitialized(this.vendedor.getUsuario())) {
+                kiosqueroDominio.setUsuario(this.vendedor.getUsuario().toDomain());
+            }
+
             buffet.setVendedor(kiosqueroDominio);
         }
 

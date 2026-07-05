@@ -120,6 +120,7 @@ import com.recred.backend.application.ReactivateTimeSlot;
 import com.recred.backend.application.RegisterBuffet;
 import com.recred.backend.application.RegisterSeller;
 import com.recred.backend.application.RejectSchoolRegistration;
+import com.recred.backend.application.GetSchoolOverview;
 
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
@@ -269,6 +270,14 @@ public class UseCases {
             ColegioRepository colegioRepository,
             BuffetRepository buffetRepository) {
         return new RegisterBuffet(colegioRepository, buffetRepository);
+    }
+
+    @Bean
+    public GetSchoolOverview getSchoolOverview(
+            UsuarioRepository usuarioRepository,
+            ColegioRepository colegioRepository,
+            BuffetRepository buffetRepository) {
+        return new GetSchoolOverview(usuarioRepository, colegioRepository, buffetRepository);
     }
 
     @Bean
