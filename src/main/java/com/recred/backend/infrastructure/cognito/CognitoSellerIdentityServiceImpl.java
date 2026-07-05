@@ -34,7 +34,6 @@ public class CognitoSellerIdentityServiceImpl extends BaseCognitoIdentityService
                 "DesiredDeliveryMediums", List.of("EMAIL"),
                 "UserAttributes", List.of(
                         attribute("email", email),
-                        attribute("email_verified", "true"),
                         attribute("given_name", firstName),
                         attribute("family_name", lastName)
                 )
