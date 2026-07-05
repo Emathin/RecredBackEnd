@@ -117,7 +117,11 @@ import com.recred.backend.application.GetTimeSlot;
 import com.recred.backend.application.ListSchoolTimeSlots;
 import com.recred.backend.application.RecommendSupplierForProducts;
 import com.recred.backend.application.ReactivateTimeSlot;
+import com.recred.backend.application.RegisterBuffet;
+import com.recred.backend.application.RegisterSeller;
 import com.recred.backend.application.RejectSchoolRegistration;
+import com.recred.backend.application.GetSchoolOverview;
+
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveBulkProducts;
@@ -260,6 +264,32 @@ public class UseCases {
         return new GenerateComboSuggestion(
                 productRepository, kiosqueroRepository, usuarioRepository);
     }
+
+    @Bean
+    public RegisterBuffet registerBuffet(
+            ColegioRepository colegioRepository,
+            BuffetRepository buffetRepository) {
+        return new RegisterBuffet(colegioRepository, buffetRepository);
+    }
+
+    @Bean
+    public GetSchoolOverview getSchoolOverview(
+            UsuarioRepository usuarioRepository,
+            ColegioRepository colegioRepository,
+            BuffetRepository buffetRepository) {
+        return new GetSchoolOverview(usuarioRepository, colegioRepository, buffetRepository);
+    }
+
+    @Bean
+    public RegisterSeller registerSeller(
+            BuffetRepository buffetRepository,
+            UsuarioRepository usuarioRepository,
+            KiosqueroRepository kiosqueroRepository,
+            com.recred.backend.domain.services.CognitoSellerIdentityService cognito) {
+        return new RegisterSeller(buffetRepository, usuarioRepository,
+                kiosqueroRepository, cognito);
+    }
+
 
     @Bean
     public ApplyInventoryQuickAction applyInventoryQuickAction(

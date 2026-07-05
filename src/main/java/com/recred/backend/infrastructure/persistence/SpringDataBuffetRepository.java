@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,4 +26,12 @@ public interface SpringDataBuffetRepository extends JpaRepository<BuffetEntity, 
         WHERE a.id = :alumnoId AND b.activo = true
     """)
     Optional<BuffetEntity> findByAlumnoId(@Param("alumnoId") UUID alumnoId);
+
+    @Query("""
+        SELECT b FROM BuffetEntity b
+        LEFT JOIN FETCH b.vendedor v
+        LEFT JOIN FETCH v.usuario
+        WHERE b.colegioEntity.id = :colegioId
+    """)
+    List<BuffetEntity> findByColegioEntityId(@Param("colegioId") UUID colegioId);
 }

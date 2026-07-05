@@ -13,4 +13,6 @@ public interface KiosqueroRepository {
 
     List<Kiosquero> findAll();
     List<UUID> findAllIds();
+    Kiosquero save(Kiosquero kiosquero);
 }
+

@@ -6,12 +6,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -44,10 +41,6 @@ public class SchoolRegistrationRequestEntity {
 
     @Column(name = "cue_colegio", nullable = false)
     private String schoolCue;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "nivel_id")
-    private NivelEntity schoolLevel;
 
     @Column(name = "nombre_director", nullable = false)
     private String directorFirstName;
@@ -86,9 +79,6 @@ public class SchoolRegistrationRequestEntity {
         req.setSchoolEmail(this.schoolEmail);
         req.setSchoolPhone(this.schoolPhone);
         req.setSchoolCue(this.schoolCue);
-        if (this.schoolLevel != null) {
-            req.setSchoolLevel(this.schoolLevel.toDomain());
-        }
         req.setDirectorFirstName(this.directorFirstName);
         req.setDirectorLastName(this.directorLastName);
         req.setDirectorEmail(this.directorEmail);
@@ -111,11 +101,6 @@ public class SchoolRegistrationRequestEntity {
         entity.setSchoolEmail(req.getSchoolEmail());
         entity.setSchoolPhone(req.getSchoolPhone());
         entity.setSchoolCue(req.getSchoolCue());
-        if (req.getSchoolLevel() != null) {
-            NivelEntity nivel = new NivelEntity();
-            nivel.setId(req.getSchoolLevel().getId());
-            entity.setSchoolLevel(nivel);
-        }
         entity.setDirectorFirstName(req.getDirectorFirstName());
         entity.setDirectorLastName(req.getDirectorLastName());
         entity.setDirectorEmail(req.getDirectorEmail());
