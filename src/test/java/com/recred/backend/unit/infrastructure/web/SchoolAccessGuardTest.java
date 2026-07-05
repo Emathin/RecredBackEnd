@@ -11,6 +11,7 @@ import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.infrastructure.web.SchoolAccessGuard;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 
@@ -61,6 +62,19 @@ class SchoolAccessGuardTest {
     }
 
     @Test
+    void requireSchoolManagementAccess_WhenSellerOwnsBuffetInSchool_ShouldThrowException() {
+        UUID userId = UUID.randomUUID();
+        UUID colegioId = UUID.randomUUID();
+        Usuario user = user(userId, RolUsuario.VENDEDOR, null);
+
+        givenAuthenticatedUser(user);
+
+        Executable execution = () -> whenRequiringSchoolManagementAccess(colegioId);
+
+        assertThrows(AccessDeniedException.class, execution);
+    }
+
+    @Test
     void requireSchoolAccess_WhenSchoolDoesNotMatch_ShouldThrowException() {
         UUID colegioId = UUID.randomUUID();
         Usuario user = user(UUID.randomUUID(), RolUsuario.DIRECTIVO_COLEGIO, UUID.randomUUID());
@@ -87,6 +101,14 @@ class SchoolAccessGuardTest {
 
     private TestingAuthenticationToken auth() {
         return new TestingAuthenticationToken("sub", "");
+    }
+
+    private void givenAuthenticatedUser(Usuario user) {
+        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
+    }
+
+    private void whenRequiringSchoolManagementAccess(UUID colegioId) {
+        guard.requireSchoolManagementAccess(auth(), colegioId);
     }
 
     private Usuario user(UUID userId, RolUsuario role, UUID colegioId) {

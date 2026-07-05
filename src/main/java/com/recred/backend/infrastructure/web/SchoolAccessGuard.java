@@ -55,6 +55,22 @@ public class SchoolAccessGuard {
         throw new AccessDeniedException("No tiene permisos sobre el colegio " + schoolId);
     }
 
+    public void requireSchoolManagementAccess(Authentication authentication, UUID schoolId) {
+        Usuario usuario = authenticatedUser(authentication);
+
+        if (usuario.getRol() == RolUsuario.ADMIN) {
+            return;
+        }
+
+        if (usuario.getRol() == RolUsuario.DIRECTIVO_COLEGIO
+                && belongsToUserSchool(usuario, schoolId)) {
+            return;
+        }
+
+        throw new AccessDeniedException("No tiene permisos para administrar el colegio "
+                + schoolId);
+    }
+
     public void requireTimeSlotAccess(Authentication authentication, UUID slotId) {
         UUID schoolId = franjaHorariaRepository.findById(slotId)
                 .map(com.recred.backend.domain.models.FranjaHoraria::getColegioId)

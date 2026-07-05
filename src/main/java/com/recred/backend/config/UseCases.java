@@ -16,11 +16,13 @@ import com.recred.backend.application.ConfirmPaymentAndCredit;
 import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
+import com.recred.backend.application.CreateGrade;
 import com.recred.backend.application.CreatePromotion;
 import com.recred.backend.application.CreateTimeSlot;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateSupplier;
 import com.recred.backend.application.CreateTimeRestriction;
+import com.recred.backend.application.DeactivateGrade;
 import com.recred.backend.application.DeactivateTimeSlot;
 import com.recred.backend.application.DeleteFavoriteCart;
 import com.recred.backend.application.DeleteFavoriteProduct;
@@ -50,6 +52,7 @@ import com.recred.backend.application.GenerateTopUpLink;
 import com.recred.backend.application.GetActiveBudgetByStudent;
 import com.recred.backend.application.GetActivePromotions;
 import com.recred.backend.application.GetActivePromotionsByBuffet;
+import com.recred.backend.application.GetActiveLevels;
 import com.recred.backend.application.GetActiveSchoolCredit;
 import com.recred.backend.application.GetActiveSchools;
 import com.recred.backend.application.GetAllCategories;
@@ -61,6 +64,7 @@ import com.recred.backend.application.GetChildrenByTutor;
 import com.recred.backend.application.GetDailyBuffetCloseStatus;
 import com.recred.backend.application.GetFavoriteCartsByTutor;
 import com.recred.backend.application.GetFavoritesByStudent;
+import com.recred.backend.application.GetGrade;
 import com.recred.backend.application.GetGradesBySchool;
 import com.recred.backend.application.GetHealthRestrictions;
 import com.recred.backend.application.GetHealthRestrictionsCatalog;
@@ -99,6 +103,7 @@ import com.recred.backend.application.ListDailyBuffetCloses;
 import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
 import com.recred.backend.application.ListKiosqueroOrders;
+import com.recred.backend.application.ListSchoolGrades;
 import com.recred.backend.application.ListSuppliers;
 import com.recred.backend.application.LoadBalanceToChild;
 import com.recred.backend.application.LoadStockIA;
@@ -116,6 +121,7 @@ import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.GetTimeSlot;
 import com.recred.backend.application.ListSchoolTimeSlots;
 import com.recred.backend.application.RecommendSupplierForProducts;
+import com.recred.backend.application.ReactivateGrade;
 import com.recred.backend.application.ReactivateTimeSlot;
 import com.recred.backend.application.RejectSchoolRegistration;
 import com.recred.backend.application.RemoveHealthRestrictions;
@@ -131,6 +137,7 @@ import com.recred.backend.application.SubmitSchoolRegistration;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
+import com.recred.backend.application.UpdateGrade;
 import com.recred.backend.application.UpdatePickupSlotRules;
 import com.recred.backend.application.UpdatePriceListItemMapping;
 import com.recred.backend.application.UpdateProduct;
@@ -171,6 +178,7 @@ import com.recred.backend.domain.repositories.KiosqueroPayoutConfigRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ListaPrecioProveedorRepository;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
+import com.recred.backend.domain.repositories.NivelRepository;
 import com.recred.backend.domain.repositories.NotificationRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
@@ -834,6 +842,49 @@ public class UseCases {
             ColegioRepository colegioRepository,
             GradoRepository gradoRepository) {
         return new GetGradesBySchool(colegioRepository, gradoRepository);
+    }
+
+    @Bean
+    public GetActiveLevels getActiveLevels(NivelRepository nivelRepository) {
+        return new GetActiveLevels(nivelRepository);
+    }
+
+    @Bean
+    public ListSchoolGrades listSchoolGrades(
+            GradoRepository gradoRepository,
+            ColegioRepository colegioRepository) {
+        return new ListSchoolGrades(gradoRepository, colegioRepository);
+    }
+
+    @Bean
+    public GetGrade getGrade(GradoRepository gradoRepository) {
+        return new GetGrade(gradoRepository);
+    }
+
+    @Bean
+    public CreateGrade createGrade(
+            GradoRepository gradoRepository,
+            ColegioRepository colegioRepository,
+            NivelRepository nivelRepository) {
+        return new CreateGrade(gradoRepository, colegioRepository, nivelRepository);
+    }
+
+    @Bean
+    public UpdateGrade updateGrade(
+            GradoRepository gradoRepository,
+            ColegioRepository colegioRepository,
+            NivelRepository nivelRepository) {
+        return new UpdateGrade(gradoRepository, colegioRepository, nivelRepository);
+    }
+
+    @Bean
+    public DeactivateGrade deactivateGrade(GradoRepository gradoRepository) {
+        return new DeactivateGrade(gradoRepository);
+    }
+
+    @Bean
+    public ReactivateGrade reactivateGrade(GradoRepository gradoRepository) {
+        return new ReactivateGrade(gradoRepository);
     }
 
     @Bean
