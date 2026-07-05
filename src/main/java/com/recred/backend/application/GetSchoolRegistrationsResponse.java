@@ -1,6 +1,5 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Nivel;
 import com.recred.backend.domain.models.SchoolRegistrationRequest;
 
 import java.util.UUID;
@@ -11,7 +10,6 @@ public record GetSchoolRegistrationsResponse(
         String schoolEmail,
         String schoolPhone,
         String schoolCue,
-        Nivel schoolLevel,
         String directorFirstName,
         String directorLastName,
         String directorEmail,
@@ -28,7 +26,6 @@ public record GetSchoolRegistrationsResponse(
                 req.getSchoolEmail(),
                 req.getSchoolPhone(),
                 req.getSchoolCue(),
-                req.getSchoolLevel(),
                 req.getDirectorFirstName(),
                 req.getDirectorLastName(),
                 req.getDirectorEmail(),

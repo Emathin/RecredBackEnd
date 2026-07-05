@@ -3,7 +3,6 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.ApproveSchoolRegistration;
 import com.recred.backend.application.ApproveSchoolRegistrationRequest;
 import com.recred.backend.domain.models.Colegio;
-import com.recred.backend.domain.models.Nivel;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.SchoolRegistrationRequest;
 import com.recred.backend.domain.models.SchoolRegistrationStatus;
@@ -66,7 +65,6 @@ class ApproveSchoolRegistrationTest {
         requestEntity.setDirectorLastName("Doe");
         requestEntity.setDirectorEmail("john@doe.com");
         requestEntity.setDirectorUsername("johndoe123");
-        requestEntity.setSchoolLevel(new Nivel());
 
         when(repository.findById(requestId)).thenReturn(Optional.of(requestEntity));
         

@@ -10,7 +10,6 @@ public class SchoolRegistrationRequest {
     private String schoolEmail;
     private String schoolPhone;
     private String schoolCue;
-    private Nivel schoolLevel;
     
     private String directorFirstName;
     private String directorLastName;
@@ -64,14 +63,6 @@ public class SchoolRegistrationRequest {
 
     public void setSchoolCue(String schoolCue) {
         this.schoolCue = schoolCue;
-    }
-
-    public Nivel getSchoolLevel() {
-        return schoolLevel;
-    }
-
-    public void setSchoolLevel(Nivel schoolLevel) {
-        this.schoolLevel = schoolLevel;
     }
 
     public String getDirectorFirstName() {

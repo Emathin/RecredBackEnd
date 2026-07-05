@@ -1,5 +1,9 @@
 package com.recred.backend.config;
 
+import com.recred.backend.domain.exceptions.NotificationNotFoundException;
+import com.recred.backend.domain.exceptions.UsernameExistsException;
+import com.recred.backend.domain.exceptions.FileValidationException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.BuffetNotFoundException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
@@ -22,6 +26,9 @@ import com.recred.backend.domain.exceptions.PickupSlotRulesNotFoundException;
 import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
 import com.recred.backend.domain.exceptions.ProductDailyCapacityExceededException;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
+import com.recred.backend.domain.exceptions.InsufficientBalanceException;
+import com.recred.backend.domain.exceptions.InvalidChatMessageException;
+import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
 import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
@@ -100,6 +107,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAlumnoNoEncontrado(AlumnoNoEncontradoException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Alumno no encontrado",
                 ex.getMessage());
+    }
+
+    @ExceptionHandler(UsernameExistsException.class)
+    public ResponseEntity<ErrorResponse> handleUsernameExists(UsernameExistsException ex) {
+        return buildResponse(HttpStatus.CONFLICT, "Usuario duplicado",
+                ex.getMessage(), "USERNAME_EXISTS");
     }
 
     @ExceptionHandler(InsufficientBalanceException.class)
