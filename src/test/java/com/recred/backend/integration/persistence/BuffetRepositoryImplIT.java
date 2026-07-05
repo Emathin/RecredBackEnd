@@ -1,6 +1,7 @@
 package com.recred.backend.integration.persistence;
 
 import com.recred.backend.domain.models.Buffet;
+import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.infrastructure.entities.*;
 import com.recred.backend.infrastructure.persistence.*;
@@ -14,6 +15,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Transactional
@@ -67,6 +70,25 @@ class BuffetRepositoryImplIT extends AbstractIntegrationTest {
         assertEquals(buffetId, result.get().getId());
         assertEquals("Buffet central", result.get().getNombre());
         assertEquals(schoolId, result.get().getColegio().getId());
+    }
+
+    @Test
+    void save_ShouldSaveInRealDatabaseAndGenerateId() {
+        Buffet domainBuffet = new Buffet();
+        domainBuffet.setNombre("Nuevo Buffet IT");
+        domainBuffet.setActivo(true);
+        Colegio colegio = new Colegio();
+        colegio.setId(schoolId);
+        domainBuffet.setColegio(colegio);
+
+        Buffet savedBuffet = repository.save(domainBuffet);
+
+        assertNotNull(savedBuffet.getId());
+        
+        Optional<BuffetEntity> dbBuffet = springDataBuffetRepository.findById(savedBuffet.getId());
+        assertTrue(dbBuffet.isPresent());
+        assertEquals("Nuevo Buffet IT", dbBuffet.get().getNombre());
+        assertEquals(schoolId, dbBuffet.get().getColegioEntity().getId());
     }
 
 
