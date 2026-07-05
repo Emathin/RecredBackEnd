@@ -15,9 +15,5 @@ public record UpdatePriceListItemMappingRequest(
         if (itemId == null) {
             throw new IllegalArgumentException("itemId is required");
         }
-
-        if (inventoryProductId == null) {
-            throw new IllegalArgumentException("inventoryProductId is required");
-        }
     }
 }
