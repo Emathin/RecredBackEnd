@@ -13,6 +13,7 @@ import com.recred.backend.application.UpdateStudentPhotoResponse;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -71,7 +72,7 @@ public class TutorController {
 
     @PostMapping("/me/hijos")
     public ResponseEntity<StudentDTO> crearHijo(Authentication authentication,
-                                               @RequestBody CreateChildRequest request) {
+                                               @Valid @RequestBody CreateChildRequest request) {
         StudentDTO alumno = toStudentDTO(createStudentFromParent.execute(
                 new CreateStudentFromParentRequest(
                         cognitoSubject(authentication),

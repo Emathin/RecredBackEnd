@@ -3,6 +3,7 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateStudentFromParentRequest;
 import com.recred.backend.application.CreateStudentFromParentResponse;
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.Grado;
@@ -25,7 +26,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.access.AccessDeniedException;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -124,7 +124,8 @@ class CreateStudentFromParentTest {
 
         Executable execution = () -> createStudentFromParent.execute(request);
 
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class, execution);
+        OperationNotAllowedException exception =
+                assertThrows(OperationNotAllowedException.class, execution);
         assertEquals("El usuario autenticado no tiene rol PADRE", exception.getMessage());
         assertStopsBeforeExternalUserCreation();
     }
@@ -195,32 +196,11 @@ class CreateStudentFromParentTest {
 
         Executable execution = () -> createStudentFromParent.execute(request);
 
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class, execution);
+        OperationNotAllowedException exception =
+                assertThrows(OperationNotAllowedException.class, execution);
         assertEquals("El tutor no esta asociado al colegio del grado indicado",
                 exception.getMessage());
         assertStopsBeforeExternalUserCreation();
-    }
-
-    @Test
-    void emailLikeUsernameIsRejected() {
-        CreateStudentFromParentRequest request = requestWithUsername(DEFAULT_EMAIL);
-
-        Executable execution = () -> createStudentFromParent.execute(request);
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("El username no puede tener formato de email", exception.getMessage());
-        verify(usuarioRepository, never()).findByIdCognito(any());
-        assertStopsBeforeExternalUserCreation();
-    }
-
-    @Test
-    void blankRequiredFieldsAreRejected() {
-        assertRequiredFieldIsRejected(requestWithName(" "),
-                "El nombre del alumno es obligatorio");
-        assertRequiredFieldIsRejected(requestWithLastName(" "),
-                "El apellido del alumno es obligatorio");
-        assertRequiredFieldIsRejected(requestWithEmail(" "),
-                "El email del alumno es obligatorio");
     }
 
     @Test
@@ -403,39 +383,6 @@ class CreateStudentFromParentTest {
                 null);
     }
 
-    private CreateStudentFromParentRequest requestWithUsername(String username) {
-        return request(
-                username,
-                DEFAULT_NAME,
-                DEFAULT_LAST_NAME,
-                DEFAULT_EMAIL,
-                null,
-                null,
-                null);
-    }
-
-    private CreateStudentFromParentRequest requestWithName(String nombre) {
-        return request(
-                DEFAULT_USERNAME,
-                nombre,
-                DEFAULT_LAST_NAME,
-                DEFAULT_EMAIL,
-                null,
-                null,
-                null);
-    }
-
-    private CreateStudentFromParentRequest requestWithLastName(String apellido) {
-        return request(
-                DEFAULT_USERNAME,
-                DEFAULT_NAME,
-                apellido,
-                DEFAULT_EMAIL,
-                null,
-                null,
-                null);
-    }
-
     private CreateStudentFromParentRequest requestWithEmail(String email) {
         return request(
                 DEFAULT_USERNAME,
@@ -471,16 +418,6 @@ class CreateStudentFromParentTest {
                 gradoId,
                 urlFotoPerfil
         );
-    }
-
-    private void assertRequiredFieldIsRejected(CreateStudentFromParentRequest request,
-                                               String expectedMessage) {
-        Executable execution = () -> createStudentFromParent.execute(request);
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals(expectedMessage, exception.getMessage());
-        verify(usuarioRepository, never()).findByIdCognito(any());
-        assertStopsBeforeExternalUserCreation();
     }
 
     private void assertCreatedUser(Usuario savedUser) {

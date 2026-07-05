@@ -22,13 +22,13 @@ import com.recred.backend.infrastructure.web.CreateChildRequest;
 import com.recred.backend.infrastructure.web.StudentDTO;
 import com.recred.backend.infrastructure.web.TutorController;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -223,6 +223,24 @@ class TutorControllerTest {
                 gradoId,
                 null
         ));
+    }
+
+    @Test
+    void givenInvalidChildRequest_whenCreatingChild_thenReturnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/tutores/me/hijos")
+                        .principal(new TestingAuthenticationToken("tutor-sub", ""))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "mateo@test.com",
+                                  "nombre": " ",
+                                  "apellido": "Gomez",
+                                  "email": "mateo@test.com"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(createStudentFromParent);
     }
 
     @Test
