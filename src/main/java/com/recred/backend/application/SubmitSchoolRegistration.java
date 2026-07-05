@@ -59,7 +59,6 @@ public class SubmitSchoolRegistration {
         entity.setSchoolEmail(req.schoolEmail());
         entity.setSchoolPhone(req.schoolPhone());
         entity.setSchoolCue(req.schoolCue());
-        entity.setSchoolLevel(req.schoolLevel());
         setDirectorFields(entity, req);
         setMetadata(entity);
         return entity;
