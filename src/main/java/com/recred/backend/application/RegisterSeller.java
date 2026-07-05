@@ -40,6 +40,11 @@ public class RegisterSeller {
         CreatedCognitoUser cognitoUser = createCognitoUser(request);
         Usuario savedUser = buildAndSaveUsuario(request, buffet.getColegio(), cognitoUser.sub());
         Kiosquero savedKiosquero = buildAndSaveKiosquero(request, savedUser, buffet);
+
+        buffet.setVendedor(savedKiosquero);
+        buffet.setActualizadoEn(LocalDateTime.now());
+        buffetRepository.save(buffet);
+
         return new RegisterSellerResponse(savedKiosquero.getId(), savedUser.getId());
     }
 

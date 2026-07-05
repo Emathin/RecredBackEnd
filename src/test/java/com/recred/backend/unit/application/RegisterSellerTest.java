@@ -80,6 +80,7 @@ class RegisterSellerTest {
         assertNotNull(response.usuarioId());
         verify(usuarioRepository).save(any(Usuario.class));
         verify(kiosqueroRepository).save(any(Kiosquero.class));
+        verify(buffetRepository).save(buffet);
     }
 
     @Test
@@ -118,6 +119,7 @@ class RegisterSellerTest {
 
         assertNotNull(response.kiosqueroId());
         assertNotNull(response.usuarioId());
+        verify(buffetRepository).save(buffet);
     }
 
     @Test
