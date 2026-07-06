@@ -9,7 +9,6 @@ import com.recred.backend.application.DetectStudentPreferencesRequest;
 import com.recred.backend.application.GetFavoritesByStudent;
 import com.recred.backend.application.GetFavoritesByStudentRequest;
 import com.recred.backend.application.GetStudentPreferences;
-import com.recred.backend.application.GetStudentPreferencesByUserRequest;
 import com.recred.backend.application.GetStudentPreferencesRequest;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.RespondToAISuggestionRequest;
