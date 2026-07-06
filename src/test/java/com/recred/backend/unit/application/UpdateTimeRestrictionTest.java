@@ -8,6 +8,7 @@ import com.recred.backend.domain.models.RestriccionHoraria;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -64,7 +65,6 @@ class UpdateTimeRestrictionTest {
         assertEquals(nuevaCategoriaId, guardada.getCategoria().getId());
         assertEquals(nuevaClasificacionId, guardada.getClasificacionSalud().getId());
 
-        // Assert response values
         assertNotNull(response);
         assertEquals(nuevoTimeSlotId, response.franjaHoraria().id());
         assertEquals(nuevaCategoriaId, response.categoria().id());
@@ -98,7 +98,6 @@ class UpdateTimeRestrictionTest {
         assertNull(guardada.getCategoria());
         assertNull(guardada.getClasificacionSalud());
 
-        // Assert response values
         assertNotNull(response);
         assertEquals(nuevoTimeSlotId, response.franjaHoraria().id());
         assertNull(response.categoria());
@@ -112,8 +111,10 @@ class UpdateTimeRestrictionTest {
 
         when(repository.findById(restrictionId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class,
-                () -> updateTimeRestriction.execute(request));
+        Executable execution = () -> updateTimeRestriction.execute(request);
+
+        assertThrows(RuntimeException.class, execution);
+        verify(repository, never()).save(any());
     }
 
     @Test
@@ -132,10 +133,9 @@ class UpdateTimeRestrictionTest {
         when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> updateTimeRestriction.execute(request)
-        );
+        Executable execution = () -> updateTimeRestriction.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
         verify(repository, never()).save(any());
     }
 
@@ -160,10 +160,9 @@ class UpdateTimeRestrictionTest {
         when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> updateTimeRestriction.execute(request)
-        );
+        Executable execution = () -> updateTimeRestriction.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
         verify(repository, never()).save(any());
     }
 }

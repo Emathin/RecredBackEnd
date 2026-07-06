@@ -361,6 +361,25 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Purchase> findByBuffetAndPickupOrCreationDateRange(
+            UUID buffetId,
+            LocalDate startDate,
+            LocalDate endDate,
+            LocalDateTime start,
+            LocalDateTime end) {
+        return springDataRepository.findByBuffetAndPickupOrCreationDateRange(
+                buffetId,
+                startDate,
+                endDate,
+                start,
+                end
+        ).stream()
+                .map(CompraEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Purchase> findExpiredAdvancePurchases(LocalDate date,
             LocalTime time,
             List<EstadoCompra> statuses) {
@@ -395,6 +414,17 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
                 buffetId,
                 pickupSlotId,
                 pickupDate,
+                statuses);
+    }
+
+    @Override
+    public boolean existsActiveFutureScheduledByPickupSlotId(
+            UUID pickupSlotId,
+            LocalDate fromDate,
+            List<EstadoCompra> statuses) {
+        return springDataRepository.existsActiveFutureScheduledByPickupSlotId(
+                pickupSlotId,
+                fromDate,
                 statuses);
     }
 

@@ -11,7 +11,7 @@ import com.recred.backend.application.GetFavoritesByStudent;
 import com.recred.backend.application.GetFavoritesByStudentRequest;
 import com.recred.backend.application.GetFavoritesByStudentResponse;
 import com.recred.backend.application.GetStudentPreferences;
-import com.recred.backend.application.GetStudentPreferencesByUserRequest;
+import com.recred.backend.application.GetStudentPreferencesRequest;
 import com.recred.backend.application.GetStudentPreferencesResponse;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.RespondToAISuggestionRequest;
@@ -50,6 +50,19 @@ class StudentPreferenceControllerTest {
     private GetFavoritesByStudent getFavoritesByStudent;
     private StudentPreferenceController controller;
 
+    private UUID userId;
+    private UUID studentId;
+    private UUID buffetId;
+    private UUID productId;
+    private UUID suggestionId;
+    private UUID childId;
+    private UUID childUserId;
+    private DetectStudentPreferencesResponse detectedPreference;
+    private ResponseEntity<StudentPreferenceResponseDTO> preferenceResponse;
+    private ResponseEntity<List<StudentPreferenceResponseDTO>> preferencesResponse;
+    private ResponseEntity<List<ProductResponseDTO>> favoriteProductsResponse;
+    private ResponseEntity<Void> voidResponse;
+
     @BeforeEach
     void setUp() {
         detectStudentPreferences = mock(DetectStudentPreferences.class);
@@ -72,73 +85,53 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void returnPreferenceResponseWhenPreferenceIsDetected() {
-        UUID userId = randomUUID();
-        UUID studentId = randomUUID();
-        UUID buffetId = randomUUID();
-        UUID productId = randomUUID();
-        DetectStudentPreferencesResponse detected = new DetectStudentPreferencesResponse(
-                "Yogur con Cereales",
-                "He notado que te gusta...",
-                productId,
-                "Frecuencia alta"
-        );
-        givenStudentIdForUser(userId, studentId);
-        givenPreferenceDetected(studentId, buffetId, detected);
+    void givenDetectedPreference_whenDetectingPreference_thenReturnsPreferenceResponse() {
+        givenDetectedPreferenceScenario();
+        givenStudentIdForUser();
+        givenPreferenceDetected();
 
-        ResponseEntity<StudentPreferenceResponseDTO> response =
-                whenDetectingPreference(userId, buffetId);
+        whenDetectingPreference();
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(detected.titulo(), response.getBody().titulo());
+        thenPreferenceResponseIsReturned();
     }
 
     @Test
-    void returnNoContentWhenNoAIPreferenceIsDetected() {
-        UUID userId = randomUUID();
-        UUID studentId = randomUUID();
-        UUID buffetId = randomUUID();
-        givenStudentIdForUser(userId, studentId);
-        givenNoPreferenceDetected(studentId, buffetId);
+    void givenNoPreferenceDetected_whenDetectingPreference_thenReturnsNoContent() {
+        givenNoPreferenceDetectedScenario();
+        givenStudentIdForUser();
+        givenNoPreferenceDetected();
 
-        ResponseEntity<StudentPreferenceResponseDTO> response =
-                whenDetectingPreference(userId, buffetId);
+        whenDetectingPreference();
 
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        thenPreferenceResponseIsNoContent();
     }
 
     @Test
-    void detectPreferenceUsingUserId() {
-        UUID userId = randomUUID();
-        UUID studentId = randomUUID();
-        UUID buffetId = randomUUID();
-        DetectStudentPreferencesRequest request =
-                new DetectStudentPreferencesRequest(studentId, buffetId);
-        givenStudentIdForUser(userId, studentId);
-        givenNoPreferenceDetected(request);
+    void givenUserId_whenDetectingPreference_thenUsesResolvedStudentId() {
+        givenNoPreferenceDetectedScenario();
+        givenStudentIdForUser();
+        givenNoPreferenceDetectedForResolvedStudent();
 
-        ResponseEntity<StudentPreferenceResponseDTO> response =
-                whenDetectingPreference(userId, buffetId);
+        whenDetectingPreference();
 
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        verify(detectStudentPreferences).execute(request);
+        thenPreferenceResponseIsNoContent();
+        thenDetectPreferenceWasCalledWithResolvedStudentId();
     }
 
     @Test
-    void returnNoContentWhenPreferenceListIsEmpty() {
-        UUID userId = randomUUID();
-        givenPreferencesByUser(userId);
+    void givenEmptyPreferenceList_whenGettingPreferences_thenReturnsNoContent() {
+        givenUserId();
+        givenPreferencesByUser();
 
-        ResponseEntity<List<StudentPreferenceResponseDTO>> response =
-                whenGettingPreferences(userId);
+        whenGettingPreferences();
 
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        thenPreferencesResponseIsNoContent();
     }
 
     @Test
-    void returnOkWithPreferencesListWhenTheyExist() {
-        UUID userId = randomUUID();
-        givenPreferencesByUser(userId, preference(
+    void givenExistingPreferences_whenGettingPreferences_thenReturnsPreferences() {
+        givenUserId();
+        givenPreferencesByUser(preference(
                 randomUUID(),
                 null,
                 null,
@@ -149,19 +142,15 @@ class StudentPreferenceControllerTest {
                 "Msg"
         ));
 
-        ResponseEntity<List<StudentPreferenceResponseDTO>> response =
-                whenGettingPreferences(userId);
+        whenGettingPreferences();
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(1, response.getBody().size());
+        thenPreferencesAreReturned();
     }
 
     @Test
-    void returnOkWithParentPreferenceView() {
-        UUID userId = randomUUID();
-        UUID childId = randomUUID();
-        UUID childUserId = randomUUID();
-        givenPreferencesByUser(userId, preference(
+    void givenParentPreferenceView_whenGettingPreferences_thenReturnsParentTitle() {
+        givenParentPreferenceView();
+        givenPreferencesByUser(preference(
                 randomUUID(),
                 childId,
                 childUserId,
@@ -172,61 +161,210 @@ class StudentPreferenceControllerTest {
                 "Puede gustarle"
         ));
 
-        ResponseEntity<List<StudentPreferenceResponseDTO>> response =
-                whenGettingPreferences(userId);
+        whenGettingPreferences();
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Ana Lopez: Probar fruta", response.getBody().get(0).titulo());
-        assertEquals(childId, response.getBody().get(0).alumnoId());
-        assertEquals(childUserId, response.getBody().get(0).alumnoUserId());
+        thenParentPreferenceViewIsReturned();
     }
 
     @Test
-    void respondToAISuggestionSuccessfully() {
-        UUID sugerenciaId = randomUUID();
+    void givenAISuggestionResponse_whenResponding_thenDelegatesAndReturnsOk() {
+        givenAISuggestionResponse();
 
-        ResponseEntity<Void> response = whenRespondingToSuggestion(sugerenciaId, true);
+        whenRespondingToSuggestion();
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
+        thenSuggestionResponseIsOk();
+        thenAISuggestionWasAnswered();
+    }
+
+    @Test
+    void givenFavoriteProductRequest_whenAddingFavorite_thenDelegatesAndReturnsOk() {
+        givenFavoriteProductRequest();
+
+        whenAddingFavorite();
+
+        thenFavoriteProductIsAdded();
+    }
+
+    @Test
+    void givenFavoriteProductRequest_whenRemovingFavorite_thenDelegatesAndReturnsOk() {
+        givenFavoriteProductRequest();
+
+        whenRemovingFavorite();
+
+        thenFavoriteProductIsRemoved();
+    }
+
+    @Test
+    void givenFavoriteProducts_whenGettingFavorites_thenReturnsProducts() {
+        givenFavoriteProductsScenario();
+        givenFavoriteProducts();
+
+        whenGettingFavorites();
+
+        thenFavoriteProductsAreReturned();
+        thenGetFavoritesWasCalled();
+    }
+
+    private void givenDetectedPreferenceScenario() {
+        userId = randomUUID();
+        studentId = randomUUID();
+        buffetId = randomUUID();
+        productId = randomUUID();
+        detectedPreference = new DetectStudentPreferencesResponse(
+                "Yogur con Cereales",
+                "He notado que te gusta...",
+                productId,
+                "Frecuencia alta"
+        );
+    }
+
+    private void givenNoPreferenceDetectedScenario() {
+        userId = randomUUID();
+        studentId = randomUUID();
+        buffetId = randomUUID();
+    }
+
+    private void givenUserId() {
+        userId = randomUUID();
+    }
+
+    private void givenParentPreferenceView() {
+        userId = randomUUID();
+        childId = randomUUID();
+        childUserId = randomUUID();
+    }
+
+    private void givenAISuggestionResponse() {
+        suggestionId = randomUUID();
+    }
+
+    private void givenFavoriteProductRequest() {
+        studentId = randomUUID();
+        productId = randomUUID();
+    }
+
+    private void givenFavoriteProductsScenario() {
+        studentId = randomUUID();
+        productId = randomUUID();
+    }
+
+    private void givenStudentIdForUser() {
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+    }
+
+    private void givenPreferenceDetected() {
+        when(detectStudentPreferences.execute(detectRequest()))
+                .thenReturn(Optional.of(detectedPreference));
+    }
+
+    private void givenNoPreferenceDetected() {
+        when(detectStudentPreferences.execute(detectRequest())).thenReturn(Optional.empty());
+    }
+
+    private void givenNoPreferenceDetectedForResolvedStudent() {
+        givenNoPreferenceDetected();
+    }
+
+    private void givenPreferencesByUser(
+            GetStudentPreferencesResponse.Preference... preferences) {
+        when(getStudentPreferences.execute(userPreferencesRequest()))
+                .thenReturn(new GetStudentPreferencesResponse(List.of(preferences)));
+    }
+
+    private void givenFavoriteProducts() {
+        when(getFavoritesByStudent.execute(new GetFavoritesByStudentRequest(studentId)))
+                .thenReturn(Set.of(favoriteProduct(productId)));
+    }
+
+    private void whenDetectingPreference() {
+        preferenceResponse = controller.detect(userId, buffetId);
+    }
+
+    private void whenGettingPreferences() {
+        preferencesResponse = controller.getPreferences(userId, false, null);
+    }
+
+    private void whenRespondingToSuggestion() {
+        voidResponse = controller.respond(suggestionId, true);
+    }
+
+    private void whenAddingFavorite() {
+        voidResponse = controller.agregarFavorito(studentId, productId);
+    }
+
+    private void whenRemovingFavorite() {
+        voidResponse = controller.removerFavorito(studentId, productId);
+    }
+
+    private void whenGettingFavorites() {
+        favoriteProductsResponse = controller.obtenerFavoritos(studentId);
+    }
+
+    private void thenPreferenceResponseIsReturned() {
+        assertEquals(HttpStatus.OK, preferenceResponse.getStatusCode());
+        assertEquals(detectedPreference.titulo(), preferenceResponse.getBody().titulo());
+    }
+
+    private void thenPreferenceResponseIsNoContent() {
+        assertEquals(HttpStatus.NO_CONTENT, preferenceResponse.getStatusCode());
+    }
+
+    private void thenDetectPreferenceWasCalledWithResolvedStudentId() {
+        verify(detectStudentPreferences).execute(detectRequest());
+    }
+
+    private void thenPreferencesResponseIsNoContent() {
+        assertEquals(HttpStatus.NO_CONTENT, preferencesResponse.getStatusCode());
+    }
+
+    private void thenPreferencesAreReturned() {
+        assertEquals(HttpStatus.OK, preferencesResponse.getStatusCode());
+        assertEquals(1, preferencesResponse.getBody().size());
+    }
+
+    private void thenParentPreferenceViewIsReturned() {
+        assertEquals(HttpStatus.OK, preferencesResponse.getStatusCode());
+        assertEquals("Ana Lopez: Probar fruta", preferencesResponse.getBody().get(0).titulo());
+        assertEquals(childId, preferencesResponse.getBody().get(0).alumnoId());
+        assertEquals(childUserId, preferencesResponse.getBody().get(0).alumnoUserId());
+    }
+
+    private void thenSuggestionResponseIsOk() {
+        assertEquals(HttpStatus.OK, voidResponse.getStatusCode());
+    }
+
+    private void thenAISuggestionWasAnswered() {
         verify(respondToAISuggestion).execute(
-                new RespondToAISuggestionRequest(sugerenciaId, true));
+                new RespondToAISuggestionRequest(suggestionId, true));
     }
 
-    @Test
-    void addFavoriteSuccessfully() {
-        UUID studentId = randomUUID();
-        UUID productoId = randomUUID();
-
-        ResponseEntity<Void> response = whenAddingFavorite(studentId, productoId);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(addFavoriteProduct).execute(new AddFavoriteProductRequest(studentId, productoId));
+    private void thenFavoriteProductIsAdded() {
+        assertEquals(HttpStatus.OK, voidResponse.getStatusCode());
+        verify(addFavoriteProduct).execute(new AddFavoriteProductRequest(studentId, productId));
     }
 
-    @Test
-    void removeFavoriteSuccessfully() {
-        UUID studentId = randomUUID();
-        UUID productoId = randomUUID();
-
-        ResponseEntity<Void> response = whenRemovingFavorite(studentId, productoId);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
+    private void thenFavoriteProductIsRemoved() {
+        assertEquals(HttpStatus.OK, voidResponse.getStatusCode());
         verify(deleteFavoriteProduct).execute(
-                new DeleteFavoriteProductRequest(studentId, productoId));
+                new DeleteFavoriteProductRequest(studentId, productId));
     }
 
-    @Test
-    void getFavoritesSuccessfully() {
-        UUID studentId = randomUUID();
-        UUID productId = randomUUID();
-        givenFavoriteProducts(studentId, favoriteProduct(productId));
+    private void thenFavoriteProductsAreReturned() {
+        assertEquals(HttpStatus.OK, favoriteProductsResponse.getStatusCode());
+        assertEquals(1, favoriteProductsResponse.getBody().size());
+        assertEquals(productId, favoriteProductsResponse.getBody().get(0).id());
+    }
 
-        ResponseEntity<List<ProductResponseDTO>> response = whenGettingFavorites(studentId);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(1, response.getBody().size());
-        assertEquals(productId, response.getBody().get(0).id());
+    private void thenGetFavoritesWasCalled() {
         verify(getFavoritesByStudent).execute(new GetFavoritesByStudentRequest(studentId));
+    }
+
+    private DetectStudentPreferencesRequest detectRequest() {
+        return new DetectStudentPreferencesRequest(studentId, buffetId);
+    }
+
+    private GetStudentPreferencesRequest userPreferencesRequest() {
+        return GetStudentPreferencesRequest.byUser(userId, false, null);
     }
 
     private GetStudentPreferencesResponse.Preference preference(
@@ -237,8 +375,7 @@ class StudentPreferenceControllerTest {
             String firstName,
             String lastName,
             String title,
-            String message
-    ) {
+            String message) {
         return new GetStudentPreferencesResponse.Preference(
                 suggestionId,
                 studentId,
@@ -255,74 +392,6 @@ class StudentPreferenceControllerTest {
                 null,
                 parentView
         );
-    }
-
-    private void givenStudentIdForUser(UUID userId, UUID studentId) {
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
-    }
-
-    private void givenPreferenceDetected(
-            UUID studentId,
-            UUID buffetId,
-            DetectStudentPreferencesResponse detected) {
-        when(detectStudentPreferences.execute(
-                new DetectStudentPreferencesRequest(studentId, buffetId)))
-                .thenReturn(Optional.of(detected));
-    }
-
-    private void givenNoPreferenceDetected(UUID studentId, UUID buffetId) {
-        givenNoPreferenceDetected(new DetectStudentPreferencesRequest(studentId, buffetId));
-    }
-
-    private void givenNoPreferenceDetected(DetectStudentPreferencesRequest request) {
-        when(detectStudentPreferences.execute(request)).thenReturn(Optional.empty());
-    }
-
-    private void givenPreferencesByUser(
-            UUID userId,
-            GetStudentPreferencesResponse.Preference... preferences) {
-        when(getStudentPreferences.executeByUserId(userPreferencesRequest(userId)))
-                .thenReturn(new GetStudentPreferencesResponse(List.of(preferences)));
-    }
-
-    private void givenFavoriteProducts(
-            UUID studentId,
-            GetFavoritesByStudentResponse... favorites) {
-        when(getFavoritesByStudent.execute(new GetFavoritesByStudentRequest(studentId)))
-                .thenReturn(Set.of(favorites));
-    }
-
-    private ResponseEntity<StudentPreferenceResponseDTO> whenDetectingPreference(
-            UUID userId,
-            UUID buffetId) {
-        return controller.detect(userId, buffetId);
-    }
-
-    private ResponseEntity<List<StudentPreferenceResponseDTO>> whenGettingPreferences(
-            UUID userId) {
-        return controller.getPreferences(userId, false, null);
-    }
-
-    private ResponseEntity<Void> whenRespondingToSuggestion(
-            UUID suggestionId,
-            boolean accepted) {
-        return controller.respond(suggestionId, accepted);
-    }
-
-    private ResponseEntity<Void> whenAddingFavorite(UUID studentId, UUID productId) {
-        return controller.agregarFavorito(studentId, productId);
-    }
-
-    private ResponseEntity<Void> whenRemovingFavorite(UUID studentId, UUID productId) {
-        return controller.removerFavorito(studentId, productId);
-    }
-
-    private ResponseEntity<List<ProductResponseDTO>> whenGettingFavorites(UUID studentId) {
-        return controller.obtenerFavoritos(studentId);
-    }
-
-    private GetStudentPreferencesByUserRequest userPreferencesRequest(UUID userId) {
-        return new GetStudentPreferencesByUserRequest(userId, false, null);
     }
 
     private GetFavoritesByStudentResponse favoriteProduct(UUID productId) {
@@ -351,4 +420,3 @@ class StudentPreferenceControllerTest {
         );
     }
 }
-

@@ -34,11 +34,12 @@ public class ApproveSchoolRegistration {
     }
 
     @Transactional
-    public void execute(ApproveSchoolRegistrationRequest request) {
+    public ApproveSchoolRegistrationResponse execute(ApproveSchoolRegistrationRequest request) {
         SchoolRegistrationRequest registration = fetchPendingRegistration(request.registrationId());
         Colegio newColegio = createAndSaveColegio(registration);
         createAndSaveDirectorUser(registration, newColegio);
         updateRegistrationStatus(registration);
+        return new ApproveSchoolRegistrationResponse();
     }
 
     private SchoolRegistrationRequest fetchPendingRegistration(UUID id) {
@@ -56,7 +57,6 @@ public class ApproveSchoolRegistration {
         colegio.setEmail(req.getSchoolEmail());
         colegio.setTelefono(req.getSchoolPhone());
         colegio.setCue(req.getSchoolCue());
-        colegio.setNivel(req.getSchoolLevel());
         colegio.setActivo(true);
         colegio.setCreadoEn(LocalDateTime.now());
         colegio.setActualizadoEn(LocalDateTime.now());

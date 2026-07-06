@@ -123,12 +123,15 @@ class UpdateTutorDashboardConfigTest {
     }
 
     @Test
-    void request_shouldThrowException_whenInvalidData() {
+    void request_shouldThrowException_whenCognitoSubjectIsNull() {
         IllegalArgumentException ex1 = assertThrows(IllegalArgumentException.class, () ->
                 new UpdateTutorDashboardConfigRequest(null, "config").validate()
         );
         assertEquals("El usuario es obligatorio", ex1.getMessage());
+    }
 
+    @Test
+    void request_shouldThrowException_whenConfigIsNull() {
         IllegalArgumentException ex2 = assertThrows(IllegalArgumentException.class, () ->
                 new UpdateTutorDashboardConfigRequest("sub", null).validate()
         );

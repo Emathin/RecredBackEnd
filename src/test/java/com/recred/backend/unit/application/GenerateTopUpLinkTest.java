@@ -1,7 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GenerateTopUpLink;
-import com.recred.backend.application.TopUpCommand;
+import com.recred.backend.application.GenerateTopUpLinkResponse;
+import com.recred.backend.application.GenerateTopUpLinkRequest;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import org.junit.jupiter.api.Test;
@@ -33,21 +34,23 @@ class GenerateTopUpLinkTest {
     void execute_GeneraLinkDePago_CuandoAlumnoExiste() {
         UUID studentId = UUID.randomUUID();
         BigDecimal amount = new BigDecimal("100.00");
-        TopUpCommand command = new TopUpCommand(studentId, amount);
+        GenerateTopUpLinkRequest command = new GenerateTopUpLinkRequest(studentId, amount);
         String expectedUrl = "https://link.pago";
 
         when(alumnoRepository.existsById(studentId)).thenReturn(true);
         when(externalPaymentService.createTopUpPreference(studentId, amount)).thenReturn(expectedUrl);
 
-        String result = generateTopUpLink.execute(command);
+        GenerateTopUpLinkResponse result = generateTopUpLink.execute(command);
 
-        assertEquals(expectedUrl, result);
+        assertEquals(expectedUrl, result.paymentUrl());
     }
 
     @Test
     void execute_LanzaExcepcion_CuandoAlumnoNoExiste() {
         UUID studentId = UUID.randomUUID();
-        TopUpCommand command = new TopUpCommand(studentId, new BigDecimal("100.00"));
+        GenerateTopUpLinkRequest command = new GenerateTopUpLinkRequest(
+                studentId,
+                new BigDecimal("100.00"));
 
         when(alumnoRepository.existsById(studentId)).thenReturn(false);
 

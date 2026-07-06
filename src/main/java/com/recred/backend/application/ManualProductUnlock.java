@@ -15,10 +15,11 @@ public class ManualProductUnlock {
     }
 
     @Transactional
-    public void execute(ManualProductUnlockRequest request) {
+    public ManualProductUnlockResponse execute(ManualProductUnlockRequest request) {
         Alumno alumno = this.findAlumnoById(request.alumnoId());
         alumno.desbloquearProducto(request.productoId());
         alumnoRepository.save(alumno);
+        return new ManualProductUnlockResponse();
     }
 
     private Alumno findAlumnoById(UUID alumnoId) {

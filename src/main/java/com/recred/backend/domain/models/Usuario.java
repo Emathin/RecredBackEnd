@@ -10,8 +10,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public class
-Usuario {
+public class Usuario {
 
     private UUID id;
     private Colegio colegio;
@@ -47,6 +46,31 @@ Usuario {
         if (this.alumno == null || !this.alumno.getId().equals(studentId)) {
             throw new SecurityException(
                     "No autorizado para comprar a nombre de otro alumno");
+        }
+    }
+
+    public boolean isParent() {
+        return rol == RolUsuario.PADRE;
+    }
+
+    public boolean hasFreePlan() {
+        return getPlan() == TipoPlan.GRATUITO;
+    }
+
+    public void validateCanTransferBalanceBetweenChildren() {
+        if (hasFreePlan()) {
+            throw new IllegalArgumentException(
+                    "La transferencia entre hijos no está permitida en cuentas gratuitas");
+        }
+
+        if (!isParent()) {
+            throw new SecurityException("Solo un padre puede transferir saldo");
+        }
+    }
+
+    public void validateCanLoadBalanceToChild() {
+        if (!isParent()) {
+            throw new SecurityException("Solo un padre puede cargar saldo");
         }
     }
 }

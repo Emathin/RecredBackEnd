@@ -54,7 +54,7 @@ public class SchoolAssistantController {
     ) {
         return conversations.findStudentSessions(cognitoSubject(authentication), page, size)
                 .stream()
-                .map(SchoolAssistantSessionResponse::fromDomain)
+                .map(SchoolAssistantSessionResponse::fromApplication)
                 .toList();
     }
 
@@ -72,7 +72,7 @@ public class SchoolAssistantController {
                         size
                 )
                 .stream()
-                .map(SchoolAssistantMessageResponse::fromDomain)
+                .map(SchoolAssistantMessageResponse::fromApplication)
                 .toList();
     }
 
@@ -112,7 +112,7 @@ public class SchoolAssistantController {
     ) {
         return conversations.findTutorSessions(cognitoSubject(authentication), page, size)
                 .stream()
-                .map(SchoolAssistantSessionResponse::fromDomain)
+                .map(SchoolAssistantSessionResponse::fromApplication)
                 .toList();
     }
 
@@ -130,7 +130,7 @@ public class SchoolAssistantController {
                         size
                 )
                 .stream()
-                .map(SchoolAssistantMessageResponse::fromDomain)
+                .map(SchoolAssistantMessageResponse::fromApplication)
                 .toList();
     }
 
@@ -170,7 +170,7 @@ public class SchoolAssistantController {
     ) {
         return conversations.findKiosqueroSessions(cognitoSubject(authentication), page, size)
                 .stream()
-                .map(SchoolAssistantSessionResponse::fromDomain)
+                .map(SchoolAssistantSessionResponse::fromApplication)
                 .toList();
     }
 
@@ -188,7 +188,7 @@ public class SchoolAssistantController {
                         size
                 )
                 .stream()
-                .map(SchoolAssistantMessageResponse::fromDomain)
+                .map(SchoolAssistantMessageResponse::fromApplication)
                 .toList();
     }
 

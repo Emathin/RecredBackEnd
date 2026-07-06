@@ -8,6 +8,7 @@ import com.recred.backend.domain.repositories.PresupuestoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -47,10 +48,14 @@ class UpdateBudgetRulesTest {
 
     @Test
     void execute_PresupuestoNoExiste_LanzaExcepcion() {
-        when(repository.findById(budgetId)).thenReturn(Optional.empty());
         UpdateBudgetRulesRequest request = new UpdateBudgetRulesRequest(budgetId, Collections.emptyList());
+
+        when(repository.findById(budgetId)).thenReturn(Optional.empty());
  
-        assertThrows(RuntimeException.class, () -> updateBudgetRules.execute(request));
+        Executable execution = () -> updateBudgetRules.execute(request);
+
+        assertThrows(RuntimeException.class, execution);
+        verify(repository, never()).save(any());
     }
  
     @Test
@@ -72,9 +77,8 @@ class UpdateBudgetRulesTest {
         assertEquals(1, guardado.getReglasCategoria().size());
         assertEquals(new BigDecimal("10.00"), guardado.getReglasCategoria().get(0).getPorcentajeLimite());
  
-        assertEquals(new BigDecimal("500.00"), guardado.getReglasCategoria().get(0).getMontoLimiteCalculado());
-
-        // Assert response values
+        assertEquals(new BigDecimal("500.00"),
+                guardado.getReglasCategoria().get(0).getMontoLimiteCalculado());
         assertEquals(budgetId, response.id());
         assertEquals(1, response.reglasCategoria().size());
         assertEquals(new BigDecimal("10.00"), response.reglasCategoria().get(0).porcentajeLimite());
@@ -107,10 +111,9 @@ class UpdateBudgetRulesTest {
                 new UpdateBudgetRulesRequest.CategoryRuleRequest(UUID.randomUUID(), new BigDecimal("50.00"));
         UpdateBudgetRulesRequest request = new UpdateBudgetRulesRequest(budgetId, List.of(rule1, rule2));
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                updateBudgetRules.execute(request)
-        );
+        Executable execution = () -> updateBudgetRules.execute(request);
 
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertTrue(exception.getMessage().contains("La suma de los porcentajes no puede superar el 100%"));
         verify(repository, never()).save(any());
     }

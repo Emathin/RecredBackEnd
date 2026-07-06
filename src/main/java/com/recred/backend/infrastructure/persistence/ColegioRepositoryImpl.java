@@ -6,7 +6,10 @@ import com.recred.backend.infrastructure.entities.ColegioEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class ColegioRepositoryImpl implements ColegioRepository {
@@ -16,6 +19,13 @@ public class ColegioRepositoryImpl implements ColegioRepository {
     public ColegioRepositoryImpl(SpringDataColegioRepository springDataColegioRepository) {
         this.springDataColegioRepository = springDataColegioRepository;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Colegio> findById(UUID id) {
+        return springDataColegioRepository.findById(id).map(ColegioEntity::toDomain);
+    }
+
 
     @Override
     public List<Colegio> findAllActive() {

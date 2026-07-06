@@ -2,12 +2,14 @@ package com.recred.backend.unit.domain.services;
 
 
 import com.recred.backend.domain.models.*;
+import com.recred.backend.domain.repositories.BuffetRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.services.RecessTimeSlotResolver;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -94,6 +96,38 @@ class RecessTimeSlotResolverTest {
     }
 
     @Test
+    void resolveByBuffet_ShouldUseBuffetSchoolTimeSlots() {
+        UUID buffetId = UUID.randomUUID();
+        UUID schoolId = UUID.randomUUID();
+        FranjaHoraria first = slot("Primer recreo", 9);
+        FranjaHorariaRepository repository = mock(FranjaHorariaRepository.class);
+        BuffetRepository buffetRepository = mock(BuffetRepository.class);
+        RecessTimeSlotResolver resolver =
+                new RecessTimeSlotResolver(repository, buffetRepository);
+
+        when(buffetRepository.findById(buffetId)).thenReturn(Optional.of(buffet(schoolId)));
+        when(repository.findAllByColegioId(schoolId)).thenReturn(List.of(first));
+
+        FranjaHoraria result = resolver.resolveByBuffet(buffetId, RecessTime.FIRST_RECESS);
+
+        assertEquals(first.getId(), result.getId());
+    }
+
+    @Test
+    void resolveByBuffet_WhenBuffetSchoolIsMissing_ShouldThrowException() {
+        UUID buffetId = UUID.randomUUID();
+        FranjaHorariaRepository repository = mock(FranjaHorariaRepository.class);
+        BuffetRepository buffetRepository = mock(BuffetRepository.class);
+        RecessTimeSlotResolver resolver =
+                new RecessTimeSlotResolver(repository, buffetRepository);
+
+        when(buffetRepository.findById(buffetId)).thenReturn(Optional.of(new Buffet()));
+
+        assertThrows(RuntimeException.class,
+                () -> resolver.resolveByBuffet(buffetId, RecessTime.FIRST_RECESS));
+    }
+
+    @Test
     void resolve_WhenStudentSchoolIsMissing_ShouldThrowException() {
         FranjaHorariaRepository repository = mock(FranjaHorariaRepository.class);
         RecessTimeSlotResolver resolver = new RecessTimeSlotResolver(repository);
@@ -124,6 +158,15 @@ class RecessTimeSlotResolverTest {
         student.setId(UUID.randomUUID());
         student.setGrado(grade);
         return student;
+    }
+
+    private Buffet buffet(UUID schoolId) {
+        Colegio school = new Colegio();
+        school.setId(schoolId);
+        Buffet buffet = new Buffet();
+        buffet.setId(UUID.randomUUID());
+        buffet.setColegio(school);
+        return buffet;
     }
 
     private FranjaHoraria slot(String description, int hour) {

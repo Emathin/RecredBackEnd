@@ -46,7 +46,7 @@ public class AddProductRecommendation {
     }
 
     @Transactional
-    public void execute() {
+    public AddProductRecommendationResponse execute(AddProductRecommendationRequest request) {
         List<Kiosquero> kiosqueros = kiosqueroRepository.findAll();
         LocalDateTime since = LocalDateTime.now().minusMonths(1);
 
@@ -56,6 +56,7 @@ public class AddProductRecommendation {
                 recommendProduct(kiosquero, product, since);
             }
         }
+        return new AddProductRecommendationResponse();
     }
 
     private UUID getBuffetIdForKiosquero(Kiosquero kiosquero) {

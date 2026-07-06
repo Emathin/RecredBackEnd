@@ -22,10 +22,11 @@ public class SubmitSchoolRegistration {
         this.usuarioRepository = usuarioRepository;
     }
 
-    public void execute(SubmitSchoolRegistrationRequest request) {
+    public SubmitSchoolRegistrationResponse execute(SubmitSchoolRegistrationRequest request) {
         validateRequest(request);
         SchoolRegistrationRequest newRequest = buildRequestEntity(request);
         repository.save(newRequest);
+        return new SubmitSchoolRegistrationResponse();
     }
 
     private void validateRequest(SubmitSchoolRegistrationRequest req) {
@@ -58,7 +59,6 @@ public class SubmitSchoolRegistration {
         entity.setSchoolEmail(req.schoolEmail());
         entity.setSchoolPhone(req.schoolPhone());
         entity.setSchoolCue(req.schoolCue());
-        entity.setSchoolLevel(req.schoolLevel());
         setDirectorFields(entity, req);
         setMetadata(entity);
         return entity;

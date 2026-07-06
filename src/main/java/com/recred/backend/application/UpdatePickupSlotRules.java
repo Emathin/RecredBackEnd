@@ -5,8 +5,6 @@ import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 public class UpdatePickupSlotRules {
 
     private final FranjaHorariaRepository franjaHorariaRepository;
@@ -16,13 +14,13 @@ public class UpdatePickupSlotRules {
     }
 
     @Transactional
-    public FranjaHoraria execute(UUID slotId, Integer cupoMaximo, Integer minutosCorte) {
-        FranjaHoraria slot = franjaHorariaRepository.findById(slotId)
-                .orElseThrow(() -> new PickupSlotRulesNotFoundException(slotId));
+    public UpdatePickupSlotRulesResponse execute(UpdatePickupSlotRulesRequest request) {
+        FranjaHoraria slot = franjaHorariaRepository.findById(request.slotId())
+                .orElseThrow(() -> new PickupSlotRulesNotFoundException(request.slotId()));
 
-        slot.setCupoMaximo(cupoMaximo);
-        slot.setMinutosCorte(validatedCutoff(minutosCorte));
-        return franjaHorariaRepository.save(slot);
+        slot.setCupoMaximo(request.cupoMaximo());
+        slot.setMinutosCorte(validatedCutoff(request.minutosCorte()));
+        return UpdatePickupSlotRulesResponse.fromDomain(franjaHorariaRepository.save(slot));
     }
 
     private int validatedCutoff(Integer minutosCorte) {

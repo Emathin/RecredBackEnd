@@ -31,9 +31,9 @@ public class ConfirmPaymentAndCredit {
     }
 
     @Transactional
-    public void execute(String paymentId) {
+    public ConfirmPaymentAndCreditResponse execute(ConfirmPaymentAndCreditRequest request) {
 
-        PaymentDetails details = externalPaymentService.getPaymentDetails(paymentId);
+        PaymentDetails details = externalPaymentService.getPaymentDetails(request.paymentId());
 
         if (details.status() == PaymentStatus.APPROVED) {
             Billetera wallet = walletRepository.findByStudentId(details.studentId())
@@ -49,6 +49,7 @@ public class ConfirmPaymentAndCredit {
                     details.amount(),
                     "Acreditacion de pago Mercado Pago: " + details.paymentId());
         }
+        return new ConfirmPaymentAndCreditResponse();
     }
 
     private void registerSystemMovement(

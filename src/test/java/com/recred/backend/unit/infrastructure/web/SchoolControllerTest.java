@@ -1,10 +1,14 @@
 package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.application.GetActiveSchools;
+import com.recred.backend.application.GetActiveSchoolsRequest;
 import com.recred.backend.application.GetActiveSchoolsResponse;
 import com.recred.backend.application.GetGradesBySchool;
 import com.recred.backend.application.GetGradesBySchoolRequest;
 import com.recred.backend.application.GetGradesBySchoolResponse;
+import com.recred.backend.application.GetSchoolOverview;
+import com.recred.backend.application.GetSchoolOverviewRequest;
+import com.recred.backend.application.GetSchoolOverviewResponse;
 import com.recred.backend.domain.exceptions.SchoolNotFoundException;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.Grado;
@@ -19,6 +23,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 import java.util.Map;
@@ -37,12 +43,14 @@ class SchoolControllerTest {
     private GetActiveSchools getActiveSchools;
     @Mock
     private GetGradesBySchool getGradesBySchool;
+    @Mock
+    private GetSchoolOverview getSchoolOverview;
 
     private SchoolController schoolController;
 
     @BeforeEach
     void setUp() {
-        schoolController = new SchoolController(getActiveSchools, getGradesBySchool);
+        schoolController = new SchoolController(getActiveSchools, getGradesBySchool, getSchoolOverview);
     }
 
     @Test
@@ -55,7 +63,7 @@ class SchoolControllerTest {
         SchoolResponseDTO school = firstOkBody(response);
         assertEquals(schoolId, school.id());
         assertEquals("North School", school.nombre());
-        verify(getActiveSchools).execute();
+        verify(getActiveSchools).execute(new GetActiveSchoolsRequest());
     }
 
     @Test
@@ -74,6 +82,27 @@ class SchoolControllerTest {
     }
 
     @Test
+    void getMySchoolOverview_ReturnsOverview() {
+        UUID schoolId = randomUUID();
+        String sub = "test-subject";
+        Authentication auth = new TestingAuthenticationToken(sub, null);
+        
+        GetSchoolOverviewResponse responseObj = new GetSchoolOverviewResponse(
+                schoolId, "Colegio Test", "12345", List.of());
+        
+        when(getSchoolOverview.execute(new GetSchoolOverviewRequest(sub)))
+                .thenReturn(responseObj);
+
+        ResponseEntity<GetSchoolOverviewResponse> response = schoolController.getMySchoolOverview(auth);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        GetSchoolOverviewResponse body = response.getBody();
+        assertNotNull(body);
+        assertEquals(schoolId, body.id());
+        assertEquals("Colegio Test", body.nombre());
+    }
+
+    @Test
     void handleSchoolNotFound_ReturnsErrorMessage() {
         UUID schoolId = randomUUID();
         SchoolNotFoundException exception = new SchoolNotFoundException(schoolId);
@@ -84,7 +113,7 @@ class SchoolControllerTest {
     }
 
     private void givenActiveSchools(Colegio... schools) {
-        when(getActiveSchools.execute())
+        when(getActiveSchools.execute(new GetActiveSchoolsRequest()))
                 .thenReturn(GetActiveSchoolsResponse.fromDomain(List.of(schools)));
     }
 
@@ -133,4 +162,3 @@ class SchoolControllerTest {
         return response.getBody().get(0);
     }
 }
-

@@ -34,7 +34,6 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -43,6 +42,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.recred.backend.infrastructure.web.TutorAccessGuard;
 
 @ExtendWith(MockitoExtension.class)
 class BudgetControllerTest {
@@ -63,6 +64,9 @@ class BudgetControllerTest {
 
     @Mock
     private UpdateBudgetRules updateBudgetRules;
+
+    @Mock
+    private TutorAccessGuard tutorAccessGuard;
 
     @InjectMocks
     private BudgetController budgetController;
@@ -175,7 +179,8 @@ class BudgetControllerTest {
     @Test
     void disable_Retorna204NoContent() throws Exception {
 
-        doNothing().when(disableBudget).execute(new DisableBudgetRequest(budgetId));
+        when(disableBudget.execute(new DisableBudgetRequest(budgetId)))
+                .thenReturn(new com.recred.backend.application.DisableBudgetResponse());
 
         mockMvc.perform(patch("/api/v1/budgets/{budgetId}/disable", budgetId)
                         .contentType(MediaType.APPLICATION_JSON))
@@ -219,4 +224,3 @@ class BudgetControllerTest {
         verify(updateBudgetRules).execute(any(UpdateBudgetRulesRequest.class));
     }
 }
-

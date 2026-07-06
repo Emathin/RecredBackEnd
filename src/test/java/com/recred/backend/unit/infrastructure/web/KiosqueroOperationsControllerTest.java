@@ -8,6 +8,8 @@ import com.recred.backend.application.GenerateDailyBuffetReport;
 import com.recred.backend.application.GenerateDailyBuffetReportRequest;
 import com.recred.backend.application.GenerateDailyBuffetReportResponse;
 import com.recred.backend.application.GetBuffetTimeSlots;
+import com.recred.backend.application.GetBuffetTimeSlotsRequest;
+import com.recred.backend.application.GetTimeSlotsBySchoolResponse;
 import com.recred.backend.application.GetDailyBuffetCloseStatus;
 import com.recred.backend.application.GetDailyBuffetCloseStatusRequest;
 import com.recred.backend.application.GetDailyBuffetCloseStatusResponse;
@@ -21,16 +23,19 @@ import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListInventoryProductsRequest;
 import com.recred.backend.application.ListInventoryProductsResponse;
 import com.recred.backend.application.ListKiosqueroOrders;
-import com.recred.backend.application.ListKiosqueroOperationalAlertsResponse;
 import com.recred.backend.application.ListKiosqueroOrdersRequest;
 import com.recred.backend.application.ListKiosqueroOrdersResponse;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
+import com.recred.backend.application.ListKiosqueroOperationalAlertsRequest;
+import com.recred.backend.application.ListKiosqueroOperationalAlertsResponse;
+import com.recred.backend.application.OperationalAlertResponse;
 import com.recred.backend.application.UpdatePickupSlotRules;
+import com.recred.backend.application.UpdatePickupSlotRulesRequest;
+import com.recred.backend.application.UpdatePickupSlotRulesResponse;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.DailyBuffetClose;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.FranjaHoraria;
-
 import com.recred.backend.domain.models.KiosqueroOperationalAlert;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.OperationalAlertSeverity;
@@ -42,6 +47,7 @@ import com.recred.backend.infrastructure.web.KiosqueroAccessGuard;
 import com.recred.backend.infrastructure.web.KiosqueroOperationalAlertResponse;
 import com.recred.backend.infrastructure.web.KiosqueroOperationsController;
 import com.recred.backend.infrastructure.web.KiosqueroOrderResponse;
+import com.recred.backend.infrastructure.web.SchoolAccessGuard;
 import com.recred.backend.infrastructure.web.TimeSlotResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -82,6 +88,7 @@ class KiosqueroOperationsControllerTest {
     private final GetKiosqueroDashboard getKiosqueroDashboard =
             mock(GetKiosqueroDashboard.class);
     private final KiosqueroAccessGuard kiosqueroAccessGuard = mock(KiosqueroAccessGuard.class);
+    private final SchoolAccessGuard schoolAccessGuard = mock(SchoolAccessGuard.class);
     private final KiosqueroOperationsController controller =
             new KiosqueroOperationsController(
                     closeDailyBuffet,
@@ -94,7 +101,8 @@ class KiosqueroOperationsControllerTest {
                     listInventoryProducts,
                     listKiosqueroOperationalAlerts,
                     getKiosqueroDashboard,
-                    kiosqueroAccessGuard
+                    kiosqueroAccessGuard,
+                    schoolAccessGuard
             );
 
     @Test
@@ -280,28 +288,30 @@ class KiosqueroOperationsControllerTest {
     void alerts_ShouldReturnMappedOperationalAlerts() {
         UUID buffetId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        ListKiosqueroOperationalAlertsResponse.KiosqueroOperationalAlertDTO alert = new ListKiosqueroOperationalAlertsResponse.KiosqueroOperationalAlertDTO(
+        OperationalAlertResponse alert = new OperationalAlertResponse(
                 buffetId,
-                OperationalAlertType.DAILY_CAPACITY_LOW,
-                OperationalAlertSeverity.WARNING,
+                OperationalAlertType.DAILY_CAPACITY_LOW.name(),
+                OperationalAlertSeverity.WARNING.name(),
                 productId,
                 null,
                 LocalDateTime.of(2026, 6, 15, 10, 0),
                 "Cupo bajo"
         );
-        ListKiosqueroOperationalAlertsResponse mockResponse = new ListKiosqueroOperationalAlertsResponse(List.of(alert));
-        when(listKiosqueroOperationalAlerts.execute(buffetId)).thenReturn(mockResponse);
+        when(listKiosqueroOperationalAlerts.execute(
+                new ListKiosqueroOperationalAlertsRequest(buffetId)))
+                .thenReturn(new ListKiosqueroOperationalAlertsResponse(List.of(alert)));
 
-        ResponseEntity<ListKiosqueroOperationalAlertsResponse> response =
+        ResponseEntity<List<KiosqueroOperationalAlertResponse>> response =
                 controller.alerts(buffetId, null);
 
-        ListKiosqueroOperationalAlertsResponse.KiosqueroOperationalAlertDTO body = response.getBody().alerts().get(0);
+        KiosqueroOperationalAlertResponse body = response.getBody().get(0);
         assertEquals(buffetId, body.buffetId());
-        assertEquals(OperationalAlertType.DAILY_CAPACITY_LOW, body.type());
-        assertEquals(OperationalAlertSeverity.WARNING, body.severity());
+        assertEquals("DAILY_CAPACITY_LOW", body.type());
+        assertEquals("WARNING", body.severity());
         assertEquals(productId, body.productId());
         assertEquals("Cupo bajo", body.message());
-        verify(listKiosqueroOperationalAlerts).execute(buffetId);
+        verify(listKiosqueroOperationalAlerts)
+                .execute(new ListKiosqueroOperationalAlertsRequest(buffetId));
     }
 
     @Test
@@ -348,18 +358,28 @@ class KiosqueroOperationsControllerTest {
         UUID buffetId = UUID.randomUUID();
         UUID colegioId = UUID.randomUUID();
         UUID slotId = UUID.randomUUID();
-        com.recred.backend.application.GetTimeSlotsBySchoolResponse slot = new com.recred.backend.application.GetTimeSlotsBySchoolResponse(
+        FranjaHoraria slot = new FranjaHoraria(
                 slotId,
                 colegioId,
                 "Primer recreo",
                 LocalTime.of(9, 30),
                 LocalTime.of(9, 45),
-                true,
-                30,
-                10
+                true
         );
+        slot.setCupoMaximo(30);
+        slot.setMinutosCorte(10);
 
-        when(getBuffetTimeSlots.execute(buffetId)).thenReturn(List.of(slot));
+        when(getBuffetTimeSlots.execute(new GetBuffetTimeSlotsRequest(buffetId)))
+                .thenReturn(List.of(new GetTimeSlotsBySchoolResponse(
+                        slotId,
+                        colegioId,
+                        "Primer recreo",
+                        LocalTime.of(9, 30),
+                        LocalTime.of(9, 45),
+                        true,
+                        30,
+                        10
+                )));
 
         ResponseEntity<List<TimeSlotResponse>> response = controller.timeSlots(buffetId, null);
 
@@ -369,29 +389,36 @@ class KiosqueroOperationsControllerTest {
         assertEquals("Primer recreo", body.descripcion());
         assertEquals(30, body.cupoMaximo());
         assertEquals(10, body.minutosCorte());
-        verify(getBuffetTimeSlots).execute(buffetId);
+        verify(getBuffetTimeSlots).execute(new GetBuffetTimeSlotsRequest(buffetId));
     }
 
     @Test
     void updatePickupSlotRules_ShouldDelegateToUseCase() {
         UUID slotId = UUID.randomUUID();
-        FranjaHoraria slot = new FranjaHoraria();
-        slot.setId(slotId);
-        slot.setDescripcion("Primer recreo");
-        slot.setCupoMaximo(10);
-        slot.setMinutosCorte(20);
-
-        when(updatePickupSlotRules.execute(slotId, 10, 20)).thenReturn(slot);
+        UpdatePickupSlotRulesRequest useCaseRequest =
+                new UpdatePickupSlotRulesRequest(slotId, 10, 20);
+        when(updatePickupSlotRules.execute(useCaseRequest))
+                .thenReturn(new UpdatePickupSlotRulesResponse(
+                        slotId,
+                        null,
+                        "Primer recreo",
+                        null,
+                        null,
+                        10,
+                        20
+                ));
 
         ResponseEntity<KiosqueroOperationsController.PickupSlotRulesResponse> response =
                 controller.updatePickupSlotRules(
                         slotId,
-                        new KiosqueroOperationsController.PickupSlotRulesRequest(10, 20)
+                        new KiosqueroOperationsController.PickupSlotRulesRequest(10, 20),
+                        null
                 );
 
         assertEquals(10, response.getBody().cupoMaximo());
         assertEquals(20, response.getBody().minutosCorte());
-        verify(updatePickupSlotRules).execute(slotId, 10, 20);
+        verify(schoolAccessGuard).requireTimeSlotAccess(null, slotId);
+        verify(updatePickupSlotRules).execute(useCaseRequest);
     }
 
     private GenerateDailyBuffetReportResponse report(UUID buffetId, LocalDate date) {
@@ -480,4 +507,3 @@ class KiosqueroOperationsControllerTest {
         return purchase;
     }
 }
-

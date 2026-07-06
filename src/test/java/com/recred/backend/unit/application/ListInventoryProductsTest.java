@@ -10,6 +10,7 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -38,8 +39,11 @@ class ListInventoryProductsTest {
 
     @Test
     void execute_WhenBuffetIdIsNull_ShouldThrowException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(new ListInventoryProductsRequest(null)));
+        ListInventoryProductsRequest request = new ListInventoryProductsRequest(null);
+
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
     }
 
     private void givenBuffet() {

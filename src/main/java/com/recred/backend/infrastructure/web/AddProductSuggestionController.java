@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AddProductRecommendation;
+import com.recred.backend.application.AddProductRecommendationRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,7 +19,7 @@ public class AddProductSuggestionController {
 
     @PostMapping("/crear")
     public ResponseEntity<Void> create() {
-        addProductRecommendation.execute();
+        addProductRecommendation.execute(new AddProductRecommendationRequest());
         return ResponseEntity.ok().build();
     }
 }

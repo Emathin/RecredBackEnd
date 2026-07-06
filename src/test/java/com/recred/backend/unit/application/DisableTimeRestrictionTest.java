@@ -6,6 +6,7 @@ import com.recred.backend.domain.models.RestriccionHoraria;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,10 +32,11 @@ class DisableTimeRestrictionTest {
         UUID restrictionId = UUID.randomUUID();
         RestriccionHoraria restriccion = new RestriccionHoraria();
         restriccion.setActiva(true);
+        DisableTimeRestrictionRequest request = new DisableTimeRestrictionRequest(restrictionId);
 
         when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccion));
 
-        disableTimeRestriction.execute(new DisableTimeRestrictionRequest(restrictionId));
+        disableTimeRestriction.execute(request);
 
         assertFalse(restriccion.isActiva());
         verify(repository).save(restriccion);
@@ -43,11 +45,13 @@ class DisableTimeRestrictionTest {
     @Test
     void execute_LanzaExcepcion_CuandoNoExiste() {
         UUID restrictionId = UUID.randomUUID();
+        DisableTimeRestrictionRequest request = new DisableTimeRestrictionRequest(restrictionId);
+
         when(repository.findById(restrictionId)).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> disableTimeRestriction.execute(new DisableTimeRestrictionRequest(restrictionId)));
+        Executable execution = () -> disableTimeRestriction.execute(request);
 
+        RuntimeException exception = assertThrows(RuntimeException.class, execution);
         assertEquals("Time restriction not found", exception.getMessage());
     }
 }

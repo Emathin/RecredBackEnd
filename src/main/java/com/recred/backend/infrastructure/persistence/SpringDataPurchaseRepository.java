@@ -126,6 +126,27 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
 
         @Query("""
                         select purchase
+                        from CompraEntity purchase
+                        left join RetiroProgramadoEntity pickup
+                        on pickup.compraEntity = purchase
+                        where purchase.buffetEntity.id = :buffetId
+                        and (
+                            (pickup.id is not null and pickup.fechaProgramada
+                            between :startDate and :endDate)
+                            or (pickup.id is null and purchase.fechaHora
+                            between :start and :end)
+                        )
+                        order by purchase.fechaHora asc
+                        """)
+        List<CompraEntity> findByBuffetAndPickupOrCreationDateRange(
+                        @Param("buffetId") UUID buffetId,
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate,
+                        @Param("start") LocalDateTime start,
+                        @Param("end") LocalDateTime end);
+
+        @Query("""
+                        select purchase
                         from CompraAnticipadaEntity purchase
                         join purchase.retiroProgramadoEntity pickup
                         where purchase.estado in :statuses
@@ -169,6 +190,19 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
                         @Param("buffetId") UUID buffetId,
                         @Param("pickupSlotId") UUID pickupSlotId,
                         @Param("pickupDate") LocalDate pickupDate,
+                        @Param("statuses") List<EstadoCompra> statuses);
+
+        @Query("""
+                        select count(purchase) > 0
+                        from CompraAnticipadaEntity purchase
+                        join purchase.retiroProgramadoEntity pickup
+                        where pickup.franja.id = :pickupSlotId
+                        and pickup.fechaProgramada >= :fromDate
+                        and purchase.estado in :statuses
+                        """)
+        boolean existsActiveFutureScheduledByPickupSlotId(
+                        @Param("pickupSlotId") UUID pickupSlotId,
+                        @Param("fromDate") LocalDate fromDate,
                         @Param("statuses") List<EstadoCompra> statuses);
 
         @Query("""

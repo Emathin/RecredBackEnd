@@ -35,9 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -112,16 +112,22 @@ public class CreateAdvancePurchase {
     }
 
     @Transactional
-    public CreateAdvancePurchaseResponse execute(
-            CreateAdvancePurchaseRequest request, String cognitoSub) {
+    public CreateAdvancePurchaseResponse execute(CreateAdvancePurchaseRequest request) {
         validateRequest(request);
-        Usuario user = authenticatedUser(cognitoSub);
+        Usuario user = authenticatedUser(request.cognitoSub());
+        CreatedPurchases purchases = createPurchases(request.orders(), user);
+        return response(purchases);
+    }
 
+    private CreatedPurchases createPurchases(
+            List<CreateAdvancePurchaseRequest.OrderRequest> orderRequests,
+            Usuario user
+    ) {
         Map<UUID, String> codes = new HashMap<>();
         Purchase firstPurchase = null;
         double total = 0;
 
-        for (CreateAdvancePurchaseRequest.OrderRequest orderRequest : request.orders()) {
+        for (CreateAdvancePurchaseRequest.OrderRequest orderRequest : orderRequests) {
             Purchase purchase = createPurchase(orderRequest, user);
             if (firstPurchase == null) {
                 firstPurchase = purchase;
@@ -131,11 +137,16 @@ public class CreateAdvancePurchase {
             codes.put(purchase.getStudent().getId(), purchase.getWithdrawalCode());
         }
 
+        return new CreatedPurchases(firstPurchase, total, codes);
+    }
+
+    private CreateAdvancePurchaseResponse response(CreatedPurchases purchases) {
+        Purchase firstPurchase = purchases.firstPurchase();
         return new CreateAdvancePurchaseResponse(
                 firstPurchase.getId().toString(),
                 PurchaseStatus.from(firstPurchase),
-                total,
-                codes
+                purchases.total(),
+                purchases.codes()
         );
     }
 
@@ -330,92 +341,20 @@ public class CreateAdvancePurchase {
         promotion.validateFor(pickupDate, buffetId);
 
         if (promotion.getProducts() != null) {
-            BigDecimal discountPercentage = promotion.getDiscountPercentage();
-            BigDecimal multiplier = BigDecimal.ONE.subtract(
-                    discountPercentage.divide(
-                            new BigDecimal("100"),
-                            4,
-                            RoundingMode.HALF_UP
-                    )
-            );
             for (Producto p : promotion.getProducts()) {
                 Producto activeProd = productRepository
                         .findActiveByIdWithStock(p.getId(), buffetId)
                         .orElseThrow(() -> new ProductNotFoundException(p.getId()));
 
-                Producto discountedProduct = createDiscountedProduct(
-                        activeProd, promotion, multiplier);
-
-                mergeOrPut(items, discountedProduct, quantity);
+                mergeOrPut(items, activeProd.discountedFor(promotion), quantity);
             }
         }
-    }
-
-
-
-    private Producto createDiscountedProduct(
-            Producto activeProd,
-            Promotion promotion,
-            BigDecimal multiplier
-    ) {
-        Producto discountedProduct = new Producto();
-        discountedProduct.setId(activeProd.getId());
-        discountedProduct.setCategoria(activeProd.getCategoria());
-        discountedProduct.setNombre(activeProd.getNombre());
-        discountedProduct.setDescripcion(activeProd.getDescripcion());
-        discountedProduct.setPeso(activeProd.getPeso());
-        discountedProduct.setRequierePreparacion(
-                activeProd.getRequierePreparacion()
-        );
-        discountedProduct.setActivo(activeProd.getActivo());
-        discountedProduct.setCreadoEn(activeProd.getCreadoEn());
-        discountedProduct.setActualizadoEn(activeProd.getActualizadoEn());
-        discountedProduct.setUrlImagen(activeProd.getUrlImagen());
-        discountedProduct.setStockActual(activeProd.getStockActual());
-        discountedProduct.setStockReservado(activeProd.getStockReservado());
-        discountedProduct.setStockMinimo(activeProd.getStockMinimo());
-        discountedProduct.setStockDisponible(activeProd.getStockDisponible());
-        discountedProduct.setEstadoInventario(
-                activeProd.getEstadoInventario()
-        );
-        discountedProduct.setTipoManejoInventario(
-                activeProd.getTipoManejoInventario()
-        );
-        discountedProduct.setCupoMaximoDiario(
-                activeProd.getCupoMaximoDiario()
-        );
-        discountedProduct.setCupoDisponibleDia(
-                activeProd.getCupoDisponibleDia()
-        );
-        discountedProduct.setMedidas(activeProd.getMedidas());
-        discountedProduct.setTipos(activeProd.getTipos());
-        discountedProduct.setClasificacionesSalud(
-                activeProd.getClasificacionesSalud()
-        );
-
-        BigDecimal originalPrice = activeProd.getPrecio() != null
-                ? activeProd.getPrecio()
-                : BigDecimal.ZERO;
-        BigDecimal discountedPrice = originalPrice
-                .multiply(multiplier)
-                .setScale(2, RoundingMode.HALF_UP);
-        discountedProduct.setPrecio(discountedPrice);
-        discountedProduct.setPromocionId(promotion.getId());
-        discountedProduct.setPromocionNombre(promotion.getName());
-
-        return discountedProduct;
     }
 
     private void mergeOrPut(Map<Producto, Integer> items, Producto product, int quantity) {
         Producto existingKey = null;
         for (Producto k : items.keySet()) {
-            boolean sameId = k.getId().equals(product.getId());
-            boolean samePrice = k.getPrecio().compareTo(product.getPrecio()) == 0;
-            boolean samePromotion = java.util.Objects.equals(
-                    k.getPromocionId(),
-                    product.getPromocionId()
-            );
-            if (sameId && samePrice && samePromotion) {
+            if (k.hasSamePurchaseIdentityAs(product)) {
                 existingKey = k;
                 break;
             }
@@ -458,5 +397,12 @@ public class CreateAdvancePurchase {
     }
 
     private record Buyer(UUID id, BuyerType type, UUID tutorId) {
+    }
+
+    private record CreatedPurchases(
+            Purchase firstPurchase,
+            double total,
+            Map<UUID, String> codes
+    ) {
     }
 }

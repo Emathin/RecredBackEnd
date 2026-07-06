@@ -246,7 +246,17 @@ public class InventoryAvailabilityService {
             BiConsumer<Inventario, Integer> operation,
             UUID purchaseId
     ) {
-        Inventario inventory = lockedInventory(buffetId, product.getId());
+        Inventario inventory;
+        try {
+            inventory = lockedInventory(buffetId, product.getId());
+        } catch (InventoryNotFoundException e) {
+            if (movementType == TipoMovimientoStock.LIBERACION 
+                    || movementType == TipoMovimientoStock.CONSUMO) {
+                return;
+            }
+            throw e;
+        }
+        
         int previousAvailable = inventory.stockDisponible();
         operation.accept(inventory, quantity);
         Inventario savedInventory = inventoryRepository.save(inventory);

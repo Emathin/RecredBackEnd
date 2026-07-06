@@ -7,6 +7,7 @@ import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -36,10 +37,10 @@ class UploadProductImageTest {
         byte[] imagen = "content".getBytes();
         String fileName = "image.jpg";
         String expectedUrl = "http://cloudinary.com/image.jpg";
+        UploadProductImageRequest request = new UploadProductImageRequest(buffetId, productoId, imagen, fileName);
 
         when(cloudinaryService.uploadImage(imagen, fileName)).thenReturn(expectedUrl);
 
-        UploadProductImageRequest request = new UploadProductImageRequest(buffetId, productoId, imagen, fileName);
         UploadProductImageResponse response = uploadProductImage.execute(request);
 
         assertEquals(expectedUrl, response.urlImagen());
@@ -53,12 +54,13 @@ class UploadProductImageTest {
         UUID productoId = UUID.randomUUID();
         byte[] imagen = "content".getBytes();
         String fileName = "image.jpg";
+        UploadProductImageRequest request = new UploadProductImageRequest(buffetId, productoId, imagen, fileName);
 
         when(cloudinaryService.uploadImage(imagen, fileName)).thenThrow(new RuntimeException("Cloudinary error"));
 
-        UploadProductImageRequest request = new UploadProductImageRequest(buffetId, productoId, imagen, fileName);
+        Executable execution = () -> uploadProductImage.execute(request);
 
-        assertThrows(RuntimeException.class, () -> uploadProductImage.execute(request));
+        assertThrows(RuntimeException.class, execution);
         verify(inventoryRepository, never()).updateUrlImagen(any(), any(), any());
     }
 }

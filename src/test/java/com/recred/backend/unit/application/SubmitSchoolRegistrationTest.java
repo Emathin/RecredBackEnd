@@ -2,7 +2,6 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.SubmitSchoolRegistration;
 import com.recred.backend.application.SubmitSchoolRegistrationRequest;
-import com.recred.backend.domain.models.Nivel;
 import com.recred.backend.domain.models.SchoolRegistrationRequest;
 import com.recred.backend.domain.models.SchoolRegistrationStatus;
 import com.recred.backend.domain.repositories.ColegioRepository;
@@ -37,13 +36,11 @@ class SubmitSchoolRegistrationTest {
 
     @Test
     void execute_SavesNewRequestWithPendingStatus() {
-        Nivel nivel = new Nivel();
         SubmitSchoolRegistrationRequest request = new SubmitSchoolRegistrationRequest(
                 "School Name",
                 "school@test.com",
                 "123456789",
                 "CUE-123",
-                nivel,
                 "Director",
                 "LastName",
                 "director@test.com",
@@ -67,7 +64,6 @@ class SubmitSchoolRegistrationTest {
         assertEquals("school@test.com", savedEntity.getSchoolEmail());
         assertEquals("123456789", savedEntity.getSchoolPhone());
         assertEquals("CUE-123", savedEntity.getSchoolCue());
-        assertEquals(nivel, savedEntity.getSchoolLevel());
         assertEquals("Director", savedEntity.getDirectorFirstName());
         assertEquals("LastName", savedEntity.getDirectorLastName());
         assertEquals("director@test.com", savedEntity.getDirectorEmail());

@@ -2,17 +2,20 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.BulkStockParseResponse;
 import com.recred.backend.application.DeleteProduct;
+import com.recred.backend.application.DeleteProductRequest;
 import com.recred.backend.application.GetAllProducts;
+import com.recred.backend.application.GetAllProductsRequest;
 import com.recred.backend.application.GetProductById;
+import com.recred.backend.application.GetProductByIdRequest;
 import com.recred.backend.application.ParseBulkStock;
-import com.recred.backend.application.ParseBulkStockCommand;
+import com.recred.backend.application.ParseBulkStockRequest;
 import com.recred.backend.application.SaveBulkProducts;
+import com.recred.backend.application.SaveBulkProductsRequest;
 import com.recred.backend.application.SaveProduct;
-import com.recred.backend.application.SaveProductCommand;
+import com.recred.backend.application.SaveProductRequest;
 import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdateProductPriceRequest;
-import com.recred.backend.domain.models.Producto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -109,9 +112,11 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<List<ProductResponseDTO>> findAll(
             @RequestParam(required = false) UUID buffetId) {
-        List<ProductResponseDTO> products = getAllProducts.execute(buffetId)
+        List<ProductResponseDTO> products = getAllProducts
+                .execute(new GetAllProductsRequest(buffetId))
+                .products()
                 .stream()
-                .map(ProductResponseDTO::fromAppResponse)
+                .map(ProductResponseDTO::fromApplication)
                 .toList();
         return ResponseEntity.ok(products);
     }
@@ -121,11 +126,11 @@ public class ProductController {
     public ResponseEntity<BulkStockParseResponse> uploadFile(
             @RequestParam("file") MultipartFile file) {
         try {
-            ParseBulkStockCommand command = new ParseBulkStockCommand(
+            ParseBulkStockRequest parseRequest = new ParseBulkStockRequest(
                     file.getBytes(),
                     file.getContentType()
             );
-            BulkStockParseResponse response = parseBulkStock.execute(command);
+            BulkStockParseResponse response = parseBulkStock.execute(parseRequest);
             return ResponseEntity.ok(response);
         } catch (java.io.IOException e) {
             throw new RuntimeException("Error reading uploaded file", e);
@@ -136,13 +141,14 @@ public class ProductController {
     @Operation(summary = "Guarda múltiples productos en una sola transacción")
     public ResponseEntity<List<ProductResponseDTO>> createBulk(
             @Valid @RequestBody List<ProductRequestDTO> request) {
-        List<SaveProductCommand> commands = request.stream()
-                .map(ProductRequestDTO::toSaveCommand)
+        List<SaveProductRequest> products = request.stream()
+                .map(ProductRequestDTO::toSaveRequest)
                 .collect(Collectors.toList());
-        List<com.recred.backend.application.ProductResponse> savedProducts =
-                saveBulkProducts.execute(commands);
-        List<ProductResponseDTO> response = savedProducts.stream()
-                .map(ProductResponseDTO::fromAppResponse)
+        List<ProductResponseDTO> response = saveBulkProducts
+                .execute(new SaveBulkProductsRequest(products))
+                .products()
+                .stream()
+                .map(ProductResponseDTO::fromApplication)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
@@ -151,30 +157,29 @@ public class ProductController {
     public ResponseEntity<ProductResponseDTO> findById(
             @PathVariable UUID id,
             @RequestParam(required = false) UUID buffetId) {
-        com.recred.backend.application.ProductResponse res = getProductById.execute(id, buffetId);
-        return ResponseEntity.ok(ProductResponseDTO.fromAppResponse(res));
+        return ResponseEntity.ok(ProductResponseDTO.fromApplication(
+                getProductById.execute(new GetProductByIdRequest(id, buffetId))));
     }
 
     @PostMapping
     public ResponseEntity<ProductResponseDTO> create(
             @Valid @RequestBody ProductRequestDTO request) {
-        Producto created = saveProduct.execute(
-                request.toSaveCommand());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ProductResponseDTO.fromDomain(created));
+                .body(ProductResponseDTO.fromApplication(saveProduct.execute(
+                        request.toSaveRequest())));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponseDTO> update(
             @PathVariable UUID id,
             @Valid @RequestBody ProductRequestDTO request) {
-        Producto updated = updateProduct.execute(request.toUpdateCommand(id));
-        return ResponseEntity.ok(ProductResponseDTO.fromDomain(updated));
+        return ResponseEntity.ok(ProductResponseDTO.fromApplication(
+                updateProduct.execute(request.toUpdateRequest(id))));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        deleteProduct.execute(id);
+        deleteProduct.execute(new DeleteProductRequest(id));
         return ResponseEntity.noContent().build();
     }
 }

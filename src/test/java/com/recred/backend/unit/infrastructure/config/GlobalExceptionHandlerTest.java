@@ -1,19 +1,23 @@
 package com.recred.backend.unit.infrastructure.config;
 
-import com.recred.backend.config.GlobalExceptionHandler;
 import com.recred.backend.config.ErrorResponse;
+import com.recred.backend.config.GlobalExceptionHandler;
 import com.recred.backend.config.RequestIdContext;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.BuffetNotFoundException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
+import com.recred.backend.domain.exceptions.FileValidationException;
 import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.InsufficientStockException;
-import com.recred.backend.domain.exceptions.InventoryNotFoundException;
-import com.recred.backend.domain.exceptions.InventoryOperationException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
+import com.recred.backend.domain.exceptions.InvalidTimeSlotException;
+import com.recred.backend.domain.exceptions.InventoryNotFoundException;
+import com.recred.backend.domain.exceptions.InventoryOperationException;
 import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
+import com.recred.backend.domain.exceptions.KiosqueroPayoutConfigNotFoundException;
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 import com.recred.backend.domain.exceptions.PickupCutoffTimeExceededException;
 import com.recred.backend.domain.exceptions.PickupSlotCapacityExceededException;
 import com.recred.backend.domain.exceptions.PickupSlotRulesNotFoundException;
@@ -24,22 +28,28 @@ import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
+import com.recred.backend.domain.exceptions.SchoolNotFoundException;
+import com.recred.backend.domain.exceptions.TimeSlotInUseException;
+import com.recred.backend.domain.exceptions.TimeSlotNotFoundException;
+import com.recred.backend.domain.exceptions.TimeSlotOverlapException;
 import com.recred.backend.domain.exceptions.TutorNoEncontradoException;
 import com.recred.backend.domain.models.EstadoCompra;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -133,6 +143,24 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void timeSlotAndSchoolHandlers_ShouldReturnExpectedStatusesAndCodes() {
+        UUID id = UUID.randomUUID();
+        assertError(handler.handleTimeSlotNotFound(new TimeSlotNotFoundException(id)),
+                HttpStatus.NOT_FOUND, "TIME_SLOT_NOT_FOUND", null);
+        assertError(handler.handleInvalidTimeSlot(new InvalidTimeSlotException("Invalida")),
+                HttpStatus.BAD_REQUEST, "INVALID_TIME_SLOT", null);
+        assertError(handler.handleTimeSlotOverlap(new TimeSlotOverlapException(id)),
+                HttpStatus.CONFLICT, "TIME_SLOT_OVERLAP", null);
+        assertError(handler.handleTimeSlotInUse(new TimeSlotInUseException(id)),
+                HttpStatus.CONFLICT, "TIME_SLOT_IN_USE", null);
+        assertError(handler.handleSchoolNotFound(new SchoolNotFoundException(id)),
+                HttpStatus.NOT_FOUND, "SCHOOL_NOT_FOUND", null);
+        assertError(handler.handleKiosqueroPayoutConfigNotFound(
+                        new KiosqueroPayoutConfigNotFoundException(id)),
+                HttpStatus.NOT_FOUND, "NOT_FOUND", null);
+    }
+
+    @Test
     void genericHandlers_ShouldReturnExpectedStatuses() {
         UUID id = UUID.randomUUID();
         assertError(handler.handleInvalidChatMessage(new InvalidChatMessageException()),
@@ -143,11 +171,27 @@ class GlobalExceptionHandlerTest {
                 HttpStatus.BAD_REQUEST, "BAD_REQUEST", null);
         assertError(handler.handleAccessDenied(new AccessDeniedException("Denegado")),
                 HttpStatus.FORBIDDEN, "FORBIDDEN", null);
+        assertError(handler.handleOperationNotAllowed(
+                        new OperationNotAllowedException("Operacion no permitida")),
+                HttpStatus.FORBIDDEN, "FORBIDDEN", null);
         assertError(handler.handleDataIntegrityViolation(
                 new DataIntegrityViolationException("Duplicado")),
                 HttpStatus.CONFLICT, "CONFLICT", null);
         assertError(handler.handleGeneralException(new RuntimeException("Error")),
                 HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", null);
+    }
+
+    @Test
+    void fileHandlers_ShouldReturnBadRequest() {
+        ResponseEntity<ErrorResponse> validation = handler.handleFileValidation(
+                new FileValidationException("Archivo invalido"));
+        ResponseEntity<ErrorResponse> maxUpload = handler.handleMaxUploadSizeExceeded(
+                new MaxUploadSizeExceededException(5L));
+
+        assertError(validation, HttpStatus.BAD_REQUEST, "BAD_REQUEST", null);
+        assertEquals("Archivo invalido", validation.getBody().mensaje());
+        assertError(maxUpload, HttpStatus.BAD_REQUEST, "BAD_REQUEST", null);
+        assertEquals(true, maxUpload.getBody().mensaje().contains("5MB"));
     }
 
     @Test
@@ -193,4 +237,3 @@ class GlobalExceptionHandlerTest {
         assertEquals(requestId, response.getBody().requestId());
     }
 }
-

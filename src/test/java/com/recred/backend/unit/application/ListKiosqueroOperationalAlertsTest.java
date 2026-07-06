@@ -1,9 +1,10 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
+import com.recred.backend.application.ListKiosqueroOperationalAlertsRequest;
 import com.recred.backend.application.ListKiosqueroOperationalAlertsResponse;
+import com.recred.backend.application.OperationalAlertResponse;
 import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.KiosqueroOperationalAlert;
 import com.recred.backend.domain.models.OperationalAlertType;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
@@ -37,6 +38,8 @@ class ListKiosqueroOperationalAlertsTest {
         ProductRepository productRepository = mock(ProductRepository.class);
         Producto product = preparedProduct();
         Purchase order = pendingOrder(buffetId, product);
+        ListKiosqueroOperationalAlertsRequest request =
+                new ListKiosqueroOperationalAlertsRequest(buffetId);
         ListKiosqueroOperationalAlerts useCase = new ListKiosqueroOperationalAlerts(
                 purchaseRepository,
                 productRepository,
@@ -56,11 +59,11 @@ class ListKiosqueroOperationalAlertsTest {
                 anyList()
         )).thenReturn(4L);
 
-        ListKiosqueroOperationalAlertsResponse alerts = useCase.execute(buffetId);
+        ListKiosqueroOperationalAlertsResponse alerts = useCase.execute(request);
 
-        assertTrue(hasAlert(alerts, OperationalAlertType.MANY_PENDING_ORDERS));
-        assertTrue(hasAlert(alerts, OperationalAlertType.ORDER_UPCOMING_PICKUP));
-        assertTrue(hasAlert(alerts, OperationalAlertType.DAILY_CAPACITY_LOW));
+        assertTrue(hasAlert(alerts.alerts(), OperationalAlertType.MANY_PENDING_ORDERS));
+        assertTrue(hasAlert(alerts.alerts(), OperationalAlertType.ORDER_UPCOMING_PICKUP));
+        assertTrue(hasAlert(alerts.alerts(), OperationalAlertType.DAILY_CAPACITY_LOW));
     }
 
     @Test
@@ -76,6 +79,8 @@ class ListKiosqueroOperationalAlertsTest {
                 LocalTime.of(9, 15)
         );
         ListKiosqueroOperationalAlerts useCase = useCase(purchaseRepository, productRepository);
+        ListKiosqueroOperationalAlertsRequest request =
+                new ListKiosqueroOperationalAlertsRequest(buffetId);
 
         when(purchaseRepository.findByBuffetAndStatuses(eq(buffetId), anyList(), eq(100)))
                 .thenReturn(List.of(
@@ -90,11 +95,11 @@ class ListKiosqueroOperationalAlertsTest {
                 ));
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of());
 
-        ListKiosqueroOperationalAlertsResponse alerts = useCase.execute(buffetId);
+        ListKiosqueroOperationalAlertsResponse alerts = useCase.execute(request);
 
-        assertTrue(hasAlert(alerts, OperationalAlertType.ORDER_ACCUMULATION));
-        assertTrue(hasAlert(alerts, OperationalAlertType.ORDER_EXPIRED));
-        assertFalse(hasAlert(alerts, OperationalAlertType.MANY_PENDING_ORDERS));
+        assertTrue(hasAlert(alerts.alerts(), OperationalAlertType.ORDER_ACCUMULATION));
+        assertTrue(hasAlert(alerts.alerts(), OperationalAlertType.ORDER_EXPIRED));
+        assertFalse(hasAlert(alerts.alerts(), OperationalAlertType.MANY_PENDING_ORDERS));
     }
 
     @Test
@@ -112,22 +117,24 @@ class ListKiosqueroOperationalAlertsTest {
                 null
         );
         ListKiosqueroOperationalAlerts useCase = useCase(purchaseRepository, productRepository);
+        ListKiosqueroOperationalAlertsRequest request =
+                new ListKiosqueroOperationalAlertsRequest(buffetId);
 
         when(purchaseRepository.findByBuffetAndStatuses(eq(buffetId), anyList(), eq(100)))
                 .thenReturn(List.of(orderWithoutStart));
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
 
-        ListKiosqueroOperationalAlertsResponse alerts = useCase.execute(buffetId);
+        ListKiosqueroOperationalAlertsResponse alerts = useCase.execute(request);
 
-        assertFalse(hasAlert(alerts, OperationalAlertType.ORDER_UPCOMING_PICKUP));
-        assertFalse(hasAlert(alerts, OperationalAlertType.DAILY_CAPACITY_LOW));
+        assertFalse(hasAlert(alerts.alerts(), OperationalAlertType.ORDER_UPCOMING_PICKUP));
+        assertFalse(hasAlert(alerts.alerts(), OperationalAlertType.DAILY_CAPACITY_LOW));
     }
 
     private boolean hasAlert(
-            ListKiosqueroOperationalAlertsResponse alerts,
+            List<OperationalAlertResponse> alerts,
             OperationalAlertType type
     ) {
-        return alerts.alerts().stream().anyMatch(alert -> alert.type() == type);
+        return alerts.stream().anyMatch(alert -> alert.type().equals(type.name()));
     }
 
     private Purchase pendingOrder(UUID buffetId, Producto product) {

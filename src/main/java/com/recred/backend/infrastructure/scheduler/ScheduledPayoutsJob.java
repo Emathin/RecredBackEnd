@@ -13,7 +13,6 @@ public class ScheduledPayoutsJob {
         this.processScheduledPayouts = processScheduledPayouts;
     }
 
-    // Ejecuta diariamente a la 01:00 AM
     @Scheduled(cron = "${app.scheduler.payouts-cron:0 0 1 * * ?}")
     public void executePayouts() {
         processScheduledPayouts.execute();

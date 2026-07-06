@@ -104,6 +104,32 @@ class UsuarioRepositoryImplIT extends AbstractIntegrationTest {
         assertEquals(entity.getId(), result.get().getId());
     }
 
+    @Test
+    void updateProfileShouldNotPersistKiosqueroWithoutCuit() {
+        ColegioEntity colegioEntity = generateColegioEntity();
+        KiosqueroEntity kiosqueroEntity = generateKiosqueroEntityWithBuffet(colegioEntity);
+        UUID usuarioId = kiosqueroEntity.getUsuario().getId();
+        String cuit = kiosqueroEntity.getCuit();
+        String cognitoId = kiosqueroEntity.getUsuario().getIdCognito();
+
+        repository.updateProfile(
+                cognitoId,
+                "Nombre",
+                "Actualizado",
+                "5491161718479",
+                "45238796",
+                java.time.LocalDateTime.now());
+        entityManager.flush();
+        entityManager.clear();
+
+        UsuarioEntity saved = springDataUsuarioRepository.findById(usuarioId).orElseThrow();
+
+        assertEquals("Nombre", saved.getNombre());
+        assertEquals("Actualizado", saved.getApellido());
+        assertEquals("5491161718479", saved.getTelefono());
+        assertEquals(cuit, saved.getKiosquero().getCuit());
+    }
+
     private Usuario user() {
         Usuario usuario = new Usuario();
         usuario.setIdCognito("sub-domain-" + UUID.randomUUID().toString().substring(0, 8));

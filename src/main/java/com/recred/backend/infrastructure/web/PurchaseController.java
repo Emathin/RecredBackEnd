@@ -111,8 +111,8 @@ public class PurchaseController {
                         .toList()
         );
 
-        CreateAdvancePurchaseResponse useCaseResponse =
-                createAdvancePurchase.execute(useCaseRequest, cognitoSubject(authentication));
+        CreateAdvancePurchaseResponse useCaseResponse = createAdvancePurchase.execute(
+                useCaseRequest.withCognitoSub(cognitoSubject(authentication)));
 
         return ResponseEntity.ok(new AdvancePurchaseResponse(
                 useCaseResponse.orderId(),
@@ -191,6 +191,30 @@ public class PurchaseController {
         purchaseAccessGuard.requirePurchaseAccess(authentication, id);
         revertPurchaseCancellation.execute(
                 new com.recred.backend.application.RevertPurchaseCancellationRequest(id));
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/deliver")
+    public ResponseEntity<Void> deliverPurchase(
+            @PathVariable UUID id,
+            @Valid @RequestBody DeliverPurchaseRequestDTO request,
+            Authentication authentication
+    ) {
+        Purchase purchase = purchaseAccessGuard.requirePurchaseAccess(authentication, id);
+        kiosqueroAccessGuard.requireBuffetAccess(authentication, purchase.getBuffetId());
+
+        if (request == null || request.withdrawalCode() == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        String providedCode = request.withdrawalCode().trim();
+        String actualCode = purchase.getWithdrawalCode() != null
+                ? purchase.getWithdrawalCode().trim() : "";
+
+        if (actualCode.isEmpty() || !providedCode.equalsIgnoreCase(actualCode)) {
+            return ResponseEntity.badRequest().build();
+        }
+
         return ResponseEntity.ok().build();
     }
 

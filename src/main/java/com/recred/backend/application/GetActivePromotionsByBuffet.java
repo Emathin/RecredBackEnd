@@ -1,9 +1,9 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.PromotionRepository;
 
 import java.util.List;
-import java.util.UUID;
 
 public class GetActivePromotionsByBuffet {
 
@@ -13,9 +13,15 @@ public class GetActivePromotionsByBuffet {
         this.promotionRepository = promotionRepository;
     }
 
-    public List<PromotionResponse> execute(UUID buffetId) {
-        return promotionRepository.findAllActiveByBuffet(buffetId).stream()
-                .map(PromotionResponse::fromDomain)
-                .collect(java.util.stream.Collectors.toList());
+    public GetActivePromotionsByBuffetResponse execute(
+            GetActivePromotionsByBuffetRequest request
+    ) {
+        return new GetActivePromotionsByBuffetResponse(promotions(request).stream()
+                .map(CreatePromotionResponse::fromDomain)
+                .toList());
+    }
+
+    private List<Promotion> promotions(GetActivePromotionsByBuffetRequest request) {
+        return promotionRepository.findAllActiveByBuffet(request.buffetId());
     }
 }

@@ -3,8 +3,9 @@ package com.recred.backend.unit.infrastructure.web;
 import com.recred.backend.application.LoadStockIA;
 import com.recred.backend.application.LoadStockIARequest;
 import com.recred.backend.application.LoadStockIAResponse;
+import com.recred.backend.application.ProductResponse;
 import com.recred.backend.application.SaveProduct;
-import com.recred.backend.application.SaveProductCommand;
+import com.recred.backend.application.SaveProductRequest;
 import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.infrastructure.web.LoadStockIAController;
@@ -113,13 +114,13 @@ class LoadStockIAControllerTest {
         savedProduct.setId(UUID.randomUUID());
         savedProduct.setNombre("Prod");
         
-        when(saveProduct.execute(any(SaveProductCommand.class))).thenReturn(savedProduct);
+        when(saveProduct.execute(any(SaveProductRequest.class)))
+                .thenReturn(ProductResponse.fromDomain(savedProduct));
 
         ResponseEntity<ProductResponseDTO> response = controller.saveProduct(dto);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(savedProduct.getId(), response.getBody().id());
-        verify(saveProduct).execute(any(SaveProductCommand.class));
+        verify(saveProduct).execute(any(SaveProductRequest.class));
     }
 }
-

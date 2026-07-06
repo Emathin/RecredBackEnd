@@ -19,6 +19,7 @@ import com.recred.backend.application.CheckBudgetDatesRequest;
 import com.recred.backend.application.CheckBudgetDatesResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,30 +41,38 @@ public class BudgetController {
     private final GetActiveBudgetByStudent getActiveBudgetByStudent;
     private final UpdateBudgetRules updateBudgetRules;
     private final CheckBudgetDates checkBudgetDates;
+    private final TutorAccessGuard tutorAccessGuard;
 
     public BudgetController(CreateBudget createBudget,
                             UpdateBudget updateBudget,
                             DisableBudget disableBudget,
                             GetActiveBudgetByStudent getActiveBudgetByStudent,
                             UpdateBudgetRules updateBudgetRules,
-                            CheckBudgetDates checkBudgetDates) {
+                            CheckBudgetDates checkBudgetDates,
+                            TutorAccessGuard tutorAccessGuard) {
         this.createBudget = createBudget;
         this.updateBudget = updateBudget;
         this.disableBudget = disableBudget;
         this.getActiveBudgetByStudent = getActiveBudgetByStudent;
         this.updateBudgetRules = updateBudgetRules;
         this.checkBudgetDates = checkBudgetDates;
+        this.tutorAccessGuard = tutorAccessGuard;
     }
 
     @PostMapping
-    public ResponseEntity<CreateBudgetResponse> create(@RequestBody CreateBudgetRequest request) {
+    public ResponseEntity<CreateBudgetResponse> create(
+            @RequestBody CreateBudgetRequest request,
+            Authentication authentication) {
+        tutorAccessGuard.requireStrictTutorStudentAccess(authentication, request.studentId());
         CreateBudgetResponse response = createBudget.execute(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/student/{studentId}/active")
     public ResponseEntity<GetActiveBudgetByStudentResponse> getActiveByStudent(
-            @PathVariable UUID studentId) {
+            @PathVariable UUID studentId,
+            Authentication authentication) {
+        tutorAccessGuard.requireStudentAccess(authentication, studentId);
         return getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -72,14 +81,20 @@ public class BudgetController {
     @PostMapping("/student/{studentId}/check-dates")
     public ResponseEntity<CheckBudgetDatesResponse> checkDates(
             @PathVariable UUID studentId,
-            @RequestBody CheckBudgetDatesRequest request) {
-        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+            @RequestBody CheckBudgetDatesRequest request,
+            Authentication authentication) {
+        tutorAccessGuard.requireStrictTutorStudentAccess(authentication, studentId);
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(
+                request.withStudentId(studentId));
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{budgetId}")
-    public ResponseEntity<UpdateBudgetResponse> update(@PathVariable UUID budgetId,
-                                                    @RequestBody UpdateBudgetRequest requestBody) {
+    public ResponseEntity<UpdateBudgetResponse> update(
+            @PathVariable UUID budgetId,
+            @RequestBody UpdateBudgetRequest requestBody,
+            Authentication authentication) {
+        tutorAccessGuard.requireBudgetAccess(authentication, budgetId);
         UpdateBudgetRequest request = new UpdateBudgetRequest(
                 budgetId,
                 requestBody.limitAmount(),
@@ -92,7 +107,10 @@ public class BudgetController {
     }
 
     @PatchMapping("/{budgetId}/disable")
-    public ResponseEntity<Void> disable(@PathVariable UUID budgetId) {
+    public ResponseEntity<Void> disable(
+            @PathVariable UUID budgetId,
+            Authentication authentication) {
+        tutorAccessGuard.requireBudgetAccess(authentication, budgetId);
         disableBudget.execute(new DisableBudgetRequest(budgetId));
         return ResponseEntity.noContent().build();
     }
@@ -100,7 +118,9 @@ public class BudgetController {
     @PutMapping("/{budgetId}/rules")
     public ResponseEntity<UpdateBudgetRulesResponse> updateCategoryRules(
             @PathVariable UUID budgetId,
-            @RequestBody UpdateBudgetRulesRequest requestBody) {
+            @RequestBody UpdateBudgetRulesRequest requestBody,
+            Authentication authentication) {
+        tutorAccessGuard.requireBudgetAccess(authentication, budgetId);
 
         UpdateBudgetRulesRequest request = new UpdateBudgetRulesRequest(
                 budgetId,

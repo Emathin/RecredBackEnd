@@ -15,9 +15,10 @@ public class RejectSchoolRegistration {
         this.repository = repository;
     }
 
-    public void execute(RejectSchoolRegistrationRequest request) {
+    public RejectSchoolRegistrationResponse execute(RejectSchoolRegistrationRequest request) {
         SchoolRegistrationRequest registration = fetchPendingRegistration(request.registrationId());
         updateRegistrationStatus(registration);
+        return new RejectSchoolRegistrationResponse();
     }
 
     private SchoolRegistrationRequest fetchPendingRegistration(UUID id) {

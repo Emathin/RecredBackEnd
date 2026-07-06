@@ -26,7 +26,7 @@ public record PromotionResponse(
                     .map(p -> p.getId())
                     .collect(Collectors.toList());
         }
-        
+
         UUID buffetId = null;
         if (promotion.getBuffet() != null) {
             buffetId = promotion.getBuffet().getId();

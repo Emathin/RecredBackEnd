@@ -3,7 +3,6 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Tutor;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
@@ -27,50 +26,48 @@ public class AddFavoriteProduct {
     }
 
     @Transactional
-    public void execute(AddFavoriteProductRequest request) {
-        UUID alumnoId = request.alumnoId();
-        UUID productoId = request.productoId();
+    public AddFavoriteProductResponse execute(AddFavoriteProductRequest addFavoriteRequest) {
+        Alumno student = findAlumnoById(addFavoriteRequest.alumnoId());
+        Producto product = findProductById(addFavoriteRequest.productoId());
 
-        Alumno alumno = this.findAlumnoById(alumnoId);
-        Producto producto = this.findById(productoId);
-        List<Tutor> tutores = this.findTutoresByAlumnoId(alumnoId);
+        ensureFavoriteProductLimitIsNotExceeded(student, addFavoriteRequest);
+        addFavoriteProduct(student, product);
 
-        boolean isFree = this.isFree(tutores);
-
-        if (isFree) {
-            this.isTutorFree(alumno, productoId);
-        }
-
-        alumno.agregarProductoFavorito(producto);
-        alumnoRepository.save(alumno);
+        return new AddFavoriteProductResponse();
     }
 
-    private void isTutorFree(Alumno alumno, UUID productoId) {
-        boolean alreadyFavorite = alumno.getProductosFavoritos().stream()
-                .anyMatch(p -> p.getId().equals(productoId));
-        if (!alreadyFavorite && alumno.getProductosFavoritos().size() >= 5) {
+    private void ensureFavoriteProductLimitIsNotExceeded(
+            Alumno student,
+            AddFavoriteProductRequest addFavoriteRequest) {
+        if (!hasOnlyFreeTutors(addFavoriteRequest.alumnoId())) {
+            return;
+        }
+
+        if (student.exceedsFavoriteProductLimit(addFavoriteRequest.productoId(), 5)) {
             throw new IllegalArgumentException(
                     "Límite de productos favoritos alcanzado para cuenta gratuita (máximo 5)");
         }
     }
 
-    private Alumno findAlumnoById(UUID id) {
-        return alumnoRepository.findById(id)
+    private Alumno findAlumnoById(UUID studentId) {
+        return alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
     }
 
-    private Producto findById(UUID id) {
-        return productRepository.findById(id)
+    private Producto findProductById(UUID productId) {
+        return productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
     }
 
-    private List<Tutor> findTutoresByAlumnoId(UUID alumnoId) {
-        return tutorRepository.findByAlumnoId(alumnoId);
+    private void addFavoriteProduct(Alumno student, Producto product) {
+        student.agregarProductoFavorito(product);
+        alumnoRepository.save(student);
     }
 
-    private boolean isFree(List<Tutor> tutores) {
+    private boolean hasOnlyFreeTutors(UUID studentId) {
+        List<Tutor> tutores = tutorRepository.findByAlumnoId(studentId);
         return tutores.isEmpty() || tutores.stream()
-                .allMatch(t -> t.getUsuario() == null
-                        || t.getUsuario().getPlan() == TipoPlan.GRATUITO);
+                .allMatch(tutor -> tutor.getUsuario() == null
+                        || tutor.getUsuario().hasFreePlan());
     }
 }

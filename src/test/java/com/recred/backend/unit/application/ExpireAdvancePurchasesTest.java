@@ -38,6 +38,7 @@ class ExpireAdvancePurchasesTest {
         );
         LocalDateTime now = LocalDateTime.of(2026, 5, 27, 11, 0);
         Purchase purchase = activeAdvancePurchase(EstadoCompra.LISTO);
+        ExpireAdvancePurchasesRequest request = new ExpireAdvancePurchasesRequest(null, now);
 
         when(purchaseRepository.findExpiredAdvancePurchases(
                 eq(now.toLocalDate()),
@@ -45,7 +46,7 @@ class ExpireAdvancePurchasesTest {
                 anyList()
         )).thenReturn(List.of(purchase));
 
-        ExpireAdvancePurchasesResponse result = useCase.execute(new ExpireAdvancePurchasesRequest(null, now));
+        ExpireAdvancePurchasesResponse result = useCase.execute(request);
 
         assertEquals(1, result.expiredPurchases());
         assertEquals(EstadoCompra.VENCIDO, purchase.getStatus());
@@ -71,6 +72,7 @@ class ExpireAdvancePurchasesTest {
         Purchase purchase = activeAdvancePurchase(EstadoCompra.EN_PREPARACION);
         purchase.setBuffetId(buffetId);
         purchase.setItems(itemsWithNullQuantity());
+        ExpireAdvancePurchasesRequest request = new ExpireAdvancePurchasesRequest(buffetId, now);
 
         when(purchaseRepository.findExpiredAdvancePurchases(
                 eq(buffetId),
@@ -79,8 +81,7 @@ class ExpireAdvancePurchasesTest {
                 anyList()
         )).thenReturn(List.of(purchase));
 
-        ExpireAdvancePurchasesResponse result =
-                useCase.execute(new ExpireAdvancePurchasesRequest(buffetId, now));
+        ExpireAdvancePurchasesResponse result = useCase.execute(request);
 
         assertEquals(1, result.expiredPurchases());
         assertEquals(2, result.releasedReservations());
@@ -106,6 +107,7 @@ class ExpireAdvancePurchasesTest {
         Purchase purchase = activeAdvancePurchase(EstadoCompra.PENDIENTE);
         purchase.setBuffetId(buffetId);
         purchase.setTipo(TipoCompra.PRESENCIAL);
+        ExpireAdvancePurchasesRequest request = new ExpireAdvancePurchasesRequest(buffetId, now);
 
         when(purchaseRepository.findExpiredAdvancePurchases(
                 eq(buffetId),
@@ -114,7 +116,7 @@ class ExpireAdvancePurchasesTest {
                 anyList()
         )).thenReturn(List.of(purchase));
 
-        ExpireAdvancePurchasesResponse result = useCase.execute(new ExpireAdvancePurchasesRequest(buffetId, now));
+        ExpireAdvancePurchasesResponse result = useCase.execute(request);
 
         assertEquals(1, result.expiredPurchases());
         verify(inventoryAvailabilityService, never()).releaseReservation(

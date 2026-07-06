@@ -5,9 +5,6 @@ import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
-import com.recred.backend.application.CheckBudgetDatesRequest;
-import com.recred.backend.application.CheckBudgetDatesResponse;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -34,10 +31,10 @@ public class CheckBudgetDates {
         this.budgetValidator = budgetValidator;
     }
 
-    public CheckBudgetDatesResponse execute(UUID studentId, CheckBudgetDatesRequest request) {
+    public CheckBudgetDatesResponse execute(CheckBudgetDatesRequest request) {
         CartTotals totals = this.calculateCartTotals(request.items());
         List<CheckBudgetDatesResponse.DateBudgetStatus> results =
-                this.validateDates(studentId, totals, request.dates());
+                this.validateDates(request.studentId(), totals, request.dates());
         return new CheckBudgetDatesResponse(results);
     }
 

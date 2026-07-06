@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.UpdatePromotion;
+import com.recred.backend.application.UpdatePromotionRequest;
+import com.recred.backend.application.CreatePromotionResponse;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
@@ -8,6 +10,7 @@ import com.recred.backend.domain.repositories.PromotionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -66,38 +69,53 @@ class UpdatePromotionTest {
         String newName = "New Name";
         LocalDateTime newStart = LocalDateTime.now().minusDays(1);
         LocalDateTime newEnd = LocalDateTime.now().plusDays(10);
+        UpdatePromotionRequest request = new UpdatePromotionRequest(
+                promoId,
+                newProductIds,
+                newDiscount,
+                newName,
+                newStart,
+                newEnd
+        );
 
         when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
         when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Promotion result = updatePromotion.execute(
-                promoId, newProductIds, newDiscount, newName, newStart, newEnd);
+        CreatePromotionResponse result = updatePromotion.execute(request);
 
         assertNotNull(result);
-        assertEquals(newName, result.getName());
-        assertEquals(newDiscount, result.getDiscountPercentage());
-        assertEquals(newStart, result.getStartDate());
-        assertEquals(newEnd, result.getEndDate());
-        assertEquals(PromotionStatus.ACTIVE, result.getStatus());
-        assertEquals(2, result.getProducts().size());
-        assertEquals(newProd1, result.getProducts().get(0).getId());
-        assertEquals(newProd2, result.getProducts().get(1).getId());
+        assertEquals(newName, result.name());
+        assertEquals(newDiscount, result.discountPercentage());
+        assertEquals(newStart, result.startDate());
+        assertEquals(newEnd, result.endDate());
+        assertEquals(PromotionStatus.ACTIVE, result.status());
+        assertEquals(2, result.productIds().size());
+        assertEquals(newProd1, result.productIds().get(0));
+        assertEquals(newProd2, result.productIds().get(1));
 
         verify(promotionRepository).save(any(Promotion.class));
     }
 
     @Test
     void execute_shouldUpdatePromotionPartially_whenPromotionExistsAndSomeFieldsNull() {
+        UpdatePromotionRequest request = new UpdatePromotionRequest(
+                promoId,
+                null,
+                null,
+                "Updated Title Only",
+                null,
+                null
+        );
+
         when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
         when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Promotion result = updatePromotion.execute(
-                promoId, null, null, "Updated Title Only", null, null);
+        CreatePromotionResponse result = updatePromotion.execute(request);
 
         assertNotNull(result);
-        assertEquals("Updated Title Only", result.getName());
-        assertEquals(new BigDecimal("10"), result.getDiscountPercentage());
-        assertEquals(existingPromotion.getStartDate(), result.getStartDate());
+        assertEquals("Updated Title Only", result.name());
+        assertEquals(new BigDecimal("10"), result.discountPercentage());
+        assertEquals(existingPromotion.getStartDate(), result.startDate());
         verify(promotionRepository).save(any(Promotion.class));
     }
 
@@ -105,10 +123,7 @@ class UpdatePromotionTest {
     void execute_shouldSetDraftStatus_whenPromotionStartsInFuture() {
         LocalDateTime futureStart = LocalDateTime.now().plusDays(1);
         LocalDateTime futureEnd = LocalDateTime.now().plusDays(10);
-        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
-        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
-
-        Promotion result = updatePromotion.execute(
+        UpdatePromotionRequest request = new UpdatePromotionRequest(
                 promoId,
                 null,
                 null,
@@ -117,15 +132,30 @@ class UpdatePromotionTest {
                 futureEnd
         );
 
-        assertEquals(PromotionStatus.DRAFT, result.getStatus());
+        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
+        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        CreatePromotionResponse result = updatePromotion.execute(request);
+
+        assertEquals(PromotionStatus.DRAFT, result.status());
     }
 
     @Test
     void execute_shouldThrowException_whenPromotionNotFound() {
+        UpdatePromotionRequest request = new UpdatePromotionRequest(
+                promoId,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
         when(promotionRepository.findById(promoId)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () ->
-                updatePromotion.execute(promoId, null, null, null, null, null));
+        Executable execution = () -> updatePromotion.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
 
         verify(promotionRepository, never()).save(any());
     }
@@ -135,22 +165,59 @@ class UpdatePromotionTest {
         when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
 
         List<UUID> invalidProducts = List.of(UUID.randomUUID());
+        UpdatePromotionRequest request = new UpdatePromotionRequest(
+                promoId,
+                invalidProducts,
+                null,
+                null,
+                null,
+                null
+        );
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                updatePromotion.execute(promoId, invalidProducts, null, null, null, null));
+        Executable execution = () -> updatePromotion.execute(request);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, execution);
 
         assertEquals("A promotion requires at least 2 products.", ex.getMessage());
         verify(promotionRepository, never()).save(any());
     }
 
     @Test
-    void execute_shouldThrowException_whenUpdatedDiscountIsInvalid() {
+    void execute_shouldThrowException_whenUpdatedDiscountIsZero() {
+        UpdatePromotionRequest request = new UpdatePromotionRequest(
+                promoId,
+                null,
+                BigDecimal.ZERO,
+                null,
+                null,
+                null
+        );
+
         when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
 
-        assertThrows(IllegalArgumentException.class, () ->
-                updatePromotion.execute(promoId, null, BigDecimal.ZERO, null, null, null));
-        assertThrows(IllegalArgumentException.class, () ->
-                updatePromotion.execute(promoId, null, new BigDecimal("105"), null, null, null));
+        Executable execution = () -> updatePromotion.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
+
+        verify(promotionRepository, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldThrowException_whenUpdatedDiscountIsGreaterThan100() {
+        UpdatePromotionRequest request = new UpdatePromotionRequest(
+                promoId,
+                null,
+                new BigDecimal("105"),
+                null,
+                null,
+                null
+        );
+
+        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
+
+        Executable execution = () -> updatePromotion.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
 
         verify(promotionRepository, never()).save(any());
     }
@@ -161,9 +228,18 @@ class UpdatePromotionTest {
 
         LocalDateTime badStart = LocalDateTime.now().plusDays(10);
         LocalDateTime badEnd = LocalDateTime.now().plusDays(2);
+        UpdatePromotionRequest request = new UpdatePromotionRequest(
+                promoId,
+                null,
+                null,
+                null,
+                badStart,
+                badEnd
+        );
 
-        assertThrows(IllegalArgumentException.class, () ->
-                updatePromotion.execute(promoId, null, null, null, badStart, badEnd));
+        Executable execution = () -> updatePromotion.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
 
         verify(promotionRepository, never()).save(any());
     }

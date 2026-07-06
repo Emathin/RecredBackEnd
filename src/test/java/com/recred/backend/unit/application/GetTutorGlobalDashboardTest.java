@@ -132,15 +132,18 @@ class GetTutorGlobalDashboardTest {
             Alumno secondChild,
             Alumno thirdChild
     ) {
-        when(getStudentRewardStatus.execute(firstChild.getId())).thenReturn(reward(
+        when(getStudentRewardStatus.execute(new GetStudentRewardStatusRequest(
+                firstChild.getId()))).thenReturn(reward(
                 "SILVER",
                 120
         ));
-        when(getStudentRewardStatus.execute(secondChild.getId())).thenReturn(reward(
+        when(getStudentRewardStatus.execute(new GetStudentRewardStatusRequest(
+                secondChild.getId()))).thenReturn(reward(
                 "BRONZE",
                 20
         ));
-        when(getStudentRewardStatus.execute(thirdChild.getId())).thenReturn(reward(
+        when(getStudentRewardStatus.execute(new GetStudentRewardStatusRequest(
+                thirdChild.getId()))).thenReturn(reward(
                 "GOLD",
                 300
         ));

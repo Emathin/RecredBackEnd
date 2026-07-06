@@ -60,13 +60,9 @@ public class WithdrawalCodeServiceImpl implements WithdrawalCodeService {
         if (word == null || word.trim().isEmpty()) {
             return "";
         }
-        // Take the first word (in case of names like "Juan Carlos"
-        // or instruments like "Guitarra Eléctrica")
         String firstWord = word.trim().split("\\s+")[0];
-        // Remove accents / diacritics
         String normalized = Normalizer.normalize(firstWord, Normalizer.Form.NFD);
         normalized = normalized.replaceAll("[^\\p{ASCII}]", "");
-        // Remove any non-alphanumeric characters
         normalized = normalized.replaceAll("[^a-zA-Z0-9]", "");
         return normalized.toUpperCase();
     }

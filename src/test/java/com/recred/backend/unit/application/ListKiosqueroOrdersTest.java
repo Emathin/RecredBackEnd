@@ -6,6 +6,7 @@ import com.recred.backend.application.ListKiosqueroOrdersResponse;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -27,10 +28,16 @@ class ListKiosqueroOrdersTest {
     @Test
     void execute_WhenFiltersAreEmpty_ShouldUseActiveStatusesAndDefaultLimit() {
         UUID buffetId = UUID.randomUUID();
+        ListKiosqueroOrdersRequest request = new ListKiosqueroOrdersRequest(
+                buffetId,
+                null,
+                null,
+                null,
+                null
+        );
         givenOrdersFound();
 
-        ListKiosqueroOrdersResponse response = whenListingOrders(
-                new ListKiosqueroOrdersRequest(buffetId, null, null, null, null));
+        ListKiosqueroOrdersResponse response = whenListingOrders(request);
 
         assertEquals(List.of(), response.orders());
         verify(purchaseRepository).findKiosqueroOrders(
@@ -52,15 +59,16 @@ class ListKiosqueroOrdersTest {
         UUID slotId = UUID.randomUUID();
         LocalDate date = LocalDate.of(2026, 6, 8);
         List<EstadoCompra> statuses = List.of(EstadoCompra.CANCELADO);
-        givenOrdersFound();
-
-        whenListingOrders(new ListKiosqueroOrdersRequest(
+        ListKiosqueroOrdersRequest request = new ListKiosqueroOrdersRequest(
                 buffetId,
                 statuses,
                 date,
                 slotId,
                 250
-        ));
+        );
+        givenOrdersFound();
+
+        whenListingOrders(request);
 
         verify(purchaseRepository).findKiosqueroOrders(
                 buffetId,
@@ -73,13 +81,17 @@ class ListKiosqueroOrdersTest {
 
     @Test
     void execute_WhenBuffetIdIsNull_ShouldThrowException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> whenListingOrders(new ListKiosqueroOrdersRequest(
-                        null,
-                        null,
-                        null,
-                        null,
-                        null)));
+        ListKiosqueroOrdersRequest request = new ListKiosqueroOrdersRequest(
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        Executable execution = () -> whenListingOrders(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
     }
 
     private void givenOrdersFound() {

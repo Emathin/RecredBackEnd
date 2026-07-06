@@ -2,9 +2,13 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.CreatePromotion;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
+import com.recred.backend.application.GenerateSeasonalRecommendationRequest;
+import com.recred.backend.application.SeasonalRecommendationResponse;
 import com.recred.backend.infrastructure.gemini.GeminiSeasonalSuggester;
 import com.recred.backend.infrastructure.openMeteo.NominatimGeocodingClient;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
+import com.recred.backend.infrastructure.web.GeocodingResponseDTO;
+import com.recred.backend.infrastructure.web.PromotionResponseDTO;
 import com.recred.backend.infrastructure.web.RecommendationResponseDTO;
 import com.recred.backend.infrastructure.web.SuggestedPromotionDTO;
 import com.recred.backend.infrastructure.web.SugerenciaDTO;
@@ -23,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -69,12 +74,12 @@ class GenerateSeasonalRecommendationTest {
         when(geminiSuggesterMock.getSeasonalRecommendations(anyString(), anyDouble(), anyString(), anyString()))
                 .thenReturn(recomendacionSimulada);
 
-        RecommendationResponseDTO resultado = useCase.execute(-34.7, -58.47, null);
+        SeasonalRecommendationResponse resultado = execute(-34.7, -58.47, null);
 
         assertNotNull(resultado);
-        assertEquals("Promo 2x1 en helados.", resultado.getPromocionalTip());
-        assertEquals(1, resultado.getSugerences().size());
-        assertEquals("Helados y Congelados", resultado.getSugerences().get(0).getCategoria());
+        assertEquals("Promo 2x1 en helados.", resultado.promotionalTip());
+        assertEquals(1, resultado.suggestions().size());
+        assertEquals("Helados y Congelados", resultado.suggestions().get(0).category());
     }
 
     @Test
@@ -83,7 +88,7 @@ class GenerateSeasonalRecommendationTest {
                 .thenThrow(new RuntimeException("Weather service is currently unavailable"));
 
         RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
-            useCase.execute(-34.7, -58.47, null);
+            execute(-34.7, -58.47, null);
         });
 
         assertEquals("Weather service is currently unavailable", excepcion.getMessage());
@@ -101,7 +106,7 @@ class GenerateSeasonalRecommendationTest {
                 .thenThrow(new RuntimeException("Failed to generate seasonal recommendations from AI."));
 
         RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
-            useCase.execute(-34.7, -58.47, null);
+            execute(-34.7, -58.47, null);
         });
 
         assertEquals("Failed to generate seasonal recommendations from AI.", excepcion.getMessage());
@@ -119,7 +124,7 @@ class GenerateSeasonalRecommendationTest {
         when(geminiSuggesterMock.getSeasonalRecommendations(anyString(), anyDouble(), anyString(), anyString()))
                 .thenReturn(recomendacionSimulada);
 
-        useCase.execute(10.0, 20.0, null);
+        execute(10.0, 20.0, null);
 
         InOrder ordenDeInvocacion = inOrder(climaServiceMock, categoryRepository, geminiSuggesterMock);
         ordenDeInvocacion.verify(climaServiceMock).getCurrentWeather(10.0, 20.0);
@@ -149,11 +154,11 @@ class GenerateSeasonalRecommendationTest {
                 product(productId, "Bebidas frias"),
                 product(secondProductId, "Bebidas frias")
         ));
-        RecommendationResponseDTO resultado = useCase.execute(-34.7, -58.47, null);
+        SeasonalRecommendationResponse resultado = execute(-34.7, -58.47, null);
 
-        assertNull(resultado.getCreatedPromotion());
-        assertNotNull(resultado.getSuggestedPromotion().getProductIds());
-        assertEquals(2, resultado.getSuggestedPromotion().getProductIds().size());
+        assertNull(resultado.createdPromotion());
+        assertNotNull(resultado.suggestedPromotion().productIds());
+        assertEquals(2, resultado.suggestedPromotion().productIds().size());
     }
 
     @Test
@@ -177,11 +182,60 @@ class GenerateSeasonalRecommendationTest {
                 product(matchedProductId, "Bebidas calientes"),
                 product(fallbackProductId, "Snacks")
         ));
-        RecommendationResponseDTO resultado = useCase.execute(-34.7, -58.47, null);
+        SeasonalRecommendationResponse resultado = execute(-34.7, -58.47, null);
 
-        assertNull(resultado.getCreatedPromotion());
-        assertNotNull(resultado.getSuggestedPromotion().getProductIds());
-        assertEquals(2, resultado.getSuggestedPromotion().getProductIds().size());
+        assertNull(resultado.createdPromotion());
+        assertNotNull(resultado.suggestedPromotion().productIds());
+        assertEquals(2, resultado.suggestedPromotion().productIds().size());
+    }
+
+    @Test
+    void dadoGeocodingYPromocionCreada_cuandoSeEjecuta_entoncesMapeaUbicacionYPromocion() {
+        UUID buffetId = UUID.randomUUID();
+        UUID promotionId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        WeatherDTO climaSimulado = new WeatherDTO(12.5, "Frio");
+        when(climaServiceMock.getCurrentWeather(anyDouble(), anyDouble()))
+                .thenReturn(climaSimulado);
+        when(geocodingClientMock.getReverseGeocoding(anyDouble(), anyDouble()))
+                .thenReturn(geocoding("Tandil", "Buenos Aires"));
+
+        RecommendationResponseDTO recomendacion = new RecommendationResponseDTO();
+        recomendacion.setPromocionalTip("Sumar productos calientes.");
+        SuggestedPromotionDTO suggestedPromotion = new SuggestedPromotionDTO();
+        suggestedPromotion.setName("Combo caliente");
+        suggestedPromotion.setDiscountPercentage(new BigDecimal("10.00"));
+        suggestedPromotion.setTargetCategories(List.of());
+        suggestedPromotion.setImagen("combo.png");
+        recomendacion.setSuggestedPromotion(suggestedPromotion);
+        recomendacion.setCreatedPromotion(createdPromotion(promotionId, productId, buffetId));
+
+        CategoriaProducto activeCategory = category("Infusiones", true);
+        CategoriaProducto inactiveCategory = category("Oculta", false);
+        when(categoryRepository.getAllCategories()).thenReturn(List.of(
+                activeCategory,
+                inactiveCategory
+        ));
+        when(geminiSuggesterMock.getSeasonalRecommendations(
+                anyString(),
+                eq(12.5),
+                eq("Frio"),
+                eq("Infusiones")))
+                .thenReturn(recomendacion);
+        when(productRepository.findAllActiveWithStock(buffetId))
+                .thenReturn(List.of(product(productId, "Infusiones")));
+
+        SeasonalRecommendationResponse resultado = execute(-37.32, -59.13, buffetId);
+
+        assertNull(resultado.suggestions());
+        assertEquals("Tandil", resultado.currentWeather().city());
+        assertEquals("Buenos Aires", resultado.currentWeather().province());
+        assertEquals("Combo caliente", resultado.suggestedPromotion().name());
+        assertEquals(List.of(), resultado.suggestedPromotion().targetCategories());
+        assertNull(resultado.suggestedPromotion().productIds());
+        assertEquals(promotionId, resultado.createdPromotion().id());
+        assertEquals(productId, resultado.createdPromotion().productIds().get(0));
+        assertEquals(buffetId, resultado.createdPromotion().buffetId());
     }
 
     private Producto product(UUID productId, String categoryDescription) {
@@ -193,5 +247,52 @@ class GenerateSeasonalRecommendationTest {
         product.setId(productId);
         product.setCategoria(category);
         return product;
+    }
+
+    private CategoriaProducto category(String description, boolean active) {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(UUID.randomUUID());
+        category.setDescripcion(description);
+        category.setActivo(active);
+        return category;
+    }
+
+    private GeocodingResponseDTO geocoding(String town, String state) {
+        GeocodingResponseDTO geocoding = new GeocodingResponseDTO();
+        GeocodingResponseDTO.Address address = new GeocodingResponseDTO.Address();
+        address.setTown(town);
+        address.setState(state);
+        geocoding.setAddress(address);
+        return geocoding;
+    }
+
+    private PromotionResponseDTO createdPromotion(
+            UUID promotionId,
+            UUID productId,
+            UUID buffetId
+    ) {
+        PromotionResponseDTO promotion = new PromotionResponseDTO();
+        promotion.setId(promotionId);
+        promotion.setName("Promo caliente");
+        promotion.setDiscountPercentage(new BigDecimal("15.00"));
+        promotion.setStartDate(LocalDateTime.of(2026, 7, 4, 8, 0));
+        promotion.setEndDate(LocalDateTime.of(2026, 7, 5, 20, 0));
+        promotion.setStatus("DRAFT");
+        promotion.setProductIds(List.of(productId));
+        promotion.setBuffetId(buffetId);
+        promotion.setImageUrl("promo.png");
+        return promotion;
+    }
+
+    private SeasonalRecommendationResponse execute(
+            Double latitude,
+            Double longitude,
+            UUID buffetId
+    ) {
+        return useCase.execute(new GenerateSeasonalRecommendationRequest(
+                latitude,
+                longitude,
+                buffetId
+        ));
     }
 }

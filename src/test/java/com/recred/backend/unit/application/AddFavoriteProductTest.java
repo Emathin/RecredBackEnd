@@ -4,154 +4,271 @@ import com.recred.backend.application.AddFavoriteProduct;
 import com.recred.backend.application.AddFavoriteProductRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AddFavoriteProductTest {
 
-    @Mock
-    private AlumnoRepository alumnoRepository;
+    private static final int FREE_PLAN_FAVORITE_LIMIT = 5;
+    private static final String FREE_PLAN_LIMIT_MESSAGE =
+            "Límite de productos favoritos alcanzado para cuenta gratuita (máximo 5)";
 
     @Mock
+    private AlumnoRepository alumnoRepository;
+    @Mock
     private ProductRepository productRepository;
- 
     @Mock
     private TutorRepository tutorRepository;
 
-    @InjectMocks
     private AddFavoriteProduct addFavoriteProduct;
+    private AddFavoriteProductRequest addFavoriteRequest;
+    private Alumno alumno;
+    private Producto producto;
+    private Throwable thrownException;
+
+    @BeforeEach
+    void setUp() {
+        addFavoriteProduct = new AddFavoriteProduct(
+                alumnoRepository,
+                productRepository,
+                tutorRepository
+        );
+    }
 
     @Test
-    void dadoDatosValidos_cuandoExecute_entoncesAgregaFavoritoYGuarda() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
+    void givenValidFavoriteProductRequest_whenAddingFavorite_thenAddsProductAndSavesStudent() {
+        givenDefaultFavoriteProductRequest();
+        givenAlumnoExists();
+        givenProductExists();
+
+        whenAddFavoriteProduct();
+
+        thenProductWasAddedAsFavorite();
+        thenAlumnoWasSaved();
+    }
+
+    @Test
+    void givenMissingAlumno_whenAddingFavorite_thenThrowsException() {
+        givenDefaultFavoriteProductRequest();
+        givenAlumnoDoesNotExist();
+
+        whenAddFavoriteProductFails(RuntimeException.class);
+
+        thenErrorMessageIs("Alumno no encontrado");
+        thenProductWasNotSearched();
+        thenAlumnoWasNotSaved();
+    }
+
+    @Test
+    void givenMissingProduct_whenAddingFavorite_thenThrowsException() {
+        givenDefaultFavoriteProductRequest();
+        givenAlumnoExists();
+        givenProductDoesNotExist();
+
+        whenAddFavoriteProductFails(RuntimeException.class);
+
+        thenErrorMessageIs("Producto no encontrado");
+        thenTutorsWereNotSearched();
+        thenAlumnoWasNotSaved();
+    }
+
+    @Test
+    void givenFreePlanStudentAtFavoriteLimit_whenAddingFavorite_thenThrowsException() {
+        givenFavoriteProductRequestForStudentAtFavoriteLimit();
+        givenAlumnoExists();
+        givenProductExists();
+        givenStudentHasTutorWithPlan(TipoPlan.GRATUITO);
+
+        whenAddFavoriteProductFails(IllegalArgumentException.class);
+
+        thenErrorMessageIs(FREE_PLAN_LIMIT_MESSAGE);
+        thenAlumnoWasNotSaved();
+    }
+
+    @Test
+    void givenStudentWithoutTutorsAtFavoriteLimit_whenAddingFavorite_thenThrowsException() {
+        givenFavoriteProductRequestForStudentAtFavoriteLimit();
+        givenAlumnoExists();
+        givenProductExists();
+        givenStudentHasNoTutors();
+
+        whenAddFavoriteProductFails(IllegalArgumentException.class);
+
+        thenErrorMessageIs(FREE_PLAN_LIMIT_MESSAGE);
+        thenAlumnoWasNotSaved();
+    }
+
+    @Test
+    void givenFreePlanStudentAtLimitWithExistingFavorite_whenAddingFavorite_thenSavesStudent() {
+        givenFavoriteProductRequestForExistingFavoriteAtLimit();
+        givenAlumnoExists();
+        givenProductExists();
+        givenStudentHasTutorWithPlan(TipoPlan.GRATUITO);
+
+        whenAddFavoriteProduct();
+
+        thenProductWasAddedAsFavorite();
+        thenAlumnoHasFavoriteProductCount(FREE_PLAN_FAVORITE_LIMIT);
+        thenAlumnoWasSaved();
+    }
+
+    @Test
+    void givenPremiumPlanStudentAtFavoriteLimit_whenAddingFavorite_thenAddsProductAndSaves() {
+        givenFavoriteProductRequestForStudentAtFavoriteLimit();
+        givenAlumnoExists();
+        givenProductExists();
+        givenStudentHasTutorWithPlan(TipoPlan.PREMIUM);
+
+        whenAddFavoriteProduct();
+
+        thenProductWasAddedAsFavorite();
+        thenAlumnoHasFavoriteProductCount(6);
+        thenAlumnoWasSaved();
+    }
+
+    private void givenDefaultFavoriteProductRequest() {
+        addFavoriteRequest = request(randomUUID(), randomUUID());
+        alumno = alumno(addFavoriteRequest.alumnoId());
+        producto = producto(addFavoriteRequest.productoId());
+    }
+
+    private void givenFavoriteProductRequestForExistingFavoriteAtLimit() {
+        addFavoriteRequest = request(randomUUID(), randomUUID());
+        producto = producto(addFavoriteRequest.productoId());
+        alumno = alumnoWithFavoriteProducts(
+                addFavoriteRequest.alumnoId(),
+                FREE_PLAN_FAVORITE_LIMIT - 1);
+        alumno.agregarProductoFavorito(producto);
+    }
+
+    private void givenFavoriteProductRequestForStudentAtFavoriteLimit() {
+        addFavoriteRequest = request(randomUUID(), randomUUID());
+        alumno = alumnoWithFavoriteProducts(
+                addFavoriteRequest.alumnoId(),
+                FREE_PLAN_FAVORITE_LIMIT);
+        producto = producto(addFavoriteRequest.productoId());
+    }
+
+    private void givenAlumnoExists() {
+        when(alumnoRepository.findById(addFavoriteRequest.alumnoId()))
+                .thenReturn(Optional.of(alumno));
+    }
+
+    private void givenAlumnoDoesNotExist() {
+        when(alumnoRepository.findById(addFavoriteRequest.alumnoId()))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenProductExists() {
+        when(productRepository.findById(addFavoriteRequest.productoId()))
+                .thenReturn(Optional.of(producto));
+    }
+
+    private void givenProductDoesNotExist() {
+        when(productRepository.findById(addFavoriteRequest.productoId()))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenStudentHasTutorWithPlan(TipoPlan plan) {
+        when(tutorRepository.findByAlumnoId(addFavoriteRequest.alumnoId()))
+                .thenReturn(List.of(tutorWithPlan(plan)));
+    }
+
+    private void givenStudentHasNoTutors() {
+        when(tutorRepository.findByAlumnoId(addFavoriteRequest.alumnoId()))
+                .thenReturn(List.of());
+    }
+
+    private void whenAddFavoriteProduct() {
+        addFavoriteProduct.execute(addFavoriteRequest);
+    }
+
+    private <T extends Throwable> void whenAddFavoriteProductFails(Class<T> expectedException) {
+        Executable execution = () -> addFavoriteProduct.execute(addFavoriteRequest);
+        thrownException = assertThrows(expectedException, execution);
+    }
+
+    private void thenProductWasAddedAsFavorite() {
+        assertTrue(alumno.getProductosFavoritos().contains(producto));
+    }
+
+    private void thenAlumnoHasFavoriteProductCount(int expectedCount) {
+        assertEquals(expectedCount, alumno.getProductosFavoritos().size());
+    }
+
+    private void thenAlumnoWasSaved() {
+        verify(alumnoRepository).save(alumno);
+    }
+
+    private void thenAlumnoWasNotSaved() {
+        verify(alumnoRepository, never()).save(any());
+    }
+
+    private void thenProductWasNotSearched() {
+        verify(productRepository, never()).findById(any());
+    }
+
+    private void thenTutorsWereNotSearched() {
+        verify(tutorRepository, never()).findByAlumnoId(any());
+    }
+
+    private void thenErrorMessageIs(String expectedMessage) {
+        assertEquals(expectedMessage, thrownException.getMessage());
+    }
+
+    private Alumno alumno(UUID alumnoId) {
         Alumno alumno = new Alumno();
         alumno.setId(alumnoId);
+        return alumno;
+    }
+
+    private Alumno alumnoWithFavoriteProducts(UUID alumnoId, int count) {
+        Alumno alumno = alumno(alumnoId);
+        for (int i = 0; i < count; i++) {
+            alumno.agregarProductoFavorito(producto(randomUUID()));
+        }
+        return alumno;
+    }
+
+    private Producto producto(UUID productoId) {
         Producto producto = new Producto();
         producto.setId(productoId);
-
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(productRepository.findById(productoId)).thenReturn(Optional.of(producto));
-
-        addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId));
-
-        assertTrue(alumno.getProductosFavoritos().contains(producto));
-        verify(alumnoRepository, times(1)).save(alumno);
+        return producto;
     }
 
-    @Test
-    void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
-
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId))
-        );
-        assertEquals("Alumno no encontrado", exception.getMessage());
-
-        verify(productRepository, never()).findById(any());
-        verify(alumnoRepository, never()).save(any());
-    }
-
-    @Test
-    void dadoProductoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(productRepository.findById(productoId)).thenReturn(Optional.empty());
-
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId))
-        );
-        assertEquals("Producto no encontrado", exception.getMessage());
-
-        verify(alumnoRepository, never()).save(any());
-    }
-
-    @Test
-    void dadoPlanGratuitoYMasDe5Favoritos_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-
-        for (int i = 0; i < 5; i++) {
-            Producto p = new Producto();
-            p.setId(UUID.randomUUID());
-            alumno.agregarProductoFavorito(p);
-        }
-
-        Producto nuevoProducto = new Producto();
-        nuevoProducto.setId(productoId);
-
+    private Tutor tutorWithPlan(TipoPlan plan) {
         Usuario usuario = new Usuario();
-        usuario.setPlan(TipoPlan.GRATUITO);
+        usuario.setPlan(plan);
         Tutor tutor = new Tutor();
         tutor.setUsuario(usuario);
-
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(productRepository.findById(productoId)).thenReturn(Optional.of(nuevoProducto));
-        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(java.util.List.of(tutor));
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId))
-        );
-        assertEquals("Límite de productos favoritos alcanzado para cuenta gratuita (máximo 5)", exception.getMessage());
-        verify(alumnoRepository, never()).save(any());
+        return tutor;
     }
 
-    @Test
-    void dadoPlanPremiumYMasDe5Favoritos_cuandoExecute_entoncesAgregaYGuarda() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-
-        for (int i = 0; i < 5; i++) {
-            Producto p = new Producto();
-            p.setId(UUID.randomUUID());
-            alumno.agregarProductoFavorito(p);
-        }
-
-        Producto nuevoProducto = new Producto();
-        nuevoProducto.setId(productoId);
-
-        Usuario usuario = new Usuario();
-        usuario.setPlan(TipoPlan.PREMIUM);
-        Tutor tutor = new Tutor();
-        tutor.setUsuario(usuario);
-
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(productRepository.findById(productoId)).thenReturn(Optional.of(nuevoProducto));
-        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(java.util.List.of(tutor));
-
-        addFavoriteProduct.execute(new AddFavoriteProductRequest(alumnoId, productoId));
-
-        assertTrue(alumno.getProductosFavoritos().contains(nuevoProducto));
-        assertEquals(6, alumno.getProductosFavoritos().size());
-        verify(alumnoRepository, times(1)).save(alumno);
+    private AddFavoriteProductRequest request(UUID alumnoId, UUID productoId) {
+        return new AddFavoriteProductRequest(alumnoId, productoId);
     }
 }

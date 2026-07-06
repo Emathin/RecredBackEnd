@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GenerateSeasonalRecommendation;
+import com.recred.backend.application.GenerateSeasonalRecommendationRequest;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -27,7 +28,13 @@ public class SeasonalRecommendationController {
             @RequestParam double longitude,
             @RequestParam(required = false) java.util.UUID buffetId) {
 
-        RecommendationResponseDTO response = useCase.execute(latitude, longitude, buffetId);
+        RecommendationResponseDTO response = RecommendationResponseDTO.fromApplication(
+                useCase.execute(new GenerateSeasonalRecommendationRequest(
+                        latitude,
+                        longitude,
+                        buffetId
+                ))
+        );
 
         return ResponseEntity.ok(response);
     }

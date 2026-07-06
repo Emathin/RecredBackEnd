@@ -15,6 +15,7 @@ import com.recred.backend.application.ManualProductUnlockRequest;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictionsRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,6 +41,7 @@ public class ControlParentalController {
     private final DetectStudentPreferences detectarPreferenciasUseCase;
     private final ManualProductLock manualProductLock;
     private final ManualProductUnlock manualProductUnlock;
+    private final TutorAccessGuard tutorAccessGuard;
 
     public ControlParentalController(ManageRestrictions useCase,
                                      GetHealthRestrictions obtenerRestriccionesUseCase,
@@ -47,7 +49,8 @@ public class ControlParentalController {
                                      RemoveHealthRestrictions removeHealthRestrictions,
                                      DetectStudentPreferences detectarPreferenciasUseCase,
                                      ManualProductLock manualProductLock,
-                                     ManualProductUnlock manualProductUnlock) {
+                                     ManualProductUnlock manualProductUnlock,
+                                     TutorAccessGuard tutorAccessGuard) {
         this.useCase = useCase;
         this.obtenerRestriccionesUseCase = obtenerRestriccionesUseCase;
         this.addHealthRestriction = addHealthRestriction;
@@ -55,22 +58,25 @@ public class ControlParentalController {
         this.detectarPreferenciasUseCase = detectarPreferenciasUseCase;
         this.manualProductLock = manualProductLock;
         this.manualProductUnlock = manualProductUnlock;
+        this.tutorAccessGuard = tutorAccessGuard;
     }
 
     @PutMapping("/alumnos/{alumnoId}/actualizar-restricciones-salud")
     public ResponseEntity<Void> actualizarRestriccionesSalud(
             @PathVariable UUID alumnoId,
-            @RequestBody ActualizarRestriccionesDTO dto) {
-
+            @RequestBody ActualizarRestriccionesDTO dto,
+            Authentication authentication) {
+        tutorAccessGuard.requireStrictTutorStudentAccess(authentication, alumnoId);
         useCase.execute(new ManageRestrictionsRequest(alumnoId, dto.getClasificacionesIds()));
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/alumnos/{alumnoId}/obtener-restricciones-salud")
     public ResponseEntity<List<ClasificacionSaludDTO>> obtenerRestriccionesSalud (
-            @PathVariable UUID alumnoId) {
-
-        var restriccionesResponse = obtenerRestriccionesUseCase.ejecutar(
+            @PathVariable UUID alumnoId,
+            Authentication authentication) {
+        tutorAccessGuard.requireStudentAccess(authentication, alumnoId);
+        var restriccionesResponse = obtenerRestriccionesUseCase.execute(
                 new GetHealthRestrictionsRequest(alumnoId)
         );
         List<ClasificacionSaludDTO> respuesta = restriccionesResponse.stream()
@@ -83,8 +89,9 @@ public class ControlParentalController {
     @PostMapping("/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}")
     public ResponseEntity<Void> agregarRestriccionSalud(
             @PathVariable UUID alumnoId,
-            @PathVariable UUID clasificacionId) {
-
+            @PathVariable UUID clasificacionId,
+            Authentication authentication) {
+        tutorAccessGuard.requireStrictTutorStudentAccess(authentication, alumnoId);
         addHealthRestriction.execute(new AddHealthRestrictionRequest(alumnoId, clasificacionId));
         return ResponseEntity.ok().build();
     }
@@ -92,7 +99,9 @@ public class ControlParentalController {
     @DeleteMapping("/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}")
     public ResponseEntity<Void> removerRestriccionSalud(
             @PathVariable UUID alumnoId,
-            @PathVariable UUID clasificacionId) {
+            @PathVariable UUID clasificacionId,
+            Authentication authentication) {
+        tutorAccessGuard.requireStrictTutorStudentAccess(authentication, alumnoId);
         removeHealthRestrictions.execute(
                 new RemoveHealthRestrictionsRequest(alumnoId, clasificacionId)
         );
@@ -102,7 +111,9 @@ public class ControlParentalController {
     @PostMapping("/alumnos/{alumnoId}/analizar-preferencias")
     public ResponseEntity<Void> analizarPreferencias(
             @PathVariable UUID alumnoId,
-            @RequestParam UUID buffetId) {
+            @RequestParam UUID buffetId,
+            Authentication authentication) {
+        tutorAccessGuard.requireStrictTutorStudentAccess(authentication, alumnoId);
         detectarPreferenciasUseCase.execute(
                 new DetectStudentPreferencesRequest(alumnoId, buffetId)
         );
@@ -112,8 +123,9 @@ public class ControlParentalController {
     @PostMapping("/alumnos/{alumnoId}/productos-bloqueados/{productoId}")
     public ResponseEntity<Void> bloquearProducto(
             @PathVariable UUID alumnoId,
-            @PathVariable UUID productoId) {
-
+            @PathVariable UUID productoId,
+            Authentication authentication) {
+        tutorAccessGuard.requireStrictTutorStudentAccess(authentication, alumnoId);
         manualProductLock.execute(new ManualProductLockRequest(alumnoId, productoId));
         return ResponseEntity.ok().build();
     }
@@ -121,8 +133,9 @@ public class ControlParentalController {
     @DeleteMapping("/alumnos/{alumnoId}/productos-bloqueados/{productoId}")
     public ResponseEntity<Void> desbloquearProducto(
             @PathVariable UUID alumnoId,
-            @PathVariable UUID productoId) {
-
+            @PathVariable UUID productoId,
+            Authentication authentication) {
+        tutorAccessGuard.requireStrictTutorStudentAccess(authentication, alumnoId);
         manualProductUnlock.execute(
                 new ManualProductUnlockRequest(alumnoId, productoId)
         );

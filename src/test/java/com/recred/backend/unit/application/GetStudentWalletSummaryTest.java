@@ -23,6 +23,7 @@ import com.recred.backend.domain.repositories.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -160,8 +161,9 @@ class GetStudentWalletSummaryTest {
         UUID studentId = randomUUID();
         givenAuthenticatedTutorCannotAccessStudent(userId, studentId);
 
-        assertThrows(ConsumoAlumnoNoAutorizadoException.class,
-                () -> whenDefaultSummaryIsRequested(studentId));
+        Executable execution = () -> whenDefaultSummaryIsRequested(studentId);
+
+        assertThrows(ConsumoAlumnoNoAutorizadoException.class, execution);
         verify(walletRepository, never()).findByStudentId(any());
     }
 
@@ -171,11 +173,13 @@ class GetStudentWalletSummaryTest {
         UUID studentId = randomUUID();
         givenAuthenticatedStudent(userId, studentId);
 
-        assertThrows(RangoFechasConsumoInvalidoException.class,
-                () -> whenSummaryIsRequested(
-                        studentId,
-                        LocalDate.of(2026, 6, 15),
-                        LocalDate.of(2026, 6, 1)));
+        Executable execution = () -> whenSummaryIsRequested(
+                studentId,
+                LocalDate.of(2026, 6, 15),
+                LocalDate.of(2026, 6, 1)
+        );
+
+        assertThrows(RangoFechasConsumoInvalidoException.class, execution);
     }
 
     @Test
@@ -183,8 +187,9 @@ class GetStudentWalletSummaryTest {
         UUID studentId = randomUUID();
         givenAuthenticatedUserDoesNotExist();
 
-        assertThrows(UsuarioAutenticadoNoEncontradoException.class,
-                () -> whenDefaultSummaryIsRequested(studentId));
+        Executable execution = () -> whenDefaultSummaryIsRequested(studentId);
+
+        assertThrows(UsuarioAutenticadoNoEncontradoException.class, execution);
         verify(walletRepository, never()).findByStudentId(any());
     }
 
@@ -194,8 +199,9 @@ class GetStudentWalletSummaryTest {
         UUID requestedStudentId = randomUUID();
         givenAuthenticatedStudentWithoutAssociatedStudentId(userId);
 
-        assertThrows(ConsumoAlumnoNoAutorizadoException.class,
-                () -> whenDefaultSummaryIsRequested(requestedStudentId));
+        Executable execution = () -> whenDefaultSummaryIsRequested(requestedStudentId);
+
+        assertThrows(ConsumoAlumnoNoAutorizadoException.class, execution);
         verify(walletRepository, never()).findByStudentId(any());
     }
 
@@ -206,8 +212,9 @@ class GetStudentWalletSummaryTest {
         givenAuthenticatedStudent(userId, studentId);
         givenWalletDoesNotExist(studentId);
 
-        assertThrows(IllegalArgumentException.class,
-                () -> whenDefaultSummaryIsRequested(studentId));
+        Executable execution = () -> whenDefaultSummaryIsRequested(studentId);
+
+        assertThrows(IllegalArgumentException.class, execution);
     }
 
     @Test

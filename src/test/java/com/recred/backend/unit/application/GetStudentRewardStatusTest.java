@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GetStudentRewardStatus;
+import com.recred.backend.application.GetStudentRewardStatusRequest;
 import com.recred.backend.application.StudentRewardResponse;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.models.Alumno;
@@ -36,7 +37,8 @@ class GetStudentRewardStatusTest {
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        StudentRewardResponse response = getStudentRewardStatus.execute(alumnoId);
+        StudentRewardResponse response = getStudentRewardStatus.execute(
+                new GetStudentRewardStatusRequest(alumnoId));
 
         assertEquals(50, response.totalPoints());
         assertEquals("BRONZE", response.currentLevel());
@@ -53,7 +55,8 @@ class GetStudentRewardStatusTest {
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        StudentRewardResponse response = getStudentRewardStatus.execute(alumnoId);
+        StudentRewardResponse response = getStudentRewardStatus.execute(
+                new GetStudentRewardStatusRequest(alumnoId));
 
         assertEquals(300, response.totalPoints());
         assertEquals("GOLD", response.currentLevel());
@@ -70,7 +73,8 @@ class GetStudentRewardStatusTest {
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        StudentRewardResponse response = getStudentRewardStatus.execute(alumnoId);
+        StudentRewardResponse response = getStudentRewardStatus.execute(
+                new GetStudentRewardStatusRequest(alumnoId));
 
         assertEquals("SILVER", response.currentLevel());
         assertEquals(100, response.pointsToNextLevel());
@@ -84,6 +88,7 @@ class GetStudentRewardStatusTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         assertThrows(AlumnoNoEncontradoException.class,
-                () -> getStudentRewardStatus.execute(alumnoId));
+                () -> getStudentRewardStatus.execute(new GetStudentRewardStatusRequest(
+                        alumnoId)));
     }
 }

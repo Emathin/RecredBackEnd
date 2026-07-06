@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GenerateBuffetMenu;
+import com.recred.backend.application.GenerateBuffetMenuRequest;
 import com.recred.backend.application.GetBuffetByStudent;
 import com.recred.backend.application.GetBuffetByStudentRequest;
 import org.springframework.http.ResponseEntity;
@@ -37,11 +38,13 @@ public class MenuBuffetController {
                 ? fechaHoraConsulta
                 : LocalDateTime.now();
 
-        List<MenuProductoDTO> menu = generateBuffetMenu.execute(
+        List<MenuProductoDTO> menu = generateBuffetMenu.execute(new GenerateBuffetMenuRequest(
                 alumnoId,
                 buffetId,
                 momentoEvaluacion
-        );
+        )).products().stream()
+                .map(MenuProductoDTO::fromApplication)
+                .toList();
 
         return ResponseEntity.ok(menu);
     }

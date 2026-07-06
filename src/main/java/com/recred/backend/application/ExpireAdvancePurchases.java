@@ -2,7 +2,6 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,20 +29,22 @@ public class ExpireAdvancePurchases {
 
     @Transactional
     public ExpireAdvancePurchasesResponse execute(ExpireAdvancePurchasesRequest request) {
-        List<Purchase> purchases;
+        return expire(expiredPurchases(request));
+    }
+
+    private List<Purchase> expiredPurchases(ExpireAdvancePurchasesRequest request) {
         if (request.buffetId() == null) {
-            purchases = purchaseRepository.findExpiredAdvancePurchases(
-                    request.targetTime().toLocalDate(),
-                    request.targetTime().toLocalTime(),
-                    ACTIVE_ADVANCE_STATUSES);
-        } else {
-            purchases = purchaseRepository.findExpiredAdvancePurchases(
-                    request.buffetId(),
+            return purchaseRepository.findExpiredAdvancePurchases(
                     request.targetTime().toLocalDate(),
                     request.targetTime().toLocalTime(),
                     ACTIVE_ADVANCE_STATUSES);
         }
-        return expire(purchases);
+
+        return purchaseRepository.findExpiredAdvancePurchases(
+                request.buffetId(),
+                request.targetTime().toLocalDate(),
+                request.targetTime().toLocalTime(),
+                ACTIVE_ADVANCE_STATUSES);
     }
 
     private ExpireAdvancePurchasesResponse expire(List<Purchase> purchases) {
@@ -74,9 +75,8 @@ public class ExpireAdvancePurchases {
     }
 
     private boolean shouldReleaseReservation(Purchase purchase, EstadoCompra previousStatus) {
-        return purchase.getTipo() == TipoCompra.ANTICIPADA
-                && (previousStatus == EstadoCompra.PENDIENTE
-                || previousStatus == EstadoCompra.EN_PREPARACION
-                || previousStatus == EstadoCompra.LISTO);
+        return purchase.shouldReleaseReservationWhenChangingFrom(
+                previousStatus,
+                EstadoCompra.VENCIDO);
     }
 }

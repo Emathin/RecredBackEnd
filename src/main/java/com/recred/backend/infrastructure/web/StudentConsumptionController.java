@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
 import com.recred.backend.application.GetLoggedUserConsumptionDetailRequest;
 import com.recred.backend.application.GetStudentRewardStatus;
+import com.recred.backend.application.GetStudentRewardStatusRequest;
 import com.recred.backend.application.StudentRewardResponse;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -52,7 +53,7 @@ public class StudentConsumptionController {
 
     @GetMapping("/alumnos/{alumnoId}/recompensas-saludables")
     public StudentRewardResponse getRewardStatus(@PathVariable UUID alumnoId) {
-        return getStudentRewardStatus.execute(alumnoId);
+        return getStudentRewardStatus.execute(new GetStudentRewardStatusRequest(alumnoId));
     }
 
     private String cognitoSubject(Authentication authentication) {

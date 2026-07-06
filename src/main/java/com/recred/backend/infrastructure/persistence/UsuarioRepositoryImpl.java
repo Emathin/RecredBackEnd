@@ -2,14 +2,15 @@ package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.UsuarioRepository;
-import com.recred.backend.infrastructure.entities.ColegioEntity;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.ColegioEntity;
+import com.recred.backend.infrastructure.entities.KiosqueroEntity;
 import com.recred.backend.infrastructure.entities.TutorEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
-import com.recred.backend.infrastructure.entities.KiosqueroEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,8 +47,22 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
 
     @Override
     public Optional<Usuario> findByEmail(String email) {
-        return springDataUsuarioRepository.findByEmail(email)
+        return springDataUsuarioRepository.findFirstByEmailOrderByActualizadoEnDescCreadoEnDesc(
+                        email)
                 .map(UsuarioEntity::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public void updateProfile(String idCognito, String nombre, String apellido,
+                              String telefono, String dni, LocalDateTime actualizadoEn) {
+        springDataUsuarioRepository.updateProfile(
+                idCognito,
+                nombre,
+                apellido,
+                telefono,
+                dni,
+                actualizadoEn);
     }
 
     private UsuarioEntity toEntity(Usuario usuario) {

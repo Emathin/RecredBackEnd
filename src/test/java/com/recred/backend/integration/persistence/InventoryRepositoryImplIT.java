@@ -90,10 +90,10 @@ class InventoryRepositoryImplIT extends AbstractIntegrationTest {
         BuffetEntity buffet = generateBuffetEntity();
         ProductoEntity product = generateProductEntity();
         Inventario inventory = createInventoryDomain(buffet.getId(), product.getId());
-        inventory.setStockActual(4); // Below minimum which is 5
+        inventory.setStockActual(4);
         inventory.setStockReservado(0);
         inventory.setStockMinimo(5);
-        inventory.setEstado(EstadoInventario.DISPONIBLE); // Trying to force available
+        inventory.setEstado(EstadoInventario.DISPONIBLE);
 
         inventoryRepository.save(inventory);
         entityManager.flush();

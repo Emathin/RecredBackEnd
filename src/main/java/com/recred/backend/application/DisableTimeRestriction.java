@@ -13,10 +13,11 @@ public class DisableTimeRestriction {
         this.repository = repository;
     }
 
-    public void execute(DisableTimeRestrictionRequest request) {
+    public DisableTimeRestrictionResponse execute(DisableTimeRestrictionRequest request) {
         RestriccionHoraria restriction = findRestriccionHorariaById(request.restrictionId());
         restriction.setActiva(false);
         repository.save(restriction);
+        return new DisableTimeRestrictionResponse();
     }
 
     private RestriccionHoraria findRestriccionHorariaById(UUID id) {

@@ -14,6 +14,7 @@ import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -88,23 +89,15 @@ class UpdateStudentPhotoTest {
 
     @Test
     void execute_CuandoTodoEsValido_ActualizaFotoYRetornaResponse() {
-        // Arrange
         tutor.addHijo(alumno);
+        UpdateStudentPhotoRequest request = request();
 
         when(usuarioRepository.findByIdCognito(parentCognitoSubject)).thenReturn(Optional.of(parentUser));
         when(tutorRepository.findByUsuarioId(parentUserId)).thenReturn(Optional.of(tutor));
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        UpdateStudentPhotoRequest request = new UpdateStudentPhotoRequest(
-                parentCognitoSubject,
-                alumnoId,
-                newPhotoUrl
-        );
-
-        // Act
         UpdateStudentPhotoResponse response = updateStudentPhoto.execute(request);
 
-        // Assert
         assertNotNull(response);
         assertEquals(alumnoId, response.id());
         assertEquals("Lucas", response.nombre());
@@ -120,20 +113,13 @@ class UpdateStudentPhotoTest {
 
     @Test
     void execute_CuandoUsuarioNoExiste_LanzaIllegalArgumentException() {
-        // Arrange
+        UpdateStudentPhotoRequest request = request();
+
         when(usuarioRepository.findByIdCognito(parentCognitoSubject)).thenReturn(Optional.empty());
 
-        UpdateStudentPhotoRequest request = new UpdateStudentPhotoRequest(
-                parentCognitoSubject,
-                alumnoId,
-                newPhotoUrl
-        );
+        Executable execution = () -> updateStudentPhoto.execute(request);
 
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            updateStudentPhoto.execute(request);
-        });
-
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("Usuario autenticado no encontrado", exception.getMessage());
 
         verify(usuarioRepository).findByIdCognito(parentCognitoSubject);
@@ -144,22 +130,14 @@ class UpdateStudentPhotoTest {
 
     @Test
     void execute_CuandoUsuarioNoTieneRolPadre_LanzaAccessDeniedException() {
-        // Arrange
-        parentUser.setRol(RolUsuario.ALUMNO); // Rol no permitido para tutores en este contexto
+        parentUser.setRol(RolUsuario.ALUMNO);
+        UpdateStudentPhotoRequest request = request();
 
         when(usuarioRepository.findByIdCognito(parentCognitoSubject)).thenReturn(Optional.of(parentUser));
 
-        UpdateStudentPhotoRequest request = new UpdateStudentPhotoRequest(
-                parentCognitoSubject,
-                alumnoId,
-                newPhotoUrl
-        );
+        Executable execution = () -> updateStudentPhoto.execute(request);
 
-        // Act & Assert
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -> {
-            updateStudentPhoto.execute(request);
-        });
-
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class, execution);
         assertEquals("El usuario autenticado no tiene rol PADRE", exception.getMessage());
 
         verify(usuarioRepository).findByIdCognito(parentCognitoSubject);
@@ -170,21 +148,14 @@ class UpdateStudentPhotoTest {
 
     @Test
     void execute_CuandoTutorNoExiste_LanzaIllegalArgumentException() {
-        // Arrange
+        UpdateStudentPhotoRequest request = request();
+
         when(usuarioRepository.findByIdCognito(parentCognitoSubject)).thenReturn(Optional.of(parentUser));
         when(tutorRepository.findByUsuarioId(parentUserId)).thenReturn(Optional.empty());
 
-        UpdateStudentPhotoRequest request = new UpdateStudentPhotoRequest(
-                parentCognitoSubject,
-                alumnoId,
-                newPhotoUrl
-        );
+        Executable execution = () -> updateStudentPhoto.execute(request);
 
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            updateStudentPhoto.execute(request);
-        });
-
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("Tutor no encontrado para el usuario autenticado", exception.getMessage());
 
         verify(usuarioRepository).findByIdCognito(parentCognitoSubject);
@@ -195,22 +166,15 @@ class UpdateStudentPhotoTest {
 
     @Test
     void execute_CuandoAlumnoNoExiste_LanzaAlumnoNoEncontradoException() {
-        // Arrange
+        UpdateStudentPhotoRequest request = request();
+
         when(usuarioRepository.findByIdCognito(parentCognitoSubject)).thenReturn(Optional.of(parentUser));
         when(tutorRepository.findByUsuarioId(parentUserId)).thenReturn(Optional.of(tutor));
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        UpdateStudentPhotoRequest request = new UpdateStudentPhotoRequest(
-                parentCognitoSubject,
-                alumnoId,
-                newPhotoUrl
-        );
+        Executable execution = () -> updateStudentPhoto.execute(request);
 
-        // Act & Assert
-        AlumnoNoEncontradoException exception = assertThrows(AlumnoNoEncontradoException.class, () -> {
-            updateStudentPhoto.execute(request);
-        });
-
+        AlumnoNoEncontradoException exception = assertThrows(AlumnoNoEncontradoException.class, execution);
         assertEquals("No existe el alumno con id " + alumnoId, exception.getMessage());
 
         verify(usuarioRepository).findByIdCognito(parentCognitoSubject);
@@ -221,29 +185,24 @@ class UpdateStudentPhotoTest {
 
     @Test
     void execute_CuandoAlumnoNoPerteneceAlTutor_LanzaAccessDeniedException() {
-        // Arrange
-        // No agregamos el alumno a la lista de hijos del tutor para simular que no le pertenece
+        UpdateStudentPhotoRequest request = request();
 
         when(usuarioRepository.findByIdCognito(parentCognitoSubject)).thenReturn(Optional.of(parentUser));
         when(tutorRepository.findByUsuarioId(parentUserId)).thenReturn(Optional.of(tutor));
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        UpdateStudentPhotoRequest request = new UpdateStudentPhotoRequest(
-                parentCognitoSubject,
-                alumnoId,
-                newPhotoUrl
-        );
+        Executable execution = () -> updateStudentPhoto.execute(request);
 
-        // Act & Assert
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -> {
-            updateStudentPhoto.execute(request);
-        });
-
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class, execution);
         assertEquals("El alumno no pertenece al tutor autenticado", exception.getMessage());
 
         verify(usuarioRepository).findByIdCognito(parentCognitoSubject);
         verify(tutorRepository).findByUsuarioId(parentUserId);
         verify(alumnoRepository).findById(alumnoId);
         verify(usuarioRepository, never()).updateFotoPerfil(anyString(), anyString());
+    }
+
+    private UpdateStudentPhotoRequest request() {
+        return new UpdateStudentPhotoRequest(parentCognitoSubject, alumnoId, newPhotoUrl);
     }
 }

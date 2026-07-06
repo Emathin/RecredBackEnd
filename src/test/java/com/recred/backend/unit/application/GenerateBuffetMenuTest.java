@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GenerateBuffetMenu;
+import com.recred.backend.application.GenerateBuffetMenuRequest;
+import com.recred.backend.application.MenuProductResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ClasificacionSalud;
@@ -18,13 +20,11 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 
-import com.recred.backend.infrastructure.web.MenuProductoDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -88,7 +88,7 @@ class GenerateBuffetMenuTest {
                 .thenReturn(List.of(available, unavailable));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
 
-        List<MenuProductoDTO> result = useCase.execute(
+        List<MenuProductResponse> result = execute(
                 alumnoId,
                 buffetId,
                 LocalDateTime.now()
@@ -106,7 +106,7 @@ class GenerateBuffetMenuTest {
     @Test
     void execute_WhenBuffetIdIsNull_ShouldThrowException() {
         assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(UUID.randomUUID(), null, LocalDateTime.now()));
+                () -> execute(UUID.randomUUID(), null, LocalDateTime.now()));
     }
 
     @Test
@@ -114,7 +114,7 @@ class GenerateBuffetMenuTest {
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class,
-                () -> useCase.execute(alumnoId, buffetId, LocalDateTime.now()));
+                () -> execute(alumnoId, buffetId, LocalDateTime.now()));
     }
 
     @Test
@@ -126,7 +126,7 @@ class GenerateBuffetMenuTest {
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
 
-        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
+        List<MenuProductResponse> result = execute(alumnoId, buffetId, LocalDateTime.now());
 
         assertEquals(1, result.size());
         assertTrue(result.get(0).bloqueado());
@@ -149,7 +149,7 @@ class GenerateBuffetMenuTest {
                 any()
         )).thenReturn(5L);
 
-        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
+        List<MenuProductResponse> result = execute(alumnoId, buffetId, LocalDateTime.now());
 
         assertTrue(result.get(0).bloqueado());
         assertEquals("Cupo diario agotado", result.get(0).motivoBloqueo());
@@ -176,10 +176,10 @@ class GenerateBuffetMenuTest {
                 .thenReturn(List.of(withGluten, withMilk));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
 
-        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
+        List<MenuProductResponse> result = execute(alumnoId, buffetId, LocalDateTime.now());
 
-        MenuProductoDTO glutenDto = find(result, withGluten.getId());
-        MenuProductoDTO milkDto = find(result, withMilk.getId());
+        MenuProductResponse glutenDto = find(result, withGluten.getId());
+        MenuProductResponse milkDto = find(result, withMilk.getId());
 
         assertTrue(glutenDto.bloqueado());
         assertEquals("Contiene: Gluten (TACC)", glutenDto.motivoBloqueo());
@@ -203,7 +203,7 @@ class GenerateBuffetMenuTest {
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
 
-        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
+        List<MenuProductResponse> result = execute(alumnoId, buffetId, LocalDateTime.now());
 
         assertTrue(result.get(0).bloqueado());
         assertEquals(
@@ -223,7 +223,7 @@ class GenerateBuffetMenuTest {
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
 
-        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
+        List<MenuProductResponse> result = execute(alumnoId, buffetId, LocalDateTime.now());
 
         assertFalse(result.get(0).bloqueado());
     }
@@ -240,7 +240,7 @@ class GenerateBuffetMenuTest {
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
 
-        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
+        List<MenuProductResponse> result = execute(alumnoId, buffetId, LocalDateTime.now());
 
         assertTrue(result.get(0).bloqueado());
         assertEquals("No permitido en este horario", result.get(0).motivoBloqueo());
@@ -268,10 +268,10 @@ class GenerateBuffetMenuTest {
                 range.fin()
         )).thenReturn(new BigDecimal("10.00"));
 
-        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, moment);
+        List<MenuProductResponse> result = execute(alumnoId, buffetId, moment);
 
-        MenuProductoDTO juiceDto = find(result, juice.getId());
-        MenuProductoDTO sodaDto = find(result, soda.getId());
+        MenuProductResponse juiceDto = find(result, juice.getId());
+        MenuProductResponse sodaDto = find(result, soda.getId());
 
         assertTrue(juiceDto.bloqueado());
         assertEquals("Supera limite de su categoria", juiceDto.motivoBloqueo());
@@ -287,7 +287,7 @@ class GenerateBuffetMenuTest {
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
 
-        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
+        List<MenuProductResponse> result = execute(alumnoId, buffetId, LocalDateTime.now());
 
         assertFalse(result.get(0).bloqueado());
         assertNull(result.get(0).motivoBloqueo());
@@ -304,7 +304,7 @@ class GenerateBuffetMenuTest {
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.empty());
 
-        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, LocalDateTime.now());
+        List<MenuProductResponse> result = execute(alumnoId, buffetId, LocalDateTime.now());
 
         assertFalse(result.get(0).bloqueado());
     }
@@ -326,7 +326,7 @@ class GenerateBuffetMenuTest {
         when(purchaseRepository.sumarGastosPorAlumnoEnRango(alumnoId, range.inicio(), range.fin()))
                 .thenReturn(BigDecimal.ZERO);
 
-        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, moment);
+        List<MenuProductResponse> result = execute(alumnoId, buffetId, moment);
 
         assertFalse(result.get(0).bloqueado());
     }
@@ -352,31 +352,29 @@ class GenerateBuffetMenuTest {
                 eq(range.fin())
         )).thenReturn(BigDecimal.ZERO);
 
-        List<MenuProductoDTO> result = useCase.execute(alumnoId, buffetId, moment);
+        List<MenuProductResponse> result = execute(alumnoId, buffetId, moment);
 
         assertFalse(result.get(0).bloqueado());
     }
 
     @Test
     void motivoConflictoSalud_ShouldReturnOriginalDescriptionWhenItHasNoKnownMapping() {
-        String result = ReflectionTestUtils.invokeMethod(
-                useCase,
-                "motivoConflictoSalud",
-                "Colorante"
-        );
+        ClasificacionSalud colorante = classification("Colorante");
+        alumno.setRestriccionesSalud(Set.of(colorante));
+        Producto product = product("Jugo", BigDecimal.TEN, 10);
+        product.setClasificacionesSalud(Set.of(classification(colorante.getId(), "Colorante")));
 
-        assertEquals("Colorante", result);
+        assertEquals("Colorante", alumno.healthConflictReasonFor(product).orElseThrow());
     }
 
     @Test
     void normalizarDescripcion_WhenDescriptionIsNull_ShouldReturnEmptyString() {
-        String result = ReflectionTestUtils.invokeMethod(
-                useCase,
-                "normalizarDescripcion",
-                (String) null
-        );
+        ClasificacionSalud restriction = classification(null);
+        alumno.setRestriccionesSalud(Set.of(restriction));
+        Producto product = product("Producto", BigDecimal.TEN, 10);
+        product.setClasificacionesSalud(Set.of(classification(restriction.getId(), null)));
 
-        assertEquals("", result);
+        assertTrue(alumno.healthConflictReasonFor(product).isEmpty());
     }
 
     private Producto product(String name, BigDecimal price, int stockDisponible) {
@@ -441,7 +439,19 @@ class GenerateBuffetMenuTest {
         return budget;
     }
 
-    private MenuProductoDTO find(List<MenuProductoDTO> result, UUID productId) {
+    private List<MenuProductResponse> execute(
+            UUID alumnoId,
+            UUID buffetId,
+            LocalDateTime momentoConsulta
+    ) {
+        return useCase.execute(new GenerateBuffetMenuRequest(
+                alumnoId,
+                buffetId,
+                momentoConsulta
+        )).products();
+    }
+
+    private MenuProductResponse find(List<MenuProductResponse> result, UUID productId) {
         return result.stream()
                 .filter(item -> item.id().equals(productId))
                 .findFirst()

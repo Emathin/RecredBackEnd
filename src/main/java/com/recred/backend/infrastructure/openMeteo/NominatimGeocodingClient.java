@@ -15,7 +15,7 @@ public class NominatimGeocodingClient {
         this.restClient = builder
                 .baseUrl(BASE_URL)
                 .defaultHeader("User-Agent", 
-                        "RecredBackend/1.0 (contact@recred.com)") // Nominatim requires User-Agent
+                        "RecredBackend/1.0 (contact@recred.com)")
                 .build();
     }
 
@@ -33,7 +33,6 @@ public class NominatimGeocodingClient {
         } catch (Exception exception) {
             LOGGER.error("Failed to fetch geocoding data for lat: {}, lon: {}", 
                     latitude, longitude, exception);
-            // Si falla, retornamos nulo o un dto vacío para que no rompa el flujo de sugerencias
             return null;
         }
     }

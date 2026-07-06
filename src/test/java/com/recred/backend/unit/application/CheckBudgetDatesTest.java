@@ -11,6 +11,7 @@ import com.recred.backend.application.CheckBudgetDatesRequest;
 import com.recred.backend.application.CheckBudgetDatesResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -52,6 +53,7 @@ class CheckBudgetDatesTest {
                 List.of("2026-06-15", "2026-06-16"),
                 List.of()
         );
+        CheckBudgetDatesRequest requestWithStudent = request.withStudentId(studentId);
 
         when(budgetValidator.obtenerMotivoBloqueoPresupuesto(
                 eq(studentId),
@@ -60,7 +62,7 @@ class CheckBudgetDatesTest {
                 any(LocalDateTime.class)
         )).thenReturn(Optional.empty());
 
-        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(requestWithStudent);
 
         assertEquals(2, response.validationResults().size());
         assertFalse(response.validationResults().get(0).blocked());
@@ -76,8 +78,9 @@ class CheckBudgetDatesTest {
                 List.of("invalid-date"),
                 List.of()
         );
+        CheckBudgetDatesRequest requestWithStudent = request.withStudentId(studentId);
 
-        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(requestWithStudent);
 
         assertEquals(1, response.validationResults().size());
         assertTrue(response.validationResults().get(0).blocked());
@@ -106,6 +109,7 @@ class CheckBudgetDatesTest {
                 List.of("2026-06-15"),
                 List.of(new CheckBudgetDatesRequest.CartItemRequest(productId, 2))
         );
+        CheckBudgetDatesRequest requestWithStudent = request.withStudentId(studentId);
 
         String expectedReason = "Supera el límite diario de Gaseosas: disponible $900";
         when(budgetValidator.obtenerMotivoBloqueoPresupuesto(
@@ -115,7 +119,7 @@ class CheckBudgetDatesTest {
                 any(LocalDateTime.class)
         )).thenReturn(Optional.of(expectedReason));
 
-        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(requestWithStudent);
 
         assertEquals(1, response.validationResults().size());
         assertTrue(response.validationResults().get(0).blocked());
@@ -130,14 +134,14 @@ class CheckBudgetDatesTest {
                 List.of("2026-06-15"),
                 List.of(new CheckBudgetDatesRequest.CartItemRequest(productId, 1))
         );
+        CheckBudgetDatesRequest requestWithStudent = request.withStudentId(studentId);
 
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
         when(promotionRepository.findById(productId)).thenReturn(Optional.empty());
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> checkBudgetDates.execute(studentId, request)
-        );
+        Executable execution = () -> checkBudgetDates.execute(requestWithStudent);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("Product or Promotion not found: " + productId, exception.getMessage());
     }
 
@@ -157,6 +161,7 @@ class CheckBudgetDatesTest {
                 List.of("2026-06-15"),
                 List.of(new CheckBudgetDatesRequest.CartItemRequest(productId, 3))
         );
+        CheckBudgetDatesRequest requestWithStudent = request.withStudentId(studentId);
 
         when(productRepository.findById(productId)).thenReturn(Optional.of(producto));
         when(budgetValidator.obtenerMotivoBloqueoPresupuesto(
@@ -166,7 +171,7 @@ class CheckBudgetDatesTest {
                 any(LocalDateTime.class)
         )).thenReturn(Optional.empty());
 
-        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(requestWithStudent);
 
         assertEquals(1, response.validationResults().size());
         assertFalse(response.validationResults().get(0).blocked());
@@ -198,6 +203,7 @@ class CheckBudgetDatesTest {
                 List.of("2026-06-15"),
                 List.of(new CheckBudgetDatesRequest.CartItemRequest(promotionId, 2))
         );
+        CheckBudgetDatesRequest requestWithStudent = request.withStudentId(studentId);
 
         when(budgetValidator.obtenerMotivoBloqueoPresupuesto(
                 eq(studentId),
@@ -206,7 +212,7 @@ class CheckBudgetDatesTest {
                 any(LocalDateTime.class)
         )).thenReturn(Optional.empty());
 
-        CheckBudgetDatesResponse response = checkBudgetDates.execute(studentId, request);
+        CheckBudgetDatesResponse response = checkBudgetDates.execute(requestWithStudent);
 
         assertEquals(1, response.validationResults().size());
         assertFalse(response.validationResults().get(0).blocked());

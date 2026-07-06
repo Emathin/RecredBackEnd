@@ -3,16 +3,14 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.CreditStatus;
-import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.TipoPlan;
-import com.recred.backend.domain.models.TipoMovimientoBilletera;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -27,7 +25,7 @@ public class TransferBalanceBetweenChildren {
     private final SchoolCreditRepository schoolCreditRepository;
 
     public TransferBalanceBetweenChildren(
-            UsuarioRepository usuarioRepository, 
+            UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             WalletRepository walletRepository,
             MovimientoBilleteraRepository movimientoBilleteraRepository,
@@ -40,53 +38,64 @@ public class TransferBalanceBetweenChildren {
     }
 
     @Transactional
-    public void execute(TransferBalanceBetweenChildrenRequest request) {
+    public TransferBalanceBetweenChildrenResponse execute(
+            TransferBalanceBetweenChildrenRequest request
+    ) {
         request.validate();
-
-        Usuario padre = getPadreValidate(request.cognitoSub());
-        Tutor tutor = tutorRepository.findByUsuarioId(padre.getId())
-                .orElseThrow(() -> new SecurityException("El usuario no es un tutor válido"));
-
-        Alumno fromStudent = getHijo(tutor, request.fromStudentId());
-        Alumno toStudent = getHijo(tutor, request.toStudentId());
-
-        Billetera fromWallet = getWallet(request.fromStudentId(), "origen");
-        Billetera toWallet = getWallet(request.toStudentId(), "destino");
-
-        fromWallet.debit(request.amount());
-        toWallet.credit(request.amount());
-
-        walletRepository.save(fromWallet);
-
-        registerTransferMovements(
-                fromStudent, toStudent, fromWallet, toWallet, request.amount(), padre.getId());
-
-        handleMicrocreditPayment(toStudentId(request), toWallet, request.amount(), padre.getId());
-
-        walletRepository.save(toWallet);
+        TransferContext context = transferContext(request);
+        applyTransfer(request, context);
+        return new TransferBalanceBetweenChildrenResponse();
     }
 
-    private Usuario getPadreValidate(String cognitoSub) {
+    private TransferContext transferContext(TransferBalanceBetweenChildrenRequest request) {
+        Usuario padre = validatedParent(request.cognitoSub());
+        Tutor tutor = tutorFor(padre);
+        return new TransferContext(padre, students(tutor, request), wallets(request));
+    }
+
+    private void applyTransfer(
+            TransferBalanceBetweenChildrenRequest request,
+            TransferContext context
+    ) {
+        transfer(request.amount(), context.wallets());
+        registerTransferMovements(
+                context.students(),
+                context.wallets(),
+                request.amount(),
+                context.padre().getId());
+        handleMicrocreditPayment(
+                request.toStudentId(),
+                context.wallets().to(),
+                request.amount(),
+                context.padre().getId());
+        walletRepository.save(context.wallets().to());
+    }
+
+    private Usuario validatedParent(String cognitoSub) {
         Usuario padre = usuarioRepository.findByIdCognito(cognitoSub)
                 .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
-
-        if (padre.getPlan() == TipoPlan.GRATUITO) {
-            throw new IllegalArgumentException(
-                    "La transferencia entre hijos no está permitida en cuentas gratuitas");
-        }
-
-        if (padre.getRol() != RolUsuario.PADRE) {
-            throw new SecurityException("Solo un padre puede transferir saldo");
-        }
+        padre.validateCanTransferBalanceBetweenChildren();
         return padre;
     }
 
-    private Alumno getHijo(Tutor tutor, UUID studentId) {
-        return tutor.getHijos().stream()
-                .filter(h -> h.getId().equals(studentId))
-                .findFirst()
-                .orElseThrow(() -> new SecurityException(
-                        "Ambos alumnos deben ser hijos del tutor"));
+    private Tutor tutorFor(Usuario padre) {
+        return tutorRepository.findByUsuarioId(padre.getId())
+                .orElseThrow(() -> new SecurityException("El usuario no es un tutor valido"));
+    }
+
+    private Students students(Tutor tutor, TransferBalanceBetweenChildrenRequest request) {
+        String message = "Ambos alumnos deben ser hijos del tutor";
+        return new Students(
+                tutor.childOrThrow(request.fromStudentId(), message),
+                tutor.childOrThrow(request.toStudentId(), message)
+        );
+    }
+
+    private Wallets wallets(TransferBalanceBetweenChildrenRequest request) {
+        return new Wallets(
+                getWallet(request.fromStudentId(), "origen"),
+                getWallet(request.toStudentId(), "destino")
+        );
     }
 
     private Billetera getWallet(UUID studentId, String type) {
@@ -95,57 +104,82 @@ public class TransferBalanceBetweenChildren {
                         "Billetera " + type + " no encontrada"));
     }
 
-    private UUID toStudentId(TransferBalanceBetweenChildrenRequest request) {
-        return request.toStudentId();
+    private void transfer(BigDecimal amount, Wallets wallets) {
+        wallets.from().debit(amount);
+        wallets.to().credit(amount);
+        walletRepository.save(wallets.from());
     }
 
-    private void registerTransferMovements(Alumno fromStudent, Alumno toStudent, 
-            Billetera fromWallet, Billetera toWallet, BigDecimal amount, UUID padreId) {
-        String descDebito = "Transferencia enviada a " 
-                + toStudent.getNombre() + " " + toStudent.getApellido();
+    private void registerTransferMovements(
+            Students students,
+            Wallets wallets,
+            BigDecimal amount,
+            UUID padreId
+    ) {
         movimientoBilleteraRepository.registrarMovimiento(
-                fromWallet.getId(), 
-                TipoMovimientoBilletera.AJUSTE, 
-                amount.negate(), 
-                descDebito, 
+                wallets.from().getId(),
+                TipoMovimientoBilletera.AJUSTE,
+                amount.negate(),
+                "Transferencia enviada a " + fullName(students.to()),
                 padreId
         );
-
-        String descCredito = "Transferencia recibida de " 
-                + fromStudent.getNombre() + " " + fromStudent.getApellido();
         movimientoBilleteraRepository.registrarMovimiento(
-                toWallet.getId(), 
-                TipoMovimientoBilletera.AJUSTE, 
-                amount, 
-                descCredito, 
+                wallets.to().getId(),
+                TipoMovimientoBilletera.AJUSTE,
+                amount,
+                "Transferencia recibida de " + fullName(students.from()),
                 padreId
         );
     }
 
-    private void handleMicrocreditPayment(UUID toStudentId, Billetera toWallet, 
-            BigDecimal amount, UUID padreId) {
+    private String fullName(Alumno student) {
+        return student.getNombre() + " " + student.getApellido();
+    }
+
+    private void handleMicrocreditPayment(
+            UUID toStudentId,
+            Billetera toWallet,
+            BigDecimal amount,
+            UUID padreId
+    ) {
         schoolCreditRepository.findByStudentIdAndStatus(toStudentId, CreditStatus.ACTIVE)
                 .ifPresent(credit -> {
-                    BigDecimal creditAmount = credit.getAmount();
-                    BigDecimal paidAmount;
-                    if (amount.compareTo(creditAmount) >= 0) {
-                        paidAmount = creditAmount;
+                    BigDecimal paidAmount = paymentAmount(credit.getAmount(), amount);
+                    credit.setAmount(credit.getAmount().subtract(paidAmount));
+                    if (credit.getAmount().compareTo(BigDecimal.ZERO) == 0) {
                         credit.setAmount(BigDecimal.ZERO);
                         credit.setStatus(CreditStatus.PAID);
-                    } else {
-                        paidAmount = amount;
-                        credit.setAmount(creditAmount.subtract(amount));
                     }
                     schoolCreditRepository.save(credit);
-                    
-                    toWallet.debit(paidAmount);
-                    movimientoBilleteraRepository.registrarMovimiento(
-                            toWallet.getId(), 
-                            TipoMovimientoBilletera.AJUSTE, 
-                            paidAmount.negate(), 
-                            "Pago automático de microcrédito con transferencia", 
-                            padreId
-                    );
+                    registerMicrocreditPayment(toWallet, paidAmount, padreId);
                 });
+    }
+
+    private BigDecimal paymentAmount(BigDecimal creditAmount, BigDecimal transferAmount) {
+        return transferAmount.compareTo(creditAmount) >= 0 ? creditAmount : transferAmount;
+    }
+
+    private void registerMicrocreditPayment(
+            Billetera toWallet,
+            BigDecimal paidAmount,
+            UUID padreId
+    ) {
+        toWallet.debit(paidAmount);
+        movimientoBilleteraRepository.registrarMovimiento(
+                toWallet.getId(),
+                TipoMovimientoBilletera.AJUSTE,
+                paidAmount.negate(),
+                "Pago automatico de microcredito con transferencia",
+                padreId
+        );
+    }
+
+    private record Students(Alumno from, Alumno to) {
+    }
+
+    private record Wallets(Billetera from, Billetera to) {
+    }
+
+    private record TransferContext(Usuario padre, Students students, Wallets wallets) {
     }
 }

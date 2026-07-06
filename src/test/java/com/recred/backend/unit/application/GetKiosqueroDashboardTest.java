@@ -16,6 +16,7 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.StockMovementRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -210,7 +211,8 @@ class GetKiosqueroDashboardTest {
                 stockMovementRepository
         );
 
-        when(purchaseRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
+        when(purchaseRepository.findByBuffetAndPickupOrCreationDateRange(
+                eq(buffetId), any(), any(), any(), any()))
                 .thenReturn(purchases);
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(inventory);
         when(stockMovementRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
@@ -234,7 +236,9 @@ class GetKiosqueroDashboardTest {
             GetKiosqueroDashboard useCase,
             GetKiosqueroDashboardRequest request
     ) {
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(request));
+        Executable execution = () -> useCase.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
     }
 
     private void thenOperationalSummaryMatches(GetKiosqueroDashboardResponse dashboard) {
@@ -324,11 +328,14 @@ class GetKiosqueroDashboardTest {
             LocalDate from,
             LocalDate to
     ) {
-        verify(scenario.purchaseRepository()).findByBuffetAndDateRange(
-                buffetId,
-                from.atStartOfDay(),
-                to.plusDays(1).atStartOfDay().minusNanos(1)
-        );
+        verify(scenario.purchaseRepository())
+                .findByBuffetAndPickupOrCreationDateRange(
+                        buffetId,
+                        from,
+                        to,
+                        from.atStartOfDay(),
+                        to.plusDays(1).atStartOfDay().minusNanos(1)
+                );
         verify(scenario.stockMovementRepository()).findByBuffetAndDateRange(
                 buffetId,
                 from.atStartOfDay(),

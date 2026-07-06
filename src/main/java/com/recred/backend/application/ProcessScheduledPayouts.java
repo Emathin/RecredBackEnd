@@ -10,89 +10,139 @@ import com.recred.backend.domain.repositories.KiosqueroPayoutConfigRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.PayoutPaymentService;
-
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ProcessScheduledPayouts {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProcessScheduledPayouts.class);
+    private static final int DEFAULT_LOOKBACK_DAYS = 30;
+
     private final KiosqueroPayoutConfigRepository repository;
     private final PayoutPaymentService paymentService;
     private final KiosqueroRepository kiosqueroRepository;
     private final PurchaseRepository purchaseRepository;
+    private final Clock clock;
 
     public ProcessScheduledPayouts(
-            KiosqueroPayoutConfigRepository repository, 
+            KiosqueroPayoutConfigRepository repository,
             PayoutPaymentService paymentService,
             KiosqueroRepository kiosqueroRepository,
             PurchaseRepository purchaseRepository) {
+        this(repository, paymentService, kiosqueroRepository, purchaseRepository,
+                Clock.systemDefaultZone());
+    }
+
+    public ProcessScheduledPayouts(
+            KiosqueroPayoutConfigRepository repository,
+            PayoutPaymentService paymentService,
+            KiosqueroRepository kiosqueroRepository,
+            PurchaseRepository purchaseRepository,
+            Clock clock) {
         this.repository = repository;
         this.paymentService = paymentService;
         this.kiosqueroRepository = kiosqueroRepository;
         this.purchaseRepository = purchaseRepository;
+        this.clock = clock;
     }
 
     public void execute() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         List<KiosqueroPayoutConfig> dueConfigs = repository.findActiveConfigsDueOnOrBefore(today);
+        dueConfigs.forEach(config -> processConfig(config, today));
+    }
 
-        for (KiosqueroPayoutConfig config : dueConfigs) {
-            UUID buffetId = kiosqueroRepository.findBuffetById(config.getKiosqueroId());
-            if (buffetId == null) {
-                continue;
-            }
+    private void processConfig(KiosqueroPayoutConfig config, LocalDate today) {
+        UUID buffetId = kiosqueroRepository.findBuffetById(config.getKiosqueroId());
+        if (buffetId == null) {
+            return;
+        }
 
-            LocalDateTime start = config.getUltimaEjecucion() != null 
-                    ? config.getUltimaEjecucion().atStartOfDay() 
-                    : (config.getCreadoEn() != null 
-                            ? config.getCreadoEn() 
-                            : LocalDateTime.now().minusDays(30));
-            LocalDateTime end = today.atTime(LocalTime.MAX);
+        BigDecimal totalSales = totalDeliveredSales(config, buffetId, today);
+        if (hasNoSales(totalSales)) {
+            markExecuted(config, today);
+            repository.save(config);
+            return;
+        }
 
-            List<Purchase> purchases = purchaseRepository.findByBuffetAndDateRange(
-                    buffetId, 
-                    start, 
-                    end
-            );
+        transferSales(config, totalSales, today);
+        repository.save(config);
+    }
 
-            BigDecimal totalVentas = purchases.stream()
-                    .filter(p -> p.getStatus() == EstadoCompra.ENTREGADO)
-                    .map(Purchase::getTotalAmount)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+    private BigDecimal totalDeliveredSales(
+            KiosqueroPayoutConfig config,
+            UUID buffetId,
+            LocalDate today) {
+        return purchaseRepository.findByBuffetAndDateRange(
+                        buffetId,
+                        startDate(config),
+                        today.atTime(LocalTime.MAX)
+                )
+                .stream()
+                .filter(purchase -> purchase.getStatus() == EstadoCompra.ENTREGADO)
+                .map(Purchase::getTotalAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 
-            if (totalVentas.compareTo(BigDecimal.ZERO) <= 0) {
-                config.setUltimaEjecucion(today);
-                config.calculateNextPayout(today);
-                repository.save(config);
-                continue;
-            }
+    private LocalDateTime startDate(KiosqueroPayoutConfig config) {
+        if (config.getUltimaEjecucion() != null) {
+            return config.getUltimaEjecucion().atStartOfDay();
+        }
+        if (config.getCreadoEn() != null) {
+            return config.getCreadoEn();
+        }
+        return LocalDateTime.now(clock).minusDays(DEFAULT_LOOKBACK_DAYS);
+    }
 
-            String combinedKey = config.getKiosqueroId().toString() 
-                    + "_" + config.getProximaEjecucion().toString();
-            String idempotencyKey = UUID.nameUUIDFromBytes(combinedKey.getBytes()).toString();
+    private boolean hasNoSales(BigDecimal totalSales) {
+        return totalSales.compareTo(BigDecimal.ZERO) <= 0;
+    }
 
-            try {
-                PaymentDetails details = paymentService.transferToThirdParty(
+    private void transferSales(
+            KiosqueroPayoutConfig config,
+            BigDecimal totalSales,
+            LocalDate today) {
+        try {
+            PaymentDetails details = paymentService.transferToThirdParty(
                     config.getDestinationCvu(),
                     config.getDestinationCuit(),
                     config.getAccountHolderName(),
-                    totalVentas,
-                    idempotencyKey
-                );
-
-                if (details.status() == PaymentStatus.APPROVED) {
-                    config.setUltimaEjecucion(today);
-                    config.calculateNextPayout(today);
-                } else {
-                    config.setEstado(PayoutScheduleStatus.PAUSED);
-                }
-            } catch (Exception e) {
-                // Errores de infraestructura: se mantiene activa la programación para que reintente
-            }
-            repository.save(config);
+                    totalSales,
+                    idempotencyKey(config)
+            );
+            updateConfigAfterTransfer(config, details, today);
+        } catch (RuntimeException exception) {
+            LOGGER.warn("scheduled_payout_transfer_failed kiosqueroId={}",
+                    config.getKiosqueroId(), exception);
         }
+    }
+
+    private String idempotencyKey(KiosqueroPayoutConfig config) {
+        String combinedKey = config.getKiosqueroId()
+                + "_" + config.getProximaEjecucion();
+        return UUID.nameUUIDFromBytes(combinedKey.getBytes(StandardCharsets.UTF_8)).toString();
+    }
+
+    private void updateConfigAfterTransfer(
+            KiosqueroPayoutConfig config,
+            PaymentDetails details,
+            LocalDate today) {
+        if (details.status() == PaymentStatus.APPROVED) {
+            markExecuted(config, today);
+            return;
+        }
+        config.setEstado(PayoutScheduleStatus.PAUSED);
+    }
+
+    private void markExecuted(KiosqueroPayoutConfig config, LocalDate today) {
+        config.setUltimaEjecucion(today);
+        config.calculateNextPayout(today);
     }
 }

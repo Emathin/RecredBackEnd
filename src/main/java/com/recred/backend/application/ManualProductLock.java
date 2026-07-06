@@ -20,7 +20,7 @@ public class ManualProductLock {
     }
 
     @Transactional
-    public void execute(ManualProductLockRequest request) {
+    public ManualProductLockResponse execute(ManualProductLockRequest request) {
         UUID alumnoId = request.alumnoId();
         UUID productoId = request.productoId();
 
@@ -29,6 +29,7 @@ public class ManualProductLock {
 
         alumno.bloquearProducto(producto);
         alumnoRepository.save(alumno);
+        return new ManualProductLockResponse();
     }
 
     private Alumno findAlumnoById(UUID alumnoId) {

@@ -16,4 +16,14 @@ public record CategoryResponse(
                 category.getActivo()
         );
     }
+
+    public static CategoryResponse fromApplication(
+            com.recred.backend.application.CategoryResponse category
+    ) {
+        return new CategoryResponse(
+                category.id(),
+                category.descripcion(),
+                category.activo()
+        );
+    }
 }

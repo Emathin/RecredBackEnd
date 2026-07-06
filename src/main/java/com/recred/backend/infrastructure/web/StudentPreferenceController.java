@@ -77,8 +77,8 @@ public class StudentPreferenceController {
             @RequestParam(name = "tipo", required = false) TipoSugerenciaIA tipo
     ) {
         List<StudentPreferenceResponseDTO> preferences =
-                getStudentPreferences.executeByUserId(
-                        new GetStudentPreferencesByUserRequest(userId, ultima, tipo))
+                getStudentPreferences.execute(
+                        GetStudentPreferencesRequest.byUser(userId, ultima, tipo))
                         .preferences()
                         .stream()
                         .map(StudentPreferenceResponseDTO::fromApplication)

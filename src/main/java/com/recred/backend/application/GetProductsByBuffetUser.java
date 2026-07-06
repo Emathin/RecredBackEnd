@@ -1,10 +1,10 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 
 import java.util.List;
-import java.util.UUID;
 
 public class GetProductsByBuffetUser {
 
@@ -17,17 +17,18 @@ public class GetProductsByBuffetUser {
         this.kiosqueroRepository = kiosqueroRepository;
     }
 
-    public List<ProductResponse> execute(UUID userId) {
-        if (userId != null) {
-            return productRepository.findAllActiveWithStock(
-                    kiosqueroRepository.findBuffetByUsuarioId(userId))
-                    .stream()
-                    .map(ProductResponse::fromDomain)
-                    .toList();
-        }
-        return productRepository.findAllActive()
-                .stream()
+    public GetProductsByBuffetUserResponse execute(GetProductsByBuffetUserRequest request) {
+        return new GetProductsByBuffetUserResponse(productsFor(request).stream()
                 .map(ProductResponse::fromDomain)
-                .toList();
+                .toList());
+    }
+
+    private List<Producto> productsFor(GetProductsByBuffetUserRequest request) {
+        if (request.userId() != null) {
+            return productRepository.findAllActiveWithStock(
+                    kiosqueroRepository.findBuffetByUsuarioId(request.userId()));
+        }
+
+        return productRepository.findAllActive();
     }
 }

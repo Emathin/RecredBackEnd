@@ -28,6 +28,10 @@ public class GenerateSummaryNotification {
                 "Tu resumen semanal de gastos ya está disponible.",
                 false,
                 LocalDateTime.now(),
+                null,
+                null,
+                null,
+                null,
                 null
         );
     }

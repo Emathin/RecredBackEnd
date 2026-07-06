@@ -30,12 +30,14 @@ class UsuarioEntityTest {
         UsuarioEntity entity = userEntity();
         KiosqueroEntity kiosquero = new KiosqueroEntity();
         kiosquero.setId(UUID.randomUUID());
+        kiosquero.setCuit("20304050607");
         kiosquero.setBuffetEntity(buffetEntity(buffetId));
         entity.setKiosqueroEntity(kiosquero);
 
         Usuario usuario = entity.toDomain();
 
         assertEquals(kiosquero.getId(), usuario.getKiosquero().getId());
+        assertEquals("20304050607", usuario.getKiosquero().getCuit());
         assertEquals(buffetId, usuario.getKiosquero().getBuffet().getId());
     }
 

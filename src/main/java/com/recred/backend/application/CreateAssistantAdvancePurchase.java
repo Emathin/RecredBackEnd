@@ -9,7 +9,6 @@ import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
@@ -99,7 +98,7 @@ public class CreateAssistantAdvancePurchase {
     ) {
         request.validate();
         Alumno student = student(request.studentId());
-        FranjaHoraria pickupSlot = pickupSlot(student, request.recessTime());
+        FranjaHoraria pickupSlot = pickupSlot(request);
         LocalDateTime pickupDateTime = pickupDateTime(request.pickupDate(), pickupSlot);
         validatePurchase(student, request, pickupSlot, pickupDateTime);
         BigDecimal total = validatedTotal(request.studentId(), request.cart(), pickupDateTime);
@@ -120,8 +119,8 @@ public class CreateAssistantAdvancePurchase {
                 .orElseThrow(() -> new AlumnoNoEncontradoException(studentId));
     }
 
-    private FranjaHoraria pickupSlot(Alumno student, RecessTime recessTime) {
-        return recessTimeSlotResolver.resolve(student, recessTime);
+    private FranjaHoraria pickupSlot(CreateAssistantAdvancePurchaseRequest request) {
+        return recessTimeSlotResolver.resolveByBuffet(request.buffetId(), request.recessTime());
     }
 
     private LocalDateTime pickupDateTime(LocalDate pickupDate, FranjaHoraria pickupSlot) {

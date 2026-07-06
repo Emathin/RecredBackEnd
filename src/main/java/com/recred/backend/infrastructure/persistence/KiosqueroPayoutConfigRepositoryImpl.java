@@ -5,6 +5,7 @@ import com.recred.backend.domain.models.PayoutScheduleStatus;
 import com.recred.backend.domain.repositories.KiosqueroPayoutConfigRepository;
 import com.recred.backend.infrastructure.entities.KiosqueroEntity;
 import com.recred.backend.infrastructure.entities.KiosqueroPayoutConfigEntity;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -17,9 +18,13 @@ import java.util.stream.Collectors;
 public class KiosqueroPayoutConfigRepositoryImpl implements KiosqueroPayoutConfigRepository {
 
     private final KiosqueroPayoutConfigJpaRepository jpaRepository;
+    private final EntityManager entityManager;
 
-    public KiosqueroPayoutConfigRepositoryImpl(KiosqueroPayoutConfigJpaRepository jpaRepository) {
+    public KiosqueroPayoutConfigRepositoryImpl(
+            KiosqueroPayoutConfigJpaRepository jpaRepository,
+            EntityManager entityManager) {
         this.jpaRepository = jpaRepository;
+        this.entityManager = entityManager;
     }
 
     @Override
@@ -59,9 +64,13 @@ public class KiosqueroPayoutConfigRepositoryImpl implements KiosqueroPayoutConfi
         entity.setUltimaEjecucion(domain.getUltimaEjecucion());
         
         if (entity.getKiosquero() == null) {
-            KiosqueroEntity kiosqueroProxy = new KiosqueroEntity();
-            kiosqueroProxy.setId(domain.getKiosqueroId());
-            entity.setKiosquero(kiosqueroProxy);
+            KiosqueroEntity kiosquero = entityManager.find(
+                    KiosqueroEntity.class, domain.getKiosqueroId());
+            if (kiosquero == null) {
+                throw new IllegalStateException("Kiosquero no encontrado para el id " 
+                        + domain.getKiosqueroId());
+            }
+            entity.setKiosquero(kiosquero);
         }
     }
 }
