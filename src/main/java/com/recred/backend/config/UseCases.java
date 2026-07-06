@@ -17,10 +17,10 @@ import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreatePromotion;
-import com.recred.backend.application.CreateTimeSlot;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateSupplier;
 import com.recred.backend.application.CreateTimeRestriction;
+import com.recred.backend.application.CreateTimeSlot;
 import com.recred.backend.application.DeactivateTimeSlot;
 import com.recred.backend.application.DeleteFavoriteCart;
 import com.recred.backend.application.DeleteFavoriteProduct;
@@ -80,6 +80,7 @@ import com.recred.backend.application.GetProductsByBuffetUser;
 import com.recred.backend.application.GetPromotionById;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.GetScheduledPickups;
+import com.recred.backend.application.GetSchoolOverview;
 import com.recred.backend.application.GetStockMovements;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentRewardStatus;
@@ -88,6 +89,7 @@ import com.recred.backend.application.GetSuggestionByNotificationId;
 import com.recred.backend.application.GetSuggestionByType;
 import com.recred.backend.application.GetSupplier;
 import com.recred.backend.application.GetTimeRestrictionsByStudent;
+import com.recred.backend.application.GetTimeSlot;
 import com.recred.backend.application.GetTimeSlotsBySchool;
 import com.recred.backend.application.GetTutorGlobalDashboard;
 import com.recred.backend.application.GetTutorHistory;
@@ -99,6 +101,7 @@ import com.recred.backend.application.ListDailyBuffetCloses;
 import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
 import com.recred.backend.application.ListKiosqueroOrders;
+import com.recred.backend.application.ListSchoolTimeSlots;
 import com.recred.backend.application.ListSuppliers;
 import com.recred.backend.application.LoadBalanceToChild;
 import com.recred.backend.application.LoadStockIA;
@@ -113,15 +116,11 @@ import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.ProcessScheduledPayouts;
 import com.recred.backend.application.PurchaseSuggestIA;
-import com.recred.backend.application.GetTimeSlot;
-import com.recred.backend.application.ListSchoolTimeSlots;
-import com.recred.backend.application.RecommendSupplierForProducts;
 import com.recred.backend.application.ReactivateTimeSlot;
+import com.recred.backend.application.RecommendSupplierForProducts;
 import com.recred.backend.application.RegisterBuffet;
 import com.recred.backend.application.RegisterSeller;
 import com.recred.backend.application.RejectSchoolRegistration;
-import com.recred.backend.application.GetSchoolOverview;
-
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveBulkProducts;
@@ -143,8 +142,8 @@ import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePurchaseStatus;
 import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.application.UpdateSupplier;
-import com.recred.backend.application.UpdateTimeSlot;
 import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.application.UpdateTimeSlot;
 import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.application.UploadProductImage;
 import com.recred.backend.application.UploadSupplierPriceList;
@@ -1270,9 +1269,10 @@ public class UseCases {
     public FindPurchaseSuggestionForTomorrow findPurchaseSuggestionForTomorrow(
             SuggestionAiRepository suggestionAiRepository,
             UsuarioRepository usuarioRepository,
-            AlumnoRepository alumnoRepository) {
+            AlumnoRepository alumnoRepository,
+            Clock clock) {
         return new FindPurchaseSuggestionForTomorrow(
-                suggestionAiRepository, usuarioRepository, alumnoRepository);
+                suggestionAiRepository, usuarioRepository, alumnoRepository, clock);
     }
 
     @Bean
@@ -1513,12 +1513,11 @@ public class UseCases {
             TutorRepository tutorRepository,
             AlumnoRepository alumnoRepository,
             SchoolCreditRepository schoolCreditRepository,
-            PurchaseRepository purchaseRepository,
             WalletRepository walletRepository,
             Clock clock) {
         return new EnableSchoolCredit(
                 tutorRepository, alumnoRepository, schoolCreditRepository,
-                purchaseRepository, walletRepository, clock);
+                walletRepository, clock);
     }
 
     @Bean

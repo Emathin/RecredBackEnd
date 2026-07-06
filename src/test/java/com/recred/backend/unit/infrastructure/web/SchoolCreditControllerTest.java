@@ -1,46 +1,59 @@
 package com.recred.backend.unit.infrastructure.web;
 
-import com.recred.backend.infrastructure.web.*;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.EnableSchoolCredit;
+import com.recred.backend.application.EnableSchoolCreditRequest;
+import com.recred.backend.application.EnableSchoolCreditResponse;
 import com.recred.backend.application.GetActiveSchoolCredit;
+import com.recred.backend.application.GetActiveSchoolCreditRequest;
+import com.recred.backend.application.GetActiveSchoolCreditResponse;
 import com.recred.backend.application.GetLastRecharge;
+import com.recred.backend.application.GetLastRechargeRequest;
+import com.recred.backend.application.GetLastRechargeResponse;
 import com.recred.backend.domain.exceptions.ActiveCreditExistsException;
-import com.recred.backend.domain.models.CreditStatus;
-import com.recred.backend.domain.models.SchoolCredit;
+import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.repositories.UsuarioRepository;
+import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.infrastructure.web.EnableSchoolCreditRequestDTO;
+import com.recred.backend.infrastructure.web.SchoolCreditController;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import com.recred.backend.domain.services.UsuarioService;
-import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.Tutor;
-import com.recred.backend.domain.repositories.UsuarioRepository;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = SchoolCreditController.class, excludeAutoConfiguration = {
         SecurityAutoConfiguration.class,
         OAuth2ResourceServerAutoConfiguration.class
 })
-public class SchoolCreditControllerTest {
+class SchoolCreditControllerTest {
+
+    private static final String AUTHENTICATED_USER = "test-user";
+    private static final String SCHOOL_CREDITS_URL = "/api/v1/school-credits";
 
     @Autowired
     private MockMvc mockMvc;
@@ -60,187 +73,356 @@ public class SchoolCreditControllerTest {
     @MockitoBean
     private UsuarioRepository usuarioRepository;
 
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private ResultActions result;
+    private EnableSchoolCreditRequestDTO enableCreditRequest;
+    private UUID tutorId;
+    private UUID studentId;
+    private UUID creditId;
 
     @Test
-    void enableCredit_success() throws Exception {
-        EnableSchoolCreditRequest request = new EnableSchoolCreditRequest();
-        request.setStudentId(UUID.randomUUID());
-        request.setAmount(new BigDecimal("2000.00"));
-        request.setInstallments(3);
+    void givenValidCreditRequest_whenEnablingCredit_thenReturnsCreatedCredit() throws Exception {
+        givenAuthenticatedTutor();
+        givenValidEnableCreditRequest("2000.00", 3);
+        givenCreditIsEnabled("2000.00", 3);
 
-        com.recred.backend.application.EnableSchoolCreditResponse credit = new com.recred.backend.application.EnableSchoolCreditResponse(UUID.randomUUID(), request.getAmount(), "ACTIVE", 3);
-        
-        
-        
-        
-        
-        
+        whenPostEnableCredit();
 
-        Usuario mockUsuario = new Usuario();
-        Tutor mockTutor = new Tutor();
-        mockTutor.setId(UUID.randomUUID());
-        mockUsuario.setTutor(mockTutor);
-
-        when(usuarioService.obtenerUsuarioActual("test-user")).thenReturn(mockUsuario);
-        when(enableSchoolCredit.execute(any(com.recred.backend.application.EnableSchoolCreditRequest.class)))
-                .thenReturn(credit);
-
-        Authentication authentication = new UsernamePasswordAuthenticationToken("test-user", "password");
-
-        mockMvc.perform(post("/api/v1/school-credits")
-                .principal(authentication)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.amount").value(2000.0))
-                .andExpect(jsonPath("$.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.installments").value(3));
+        thenCreditWasCreated("2000.00", 3);
+        thenEnableCreditWasRequestedWith(3);
     }
 
     @Test
-    void enableCredit_conflict() throws Exception {
-        EnableSchoolCreditRequest request = new EnableSchoolCreditRequest();
-        request.setParentId(UUID.randomUUID());
-        request.setStudentId(UUID.randomUUID());
+    void givenRequestWithoutInstallments_whenEnablingCredit_thenUsesOneInstallment()
+            throws Exception {
+        givenAuthenticatedTutor();
+        givenValidEnableCreditRequestWithoutInstallments("1000.00");
+        givenCreditIsEnabled("1000.00", 1);
 
-        Usuario mockUsuario = new Usuario();
-        Tutor mockTutor = new Tutor();
-        mockTutor.setId(UUID.randomUUID());
-        mockUsuario.setTutor(mockTutor);
+        whenPostEnableCredit();
 
-        when(usuarioService.obtenerUsuarioActual("test-user")).thenReturn(mockUsuario);
-        when(enableSchoolCredit.execute(any(com.recred.backend.application.EnableSchoolCreditRequest.class)))
-                .thenThrow(new ActiveCreditExistsException("Already has active credit"));
-
-        Authentication authentication = new UsernamePasswordAuthenticationToken("test-user", "password");
-
-        mockMvc.perform(post("/api/v1/school-credits")
-                .principal(authentication)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isConflict());
+        thenCreditWasCreated("1000.00", 1);
+        thenEnableCreditWasRequestedWith(1);
     }
 
     @Test
-    void enableCredit_withoutTutor_ShouldReturnBadRequest() throws Exception {
-        EnableSchoolCreditRequest request = new EnableSchoolCreditRequest();
-        request.setStudentId(UUID.randomUUID());
-        request.setAmount(new BigDecimal("1000.00"));
+    void givenActiveCreditAlreadyExists_whenEnablingCredit_thenReturnsConflict()
+            throws Exception {
+        givenAuthenticatedTutor();
+        givenValidEnableCreditRequest("1000.00", 1);
+        givenEnableCreditFailsWithActiveCredit();
 
-        when(usuarioService.obtenerUsuarioActual("test-user")).thenReturn(new Usuario());
+        whenPostEnableCredit();
 
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                "test-user",
-                "password");
-
-        mockMvc.perform(post("/api/v1/school-credits")
-                .principal(authentication)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string("Tutor no encontrado para el usuario actual."));
+        thenConflictWasReturned();
     }
 
     @Test
-    void enableCredit_illegalArgument_ShouldReturnBadRequest() throws Exception {
-        EnableSchoolCreditRequest request = new EnableSchoolCreditRequest();
-        request.setStudentId(UUID.randomUUID());
-        request.setAmount(new BigDecimal("1000.00"));
-        Usuario mockUsuario = new Usuario();
-        Tutor mockTutor = new Tutor();
-        mockTutor.setId(UUID.randomUUID());
-        mockUsuario.setTutor(mockTutor);
-        when(usuarioService.obtenerUsuarioActual("test-user")).thenReturn(mockUsuario);
-        when(enableSchoolCredit.execute(any(com.recred.backend.application
-                .EnableSchoolCreditRequest.class)))
-                .thenThrow(new IllegalArgumentException("Credit amount must be greater than zero"));
+    void givenAuthenticatedUserWithoutTutor_whenEnablingCredit_thenReturnsBadRequest()
+            throws Exception {
+        givenAuthenticatedUserWithoutTutor();
+        givenValidEnableCreditRequest("1000.00", 1);
 
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                "test-user",
-                "password");
+        whenPostEnableCredit();
 
-        mockMvc.perform(post("/api/v1/school-credits")
-                .principal(authentication)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string("Credit amount must be greater than zero"));
+        thenBadRequestWasReturned("Tutor no encontrado para el usuario actual.");
+        thenEnableCreditWasNotExecuted();
     }
 
     @Test
-    void enableCredit_unexpectedError_ShouldReturnInternalServerError() throws Exception {
-        EnableSchoolCreditRequest request = new EnableSchoolCreditRequest();
-        request.setStudentId(UUID.randomUUID());
-        request.setAmount(new BigDecimal("1000.00"));
-        when(usuarioService.obtenerUsuarioActual("test-user"))
+    void givenUseCaseRejectsCredit_whenEnablingCredit_thenReturnsBadRequest() throws Exception {
+        givenAuthenticatedTutor();
+        givenValidEnableCreditRequest("1000.00", 1);
+        givenEnableCreditFailsWithIllegalArgument("Credit amount must be greater than zero");
+
+        whenPostEnableCredit();
+
+        thenBadRequestWasReturned("Credit amount must be greater than zero");
+    }
+
+    @Test
+    void givenUnexpectedError_whenEnablingCredit_thenReturnsInternalServerError()
+            throws Exception {
+        givenValidEnableCreditRequest("1000.00", 1);
+        givenCurrentUserFailsUnexpectedly();
+
+        whenPostEnableCredit();
+
+        thenInternalServerErrorWasReturned("An unexpected error occurred.");
+    }
+
+    @Test
+    void givenInvalidCreditRequest_whenEnablingCredit_thenReturnsBadRequestBeforeUseCase()
+            throws Exception {
+        givenInvalidEnableCreditRequest();
+
+        whenPostEnableCredit();
+
+        thenBadRequestWasReturned();
+        thenEnableCreditWasNotExecuted();
+    }
+
+    @Test
+    void givenLastRechargeExists_whenGettingLastRecharge_thenReturnsAmount() throws Exception {
+        givenLastRechargeExists("1500.00");
+
+        whenGetLastRecharge();
+
+        thenLastRechargeAmountWasReturned("1500.00");
+    }
+
+    @Test
+    void givenLastRechargeStudentDoesNotExist_whenGettingLastRecharge_thenReturnsNotFound()
+            throws Exception {
+        givenLastRechargeFailsWithIllegalArgument();
+
+        whenGetLastRecharge();
+
+        thenNotFoundWasReturned();
+    }
+
+    @Test
+    void givenLastRechargeFailsUnexpectedly_whenGettingLastRecharge_thenReturnsInternalServerError()
+            throws Exception {
+        givenLastRechargeFailsUnexpectedly();
+
+        whenGetLastRecharge();
+
+        thenInternalServerErrorWasReturned();
+    }
+
+    @Test
+    void givenActiveCreditExists_whenGettingActiveCredit_thenReturnsCredit() throws Exception {
+        givenActiveCreditExists("2500.00", 2);
+
+        whenGetActiveCredit();
+
+        thenActiveCreditWasReturned("2500.00", 2);
+    }
+
+    @Test
+    void givenActiveCreditDoesNotExist_whenGettingActiveCredit_thenReturnsEmptyBody()
+            throws Exception {
+        givenActiveCreditDoesNotExist();
+
+        whenGetActiveCredit();
+
+        thenEmptyOkResponseWasReturned();
+    }
+
+    @Test
+    void givenActiveCreditRequestIsInvalid_whenGettingActiveCredit_thenReturnsBadRequest()
+            throws Exception {
+        givenActiveCreditFailsWithIllegalArgument();
+
+        whenGetActiveCredit();
+
+        thenBadRequestWasReturned();
+    }
+
+    @Test
+    void givenActiveCreditFailsUnexpectedly_whenGettingActiveCredit_thenReturnsInternalServerError()
+            throws Exception {
+        givenActiveCreditFailsUnexpectedly();
+
+        whenGetActiveCredit();
+
+        thenInternalServerErrorWasReturned();
+    }
+
+    private void givenAuthenticatedTutor() {
+        tutorId = randomUUID();
+        Usuario user = new Usuario();
+        Tutor tutor = new Tutor();
+        tutor.setId(tutorId);
+        user.setTutor(tutor);
+
+        when(usuarioService.obtenerUsuarioActual(AUTHENTICATED_USER)).thenReturn(user);
+    }
+
+    private void givenAuthenticatedUserWithoutTutor() {
+        when(usuarioService.obtenerUsuarioActual(AUTHENTICATED_USER)).thenReturn(new Usuario());
+    }
+
+    private void givenCurrentUserFailsUnexpectedly() {
+        when(usuarioService.obtenerUsuarioActual(AUTHENTICATED_USER))
                 .thenThrow(new RuntimeException("boom"));
-
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                "test-user",
-                "password");
-
-        mockMvc.perform(post("/api/v1/school-credits")
-                .principal(authentication)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isInternalServerError())
-                .andExpect(content().string("An unexpected error occurred."));
     }
 
-    @Test
-    void getLastRecharge_successAndErrors() throws Exception {
-        UUID studentId = UUID.randomUUID();
-        when(getLastRecharge.execute(any(com.recred.backend.application
-                .GetLastRechargeRequest.class)))
-                .thenReturn(new com.recred.backend.application.GetLastRechargeResponse(
-                        new BigDecimal("1500.00")))
-                .thenThrow(new IllegalArgumentException("Student not found"))
-                .thenThrow(new RuntimeException("boom"));
-
-        mockMvc.perform(get("/api/v1/school-credits/alumno/{studentId}/last-recharge",
-                studentId))
-                .andExpect(status().isOk())
-                .andExpect(content().string("1500.00"));
-        mockMvc.perform(get("/api/v1/school-credits/alumno/{studentId}/last-recharge",
-                studentId))
-                .andExpect(status().isNotFound());
-        mockMvc.perform(get("/api/v1/school-credits/alumno/{studentId}/last-recharge",
-                studentId))
-                .andExpect(status().isInternalServerError());
+    private void givenValidEnableCreditRequest(String amount, Integer installments) {
+        studentId = randomUUID();
+        enableCreditRequest = new EnableSchoolCreditRequestDTO();
+        enableCreditRequest.setStudentId(studentId);
+        enableCreditRequest.setAmount(new BigDecimal(amount));
+        enableCreditRequest.setInstallments(installments);
     }
 
-    @Test
-    void getActiveCredit_successEmptyAndErrors() throws Exception {
-        UUID studentId = UUID.randomUUID();
-        UUID creditId = UUID.randomUUID();
-        when(getActiveSchoolCredit.execute(any(com.recred.backend.application
-                .GetActiveSchoolCreditRequest.class)))
-                .thenReturn(Optional.of(new com.recred.backend.application
-                        .GetActiveSchoolCreditResponse(
+    private void givenValidEnableCreditRequestWithoutInstallments(String amount) {
+        givenValidEnableCreditRequest(amount, null);
+    }
+
+    private void givenInvalidEnableCreditRequest() {
+        studentId = randomUUID();
+        enableCreditRequest = new EnableSchoolCreditRequestDTO();
+        enableCreditRequest.setStudentId(studentId);
+        enableCreditRequest.setAmount(BigDecimal.ZERO);
+    }
+
+    private void givenCreditIsEnabled(String amount, int installments) {
+        creditId = randomUUID();
+        when(enableSchoolCredit.execute(any(EnableSchoolCreditRequest.class)))
+                .thenReturn(new EnableSchoolCreditResponse(
                         creditId,
-                        new BigDecimal("2500.00"),
+                        new BigDecimal(amount),
                         "ACTIVE",
-                        2)))
-                .thenReturn(Optional.empty())
-                .thenThrow(new IllegalArgumentException("studentId cannot be null"))
-                .thenThrow(new RuntimeException("boom"));
+                        installments
+                ));
+    }
 
-        mockMvc.perform(get("/api/v1/school-credits/alumno/{studentId}/active",
-                studentId))
-                .andExpect(status().isOk())
+    private void givenEnableCreditFailsWithActiveCredit() {
+        when(enableSchoolCredit.execute(any(EnableSchoolCreditRequest.class)))
+                .thenThrow(new ActiveCreditExistsException("Already has active credit"));
+    }
+
+    private void givenEnableCreditFailsWithIllegalArgument(String message) {
+        when(enableSchoolCredit.execute(any(EnableSchoolCreditRequest.class)))
+                .thenThrow(new IllegalArgumentException(message));
+    }
+
+    private void givenLastRechargeExists(String amount) {
+        when(getLastRecharge.execute(any(GetLastRechargeRequest.class)))
+                .thenReturn(new GetLastRechargeResponse(new BigDecimal(amount)));
+    }
+
+    private void givenLastRechargeFailsWithIllegalArgument() {
+        when(getLastRecharge.execute(any(GetLastRechargeRequest.class)))
+                .thenThrow(new IllegalArgumentException("Student not found"));
+    }
+
+    private void givenLastRechargeFailsUnexpectedly() {
+        when(getLastRecharge.execute(any(GetLastRechargeRequest.class)))
+                .thenThrow(new RuntimeException("boom"));
+    }
+
+    private void givenActiveCreditExists(String amount, int installments) {
+        creditId = randomUUID();
+        when(getActiveSchoolCredit.execute(any(GetActiveSchoolCreditRequest.class)))
+                .thenReturn(Optional.of(new GetActiveSchoolCreditResponse(
+                        creditId,
+                        new BigDecimal(amount),
+                        "ACTIVE",
+                        installments
+                )));
+    }
+
+    private void givenActiveCreditDoesNotExist() {
+        when(getActiveSchoolCredit.execute(any(GetActiveSchoolCreditRequest.class)))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenActiveCreditFailsWithIllegalArgument() {
+        when(getActiveSchoolCredit.execute(any(GetActiveSchoolCreditRequest.class)))
+                .thenThrow(new IllegalArgumentException("studentId cannot be null"));
+    }
+
+    private void givenActiveCreditFailsUnexpectedly() {
+        when(getActiveSchoolCredit.execute(any(GetActiveSchoolCreditRequest.class)))
+                .thenThrow(new RuntimeException("boom"));
+    }
+
+    private void whenPostEnableCredit() throws Exception {
+        result = mockMvc.perform(post(SCHOOL_CREDITS_URL)
+                .principal(authentication())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(enableCreditRequest)));
+    }
+
+    private void whenGetLastRecharge() throws Exception {
+        studentId = randomUUID();
+        result = mockMvc.perform(get(
+                "/api/v1/school-credits/alumno/{studentId}/last-recharge",
+                studentId
+        ));
+    }
+
+    private void whenGetActiveCredit() throws Exception {
+        studentId = randomUUID();
+        result = mockMvc.perform(get(
+                "/api/v1/school-credits/alumno/{studentId}/active",
+                studentId
+        ));
+    }
+
+    private void thenCreditWasCreated(String amount, int installments) throws Exception {
+        result.andExpect(status().isCreated())
                 .andExpect(jsonPath("$.creditId").value(creditId.toString()))
-                .andExpect(jsonPath("$.amount").value(2500.0))
-                .andExpect(jsonPath("$.installments").value(2));
-        mockMvc.perform(get("/api/v1/school-credits/alumno/{studentId}/active",
-                studentId))
-                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.amount").value(Double.parseDouble(amount)))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.installments").value(installments));
+    }
+
+    private void thenEnableCreditWasRequestedWith(int installments) {
+        ArgumentCaptor<EnableSchoolCreditRequest> captor = ArgumentCaptor.forClass(
+                EnableSchoolCreditRequest.class);
+        verify(enableSchoolCredit).execute(captor.capture());
+
+        EnableSchoolCreditRequest request = captor.getValue();
+        assertEquals(tutorId, request.tutorId());
+        assertEquals(studentId, request.studentId());
+        assertEquals(enableCreditRequest.getAmount(), request.amount());
+        assertEquals(installments, request.installments());
+    }
+
+    private void thenConflictWasReturned() throws Exception {
+        result.andExpect(status().isConflict());
+    }
+
+    private void thenBadRequestWasReturned(String message) throws Exception {
+        result.andExpect(status().isBadRequest())
+                .andExpect(content().string(message));
+    }
+
+    private void thenBadRequestWasReturned() throws Exception {
+        result.andExpect(status().isBadRequest());
+    }
+
+    private void thenInternalServerErrorWasReturned(String message) throws Exception {
+        result.andExpect(status().isInternalServerError())
+                .andExpect(content().string(message));
+    }
+
+    private void thenInternalServerErrorWasReturned() throws Exception {
+        result.andExpect(status().isInternalServerError());
+    }
+
+    private void thenNotFoundWasReturned() throws Exception {
+        result.andExpect(status().isNotFound());
+    }
+
+    private void thenLastRechargeAmountWasReturned(String amount) throws Exception {
+        result.andExpect(status().isOk())
+                .andExpect(content().string(amount));
+    }
+
+    private void thenActiveCreditWasReturned(String amount, int installments) throws Exception {
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.creditId").value(creditId.toString()))
+                .andExpect(jsonPath("$.amount").value(Double.parseDouble(amount)))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.installments").value(installments));
+    }
+
+    private void thenEmptyOkResponseWasReturned() throws Exception {
+        result.andExpect(status().isOk())
                 .andExpect(content().string(""));
-        mockMvc.perform(get("/api/v1/school-credits/alumno/{studentId}/active",
-                studentId))
-                .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/api/v1/school-credits/alumno/{studentId}/active",
-                studentId))
-                .andExpect(status().isInternalServerError());
+    }
+
+    private void thenEnableCreditWasNotExecuted() {
+        verify(enableSchoolCredit, never()).execute(any());
+    }
+
+    private Authentication authentication() {
+        return new UsernamePasswordAuthenticationToken(AUTHENTICATED_USER, "password");
     }
 }
