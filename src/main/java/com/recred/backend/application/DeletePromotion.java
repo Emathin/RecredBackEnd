@@ -13,10 +13,18 @@ public class DeletePromotion {
     }
 
     public DeletePromotionResponse execute(DeletePromotionRequest request) {
-        Promotion promotion = promotionRepository.findById(request.id())
-                .orElseThrow(() -> new IllegalArgumentException("Promotion not found."));
+        Promotion promotion = findPromotion(request.id());
         promotion.setStatus(PromotionStatus.REJECTED);
-        promotionRepository.save(promotion);
+        savePromotion(promotion);
         return new DeletePromotionResponse(promotion.getId());
+    }
+
+    private Promotion findPromotion(java.util.UUID id) {
+        return promotionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Promotion not found."));
+    }
+
+    private void savePromotion(Promotion promotion) {
+        promotionRepository.save(promotion);
     }
 }
