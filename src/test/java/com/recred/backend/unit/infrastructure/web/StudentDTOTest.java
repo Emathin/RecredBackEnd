@@ -19,7 +19,7 @@ class StudentDTOTest {
     private static final String STUDENT_NAME = "Martina";
     private static final String STUDENT_LAST_NAME = "Gomez";
 
-    private Alumno alumno;
+    private Alumno student;
     private StudentDTO dto;
     private UUID schoolId;
     private UUID studentId;
@@ -73,27 +73,27 @@ class StudentDTOTest {
     }
 
     private void givenStudentWithCompleteUser() {
-        alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
-        alumno.setUsuario(user(STUDENT_NAME, STUDENT_LAST_NAME));
-        alumno.setActivo(true);
+        student = new Alumno();
+        student.setId(UUID.randomUUID());
+        student.setUsuario(user(STUDENT_NAME, STUDENT_LAST_NAME));
+        student.setActivo(true);
     }
 
     private void givenStudentWithoutUser() {
-        alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
-        alumno.setUsuario(null);
-        alumno.setActivo(true);
+        student = new Alumno();
+        student.setId(UUID.randomUUID());
+        student.setUsuario(null);
+        student.setActivo(true);
     }
 
     private void givenStudentWithGradeSchoolWalletAndPhoto() {
         schoolId = UUID.randomUUID();
-        alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
-        alumno.setUsuario(userWithPhoto("Ana", "Perez", "foto.png"));
-        alumno.setGrado(grade("5", "B", schoolId));
-        alumno.setBilletera(wallet("1234.50"));
-        alumno.setActivo(true);
+        student = new Alumno();
+        student.setId(UUID.randomUUID());
+        student.setUsuario(userWithPhoto("Ana", "Perez", "foto.png"));
+        student.setGrado(grade("5", "B", schoolId));
+        student.setBilletera(wallet("1234.50"));
+        student.setActivo(true);
     }
 
     private void givenStudentDataWithPartialGradeValues() {
@@ -102,14 +102,14 @@ class StudentDTOTest {
     }
 
     private void givenStudentWithGradeWithoutDivision() {
-        alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
-        alumno.setUsuario(user("Ana", "Perez"));
-        alumno.setGrado(grade("5", null, null));
+        student = new Alumno();
+        student.setId(UUID.randomUUID());
+        student.setUsuario(user("Ana", "Perez"));
+        student.setGrado(grade("5", null, null));
     }
 
     private void whenMapStudentToDTO() {
-        dto = StudentDTO.fromDomain(alumno);
+        dto = StudentDTO.fromDomain(student);
     }
 
     private void whenMapStudentDataToDTOs() {
@@ -149,14 +149,14 @@ class StudentDTOTest {
     }
 
     private void thenNameAndLastNameAreMapped() {
-        assertEquals(alumno.getId(), dto.id());
+        assertEquals(student.getId(), dto.id());
         assertEquals(STUDENT_NAME, dto.nombre());
         assertEquals(STUDENT_LAST_NAME, dto.apellido());
         assertTrue(dto.activo());
     }
 
     private void thenDefaultNameAndLastNameAreAssigned() {
-        assertEquals(alumno.getId(), dto.id());
+        assertEquals(student.getId(), dto.id());
         assertEquals("Sin nombre", dto.nombre());
         assertEquals("Sin apellido", dto.apellido());
     }
@@ -182,34 +182,34 @@ class StudentDTOTest {
         assertEquals("5", dto.grado());
     }
 
-    private Usuario user(String nombre, String apellido) {
-        Usuario usuario = new Usuario();
-        usuario.setNombre(nombre);
-        usuario.setApellido(apellido);
-        return usuario;
+    private Usuario user(String name, String lastName) {
+        Usuario user = new Usuario();
+        user.setNombre(name);
+        user.setApellido(lastName);
+        return user;
     }
 
-    private Usuario userWithPhoto(String nombre, String apellido, String urlFotoPerfil) {
-        Usuario usuario = user(nombre, apellido);
-        usuario.setUrlFotoPerfil(urlFotoPerfil);
-        return usuario;
+    private Usuario userWithPhoto(String name, String lastName, String profilePictureUrl) {
+        Usuario user = user(name, lastName);
+        user.setUrlFotoPerfil(profilePictureUrl);
+        return user;
     }
 
-    private Grado grade(String anio, String division, UUID schoolId) {
-        Grado grado = new Grado();
-        grado.setAnio(anio);
-        grado.setDivision(division);
+    private Grado grade(String year, String division, UUID schoolId) {
+        Grado grade = new Grado();
+        grade.setAnio(year);
+        grade.setDivision(division);
         if (schoolId != null) {
-            Colegio colegio = new Colegio();
-            colegio.setId(schoolId);
-            grado.setColegio(colegio);
+            Colegio school = new Colegio();
+            school.setId(schoolId);
+            grade.setColegio(school);
         }
-        return grado;
+        return grade;
     }
 
-    private Billetera wallet(String saldo) {
-        Billetera billetera = new Billetera();
-        billetera.setSaldoCreditos(new BigDecimal(saldo));
-        return billetera;
+    private Billetera wallet(String balance) {
+        Billetera wallet = new Billetera();
+        wallet.setSaldoCreditos(new BigDecimal(balance));
+        return wallet;
     }
 }
