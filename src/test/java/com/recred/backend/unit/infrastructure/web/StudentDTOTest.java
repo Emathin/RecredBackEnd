@@ -16,76 +16,105 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StudentDTOTest {
 
+    private static final String STUDENT_NAME = "Martina";
+    private static final String STUDENT_LAST_NAME = "Gomez";
+
+    private Alumno alumno;
+    private StudentDTO dto;
+    private UUID schoolId;
+    private UUID studentId;
+    private StudentDTO fullGradeDto;
+    private StudentDTO onlyYearDto;
+    private StudentDTO onlyDivisionDto;
+
     @Test
-    void dadoUnAlumnoConUsuarioCompleto_cuandoMapeaADTO_entoncesExtraeNombreYApellido() {
-        Usuario usuario = new Usuario();
-        usuario.setNombre("Martina");
-        usuario.setApellido("Gómez");
+    void givenStudentWithCompleteUser_whenMappingToDTO_thenExtractsNameAndLastName() {
+        givenStudentWithCompleteUser();
 
-        Alumno alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
-        alumno.setUsuario(usuario);
-        alumno.setActivo(true);
+        whenMapStudentToDTO();
 
-        StudentDTO dto = StudentDTO.fromDomain(alumno);
-
-        assertEquals(alumno.getId(), dto.id());
-        assertEquals("Martina", dto.nombre());
-        assertEquals("Gómez", dto.apellido());
-        assertTrue(dto.activo());
+        thenNameAndLastNameAreMapped();
     }
 
     @Test
-    void dadoUnAlumnoConUsuarioNulo_cuandoMapeaADTO_entoncesAsignaValoresPorDefecto() {
-        Alumno alumno = new Alumno();
+    void givenStudentWithoutUser_whenMappingToDTO_thenAssignsDefaultValues() {
+        givenStudentWithoutUser();
+
+        whenMapStudentToDTO();
+
+        thenDefaultNameAndLastNameAreAssigned();
+    }
+
+    @Test
+    void givenStudentWithGradeSchoolWalletAndPhoto_whenMappingToDTO_thenMapsAllFields() {
+        givenStudentWithGradeSchoolWalletAndPhoto();
+
+        whenMapStudentToDTO();
+
+        thenGradeSchoolWalletAndPhotoAreMapped();
+    }
+
+    @Test
+    void givenStudentDataWithPartialGradeValues_whenMappingToDTO_thenAppliesFallbacks() {
+        givenStudentDataWithPartialGradeValues();
+
+        whenMapStudentDataToDTOs();
+
+        thenFallbacksAndFormattedGradesAreApplied();
+    }
+
+    @Test
+    void givenGradeWithoutDivision_whenMappingToDTO_thenDoesNotRenderNullText() {
+        givenStudentWithGradeWithoutDivision();
+
+        whenMapStudentToDTO();
+
+        thenGradeDoesNotRenderNullText();
+    }
+
+    private void givenStudentWithCompleteUser() {
+        alumno = new Alumno();
+        alumno.setId(UUID.randomUUID());
+        alumno.setUsuario(user(STUDENT_NAME, STUDENT_LAST_NAME));
+        alumno.setActivo(true);
+    }
+
+    private void givenStudentWithoutUser() {
+        alumno = new Alumno();
         alumno.setId(UUID.randomUUID());
         alumno.setUsuario(null);
         alumno.setActivo(true);
-
-        StudentDTO dto = StudentDTO.fromDomain(alumno);
-
-        assertEquals(alumno.getId(), dto.id());
-        assertEquals("Sin nombre", dto.nombre());
-        assertEquals("Sin apellido", dto.apellido());
     }
 
-    @Test
-    void fromDomainShouldMapGradeSchoolWalletAndPhoto() {
-        UUID schoolId = UUID.randomUUID();
-        Usuario usuario = new Usuario();
-        usuario.setNombre("Ana");
-        usuario.setApellido("Perez");
-        usuario.setUrlFotoPerfil("foto.png");
-        Colegio colegio = new Colegio();
-        colegio.setId(schoolId);
-        Grado grado = new Grado();
-        grado.setAnio("5");
-        grado.setDivision("B");
-        grado.setColegio(colegio);
-        Billetera billetera = new Billetera();
-        billetera.setSaldoCreditos(new BigDecimal("1234.50"));
-        Alumno alumno = new Alumno();
+    private void givenStudentWithGradeSchoolWalletAndPhoto() {
+        schoolId = UUID.randomUUID();
+        alumno = new Alumno();
         alumno.setId(UUID.randomUUID());
-        alumno.setUsuario(usuario);
-        alumno.setGrado(grado);
-        alumno.setBilletera(billetera);
+        alumno.setUsuario(userWithPhoto("Ana", "Perez", "foto.png"));
+        alumno.setGrado(grade("5", "B", schoolId));
+        alumno.setBilletera(wallet("1234.50"));
         alumno.setActivo(true);
-
-        StudentDTO dto = StudentDTO.fromDomain(alumno);
-
-        assertEquals("5 B", dto.grado());
-        assertEquals(schoolId, dto.colegioId());
-        assertEquals(new BigDecimal("1234.50"), dto.saldo());
-        assertEquals("foto.png", dto.urlFotoPerfil());
     }
 
-    @Test
-    void fromStudentDataShouldApplyFallbacksAndFormatGrade() {
-        UUID id = UUID.randomUUID();
-        UUID schoolId = UUID.randomUUID();
+    private void givenStudentDataWithPartialGradeValues() {
+        studentId = UUID.randomUUID();
+        schoolId = UUID.randomUUID();
+    }
 
-        StudentDTO fullGrade = StudentDTO.fromStudentData(
-                id,
+    private void givenStudentWithGradeWithoutDivision() {
+        alumno = new Alumno();
+        alumno.setId(UUID.randomUUID());
+        alumno.setUsuario(user("Ana", "Perez"));
+        alumno.setGrado(grade("5", null, null));
+    }
+
+    private void whenMapStudentToDTO() {
+        dto = StudentDTO.fromDomain(alumno);
+    }
+
+    private void whenMapStudentDataToDTOs() {
+        fullGradeDto = StudentDTO.fromStudentData(
+                studentId,
                 null,
                 null,
                 true,
@@ -95,8 +124,8 @@ class StudentDTOTest {
                 null,
                 "avatar.png"
         );
-        StudentDTO onlyYear = StudentDTO.fromStudentData(
-                id,
+        onlyYearDto = StudentDTO.fromStudentData(
+                studentId,
                 "Juan",
                 "Lopez",
                 true,
@@ -106,8 +135,8 @@ class StudentDTOTest {
                 new BigDecimal("50.00"),
                 null
         );
-        StudentDTO onlyDivision = StudentDTO.fromStudentData(
-                id,
+        onlyDivisionDto = StudentDTO.fromStudentData(
+                studentId,
                 "Juan",
                 "Lopez",
                 true,
@@ -117,13 +146,70 @@ class StudentDTOTest {
                 new BigDecimal("50.00"),
                 null
         );
+    }
 
-        assertEquals("Sin nombre", fullGrade.nombre());
-        assertEquals("Sin apellido", fullGrade.apellido());
-        assertEquals("6 A", fullGrade.grado());
-        assertEquals(BigDecimal.ZERO, fullGrade.saldo());
-        assertEquals("avatar.png", fullGrade.urlFotoPerfil());
-        assertEquals("6", onlyYear.grado());
-        assertEquals("B", onlyDivision.grado());
+    private void thenNameAndLastNameAreMapped() {
+        assertEquals(alumno.getId(), dto.id());
+        assertEquals(STUDENT_NAME, dto.nombre());
+        assertEquals(STUDENT_LAST_NAME, dto.apellido());
+        assertTrue(dto.activo());
+    }
+
+    private void thenDefaultNameAndLastNameAreAssigned() {
+        assertEquals(alumno.getId(), dto.id());
+        assertEquals("Sin nombre", dto.nombre());
+        assertEquals("Sin apellido", dto.apellido());
+    }
+
+    private void thenGradeSchoolWalletAndPhotoAreMapped() {
+        assertEquals("5 B", dto.grado());
+        assertEquals(schoolId, dto.colegioId());
+        assertEquals(new BigDecimal("1234.50"), dto.saldo());
+        assertEquals("foto.png", dto.urlFotoPerfil());
+    }
+
+    private void thenFallbacksAndFormattedGradesAreApplied() {
+        assertEquals("Sin nombre", fullGradeDto.nombre());
+        assertEquals("Sin apellido", fullGradeDto.apellido());
+        assertEquals("6 A", fullGradeDto.grado());
+        assertEquals(BigDecimal.ZERO, fullGradeDto.saldo());
+        assertEquals("avatar.png", fullGradeDto.urlFotoPerfil());
+        assertEquals("6", onlyYearDto.grado());
+        assertEquals("B", onlyDivisionDto.grado());
+    }
+
+    private void thenGradeDoesNotRenderNullText() {
+        assertEquals("5", dto.grado());
+    }
+
+    private Usuario user(String nombre, String apellido) {
+        Usuario usuario = new Usuario();
+        usuario.setNombre(nombre);
+        usuario.setApellido(apellido);
+        return usuario;
+    }
+
+    private Usuario userWithPhoto(String nombre, String apellido, String urlFotoPerfil) {
+        Usuario usuario = user(nombre, apellido);
+        usuario.setUrlFotoPerfil(urlFotoPerfil);
+        return usuario;
+    }
+
+    private Grado grade(String anio, String division, UUID schoolId) {
+        Grado grado = new Grado();
+        grado.setAnio(anio);
+        grado.setDivision(division);
+        if (schoolId != null) {
+            Colegio colegio = new Colegio();
+            colegio.setId(schoolId);
+            grado.setColegio(colegio);
+        }
+        return grado;
+    }
+
+    private Billetera wallet(String saldo) {
+        Billetera billetera = new Billetera();
+        billetera.setSaldoCreditos(new BigDecimal(saldo));
+        return billetera;
     }
 }

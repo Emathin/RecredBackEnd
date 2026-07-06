@@ -43,19 +43,20 @@ public class CreateStudentFromParent {
     }
 
     @Transactional
-    public CreateStudentFromParentResponse execute(CreateStudentFromParentRequest createStudentRequest) {
+    public CreateStudentFromParentResponse execute(
+            CreateStudentFromParentRequest createStudentRequest) {
         StudentCreationContext context = prepareStudentCreationContext(createStudentRequest);
         Usuario savedStudentUser = createStudentUser(createStudentRequest);
         Alumno savedChild = createStudentAndLinkToTutor(savedStudentUser, context);
 
-        return buildResponse(savedChild);
+        return CreateStudentFromParentResponse.fromDomain(savedChild);
     }
 
     private StudentCreationContext prepareStudentCreationContext(
             CreateStudentFromParentRequest createStudentRequest) {
         Tutor tutor = findTutorForAuthenticatedParent(
                 createStudentRequest.parentCognitoSubject());
-        ensureStudentEmailIsAvailable(createStudentRequest);
+        ensureEmailAvailable(createStudentRequest.email());
         Grado grade = resolveGradeAllowedForTutor(createStudentRequest.gradoId(), tutor);
 
         return new StudentCreationContext(tutor, grade);
@@ -88,10 +89,6 @@ public class CreateStudentFromParent {
         context.tutor().addHijo(savedStudent);
         tutorRepository.save(context.tutor());
         return savedStudent;
-    }
-
-    private CreateStudentFromParentResponse buildResponse(Alumno student) {
-        return CreateStudentFromParentResponse.fromDomain(student);
     }
 
     private Usuario buildStudentUserFromCognito(String cognitoSub, String nombre, String apellido,
@@ -146,11 +143,6 @@ public class CreateStudentFromParent {
         return tutorRepository.findByUsuarioId(userId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Tutor no encontrado para el usuario autenticado"));
-    }
-
-    private void ensureStudentEmailIsAvailable(
-            CreateStudentFromParentRequest createStudentRequest) {
-        ensureEmailAvailable(createStudentRequest.email());
     }
 
     private void ensureEmailAvailable(String email) {

@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Pattern;
 
 import java.util.UUID;
 
-public record CreateChildRequest(
+public record CreateChildRequestDTO(
         @Pattern(regexp = "^[^@]*$", message = "El username no puede tener formato de email")
         String username,
         @NotBlank(message = "El nombre del alumno es obligatorio")
