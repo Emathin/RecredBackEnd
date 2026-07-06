@@ -26,38 +26,46 @@ public class AddFavoriteProduct {
     }
 
     @Transactional
-    public AddFavoriteProductResponse execute(AddFavoriteProductRequest request) {
-        Alumno alumno = findAlumnoById(request.alumnoId());
-        Producto producto = findById(request.productoId());
-        validateFreePlanLimit(alumno, request.productoId(), request.alumnoId());
-        alumno.agregarProductoFavorito(producto);
-        alumnoRepository.save(alumno);
+    public AddFavoriteProductResponse execute(AddFavoriteProductRequest addFavoriteRequest) {
+        Alumno student = findAlumnoById(addFavoriteRequest.alumnoId());
+        Producto product = findProductById(addFavoriteRequest.productoId());
+
+        ensureFavoriteProductLimitIsNotExceeded(student, addFavoriteRequest);
+        addFavoriteProduct(student, product);
+
         return new AddFavoriteProductResponse();
     }
 
-    private void validateFreePlanLimit(Alumno alumno, UUID productoId, UUID alumnoId) {
-        if (!hasOnlyFreeTutors(alumnoId)) {
+    private void ensureFavoriteProductLimitIsNotExceeded(
+            Alumno student,
+            AddFavoriteProductRequest addFavoriteRequest) {
+        if (!hasOnlyFreeTutors(addFavoriteRequest.alumnoId())) {
             return;
         }
 
-        if (alumno.exceedsFavoriteProductLimit(productoId, 5)) {
+        if (student.exceedsFavoriteProductLimit(addFavoriteRequest.productoId(), 5)) {
             throw new IllegalArgumentException(
                     "Límite de productos favoritos alcanzado para cuenta gratuita (máximo 5)");
         }
     }
 
-    private Alumno findAlumnoById(UUID id) {
-        return alumnoRepository.findById(id)
+    private Alumno findAlumnoById(UUID studentId) {
+        return alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
     }
 
-    private Producto findById(UUID id) {
-        return productRepository.findById(id)
+    private Producto findProductById(UUID productId) {
+        return productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
     }
 
-    private boolean hasOnlyFreeTutors(UUID alumnoId) {
-        List<Tutor> tutores = tutorRepository.findByAlumnoId(alumnoId);
+    private void addFavoriteProduct(Alumno student, Producto product) {
+        student.agregarProductoFavorito(product);
+        alumnoRepository.save(student);
+    }
+
+    private boolean hasOnlyFreeTutors(UUID studentId) {
+        List<Tutor> tutores = tutorRepository.findByAlumnoId(studentId);
         return tutores.isEmpty() || tutores.stream()
                 .allMatch(tutor -> tutor.getUsuario() == null
                         || tutor.getUsuario().hasFreePlan());
