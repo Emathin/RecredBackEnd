@@ -26,38 +26,37 @@ public class DeleteFavoriteCart {
     }
 
     @Transactional
-    public DeleteFavoriteCartResponse execute(DeleteFavoriteCartRequest request) {
-        String cognitoSub = request.cognitoSub();
-        UUID cartId = request.cartId();
+    public DeleteFavoriteCartResponse execute(DeleteFavoriteCartRequest deleteCartRequest) {
+        Tutor tutor = findAuthenticatedTutor(deleteCartRequest.cognitoSub());
+        CarritoFavorito cart = findFavoriteCart(deleteCartRequest.cartId());
 
-        Usuario usuario = this.findUsuarioByCognito(cognitoSub);
-        Tutor tutor = this.findTutorByUsuarioId(usuario.getId());
-
-        CarritoFavorito carrito = this.findCarritoFavoritoById(cartId);
-
-        analizarAutorizacionParaEliminarCarrito(tutor, carrito);
-
-        carritoFavoritoRepository.delete(cartId);
+        deleteFavoriteCartOwnedByTutor(cart, tutor, deleteCartRequest.cartId());
         return new DeleteFavoriteCartResponse();
     }
 
-    private Usuario findUsuarioByCognito(String cognitoSub) {
+    private Tutor findAuthenticatedTutor(String cognitoSub) {
+        Usuario user = findAuthenticatedUser(cognitoSub);
+        return findTutorByUserId(user.getId());
+    }
+
+    private Usuario findAuthenticatedUser(String cognitoSub) {
         return usuarioRepository.findByIdCognito(cognitoSub)
                 .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
     }
 
-    private Tutor findTutorByUsuarioId(UUID usuarioId) {
-        return tutorRepository.findByUsuarioId(usuarioId)
+    private Tutor findTutorByUserId(UUID userId) {
+        return tutorRepository.findByUsuarioId(userId)
                 .orElseThrow(() -> new SecurityException(
                         "No se encontró perfil de tutor para el usuario"));
     }
 
-    private CarritoFavorito findCarritoFavoritoById(UUID id) {
-        return carritoFavoritoRepository.findById(id)
+    private CarritoFavorito findFavoriteCart(UUID cartId) {
+        return carritoFavoritoRepository.findById(cartId)
                 .orElseThrow(() -> new IllegalArgumentException("Carrito no encontrado"));
     }
 
-    private void analizarAutorizacionParaEliminarCarrito(Tutor tutor, CarritoFavorito carrito) {
-        carrito.validateOwnership(tutor);
+    private void deleteFavoriteCartOwnedByTutor(CarritoFavorito cart, Tutor tutor, UUID cartId) {
+        cart.validateOwnership(tutor);
+        carritoFavoritoRepository.delete(cartId);
     }
 }
