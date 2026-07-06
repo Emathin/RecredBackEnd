@@ -14,6 +14,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.UUID;
 
+
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,37 +26,72 @@ class GetAllProductsTest {
     @Mock
     private ProductRepository productRepository;
 
-    private GetAllProducts getAllProducts;
+    private GetAllProducts useCase;
+    private GetAllProductsResponse response;
+    private UUID buffetId;
+    private UUID productId;
 
     @BeforeEach
     void setUp() {
-        getAllProducts = new GetAllProducts(productRepository);
+        useCase = new GetAllProducts(productRepository);
     }
 
     @Test
-    void dadoQueElBuffetIdEsNulo_cuandoExecute_entoncesLlamaBusquedaGlobal() {
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        when(productRepository.findAllActive()).thenReturn(List.of(producto));
+    void givenNoBuffetFilter_whenGettingProducts_thenReturnsAllActiveProducts() {
+        givenActiveProductsExist();
 
-        GetAllProductsResponse result = getAllProducts.execute(new GetAllProductsRequest(null));
+        whenGetAllProductsWithoutBuffetFilter();
 
-        assertEquals(1, result.products().size());
-        assertEquals(producto.getId(), result.products().get(0).id());
+        thenProductsWereReturned();
+        thenAllActiveProductsWereRequested();
+    }
+
+    @Test
+    void givenBuffetFilter_whenGettingProducts_thenReturnsActiveProductsWithStock() {
+        givenBuffetHasActiveProductsWithStock();
+
+        whenGetAllProductsForBuffet();
+
+        thenProductsWereReturned();
+        thenActiveProductsWithStockWereRequested();
+    }
+
+    private void givenActiveProductsExist() {
+        productId = randomUUID();
+        when(productRepository.findAllActive()).thenReturn(List.of(product(productId)));
+    }
+
+    private void givenBuffetHasActiveProductsWithStock() {
+        buffetId = randomUUID();
+        productId = randomUUID();
+        when(productRepository.findAllActiveWithStock(buffetId))
+                .thenReturn(List.of(product(productId)));
+    }
+
+    private void whenGetAllProductsWithoutBuffetFilter() {
+        response = useCase.execute(new GetAllProductsRequest(null));
+    }
+
+    private void whenGetAllProductsForBuffet() {
+        response = useCase.execute(new GetAllProductsRequest(buffetId));
+    }
+
+    private void thenProductsWereReturned() {
+        assertEquals(1, response.products().size());
+        assertEquals(productId, response.products().get(0).id());
+    }
+
+    private void thenAllActiveProductsWereRequested() {
         verify(productRepository).findAllActive();
     }
 
-    @Test
-    void dadoQueElBuffetIdEsValido_cuandoExecute_entoncesLlamaBusquedaConStock() {
-        UUID buffetId = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(producto));
-
-        GetAllProductsResponse result = getAllProducts.execute(new GetAllProductsRequest(buffetId));
-
-        assertEquals(1, result.products().size());
-        assertEquals(producto.getId(), result.products().get(0).id());
+    private void thenActiveProductsWithStockWereRequested() {
         verify(productRepository).findAllActiveWithStock(buffetId);
+    }
+
+    private Producto product(UUID requestedProductId) {
+        Producto product = new Producto();
+        product.setId(requestedProductId);
+        return product;
     }
 }
