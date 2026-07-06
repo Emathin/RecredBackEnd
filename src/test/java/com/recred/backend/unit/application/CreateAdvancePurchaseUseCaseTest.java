@@ -179,6 +179,7 @@ class CreateAdvancePurchaseUseCaseTest {
     void execute_WhenStudentBuysForAnotherStudent_ShouldThrowSecurityException() {
         givenUserExists(USER_ID, RolUsuario.ALUMNO);
         givenUserIsStudent(UUID.randomUUID()); // logged in as different student
+        givenStudentExists(STUDENT_ID);
 
         CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
         assertThrows(SecurityException.class, () -> whenExecute(request));
@@ -243,6 +244,7 @@ class CreateAdvancePurchaseUseCaseTest {
     @Test
     void execute_WhenRoleIsNotAllowed_ShouldThrowSecurityException() {
         givenUserExists(USER_ID, RolUsuario.VENDEDOR);
+        givenStudentExists(STUDENT_ID);
         
         CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
         assertThrows(SecurityException.class, () -> whenExecute(request));
@@ -252,6 +254,7 @@ class CreateAdvancePurchaseUseCaseTest {
     void execute_WhenTutorProfileDoesNotExist_ShouldThrowSecurityException() {
         givenUserExists(USER_ID, RolUsuario.PADRE);
         when(tutorRepository.findByUsuarioId(USER_ID)).thenReturn(Optional.empty());
+        givenStudentExists(STUDENT_ID);
         
         CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
         assertThrows(SecurityException.class, () -> whenExecute(request));
@@ -399,7 +402,7 @@ class CreateAdvancePurchaseUseCaseTest {
         givenStudentExists(STUDENT_ID);
         givenSlotResolved();
         when(productRepository.findActiveByIdWithStock(PROMOTION_ID, BUFFET_ID)).thenReturn(Optional.empty());
-        givenPromotionExists(PROMOTION_ID, PromotionStatus.DRAFT, BUFFET_ID, LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1));
+        givenPromotionExists(PROMOTION_ID, PromotionStatus.DRAFT, BUFFET_ID, PICKUP_DATE.atStartOfDay().minusDays(1), PICKUP_DATE.atStartOfDay().plusDays(1));
 
         CreateAdvancePurchaseRequest request = givenPromotionRequest();
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> whenExecute(request));
@@ -413,7 +416,7 @@ class CreateAdvancePurchaseUseCaseTest {
         givenStudentExists(STUDENT_ID);
         givenSlotResolved();
         when(productRepository.findActiveByIdWithStock(PROMOTION_ID, BUFFET_ID)).thenReturn(Optional.empty());
-        givenPromotionExists(PROMOTION_ID, PromotionStatus.ACTIVE, UUID.randomUUID(), LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1));
+        givenPromotionExists(PROMOTION_ID, PromotionStatus.ACTIVE, UUID.randomUUID(), PICKUP_DATE.atStartOfDay().minusDays(1), PICKUP_DATE.atStartOfDay().plusDays(1));
 
         CreateAdvancePurchaseRequest request = givenPromotionRequest();
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> whenExecute(request));
@@ -428,7 +431,7 @@ class CreateAdvancePurchaseUseCaseTest {
         givenSlotResolved();
         when(productRepository.findActiveByIdWithStock(PROMOTION_ID, BUFFET_ID)).thenReturn(Optional.empty());
         
-        Promotion promotion = givenPromotionExists(PROMOTION_ID, PromotionStatus.ACTIVE, BUFFET_ID, LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1));
+        Promotion promotion = givenPromotionExists(PROMOTION_ID, PromotionStatus.ACTIVE, BUFFET_ID, PICKUP_DATE.atStartOfDay().minusDays(1), PICKUP_DATE.atStartOfDay().plusDays(1));
         Producto prod = new Producto();
         prod.setId(PRODUCT_ID);
         promotion.setProducts(List.of(prod));
