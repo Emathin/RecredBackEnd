@@ -1,15 +1,16 @@
 package com.recred.backend.application;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 public record CheckBudgetDatesRequest(
         UUID studentId,
-        List<String> dates,
+        List<LocalDate> dates,
         List<CartItemRequest> items
 ) {
     public CheckBudgetDatesRequest(
-            List<String> dates,
+            List<LocalDate> dates,
             List<CartItemRequest> items
     ) {
         this(null, dates, items);

@@ -246,7 +246,6 @@ import com.recred.backend.infrastructure.gemini.GeminiTextClient;
 import com.recred.backend.infrastructure.gemini.LoadStockIAService;
 import com.recred.backend.infrastructure.openMeteo.NominatimGeocodingClient;
 import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
-import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -415,7 +414,7 @@ public class UseCases {
             RecessTimeSlotResolver recessTimeSlotResolver,
             AdvancePurchaseRulesService advancePurchaseRulesService,
             WalletRepository walletRepository,
-            SpringDataBuffetRepository buffetRepository,
+            BuffetRepository buffetRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             PromotionRepository promotionRepository,
