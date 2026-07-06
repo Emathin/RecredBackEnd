@@ -1,7 +1,7 @@
 package com.recred.backend.unit.infrastructure.config;
 
-import com.recred.backend.config.GlobalExceptionHandler;
 import com.recred.backend.config.ErrorResponse;
+import com.recred.backend.config.GlobalExceptionHandler;
 import com.recred.backend.config.RequestIdContext;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.BuffetNotFoundException;
@@ -10,13 +10,14 @@ import com.recred.backend.domain.exceptions.FileValidationException;
 import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.InsufficientStockException;
-import com.recred.backend.domain.exceptions.InventoryNotFoundException;
-import com.recred.backend.domain.exceptions.InventoryOperationException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.InvalidTimeSlotException;
+import com.recred.backend.domain.exceptions.InventoryNotFoundException;
+import com.recred.backend.domain.exceptions.InventoryOperationException;
 import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
 import com.recred.backend.domain.exceptions.KiosqueroPayoutConfigNotFoundException;
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 import com.recred.backend.domain.exceptions.PickupCutoffTimeExceededException;
 import com.recred.backend.domain.exceptions.PickupSlotCapacityExceededException;
 import com.recred.backend.domain.exceptions.PickupSlotRulesNotFoundException;
@@ -33,21 +34,22 @@ import com.recred.backend.domain.exceptions.TimeSlotNotFoundException;
 import com.recred.backend.domain.exceptions.TimeSlotOverlapException;
 import com.recred.backend.domain.exceptions.TutorNoEncontradoException;
 import com.recred.backend.domain.models.EstadoCompra;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -168,6 +170,9 @@ class GlobalExceptionHandlerTest {
         assertError(handler.handleIllegalArgument(new IllegalArgumentException("Invalido")),
                 HttpStatus.BAD_REQUEST, "BAD_REQUEST", null);
         assertError(handler.handleAccessDenied(new AccessDeniedException("Denegado")),
+                HttpStatus.FORBIDDEN, "FORBIDDEN", null);
+        assertError(handler.handleOperationNotAllowed(
+                        new OperationNotAllowedException("Operacion no permitida")),
                 HttpStatus.FORBIDDEN, "FORBIDDEN", null);
         assertError(handler.handleDataIntegrityViolation(
                 new DataIntegrityViolationException("Duplicado")),
