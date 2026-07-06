@@ -5,59 +5,66 @@ import com.recred.backend.application.DeleteProductRequest;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.function.Executable;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class DeleteProductTest {
 
-    @Mock
-    private ProductRepository productRepository;
+    private static final UUID PRODUCT_ID = UUID.randomUUID();
 
-    private DeleteProduct deleteProduct;
+    private final ProductRepository productRepository = mock(ProductRepository.class);
+    private final DeleteProduct useCase = new DeleteProduct(productRepository);
 
-    @BeforeEach
-    void setUp() {
-        deleteProduct = new DeleteProduct(productRepository);
+    @Test
+    void deactivateProductSuccessfully() {
+        Producto product = new Producto();
+        product.setId(PRODUCT_ID);
+        product.setActivo(true);
+        
+        givenAnActiveProduct(product);
+
+        whenExecuteUseCase();
+
+        thenProductShouldBeDeactivatedAndSaved(product);
     }
 
     @Test
-    void dadoQueExisteProducto_cuandoExecute_entoncesDesactivaYGuarda() {
-        UUID id = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(id);
-        producto.setActivo(true);
-        DeleteProductRequest request = new DeleteProductRequest(id);
+    void throwExceptionWhenProductNotFound() {
+        givenProductNotFound();
 
-        when(productRepository.findActiveById(id)).thenReturn(Optional.of(producto));
-
-        deleteProduct.execute(request);
-
-        assertFalse(producto.getActivo());
-        verify(productRepository).save(producto);
+        assertThrows(ProductNotFoundException.class, this::whenExecuteUseCase);
+        
+        thenProductShouldNotBeSaved();
     }
 
-    @Test
-    void dadoQueNoExisteProducto_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID id = UUID.randomUUID();
-        DeleteProductRequest request = new DeleteProductRequest(id);
+    private void givenAnActiveProduct(Producto product) {
+        when(productRepository.findActiveById(PRODUCT_ID)).thenReturn(Optional.of(product));
+    }
 
-        when(productRepository.findActiveById(id)).thenReturn(Optional.empty());
+    private void givenProductNotFound() {
+        when(productRepository.findActiveById(PRODUCT_ID)).thenReturn(Optional.empty());
+    }
 
-        Executable execution = () -> deleteProduct.execute(request);
+    private void whenExecuteUseCase() {
+        useCase.execute(new DeleteProductRequest(PRODUCT_ID));
+    }
 
-        assertThrows(ProductNotFoundException.class, execution);
+    private void thenProductShouldBeDeactivatedAndSaved(Producto product) {
+        assertFalse(product.getActivo());
+        verify(productRepository).save(product);
+    }
+
+    private void thenProductShouldNotBeSaved() {
         verify(productRepository, never()).save(any());
     }
 }
