@@ -18,27 +18,29 @@ public class AddHealthRestriction {
         this.clasificacionRepository = clasificacionRepository;
     }
 
-    public AddHealthRestrictionResponse execute(AddHealthRestrictionRequest request) {
-        Alumno student = this.findAlumnoById(request.studentId());
-
+    public AddHealthRestrictionResponse execute(AddHealthRestrictionRequest addRestrictionRequest) {
+        Alumno student = findStudentById(addRestrictionRequest.studentId());
         ClasificacionSalud classification =
-                this.findClasificacionSaludById(request.classificationId());
+                findHealthClassificationById(addRestrictionRequest.classificationId());
 
-        student.agregarRestriccionSalud(classification);
-
-        alumnoRepository.save(student);
+        addHealthRestriction(student, classification);
         return new AddHealthRestrictionResponse();
     }
 
-    private Alumno findAlumnoById(UUID id) {
-        return alumnoRepository.findById(id)
+    private Alumno findStudentById(UUID studentId) {
+        return alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
     }
 
-    private ClasificacionSalud findClasificacionSaludById(UUID id) {
+    private ClasificacionSalud findHealthClassificationById(UUID classificationId) {
         return clasificacionRepository
-                .findById(id)
-                .orElseThrow(() -> new IllegalArgumentException
-                        ("La clasificación médica no existe."));
+                .findById(classificationId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "La clasificaciÃ³n mÃ©dica no existe."));
+    }
+
+    private void addHealthRestriction(Alumno student, ClasificacionSalud classification) {
+        student.agregarRestriccionSalud(classification);
+        alumnoRepository.save(student);
     }
 }
