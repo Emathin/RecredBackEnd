@@ -67,6 +67,7 @@ public class KiosqueroOperationsController {
     private final GetKiosqueroDashboard getKiosqueroDashboard;
     private final KiosqueroAccessGuard kiosqueroAccessGuard;
     private final SchoolAccessGuard schoolAccessGuard;
+    private final PlanAccessGuard planAccessGuard;
 
     public KiosqueroOperationsController(
             CloseDailyBuffet closeDailyBuffet,
@@ -80,7 +81,8 @@ public class KiosqueroOperationsController {
             ListKiosqueroOperationalAlerts listKiosqueroOperationalAlerts,
             GetKiosqueroDashboard getKiosqueroDashboard,
             KiosqueroAccessGuard kiosqueroAccessGuard,
-            SchoolAccessGuard schoolAccessGuard
+            SchoolAccessGuard schoolAccessGuard,
+            PlanAccessGuard planAccessGuard
     ) {
         this.closeDailyBuffet = closeDailyBuffet;
         this.getDailyBuffetCloseStatus = getDailyBuffetCloseStatus;
@@ -94,6 +96,7 @@ public class KiosqueroOperationsController {
         this.getKiosqueroDashboard = getKiosqueroDashboard;
         this.kiosqueroAccessGuard = kiosqueroAccessGuard;
         this.schoolAccessGuard = schoolAccessGuard;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @GetMapping("/{buffetId}/orders")
@@ -152,6 +155,7 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
+        planAccessGuard.requireVendorIntermediate(authentication);
         GetKiosqueroDashboardRequest request =
                 new GetKiosqueroDashboardRequest(buffetId, date, from, to);
         return ResponseEntity.ok(getKiosqueroDashboard.execute(request));

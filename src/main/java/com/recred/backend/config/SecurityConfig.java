@@ -1,5 +1,7 @@
 package com.recred.backend.config;
 
+import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
+import com.recred.backend.infrastructure.web.SchoolLicenseFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -16,6 +18,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -49,7 +52,12 @@ public class SecurityConfig {
         }
 
         @Bean
-        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        public SecurityFilterChain filterChain(
+                HttpSecurity http,
+                JwtDecoder jwtDecoder,
+                SchoolLicenseAccessGuard schoolLicenseAccessGuard
+        )
+                throws Exception {
                 http
                         .cors(Customizer.withDefaults())
                         .csrf(csrf -> csrf.disable())
@@ -63,6 +71,8 @@ public class SecurityConfig {
                                         "/api/v1/niveles").permitAll()
                                 .requestMatchers(HttpMethod.GET,
                                         "/api/v1/invitaciones/tutor/**").permitAll()
+                                .requestMatchers(HttpMethod.POST,
+                                        "/api/v1/payments/webhook").permitAll()
                                 .requestMatchers("/swagger-ui.html",
                                         "/swagger-ui/**",
                                         "/v3/api-docs",
@@ -77,11 +87,15 @@ public class SecurityConfig {
                         .oauth2ResourceServer(oauth2 -> oauth2
                                 .authenticationEntryPoint(customAuthenticationEntryPoint)
                                 .jwt(jwt -> jwt
-                                        .decoder(jwtDecoder())
+                                        .decoder(jwtDecoder)
                                         .jwtAuthenticationConverter
                                                 (customJwtAuthenticationConverter)
                                 )
                         );
+                http.addFilterAfter(
+                        new SchoolLicenseFilter(schoolLicenseAccessGuard),
+                        BearerTokenAuthenticationFilter.class
+                );
 
                 return http.build();
         }

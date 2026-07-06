@@ -17,7 +17,9 @@ import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.RespondToAISuggestionRequest;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.ProductResponseDTO;
+import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import com.recred.backend.infrastructure.web.StudentPreferenceController;
 import com.recred.backend.infrastructure.web.StudentPreferenceResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +50,8 @@ class StudentPreferenceControllerTest {
     private AddFavoriteProduct addFavoriteProduct;
     private DeleteFavoriteProduct deleteFavoriteProduct;
     private GetFavoritesByStudent getFavoritesByStudent;
+    private PlanAccessGuard planAccessGuard;
+    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
     private StudentPreferenceController controller;
 
     @BeforeEach
@@ -59,6 +63,8 @@ class StudentPreferenceControllerTest {
         addFavoriteProduct = mock(AddFavoriteProduct.class);
         deleteFavoriteProduct = mock(DeleteFavoriteProduct.class);
         getFavoritesByStudent = mock(GetFavoritesByStudent.class);
+        planAccessGuard = mock(PlanAccessGuard.class);
+        schoolLicenseAccessGuard = mock(SchoolLicenseAccessGuard.class);
 
         controller = new StudentPreferenceController(
                 detectStudentPreferences,
@@ -67,7 +73,9 @@ class StudentPreferenceControllerTest {
                 alumnoRepository,
                 addFavoriteProduct,
                 deleteFavoriteProduct,
-                getFavoritesByStudent
+                getFavoritesByStudent,
+                planAccessGuard,
+                schoolLicenseAccessGuard
         );
     }
 
@@ -91,6 +99,8 @@ class StudentPreferenceControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(detected.titulo(), response.getBody().titulo());
+        verify(planAccessGuard).requireUserOrInheritedTutorIntermediate(userId);
+        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
     }
 
     @Test
@@ -154,6 +164,7 @@ class StudentPreferenceControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
+        verify(planAccessGuard).requireUserOrInheritedTutorIntermediate(userId);
     }
 
     @Test
@@ -183,11 +194,16 @@ class StudentPreferenceControllerTest {
 
     @Test
     void respondToAISuggestionSuccessfully() {
+        UUID userId = randomUUID();
+        UUID studentId = randomUUID();
         UUID sugerenciaId = randomUUID();
+        givenStudentIdForUser(userId, studentId);
 
-        ResponseEntity<Void> response = whenRespondingToSuggestion(sugerenciaId, true);
+        ResponseEntity<Void> response = whenRespondingToSuggestion(userId, sugerenciaId, true);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(planAccessGuard).requireUserOrInheritedTutorIntermediate(userId);
+        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
         verify(respondToAISuggestion).execute(
                 new RespondToAISuggestionRequest(sugerenciaId, true));
     }
@@ -301,9 +317,10 @@ class StudentPreferenceControllerTest {
     }
 
     private ResponseEntity<Void> whenRespondingToSuggestion(
+            UUID userId,
             UUID suggestionId,
             boolean accepted) {
-        return controller.respond(suggestionId, accepted);
+        return controller.respond(userId, suggestionId, accepted);
     }
 
     private ResponseEntity<Void> whenAddingFavorite(UUID studentId, UUID productId) {

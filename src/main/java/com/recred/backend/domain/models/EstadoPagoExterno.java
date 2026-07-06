@@ -6,5 +6,15 @@ public enum EstadoPagoExterno {
     RECHAZADO,
     CANCELADO,
     REEMBOLSADO,
-    EN_PROCESO
+    EN_PROCESO;
+
+    public static EstadoPagoExterno from(PaymentStatus status) {
+        return switch (status) {
+            case APPROVED -> APROBADO;
+            case REJECTED -> RECHAZADO;
+            case CANCELLED -> CANCELADO;
+            case REFUNDED, CHARGEBACK -> REEMBOLSADO;
+            case PENDING -> PENDIENTE;
+        };
+    }
 }

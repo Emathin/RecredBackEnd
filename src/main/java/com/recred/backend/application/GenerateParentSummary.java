@@ -6,7 +6,6 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.Summary;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -46,7 +45,7 @@ public class GenerateParentSummary {
 
     public GenerateParentSummaryResponse execute(GenerateParentSummaryRequest request) {
         List<UUID> processedIds = new ArrayList<>();
-        List<Tutor> validTutors = findPremiumTutorsWithChildren();
+        List<Tutor> validTutors = findTutorsWithPaidPlanAndChildren();
         for (Tutor tutor : validTutors) {
             generateSummaryForTutor(tutor, request.start(), request.end());
             processedIds.add(tutor.getUsuario().getId());
@@ -54,10 +53,9 @@ public class GenerateParentSummary {
         return new GenerateParentSummaryResponse(processedIds);
     }
 
-    private List<Tutor> findPremiumTutorsWithChildren() {
+    private List<Tutor> findTutorsWithPaidPlanAndChildren() {
         return tutorRepository.findAll().stream()
-                .filter(t -> TipoPlan.PREMIUM.equals(t.getUsuario().getPlan()))
-                .filter(t -> !t.getHijos().isEmpty())
+                .filter(Tutor::canReceiveParentSummary)
                 .toList();
     }
 

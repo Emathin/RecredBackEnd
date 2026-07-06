@@ -32,20 +32,24 @@ public class SchoolCreditController {
     private final GetLastRecharge getLastRecharge;
     private final GetActiveSchoolCredit getActiveSchoolCredit;
     private final UsuarioService usuarioService;
+    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public SchoolCreditController(EnableSchoolCredit enableSchoolCredit,
                                   GetLastRecharge getLastRecharge,
                                   GetActiveSchoolCredit getActiveSchoolCredit,
-                                  UsuarioService usuarioService) {
+                                  UsuarioService usuarioService,
+                                  SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
         this.enableSchoolCredit = enableSchoolCredit;
         this.getLastRecharge = getLastRecharge;
         this.getActiveSchoolCredit = getActiveSchoolCredit;
         this.usuarioService = usuarioService;
+        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping
     public ResponseEntity<?> enableCredit(Authentication authentication,
                                           @RequestBody EnableSchoolCreditRequest request) {
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(request.studentId());
         try {
             String cognitoSub = authentication.getName();
             Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoSub);
@@ -76,6 +80,7 @@ public class SchoolCreditController {
 
     @GetMapping("/alumno/{studentId}/last-recharge")
     public ResponseEntity<BigDecimal> getLastRechargeAmount(@PathVariable UUID studentId) {
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(studentId);
         try {
             GetLastRechargeResponse response = getLastRecharge.execute(
                     new GetLastRechargeRequest(studentId));
@@ -90,6 +95,7 @@ public class SchoolCreditController {
     @GetMapping("/alumno/{studentId}/active")
     public ResponseEntity<GetActiveSchoolCreditResponse> getActiveCredit(
             @PathVariable UUID studentId) {
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(studentId);
         try {
             GetActiveSchoolCreditResponse response = getActiveSchoolCredit.execute(
                             new GetActiveSchoolCreditRequest(studentId))

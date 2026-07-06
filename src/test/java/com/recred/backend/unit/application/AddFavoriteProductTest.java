@@ -98,6 +98,7 @@ class AddFavoriteProductTest {
         Alumno alumno = alumnoConFavoritos(alumnoId, 5);
         Producto nuevoProducto = producto(productoId);
         Tutor tutor = tutorConPlan(TipoPlan.GRATUITO);
+        tutor.addHijo(alumno);
         AddFavoriteProductRequest request = request(alumnoId, productoId);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
@@ -112,12 +113,35 @@ class AddFavoriteProductTest {
     }
 
     @Test
-    void dadoPlanPremiumYMasDe5Favoritos_cuandoExecute_entoncesAgregaYGuarda() {
+    void dadoPlanGratuitoY5FavoritosEntreHijos_cuandoExecute_entoncesLanzaExcepcion() {
+        UUID alumnoId = UUID.randomUUID();
+        UUID productoId = UUID.randomUUID();
+        Alumno alumno = alumnoConFavoritos(alumnoId, 2);
+        Alumno otroHijo = alumnoConFavoritos(UUID.randomUUID(), 3);
+        Producto nuevoProducto = producto(productoId);
+        Tutor tutor = tutorConPlan(TipoPlan.GRATUITO);
+        tutor.addHijo(alumno);
+        tutor.addHijo(otroHijo);
+        AddFavoriteProductRequest request = request(alumnoId, productoId);
+
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        when(productRepository.findById(productoId)).thenReturn(Optional.of(nuevoProducto));
+        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(List.of(tutor));
+
+        Executable execution = () -> addFavoriteProduct.execute(request);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
+        assertEquals("Límite de productos favoritos alcanzado para cuenta gratuita (máximo 5)", exception.getMessage());
+        verify(alumnoRepository, never()).save(any());
+    }
+
+    @Test
+    void dadoPlanAvanzadoYMasDe5Favoritos_cuandoExecute_entoncesAgregaYGuarda() {
         UUID alumnoId = UUID.randomUUID();
         UUID productoId = UUID.randomUUID();
         Alumno alumno = alumnoConFavoritos(alumnoId, 5);
         Producto nuevoProducto = producto(productoId);
-        Tutor tutor = tutorConPlan(TipoPlan.PREMIUM);
+        Tutor tutor = tutorConPlan(TipoPlan.AVANZADO);
         AddFavoriteProductRequest request = request(alumnoId, productoId);
 
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
@@ -154,6 +178,7 @@ class AddFavoriteProductTest {
         Usuario usuario = new Usuario();
         usuario.setPlan(plan);
         Tutor tutor = new Tutor();
+        tutor.setId(UUID.randomUUID());
         tutor.setUsuario(usuario);
         return tutor;
     }

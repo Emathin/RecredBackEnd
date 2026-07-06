@@ -86,7 +86,7 @@ class TransferBalanceBetweenChildrenTest {
         parentUser.setId(UUID.randomUUID());
         parentUser.setRol(RolUsuario.PADRE);
         parentUser.setTutor(tutor);
-        parentUser.setPlan(TipoPlan.PREMIUM);
+        parentUser.setPlan(TipoPlan.AVANZADO);
 
         fromWallet = new Billetera();
         fromWallet.setId(UUID.randomUUID());

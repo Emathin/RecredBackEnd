@@ -1,7 +1,10 @@
 package com.recred.backend.infrastructure.persistence;
 
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,6 +23,10 @@ public interface SpringDataUsuarioRepository extends
     Optional<UsuarioEntity> findByEmail(String email);
 
     Optional<UsuarioEntity> findFirstByEmailOrderByActualizadoEnDescCreadoEnDesc(String email);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM UsuarioEntity u WHERE u.id = :id")
+    Optional<UsuarioEntity> findByIdForUpdate(@Param("id") UUID id);
 
     @Modifying
     @Query("""
@@ -60,6 +67,17 @@ public interface SpringDataUsuarioRepository extends
     void updateFotoPerfilByUsuarioId(
             @Param("usuarioId") java.util.UUID usuarioId,
             @Param("urlFotoPerfil") String urlFotoPerfil
+    );
+
+    @Modifying
+    @Query("""
+            UPDATE UsuarioEntity u
+            SET u.plan = :plan
+            WHERE u.id = :usuarioId
+            """)
+    void updatePlan(
+            @Param("usuarioId") UUID usuarioId,
+            @Param("plan") TipoPlan plan
     );
 
 }

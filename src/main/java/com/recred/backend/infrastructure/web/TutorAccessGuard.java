@@ -24,16 +24,19 @@ public class TutorAccessGuard {
     private final TutorRepository tutorRepository;
     private final PresupuestoRepository presupuestoRepository;
     private final RestriccionHorariaRepository restriccionHorariaRepository;
+    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public TutorAccessGuard(
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             PresupuestoRepository presupuestoRepository,
-            RestriccionHorariaRepository restriccionHorariaRepository) {
+            RestriccionHorariaRepository restriccionHorariaRepository,
+            SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
         this.usuarioRepository = usuarioRepository;
         this.tutorRepository = tutorRepository;
         this.presupuestoRepository = presupuestoRepository;
         this.restriccionHorariaRepository = restriccionHorariaRepository;
+        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     public void requireTutorAccess(Authentication authentication) {
@@ -54,6 +57,7 @@ public class TutorAccessGuard {
 
         if (usuario.getRol() == RolUsuario.ALUMNO) {
             if (usuario.getAlumno() != null && usuario.getAlumno().getId().equals(studentId)) {
+                schoolLicenseAccessGuard.requireActiveSchoolForStudent(studentId);
                 return;
             }
             throw new AccessDeniedException("No tiene permisos sobre este alumno");
@@ -67,6 +71,7 @@ public class TutorAccessGuard {
             boolean isOwnChild = tutor.getHijos().stream()
                     .anyMatch(child -> child.getId().equals(studentId));
             if (isOwnChild) {
+                schoolLicenseAccessGuard.requireActiveSchoolForStudent(studentId);
                 return;
             }
             throw new AccessDeniedException("No tiene permisos sobre este alumno");
@@ -93,6 +98,7 @@ public class TutorAccessGuard {
         if (!isOwnChild) {
             throw new AccessDeniedException("No tiene permisos sobre este alumno");
         }
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(studentId);
     }
 
     public void requireBudgetAccess(Authentication authentication, UUID budgetId) {
@@ -116,6 +122,7 @@ public class TutorAccessGuard {
         if (!isOwnChild) {
             throw new AccessDeniedException("No tiene permisos sobre este presupuesto");
         }
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(presupuesto.getAlumnoId());
     }
 
     public void requireTimeRestrictionAccess(Authentication authentication, UUID restrictionId) {
@@ -141,6 +148,7 @@ public class TutorAccessGuard {
         if (!isOwnChild) {
             throw new AccessDeniedException("No tiene permisos sobre esta restricción");
         }
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(restriccion.getAlumnoId());
     }
 
     private Usuario authenticatedUser(Authentication authentication) {

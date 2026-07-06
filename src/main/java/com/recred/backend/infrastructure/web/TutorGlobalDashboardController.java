@@ -20,16 +20,20 @@ public class TutorGlobalDashboardController {
 
     private final GetTutorGlobalDashboard getTutorGlobalDashboard;
     private final UpdateTutorDashboardConfig updateTutorDashboardConfig;
+    private final PlanAccessGuard planAccessGuard;
 
     public TutorGlobalDashboardController(GetTutorGlobalDashboard getTutorGlobalDashboard,
-                                          UpdateTutorDashboardConfig updateTutorDashboardConfig) {
+                                          UpdateTutorDashboardConfig updateTutorDashboardConfig,
+                                          PlanAccessGuard planAccessGuard) {
         this.getTutorGlobalDashboard = getTutorGlobalDashboard;
         this.updateTutorDashboardConfig = updateTutorDashboardConfig;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @GetMapping("/me/dashboard-global")
     public ResponseEntity<TutorGlobalDashboardDTO> getGlobalDashboard(
             Authentication authentication) {
+        planAccessGuard.requireTutorIntermediate(authentication);
         var request = new com.recred.backend.application.GetTutorGlobalDashboardRequest(
                 cognitoSubject(authentication));
         var response = getTutorGlobalDashboard.execute(request);
@@ -107,6 +111,7 @@ public class TutorGlobalDashboardController {
     public ResponseEntity<Void> updateDashboardConfig(
             Authentication authentication,
             @RequestBody String config) {
+        planAccessGuard.requireTutorIntermediate(authentication);
         var updateRequest = new com.recred.backend.application.UpdateTutorDashboardConfigRequest(
                 cognitoSubject(authentication), config);
         updateTutorDashboardConfig.execute(updateRequest);

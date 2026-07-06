@@ -7,6 +7,7 @@ import com.recred.backend.application.SaveProduct;
 import com.recred.backend.domain.exceptions.ImageValidationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,15 +27,23 @@ public class LoadStockIAController {
 
     private final LoadStockIA loadStockIA;
     private final SaveProduct saveProduct;
+    private final PlanAccessGuard planAccessGuard;
 
-    public LoadStockIAController(LoadStockIA loadStockIA, SaveProduct saveProduct) {
+    public LoadStockIAController(
+            LoadStockIA loadStockIA,
+            SaveProduct saveProduct,
+            PlanAccessGuard planAccessGuard
+    ) {
         this.loadStockIA = loadStockIA;
         this.saveProduct = saveProduct;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @PostMapping("/upload-image")
     public ResponseEntity<LoadStockPredictionDTO> uploadImage(
+            Authentication authentication,
             @RequestParam("image") MultipartFile image) {
+        planAccessGuard.requireVendorIntermediate(authentication);
         validateImage(image);
         
         try {

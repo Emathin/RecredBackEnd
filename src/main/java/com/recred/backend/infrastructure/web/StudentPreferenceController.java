@@ -38,6 +38,8 @@ public class StudentPreferenceController {
     private final AddFavoriteProduct addFavoriteProduct;
     private final DeleteFavoriteProduct deleteFavoriteProduct;
     private final GetFavoritesByStudent getFavoritesByStudent;
+    private final PlanAccessGuard planAccessGuard;
+    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public StudentPreferenceController(
             DetectStudentPreferences detectStudentPreferences,
@@ -46,7 +48,9 @@ public class StudentPreferenceController {
             AlumnoRepository alumnoRepository,
             AddFavoriteProduct addFavoriteProduct,
             DeleteFavoriteProduct deleteFavoriteProduct,
-            GetFavoritesByStudent getFavoritesByStudent) {
+            GetFavoritesByStudent getFavoritesByStudent,
+            PlanAccessGuard planAccessGuard,
+            SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
         this.detectStudentPreferences = detectStudentPreferences;
         this.getStudentPreferences = getStudentPreferences;
         this.respondToAISuggestion = respondToAISuggestion;
@@ -54,6 +58,8 @@ public class StudentPreferenceController {
         this.addFavoriteProduct = addFavoriteProduct;
         this.deleteFavoriteProduct = deleteFavoriteProduct;
         this.getFavoritesByStudent = getFavoritesByStudent;
+        this.planAccessGuard = planAccessGuard;
+        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping("/usuarios/{userId}/preferencias/detectar")
@@ -61,7 +67,9 @@ public class StudentPreferenceController {
             @PathVariable UUID userId,
             @RequestParam("buffetId") UUID buffetId
     ) {
+        planAccessGuard.requireUserOrInheritedTutorIntermediate(userId);
         UUID resolvedAlumnoId = resolveAlumnoId(userId);
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(resolvedAlumnoId);
         return detectStudentPreferences
                 .execute(new DetectStudentPreferencesRequest(resolvedAlumnoId, buffetId))
                 .map(StudentPreferenceResponseDTO::fromUseCaseResponse)
@@ -75,6 +83,8 @@ public class StudentPreferenceController {
             @RequestParam(name = "ultima", required = false, defaultValue = "false") boolean ultima,
             @RequestParam(name = "tipo", required = false) TipoSugerenciaIA tipo
     ) {
+        planAccessGuard.requireUserOrInheritedTutorIntermediate(userId);
+        requireSchoolLicenseIfStudentUser(userId);
         List<StudentPreferenceResponseDTO> preferences =
                 getStudentPreferences.execute(
                         GetStudentPreferencesRequest.byUser(userId, ultima, tipo))
@@ -90,9 +100,12 @@ public class StudentPreferenceController {
 
     @PatchMapping("/usuarios/{userId}/preferencias/{sugerenciaId}/responder")
     public ResponseEntity<Void> respond(
+            @PathVariable UUID userId,
             @PathVariable UUID sugerenciaId,
             @RequestParam("aceptada") boolean aceptada
     ) {
+        planAccessGuard.requireUserOrInheritedTutorIntermediate(userId);
+        requireSchoolLicenseIfStudentUser(userId);
         respondToAISuggestion.execute(new RespondToAISuggestionRequest(sugerenciaId, aceptada));
         return ResponseEntity.ok().build();
     }
@@ -131,5 +144,10 @@ public class StudentPreferenceController {
         return alumnoRepository.findStudentIdByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No existe un alumno asociado al usuario: " + userId));
+    }
+
+    private void requireSchoolLicenseIfStudentUser(UUID userId) {
+        alumnoRepository.findStudentIdByUserId(userId)
+                .ifPresent(schoolLicenseAccessGuard::requireActiveSchoolForStudent);
     }
 }

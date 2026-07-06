@@ -18,14 +18,20 @@ import java.util.stream.Collectors;
 public class CartSuggestionController {
 
     private final GetCartSuggestions getCartSuggestions;
+    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
-    public CartSuggestionController(GetCartSuggestions getCartSuggestions) {
+    public CartSuggestionController(
+            GetCartSuggestions getCartSuggestions,
+            SchoolLicenseAccessGuard schoolLicenseAccessGuard
+    ) {
         this.getCartSuggestions = getCartSuggestions;
+        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping
     public ResponseEntity<List<CartSuggestionResponseDTO>> suggest(
             @RequestBody CartSuggestionRequestDTO request) {
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(request.studentId());
         List<CartSuggestionResponseDTO> suggestions = getCartSuggestions
                 .execute(toUseCaseRequest(request))
                 .suggestions()

@@ -16,13 +16,19 @@ import java.util.Map;
 public class TopUpController {
 
     private final GenerateTopUpLink generateTopUpLink;
+    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
-    public TopUpController(GenerateTopUpLink generateTopUpLink) {
+    public TopUpController(
+            GenerateTopUpLink generateTopUpLink,
+            SchoolLicenseAccessGuard schoolLicenseAccessGuard
+    ) {
         this.generateTopUpLink = generateTopUpLink;
+        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping("/topup")
     public ResponseEntity<Map<String, String>> requestTopUpLink(@RequestBody TopUpRequest request) {
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(request.studentId());
         GenerateTopUpLinkRequest topUpRequest = new GenerateTopUpLinkRequest(
                 request.studentId(),
                 request.amount()
