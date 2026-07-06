@@ -10,6 +10,7 @@ import com.recred.backend.application.GetFavoritesByStudent;
 import com.recred.backend.application.GetFavoritesByStudentRequest;
 import com.recred.backend.application.GetStudentPreferences;
 import com.recred.backend.application.GetStudentPreferencesByUserRequest;
+import com.recred.backend.application.GetStudentPreferencesRequest;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.RespondToAISuggestionRequest;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
@@ -78,6 +79,25 @@ public class StudentPreferenceController {
         List<StudentPreferenceResponseDTO> preferences =
                 getStudentPreferences.executeByUserId(
                         new GetStudentPreferencesByUserRequest(userId, ultima, tipo))
+                        .preferences()
+                        .stream()
+                        .map(StudentPreferenceResponseDTO::fromApplication)
+                        .toList();
+
+        return preferences.isEmpty()
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.ok(preferences);
+    }
+
+    @GetMapping("/alumnos/{alumnoId}/preferencias")
+    public ResponseEntity<List<StudentPreferenceResponseDTO>> getPreferencesByAlumno(
+            @PathVariable UUID alumnoId,
+            @RequestParam(name = "ultima", required = false, defaultValue = "false") boolean ultima,
+            @RequestParam(name = "tipo", required = false) TipoSugerenciaIA tipo
+    ) {
+        List<StudentPreferenceResponseDTO> preferences =
+                getStudentPreferences.execute(
+                        new GetStudentPreferencesRequest(alumnoId, ultima, tipo))
                         .preferences()
                         .stream()
                         .map(StudentPreferenceResponseDTO::fromApplication)

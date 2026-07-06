@@ -250,6 +250,9 @@ class StudentPreferenceControllerTest {
                 message,
                 null,
                 null,
+                null,
+                null,
+                null,
                 parentView
         );
     }
