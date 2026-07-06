@@ -1,7 +1,10 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.EnableSchoolCredit;
+import com.recred.backend.application.PaySchoolCredit;
+import com.recred.backend.domain.models.SchoolCredit;
 import com.recred.backend.application.GetActiveSchoolCredit;
+import com.recred.backend.application.GetSchoolCreditHistory;
 import com.recred.backend.application.GetLastRecharge;
 import com.recred.backend.application.EnableSchoolCreditRequest;
 import com.recred.backend.application.EnableSchoolCreditResponse;
@@ -29,15 +32,21 @@ import java.util.UUID;
 public class SchoolCreditController {
 
     private final EnableSchoolCredit enableSchoolCredit;
+    private final PaySchoolCredit paySchoolCredit;
+    private final GetSchoolCreditHistory getSchoolCreditHistory;
     private final GetLastRecharge getLastRecharge;
     private final GetActiveSchoolCredit getActiveSchoolCredit;
     private final UsuarioService usuarioService;
 
     public SchoolCreditController(EnableSchoolCredit enableSchoolCredit,
+                                  PaySchoolCredit paySchoolCredit,
+                                  GetSchoolCreditHistory getSchoolCreditHistory,
                                   GetLastRecharge getLastRecharge,
                                   GetActiveSchoolCredit getActiveSchoolCredit,
                                   UsuarioService usuarioService) {
         this.enableSchoolCredit = enableSchoolCredit;
+        this.paySchoolCredit = paySchoolCredit;
+        this.getSchoolCreditHistory = getSchoolCreditHistory;
         this.getLastRecharge = getLastRecharge;
         this.getActiveSchoolCredit = getActiveSchoolCredit;
         this.usuarioService = usuarioService;
@@ -74,6 +83,19 @@ public class SchoolCreditController {
         }
     }
 
+    @PostMapping("/{creditId}/pay")
+    public ResponseEntity<?> payCredit(@PathVariable UUID creditId) {
+        try {
+            SchoolCredit credit = paySchoolCredit.execute(creditId);
+            return ResponseEntity.ok(credit);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An unexpected error occurred while paying the credit.");
+        }
+    }
+
     @GetMapping("/alumno/{studentId}/last-recharge")
     public ResponseEntity<BigDecimal> getLastRechargeAmount(@PathVariable UUID studentId) {
         try {
@@ -82,6 +104,18 @@ public class SchoolCreditController {
             return ResponseEntity.ok(response.amount());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/alumno/{studentId}")
+    public ResponseEntity<java.util.List<SchoolCredit>> getHistory(@PathVariable UUID studentId) {
+        try {
+            java.util.List<SchoolCredit> history = getSchoolCreditHistory.execute(studentId);
+            return ResponseEntity.ok(history);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

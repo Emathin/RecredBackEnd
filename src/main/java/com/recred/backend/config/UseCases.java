@@ -15,7 +15,9 @@ import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.application.GetSuggestionByNotificationId;
 import com.recred.backend.application.GetSuggestionByType;
 import com.recred.backend.application.EnableSchoolCredit;
+import com.recred.backend.application.PaySchoolCredit;
 import com.recred.backend.application.GetActiveSchoolCredit;
+import com.recred.backend.application.GetSchoolCreditHistory;
 import com.recred.backend.application.GetLastRecharge;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.ProveedorRepository;
@@ -1431,10 +1433,28 @@ public class UseCases {
     }
 
     @Bean
+    public PaySchoolCredit paySchoolCredit(
+            SchoolCreditRepository schoolCreditRepository,
+            WalletRepository walletRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        return new PaySchoolCredit(
+                schoolCreditRepository,
+                walletRepository,
+                movimientoBilleteraRepository
+        );
+    }
+
+    @Bean
     public GetLastRecharge getLastRecharge(
             AlumnoRepository alumnoRepository,
             MovimientoBilleteraRepository movimientoBilleteraRepository) {
         return new GetLastRecharge(alumnoRepository, movimientoBilleteraRepository);
+    }
+
+    @Bean
+    public GetSchoolCreditHistory getSchoolCreditHistory(
+            SchoolCreditRepository schoolCreditRepository) {
+        return new GetSchoolCreditHistory(schoolCreditRepository);
     }
 
     @Bean
