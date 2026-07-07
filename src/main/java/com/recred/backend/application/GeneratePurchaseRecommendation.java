@@ -46,31 +46,42 @@ public class GeneratePurchaseRecommendation {
             GeneratePurchaseRecommendationRequest request
     ) {
         List<ConsumptionAlertCandidate> candidates = studentRepository.findActiveCandidates();
-        candidates.forEach(this::processCandidate);
+        candidates.forEach(this::generateRecommendationForCandidate);
         return new GeneratePurchaseRecommendationResponse();
     }
 
-    private void processCandidate(ConsumptionAlertCandidate candidate) {
-        UUID userId = alumnoRepository.findUserID(candidate.studentId());
-        List<PurchaseResume> purchases = getPurchases(candidate.studentId());
-        Optional<PurchasePatternAnalysis> analysis = purchaseAnalyzer.analyze(purchases);
-        PurchaseRecommendationResult result =
-                buildResult(candidate.studentId(), purchases, analysis);
-        saveRecommendation(result, userId);
+    private void generateRecommendationForCandidate(ConsumptionAlertCandidate candidate) {
+        UUID userId = findNotificationUserId(candidate);
+        List<PurchaseResume> purchaseHistory = findPurchaseHistory(candidate.studentId());
+        Optional<PurchasePatternAnalysis> analysis = analyzePurchasePattern(purchaseHistory);
+        PurchaseRecommendationResult recommendation =
+                recommendationFrom(candidate.studentId(), purchaseHistory, analysis);
+        saveRecommendationAndNotifyUser(recommendation, userId);
     }
 
-    private List<PurchaseResume> getPurchases(UUID studentId) {
+    private UUID findNotificationUserId(ConsumptionAlertCandidate candidate) {
+        return alumnoRepository.findUserID(candidate.studentId());
+    }
+
+    private List<PurchaseResume> findPurchaseHistory(UUID studentId) {
         return purchaseRepository.findPurchasesByAlumno(studentId);
     }
 
-    private PurchaseRecommendationResult buildResult(
+    private Optional<PurchasePatternAnalysis> analyzePurchasePattern(
+            List<PurchaseResume> purchaseHistory) {
+        return purchaseAnalyzer.analyze(purchaseHistory);
+    }
+
+    private PurchaseRecommendationResult recommendationFrom(
             UUID studentId,
             List<PurchaseResume> purchases,
             Optional<PurchasePatternAnalysis> analysis) {
         return new PurchaseRecommendationResult(studentId, purchases, analysis);
     }
 
-    private void saveRecommendation(PurchaseRecommendationResult result, UUID userId) {
+    private void saveRecommendationAndNotifyUser(
+            PurchaseRecommendationResult result,
+            UUID userId) {
         UUID eventId = aiEventRepository.registerPurchaseRecommendation(result);
         var savedSuggestion = suggestionAiRepository.save(eventId, result);
         notificationRepository.save(result, savedSuggestion, userId);

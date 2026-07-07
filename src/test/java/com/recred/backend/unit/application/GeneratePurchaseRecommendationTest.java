@@ -1,7 +1,7 @@
 package com.recred.backend.unit.application;
 
-import com.recred.backend.application.*;
-
+import com.recred.backend.application.GeneratePurchaseRecommendation;
+import com.recred.backend.application.GeneratePurchaseRecommendationRequest;
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
 import com.recred.backend.domain.models.PurchasePatternAnalysis;
 import com.recred.backend.domain.models.PurchaseRecommendationResult;
@@ -13,20 +13,18 @@ import com.recred.backend.domain.repositories.PurchaseRecommendationNotification
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SuggestionAiRepository;
 import com.recred.backend.domain.services.PurchaseAnalyzer;
-import com.recred.backend.infrastructure.entities.NotificacionEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -42,6 +40,15 @@ class GeneratePurchaseRecommendationTest {
     private ConsumptionAlertStudentRepository studentRepository;
     private SuggestionAiRepository suggestionAiRepository;
     private GeneratePurchaseRecommendation useCase;
+
+    private UUID studentId;
+    private UUID userId;
+    private UUID productId;
+    private UUID eventId;
+    private List<PurchaseResume> purchaseHistory;
+    private PurchasePatternAnalysis analysis;
+    private SugerenciaIAEntity savedSuggestion;
+    private PurchaseRecommendationResult registeredRecommendation;
 
     @BeforeEach
     void setUp() {
@@ -64,45 +71,100 @@ class GeneratePurchaseRecommendationTest {
     }
 
     @Test
-    void executeGeneratesRecommendationForEachActiveCandidate() {
-        UUID studentId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        UUID eventId = UUID.randomUUID();
-        SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
-        List<PurchaseResume> purchases = List.of(new PurchaseResume(
+    void givenActiveCandidate_whenGeneratingPurchaseRecommendation_thenSavesAndNotifiesRecommendation() {
+        givenPurchaseRecommendationScenario();
+        givenActiveStudentCandidate();
+        givenUserIdForStudent();
+        givenPurchaseHistory();
+        givenPurchasePatternAnalysis();
+        givenRecommendationEventIsRegistered();
+        givenSuggestionIsSaved();
+
+        whenGeneratingPurchaseRecommendations();
+
+        thenPurchasePatternWasAnalyzed();
+        thenRecommendationEventWasRegistered();
+        thenSuggestionWasSaved();
+        thenUserWasNotified();
+    }
+
+    private void givenPurchaseRecommendationScenario() {
+        studentId = UUID.randomUUID();
+        userId = UUID.randomUUID();
+        productId = UUID.randomUUID();
+        eventId = UUID.randomUUID();
+        savedSuggestion = new SugerenciaIAEntity();
+        purchaseHistory = List.of(new PurchaseResume(
                 studentId,
                 productId,
                 "Yogur",
                 new BigDecimal("120.00"),
                 LocalDateTime.of(2026, 6, 1, 10, 0)
         ));
-        PurchasePatternAnalysis analysis = new PurchasePatternAnalysis(
+        analysis = new PurchasePatternAnalysis(
                 "Compra yogur los lunes",
                 productId,
                 "Yogur",
                 "MONDAY"
         );
+    }
+
+    private void givenActiveStudentCandidate() {
         when(studentRepository.findActiveCandidates()).thenReturn(List.of(
                 new ConsumptionAlertCandidate(studentId, userId, "Ana", List.of())
         ));
+    }
+
+    private void givenUserIdForStudent() {
         when(alumnoRepository.findUserID(studentId)).thenReturn(userId);
-        when(purchaseRepository.findPurchasesByAlumno(studentId)).thenReturn(purchases);
-        when(purchaseAnalyzer.analyze(purchases)).thenReturn(Optional.of(analysis));
+    }
+
+    private void givenPurchaseHistory() {
+        when(purchaseRepository.findPurchasesByAlumno(studentId)).thenReturn(purchaseHistory);
+    }
+
+    private void givenPurchasePatternAnalysis() {
+        when(purchaseAnalyzer.analyze(purchaseHistory)).thenReturn(Optional.of(analysis));
+    }
+
+    private void givenRecommendationEventIsRegistered() {
         when(aiEventRepository.registerPurchaseRecommendation(any())).thenReturn(eventId);
-        when(suggestionAiRepository.save(any(), any())).thenReturn(suggestion);
+    }
 
+    private void givenSuggestionIsSaved() {
+        when(suggestionAiRepository.save(any(), any())).thenReturn(savedSuggestion);
+    }
+
+    private void whenGeneratingPurchaseRecommendations() {
         useCase.execute(new GeneratePurchaseRecommendationRequest());
+    }
 
+    private void thenPurchasePatternWasAnalyzed() {
+        verify(purchaseAnalyzer).analyze(purchaseHistory);
+    }
+
+    private void thenRecommendationEventWasRegistered() {
+        registeredRecommendation = registeredRecommendation();
+        assertEquals(studentId, registeredRecommendation.getAlumnoId());
+        assertEquals(purchaseHistory, registeredRecommendation.getPurchases());
+        assertEquals(Optional.of(analysis), registeredRecommendation.getAiAnalysis());
+    }
+
+    private void thenSuggestionWasSaved() {
+        verify(suggestionAiRepository).save(eventId, registeredRecommendation);
+    }
+
+    private void thenUserWasNotified() {
+        verify(notificationRepository).save(
+                registeredRecommendation,
+                savedSuggestion,
+                userId);
+    }
+
+    private PurchaseRecommendationResult registeredRecommendation() {
         ArgumentCaptor<PurchaseRecommendationResult> resultCaptor =
                 ArgumentCaptor.forClass(PurchaseRecommendationResult.class);
         verify(aiEventRepository).registerPurchaseRecommendation(resultCaptor.capture());
-        PurchaseRecommendationResult result = resultCaptor.getValue();
-        assertEquals(studentId, result.getAlumnoId());
-        assertEquals(purchases, result.getPurchases());
-        assertEquals(Optional.of(analysis), result.getAiAnalysis());
-        verify(suggestionAiRepository).save(eventId, result);
-        verify(notificationRepository).save(result, suggestion, userId);
+        return resultCaptor.getValue();
     }
-
 }

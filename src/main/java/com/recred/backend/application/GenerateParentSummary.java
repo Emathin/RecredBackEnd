@@ -45,33 +45,71 @@ public class GenerateParentSummary {
     }
 
     public GenerateParentSummaryResponse execute(GenerateParentSummaryRequest request) {
-        List<UUID> processedIds = new ArrayList<>();
-        List<Tutor> validTutors = findPremiumTutorsWithChildren();
-        for (Tutor tutor : validTutors) {
-            generateSummaryForTutor(tutor, request.start(), request.end());
-            processedIds.add(tutor.getUsuario().getId());
+        List<UUID> processedTutorUserIds = generateSummariesForPremiumTutors(
+                request.start(),
+                request.end()
+        );
+
+        return buildResponse(processedTutorUserIds);
+    }
+
+    private List<UUID> generateSummariesForPremiumTutors(
+            LocalDateTime start,
+            LocalDateTime end
+    ) {
+        List<UUID> processedTutorUserIds = new ArrayList<>();
+
+        for (Tutor tutor : findPremiumTutorsWithChildren()) {
+            saveSummaryForTutor(tutor, start, end);
+            processedTutorUserIds.add(tutorUserId(tutor));
         }
-        return new GenerateParentSummaryResponse(processedIds);
+
+        return processedTutorUserIds;
+    }
+
+    private GenerateParentSummaryResponse buildResponse(List<UUID> processedTutorUserIds) {
+        return new GenerateParentSummaryResponse(processedTutorUserIds);
     }
 
     private List<Tutor> findPremiumTutorsWithChildren() {
         return tutorRepository.findAll().stream()
-                .filter(t -> TipoPlan.PREMIUM.equals(t.getUsuario().getPlan()))
-                .filter(t -> !t.getHijos().isEmpty())
+                .filter(this::tutorHasPremiumPlan)
+                .filter(this::tutorHasChildren)
                 .toList();
     }
 
-    private void generateSummaryForTutor(Tutor tutor, LocalDateTime start, LocalDateTime end) {
+    private boolean tutorHasPremiumPlan(Tutor tutor) {
+        return TipoPlan.PREMIUM.equals(tutor.getUsuario().getPlan());
+    }
+
+    private boolean tutorHasChildren(Tutor tutor) {
+        return !tutor.getHijos().isEmpty();
+    }
+
+    private UUID tutorUserId(Tutor tutor) {
+        return tutor.getUsuario().getId();
+    }
+
+    private void saveSummaryForTutor(Tutor tutor, LocalDateTime start, LocalDateTime end) {
+        ObjectNode summaryContent = summaryContentFor(tutor, start, end);
+        addAnalyzerMessage(summaryContent);
+        saveSummary(tutor, start, end, summaryContent);
+    }
+
+    private ObjectNode summaryContentFor(Tutor tutor, LocalDateTime start, LocalDateTime end) {
         ObjectNode root = objectMapper.createObjectNode();
         ObjectNode childrenNode = root.putObject("hijos");
         for (Alumno child : tutor.getHijos()) {
-            processChildPurchases(child, start, end, childrenNode);
+            addChildSummary(child, start, end, childrenNode);
         }
-        saveSummary(tutor, start, end, root);
+        return root;
     }
 
-    private void processChildPurchases(Alumno child, LocalDateTime start, LocalDateTime end,
-                                       ObjectNode childrenNode) {
+    private void addChildSummary(
+            Alumno child,
+            LocalDateTime start,
+            LocalDateTime end,
+            ObjectNode childrenNode) {
         List<Purchase> purchases = purchaseRepository.findByAlumnoAndDateRange(
                 child.getId(), start, end);
         BigDecimal total = calculateTotal(purchases);
@@ -93,36 +131,35 @@ public class GenerateParentSummary {
                 .ifPresent(budget -> childNode.put("LimiteGasto", budget.getMontoLimite()));
     }
 
-    private void addCategoryBreakdown(List<Purchase> purchases, BigDecimal total,
-                                      ObjectNode childNode) {
+    private void addCategoryBreakdown(
+            List<Purchase> purchases,
+            BigDecimal total,
+            ObjectNode childNode) {
+        ObjectNode categoriesNode = childNode.putObject("porCategoria");
+        spendingByCategory(purchases).forEach((category, amount) ->
+                categoriesNode.put(category, percentageOfTotal(amount, total)));
+    }
+
+    private Map<String, BigDecimal> spendingByCategory(List<Purchase> purchases) {
         Map<String, BigDecimal> categories = new HashMap<>();
-        purchases.forEach(p -> p.getItems().forEach((product, quantity) -> {
+        purchases.forEach(purchase -> purchase.getItems().forEach((product, quantity) -> {
             String category = product.getCategoria() != null
                     ? product.getCategoria().getDescripcion() : "Sin Categoria";
             BigDecimal amount = product.getPrecio().multiply(BigDecimal.valueOf(quantity));
             categories.merge(category, amount, BigDecimal::add);
         }));
-        ObjectNode categoriesNode = childNode.putObject("porCategoria");
-        categories.forEach((category, amount) -> {
-            BigDecimal divisor = total.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ONE : total;
-            BigDecimal percentage = amount.divide(divisor, 2, RoundingMode.HALF_UP)
-                    .multiply(new BigDecimal(100));
-            categoriesNode.put(category, percentage);
-        });
+        return categories;
+    }
+
+    private BigDecimal percentageOfTotal(BigDecimal amount, BigDecimal total) {
+        BigDecimal divisor = total.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ONE : total;
+        return amount.divide(divisor, 2, RoundingMode.HALF_UP)
+                .multiply(new BigDecimal(100));
     }
 
     private void addMostConsumedProduct(List<Purchase> purchases, ObjectNode childNode) {
-        Map<Producto, Integer> products = new HashMap<>();
-        purchases.forEach(p -> p.getItems().forEach(
-                (product, quantity) -> products.merge(product, quantity, Integer::sum)));
-        products.entrySet().stream()
-                .max((e1, e2) -> {
-                    int compare = e1.getValue().compareTo(e2.getValue());
-                    if (compare != 0) {
-                        return compare;
-                    }
-                    return e1.getKey().getPrecio().compareTo(e2.getKey().getPrecio());
-                })
+        consumedQuantitiesByProduct(purchases).entrySet().stream()
+                .max(this::compareConsumedProducts)
                 .ifPresent(entry -> {
                     ObjectNode productNode = childNode.putObject("productoMasConsumido");
                     productNode.put("nombre", entry.getKey().getNombre());
@@ -131,14 +168,38 @@ public class GenerateParentSummary {
                 });
     }
 
-    private void saveSummary(Tutor tutor, LocalDateTime start, LocalDateTime end, ObjectNode root) {
-        String analysis = parentSummaryAnalyzer.analyze(root.toString());
-        root.put("mensaje", analysis);
+    private Map<Producto, Integer> consumedQuantitiesByProduct(List<Purchase> purchases) {
+        Map<Producto, Integer> products = new HashMap<>();
+        purchases.forEach(purchase -> purchase.getItems().forEach(
+                (product, quantity) -> products.merge(product, quantity, Integer::sum)));
+        return products;
+    }
+
+    private int compareConsumedProducts(
+            Map.Entry<Producto, Integer> first,
+            Map.Entry<Producto, Integer> second) {
+        int quantityComparison = first.getValue().compareTo(second.getValue());
+        if (quantityComparison != 0) {
+            return quantityComparison;
+        }
+        return first.getKey().getPrecio().compareTo(second.getKey().getPrecio());
+    }
+
+    private void addAnalyzerMessage(ObjectNode summaryContent) {
+        String analysis = parentSummaryAnalyzer.analyze(summaryContent.toString());
+        summaryContent.put("mensaje", analysis);
+    }
+
+    private void saveSummary(
+            Tutor tutor,
+            LocalDateTime start,
+            LocalDateTime end,
+            ObjectNode summaryContent) {
         Summary summary = new Summary();
         summary.setFechaDesde(start);
         summary.setFechaHasta(end);
         summary.setUsuario(tutor.getUsuario());
-        summary.setResumen(root.toString());
+        summary.setResumen(summaryContent.toString());
         summaryRepository.save(summary);
     }
 }

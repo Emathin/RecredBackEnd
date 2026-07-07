@@ -72,7 +72,7 @@ class GenerateHealthyProductRecommendationsTest {
     }
 
     @Test
-    void generateRecommendationWhenAiSelectsAvailableProductFromRecentHistory() {
+    void givenRepeatedProductAndAiSuggestedAvailableAlternative_whenGeneratingRecommendations_thenSavesRecommendation() {
         ConsumptionAlertCandidate candidate = candidate();
         UUID cokeId = UUID.randomUUID();
         UUID waterId = UUID.randomUUID();
@@ -99,7 +99,7 @@ class GenerateHealthyProductRecommendationsTest {
     }
 
     @Test
-    void skipStudentInsideCooldown() {
+    void givenStudentInsideCooldown_whenGeneratingRecommendations_thenSkipsStudent() {
         ConsumptionAlertCandidate candidate = candidate();
         givenActiveCandidate(candidate);
         givenStudentInsideCooldown(candidate);
@@ -112,7 +112,7 @@ class GenerateHealthyProductRecommendationsTest {
     }
 
     @Test
-    void skipWhenProductWasNotRepeatedInEnoughDifferentDays() {
+    void givenProductRepeatedOnlySameDay_whenGeneratingRecommendations_thenSkipsStudent() {
         ConsumptionAlertCandidate candidate = candidate();
         UUID cokeId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -133,7 +133,7 @@ class GenerateHealthyProductRecommendationsTest {
     }
 
     @Test
-    void skipWhenAiDoesNotRecommendAnything() {
+    void givenAiDoesNotRecommendAlternative_whenGeneratingRecommendations_thenSkipsStudent() {
         ConsumptionAlertCandidate candidate = candidate();
         UUID sandwichId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -157,7 +157,7 @@ class GenerateHealthyProductRecommendationsTest {
     }
 
     @Test
-    void skipWhenNoAvailableOptionExists() {
+    void givenNoAvailableAlternative_whenGeneratingRecommendations_thenSkipsStudent() {
         ConsumptionAlertCandidate candidate = candidate();
         UUID cokeId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -179,7 +179,7 @@ class GenerateHealthyProductRecommendationsTest {
     }
 
     @Test
-    void skipWhenAiSelectsProductOutsideAvailableOptions() {
+    void givenAiSelectsUnavailableAlternative_whenGeneratingRecommendations_thenSkipsStudent() {
         ConsumptionAlertCandidate candidate = candidate();
         UUID cokeId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
