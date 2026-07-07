@@ -9,7 +9,6 @@ import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -30,7 +29,6 @@ public class GetProductChangeRecommendation {
         this.usuarioRepository = usuarioRepository;
     }
 
-    @Transactional(readOnly = true)
     public List<GetProductChangeRecommendationResponse> execute(
             GetProductChangeRecommendationRequest request) {
         UUID usuarioId = findUsuarioId(request.cognitoSubject());

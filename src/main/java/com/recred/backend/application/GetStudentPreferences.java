@@ -8,7 +8,6 @@ import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -65,7 +64,6 @@ public class GetStudentPreferences {
         return List.of(preferences.get(0));
     }
 
-    @Transactional
     private GetStudentPreferencesResponse preferencesForUser(GetStudentPreferencesRequest request) {
         Optional<Tutor> tutor = findTutorForUser(request.userId());
         if (tutor.isPresent()) {

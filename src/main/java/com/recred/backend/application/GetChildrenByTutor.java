@@ -2,7 +2,6 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.TutorRepository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,7 +16,6 @@ public class GetChildrenByTutor {
         this.tutorRepository = tutorRepository;
     }
 
-    @Transactional(readOnly = true)
     public List<GetChildrenByTutorResponse> execute(GetChildrenByTutorRequest request) {
         Set<Alumno> hijos = this.findHijos(request);
         return this.toResponseList(hijos);

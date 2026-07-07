@@ -3,7 +3,6 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,7 +19,6 @@ public class GetTutorHistory {
         this.tutorRepository = tutorRepository;
     }
 
-    @Transactional(readOnly = true)
     public GetTutorHistoryResponse execute(GetTutorHistoryRequest request) {
         List<Purchase> purchases = purchaseRepository.findHistorialByTutor(tutorId(request));
         return new GetTutorHistoryResponse(mapToResponse(purchases));

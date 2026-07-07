@@ -20,7 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class GetLastSummaryTest {
+class GetLastSummaryTest {
+
+    private static final UUID USER_ID = UUID.randomUUID();
+    private static final UUID SUMMARY_ID = UUID.randomUUID();
+    private static final String JSON_RESUMEN = "{}";
 
     @Mock
     private SummaryRepository summaryRepository;
@@ -30,30 +34,51 @@ public class GetLastSummaryTest {
 
     @Test
     void executeReturnsResponseWhenSummaryFound() {
-        UUID userId = UUID.randomUUID();
+        Summary summary = buildSummary();
+        givenSummaryFound(summary);
+
+        Optional<GetLastSummaryResponse> response = whenExecute();
+
+        thenResponseMatches(response, summary);
+    }
+
+    @Test
+    void executeReturnsEmptyWhenNoSummaryFound() {
+        givenNoSummaryFound();
+
+        Optional<GetLastSummaryResponse> response = whenExecute();
+
+        thenResponseIsEmpty(response);
+    }
+
+    private Summary buildSummary() {
         Summary summary = new Summary();
-        summary.setId(UUID.randomUUID());
+        summary.setId(SUMMARY_ID);
         summary.setFechaDesde(LocalDateTime.now().minusDays(7));
         summary.setFechaHasta(LocalDateTime.now());
-        summary.setResumen("{}");
+        summary.setResumen(JSON_RESUMEN);
+        return summary;
+    }
 
-        when(summaryRepository.findLastByUsuarioId(userId)).thenReturn(Optional.of(summary));
+    private void givenSummaryFound(Summary summary) {
+        when(summaryRepository.findLastByUsuarioId(USER_ID)).thenReturn(Optional.of(summary));
+    }
 
-        Optional<GetLastSummaryResponse> response = getLastSummary.execute(new GetLastSummaryRequest(userId));
+    private void givenNoSummaryFound() {
+        when(summaryRepository.findLastByUsuarioId(USER_ID)).thenReturn(Optional.empty());
+    }
 
+    private Optional<GetLastSummaryResponse> whenExecute() {
+        return getLastSummary.execute(new GetLastSummaryRequest(USER_ID));
+    }
+
+    private void thenResponseMatches(Optional<GetLastSummaryResponse> response, Summary summary) {
         assertTrue(response.isPresent());
         assertEquals(summary.getId(), response.get().id());
         assertEquals(summary.getResumen(), response.get().resumen());
     }
 
-    @Test
-    void executeReturnsEmptyWhenNoSummaryFound() {
-        UUID userId = UUID.randomUUID();
-
-        when(summaryRepository.findLastByUsuarioId(userId)).thenReturn(Optional.empty());
-
-        Optional<GetLastSummaryResponse> response = getLastSummary.execute(new GetLastSummaryRequest(userId));
-
+    private void thenResponseIsEmpty(Optional<GetLastSummaryResponse> response) {
         assertTrue(response.isEmpty());
     }
 }

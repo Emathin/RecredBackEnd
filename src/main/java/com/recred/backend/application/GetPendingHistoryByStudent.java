@@ -2,7 +2,6 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,7 +15,6 @@ public class GetPendingHistoryByStudent {
         this.purchaseRepository = purchaseRepository;
     }
 
-    @Transactional(readOnly = true)
     public List<GetPendingHistoryByStudentResponse> execute(
             GetPendingHistoryByStudentRequest request) {
         List<Purchase> purchases = this.findPendingHistoryByStudent(request.alumnoId());

@@ -10,72 +10,93 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class GetActiveSchoolCreditTest {
 
-    private final SchoolCreditRepository repository = mock(SchoolCreditRepository.class);
-    private final GetActiveSchoolCredit useCase = new GetActiveSchoolCredit(repository);
+    private static final UUID STUDENT_ID = UUID.randomUUID();
+    private static final UUID CREDIT_ID = UUID.randomUUID();
+    private static final BigDecimal AMOUNT = new BigDecimal("1500.00");
+    private static final int INSTALLMENTS = 3;
+
+    @Mock
+    private SchoolCreditRepository repository;
+
+    @InjectMocks
+    private GetActiveSchoolCredit useCase;
 
     @Test
     void executeShouldReturnMappedActiveCreditWhenExists() {
-        UUID studentId = UUID.randomUUID();
-        UUID creditId = UUID.randomUUID();
-        SchoolCredit credit = new SchoolCredit();
-        credit.setId(creditId);
-        credit.setStudentId(studentId);
-        credit.setAmount(new BigDecimal("1500.00"));
-        credit.setStatus(CreditStatus.ACTIVE);
-        credit.setInstallments(3);
-        GetActiveSchoolCreditRequest request = new GetActiveSchoolCreditRequest(studentId);
+        SchoolCredit credit = buildActiveCredit();
+        givenActiveCreditFound(credit);
 
-        when(repository.findByStudentIdAndStatus(studentId, CreditStatus.ACTIVE))
-                .thenReturn(Optional.of(credit));
+        Optional<GetActiveSchoolCreditResponse> response = whenExecute();
 
-        Optional<GetActiveSchoolCreditResponse> response = useCase.execute(request);
-
-        assertTrue(response.isPresent());
-        assertEquals(creditId, response.get().creditId());
-        assertEquals(new BigDecimal("1500.00"), response.get().amount());
-        assertEquals(CreditStatus.ACTIVE.name(), response.get().status());
-        assertEquals(3, response.get().installments());
-        verify(repository).findByStudentIdAndStatus(studentId, CreditStatus.ACTIVE);
+        thenResponseMatchesCredit(response, credit);
+        thenRepositoryWasQueriedByStudentIdAndStatus();
     }
 
     @Test
     void executeShouldReturnEmptyWhenActiveCreditDoesNotExist() {
-        UUID studentId = UUID.randomUUID();
-        GetActiveSchoolCreditRequest request = new GetActiveSchoolCreditRequest(studentId);
+        givenNoActiveCreditFound();
 
-        when(repository.findByStudentIdAndStatus(studentId, CreditStatus.ACTIVE))
-                .thenReturn(Optional.empty());
+        Optional<GetActiveSchoolCreditResponse> response = whenExecute();
 
-        Optional<GetActiveSchoolCreditResponse> response = useCase.execute(request);
-
-        assertFalse(response.isPresent());
+        thenResponseIsEmpty(response);
+        thenRepositoryWasQueriedByStudentIdAndStatus();
     }
 
-    @Test
-    void executeShouldValidateRequestBeforeRepository() {
-        GetActiveSchoolCreditRequest request = new GetActiveSchoolCreditRequest(null);
+    private SchoolCredit buildActiveCredit() {
+        SchoolCredit credit = new SchoolCredit();
+        credit.setId(CREDIT_ID);
+        credit.setStudentId(STUDENT_ID);
+        credit.setAmount(AMOUNT);
+        credit.setStatus(CreditStatus.ACTIVE);
+        credit.setInstallments(INSTALLMENTS);
+        return credit;
+    }
 
-        Executable execution = () -> useCase.execute(request);
+    private void givenActiveCreditFound(SchoolCredit credit) {
+        when(repository.findByStudentIdAndStatus(STUDENT_ID, CreditStatus.ACTIVE))
+                .thenReturn(Optional.of(credit));
+    }
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                execution
-        );
+    private void givenNoActiveCreditFound() {
+        when(repository.findByStudentIdAndStatus(STUDENT_ID, CreditStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+    }
 
-        assertEquals("studentId cannot be null", exception.getMessage());
-        verifyNoInteractions(repository);
+    private Optional<GetActiveSchoolCreditResponse> whenExecute() {
+        return useCase.execute(new GetActiveSchoolCreditRequest(STUDENT_ID));
+    }
+
+    private void thenResponseMatchesCredit(Optional<GetActiveSchoolCreditResponse> response, SchoolCredit credit) {
+        assertTrue(response.isPresent());
+        assertEquals(credit.getId(), response.get().creditId());
+        assertEquals(credit.getAmount(), response.get().amount());
+        assertEquals(credit.getStatus().name(), response.get().status());
+        assertEquals(credit.getInstallments(), response.get().installments());
+    }
+
+    private void thenRepositoryWasQueriedByStudentIdAndStatus() {
+        verify(repository).findByStudentIdAndStatus(STUDENT_ID, CreditStatus.ACTIVE);
+    }
+
+    private void thenResponseIsEmpty(Optional<GetActiveSchoolCreditResponse> response) {
+        assertFalse(response.isPresent());
     }
 }

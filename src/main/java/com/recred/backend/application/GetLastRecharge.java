@@ -21,8 +21,6 @@ public class GetLastRecharge {
     }
 
     public GetLastRechargeResponse execute(GetLastRechargeRequest request) {
-        request.validate();
-        
         Alumno alumno = alumnoRepository.findById(request.studentId())
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
 
