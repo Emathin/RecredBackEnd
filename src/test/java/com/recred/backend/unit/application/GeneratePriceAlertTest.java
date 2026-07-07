@@ -96,6 +96,7 @@ class GeneratePriceAlertTest {
         Producto producto = product();
         Alumno alumno = studentWithTutorUser(UUID.randomUUID(), UUID.randomUUID());
         givenAffectedStudentWithRecentAlert(producto, alumno);
+        givenFixedClock();
 
         whenExecute(requestWithoutBuffet(producto));
 
@@ -109,6 +110,7 @@ class GeneratePriceAlertTest {
         Alumno alumno = studentWithTutorUser(UUID.randomUUID(), UUID.randomUUID());
         givenAffectedStudentWithoutRecentAlert(producto, alumno);
         givenAiResultIsEmpty(alumno, producto);
+        givenFixedClock();
 
         whenExecute(requestWithoutBuffet(producto));
 
