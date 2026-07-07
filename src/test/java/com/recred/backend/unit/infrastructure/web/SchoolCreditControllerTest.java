@@ -1,7 +1,5 @@
 package com.recred.backend.unit.infrastructure.web;
 
-import com.recred.backend.infrastructure.web.*;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.EnableSchoolCredit;
 import com.recred.backend.application.EnableSchoolCreditRequest;
@@ -12,7 +10,11 @@ import com.recred.backend.application.GetActiveSchoolCreditResponse;
 import com.recred.backend.application.GetLastRecharge;
 import com.recred.backend.application.GetLastRechargeRequest;
 import com.recred.backend.application.GetLastRechargeResponse;
+import com.recred.backend.application.GetSchoolCreditHistory;
+import com.recred.backend.application.PaySchoolCredit;
 import com.recred.backend.domain.exceptions.ActiveCreditExistsException;
+import com.recred.backend.domain.models.CreditStatus;
+import com.recred.backend.domain.models.SchoolCredit;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.UsuarioRepository;
@@ -33,6 +35,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -44,8 +48,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = SchoolCreditController.class, excludeAutoConfiguration = {
@@ -70,10 +74,10 @@ class SchoolCreditControllerTest {
     private GetActiveSchoolCredit getActiveSchoolCredit;
 
     @MockitoBean
-    private com.recred.backend.application.PaySchoolCredit paySchoolCredit;
+    private PaySchoolCredit paySchoolCredit;
 
     @MockitoBean
-    private com.recred.backend.application.GetSchoolCreditHistory getSchoolCreditHistory;
+    private GetSchoolCreditHistory getSchoolCreditHistory;
 
     @MockitoBean
     private UsuarioService usuarioService;
@@ -239,6 +243,64 @@ class SchoolCreditControllerTest {
         thenInternalServerErrorWasReturned();
     }
 
+    @Test
+    void givenCreditCanBePaid_whenPayingCredit_thenReturnsPaidCredit() throws Exception {
+        givenCreditCanBePaid("1200.00");
+
+        whenPostPayCredit();
+
+        thenPaidCreditWasReturned("1200.00");
+    }
+
+    @Test
+    void givenCreditCannotBePaid_whenPayingCredit_thenReturnsBadRequest() throws Exception {
+        givenPayCreditFailsWithIllegalState("Credit already paid");
+
+        whenPostPayCredit();
+
+        thenBadRequestWasReturned("Credit already paid");
+    }
+
+    @Test
+    void givenPayCreditFailsUnexpectedly_whenPayingCredit_thenReturnsInternalServerError()
+            throws Exception {
+        givenPayCreditFailsUnexpectedly();
+
+        whenPostPayCredit();
+
+        thenInternalServerErrorWasReturned(
+                "An unexpected error occurred while paying the credit.");
+    }
+
+    @Test
+    void givenCreditHistoryExists_whenGettingHistory_thenReturnsHistory() throws Exception {
+        givenCreditHistoryExists();
+
+        whenGetCreditHistory();
+
+        thenCreditHistoryWasReturned();
+    }
+
+    @Test
+    void givenCreditHistoryRequestIsInvalid_whenGettingHistory_thenReturnsBadRequest()
+            throws Exception {
+        givenCreditHistoryFailsWithIllegalArgument();
+
+        whenGetCreditHistory();
+
+        thenBadRequestWasReturned();
+    }
+
+    @Test
+    void givenCreditHistoryFailsUnexpectedly_whenGettingHistory_thenReturnsInternalServerError()
+            throws Exception {
+        givenCreditHistoryFailsUnexpectedly();
+
+        whenGetCreditHistory();
+
+        thenInternalServerErrorWasReturned();
+    }
+
     private void givenAuthenticatedTutor() {
         tutorId = randomUUID();
         Usuario user = new Usuario();
@@ -339,6 +401,44 @@ class SchoolCreditControllerTest {
                 .thenThrow(new RuntimeException("boom"));
     }
 
+    private void givenCreditCanBePaid(String amount) {
+        creditId = randomUUID();
+        studentId = randomUUID();
+        when(paySchoolCredit.execute(creditId))
+                .thenReturn(schoolCredit(amount, CreditStatus.PAID, 1));
+    }
+
+    private void givenPayCreditFailsWithIllegalState(String message) {
+        creditId = randomUUID();
+        when(paySchoolCredit.execute(creditId))
+                .thenThrow(new IllegalStateException(message));
+    }
+
+    private void givenPayCreditFailsUnexpectedly() {
+        creditId = randomUUID();
+        when(paySchoolCredit.execute(creditId))
+                .thenThrow(new RuntimeException("boom"));
+    }
+
+    private void givenCreditHistoryExists() {
+        studentId = randomUUID();
+        creditId = randomUUID();
+        when(getSchoolCreditHistory.execute(studentId))
+                .thenReturn(List.of(schoolCredit("900.00", CreditStatus.ACTIVE, 2)));
+    }
+
+    private void givenCreditHistoryFailsWithIllegalArgument() {
+        studentId = randomUUID();
+        when(getSchoolCreditHistory.execute(studentId))
+                .thenThrow(new IllegalArgumentException("Student not found"));
+    }
+
+    private void givenCreditHistoryFailsUnexpectedly() {
+        studentId = randomUUID();
+        when(getSchoolCreditHistory.execute(studentId))
+                .thenThrow(new RuntimeException("boom"));
+    }
+
     private void whenPostEnableCredit() throws Exception {
         result = mockMvc.perform(post(SCHOOL_CREDITS_URL)
                 .principal(authentication())
@@ -358,6 +458,20 @@ class SchoolCreditControllerTest {
         studentId = randomUUID();
         result = mockMvc.perform(get(
                 "/api/v1/school-credits/alumno/{studentId}/active",
+                studentId
+        ));
+    }
+
+    private void whenPostPayCredit() throws Exception {
+        result = mockMvc.perform(post(
+                "/api/v1/school-credits/{creditId}/pay",
+                creditId
+        ));
+    }
+
+    private void whenGetCreditHistory() throws Exception {
+        result = mockMvc.perform(get(
+                "/api/v1/school-credits/alumno/{studentId}",
                 studentId
         ));
     }
@@ -430,7 +544,36 @@ class SchoolCreditControllerTest {
         verify(enableSchoolCredit, never()).execute(any());
     }
 
+    private void thenPaidCreditWasReturned(String amount) throws Exception {
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(creditId.toString()))
+                .andExpect(jsonPath("$.studentId").value(studentId.toString()))
+                .andExpect(jsonPath("$.amount").value(Double.parseDouble(amount)))
+                .andExpect(jsonPath("$.status").value(CreditStatus.PAID.name()))
+                .andExpect(jsonPath("$.installments").value(1));
+    }
+
+    private void thenCreditHistoryWasReturned() throws Exception {
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(creditId.toString()))
+                .andExpect(jsonPath("$[0].studentId").value(studentId.toString()))
+                .andExpect(jsonPath("$[0].amount").value(900.0))
+                .andExpect(jsonPath("$[0].status").value(CreditStatus.ACTIVE.name()))
+                .andExpect(jsonPath("$[0].installments").value(2));
+    }
+
     private Authentication authentication() {
         return new UsernamePasswordAuthenticationToken(AUTHENTICATED_USER, "password");
+    }
+
+    private SchoolCredit schoolCredit(String amount, CreditStatus status, int installments) {
+        return new SchoolCredit(
+                creditId,
+                studentId,
+                new BigDecimal(amount),
+                status,
+                installments,
+                LocalDateTime.now()
+        );
     }
 }
