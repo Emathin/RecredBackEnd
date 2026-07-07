@@ -11,84 +11,113 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class GetLastRechargeTest {
 
-    private final AlumnoRepository alumnoRepository = mock(AlumnoRepository.class);
-    private final MovimientoBilleteraRepository movimientoBilleteraRepository =
-            mock(MovimientoBilleteraRepository.class);
-    private final GetLastRecharge useCase = new GetLastRecharge(
-            alumnoRepository,
-            movimientoBilleteraRepository
-    );
+    private static final UUID STUDENT_ID = UUID.randomUUID();
+    private static final UUID WALLET_ID = UUID.randomUUID();
+    private static final BigDecimal RECHARGE_AMOUNT = new BigDecimal("250.00");
+
+    @Mock
+    private AlumnoRepository alumnoRepository;
+
+    @Mock
+    private MovimientoBilleteraRepository movimientoBilleteraRepository;
+
+    @InjectMocks
+    private GetLastRecharge useCase;
 
     @Test
     void executeShouldReturnLastWalletRechargeAmount() {
-        UUID studentId = UUID.randomUUID();
-        UUID walletId = UUID.randomUUID();
-        Alumno student = new Alumno();
-        Billetera wallet = new Billetera();
-        wallet.setId(walletId);
-        student.setBilletera(wallet);
-        GetLastRechargeRequest request = new GetLastRechargeRequest(studentId);
+        Alumno student = buildStudentWithWallet();
+        givenStudentFound(student);
+        givenLastRechargeAmountFound();
+        GetLastRechargeRequest request = new GetLastRechargeRequest(STUDENT_ID);
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
-        when(movimientoBilleteraRepository.obtenerUltimoMontoCarga(walletId))
-                .thenReturn(new BigDecimal("250.00"));
+        GetLastRechargeResponse response = whenExecute(request);
 
-        GetLastRechargeResponse response = useCase.execute(request);
-
-        assertEquals(new BigDecimal("250.00"), response.amount());
-        verify(movimientoBilleteraRepository).obtenerUltimoMontoCarga(walletId);
+        thenResponseMatchesAmount(response, RECHARGE_AMOUNT);
+        thenWalletRepositoryWasQueried();
     }
 
     @Test
     void executeShouldReturnZeroWhenStudentHasNoWallet() {
-        UUID studentId = UUID.randomUUID();
-        GetLastRechargeRequest request = new GetLastRechargeRequest(studentId);
+        Alumno student = buildStudentWithoutWallet();
+        givenStudentFound(student);
+        GetLastRechargeRequest request = new GetLastRechargeRequest(STUDENT_ID);
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(new Alumno()));
+        GetLastRechargeResponse response = whenExecute(request);
 
-        GetLastRechargeResponse response = useCase.execute(request);
-
-        assertEquals(BigDecimal.ZERO, response.amount());
+        thenResponseMatchesAmount(response, BigDecimal.ZERO);
     }
 
     @Test
     void executeShouldFailWhenStudentDoesNotExist() {
-        UUID studentId = UUID.randomUUID();
-        GetLastRechargeRequest request = new GetLastRechargeRequest(studentId);
+        givenStudentNotFound();
+        GetLastRechargeRequest request = new GetLastRechargeRequest(STUDENT_ID);
 
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
+        Executable execution = () -> whenExecute(request);
 
-        Executable execution = () -> useCase.execute(request);
-
-        IllegalArgumentException missingStudent = assertThrows(
-                IllegalArgumentException.class,
-                execution
-        );
-
-        assertEquals("Student not found", missingStudent.getMessage());
+        thenThrowsStudentNotFoundException(execution);
     }
 
-    @Test
-    void executeShouldFailWhenRequestIsInvalid() {
-        GetLastRechargeRequest request = new GetLastRechargeRequest(null);
+    private Alumno buildStudentWithWallet() {
+        Alumno student = new Alumno();
+        student.setId(STUDENT_ID);
+        Billetera wallet = new Billetera();
+        wallet.setId(WALLET_ID);
+        student.setBilletera(wallet);
+        return student;
+    }
 
-        Executable execution = () -> useCase.execute(request);
+    private Alumno buildStudentWithoutWallet() {
+        Alumno student = new Alumno();
+        student.setId(STUDENT_ID);
+        return student;
+    }
 
-        IllegalArgumentException invalidRequest = assertThrows(
-                IllegalArgumentException.class,
-                execution
-        );
+    private void givenStudentFound(Alumno student) {
+        when(alumnoRepository.findById(STUDENT_ID)).thenReturn(Optional.of(student));
+    }
 
-        assertEquals("studentId cannot be null", invalidRequest.getMessage());
+    private void givenStudentNotFound() {
+        when(alumnoRepository.findById(STUDENT_ID)).thenReturn(Optional.empty());
+    }
+
+    private void givenLastRechargeAmountFound() {
+        when(movimientoBilleteraRepository.obtenerUltimoMontoCarga(WALLET_ID))
+                .thenReturn(RECHARGE_AMOUNT);
+    }
+
+    private GetLastRechargeResponse whenExecute(GetLastRechargeRequest request) {
+        return useCase.execute(request);
+    }
+
+    private void thenResponseMatchesAmount(GetLastRechargeResponse response, BigDecimal expectedAmount) {
+        assertEquals(expectedAmount, response.amount());
+    }
+
+    private void thenWalletRepositoryWasQueried() {
+        verify(movimientoBilleteraRepository).obtenerUltimoMontoCarga(WALLET_ID);
+    }
+
+    private void thenThrowsStudentNotFoundException(Executable execution) {
+        IllegalArgumentException missingStudent = assertThrows(IllegalArgumentException.class, execution);
+        assertEquals("Student not found", missingStudent.getMessage());
     }
 }

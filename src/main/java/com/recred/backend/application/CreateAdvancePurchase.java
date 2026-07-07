@@ -28,8 +28,7 @@ import com.recred.backend.domain.services.RecessTimeSlotResolver;
 import com.recred.backend.domain.services.WithdrawalCodeService;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.domain.models.Promotion;
-import com.recred.backend.infrastructure.entities.BuffetEntity;
-import com.recred.backend.infrastructure.persistence.SpringDataBuffetRepository;
+import com.recred.backend.domain.repositories.BuffetRepository;
 
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
@@ -52,7 +51,7 @@ public class CreateAdvancePurchase {
     private final RecessTimeSlotResolver recessTimeSlotResolver;
     private final AdvancePurchaseRulesService advancePurchaseRulesService;
     private final WalletRepository walletRepository;
-    private final SpringDataBuffetRepository buffetRepository;
+    private final BuffetRepository buffetRepository;
     private final UsuarioRepository usuarioRepository;
     private final TutorRepository tutorRepository;
     private final PromotionRepository promotionRepository;
@@ -68,7 +67,7 @@ public class CreateAdvancePurchase {
             RecessTimeSlotResolver recessTimeSlotResolver,
             AdvancePurchaseRulesService advancePurchaseRulesService,
             WalletRepository walletRepository,
-            SpringDataBuffetRepository buffetRepository,
+            BuffetRepository buffetRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             PromotionRepository promotionRepository
@@ -89,7 +88,7 @@ public class CreateAdvancePurchase {
             RecessTimeSlotResolver recessTimeSlotResolver,
             AdvancePurchaseRulesService advancePurchaseRulesService,
             WalletRepository walletRepository,
-            SpringDataBuffetRepository buffetRepository,
+            BuffetRepository buffetRepository,
             UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             PromotionRepository promotionRepository,
@@ -263,8 +262,10 @@ public class CreateAdvancePurchase {
         }
 
         UUID schoolId = schoolId(student);
-        return buffetRepository.findFirstByColegioEntityIdAndActivoTrue(schoolId)
-                .map(BuffetEntity::getId)
+        return buffetRepository.findByColegioId(schoolId).stream()
+                .filter(b -> Boolean.TRUE.equals(b.getActivo()))
+                .findFirst()
+                .map(com.recred.backend.domain.models.Buffet::getId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Buffet not found for school: " + schoolId));
     }

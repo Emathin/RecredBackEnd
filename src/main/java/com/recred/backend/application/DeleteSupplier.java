@@ -13,14 +13,13 @@ public class DeleteSupplier {
     }
 
     public DeleteSupplierResponse execute(DeleteSupplierRequest request) {
-        request.validate();
-        Proveedor supplier = supplier(request);
+        Proveedor supplier = findSupplier(request);
         requireSupplierOwnership(supplier, request);
-        repository.delete(supplier);
+        deleteSupplier(supplier);
         return new DeleteSupplierResponse(request.id());
     }
 
-    private Proveedor supplier(DeleteSupplierRequest request) {
+    private Proveedor findSupplier(DeleteSupplierRequest request) {
         return repository.findById(request.id())
                 .orElseThrow(() -> new IllegalArgumentException("Supplier not found"));
     }
@@ -29,5 +28,9 @@ public class DeleteSupplier {
         if (!supplier.belongsToKiosquero(request.kioskOwnerId())) {
             throw new AccessDeniedException("You do not have access to delete this supplier");
         }
+    }
+
+    private void deleteSupplier(Proveedor supplier) {
+        repository.delete(supplier);
     }
 }

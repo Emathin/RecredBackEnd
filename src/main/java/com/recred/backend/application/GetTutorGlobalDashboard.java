@@ -41,7 +41,6 @@ public class GetTutorGlobalDashboard {
     }
 
     public GetTutorGlobalDashboardResponse execute(GetTutorGlobalDashboardRequest request) {
-        request.validate();
         Tutor tutor = findTutor(request.cognitoSubject());
         DashboardTotals dashboardTotals = dashboardTotals(tutor.getHijos());
         return response(tutor, dashboardTotals);

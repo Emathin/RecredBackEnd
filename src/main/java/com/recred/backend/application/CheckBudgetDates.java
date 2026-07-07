@@ -1,11 +1,14 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import java.math.BigDecimal;
+import static java.math.BigDecimal.ONE;
+import static java.math.BigDecimal.ZERO;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -44,21 +47,24 @@ public class CheckBudgetDates {
 
     private CartTotals calculateCartTotals(
             List<CheckBudgetDatesRequest.CartItemRequest> items) {
-        BigDecimal totalCartAmount = BigDecimal.ZERO;
+        
+        if (items == null) {
+            return new CartTotals(ZERO, new HashMap<>());
+        }
+
+        BigDecimal totalCartAmount = ZERO;
         Map<UUID, BigDecimal> amountsByCategory = new HashMap<>();
 
-        if (items != null) {
-            for (CheckBudgetDatesRequest.CartItemRequest item : items) {
-                Optional<Producto> productOpt = productRepository.findById(item.productId());
-                if (productOpt.isPresent()) {
-                    totalCartAmount = totalCartAmount.add(
-                            processProductItem(productOpt.get(), item.quantity(), amountsByCategory)
-                    );
-                } else {
-                    totalCartAmount = totalCartAmount.add(
-                            processPromotionItem(item, amountsByCategory)
-                    );
-                }
+        for (CheckBudgetDatesRequest.CartItemRequest item : items) {
+            Optional<Producto> productOpt = productRepository.findById(item.productId());
+            if (productOpt.isPresent()) {
+                totalCartAmount = totalCartAmount.add(
+                        processProductItem(productOpt.get(), item.quantity(), amountsByCategory)
+                );
+            } else {
+                totalCartAmount = totalCartAmount.add(
+                        processPromotionItem(item, amountsByCategory)
+                );
             }
         }
 
@@ -69,17 +75,11 @@ public class CheckBudgetDates {
             Producto product,
             int quantityVal,
             Map<UUID, BigDecimal> amountsByCategory) {
-        BigDecimal price = product.getPrecio() != null
-                ? product.getPrecio()
-                : BigDecimal.ZERO;
+        BigDecimal price = product.getPrecio() != null ? product.getPrecio() : ZERO;
         BigDecimal quantity = BigDecimal.valueOf(quantityVal);
         BigDecimal itemTotal = price.multiply(quantity);
 
-        if (product.getCategoria() != null && product.getCategoria().getId() != null) {
-            UUID categoryId = product.getCategoria().getId();
-            amountsByCategory.put(categoryId, amountsByCategory
-                    .getOrDefault(categoryId, BigDecimal.ZERO).add(itemTotal));
-        }
+        addAmountToCategory(amountsByCategory, product.getCategoria(), itemTotal);
 
         return itemTotal;
     }
@@ -87,71 +87,75 @@ public class CheckBudgetDates {
     private BigDecimal processPromotionItem(
             CheckBudgetDatesRequest.CartItemRequest item,
             Map<UUID, BigDecimal> amountsByCategory) {
-        Optional<Promotion> promotionOpt = promotionRepository.findById(item.productId());
-        if (promotionOpt.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Product or Promotion not found: " + item.productId());
+        Promotion promotion = findPromotionOrThrow(item.productId());
+        BigDecimal promotionTotal = ZERO;
+
+        if (promotion.getProducts() == null) {
+            return promotionTotal;
         }
 
-        Promotion promotion = promotionOpt.get();
-        BigDecimal promotionTotal = BigDecimal.ZERO;
+        BigDecimal multiplier = calculateDiscountMultiplier(promotion);
 
-        if (promotion.getProducts() != null) {
-            BigDecimal discountPercentage = promotion.getDiscountPercentage() != null
-                    ? promotion.getDiscountPercentage()
-                    : BigDecimal.ZERO;
-            BigDecimal multiplier = BigDecimal.ONE.subtract(
-                    discountPercentage.divide(
-                            new BigDecimal("100"),
-                            4,
-                            RoundingMode.HALF_UP
-                    )
-            );
-
-            for (Producto p : promotion.getProducts()) {
-                BigDecimal originalPrice = p.getPrecio() != null
-                        ? p.getPrecio()
-                        : BigDecimal.ZERO;
-                BigDecimal discountedPrice = originalPrice
-                        .multiply(multiplier)
-                        .setScale(2, RoundingMode.HALF_UP);
-                BigDecimal quantity = BigDecimal.valueOf(item.quantity());
-                BigDecimal itemTotal = discountedPrice.multiply(quantity);
-
-                promotionTotal = promotionTotal.add(itemTotal);
-
-                if (p.getCategoria() != null && p.getCategoria().getId() != null) {
-                    UUID categoryId = p.getCategoria().getId();
-                    amountsByCategory.put(categoryId, amountsByCategory
-                            .getOrDefault(categoryId, BigDecimal.ZERO).add(itemTotal));
-                }
-            }
+        for (Producto p : promotion.getProducts()) {
+            BigDecimal itemTotal = calculateDiscountedItemTotal(p, multiplier, item.quantity());
+            promotionTotal = promotionTotal.add(itemTotal);
+            addAmountToCategory(amountsByCategory, p.getCategoria(), itemTotal);
         }
 
         return promotionTotal;
     }
 
+    private Promotion findPromotionOrThrow(UUID promotionId) {
+        return promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Product or Promotion not found: " + promotionId));
+    }
+
+    private BigDecimal calculateDiscountMultiplier(Promotion promotion) {
+        BigDecimal discountPercentage = promotion.getDiscountPercentage() != null
+                ? promotion.getDiscountPercentage()
+                : ZERO;
+        return ONE.subtract(
+                discountPercentage.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP)
+        );
+    }
+
+    private BigDecimal calculateDiscountedItemTotal(
+            Producto p, BigDecimal multiplier, int quantityVal) {
+        BigDecimal originalPrice = p.getPrecio() != null ? p.getPrecio() : ZERO;
+        BigDecimal discountedPrice = originalPrice
+                .multiply(multiplier)
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal quantity = BigDecimal.valueOf(quantityVal);
+        return discountedPrice.multiply(quantity);
+    }
+
+    private void addAmountToCategory(Map<UUID, BigDecimal> amountsByCategory, 
+                                     CategoriaProducto categoria, 
+                                     BigDecimal itemTotal) {
+        if (categoria != null && categoria.getId() != null) {
+            UUID categoryId = categoria.getId();
+            amountsByCategory.put(categoryId, amountsByCategory
+                    .getOrDefault(categoryId, ZERO).add(itemTotal));
+        }
+    }
+
     private List<CheckBudgetDatesResponse.DateBudgetStatus> validateDates(
-            UUID studentId, CartTotals totals, List<String> dates) {
+            UUID studentId, CartTotals totals, List<LocalDate> dates) {
+        if (dates == null) {
+            return new ArrayList<>();
+        }
+        
         List<CheckBudgetDatesResponse.DateBudgetStatus> results = new ArrayList<>();
-        if (dates != null) {
-            for (String dateStr : dates) {
-                results.add(validateSingleDate(studentId, totals, dateStr));
-            }
+        for (LocalDate date : dates) {
+            results.add(validateSingleDate(studentId, totals, date));
         }
         return results;
     }
 
     private CheckBudgetDatesResponse.DateBudgetStatus validateSingleDate(
-            UUID studentId, CartTotals totals, String dateStr) {
-        LocalDate date;
-        try {
-            date = LocalDate.parse(dateStr);
-        } catch (Exception e) {
-            return new CheckBudgetDatesResponse.DateBudgetStatus(
-                    dateStr, true, "Formato de fecha inválido.");
-        }
-
+            UUID studentId, CartTotals totals, LocalDate date) {
+        
         LocalDateTime momentoCompra = LocalDateTime.of(date, LocalTime.of(8, 0));
 
         Optional<String> blockReason = budgetValidator.obtenerMotivoBloqueoPresupuesto(
@@ -162,9 +166,7 @@ public class CheckBudgetDates {
         );
 
         return blockReason
-                .map(reason -> new CheckBudgetDatesResponse.DateBudgetStatus(
-                        dateStr, true, reason))
-                .orElseGet(() -> new CheckBudgetDatesResponse.DateBudgetStatus(
-                        dateStr, false, null));
+                .map(reason -> new CheckBudgetDatesResponse.DateBudgetStatus(date, true, reason))
+                .orElseGet(() -> new CheckBudgetDatesResponse.DateBudgetStatus(date, false, null));
     }
 }

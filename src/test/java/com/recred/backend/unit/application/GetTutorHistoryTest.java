@@ -3,6 +3,7 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.GetTutorHistory;
 import com.recred.backend.application.GetTutorHistoryRequest;
 import com.recred.backend.application.GetTutorHistoryResponse;
+import com.recred.backend.application.GetHistoryByStudentResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoRetiro;
@@ -30,10 +31,18 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GetTutorHistoryTest {
+
+    private static final String COGNITO_SUBJECT = "cognito-sub";
+    private static final UUID TUTOR_ID = UUID.randomUUID();
+    private static final UUID STUDENT_ID = UUID.randomUUID();
+    private static final UUID PURCHASE_ID = UUID.randomUUID();
+    private static final UUID PRODUCT_ID = UUID.randomUUID();
+    private static final String PRODUCT_NAME = "Jugo";
 
     @Mock
     private PurchaseRepository purchaseRepository;
@@ -42,86 +51,95 @@ class GetTutorHistoryTest {
     private TutorRepository tutorRepository;
 
     @InjectMocks
-    private GetTutorHistory obtenerHistorialTutor;
+    private GetTutorHistory useCase;
 
     @Test
-    void dadoTutorConComprasDeHijos_cuandoSeEjecuta_entoncesRetornaListaDeCompras() {
-        UUID tutorId = UUID.randomUUID();
-        Purchase compra = new Purchase();
-        compra.setId(UUID.randomUUID());
-        List<Purchase> comprasMock = List.of(compra);
+    void executeShouldReturnPurchasesWhenTutorIdIsProvided() {
+        givenPurchasesFound();
 
-        when(purchaseRepository.findHistorialByTutor(tutorId)).thenReturn(comprasMock);
+        GetTutorHistoryResponse result = whenExecuteWithTutorId();
 
-        GetTutorHistoryResponse resultado = obtenerHistorialTutor.execute(
-                GetTutorHistoryRequest.byTutorId(tutorId));
-
-        assertEquals(1, resultado.purchases().size());
-        verify(purchaseRepository, times(1)).findHistorialByTutor(tutorId);
+        thenReturnsExpectedPurchases(result);
+        thenRepositoryWasQueriedByTutorId();
     }
 
     @Test
-    void executeByCognitoSubject_CuandoTutorExiste_RetornaHistorial() {
-        String subject = "cognito-sub";
-        UUID tutorId = UUID.randomUUID();
-        Tutor tutor = new Tutor();
-        tutor.setId(tutorId);
-        Purchase purchase = new Purchase();
-        purchase.setId(UUID.randomUUID());
-        List<Purchase> purchases = List.of(purchase);
-        when(tutorRepository.findByUsuarioIdCognito(subject)).thenReturn(Optional.of(tutor));
-        when(purchaseRepository.findHistorialByTutor(tutorId)).thenReturn(purchases);
+    void executeShouldReturnPurchasesWhenCognitoSubjectIsProvided() {
+        givenTutorFound();
+        givenPurchasesFound();
 
-        GetTutorHistoryResponse result = obtenerHistorialTutor.execute(
-                GetTutorHistoryRequest.byCognitoSubject(subject));
+        GetTutorHistoryResponse result = whenExecuteWithCognitoSubject();
 
-        assertEquals(purchase.getId(), result.purchases().get(0).id());
-        verify(purchaseRepository).findHistorialByTutor(tutorId);
+        thenReturnsExpectedPurchases(result);
+        thenTutorWasFoundByCognitoSubject();
+        thenRepositoryWasQueriedByTutorId();
     }
 
     @Test
-    void executeByCognitoSubject_CuandoTutorNoExiste_LanzaExcepcion() {
-        String subject = "cognito-sub";
-        when(tutorRepository.findByUsuarioIdCognito(subject)).thenReturn(Optional.empty());
+    void executeShouldThrowExceptionWhenTutorNotFoundByCognitoSubject() {
+        givenTutorNotFound();
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> obtenerHistorialTutor.execute(
-                        GetTutorHistoryRequest.byCognitoSubject(subject)));
+        RuntimeException exception = assertThrows(RuntimeException.class, this::whenExecuteWithCognitoSubject);
 
-        assertEquals("Tutor no encontrado para el usuario autenticado", exception.getMessage());
+        thenExceptionContainsMessage(exception, "Tutor no encontrado para el usuario autenticado");
+        thenTutorWasFoundByCognitoSubject();
     }
 
     @Test
     void executeShouldMapPurchaseFieldsAndItems() {
-        UUID tutorId = UUID.randomUUID();
-        UUID alumnoId = UUID.randomUUID();
-        Producto product = product();
-        Purchase purchase = purchase(alumnoId, product);
-        when(purchaseRepository.findHistorialByTutor(tutorId)).thenReturn(List.of(purchase));
+        givenPurchasesFound(List.of(buildPurchase(buildProduct())));
 
-        GetTutorHistoryResponse result = obtenerHistorialTutor.execute(
-                GetTutorHistoryRequest.byTutorId(tutorId)
-        );
+        GetTutorHistoryResponse result = whenExecuteWithTutorId();
 
-        var response = result.purchases().get(0);
-        var item = response.items().get(0);
-        assertEquals(alumnoId, response.studentId());
+        thenPurchaseAndItemAreMappedCorrectly(result);
+    }
+
+    private void thenReturnsExpectedPurchases(GetTutorHistoryResponse result) {
+        assertEquals(1, result.purchases().size());
+        assertEquals(PURCHASE_ID, result.purchases().get(0).id());
+    }
+
+    private void thenRepositoryWasQueriedByTutorId() {
+        verify(purchaseRepository).findHistorialByTutor(TUTOR_ID);
+    }
+
+    private void thenTutorWasFoundByCognitoSubject() {
+        verify(tutorRepository).findByUsuarioIdCognito(COGNITO_SUBJECT);
+    }
+
+    private void thenExceptionContainsMessage(RuntimeException exception, String expectedMessage) {
+        assertEquals(expectedMessage, exception.getMessage());
+    }
+
+    private void thenPurchaseAndItemAreMappedCorrectly(GetTutorHistoryResponse result) {
+        GetHistoryByStudentResponse response = result.purchases().get(0);
+        GetHistoryByStudentResponse.Item item = response.items().get(0);
+        
+        assertEquals(STUDENT_ID, response.studentId());
         assertEquals("ENTREGADO", response.status());
         assertEquals("Entregado", response.statusLabel());
         assertEquals("CREDITOS", response.paymentMethod());
         assertEquals("PRESENCIAL", response.tipo());
         assertEquals("RETIRADO", response.withdrawalStatus());
-        assertEquals(product.getId(), item.productId());
-        assertEquals("Jugo", item.nombre());
+        
+        assertEquals(PRODUCT_ID, item.productId());
+        assertEquals(PRODUCT_NAME, item.nombre());
         assertEquals(3, item.quantity());
         assertEquals(new BigDecimal("400.00"), item.precio());
     }
 
-    private Purchase purchase(UUID alumnoId, Producto product) {
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
+    private Purchase buildSimplePurchase() {
         Purchase purchase = new Purchase();
-        purchase.setId(UUID.randomUUID());
+        purchase.setId(PURCHASE_ID);
+        return purchase;
+    }
+
+    private Purchase buildPurchase(Producto product) {
+        Alumno alumno = new Alumno();
+        alumno.setId(STUDENT_ID);
+        
+        Purchase purchase = new Purchase();
+        purchase.setId(PURCHASE_ID);
         purchase.setStudent(alumno);
         purchase.setTotalAmount(new BigDecimal("1200.00"));
         purchase.setStatus(EstadoCompra.ENTREGADO);
@@ -137,13 +155,39 @@ class GetTutorHistoryTest {
         return purchase;
     }
 
-    private Producto product() {
+    private Producto buildProduct() {
         Producto product = new Producto();
-        product.setId(UUID.randomUUID());
-        product.setNombre("Jugo");
+        product.setId(PRODUCT_ID);
+        product.setNombre(PRODUCT_NAME);
         product.setPrecio(new BigDecimal("400.00"));
         product.setRequierePreparacion(false);
         product.setCupoMaximoDiario(30);
         return product;
+    }
+
+    private void givenTutorFound() {
+        Tutor tutor = new Tutor();
+        tutor.setId(TUTOR_ID);
+        when(tutorRepository.findByUsuarioIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(tutor));
+    }
+
+    private void givenTutorNotFound() {
+        when(tutorRepository.findByUsuarioIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.empty());
+    }
+
+    private void givenPurchasesFound() {
+        givenPurchasesFound(List.of(buildSimplePurchase()));
+    }
+
+    private void givenPurchasesFound(List<Purchase> purchases) {
+        when(purchaseRepository.findHistorialByTutor(TUTOR_ID)).thenReturn(purchases);
+    }
+
+    private GetTutorHistoryResponse whenExecuteWithTutorId() {
+        return useCase.execute(GetTutorHistoryRequest.byTutorId(TUTOR_ID));
+    }
+
+    private GetTutorHistoryResponse whenExecuteWithCognitoSubject() {
+        return useCase.execute(GetTutorHistoryRequest.byCognitoSubject(COGNITO_SUBJECT));
     }
 }

@@ -1,5 +1,7 @@
 package com.recred.backend.unit.infrastructure.web;
 
+import java.time.LocalDate;
+
 import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.application.CheckBudgetDatesRequest;
 import com.recred.backend.application.CheckBudgetDatesResponse;
@@ -110,12 +112,12 @@ class ControllerDelegationCoverageTest {
         UUID studentId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         CheckBudgetDatesRequest request = new CheckBudgetDatesRequest(
-                List.of("2026-06-16"),
+                List.of(LocalDate.of(2026, 6, 16)),
                 List.of(new CheckBudgetDatesRequest.CartItemRequest(productId, 1))
         );
         CheckBudgetDatesResponse expected = new CheckBudgetDatesResponse(
                 List.of(new CheckBudgetDatesResponse.DateBudgetStatus(
-                        "2026-06-16",
+                        LocalDate.of(2026, 6, 16),
                         false,
                         null
                 ))

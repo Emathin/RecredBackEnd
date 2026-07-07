@@ -12,6 +12,7 @@ import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,7 +31,13 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class GetProductChangeRecommendationTest {
+class GetProductChangeRecommendationTest {
+
+    private static final String COGNITO_SUBJECT = "test-sub";
+    private static final UUID USUARIO_ID = UUID.randomUUID();
+    private static final UUID BUFFET_ID = UUID.randomUUID();
+    private static final UUID RECOMMENDATION_ID = UUID.randomUUID();
+    private static final UUID PRODUCT_ID = UUID.randomUUID();
 
     @Mock
     private KiosqueroRepository kiosqueroRepository;
@@ -44,61 +51,63 @@ public class GetProductChangeRecommendationTest {
     @InjectMocks
     private GetProductChangeRecommendation useCase;
 
-    private final String cognitoSubject = "test-sub";
-
     @Test
     void executeShouldReturnRecommendations() {
-        UUID usuarioId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
+        ProductRecommendationResult result = buildRecommendationResultWithAnalysis();
+        givenUsuarioFound();
+        givenBuffetFound();
+        givenRecommendationsFound(List.of(result));
 
-        ProductChangeRecommendation recommendation = new ProductChangeRecommendation();
-        recommendation.setId(UUID.randomUUID());
-        recommendation.setIdBuffet(buffetId);
-        recommendation.setNombre("Galletitas");
-        recommendation.setPrecio(BigDecimal.TEN);
+        List<GetProductChangeRecommendationResponse> responses = whenExecute();
 
-        ProductChangeAnalysis analysis = new ProductChangeAnalysis(
-                "Resumen", List.of(), List.of(), "model"
-        );
-
-        ProductRecommendationResult result = new ProductRecommendationResult(
-                recommendation,
-                Optional.of(analysis)
-        );
-
-        com.recred.backend.domain.models.Usuario usuario = new com.recred.backend.domain.models.Usuario();
-        usuario.setId(usuarioId);
-
-        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(usuario));
-        when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(buffetId);
-        when(aiEventRepository.findAllProductChangeRecommendations(buffetId))
-                .thenReturn(List.of(result));
-
-        GetProductChangeRecommendationRequest request =
-                new GetProductChangeRecommendationRequest(cognitoSubject);
-
-        List<GetProductChangeRecommendationResponse> responses = useCase.execute(request);
-
-        assertNotNull(responses);
-        assertEquals(1, responses.size());
-        GetProductChangeRecommendationResponse resp = responses.get(0);
-        assertEquals(recommendation.getId(), resp.recommendationId());
-        assertEquals("Galletitas", resp.originalProductName());
-        assertEquals("Resumen", resp.summary());
-
-        verify(usuarioRepository).findByIdCognito(cognitoSubject);
-        verify(kiosqueroRepository).findBuffetByUsuarioId(usuarioId);
-        verify(aiEventRepository).findAllProductChangeRecommendations(buffetId);
+        thenRecommendationsAreReturnedCorrectly(responses);
+        thenRepositoriesWereQueried();
     }
 
     @Test
     void executeShouldMapRecommendationsWithoutAnalysisAndWithSaleStatistics() {
-        UUID usuarioId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
+        ProductRecommendationResult result = buildRecommendationResultWithoutAnalysisAndWithStats();
+        givenUsuarioFound();
+        givenBuffetFound();
+        givenRecommendationsFound(List.of(result));
 
+        List<GetProductChangeRecommendationResponse> responses = whenExecute();
+
+        thenStatisticsAreMappedCorrectly(responses);
+    }
+
+    @Test
+    void executeShouldThrowExceptionWhenUserNotFound() {
+        givenUsuarioNotFound();
+
+        Executable execution = () -> whenExecute();
+        thenThrowsUserNotFoundException(execution);
+    }
+
+    @Test
+    void executeShouldThrowExceptionWhenBuffetNotFound() {
+        givenUsuarioFound();
+        givenBuffetNotFound();
+
+        Executable execution = () -> whenExecute();
+        thenThrowsKiosqueroNotFoundException(execution);
+    }
+
+    private ProductRecommendationResult buildRecommendationResultWithAnalysis() {
+        ProductChangeRecommendation recommendation = new ProductChangeRecommendation();
+        recommendation.setId(RECOMMENDATION_ID);
+        recommendation.setIdBuffet(BUFFET_ID);
+        recommendation.setNombre("Galletitas");
+        recommendation.setPrecio(BigDecimal.TEN);
+
+        ProductChangeAnalysis analysis = new ProductChangeAnalysis("Resumen", List.of(), List.of(), "model");
+
+        return new ProductRecommendationResult(recommendation, Optional.of(analysis));
+    }
+
+    private ProductRecommendationResult buildRecommendationResultWithoutAnalysisAndWithStats() {
         ProductSaleStatistics statistics = ProductSaleStatistics.builder()
-                .productoId(productId)
+                .productoId(PRODUCT_ID)
                 .nombre("Alfajor")
                 .categoria("Snacks")
                 .precioActual(new BigDecimal("120.50"))
@@ -116,38 +125,65 @@ public class GetProductChangeRecommendationTest {
                 .build();
 
         ProductChangeRecommendation recommendation = new ProductChangeRecommendation();
-        recommendation.setId(UUID.randomUUID());
-        recommendation.setIdBuffet(buffetId);
+        recommendation.setId(RECOMMENDATION_ID);
+        recommendation.setIdBuffet(BUFFET_ID);
         recommendation.setNombre("Alfajor");
         recommendation.setPrecio(new BigDecimal("120.50"));
         recommendation.setSaleStatistics(statistics);
 
-        ProductRecommendationResult result = new ProductRecommendationResult(
-                recommendation,
-                Optional.empty()
-        );
-        com.recred.backend.domain.models.Usuario usuario =
-                new com.recred.backend.domain.models.Usuario();
-        usuario.setId(usuarioId);
+        return new ProductRecommendationResult(recommendation, Optional.empty());
+    }
 
-        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(usuario));
-        when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(buffetId);
-        when(aiEventRepository.findAllProductChangeRecommendations(buffetId))
-                .thenReturn(List.of(result));
+    private void givenUsuarioFound() {
+        com.recred.backend.domain.models.Usuario usuario = new com.recred.backend.domain.models.Usuario();
+        usuario.setId(USUARIO_ID);
+        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
+    }
 
-        List<GetProductChangeRecommendationResponse> responses = useCase.execute(
-                new GetProductChangeRecommendationRequest(cognitoSubject)
-        );
+    private void givenUsuarioNotFound() {
+        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.empty());
+    }
 
+    private void givenBuffetFound() {
+        when(kiosqueroRepository.findBuffetByUsuarioId(USUARIO_ID)).thenReturn(BUFFET_ID);
+    }
+
+    private void givenBuffetNotFound() {
+        when(kiosqueroRepository.findBuffetByUsuarioId(USUARIO_ID)).thenReturn(null);
+    }
+
+    private void givenRecommendationsFound(List<ProductRecommendationResult> recommendations) {
+        when(aiEventRepository.findAllProductChangeRecommendations(BUFFET_ID)).thenReturn(recommendations);
+    }
+
+    private List<GetProductChangeRecommendationResponse> whenExecute() {
+        return useCase.execute(new GetProductChangeRecommendationRequest(COGNITO_SUBJECT));
+    }
+
+    private void thenRecommendationsAreReturnedCorrectly(List<GetProductChangeRecommendationResponse> responses) {
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        GetProductChangeRecommendationResponse resp = responses.get(0);
+        assertEquals(RECOMMENDATION_ID, resp.recommendationId());
+        assertEquals("Galletitas", resp.originalProductName());
+        assertEquals("Resumen", resp.summary());
+    }
+
+    private void thenRepositoriesWereQueried() {
+        verify(usuarioRepository).findByIdCognito(COGNITO_SUBJECT);
+        verify(kiosqueroRepository).findBuffetByUsuarioId(USUARIO_ID);
+        verify(aiEventRepository).findAllProductChangeRecommendations(BUFFET_ID);
+    }
+
+    private void thenStatisticsAreMappedCorrectly(List<GetProductChangeRecommendationResponse> responses) {
         GetProductChangeRecommendationResponse response = responses.get(0);
         assertNull(response.summary());
         assertEquals(List.of(), response.alerts());
         assertEquals(List.of(), response.suggestedProducts());
         assertNull(response.model());
 
-        GetProductChangeRecommendationResponse.ProductSaleStatisticsDto dto =
-                response.saleStatistics();
-        assertEquals(productId, dto.productoId());
+        GetProductChangeRecommendationResponse.ProductSaleStatisticsDto dto = response.saleStatistics();
+        assertEquals(PRODUCT_ID, dto.productoId());
         assertEquals("Alfajor", dto.nombre());
         assertEquals("Snacks", dto.categoria());
         assertEquals(new BigDecimal("120.50"), dto.precioActual());
@@ -164,32 +200,14 @@ public class GetProductChangeRecommendationTest {
         assertEquals(new BigDecimal("25.75"), dto.stockPromedioCategoria());
     }
 
-    @Test
-    void executeShouldThrowExceptionWhenUserNotFound() {
-        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.empty());
-
-        RuntimeException exception = assertThrows(
-                RuntimeException.class,
-                () -> useCase.execute(new GetProductChangeRecommendationRequest(cognitoSubject))
-        );
-
+    private void thenThrowsUserNotFoundException(Executable execution) {
+        RuntimeException exception = assertThrows(RuntimeException.class, execution);
         assertEquals("User not found", exception.getMessage());
-        verify(usuarioRepository).findByIdCognito(cognitoSubject);
+        verify(usuarioRepository).findByIdCognito(COGNITO_SUBJECT);
         verifyNoInteractions(kiosqueroRepository, aiEventRepository);
     }
 
-    @Test
-    void executeShouldThrowExceptionWhenBuffetNotFound() {
-        UUID usuarioId = UUID.randomUUID();
-        com.recred.backend.domain.models.Usuario usuario = new com.recred.backend.domain.models.Usuario();
-        usuario.setId(usuarioId);
-
-        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(usuario));
-        when(kiosqueroRepository.findBuffetByUsuarioId(usuarioId)).thenReturn(null);
-
-        GetProductChangeRecommendationRequest request =
-                new GetProductChangeRecommendationRequest(cognitoSubject);
-
-        assertThrows(KiosqueroNotFoundException.class, () -> useCase.execute(request));
+    private void thenThrowsKiosqueroNotFoundException(Executable execution) {
+        assertThrows(KiosqueroNotFoundException.class, execution);
     }
 }

@@ -46,23 +46,6 @@ public class CreateAssistantAdvancePurchase {
     private final AdvancePurchaseRulesService advancePurchaseRulesService;
     private final MovimientoBilleteraRepository movimientoBilleteraRepository;
 
-    public CreateAssistantAdvancePurchase(
-            AlumnoRepository studentRepository,
-            WalletRepository walletRepository,
-            PurchaseRepository purchaseRepository,
-            RecessTimeSlotResolver recessTimeSlotResolver,
-            ValidadorHorarioService timeValidator,
-            ValidacionRestriccionesService healthValidator,
-            ValidadorPresupuestoService budgetValidator,
-            WithdrawalCodeService withdrawalCodeService,
-            Clock clock,
-            InventoryAvailabilityService inventoryAvailabilityService,
-            AdvancePurchaseRulesService advancePurchaseRulesService
-    ) {
-        this(studentRepository, walletRepository, purchaseRepository, recessTimeSlotResolver,
-                timeValidator, healthValidator, budgetValidator, withdrawalCodeService, clock,
-                inventoryAvailabilityService, advancePurchaseRulesService, null);
-    }
 
     public CreateAssistantAdvancePurchase(
             AlumnoRepository studentRepository,
@@ -96,7 +79,6 @@ public class CreateAssistantAdvancePurchase {
     public CreateAssistantAdvancePurchaseResponse execute(
             CreateAssistantAdvancePurchaseRequest request
     ) {
-        request.validate();
         Alumno student = student(request.studentId());
         FranjaHoraria pickupSlot = pickupSlot(request);
         LocalDateTime pickupDateTime = pickupDateTime(request.pickupDate(), pickupSlot);

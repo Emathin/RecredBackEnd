@@ -66,7 +66,6 @@ public class GetStudentPreferences {
         return List.of(preferences.get(0));
     }
 
-    @Transactional
     private GetStudentPreferencesResponse preferencesForUser(GetStudentPreferencesRequest request) {
         Optional<Tutor> tutor = findTutorForUser(request.userId());
         if (tutor.isPresent()) {

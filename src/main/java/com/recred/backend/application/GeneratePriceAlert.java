@@ -41,8 +41,6 @@ public class GeneratePriceAlert {
 
     @Transactional
     public GeneratePriceAlertResponse execute(GeneratePriceAlertRequest request) {
-        request.validate();
-
         Producto product = request.product();
         List<Alumno> affectedStudents = findStudentsWithFavoriteProduct(product);
 
