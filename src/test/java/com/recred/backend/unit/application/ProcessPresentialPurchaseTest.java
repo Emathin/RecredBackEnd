@@ -207,7 +207,7 @@ class ProcessPresentialPurchaseTest {
         
         localUseCase.execute(request);
 
-        verify(purchaseRepository).save(any(Purchase.class));
+        thenPurchaseIsSaved();
     }
 
     private ProcessPresentialPurchaseRequest givenRequest() {
@@ -311,6 +311,10 @@ class ProcessPresentialPurchaseTest {
         if (expectedStatus == EstadoCompra.ENTREGADO) {
             assertEquals(PURCHASE_ID, response.purchaseId());
         }
+    }
+
+    private void thenPurchaseIsSaved() {
+        verify(purchaseRepository).save(any(Purchase.class));
     }
 
     private void thenInventoryIsConsumed() {
