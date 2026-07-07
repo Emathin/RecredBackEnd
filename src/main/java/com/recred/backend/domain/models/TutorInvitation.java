@@ -23,4 +23,12 @@ public class TutorInvitation {
     private LocalDateTime expiresAt;
     private LocalDateTime usedAt;
     private LocalDateTime createdAt;
+
+    public boolean isPendingAndExpired(LocalDateTime now) {
+        return this.status == TutorInvitationStatus.PENDING && this.expiresAt.isBefore(now);
+    }
+
+    public void markAsExpired() {
+        this.status = TutorInvitationStatus.EXPIRED;
+    }
 }
