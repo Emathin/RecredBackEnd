@@ -6,7 +6,7 @@ public record DetectStudentPreferencesRequest(
         UUID alumnoId,
         UUID buffetId
 ) {
-    public void validate() {
+    public void ensureRequiredFieldsPresent() {
         if (alumnoId == null) {
             throw new IllegalArgumentException("El alumno es obligatorio");
         }

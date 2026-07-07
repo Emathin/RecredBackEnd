@@ -1,5 +1,6 @@
 package com.recred.backend.unit.infrastructure.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddHealthRestrictionRequest;
 import com.recred.backend.application.DetectStudentPreferences;
@@ -11,8 +12,10 @@ import com.recred.backend.application.ManageRestrictions;
 import com.recred.backend.application.ManageRestrictionsRequest;
 import com.recred.backend.application.ManualProductLock;
 import com.recred.backend.application.ManualProductLockRequest;
+import com.recred.backend.application.ManualProductLockResponse;
 import com.recred.backend.application.ManualProductUnlock;
 import com.recred.backend.application.ManualProductUnlockRequest;
+import com.recred.backend.application.ManualProductUnlockResponse;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RemoveHealthRestrictionsRequest;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
@@ -31,12 +34,13 @@ import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.ObjectMapper;
+import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -59,8 +63,7 @@ class ControlParentalControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @MockitoBean
     private ManualProductLock manualProductLock;
@@ -98,114 +101,252 @@ class ControlParentalControllerTest {
     @MockitoBean
     private PlanAccessGuard planAccessGuard;
 
-    private UUID alumnoId;
-    private UUID clasificacionId;
+    private UUID studentId;
+    private UUID classificationId;
+    private UUID buffetId;
+    private UUID productId;
+    private ActualizarRestriccionesDTO updateRestrictionsRequest;
+    private GetHealthRestrictionsResponse healthRestrictionResponse;
+    private ResultActions response;
 
     @BeforeEach
     void setUp() {
-        alumnoId = UUID.randomUUID();
-        clasificacionId = UUID.randomUUID();
+        studentId = randomUUID();
+        classificationId = randomUUID();
     }
 
     @Test
-    void actualizarRestriccionesSalud_DeberiaRetornar200Ok() throws Exception {
-        ActualizarRestriccionesDTO dto = new ActualizarRestriccionesDTO();
-        dto.setClasificacionesIds(List.of(clasificacionId));
+    void givenHealthRestrictionsUpdate_whenUpdatingRestrictions_thenReturnsOk() throws Exception {
+        givenHealthRestrictionsUpdateRequest();
 
-        mockMvc.perform(put("/api/v1/control-parental/alumnos/{alumnoId}/actualizar-restricciones-salud", alumnoId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk());
+        whenUpdateHealthRestrictions();
 
-        verify(manageRestrictions).execute(new ManageRestrictionsRequest(alumnoId, dto.getClasificacionesIds()));
+        thenResponseIsOk();
+        thenManageRestrictionsWasCalled();
     }
 
     @Test
-    void obtenerRestriccionesSalud_DeberiaRetornarListaY200Ok() throws Exception {
-        GetHealthRestrictionsResponse responseItem = new GetHealthRestrictionsResponse(
-                clasificacionId, "Celíaco", true
+    void givenHealthRestrictions_whenGettingRestrictions_thenReturnsRestrictions()
+            throws Exception {
+        givenStudentHasHealthRestrictions();
+
+        whenGetHealthRestrictions();
+
+        thenHealthRestrictionsAreReturned();
+        thenGetHealthRestrictionsWasCalled();
+    }
+
+    @Test
+    void givenHealthRestrictionRequest_whenAddingRestriction_thenReturnsOk() throws Exception {
+        whenAddHealthRestriction();
+
+        thenResponseIsOk();
+        thenAddHealthRestrictionWasCalled();
+    }
+
+    @Test
+    void givenHealthRestrictionRequest_whenRemovingRestriction_thenReturnsNoContent()
+            throws Exception {
+        whenRemoveHealthRestriction();
+
+        thenResponseIsNoContent();
+        thenRemoveHealthRestrictionWasCalled();
+    }
+
+    @Test
+    void givenPreferenceAnalysisRequest_whenAnalyzingPreferences_thenReturnsAccepted()
+            throws Exception {
+        givenPreferenceAnalysisRequest();
+
+        whenAnalyzePreferences();
+
+        thenResponseIsAccepted();
+        thenDetectStudentPreferencesWasCalled();
+    }
+
+    @Test
+    void givenPreferenceAnalysisFailure_whenAnalyzingPreferences_thenReturnsInternalServerError()
+            throws Exception {
+        givenPreferenceAnalysisRequest();
+        givenPreferenceAnalysisFails();
+
+        whenAnalyzePreferences();
+
+        thenResponseIsInternalServerError();
+    }
+
+    @Test
+    void givenManualProductLockRequest_whenBlockingProduct_thenReturnsOk() throws Exception {
+        givenManualProductLockRequest();
+        givenManualProductLockSucceeds();
+
+        whenBlockProduct();
+
+        thenResponseIsOk();
+        thenManualProductLockWasCalled();
+    }
+
+    @Test
+    void givenManualProductUnlockRequest_whenUnlockingProduct_thenReturnsOk() throws Exception {
+        givenManualProductUnlockRequest();
+        givenManualProductUnlockSucceeds();
+
+        whenUnlockProduct();
+
+        thenResponseIsOk();
+        thenManualProductUnlockWasCalled();
+    }
+
+    private void givenHealthRestrictionsUpdateRequest() {
+        updateRestrictionsRequest = new ActualizarRestriccionesDTO();
+        updateRestrictionsRequest.setClasificacionesIds(List.of(classificationId));
+    }
+
+    private void givenStudentHasHealthRestrictions() {
+        healthRestrictionResponse = new GetHealthRestrictionsResponse(
+                classificationId,
+                "Celiaco",
+                true
         );
+        when(getHealthRestrictions.execute(new GetHealthRestrictionsRequest(studentId)))
+                .thenReturn(Set.of(healthRestrictionResponse));
+    }
 
-        when(getHealthRestrictions.execute(new GetHealthRestrictionsRequest(alumnoId)))
-                .thenReturn(Set.of(responseItem));
+    private void givenPreferenceAnalysisRequest() {
+        buffetId = randomUUID();
+    }
 
-        mockMvc.perform(get("/api/v1/control-parental/alumnos/{alumnoId}/obtener-restricciones-salud", alumnoId)
-                        .contentType(MediaType.APPLICATION_JSON))
+    private void givenPreferenceAnalysisFails() {
+        doThrow(new RuntimeException("Error IA")).when(detectStudentPreferences)
+                .execute(new DetectStudentPreferencesRequest(studentId, buffetId));
+    }
+
+    private void givenManualProductLockRequest() {
+        productId = randomUUID();
+    }
+
+    private void givenManualProductUnlockRequest() {
+        productId = randomUUID();
+    }
+
+    private void givenManualProductLockSucceeds() {
+        when(manualProductLock.execute(new ManualProductLockRequest(studentId, productId)))
+                .thenReturn(new ManualProductLockResponse());
+    }
+
+    private void givenManualProductUnlockSucceeds() {
+        when(manualProductUnlock.execute(new ManualProductUnlockRequest(studentId, productId)))
+                .thenReturn(new ManualProductUnlockResponse());
+    }
+
+    private void whenUpdateHealthRestrictions() throws Exception {
+        response = mockMvc.perform(put(
+                "/api/v1/control-parental/alumnos/{alumnoId}/actualizar-restricciones-salud",
+                studentId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRestrictionsRequest)));
+    }
+
+    private void whenGetHealthRestrictions() throws Exception {
+        response = mockMvc.perform(get(
+                "/api/v1/control-parental/alumnos/{alumnoId}/obtener-restricciones-salud",
+                studentId)
+                .contentType(MediaType.APPLICATION_JSON));
+    }
+
+    private void whenAddHealthRestriction() throws Exception {
+        response = mockMvc.perform(post(
+                "/api/v1/control-parental/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}",
+                studentId,
+                classificationId)
+                .contentType(MediaType.APPLICATION_JSON));
+    }
+
+    private void whenRemoveHealthRestriction() throws Exception {
+        response = mockMvc.perform(delete(
+                "/api/v1/control-parental/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}",
+                studentId,
+                classificationId)
+                .contentType(MediaType.APPLICATION_JSON));
+    }
+
+    private void whenAnalyzePreferences() throws Exception {
+        response = mockMvc.perform(post(
+                "/api/v1/control-parental/alumnos/{alumnoId}/analizar-preferencias",
+                studentId)
+                .param("buffetId", buffetId.toString())
+                .contentType(MediaType.APPLICATION_JSON));
+    }
+
+    private void whenBlockProduct() throws Exception {
+        response = mockMvc.perform(post(
+                "/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}",
+                studentId,
+                productId));
+    }
+
+    private void whenUnlockProduct() throws Exception {
+        response = mockMvc.perform(delete(
+                "/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}",
+                studentId,
+                productId));
+    }
+
+    private void thenResponseIsOk() throws Exception {
+        response.andExpect(status().isOk());
+    }
+
+    private void thenResponseIsNoContent() throws Exception {
+        response.andExpect(status().isNoContent());
+    }
+
+    private void thenResponseIsAccepted() throws Exception {
+        response.andExpect(status().isAccepted());
+    }
+
+    private void thenResponseIsInternalServerError() throws Exception {
+        response.andExpect(status().isInternalServerError());
+    }
+
+    private void thenHealthRestrictionsAreReturned() throws Exception {
+        response
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(clasificacionId.toString()))
-                .andExpect(jsonPath("$[0].descripcion").value("Celíaco"));
-
-        verify(getHealthRestrictions).execute(new GetHealthRestrictionsRequest(alumnoId));
+                .andExpect(jsonPath("$[0].id").value(classificationId.toString()))
+                .andExpect(jsonPath("$[0].descripcion").value("Celiaco"));
     }
 
-    @Test
-    void agregarRestriccionSalud_DeberiaRetornar200Ok() throws Exception {
-        mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}", alumnoId, clasificacionId)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-
-        verify(addHealthRestriction).execute(new AddHealthRestrictionRequest(alumnoId, clasificacionId));
+    private void thenManageRestrictionsWasCalled() {
+        verify(manageRestrictions).execute(new ManageRestrictionsRequest(
+                studentId,
+                updateRestrictionsRequest.getClasificacionesIds()));
     }
 
-    @Test
-    void removerRestriccionSalud_DeberiaRetornar204NoContent() throws Exception {
-        mockMvc.perform(delete("/api/v1/control-parental/alumnos/{alumnoId}/restricciones-salud/{clasificacionId}", alumnoId, clasificacionId)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNoContent());
+    private void thenGetHealthRestrictionsWasCalled() {
+        verify(getHealthRestrictions).execute(new GetHealthRestrictionsRequest(studentId));
+    }
 
+    private void thenAddHealthRestrictionWasCalled() {
+        verify(addHealthRestriction).execute(
+                new AddHealthRestrictionRequest(studentId, classificationId));
+    }
+
+    private void thenRemoveHealthRestrictionWasCalled() {
         verify(removeHealthRestrictions).execute(
-                new RemoveHealthRestrictionsRequest(alumnoId, clasificacionId));
+                new RemoveHealthRestrictionsRequest(studentId, classificationId));
     }
-    @Test
-    void returnAcceptedWhenPreferenceAnalysisIsTriggered() throws Exception {
-        UUID buffetId = UUID.randomUUID();
 
-        mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/analizar-preferencias", alumnoId)
-                        .param("buffetId", buffetId.toString())
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isAccepted());
-
+    private void thenDetectStudentPreferencesWasCalled() {
         verify(detectStudentPreferences).execute(
-                new DetectStudentPreferencesRequest(alumnoId, buffetId)
-        );
+                new DetectStudentPreferencesRequest(studentId, buffetId));
         verify(planAccessGuard).requireTutorIntermediate(null);
     }
 
-    @Test
-    void returnInternalServerErrorWhenPreferenceAnalysisFails() throws Exception {
-        UUID buffetId = UUID.randomUUID();
-        doThrow(new RuntimeException("Error IA")).when(detectStudentPreferences)
-                .execute(new DetectStudentPreferencesRequest(alumnoId, buffetId));
-
-        mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/analizar-preferencias", alumnoId)
-                        .param("buffetId", buffetId.toString())
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError());
+    private void thenManualProductLockWasCalled() {
+        verify(manualProductLock).execute(new ManualProductLockRequest(studentId, productId));
     }
 
-    @Test
-    void cuandoSeHacePostParaBloquear_entoncesRetorna200Ok() throws Exception {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-
-        when(manualProductLock.execute(new ManualProductLockRequest(alumnoId, productoId)))
-                .thenReturn(new com.recred.backend.application.ManualProductLockResponse());
-
-        mockMvc.perform(post("/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void cuandoSeHaceDeleteParaDesbloquear_entoncesRetorna200Ok() throws Exception {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-
-        when(manualProductUnlock.execute(new ManualProductUnlockRequest(alumnoId, productoId)))
-                .thenReturn(new com.recred.backend.application.ManualProductUnlockResponse());
-
-        mockMvc.perform(delete("/api/v1/control-parental/alumnos/{alumnoId}/productos-bloqueados/{productoId}", alumnoId, productoId))
-                .andExpect(status().isOk());
-
-        verify(manualProductUnlock).execute(new ManualProductUnlockRequest(alumnoId, productoId));
+    private void thenManualProductUnlockWasCalled() {
+        verify(manualProductUnlock).execute(
+                new ManualProductUnlockRequest(studentId, productId));
     }
 }

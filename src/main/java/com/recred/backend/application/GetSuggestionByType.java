@@ -7,7 +7,6 @@ import com.recred.backend.domain.repositories.UsuarioRepository;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public class GetSuggestionByType {
 
@@ -24,15 +23,26 @@ public class GetSuggestionByType {
     }
 
     public List<GetSuggestionResponse> execute(GetSuggestionByTypeRequest request) {
-        UUID usuarioId = getUsuarioId(request.cognitoSubject());
-        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(usuarioId);
+        UUID buffetId = findBuffetForAuthenticatedUser(request.cognitoSubject());
         if (buffetId == null) {
             return List.of();
         }
+        return suggestionsFor(buffetId, request);
+    }
+
+    private UUID findBuffetForAuthenticatedUser(String cognitoSubject) {
+        UUID userId = getUsuarioId(cognitoSubject);
+        return kiosqueroRepository.findBuffetByUsuarioId(userId);
+    }
+
+    private List<GetSuggestionResponse> suggestionsFor(
+            UUID buffetId,
+            GetSuggestionByTypeRequest request
+    ) {
         return suggestionAiRepository.findTop3ByBuffetIdAndTipo(buffetId, request.tipo())
                 .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .map(this::toResponse)
+                .toList();
     }
 
     private UUID getUsuarioId(String cognitoSubject) {
@@ -41,7 +51,7 @@ public class GetSuggestionByType {
                 .getId();
     }
 
-    private GetSuggestionResponse mapToResponse(SugerenciaIA suggestion) {
+    private GetSuggestionResponse toResponse(SugerenciaIA suggestion) {
         return new GetSuggestionResponse(
                 suggestion.getId(),
                 suggestion.getAlumnoId(),

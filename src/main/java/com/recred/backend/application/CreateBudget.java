@@ -18,84 +18,108 @@ public class CreateBudget {
     }
 
     @Transactional
-    public CreateBudgetResponse execute(CreateBudgetRequest request) {
-        List<ReglaPresupuestoCategoria> reglas = this.mapCategoryRules(request.categoryRules());
-        PresupuestoAlumno presupuesto = this.buildPresupuesto(request, reglas);
+    public CreateBudgetResponse execute(CreateBudgetRequest createBudgetRequest) {
+        PresupuestoAlumno budget = buildBudgetFrom(createBudgetRequest);
+        applyBudgetRules(budget);
+        PresupuestoAlumno savedBudget = repository.save(budget);
 
-        presupuesto.validarPorcentajes();
-        presupuesto.recalcularMontosReglas();
-
-        PresupuestoAlumno saved = repository.save(presupuesto);
-        return mapToResponse(saved);
+        return mapToResponse(savedBudget);
     }
 
-    private List<ReglaPresupuestoCategoria> mapCategoryRules(
+    private PresupuestoAlumno buildBudgetFrom(CreateBudgetRequest createBudgetRequest) {
+        List<ReglaPresupuestoCategoria> categoryRules =
+                buildCategoryRules(createBudgetRequest.categoryRules());
+        return buildBudget(createBudgetRequest, categoryRules);
+    }
+
+    private void applyBudgetRules(PresupuestoAlumno budget) {
+        budget.validarPorcentajes();
+        budget.recalcularMontosReglas();
+    }
+
+    private List<ReglaPresupuestoCategoria> buildCategoryRules(
             List<CreateBudgetRequest.CategoryRuleRequest> categoryRules) {
         if (categoryRules == null || categoryRules.isEmpty()) {
             return null;
         }
-        return categoryRules.stream().map(this::mapToCategoryRule).collect(Collectors.toList());
+        return categoryRules.stream()
+                .map(this::buildCategoryRule)
+                .collect(Collectors.toList());
     }
 
-    private ReglaPresupuestoCategoria mapToCategoryRule(
-            CreateBudgetRequest.CategoryRuleRequest rule) {
-        CategoriaProducto categoria = new CategoriaProducto();
-        categoria.setId(rule.categoryId());
+    private ReglaPresupuestoCategoria buildCategoryRule(
+            CreateBudgetRequest.CategoryRuleRequest categoryRuleRequest) {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(categoryRuleRequest.categoryId());
 
         return new ReglaPresupuestoCategoria(
                 null,
-                categoria,
-                rule.porcentajeLimite(),
+                category,
+                categoryRuleRequest.porcentajeLimite(),
                 null,
                 true);
     }
 
-    private PresupuestoAlumno buildPresupuesto(
-            CreateBudgetRequest request,
-            List<ReglaPresupuestoCategoria> reglas) {
+    private PresupuestoAlumno buildBudget(
+            CreateBudgetRequest createBudgetRequest,
+            List<ReglaPresupuestoCategoria> categoryRules) {
         return new PresupuestoAlumno(
                 null,
-                request.studentId(),
-                request.creadorId(),
-                request.limitAmount(),
-                request.period(),
-                request.startDate(),
+                createBudgetRequest.studentId(),
+                createBudgetRequest.creadorId(),
+                createBudgetRequest.limitAmount(),
+                createBudgetRequest.period(),
+                createBudgetRequest.startDate(),
                 true,
-                reglas);
+                categoryRules);
     }
 
-    private CreateBudgetResponse mapToResponse(PresupuestoAlumno domain) {
-        List<CreateBudgetResponse.ReglaPresupuestoCategoriaResponse> rules = null;
-        if (domain.getReglasCategoria() != null) {
-            rules = domain.getReglasCategoria().stream().map(rule -> {
-                CreateBudgetResponse.CategoriaProductoResponse catResponse = null;
-                if (rule.getCategoria() != null) {
-                    catResponse = new CreateBudgetResponse.CategoriaProductoResponse(
-                            rule.getCategoria().getId(),
-                            rule.getCategoria().getDescripcion(),
-                            rule.getCategoria().getActivo()
-                    );
-                }
-                return new CreateBudgetResponse.ReglaPresupuestoCategoriaResponse(
-                        rule.getId(),
-                        catResponse,
-                        rule.getPorcentajeLimite(),
-                        rule.getMontoLimiteCalculado(),
-                        rule.isActivo()
-                );
-            }).collect(Collectors.toList());
+    private CreateBudgetResponse mapToResponse(PresupuestoAlumno budget) {
+        return new CreateBudgetResponse(
+                budget.getId(),
+                budget.getAlumnoId(),
+                budget.getCreadoPorUsuarioId(),
+                budget.getMontoLimiteGeneral(),
+                budget.getPeriodo(),
+                budget.getFechaInicio(),
+                budget.isActivo(),
+                mapRuleResponses(budget),
+                budget.getMontoLimite()
+        );
+    }
+
+    private List<CreateBudgetResponse.ReglaPresupuestoCategoriaResponse> mapRuleResponses(
+            PresupuestoAlumno budget) {
+        if (budget.getReglasCategoria() == null) {
+            return null;
         }
 
-        return new CreateBudgetResponse(
-                domain.getId(),
-                domain.getAlumnoId(),
-                domain.getCreadoPorUsuarioId(),
-                domain.getMontoLimiteGeneral(),
-                domain.getPeriodo(),
-                domain.getFechaInicio(),
-                domain.isActivo(),
-                rules,
-                domain.getMontoLimite()
+        return budget.getReglasCategoria().stream()
+                .map(this::mapRuleResponse)
+                .collect(Collectors.toList());
+    }
+
+    private CreateBudgetResponse.ReglaPresupuestoCategoriaResponse mapRuleResponse(
+            ReglaPresupuestoCategoria rule) {
+        return new CreateBudgetResponse.ReglaPresupuestoCategoriaResponse(
+                rule.getId(),
+                mapCategoryResponse(rule.getCategoria()),
+                rule.getPorcentajeLimite(),
+                rule.getMontoLimiteCalculado(),
+                rule.isActivo()
+        );
+    }
+
+    private CreateBudgetResponse.CategoriaProductoResponse mapCategoryResponse(
+            CategoriaProducto category) {
+        if (category == null) {
+            return null;
+        }
+
+        return new CreateBudgetResponse.CategoriaProductoResponse(
+                category.getId(),
+                category.getDescripcion(),
+                category.getActivo()
         );
     }
 }

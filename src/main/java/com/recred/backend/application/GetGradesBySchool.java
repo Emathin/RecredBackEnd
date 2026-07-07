@@ -20,8 +20,6 @@ public class GetGradesBySchool {
     }
 
     public GetGradesBySchoolResponse execute(GetGradesBySchoolRequest request) {
-        request.validate();
-
         UUID schoolId = request.schoolId();
         ensureSchoolExists(schoolId);
         List<Grado> grades = findActiveGrades(schoolId);
