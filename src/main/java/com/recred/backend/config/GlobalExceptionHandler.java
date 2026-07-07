@@ -1,32 +1,31 @@
 package com.recred.backend.config;
 
-import com.recred.backend.domain.exceptions.NotificationNotFoundException;
-import com.recred.backend.domain.exceptions.UsernameExistsException;
+import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.BuffetNotFoundException;
+import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.FileValidationException;
 import com.recred.backend.domain.exceptions.GradeAlreadyExistsException;
 import com.recred.backend.domain.exceptions.GradeNotFoundException;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
-import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
-import com.recred.backend.domain.exceptions.BuffetNotFoundException;
 import com.recred.backend.domain.exceptions.ImageValidationException;
-import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
+import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.InsufficientStockException;
 import com.recred.backend.domain.exceptions.InventoryNotFoundException;
 import com.recred.backend.domain.exceptions.InventoryOperationException;
+import com.recred.backend.domain.exceptions.InvalidChatMessageException;
 import com.recred.backend.domain.exceptions.InvalidGradeException;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
 import com.recred.backend.domain.exceptions.InvalidTimeSlotException;
 import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
 import com.recred.backend.domain.exceptions.KiosqueroPayoutConfigNotFoundException;
 import com.recred.backend.domain.exceptions.LevelNotFoundException;
+import com.recred.backend.domain.exceptions.NotificationNotFoundException;
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 import com.recred.backend.domain.exceptions.PickupCutoffTimeExceededException;
 import com.recred.backend.domain.exceptions.PickupSlotCapacityExceededException;
 import com.recred.backend.domain.exceptions.PickupSlotRulesNotFoundException;
+import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
 import com.recred.backend.domain.exceptions.ProductDailyCapacityExceededException;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
-import com.recred.backend.domain.exceptions.InsufficientBalanceException;
-import com.recred.backend.domain.exceptions.InvalidChatMessageException;
-import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
 import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
@@ -36,6 +35,7 @@ import com.recred.backend.domain.exceptions.TimeSlotInUseException;
 import com.recred.backend.domain.exceptions.TimeSlotNotFoundException;
 import com.recred.backend.domain.exceptions.TimeSlotOverlapException;
 import com.recred.backend.domain.exceptions.TutorNoEncontradoException;
+import com.recred.backend.domain.exceptions.UsernameExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -46,6 +46,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
@@ -343,6 +344,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Acceso denegado", ex.getMessage());
+    }
+
+    @ExceptionHandler(OperationNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleOperationNotAllowed(
+            OperationNotAllowedException ex) {
         return buildResponse(HttpStatus.FORBIDDEN, "Acceso denegado", ex.getMessage());
     }
 

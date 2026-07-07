@@ -28,35 +28,47 @@ public class AddFavoriteProduct {
     }
 
     @Transactional
-    public AddFavoriteProductResponse execute(AddFavoriteProductRequest request) {
-        Alumno alumno = findAlumnoById(request.alumnoId());
-        Producto producto = findById(request.productoId());
-        validateFreePlanLimit(alumno, request.productoId(), request.alumnoId());
-        alumno.agregarProductoFavorito(producto);
-        alumnoRepository.save(alumno);
+    public AddFavoriteProductResponse execute(AddFavoriteProductRequest addFavoriteRequest) {
+        Alumno student = findAlumnoById(addFavoriteRequest.alumnoId());
+        Producto product = findProductById(addFavoriteRequest.productoId());
+
+        ensureFavoriteProductLimitIsNotExceeded(student, addFavoriteRequest);
+        addFavoriteProduct(student, product);
+
         return new AddFavoriteProductResponse();
     }
 
-    private void validateFreePlanLimit(Alumno alumno, UUID productoId, UUID alumnoId) {
-        List<Tutor> tutors = tutorRepository.findByAlumnoId(alumnoId);
+    private void ensureFavoriteProductLimitIsNotExceeded(
+            Alumno student,
+            AddFavoriteProductRequest addFavoriteRequest) {
+        List<Tutor> tutors = tutorRepository.findByAlumnoId(addFavoriteRequest.alumnoId());
         if (hasPaidTutor(tutors)) {
             return;
         }
 
-        if (exceedsFreePlanLimit(tutors, alumno, productoId, alumnoId)) {
+        if (exceedsFreePlanLimit(
+                tutors,
+                student,
+                addFavoriteRequest.productoId(),
+                addFavoriteRequest.alumnoId())) {
             throw new IllegalArgumentException(
                     "Límite de productos favoritos alcanzado para cuenta gratuita (máximo 5)");
         }
     }
 
-    private Alumno findAlumnoById(UUID id) {
-        return alumnoRepository.findById(id)
+    private Alumno findAlumnoById(UUID studentId) {
+        return alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
     }
 
-    private Producto findById(UUID id) {
-        return productRepository.findById(id)
+    private Producto findProductById(UUID productId) {
+        return productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+    }
+
+    private void addFavoriteProduct(Alumno student, Producto product) {
+        student.agregarProductoFavorito(product);
+        alumnoRepository.save(student);
     }
 
     private boolean hasPaidTutor(List<Tutor> tutors) {
@@ -67,13 +79,13 @@ public class AddFavoriteProduct {
 
     private boolean exceedsFreePlanLimit(
             List<Tutor> tutors,
-            Alumno alumno,
-            UUID productoId,
-            UUID alumnoId
+            Alumno student,
+            UUID productId,
+            UUID studentId
     ) {
         if (tutors.isEmpty()) {
-            return alumno.exceedsFavoriteProductLimit(
-                    productoId,
+            return student.exceedsFavoriteProductLimit(
+                    productId,
                     FREE_PLAN_FAVORITE_PRODUCT_LIMIT
             );
         }
@@ -81,8 +93,8 @@ public class AddFavoriteProduct {
         return tutors.stream()
                 .map(this::fullTutor)
                 .anyMatch(tutor -> tutor.exceedsChildrenFavoriteProductLimit(
-                        alumnoId,
-                        productoId,
+                        studentId,
+                        productId,
                         FREE_PLAN_FAVORITE_PRODUCT_LIMIT
                 ));
     }
