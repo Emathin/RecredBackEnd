@@ -20,10 +20,10 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SummaryRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.services.ParentSummaryAnalyzer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -38,12 +38,12 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class GenerateParentSummaryTest {
+class GenerateParentSummaryTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -58,146 +58,257 @@ public class GenerateParentSummaryTest {
     @Mock
     private ParentSummaryAnalyzer parentSummaryAnalyzer;
 
-    @InjectMocks
-    private GenerateParentSummary generateParentSummary;
+    private GenerateParentSummary useCase;
 
-    @Test
-    void execute_WhenTutorHasPaidPlanAndChildren_ShouldProcessTutor() {
-        UUID usuarioId = UUID.randomUUID();
-        Tutor tutor = createTutor(usuarioId, TipoPlan.AVANZADO, Set.of(child("Ana")));
+    private UUID tutorUserId;
+    private LocalDateTime start;
+    private LocalDateTime end;
+    private Alumno ana;
+    private Alumno luis;
+    private Tutor tutor;
+    private GenerateParentSummaryResponse response;
 
-        when(tutorRepository.findAll()).thenReturn(List.of(tutor));
-        when(summaryRepository.save(any(Summary.class))).thenReturn(new Summary());
-
-        GenerateParentSummaryRequest request = new GenerateParentSummaryRequest(
-                LocalDateTime.now().minusDays(7), LocalDateTime.now());
-        GenerateParentSummaryResponse response = generateParentSummary.execute(request);
-
-        assertTrue(response.processedUserIds().contains(usuarioId));
-        verify(summaryRepository, times(1)).save(any(Summary.class));
+    @BeforeEach
+    void setUp() {
+        useCase = new GenerateParentSummary(
+                tutorRepository,
+                purchaseRepository,
+                summaryRepository,
+                presupuestoRepository,
+                parentSummaryAnalyzer);
     }
 
     @Test
-    void executeBuildsSummaryWithChildrenPurchasesBudgetAndAnalyzerMessage() throws Exception {
-        UUID usuarioId = UUID.randomUUID();
-        LocalDateTime inicio = LocalDateTime.of(2026, 6, 1, 0, 0);
-        LocalDateTime fin = LocalDateTime.of(2026, 6, 15, 23, 59);
-        
-        Alumno ana = child("Ana");
-        Alumno luis = child("Luis");
-        Tutor tutor = createTutor(usuarioId, TipoPlan.AVANZADO, Set.of(ana, luis));
+    void givenPaidTutorWithChildren_whenGeneratingParentSummary_thenSavesSummaryForTutor() {
+        givenParentSummaryPeriod();
+        givenPaidTutorWithChildren();
+        givenNoPurchasesForChildren();
+        givenNoActiveBudgets();
 
-        Producto fruta = product("Fruta", "20.00", category("Frutas"));
-        Producto snack = product("Snack", "10.00", null);
-        Producto agua = product("Agua", "0.00", category("Bebidas"));
+        whenGeneratingParentSummary();
 
+        thenTutorUserWasProcessed();
+        thenSummaryWasSavedForTutor();
+    }
+
+    @Test
+    void givenChildrenPurchasesAndBudget_whenGeneratingParentSummary_thenSavesAnalyzedSummary()
+            throws Exception {
+        givenParentSummaryPeriod();
+        givenPaidTutorWithChildren();
+        givenAnaPurchasesFruitAndSnack();
+        givenLuisPurchaseWithZeroTotal();
+        givenAnaHasActiveBudget();
+        givenLuisHasNoActiveBudget();
+        givenAnalyzerMessage("Mensaje final");
+
+        whenGeneratingParentSummary();
+
+        thenSavedSummaryHasTutorAndPeriod();
+        thenSavedSummaryHasAnalyzerMessage("Mensaje final");
+        thenSavedSummaryHasAnaSpendingBreakdown();
+        thenSavedSummaryHasLuisZeroSpendingBreakdown();
+    }
+
+    @Test
+    void givenProductsWithSameQuantity_whenGeneratingParentSummary_thenMostExpensiveProductWins()
+            throws Exception {
+        givenParentSummaryPeriod();
+        givenPaidTutorWithChild("Ana");
+        givenAnaBoughtProductsWithSameQuantity();
+        givenAnaHasNoActiveBudget();
+        givenAnalyzerMessage("Mensaje final");
+
+        whenGeneratingParentSummary();
+
+        thenMostConsumedProductIs("Sandwich", 50, 1);
+    }
+
+    @Test
+    void givenTutorsWithoutSummaryEligibility_whenGeneratingParentSummary_thenNoSummaryIsSaved() {
+        givenParentSummaryPeriod();
+        givenOnlyIneligibleTutors();
+
+        whenGeneratingParentSummary();
+
+        thenNoTutorUserWasProcessed();
+        thenNoSummaryWasSaved();
+    }
+
+    private void givenParentSummaryPeriod() {
+        start = LocalDateTime.of(2026, 6, 1, 0, 0);
+        end = LocalDateTime.of(2026, 6, 15, 23, 59);
+    }
+
+    private void givenPaidTutorWithChildren() {
+        tutorUserId = UUID.randomUUID();
+        ana = child("Ana");
+        luis = child("Luis");
+        tutor = tutor(tutorUserId, TipoPlan.AVANZADO, Set.of(ana, luis));
         when(tutorRepository.findAll()).thenReturn(List.of(tutor));
-        when(purchaseRepository.findByAlumnoAndDateRange(ana.getId(), inicio, fin))
-                .thenReturn(List.of(
-                        purchase(fruta, 2, "40.00"),
-                        purchase(snack, 1, "10.00")
-                ));
-        when(purchaseRepository.findByAlumnoAndDateRange(luis.getId(), inicio, fin))
-                .thenReturn(List.of(purchase(agua, 1, "0.00")));
+    }
+
+    private void givenPaidTutorWithChild(String childName) {
+        tutorUserId = UUID.randomUUID();
+        ana = child(childName);
+        tutor = tutor(tutorUserId, TipoPlan.AVANZADO, Set.of(ana));
+        when(tutorRepository.findAll()).thenReturn(List.of(tutor));
+    }
+
+    private void givenOnlyIneligibleTutors() {
+        Tutor paidWithoutChildren = tutor(UUID.randomUUID(), TipoPlan.AVANZADO, Set.of());
+        Tutor freeWithChildren = tutor(
+                UUID.randomUUID(),
+                TipoPlan.GRATUITO,
+                Set.of(child("Ana")));
+        when(tutorRepository.findAll())
+                .thenReturn(List.of(paidWithoutChildren, freeWithChildren));
+    }
+
+    private void givenNoPurchasesForChildren() {
+        when(purchaseRepository.findByAlumnoAndDateRange(ana.getId(), start, end))
+                .thenReturn(List.of());
+        when(purchaseRepository.findByAlumnoAndDateRange(luis.getId(), start, end))
+                .thenReturn(List.of());
+    }
+
+    private void givenNoActiveBudgets() {
         when(presupuestoRepository.findActivoByAlumnoId(ana.getId()))
-                .thenReturn(Optional.of(budget(ana.getId())));
+                .thenReturn(Optional.empty());
         when(presupuestoRepository.findActivoByAlumnoId(luis.getId()))
                 .thenReturn(Optional.empty());
-        when(parentSummaryAnalyzer.analyze(any())).thenReturn("Mensaje final");
-        
-        GenerateParentSummaryRequest request = new GenerateParentSummaryRequest(inicio, fin);
-        generateParentSummary.execute(request);
+    }
 
-        ArgumentCaptor<Summary> captor = ArgumentCaptor.forClass(Summary.class);
-        verify(summaryRepository).save(captor.capture());
-        Summary result = captor.getValue();
+    private void givenAnaPurchasesFruitAndSnack() {
+        Producto fruit = product("Fruta", "20.00", category("Frutas"));
+        Producto snack = product("Snack", "10.00", null);
+        when(purchaseRepository.findByAlumnoAndDateRange(ana.getId(), start, end))
+                .thenReturn(List.of(
+                        purchase(fruit, 2, "40.00"),
+                        purchase(snack, 1, "10.00")
+                ));
+    }
 
-        JsonNode json = OBJECT_MAPPER.readTree(result.getResumen());
-        assertEquals(tutor.getUsuario(), result.getUsuario());
-        assertEquals(inicio, result.getFechaDesde());
-        assertEquals(fin, result.getFechaHasta());
-        assertEquals("Mensaje final", json.get("mensaje").asText());
-        JsonNode anaNode = json.get("hijos").get("Ana");
+    private void givenLuisPurchaseWithZeroTotal() {
+        Producto water = product("Agua", "0.00", category("Bebidas"));
+        when(purchaseRepository.findByAlumnoAndDateRange(luis.getId(), start, end))
+                .thenReturn(List.of(purchase(water, 1, "0.00")));
+    }
+
+    private void givenAnaHasActiveBudget() {
+        when(presupuestoRepository.findActivoByAlumnoId(ana.getId()))
+                .thenReturn(Optional.of(budget(ana.getId())));
+    }
+
+    private void givenLuisHasNoActiveBudget() {
+        when(presupuestoRepository.findActivoByAlumnoId(luis.getId()))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenAnaBoughtProductsWithSameQuantity() {
+        Producto cheap = product("Agua", "10.00", category("Bebidas"));
+        Producto expensive = product("Sandwich", "50.00", category("Comida"));
+        when(purchaseRepository.findByAlumnoAndDateRange(ana.getId(), start, end))
+                .thenReturn(List.of(
+                        purchase(cheap, 1, "10.00"),
+                        purchase(expensive, 1, "50.00")
+                ));
+    }
+
+    private void givenAnaHasNoActiveBudget() {
+        when(presupuestoRepository.findActivoByAlumnoId(ana.getId()))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenAnalyzerMessage(String message) {
+        when(parentSummaryAnalyzer.analyze(any())).thenReturn(message);
+    }
+
+    private void whenGeneratingParentSummary() {
+        response = useCase.execute(new GenerateParentSummaryRequest(start, end));
+    }
+
+    private void thenTutorUserWasProcessed() {
+        assertEquals(List.of(tutorUserId), response.processedUserIds());
+    }
+
+    private void thenNoTutorUserWasProcessed() {
+        assertTrue(response.processedUserIds().isEmpty());
+    }
+
+    private void thenSummaryWasSavedForTutor() {
+        assertEquals(tutor.getUsuario(), savedSummary().getUsuario());
+    }
+
+    private void thenSavedSummaryHasTutorAndPeriod() {
+        Summary summary = savedSummary();
+        assertEquals(tutor.getUsuario(), summary.getUsuario());
+        assertEquals(start, summary.getFechaDesde());
+        assertEquals(end, summary.getFechaHasta());
+    }
+
+    private void thenSavedSummaryHasAnalyzerMessage(String expectedMessage) throws Exception {
+        assertEquals(expectedMessage, summaryJson().get("mensaje").asText());
+    }
+
+    private void thenSavedSummaryHasAnaSpendingBreakdown() throws Exception {
+        JsonNode anaNode = summaryJson().get("hijos").get("Ana");
         assertEquals(50, anaNode.get("totalGastado").asInt());
         assertEquals(100, anaNode.get("LimiteGasto").asInt());
         assertEquals(80, anaNode.get("porCategoria").get("Frutas").asInt());
         assertEquals(20, anaNode.get("porCategoria").get("Sin Categoria").asInt());
         assertEquals("Fruta", anaNode.get("productoMasConsumido").get("nombre").asText());
         assertEquals(2, anaNode.get("productoMasConsumido").get("cantidad").asInt());
-        JsonNode luisNode = json.get("hijos").get("Luis");
+    }
+
+    private void thenSavedSummaryHasLuisZeroSpendingBreakdown() throws Exception {
+        JsonNode luisNode = summaryJson().get("hijos").get("Luis");
         assertEquals(0, luisNode.get("totalGastado").asInt());
         assertEquals(0, luisNode.get("porCategoria").get("Bebidas").asInt());
     }
 
-    @Test
-    void execute_WhenMostConsumedProductsHaveSameQuantity_ShouldChooseHighestPrice()
+    private void thenMostConsumedProductIs(String name, int price, int quantity)
             throws Exception {
-        UUID usuarioId = UUID.randomUUID();
-        LocalDateTime inicio = LocalDateTime.of(2026, 6, 1, 0, 0);
-        LocalDateTime fin = LocalDateTime.of(2026, 6, 15, 23, 59);
-        Alumno child = child("Ana");
-        Tutor tutor = createTutor(usuarioId, TipoPlan.AVANZADO, Set.of(child));
+        JsonNode productNode = summaryJson()
+                .get("hijos")
+                .get("Ana")
+                .get("productoMasConsumido");
+        assertEquals(name, productNode.get("nombre").asText());
+        assertEquals(price, productNode.get("precio").asInt());
+        assertEquals(quantity, productNode.get("cantidad").asInt());
+    }
 
-        Producto cheap = product("Agua", "10.00", category("Bebidas"));
-        Producto expensive = product("Sandwich", "50.00", category("Comida"));
+    private void thenNoSummaryWasSaved() {
+        verify(summaryRepository, never()).save(any(Summary.class));
+    }
 
-        when(tutorRepository.findAll()).thenReturn(List.of(tutor));
-        when(purchaseRepository.findByAlumnoAndDateRange(child.getId(), inicio, fin))
-                .thenReturn(List.of(
-                        purchase(cheap, 1, "10.00"),
-                        purchase(expensive, 1, "50.00")
-                ));
-        when(presupuestoRepository.findActivoByAlumnoId(child.getId()))
-                .thenReturn(Optional.empty());
-        when(parentSummaryAnalyzer.analyze(any())).thenReturn("Mensaje final");
-        
-        generateParentSummary.execute(new GenerateParentSummaryRequest(inicio, fin));
-
+    private Summary savedSummary() {
         ArgumentCaptor<Summary> captor = ArgumentCaptor.forClass(Summary.class);
         verify(summaryRepository).save(captor.capture());
-        Summary result = captor.getValue();
-
-        JsonNode json = OBJECT_MAPPER.readTree(result.getResumen());
-        JsonNode productNode = json.get("hijos").get("Ana").get("productoMasConsumido");
-        assertEquals("Sandwich", productNode.get("nombre").asText());
-        assertEquals(50, productNode.get("precio").asInt());
+        return captor.getValue();
     }
 
-    @Test
-    void execute_FiltersOutFreePlanOrNoChildrenTutors() {
-        Tutor paidPlanNoChildren = createTutor(UUID.randomUUID(), TipoPlan.AVANZADO, Set.of());
-        Tutor basicWithChildren = createTutor(
-                UUID.randomUUID(),
-                TipoPlan.GRATUITO,
-                Set.of(child("Ana")));
-
-        when(tutorRepository.findAll()).thenReturn(List.of(paidPlanNoChildren, basicWithChildren));
-
-        GenerateParentSummaryRequest request = new GenerateParentSummaryRequest(
-                LocalDateTime.now().minusDays(7), LocalDateTime.now());
-        GenerateParentSummaryResponse response = generateParentSummary.execute(request);
-
-        assertTrue(response.processedUserIds().isEmpty());
-        verify(summaryRepository, times(0)).save(any(Summary.class));
+    private JsonNode summaryJson() throws Exception {
+        return OBJECT_MAPPER.readTree(savedSummary().getResumen());
     }
-    
-    private Tutor createTutor(UUID userId, TipoPlan plan, Set<Alumno> children) {
-        Usuario usuario = new Usuario();
-        usuario.setId(userId);
-        usuario.setPlan(plan);
+
+    private Tutor tutor(UUID userId, TipoPlan plan, Set<Alumno> children) {
+        Usuario user = new Usuario();
+        user.setId(userId);
+        user.setPlan(plan);
         Tutor tutor = new Tutor();
-        tutor.setUsuario(usuario);
+        tutor.setUsuario(user);
         tutor.setHijos(children);
         return tutor;
     }
 
     private Alumno child(String name) {
-        Usuario usuario = new Usuario();
-        usuario.setNombre(name);
-        Alumno alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
-        alumno.setUsuario(usuario);
-        return alumno;
+        Usuario user = new Usuario();
+        user.setNombre(name);
+        Alumno child = new Alumno();
+        child.setId(UUID.randomUUID());
+        child.setUsuario(user);
+        return child;
     }
 
     private CategoriaProducto category(String name) {

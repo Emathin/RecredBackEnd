@@ -16,15 +16,23 @@ public class DeleteFavoriteProduct {
     }
 
     @Transactional
-    public DeleteFavoriteProductResponse execute(DeleteFavoriteProductRequest request) {
-        Alumno alumno = this.findAlumnoById(request.alumnoId());
-        alumno.removerProductoFavorito(request.productoId());
-        alumnoRepository.save(alumno);
+    public DeleteFavoriteProductResponse execute(DeleteFavoriteProductRequest deleteRequest) {
+        Alumno student = findStudent(deleteRequest.alumnoId());
+        removeFavoriteProduct(student, deleteRequest.productoId());
+        saveStudent(student);
         return new DeleteFavoriteProductResponse();
     }
 
-    private Alumno findAlumnoById(UUID alumnoId) {
+    private Alumno findStudent(UUID alumnoId) {
         return alumnoRepository.findById(alumnoId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
+    }
+
+    private void removeFavoriteProduct(Alumno student, UUID productId) {
+        student.removerProductoFavorito(productId);
+    }
+
+    private void saveStudent(Alumno student) {
+        alumnoRepository.save(student);
     }
 }

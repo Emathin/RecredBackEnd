@@ -9,30 +9,39 @@ import java.util.UUID;
 
 public class RejectSchoolRegistration {
 
-    private final SchoolRegistrationRequestRepository repository;
+    private final SchoolRegistrationRequestRepository registrationRepository;
 
-    public RejectSchoolRegistration(SchoolRegistrationRequestRepository repository) {
-        this.repository = repository;
+    public RejectSchoolRegistration(
+            SchoolRegistrationRequestRepository registrationRepository
+    ) {
+        this.registrationRepository = registrationRepository;
     }
 
-    public RejectSchoolRegistrationResponse execute(RejectSchoolRegistrationRequest request) {
-        SchoolRegistrationRequest registration = fetchPendingRegistration(request.registrationId());
-        updateRegistrationStatus(registration);
+    public RejectSchoolRegistrationResponse execute(
+            RejectSchoolRegistrationRequest rejectionRequest
+    ) {
+        SchoolRegistrationRequest registration =
+                findPendingRegistration(rejectionRequest.registrationId());
+        rejectRegistration(registration);
         return new RejectSchoolRegistrationResponse();
     }
 
-    private SchoolRegistrationRequest fetchPendingRegistration(UUID id) {
-        SchoolRegistrationRequest registration = repository.findById(id)
+    private SchoolRegistrationRequest findPendingRegistration(UUID registrationId) {
+        SchoolRegistrationRequest registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new IllegalArgumentException("Registration not found"));
-        if (registration.getStatus() != SchoolRegistrationStatus.PENDING) {
+        if (registrationIsNotPending(registration)) {
             throw new IllegalStateException("Registration is not pending");
         }
         return registration;
     }
 
-    private void updateRegistrationStatus(SchoolRegistrationRequest registration) {
+    private boolean registrationIsNotPending(SchoolRegistrationRequest registration) {
+        return registration.getStatus() != SchoolRegistrationStatus.PENDING;
+    }
+
+    private void rejectRegistration(SchoolRegistrationRequest registration) {
         registration.setStatus(SchoolRegistrationStatus.REJECTED);
         registration.setUpdatedAt(LocalDateTime.now());
-        repository.save(registration);
+        registrationRepository.save(registration);
     }
 }

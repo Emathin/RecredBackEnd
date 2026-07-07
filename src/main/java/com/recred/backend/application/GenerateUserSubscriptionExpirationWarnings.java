@@ -9,6 +9,7 @@ import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -35,54 +36,66 @@ public class GenerateUserSubscriptionExpirationWarnings {
 
     @Transactional
     public GenerateUserSubscriptionExpirationWarningsResponse execute(
-            GenerateUserSubscriptionExpirationWarningsRequest request
+            GenerateUserSubscriptionExpirationWarningsRequest warningRequest
     ) {
-        LocalDateTime targetTime = targetTime(request);
-        int sentNotifications = sendWarnings(expiringSubscriptions(targetTime), targetTime);
+        LocalDateTime referenceTime = referenceTimeFrom(warningRequest);
+        List<SuscripcionUsuario> subscriptions =
+                activeSubscriptionsNearExpirationAt(referenceTime);
+        int sentNotifications = sendExpirationWarnings(subscriptions, referenceTime);
         return new GenerateUserSubscriptionExpirationWarningsResponse(sentNotifications);
     }
 
-    private LocalDateTime targetTime(GenerateUserSubscriptionExpirationWarningsRequest request) {
-        if (request != null && request.targetTime() != null) {
-            return request.targetTime();
+    private LocalDateTime referenceTimeFrom(
+            GenerateUserSubscriptionExpirationWarningsRequest warningRequest
+    ) {
+        if (warningRequest != null && warningRequest.targetTime() != null) {
+            return warningRequest.targetTime();
         }
 
         return LocalDateTime.now(clock);
     }
 
-    private List<SuscripcionUsuario> expiringSubscriptions(LocalDateTime targetTime) {
+    private List<SuscripcionUsuario> activeSubscriptionsNearExpirationAt(
+            LocalDateTime referenceTime
+    ) {
         return subscriptionRepository.findActiveExpiringBetween(
-                targetTime,
-                targetTime.plusDays(PeriodoSuscripcion.ANUAL.expirationWarningDays())
+                referenceTime,
+                referenceTime.plusDays(PeriodoSuscripcion.ANUAL.expirationWarningDays())
         );
     }
 
-    private int sendWarnings(List<SuscripcionUsuario> subscriptions, LocalDateTime targetTime) {
+    private int sendExpirationWarnings(
+            List<SuscripcionUsuario> subscriptions,
+            LocalDateTime referenceTime
+    ) {
         return subscriptions.stream()
-                .filter(subscription -> subscription.shouldSendExpirationWarningAt(targetTime))
-                .mapToInt(subscription -> sendWarning(subscription, targetTime))
+                .filter(subscription -> subscription.shouldSendExpirationWarningAt(referenceTime))
+                .mapToInt(subscription -> sendExpirationWarning(subscription, referenceTime))
                 .sum();
     }
 
-    private int sendWarning(SuscripcionUsuario subscription, LocalDateTime targetTime) {
-        notificationRepository.save(notification(subscription, targetTime),
+    private int sendExpirationWarning(
+            SuscripcionUsuario subscription,
+            LocalDateTime referenceTime
+    ) {
+        notificationRepository.save(notificationFor(subscription, referenceTime),
                 subscription.getUsuarioId());
-        subscription.markExpirationWarningSentAt(targetTime);
+        subscription.markExpirationWarningSentAt(referenceTime);
         subscriptionRepository.save(subscription);
         return 1;
     }
 
-    private Notification notification(
+    private Notification notificationFor(
             SuscripcionUsuario subscription,
-            LocalDateTime targetTime
+            LocalDateTime referenceTime
     ) {
         return new Notification(
                 null,
                 TipoNotificacion.SISTEMA,
                 TITLE,
-                message(subscription, targetTime),
+                messageFor(subscription, referenceTime),
                 false,
-                targetTime,
+                referenceTime,
                 null,
                 null,
                 null,
@@ -91,14 +104,18 @@ public class GenerateUserSubscriptionExpirationWarnings {
         );
     }
 
-    private String message(SuscripcionUsuario subscription, LocalDateTime targetTime) {
-        long days = java.time.Duration.between(
-                targetTime,
-                subscription.getFechaVencimiento()
-        ).toDays();
+    private String messageFor(SuscripcionUsuario subscription, LocalDateTime referenceTime) {
+        long days = daysUntilExpiration(subscription, referenceTime);
         return "Tu plan " + subscription.getPlan().name()
                 + " vence el " + subscription.getFechaVencimiento().format(DATE_FORMATTER)
                 + ". Te quedan " + days
                 + " dias para renovarlo y mantener tus beneficios.";
+    }
+
+    private long daysUntilExpiration(
+            SuscripcionUsuario subscription,
+            LocalDateTime referenceTime
+    ) {
+        return Duration.between(referenceTime, subscription.getFechaVencimiento()).toDays();
     }
 }

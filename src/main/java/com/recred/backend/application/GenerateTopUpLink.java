@@ -15,14 +15,21 @@ public class GenerateTopUpLink {
         this.externalPaymentService = externalPaymentService;
     }
 
-    public GenerateTopUpLinkResponse execute(GenerateTopUpLinkRequest request) {
+    public GenerateTopUpLinkResponse execute(GenerateTopUpLinkRequest topUpRequest) {
+        ensureStudentExists(topUpRequest);
+        String paymentUrl = createTopUpPaymentUrl(topUpRequest);
+        return new GenerateTopUpLinkResponse(paymentUrl);
+    }
 
-        if (!alumnoRepository.existsById(request.studentId())) {
+    private void ensureStudentExists(GenerateTopUpLinkRequest topUpRequest) {
+        if (!alumnoRepository.existsById(topUpRequest.studentId())) {
             throw new RuntimeException("Alumno no encontrado");
         }
+    }
 
-
-        return new GenerateTopUpLinkResponse(externalPaymentService.createTopUpPreference(
-                request.studentId(), request.amount()));
+    private String createTopUpPaymentUrl(GenerateTopUpLinkRequest topUpRequest) {
+        return externalPaymentService.createTopUpPreference(
+                topUpRequest.studentId(),
+                topUpRequest.amount());
     }
 }

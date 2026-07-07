@@ -5,9 +5,9 @@ import com.recred.backend.application.GetActiveSchoolsRequest;
 import com.recred.backend.application.GetActiveSchoolsResponse;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.repositories.ColegioRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -24,32 +24,48 @@ class GetActiveSchoolsTest {
     @Mock
     private ColegioRepository schoolRepository;
 
-    @InjectMocks
-    private GetActiveSchools getActiveSchools;
+    private GetActiveSchools useCase;
+    private Colegio firstSchool;
+    private Colegio secondSchool;
+    private GetActiveSchoolsResponse response;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new GetActiveSchools(schoolRepository);
+    }
 
     @Test
-    void execute_ReturnsActiveSchools() {
-        Colegio firstSchool = school("North School");
-        Colegio secondSchool = school("South School");
+    void givenActiveSchools_whenGettingActiveSchools_thenReturnsMappedSchools() {
+        givenActiveSchools(
+                school("North School"),
+                school("South School"));
 
-        givenActiveSchools(firstSchool, secondSchool);
+        whenGettingActiveSchools();
 
-        GetActiveSchoolsResponse result = whenGettingActiveSchools();
+        thenSchoolsAreReturned();
+        thenActiveSchoolsWereRequested();
+    }
 
-        assertEquals(2, result.schools().size());
-        assertEquals(firstSchool.getId(), result.schools().get(0).id());
-        assertEquals("North School", result.schools().get(0).nombre());
-        assertEquals(secondSchool.getId(), result.schools().get(1).id());
-        assertEquals("South School", result.schools().get(1).nombre());
+    private void givenActiveSchools(Colegio first, Colegio second) {
+        firstSchool = first;
+        secondSchool = second;
+        when(schoolRepository.findAllActive()).thenReturn(List.of(firstSchool, secondSchool));
+    }
+
+    private void whenGettingActiveSchools() {
+        response = useCase.execute(new GetActiveSchoolsRequest());
+    }
+
+    private void thenSchoolsAreReturned() {
+        assertEquals(2, response.schools().size());
+        assertEquals(firstSchool.getId(), response.schools().get(0).id());
+        assertEquals("North School", response.schools().get(0).nombre());
+        assertEquals(secondSchool.getId(), response.schools().get(1).id());
+        assertEquals("South School", response.schools().get(1).nombre());
+    }
+
+    private void thenActiveSchoolsWereRequested() {
         verify(schoolRepository).findAllActive();
-    }
-
-    private void givenActiveSchools(Colegio... schools) {
-        when(schoolRepository.findAllActive()).thenReturn(List.of(schools));
-    }
-
-    private GetActiveSchoolsResponse whenGettingActiveSchools() {
-        return getActiveSchools.execute(new GetActiveSchoolsRequest());
     }
 
     private Colegio school(String name) {

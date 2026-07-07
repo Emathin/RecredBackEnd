@@ -15,16 +15,24 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class FindPurchaseSuggestionForTodayTest {
+
+    private static final ZoneId TEST_ZONE = ZoneId.of("America/Argentina/Buenos_Aires");
+    private static final LocalDate TODAY = LocalDate.of(2026, 7, 6);
 
     @Mock
     private SuggestionAiRepository suggestionAiRepository;
@@ -35,63 +43,150 @@ class FindPurchaseSuggestionForTodayTest {
 
     private FindPurchaseSuggestionForToday useCase;
 
+    private String cognitoSubject;
+    private UUID userId;
+    private UUID studentId;
+    private UUID notificationId;
+    private NotificacionEntity notification;
+    private LocalDateTime createdAt;
+    private FindPurchaseSuggestionResponse response;
+    private RuntimeException thrownException;
+
     @BeforeEach
     void setUp() {
+        Clock fixedClock = Clock.fixed(TODAY.atStartOfDay(TEST_ZONE).toInstant(), TEST_ZONE);
         useCase = new FindPurchaseSuggestionForToday(
-                suggestionAiRepository, usuarioRepository, alumnoRepository);
+                suggestionAiRepository,
+                usuarioRepository,
+                alumnoRepository,
+                fixedClock);
     }
 
     @Test
-    void execute_ShouldReturnSuggestionForToday() {
-        String cognitoSubject = "test-sub";
-        UUID userId = UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
-        UUID notifId = UUID.randomUUID();
+    void givenSuggestionForToday_whenFindingPurchaseSuggestion_thenReturnsSuggestion() {
+        givenAuthenticatedStudent();
+        givenAuthenticatedUserExists();
+        givenStudentBelongsToUser();
+        givenTodaySuggestionExists();
 
-        Usuario usuario = new Usuario();
-        usuario.setId(userId);
+        whenFindingPurchaseSuggestion();
 
-        NotificacionEntity notification = new NotificacionEntity();
-        notification.setId(notifId);
+        thenTodaySuggestionWasRequested();
+        thenSuggestionIsReturned();
+    }
+
+    @Test
+    void givenNoSuggestionForToday_whenFindingPurchaseSuggestion_thenReturnsNull() {
+        givenAuthenticatedStudent();
+        givenAuthenticatedUserExists();
+        givenStudentBelongsToUser();
+        givenTodaySuggestionDoesNotExist();
+
+        whenFindingPurchaseSuggestion();
+
+        thenTodaySuggestionWasRequested();
+        thenSuggestionIsNull();
+    }
+
+    @Test
+    void givenMissingAuthenticatedUser_whenFindingPurchaseSuggestion_thenFails() {
+        givenAuthenticatedStudent();
+        givenAuthenticatedUserDoesNotExist();
+
+        whenFindingPurchaseSuggestionFails();
+
+        thenFindFailsWith("User not found");
+    }
+
+    @Test
+    void givenAuthenticatedUserWithoutStudent_whenFindingPurchaseSuggestion_thenFails() {
+        givenAuthenticatedStudent();
+        givenAuthenticatedUserExists();
+        givenUserHasNoStudent();
+
+        whenFindingPurchaseSuggestionFails();
+
+        thenFindFailsWith("Student not found for user");
+    }
+
+    private void givenAuthenticatedStudent() {
+        cognitoSubject = "test-sub";
+        userId = UUID.randomUUID();
+        studentId = UUID.randomUUID();
+    }
+
+    private void givenAuthenticatedUserExists() {
+        Usuario user = new Usuario();
+        user.setId(userId);
+        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(user));
+    }
+
+    private void givenAuthenticatedUserDoesNotExist() {
+        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.empty());
+    }
+
+    private void givenStudentBelongsToUser() {
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+    }
+
+    private void givenUserHasNoStudent() {
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.empty());
+    }
+
+    private void givenTodaySuggestionExists() {
+        notificationId = UUID.randomUUID();
+        createdAt = LocalDateTime.of(2026, 7, 6, 8, 30);
+        notification = new NotificacionEntity();
+        notification.setId(notificationId);
         notification.setTipo(TipoNotificacion.SALDO_BAJO);
         notification.setTitulo("Test");
         notification.setMensaje("Message");
         notification.setLeida(false);
-        notification.setCreadoEn(LocalDateTime.now());
+        notification.setCreadoEn(createdAt);
 
-        String today = LocalDate.now().getDayOfWeek().name();
-
-        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(usuario));
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
-        when(suggestionAiRepository.findByTipoAndStudentId(today, studentId)).thenReturn(notification);
-
-        FindPurchaseSuggestionRequest request = new FindPurchaseSuggestionRequest(cognitoSubject);
-        FindPurchaseSuggestionResponse response = useCase.execute(request);
-
-        assertNotNull(response);
-        assertEquals(notifId, response.id());
-        assertEquals("Test", response.titulo());
-        assertEquals(TipoNotificacion.SALDO_BAJO, response.tipo());
+        when(suggestionAiRepository.findByTipoAndStudentId(todayNotificationType(), studentId))
+                .thenReturn(notification);
     }
 
-    @Test
-    void execute_ShouldReturnNull_WhenNoSuggestionFound() {
-        String cognitoSubject = "test-sub";
-        UUID userId = UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
+    private void givenTodaySuggestionDoesNotExist() {
+        when(suggestionAiRepository.findByTipoAndStudentId(todayNotificationType(), studentId))
+                .thenReturn(null);
+    }
 
-        Usuario usuario = new Usuario();
-        usuario.setId(userId);
+    private void whenFindingPurchaseSuggestion() {
+        response = useCase.execute(request());
+    }
 
-        String today = LocalDate.now().getDayOfWeek().name();
+    private void whenFindingPurchaseSuggestionFails() {
+        thrownException = assertThrows(RuntimeException.class, () -> useCase.execute(request()));
+    }
 
-        when(usuarioRepository.findByIdCognito(cognitoSubject)).thenReturn(Optional.of(usuario));
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
-        when(suggestionAiRepository.findByTipoAndStudentId(today, studentId)).thenReturn(null);
+    private void thenTodaySuggestionWasRequested() {
+        verify(suggestionAiRepository).findByTipoAndStudentId(todayNotificationType(), studentId);
+    }
 
-        FindPurchaseSuggestionRequest request = new FindPurchaseSuggestionRequest(cognitoSubject);
-        FindPurchaseSuggestionResponse response = useCase.execute(request);
+    private void thenSuggestionIsReturned() {
+        assertEquals(notificationId, response.id());
+        assertEquals(TipoNotificacion.SALDO_BAJO, response.tipo());
+        assertEquals("Test", response.titulo());
+        assertEquals("Message", response.mensaje());
+        assertEquals(false, response.leida());
+        assertEquals(createdAt, response.creadoEn());
+    }
 
+    private void thenSuggestionIsNull() {
         assertNull(response);
+    }
+
+    private void thenFindFailsWith(String expectedMessage) {
+        assertEquals(expectedMessage, thrownException.getMessage());
+    }
+
+    private FindPurchaseSuggestionRequest request() {
+        return new FindPurchaseSuggestionRequest(cognitoSubject);
+    }
+
+    private String todayNotificationType() {
+        return TODAY.getDayOfWeek().name();
     }
 }

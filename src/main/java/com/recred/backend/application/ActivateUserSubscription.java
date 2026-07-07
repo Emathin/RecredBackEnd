@@ -29,34 +29,36 @@ public class ActivateUserSubscription {
     }
 
     @Transactional
-    public ActivateUserSubscriptionResponse execute(ActivateUserSubscriptionRequest request) {
-        Usuario user = subscribableUser(request.usuarioId());
-        SuscripcionUsuario subscription = subscription(request);
+    public ActivateUserSubscriptionResponse execute(
+            ActivateUserSubscriptionRequest activationRequest
+    ) {
+        Usuario user = findUserAllowedToSubscribe(activationRequest.usuarioId());
+        SuscripcionUsuario subscription = subscriptionFrom(activationRequest);
         cancelCurrentSubscription(user.getId());
         activateUserPlan(user, subscription.getPlan());
-        return ActivateUserSubscriptionResponse.fromDomain(save(subscription));
+        return ActivateUserSubscriptionResponse.fromDomain(saveSubscription(subscription));
     }
 
-    private Usuario subscribableUser(UUID usuarioId) {
-        Usuario user = usuarioRepository.findByIdForUpdate(usuarioId)
-                .orElseThrow(() -> new UsuarioNoEncontradoException(usuarioId));
+    private Usuario findUserAllowedToSubscribe(UUID userId) {
+        Usuario user = usuarioRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new UsuarioNoEncontradoException(userId));
         user.validateCanHaveIndividualSubscription();
         return user;
     }
 
-    private SuscripcionUsuario subscription(ActivateUserSubscriptionRequest request) {
+    private SuscripcionUsuario subscriptionFrom(ActivateUserSubscriptionRequest activationRequest) {
         return SuscripcionUsuario.activate(
-                request.usuarioId(),
-                request.plan(),
-                request.periodo(),
-                request.precio(),
-                startDate(request)
+                activationRequest.usuarioId(),
+                activationRequest.plan(),
+                activationRequest.periodo(),
+                activationRequest.precio(),
+                startDateFrom(activationRequest)
         );
     }
 
-    private LocalDateTime startDate(ActivateUserSubscriptionRequest request) {
-        if (request.fechaInicio() != null) {
-            return request.fechaInicio();
+    private LocalDateTime startDateFrom(ActivateUserSubscriptionRequest activationRequest) {
+        if (activationRequest.fechaInicio() != null) {
+            return activationRequest.fechaInicio();
         }
 
         return LocalDateTime.now(clock);
@@ -77,7 +79,7 @@ public class ActivateUserSubscription {
         usuarioRepository.updatePlan(user.getId(), user.getPlan());
     }
 
-    private SuscripcionUsuario save(SuscripcionUsuario subscription) {
+    private SuscripcionUsuario saveSubscription(SuscripcionUsuario subscription) {
         return subscriptionRepository.save(subscription);
     }
 }

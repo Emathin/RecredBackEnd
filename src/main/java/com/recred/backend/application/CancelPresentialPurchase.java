@@ -13,17 +13,23 @@ import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
 
 public class CancelPresentialPurchase {
 
+    private static final ZoneId CANCELLATION_ZONE = ZoneId.of("America/Argentina/Buenos_Aires");
+    private static final String REFUND_MOVEMENT_DESCRIPTION =
+            "Reembolso por cancelacion de compra";
+
     private final PurchaseRepository purchaseRepository;
     private final WalletRepository walletRepository;
     private final InventoryAvailabilityService inventoryAvailabilityService;
     private final FranjaHorariaRepository timeSlotRepository;
     private final MovimientoBilleteraRepository movimientoBilleteraRepository;
+    private final Clock clock;
 
     public CancelPresentialPurchase(
             PurchaseRepository purchaseRepository,
@@ -31,7 +37,7 @@ public class CancelPresentialPurchase {
             InventoryAvailabilityService inventoryAvailabilityService,
             FranjaHorariaRepository timeSlotRepository) {
         this(purchaseRepository, walletRepository, inventoryAvailabilityService,
-                timeSlotRepository, null);
+                timeSlotRepository, null, Clock.system(CANCELLATION_ZONE));
     }
 
     public CancelPresentialPurchase(
@@ -40,40 +46,53 @@ public class CancelPresentialPurchase {
             InventoryAvailabilityService inventoryAvailabilityService,
             FranjaHorariaRepository timeSlotRepository,
             MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        this(purchaseRepository, walletRepository, inventoryAvailabilityService,
+                timeSlotRepository, movimientoBilleteraRepository,
+                Clock.system(CANCELLATION_ZONE));
+    }
+
+    public CancelPresentialPurchase(
+            PurchaseRepository purchaseRepository,
+            WalletRepository walletRepository,
+            InventoryAvailabilityService inventoryAvailabilityService,
+            FranjaHorariaRepository timeSlotRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository,
+            Clock clock) {
         this.purchaseRepository = purchaseRepository;
         this.walletRepository = walletRepository;
         this.inventoryAvailabilityService = inventoryAvailabilityService;
         this.timeSlotRepository = timeSlotRepository;
         this.movimientoBilleteraRepository = movimientoBilleteraRepository;
+        this.clock = clock;
     }
 
     @Transactional
-    public CancelPresentialPurchaseResponse execute(CancelPresentialPurchaseRequest request) {
-        request.validate();
-        Purchase purchase = purchase(request.purchaseId());
-        requireStudentOwner(purchase, request.studentId());
-        EstadoCompra previousStatus = purchase.getStatus();
+    public CancelPresentialPurchaseResponse execute(
+            CancelPresentialPurchaseRequest cancellationRequest) {
+        Purchase purchase = findPurchase(cancellationRequest.purchaseId());
+        ensureStudentCanCancelPurchase(purchase, cancellationRequest.studentId());
 
-        validateAdvancePurchaseCancellationWindow(purchase);
-        purchase.cancel();
-        releaseReservationIfNeeded(purchase, previousStatus);
-        processRefund(purchase);
+        EstadoCompra statusBeforeCancellation = purchase.getStatus();
+        ensurePurchaseCanBeCancelled(purchase);
+        cancelPurchaseAndReleaseReservation(purchase, statusBeforeCancellation);
+        refundStudentWallet(purchase);
 
-        return CancelPresentialPurchaseResponse.fromDomain(savedPurchase(purchase));
+        Purchase savedPurchase = savePurchase(purchase);
+        return CancelPresentialPurchaseResponse.fromDomain(savedPurchase);
     }
 
-    private Purchase savedPurchase(Purchase purchase) {
+    private Purchase savePurchase(Purchase purchase) {
         Purchase savedPurchase = purchaseRepository.save(purchase);
         return savedPurchase == null ? purchase : savedPurchase;
     }
 
-    private Purchase purchase(UUID purchaseId) {
+    private Purchase findPurchase(UUID purchaseId) {
         return purchaseRepository.findById(purchaseId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Purchase not found: " + purchaseId));
     }
 
-    private void requireStudentOwner(Purchase purchase, UUID expectedStudentId) {
+    private void ensureStudentCanCancelPurchase(Purchase purchase, UUID expectedStudentId) {
         if (expectedStudentId == null) {
             return;
         }
@@ -83,14 +102,23 @@ public class CancelPresentialPurchase {
         }
     }
 
-    private void processRefund(Purchase purchase) {
+    private void ensurePurchaseCanBeCancelled(Purchase purchase) {
+        validateAdvancePurchaseCancellationWindow(purchase);
+    }
+
+    private void cancelPurchaseAndReleaseReservation(
+            Purchase purchase,
+            EstadoCompra statusBeforeCancellation) {
+        purchase.cancel();
+        releaseReservationIfNeeded(purchase, statusBeforeCancellation);
+    }
+
+    private void refundStudentWallet(Purchase purchase) {
         Billetera wallet = walletRepository.findByStudentId(purchase.requireStudentId())
                 .orElseThrow(() ->
                         new IllegalStateException("Student wallet not found for refund."));
 
-        wallet.credit(purchase.getTotalAmount());
-        walletRepository.save(wallet);
-
+        creditWallet(wallet, purchase);
         registerRefundMovement(wallet, purchase);
     }
 
@@ -99,13 +127,14 @@ public class CancelPresentialPurchase {
             return;
         }
 
-        FranjaHoraria franja = timeSlotRepository.findById(purchase.getPickupSlotId())
+        FranjaHoraria pickupSlot = findPickupSlot(purchase.getPickupSlotId());
+        purchase.validateCancellationWindow(pickupSlot, now());
+    }
+
+    private FranjaHoraria findPickupSlot(UUID pickupSlotId) {
+        return timeSlotRepository.findById(pickupSlotId)
                 .orElseThrow(() -> new IllegalStateException(
                         "Time slot not found for purchase"));
-
-        ZoneId zoneId = ZoneId.of("America/Argentina/Buenos_Aires");
-        LocalDateTime nowInZone = LocalDateTime.now(zoneId);
-        purchase.validateCancellationWindow(franja, nowInZone);
     }
 
     private void releaseReservationIfNeeded(Purchase purchase, EstadoCompra previousStatus) {
@@ -119,14 +148,24 @@ public class CancelPresentialPurchase {
                 purchase.getId());
     }
 
+    private void creditWallet(Billetera wallet, Purchase purchase) {
+        wallet.credit(purchase.getTotalAmount());
+        walletRepository.save(wallet);
+    }
+
     private void registerRefundMovement(Billetera wallet, Purchase purchase) {
         if (movimientoBilleteraRepository == null) {
             return;
         }
+
         movimientoBilleteraRepository.registrarMovimientoSistema(
                 wallet.getId(),
                 TipoMovimientoBilletera.REEMBOLSO,
                 purchase.getTotalAmount(),
-                "Reembolso por cancelacion de compra");
+                REFUND_MOVEMENT_DESCRIPTION);
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.now(clock);
     }
 }
