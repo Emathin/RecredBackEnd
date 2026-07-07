@@ -10,7 +10,6 @@ import com.recred.backend.domain.repositories.ProductAdditionNotificationReposit
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.ProductStatisticsRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import org.jspecify.annotations.NonNull;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -46,39 +45,63 @@ public class AddProductRecommendation {
     }
 
     @Transactional
-    public AddProductRecommendationResponse execute(AddProductRecommendationRequest request) {
-        List<Kiosquero> kiosqueros = kiosqueroRepository.findAll();
-        LocalDateTime since = LocalDateTime.now().minusMonths(1);
+    public AddProductRecommendationResponse execute(AddProductRecommendationRequest addRequest) {
+        recommendMissingProductsForKiosqueros(
+                findKiosqueros(),
+                recommendationPeriodStart());
 
-        for (Kiosquero kiosquero : kiosqueros) {
-                List<Producto> missingProducts = getBuffetMissingProducts(kiosquero);
-            for (Producto product : missingProducts) {
-                recommendProduct(kiosquero, product, since);
-            }
-        }
         return new AddProductRecommendationResponse();
     }
 
-    private UUID getBuffetIdForKiosquero(Kiosquero kiosquero) {
+    private List<Kiosquero> findKiosqueros() {
+        return kiosqueroRepository.findAll();
+    }
+
+    private LocalDateTime recommendationPeriodStart() {
+        return LocalDateTime.now().minusMonths(1);
+    }
+
+    private void recommendMissingProductsForKiosqueros(
+            List<Kiosquero> kiosqueros,
+            LocalDateTime since) {
+        for (Kiosquero kiosquero : kiosqueros) {
+            recommendMissingProducts(kiosquero, since);
+        }
+    }
+
+    private void recommendMissingProducts(Kiosquero kiosquero, LocalDateTime since) {
+        UUID buffetId = findBuffetIdForKiosquero(kiosquero);
+        List<Producto> missingProducts = findBuffetMissingProducts(buffetId);
+
+        for (Producto product : missingProducts) {
+            recommendProduct(kiosquero, product, buffetId, since);
+        }
+    }
+
+    private UUID findBuffetIdForKiosquero(Kiosquero kiosquero) {
         return kiosqueroRepository.findBuffetById(kiosquero.getId());
     }
 
-    private List<Producto> getBuffetMissingProducts(Kiosquero kiosquero) {
-        return productRepository
-                .findBestSoldProductsNotInStock(getBuffetIdForKiosquero(kiosquero));
+    private List<Producto> findBuffetMissingProducts(UUID buffetId) {
+        return productRepository.findBestSoldProductsNotInStock(buffetId);
     }
 
-    private void recommendProduct(Kiosquero kiosquero, Producto product, LocalDateTime since) {
+    private void recommendProduct(Kiosquero kiosquero, Producto product, UUID buffetId,
+                                  LocalDateTime since) {
+        SugerenciaIA suggestion = buildProductSuggestion(
+                product,
+                buffetId,
+                getProductStatistics(product, since));
+
         aiEventRepository.registerProductAdditionRecommendation(
-                product, kiosquero, getBuffetIdForKiosquero(kiosquero));
-        sugerenciaIARepository.save(buildProductSuggestion(
-                product, getBuffetIdForKiosquero(kiosquero), getProductStatistics(product, since)));
-        notificationRepository.save(product, kiosquero, buildProductSuggestion(
-                product, getBuffetIdForKiosquero(kiosquero), getProductStatistics(product, since)));
+                product,
+                kiosquero,
+                buffetId);
+        sugerenciaIARepository.save(suggestion);
+        notificationRepository.save(product, kiosquero, suggestion);
     }
 
-    private @NonNull Map<String, Object> getProductStatistics(
-            Producto product, LocalDateTime since) {
+    private Map<String, Object> getProductStatistics(Producto product, LocalDateTime since) {
         Map<String, Object> stats = new HashMap<>();
         stats.put("productName", product.getNombre());
         stats.put("productPrice", product.getPrecio());

@@ -41,6 +41,9 @@ class PurchaseAccessGuardTest {
     private KiosqueroAccessGuard kiosqueroAccessGuard;
 
     @Mock
+    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
+
+    @Mock
     private Authentication authentication;
 
     private PurchaseAccessGuard guard;
@@ -55,7 +58,8 @@ class PurchaseAccessGuardTest {
         guard = new PurchaseAccessGuard(
                 purchaseRepository,
                 consumptionAccessRepository,
-                kiosqueroAccessGuard
+                kiosqueroAccessGuard,
+                schoolLicenseAccessGuard
         );
         purchaseId = UUID.randomUUID();
         studentId = UUID.randomUUID();
@@ -106,6 +110,7 @@ class PurchaseAccessGuardTest {
 
         assertSame(purchase, result);
         verify(kiosqueroAccessGuard, never()).requireBuffetAccess(authentication, buffetId);
+        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
     }
 
     @Test
@@ -124,6 +129,7 @@ class PurchaseAccessGuardTest {
         Purchase result = guard.requirePurchaseAccess(authentication, purchaseId);
 
         assertSame(purchase, result);
+        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
     }
 
     @Test
@@ -186,4 +192,3 @@ class PurchaseAccessGuardTest {
         return newPurchase;
     }
 }
-

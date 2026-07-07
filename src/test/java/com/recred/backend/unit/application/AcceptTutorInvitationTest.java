@@ -14,6 +14,12 @@ import com.recred.backend.domain.repositories.TutorInvitationRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.TutorSchoolRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,17 +30,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -47,22 +45,41 @@ class AcceptTutorInvitationTest {
     private static final String TOKEN = "plain-token";
     private static final String COGNITO_SUBJECT = "parent-sub";
     private static final String EMAIL = "parent@test.com";
+    private static final String EMAIL_WITH_SPACES_AND_UPPERCASE = " Parent@Test.com ";
+    private static final String DIFFERENT_EMAIL = "other@test.com";
+    private static final String FIRST_NAME = "Ana";
+    private static final String LAST_NAME = "Gomez";
+    private static final String PHONE = "1111";
+    private static final String DNI = "123";
+    private static final String BLANK_VALUE = " ";
+    private static final String EMPTY_VALUE = "";
+    private static final String FALLBACK_FIRST_NAME = "Sin Nombre";
+    private static final String FALLBACK_LAST_NAME = "Sin Apellido";
+
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 2, 12, 0);
     private static final Clock CLOCK = Clock.fixed(
             Instant.parse("2026-07-02T12:00:00Z"),
-            ZoneOffset.UTC);
+            ZoneOffset.UTC
+    );
 
     @Mock
     private UsuarioRepository userRepository;
+
     @Mock
     private TutorRepository tutorRepository;
+
     @Mock
     private TutorSchoolRepository tutorSchoolRepository;
+
     @Mock
     private TutorInvitationRepository invitationRepository;
+
     @Captor
     private ArgumentCaptor<Usuario> userCaptor;
+
     @Captor
     private ArgumentCaptor<TutorSchool> tutorSchoolCaptor;
+
     @Captor
     private ArgumentCaptor<TutorInvitation> invitationCaptor;
 
@@ -78,7 +95,9 @@ class AcceptTutorInvitationTest {
                 tutorRepository,
                 tutorSchoolRepository,
                 invitationRepository,
-                CLOCK);
+                CLOCK
+        );
+
         schoolId = UUID.randomUUID();
         userId = UUID.randomUUID();
         tutorId = UUID.randomUUID();
@@ -88,163 +107,113 @@ class AcceptTutorInvitationTest {
     void givenValidInvitationAndNewLocalUser_whenAccepting_thenCreatesTutorAndSchoolLink() {
         givenPendingInvitation();
         givenNoLocalUser();
-        givenUserIsSaved();
-        givenTutorDoesNotExistThenExists();
+        givenUserIsSavedWithGeneratedId();
+        givenTutorDoesNotExistAndThenExists();
         givenNoTutorSchoolLink();
         givenInvitationIsSaved();
 
-        TutorInvitation result = whenAcceptingInvitation();
+        TutorInvitation acceptedInvitation = whenAcceptingInvitation();
 
-        verify(userRepository, times(2)).save(userCaptor.capture());
-        verify(tutorSchoolRepository).save(tutorSchoolCaptor.capture());
-        Usuario savedUser = userCaptor.getAllValues().get(0);
-        TutorSchool tutorSchool = tutorSchoolCaptor.getValue();
-        assertEquals(RolUsuario.PADRE, savedUser.getRol());
-        assertEquals(EMAIL, savedUser.getEmail());
-        assertEquals(tutorId, tutorSchool.getTutorId());
-        assertEquals(schoolId, tutorSchool.getSchool().getId());
-        assertEquals(TutorSchoolStatus.ACTIVE, tutorSchool.getStatus());
-        assertEquals(TutorInvitationStatus.ACCEPTED, result.getStatus());
-        assertTrue(result.getUsedAt().isEqual(LocalDateTime.now(CLOCK)));
+        thenNewParentUserWasSaved();
+        thenTutorWasLinkedToSchool();
+        thenInvitationWasAccepted(acceptedInvitation);
     }
 
     @Test
     void givenMissingInvitation_whenAccepting_thenFails() {
-        when(invitationRepository.findByTokenHash(any())).thenReturn(Optional.empty());
+        givenInvitationDoesNotExist();
 
-        Executable execution = this::whenAcceptingInvitation;
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("No se encontro la invitacion", exception.getMessage());
-        verifyNoInteractions(userRepository, tutorRepository, tutorSchoolRepository);
+        thenAcceptingInvitationFailsBecauseInvitationDoesNotExist();
+        thenUserTutorAndSchoolLinkWereNotTouched();
     }
 
     @Test
     void givenAcceptedInvitation_whenAccepting_thenFails() {
-        TutorInvitation invitation = invitation(TutorInvitationStatus.ACCEPTED);
-        when(invitationRepository.findByTokenHash(any())).thenReturn(Optional.of(invitation));
+        givenAcceptedInvitation();
 
-        Executable execution = this::whenAcceptingInvitation;
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("La invitacion no esta pendiente", exception.getMessage());
-        verifyNoInteractions(userRepository, tutorRepository, tutorSchoolRepository);
+        thenAcceptingInvitationFailsBecauseInvitationIsNotPending();
+        thenUserTutorAndSchoolLinkWereNotTouched();
     }
 
     @Test
     void givenExpiredInvitation_whenAccepting_thenMarksExpiredAndFails() {
-        TutorInvitation invitation = invitation(TutorInvitationStatus.PENDING);
-        invitation.setExpiresAt(LocalDateTime.now(CLOCK).minusMinutes(1));
-        when(invitationRepository.findByTokenHash(any())).thenReturn(Optional.of(invitation));
+        givenExpiredInvitation();
         givenInvitationIsSaved();
 
-        Executable execution = this::whenAcceptingInvitation;
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("La invitacion esta vencida", exception.getMessage());
-        verify(invitationRepository).save(invitationCaptor.capture());
-        assertEquals(TutorInvitationStatus.EXPIRED, invitationCaptor.getValue().getStatus());
-        verifyNoInteractions(userRepository, tutorRepository, tutorSchoolRepository);
+        thenAcceptingInvitationFailsBecauseInvitationIsExpired();
+        thenInvitationWasMarkedAsExpired();
+        thenUserTutorAndSchoolLinkWereNotTouched();
     }
 
     @Test
     void givenDifferentAuthenticatedEmail_whenAccepting_thenFails() {
         givenPendingInvitation();
-        AcceptTutorInvitationRequest request = new AcceptTutorInvitationRequest(
-                TOKEN,
-                COGNITO_SUBJECT,
-                "other@test.com",
-                "Ana",
-                "Gomez",
-                null,
-                null
-        );
 
-        Executable execution = () -> useCase.execute(request);
-
-        assertThrows(AccessDeniedException.class, execution);
-        verifyNoInteractions(userRepository, tutorRepository, tutorSchoolRepository);
+        thenAcceptingInvitationWithDifferentEmailIsRejected();
+        thenUserTutorAndSchoolLinkWereNotTouched();
     }
 
     @Test
     void givenExistingNonParentUserAndTutorSchool_whenAccepting_thenUpdatesAndActivatesLink() {
-        TutorInvitation invitation = invitation(TutorInvitationStatus.PENDING);
-        Usuario user = new Usuario();
-        user.setId(userId);
-        user.setRol(RolUsuario.ADMIN);
-        Tutor tutor = new Tutor();
-        tutor.setId(tutorId);
-        TutorSchool tutorSchool = new TutorSchool();
-        tutorSchool.setStatus(TutorSchoolStatus.REVOKED);
-
-        when(invitationRepository.findByTokenHash(any())).thenReturn(Optional.of(invitation));
-        when(userRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(user));
-        when(userRepository.save(user)).thenReturn(user);
-        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
-        when(tutorSchoolRepository.findByTutorIdAndSchoolId(tutorId, schoolId))
-                .thenReturn(Optional.of(tutorSchool));
+        givenPendingInvitation();
+        givenExistingAdminUser();
+        givenExistingTutorForUser();
+        givenExistingRevokedTutorSchoolLink();
         givenInvitationIsSaved();
 
-        TutorInvitation result = whenAcceptingInvitation();
+        TutorInvitation acceptedInvitation = whenAcceptingInvitation();
 
-        verify(userRepository).save(userCaptor.capture());
-        verify(tutorSchoolRepository).save(tutorSchoolCaptor.capture());
-        assertEquals(RolUsuario.PADRE, userCaptor.getValue().getRol());
-        assertEquals(LocalDateTime.now(CLOCK), userCaptor.getValue().getActualizadoEn());
-        assertEquals(TutorSchoolStatus.ACTIVE, tutorSchoolCaptor.getValue().getStatus());
-        assertEquals(TutorInvitationStatus.ACCEPTED, result.getStatus());
+        thenExistingUserWasSavedAsParent();
+        thenExistingTutorSchoolLinkWasActivated();
+        thenInvitationWasAccepted(acceptedInvitation);
     }
 
     @Test
     void givenNewUserWithoutProfileData_whenAccepting_thenUsesFallbacks() {
         givenPendingInvitation();
         givenNoLocalUser();
-        givenUserIsSaved();
-        givenTutorDoesNotExistThenExists();
+        givenUserIsSavedWithGeneratedId();
+        givenTutorDoesNotExistAndThenExists();
         givenNoTutorSchoolLink();
         givenInvitationIsSaved();
-        AcceptTutorInvitationRequest request = new AcceptTutorInvitationRequest(
-                TOKEN,
-                COGNITO_SUBJECT,
-                "parent@test.com",
-                " ",
-                null,
-                " ",
-                ""
-        );
 
-        useCase.execute(request);
+        whenAcceptingInvitationWithoutProfileData();
 
-        verify(userRepository, times(2)).save(userCaptor.capture());
-        Usuario savedUser = userCaptor.getAllValues().get(0);
-        assertEquals("Sin Nombre", savedUser.getNombre());
-        assertEquals("Sin Apellido", savedUser.getApellido());
-        assertNull(savedUser.getTelefono());
-        assertNull(savedUser.getDni());
+        thenNewParentUserWasSavedWithFallbackProfileData();
     }
 
     private void givenPendingInvitation() {
-        TutorInvitation invitation = invitation(TutorInvitationStatus.PENDING);
-        when(invitationRepository.findByTokenHash(any())).thenReturn(Optional.of(invitation));
+        givenInvitationExists(anInvitationWithStatus(TutorInvitationStatus.PENDING));
     }
 
-    private TutorInvitation invitation(TutorInvitationStatus status) {
-        TutorInvitation invitation = new TutorInvitation();
-        invitation.setId(UUID.randomUUID());
-        invitation.setEmail(EMAIL);
-        invitation.setStatus(status);
-        invitation.setExpiresAt(LocalDateTime.now(CLOCK).plusDays(1));
-        Colegio school = new Colegio();
-        school.setId(schoolId);
-        invitation.setSchool(school);
-        return invitation;
+    private void givenAcceptedInvitation() {
+        givenInvitationExists(anInvitationWithStatus(TutorInvitationStatus.ACCEPTED));
+    }
+
+    private void givenExpiredInvitation() {
+        givenInvitationExists(anExpiredInvitation());
+    }
+
+    private void givenInvitationDoesNotExist() {
+        when(invitationRepository.findByTokenHash(any())).thenReturn(Optional.empty());
+    }
+
+    private void givenInvitationExists(TutorInvitation invitation) {
+        when(invitationRepository.findByTokenHash(any())).thenReturn(Optional.of(invitation));
     }
 
     private void givenNoLocalUser() {
         when(userRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.empty());
     }
 
-    private void givenUserIsSaved() {
+    private void givenExistingAdminUser() {
+        Usuario user = aUserWithRole(RolUsuario.ADMIN);
+
+        when(userRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+    }
+
+    private void givenUserIsSavedWithGeneratedId() {
         when(userRepository.save(any(Usuario.class))).thenAnswer(invocation -> {
             Usuario user = invocation.getArgument(0);
             user.setId(userId);
@@ -252,11 +221,13 @@ class AcceptTutorInvitationTest {
         });
     }
 
-    private void givenTutorDoesNotExistThenExists() {
-        Tutor tutor = new Tutor();
-        tutor.setId(tutorId);
+    private void givenTutorDoesNotExistAndThenExists() {
         when(tutorRepository.findByUsuarioId(userId))
-                .thenReturn(Optional.empty(), Optional.of(tutor));
+                .thenReturn(Optional.empty(), Optional.of(aTutor()));
+    }
+
+    private void givenExistingTutorForUser() {
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(aTutor()));
     }
 
     private void givenNoTutorSchoolLink() {
@@ -264,19 +235,223 @@ class AcceptTutorInvitationTest {
                 .thenReturn(Optional.empty());
     }
 
+    private void givenExistingRevokedTutorSchoolLink() {
+        when(tutorSchoolRepository.findByTutorIdAndSchoolId(tutorId, schoolId))
+                .thenReturn(Optional.of(aTutorSchoolWithStatus(TutorSchoolStatus.REVOKED)));
+    }
+
     private void givenInvitationIsSaved() {
         when(invitationRepository.save(any(TutorInvitation.class))).thenAnswer(invocation ->
-                invocation.getArgument(0));
+                invocation.getArgument(0)
+        );
     }
 
     private TutorInvitation whenAcceptingInvitation() {
-        return useCase.execute(new AcceptTutorInvitationRequest(
+        return useCase.execute(aValidAcceptRequest());
+    }
+
+    private void whenAcceptingInvitationWithoutProfileData() {
+        useCase.execute(anAcceptRequestWithoutProfileData());
+    }
+
+    private void thenNewParentUserWasSaved() {
+        Usuario savedUser = firstSavedUser();
+
+        assertEquals(RolUsuario.PADRE, savedUser.getRol());
+        assertEquals(EMAIL, savedUser.getEmail());
+    }
+
+    private void thenNewParentUserWasSavedWithFallbackProfileData() {
+        Usuario savedUser = firstSavedUser();
+
+        assertEquals(FALLBACK_FIRST_NAME, savedUser.getNombre());
+        assertEquals(FALLBACK_LAST_NAME, savedUser.getApellido());
+        assertNull(savedUser.getTelefono());
+        assertNull(savedUser.getDni());
+    }
+
+    private void thenExistingUserWasSavedAsParent() {
+        Usuario savedUser = onlySavedUser();
+
+        assertEquals(RolUsuario.PADRE, savedUser.getRol());
+        assertEquals(NOW, savedUser.getActualizadoEn());
+    }
+
+    private void thenTutorWasLinkedToSchool() {
+        TutorSchool tutorSchool = savedTutorSchool();
+
+        assertEquals(tutorId, tutorSchool.getTutorId());
+        assertEquals(schoolId, tutorSchool.getSchool().getId());
+        assertEquals(TutorSchoolStatus.ACTIVE, tutorSchool.getStatus());
+    }
+
+    private void thenExistingTutorSchoolLinkWasActivated() {
+        TutorSchool tutorSchool = savedTutorSchool();
+
+        assertEquals(TutorSchoolStatus.ACTIVE, tutorSchool.getStatus());
+    }
+
+    private void thenInvitationWasAccepted(TutorInvitation invitation) {
+        assertEquals(TutorInvitationStatus.ACCEPTED, invitation.getStatus());
+        assertEquals(NOW, invitation.getUsedAt());
+    }
+
+    private void thenInvitationWasMarkedAsExpired() {
+        verify(invitationRepository).save(invitationCaptor.capture());
+
+        assertEquals(TutorInvitationStatus.EXPIRED, invitationCaptor.getValue().getStatus());
+    }
+
+    private void thenAcceptingInvitationFailsBecauseInvitationDoesNotExist() {
+        thenAcceptingInvitationFailsWith(
+                IllegalArgumentException.class,
+                "No se encontro la invitacion"
+        );
+    }
+
+    private void thenAcceptingInvitationFailsBecauseInvitationIsNotPending() {
+        thenAcceptingInvitationFailsWith(
+                IllegalArgumentException.class,
+                "La invitacion no esta pendiente"
+        );
+    }
+
+    private void thenAcceptingInvitationFailsBecauseInvitationIsExpired() {
+        thenAcceptingInvitationFailsWith(
+                IllegalArgumentException.class,
+                "La invitacion esta vencida"
+        );
+    }
+
+    private void thenAcceptingInvitationWithDifferentEmailIsRejected() {
+        assertThrows(AccessDeniedException.class, acceptingInvitationWithDifferentEmail());
+    }
+
+    private <T extends Throwable> void thenAcceptingInvitationFailsWith(
+            Class<T> expectedException,
+            String expectedMessage
+    ) {
+        T exception = assertThrows(expectedException, acceptingInvitation());
+
+        assertEquals(expectedMessage, exception.getMessage());
+    }
+
+    private void thenUserTutorAndSchoolLinkWereNotTouched() {
+        verifyNoInteractions(userRepository, tutorRepository, tutorSchoolRepository);
+    }
+
+    private Usuario firstSavedUser() {
+        verify(userRepository, times(2)).save(userCaptor.capture());
+
+        return userCaptor.getAllValues().get(0);
+    }
+
+    private Usuario onlySavedUser() {
+        verify(userRepository).save(userCaptor.capture());
+
+        return userCaptor.getValue();
+    }
+
+    private TutorSchool savedTutorSchool() {
+        verify(tutorSchoolRepository).save(tutorSchoolCaptor.capture());
+
+        return tutorSchoolCaptor.getValue();
+    }
+
+    private Executable acceptingInvitation() {
+        return () -> whenAcceptingInvitation();
+    }
+
+    private Executable acceptingInvitationWithDifferentEmail() {
+        return () -> useCase.execute(anAcceptRequestWithDifferentEmail());
+    }
+
+    private AcceptTutorInvitationRequest aValidAcceptRequest() {
+        return anAcceptRequest(
+                EMAIL_WITH_SPACES_AND_UPPERCASE,
+                FIRST_NAME,
+                LAST_NAME,
+                PHONE,
+                DNI
+        );
+    }
+
+    private AcceptTutorInvitationRequest anAcceptRequestWithDifferentEmail() {
+        return anAcceptRequest(
+                DIFFERENT_EMAIL,
+                FIRST_NAME,
+                LAST_NAME,
+                null,
+                null
+        );
+    }
+
+    private AcceptTutorInvitationRequest anAcceptRequestWithoutProfileData() {
+        return anAcceptRequest(
+                EMAIL,
+                BLANK_VALUE,
+                null,
+                BLANK_VALUE,
+                EMPTY_VALUE
+        );
+    }
+
+    private AcceptTutorInvitationRequest anAcceptRequest(
+            String email,
+            String firstName,
+            String lastName,
+            String phone,
+            String dni
+    ) {
+        return new AcceptTutorInvitationRequest(
                 TOKEN,
                 COGNITO_SUBJECT,
-                " Parent@Test.com ",
-                "Ana",
-                "Gomez",
-                "1111",
-                "123"));
+                email,
+                firstName,
+                lastName,
+                phone,
+                dni
+        );
+    }
+
+    private TutorInvitation anInvitationWithStatus(TutorInvitationStatus status) {
+        TutorInvitation invitation = new TutorInvitation();
+        invitation.setId(UUID.randomUUID());
+        invitation.setEmail(EMAIL);
+        invitation.setStatus(status);
+        invitation.setExpiresAt(NOW.plusDays(1));
+        invitation.setSchool(aSchool());
+        return invitation;
+    }
+
+    private TutorInvitation anExpiredInvitation() {
+        TutorInvitation invitation = anInvitationWithStatus(TutorInvitationStatus.PENDING);
+        invitation.setExpiresAt(NOW.minusMinutes(1));
+        return invitation;
+    }
+
+    private Colegio aSchool() {
+        Colegio school = new Colegio();
+        school.setId(schoolId);
+        return school;
+    }
+
+    private Usuario aUserWithRole(RolUsuario role) {
+        Usuario user = new Usuario();
+        user.setId(userId);
+        user.setRol(role);
+        return user;
+    }
+
+    private Tutor aTutor() {
+        Tutor tutor = new Tutor();
+        tutor.setId(tutorId);
+        return tutor;
+    }
+
+    private TutorSchool aTutorSchoolWithStatus(TutorSchoolStatus status) {
+        TutorSchool tutorSchool = new TutorSchool();
+        tutorSchool.setStatus(status);
+        return tutorSchool;
     }
 }

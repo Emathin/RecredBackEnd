@@ -7,6 +7,8 @@ import com.recred.backend.application.LoadBalanceToChild;
 import com.recred.backend.application.LoadBalanceToChildRequest;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
 import com.recred.backend.application.TransferBalanceBetweenChildrenRequest;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
+import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import com.recred.backend.infrastructure.web.WalletController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,7 @@ import java.util.UUID;
 
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -56,6 +59,12 @@ class WalletControllerTest {
     @Mock
     private GetStudentWalletSummary getStudentWalletSummary;
 
+    @Mock
+    private PlanAccessGuard planAccessGuard;
+
+    @Mock
+    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
+
     @InjectMocks
     private WalletController walletController;
 
@@ -74,6 +83,7 @@ class WalletControllerTest {
         ResultActions result = whenLoadingBalance(studentId, amount);
 
         result.andExpect(status().isOk());
+        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
         verify(loadBalanceToChild).execute(
                 new LoadBalanceToChildRequest(COGNITO_SUBJECT, studentId, amount));
     }
@@ -87,6 +97,8 @@ class WalletControllerTest {
         ResultActions result = whenTransferringBalance(fromId, toId, amount);
 
         result.andExpect(status().isOk());
+        verify(planAccessGuard).requireTutorAdvanced(any());
+        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudents(List.of(fromId, toId));
         verify(transferBalanceBetweenChildren).execute(
                 new TransferBalanceBetweenChildrenRequest(COGNITO_SUBJECT, fromId, toId, amount));
     }
@@ -104,6 +116,7 @@ class WalletControllerTest {
                 .andExpect(jsonPath("$.periodo.desde").value("2026-06-01"))
                 .andExpect(jsonPath("$.periodo.hasta").value("2026-06-14"))
                 .andExpect(jsonPath("$.cantidadCompras").value(8));
+        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
         verify(getStudentWalletSummary).execute(summaryRequest(studentId));
     }
 
@@ -215,4 +228,3 @@ class WalletControllerTest {
         return new JwtAuthenticationToken(jwt);
     }
 }
-

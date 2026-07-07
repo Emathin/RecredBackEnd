@@ -1,6 +1,7 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
+import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.PurchasePatternAnalysis;
 import com.recred.backend.domain.models.PurchaseRecommendationResult;
 import com.recred.backend.domain.models.PurchaseResume;
@@ -46,8 +47,16 @@ public class GeneratePurchaseRecommendation {
             GeneratePurchaseRecommendationRequest request
     ) {
         List<ConsumptionAlertCandidate> candidates = studentRepository.findActiveCandidates();
-        candidates.forEach(this::processCandidate);
+        candidates.stream()
+                .filter(this::hasAdvancedTutor)
+                .forEach(this::processCandidate);
         return new GeneratePurchaseRecommendationResponse();
+    }
+
+    private boolean hasAdvancedTutor(ConsumptionAlertCandidate candidate) {
+        return candidate.tutors()
+                .stream()
+                .anyMatch(ConsumptionAlertTutor::hasAdvancedPlan);
     }
 
     private void processCandidate(ConsumptionAlertCandidate candidate) {

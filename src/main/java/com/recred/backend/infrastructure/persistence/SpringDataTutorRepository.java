@@ -73,6 +73,19 @@ public interface SpringDataTutorRepository extends
     })
     Optional<TutorEntity> findByUsuarioIdCognito(String idCognito);
 
+    @EntityGraph(attributePaths = {
+            "hijos",
+            "usuario",
+            "hijos.usuario",
+            "hijos.gradoEntity",
+            "hijos.gradoEntity.colegioEntity",
+            "hijos.gradoEntity.colegioEntity.nivelEntity",
+            "hijos.billeteraEntity",
+            "hijos.restriccionesSalud",
+            "hijos.productosFavoritos",
+            "hijos.restriccionesHorarias",
+            "hijos.productosBloqueados"
+    })
     @org.springframework.data.jpa.repository.Query(
             "SELECT t FROM TutorEntity t JOIN t.hijos h WHERE h.id = :alumnoId")
     List<TutorEntity> findByAlumnoId(

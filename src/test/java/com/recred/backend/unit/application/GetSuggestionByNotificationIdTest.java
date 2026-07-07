@@ -13,17 +13,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GetSuggestionByNotificationIdTest {
 
+    private static final String COGNITO_SUBJECT = "cognito-id-123";
+
     @Mock
     private SuggestionAiRepository suggestionAiRepository;
 
     private GetSuggestionByNotificationId useCase;
+    private UUID notificationId;
+    private UUID suggestionId;
 
     @BeforeEach
     void setUp() {
@@ -31,19 +36,49 @@ class GetSuggestionByNotificationIdTest {
     }
 
     @Test
-    void executeShouldReturnSuggestion() {
-        UUID notificationId = UUID.randomUUID();
-        String cognitoSubject = "cognito-id-123";
-        SugerenciaIA suggestion = SugerenciaIA.builder().id(UUID.randomUUID()).build();
-        
-        when(suggestionAiRepository.getSuggestionByNotificationId(notificationId))
-                .thenReturn(suggestion);
+    void givenSuggestionExistsForNotification_whenGettingSuggestion_thenReturnsSuggestion() {
+        givenSuggestionExistsForNotification();
 
-        GetSuggestionByNotificationIdRequest request = new GetSuggestionByNotificationIdRequest(
-                notificationId, cognitoSubject);
-        GetSuggestionResponse result = useCase.execute(request);
+        GetSuggestionResponse response = whenGetSuggestionByNotificationId();
 
-        assertNotNull(result);
-        assertEquals(suggestion.getId(), result.id());
+        thenSuggestionWasReturned(response);
     }
+
+    @Test
+    void givenSuggestionDoesNotExistForNotification_whenGettingSuggestion_thenReturnsNull() {
+        givenSuggestionDoesNotExistForNotification();
+
+        GetSuggestionResponse response = whenGetSuggestionByNotificationId();
+
+        thenNoSuggestionWasReturned(response);
+    }
+
+    private void givenSuggestionExistsForNotification() {
+        notificationId = randomUUID();
+        suggestionId = randomUUID();
+        when(suggestionAiRepository.getSuggestionByNotificationId(notificationId))
+                .thenReturn(SugerenciaIA.builder().id(suggestionId).build());
+    }
+
+    private void givenSuggestionDoesNotExistForNotification() {
+        notificationId = randomUUID();
+        when(suggestionAiRepository.getSuggestionByNotificationId(notificationId))
+                .thenReturn(null);
+    }
+
+    private GetSuggestionResponse whenGetSuggestionByNotificationId() {
+        return useCase.execute(new GetSuggestionByNotificationIdRequest(
+                notificationId,
+                COGNITO_SUBJECT
+        ));
+    }
+
+    private void thenSuggestionWasReturned(GetSuggestionResponse response) {
+        assertEquals(suggestionId, response.id());
+    }
+
+    private void thenNoSuggestionWasReturned(GetSuggestionResponse response) {
+        assertNull(response);
+    }
+
 }

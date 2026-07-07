@@ -1,0 +1,83 @@
+package com.recred.backend.application;
+
+import com.recred.backend.domain.exceptions.UsuarioNoEncontradoException;
+import com.recred.backend.domain.models.SuscripcionUsuario;
+import com.recred.backend.domain.models.TipoPlan;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
+import com.recred.backend.domain.repositories.UsuarioRepository;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+public class ActivateUserSubscription {
+
+    private final UsuarioRepository usuarioRepository;
+    private final SuscripcionUsuarioRepository subscriptionRepository;
+    private final Clock clock;
+
+    public ActivateUserSubscription(
+            UsuarioRepository usuarioRepository,
+            SuscripcionUsuarioRepository subscriptionRepository,
+            Clock clock
+    ) {
+        this.usuarioRepository = usuarioRepository;
+        this.subscriptionRepository = subscriptionRepository;
+        this.clock = clock;
+    }
+
+    @Transactional
+    public ActivateUserSubscriptionResponse execute(ActivateUserSubscriptionRequest request) {
+        Usuario user = subscribableUser(request.usuarioId());
+        SuscripcionUsuario subscription = subscription(request);
+        cancelCurrentSubscription(user.getId());
+        activateUserPlan(user, subscription.getPlan());
+        return ActivateUserSubscriptionResponse.fromDomain(save(subscription));
+    }
+
+    private Usuario subscribableUser(UUID usuarioId) {
+        Usuario user = usuarioRepository.findByIdForUpdate(usuarioId)
+                .orElseThrow(() -> new UsuarioNoEncontradoException(usuarioId));
+        user.validateCanHaveIndividualSubscription();
+        return user;
+    }
+
+    private SuscripcionUsuario subscription(ActivateUserSubscriptionRequest request) {
+        return SuscripcionUsuario.activate(
+                request.usuarioId(),
+                request.plan(),
+                request.periodo(),
+                request.precio(),
+                startDate(request)
+        );
+    }
+
+    private LocalDateTime startDate(ActivateUserSubscriptionRequest request) {
+        if (request.fechaInicio() != null) {
+            return request.fechaInicio();
+        }
+
+        return LocalDateTime.now(clock);
+    }
+
+    private void cancelCurrentSubscription(UUID usuarioId) {
+        subscriptionRepository.findActiveByUsuarioId(usuarioId)
+                .ifPresent(this::cancel);
+    }
+
+    private void cancel(SuscripcionUsuario subscription) {
+        subscription.cancel();
+        subscriptionRepository.save(subscription);
+    }
+
+    private void activateUserPlan(Usuario user, TipoPlan plan) {
+        user.activatePaidPlan(plan);
+        usuarioRepository.updatePlan(user.getId(), user.getPlan());
+    }
+
+    private SuscripcionUsuario save(SuscripcionUsuario subscription) {
+        return subscriptionRepository.save(subscription);
+    }
+}

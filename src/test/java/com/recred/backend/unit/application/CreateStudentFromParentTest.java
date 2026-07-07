@@ -80,9 +80,10 @@ class CreateStudentFromParentTest {
     private CreateStudentFromParentRequest createStudentRequest;
     private CreateStudentFromParentResponse createStudentResponse;
     private Throwable thrownException;
-    private PersistedIds persistedIds;
     private Grado grade;
     private UUID missingGradeId;
+    private UUID savedUserId;
+    private UUID savedStudentId;
 
     @BeforeEach
     void setUp() {
@@ -95,15 +96,11 @@ class CreateStudentFromParentTest {
                 cognitoStudentIdentityService);
     }
 
+
     @Test
-    void parentCreatesStudentUserAndLinksItToTutor() {
-        givenValidStudentCreationScenario();
-        givenParentWithTutor();
-        givenEmailAvailable(TRIMMED_EMAIL);
-        givenGradeExists();
-        givenTutorAssociatedToSchool();
-        givenCognitoCreatesStudent(TRIMMED_USERNAME, TRIMMED_EMAIL);
-        givenRepositoriesPersistCreatedEntities();
+    void givenValidStudentCreationScenario_whenCreatingStudent_thenCreatesUserAndLinksTutor() {
+        givenParentCanCreateStudentWithGrade();
+        givenStudentCanBeCreated();
 
         whenCreateStudentFromParent();
 
@@ -114,7 +111,7 @@ class CreateStudentFromParentTest {
     }
 
     @Test
-    void nonParentUserCannotCreateStudent() {
+    void givenNonParentUser_whenCreatingStudent_thenThrowsException() {
         givenDefaultStudentCreationRequest();
         givenAuthenticatedUserWithRole(RolUsuario.ALUMNO);
 
@@ -125,7 +122,7 @@ class CreateStudentFromParentTest {
     }
 
     @Test
-    void missingAuthenticatedUserShouldThrowException() {
+    void givenMissingAuthenticatedUser_whenCreatingStudent_thenThrowsException() {
         givenDefaultStudentCreationRequest();
         givenAuthenticatedUserDoesNotExist();
 
@@ -136,7 +133,7 @@ class CreateStudentFromParentTest {
     }
 
     @Test
-    void missingTutorShouldThrowException() {
+    void givenParentWithoutTutorProfile_whenCreatingStudent_thenThrowsException() {
         givenDefaultStudentCreationRequest();
         givenAuthenticatedParentWithoutTutor();
 
@@ -147,7 +144,7 @@ class CreateStudentFromParentTest {
     }
 
     @Test
-    void duplicatedEmailStopsBeforeCreatingCognitoUser() {
+    void givenDuplicatedEmail_whenCreatingStudent_thenStopsBeforeCognito() {
         givenStudentCreationRequestWithEmail(" " + DEFAULT_EMAIL + " ");
         givenParentWithTutor();
         givenDuplicatedEmail(DEFAULT_EMAIL);
@@ -159,7 +156,7 @@ class CreateStudentFromParentTest {
     }
 
     @Test
-    void missingGradeStopsBeforeCreatingCognitoUser() {
+    void givenMissingGrade_whenCreatingStudent_thenStopsBeforeCognito() {
         givenStudentCreationRequestWithMissingGrade();
         givenParentWithTutor();
         givenEmailAvailable(DEFAULT_EMAIL);
@@ -172,7 +169,7 @@ class CreateStudentFromParentTest {
     }
 
     @Test
-    void tutorCannotCreateStudentInUnassociatedSchool() {
+    void givenTutorNotAssociatedToSchool_whenCreatingStudent_thenThrowsException() {
         givenStudentCreationRequestWithGrade();
         givenParentWithTutor();
         givenEmailAvailable(DEFAULT_EMAIL);
@@ -186,7 +183,7 @@ class CreateStudentFromParentTest {
     }
 
     @Test
-    void blankOptionalUsernameAndDniShouldBeStoredAsNull() {
+    void givenBlankOptionalFields_whenCreatingStudent_thenStoresOptionalFieldsAsNull() {
         givenStudentCreationRequestWithBlankOptionalFields();
         givenParentWithTutor();
         givenEmailAvailable(TRIMMED_EMAIL);
@@ -199,7 +196,7 @@ class CreateStudentFromParentTest {
     }
 
     @Test
-    void cognitoFailureStopsLocalPersistence() {
+    void givenCognitoFailure_whenCreatingStudent_thenStopsLocalPersistence() {
         givenDefaultStudentCreationRequest();
         givenParentWithTutor();
         givenEmailAvailable(DEFAULT_EMAIL);
@@ -227,14 +224,23 @@ class CreateStudentFromParentTest {
         return grado;
     }
 
-    private PersistedIds persistedIds() {
-        return new PersistedIds(randomUUID(), randomUUID());
-    }
-
     private void givenValidStudentCreationScenario() {
-        persistedIds = persistedIds();
+        givenPersistedIds();
         grade = grade(randomUUID());
         createStudentRequest = validRequestWithGrade(grade.getId());
+    }
+
+    private void givenParentCanCreateStudentWithGrade() {
+        givenValidStudentCreationScenario();
+        givenParentWithTutor();
+        givenEmailAvailable(TRIMMED_EMAIL);
+        givenGradeExists();
+        givenTutorAssociatedToSchool();
+    }
+
+    private void givenStudentCanBeCreated() {
+        givenCognitoCreatesStudent(TRIMMED_USERNAME, TRIMMED_EMAIL);
+        givenRepositoriesPersistCreatedEntities();
     }
 
     private void givenDefaultStudentCreationRequest() {
@@ -256,7 +262,7 @@ class CreateStudentFromParentTest {
     }
 
     private void givenStudentCreationRequestWithBlankOptionalFields() {
-        persistedIds = persistedIds();
+        givenPersistedIds();
         createStudentRequest = request(
                 " ",
                 " Juan ",
@@ -265,6 +271,11 @@ class CreateStudentFromParentTest {
                 " ",
                 null,
                 null);
+    }
+
+    private void givenPersistedIds() {
+        savedUserId = randomUUID();
+        savedStudentId = randomUUID();
     }
 
     private void givenParentWithTutor() {
@@ -370,15 +381,15 @@ class CreateStudentFromParentTest {
         return tutor;
     }
 
-    private void givenRepositoriesPersistCreatedEntitiesWith(PersistedIds persistedIds) {
+    private void givenRepositoriesPersistCreatedEntitiesWith(UUID userId, UUID studentId) {
         when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> {
             Usuario saved = invocation.getArgument(0);
-            saved.setId(persistedIds.userId());
+            saved.setId(userId);
             return saved;
         });
         when(alumnoRepository.save(any(Alumno.class))).thenAnswer(invocation -> {
             Alumno saved = invocation.getArgument(0);
-            saved.setId(persistedIds.alumnoId());
+            saved.setId(studentId);
             return saved;
         });
         when(tutorRepository.save(any(Tutor.class))).thenAnswer(invocation ->
@@ -386,7 +397,7 @@ class CreateStudentFromParentTest {
     }
 
     private void givenRepositoriesPersistCreatedEntities() {
-        givenRepositoriesPersistCreatedEntitiesWith(persistedIds);
+        givenRepositoriesPersistCreatedEntitiesWith(savedUserId, savedStudentId);
     }
 
     private void whenCreateStudentFromParent() {
@@ -467,7 +478,7 @@ class CreateStudentFromParentTest {
         assertCreatedStudent(
                 alumnoCaptor.getValue(),
                 usuarioCaptor.getValue(),
-                persistedIds.userId(),
+                savedUserId,
                 grade);
     }
 
@@ -477,7 +488,7 @@ class CreateStudentFromParentTest {
     }
 
     private void thenResponseHasStudentId() {
-        assertEquals(persistedIds.alumnoId(), createStudentResponse.id());
+        assertEquals(savedStudentId, createStudentResponse.id());
     }
 
     private void thenOptionalUsernameAndDniWereStoredAsNull() {
@@ -531,8 +542,5 @@ class CreateStudentFromParentTest {
     private void assertLinkedTutorAndStudent(Tutor tutor, Alumno student) {
         assertTrue(tutor.getHijos().contains(student));
         assertTrue(student.getTutores().contains(tutor));
-    }
-
-    private record PersistedIds(UUID userId, UUID alumnoId) {
     }
 }

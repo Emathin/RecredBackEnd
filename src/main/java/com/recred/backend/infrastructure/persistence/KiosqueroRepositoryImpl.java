@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static java.util.stream.Collectors.toList;
@@ -30,8 +31,13 @@ public class KiosqueroRepositoryImpl implements KiosqueroRepository {
         return springDataKiosqueroRepository.findBuffetByUsuarioId(usuarioId);
     }
 
-    public java.util.Optional<UUID> findKiosqueroIdByUsuarioId(UUID usuarioId) {
+    public Optional<UUID> findKiosqueroIdByUsuarioId(UUID usuarioId) {
         return springDataKiosqueroRepository.findKiosqueroIdByUsuarioId(usuarioId);
+    }
+
+    @Override
+    public Optional<UUID> findSchoolIdByUsuarioId(UUID usuarioId) {
+        return springDataKiosqueroRepository.findSchoolIdByUsuarioId(usuarioId);
     }
 
     @Override
@@ -61,4 +67,3 @@ public class KiosqueroRepositoryImpl implements KiosqueroRepository {
         return savedEntity.toDomain();
     }
 }
-

@@ -13,6 +13,8 @@ import java.util.UUID;
 
 public class AddFavoriteProduct {
 
+    private static final int FREE_PLAN_FAVORITE_PRODUCT_LIMIT = 5;
+
     private final AlumnoRepository alumnoRepository;
     private final ProductRepository productRepository;
     private final TutorRepository tutorRepository;
@@ -39,11 +41,16 @@ public class AddFavoriteProduct {
     private void ensureFavoriteProductLimitIsNotExceeded(
             Alumno student,
             AddFavoriteProductRequest addFavoriteRequest) {
-        if (!hasOnlyFreeTutors(addFavoriteRequest.alumnoId())) {
+        List<Tutor> tutors = tutorRepository.findByAlumnoId(addFavoriteRequest.alumnoId());
+        if (hasPaidTutor(tutors)) {
             return;
         }
 
-        if (student.exceedsFavoriteProductLimit(addFavoriteRequest.productoId(), 5)) {
+        if (exceedsFreePlanLimit(
+                tutors,
+                student,
+                addFavoriteRequest.productoId(),
+                addFavoriteRequest.alumnoId())) {
             throw new IllegalArgumentException(
                     "Límite de productos favoritos alcanzado para cuenta gratuita (máximo 5)");
         }
@@ -64,10 +71,39 @@ public class AddFavoriteProduct {
         alumnoRepository.save(student);
     }
 
-    private boolean hasOnlyFreeTutors(UUID studentId) {
-        List<Tutor> tutores = tutorRepository.findByAlumnoId(studentId);
-        return tutores.isEmpty() || tutores.stream()
-                .allMatch(tutor -> tutor.getUsuario() == null
-                        || tutor.getUsuario().hasFreePlan());
+    private boolean hasPaidTutor(List<Tutor> tutors) {
+        return tutors.stream()
+                .anyMatch(tutor -> tutor.getUsuario() != null
+                        && tutor.getUsuario().hasPaidPlan());
+    }
+
+    private boolean exceedsFreePlanLimit(
+            List<Tutor> tutors,
+            Alumno student,
+            UUID productId,
+            UUID studentId
+    ) {
+        if (tutors.isEmpty()) {
+            return student.exceedsFavoriteProductLimit(
+                    productId,
+                    FREE_PLAN_FAVORITE_PRODUCT_LIMIT
+            );
+        }
+
+        return tutors.stream()
+                .map(this::fullTutor)
+                .anyMatch(tutor -> tutor.exceedsChildrenFavoriteProductLimit(
+                        studentId,
+                        productId,
+                        FREE_PLAN_FAVORITE_PRODUCT_LIMIT
+                ));
+    }
+
+    private Tutor fullTutor(Tutor tutor) {
+        if (tutor.getId() == null) {
+            return tutor;
+        }
+
+        return tutorRepository.findById(tutor.getId()).orElse(tutor);
     }
 }

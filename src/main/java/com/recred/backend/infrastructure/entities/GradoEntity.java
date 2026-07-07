@@ -32,6 +32,10 @@ public class GradoEntity {
     @JoinColumn(name = "colegio_id", nullable = false)
     private ColegioEntity colegioEntity;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nivel_id")
+    private NivelEntity nivelEntity;
+
     @Column(nullable = false)
     private String anio;
 
@@ -51,6 +55,10 @@ public class GradoEntity {
 
         if (this.colegioEntity != null) {
             gradoDominio.setColegio(this.colegioEntity.toDomain());
+        }
+
+        if (this.nivelEntity != null) {
+            gradoDominio.setNivel(this.nivelEntity.toDomain());
         }
 
         return gradoDominio;

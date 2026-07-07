@@ -17,7 +17,9 @@ import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.RespondToAISuggestionRequest;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.ProductResponseDTO;
+import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import com.recred.backend.infrastructure.web.StudentPreferenceController;
 import com.recred.backend.infrastructure.web.StudentPreferenceResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +50,8 @@ class StudentPreferenceControllerTest {
     private AddFavoriteProduct addFavoriteProduct;
     private DeleteFavoriteProduct deleteFavoriteProduct;
     private GetFavoritesByStudent getFavoritesByStudent;
+    private PlanAccessGuard planAccessGuard;
+    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
     private StudentPreferenceController controller;
 
     private UUID userId;
@@ -72,6 +76,8 @@ class StudentPreferenceControllerTest {
         addFavoriteProduct = mock(AddFavoriteProduct.class);
         deleteFavoriteProduct = mock(DeleteFavoriteProduct.class);
         getFavoritesByStudent = mock(GetFavoritesByStudent.class);
+        planAccessGuard = mock(PlanAccessGuard.class);
+        schoolLicenseAccessGuard = mock(SchoolLicenseAccessGuard.class);
 
         controller = new StudentPreferenceController(
                 detectStudentPreferences,
@@ -80,7 +86,9 @@ class StudentPreferenceControllerTest {
                 alumnoRepository,
                 addFavoriteProduct,
                 deleteFavoriteProduct,
-                getFavoritesByStudent
+                getFavoritesByStudent,
+                planAccessGuard,
+                schoolLicenseAccessGuard
         );
     }
 
@@ -93,6 +101,8 @@ class StudentPreferenceControllerTest {
         whenDetectingPreference();
 
         thenPreferenceResponseIsReturned();
+        thenIntermediatePlanWasRequired();
+        thenStudentSchoolLicenseWasRequired();
     }
 
     @Test
@@ -121,6 +131,7 @@ class StudentPreferenceControllerTest {
     @Test
     void givenEmptyPreferenceList_whenGettingPreferences_thenReturnsNoContent() {
         givenUserId();
+        givenUserHasNoStudent();
         givenPreferencesByUser();
 
         whenGettingPreferences();
@@ -131,6 +142,7 @@ class StudentPreferenceControllerTest {
     @Test
     void givenExistingPreferences_whenGettingPreferences_thenReturnsPreferences() {
         givenUserId();
+        givenUserHasNoStudent();
         givenPreferencesByUser(preference(
                 randomUUID(),
                 null,
@@ -145,11 +157,25 @@ class StudentPreferenceControllerTest {
         whenGettingPreferences();
 
         thenPreferencesAreReturned();
+        thenIntermediatePlanWasRequired();
+    }
+
+    @Test
+    void givenStudentUser_whenGettingPreferences_thenRequiresSchoolLicense() {
+        givenUserId();
+        givenStudentId();
+        givenStudentIdForUser();
+        givenPreferencesByUser();
+
+        whenGettingPreferences();
+
+        thenStudentSchoolLicenseWasRequired();
     }
 
     @Test
     void givenParentPreferenceView_whenGettingPreferences_thenReturnsParentTitle() {
         givenParentPreferenceView();
+        givenUserHasNoStudent();
         givenPreferencesByUser(preference(
                 randomUUID(),
                 childId,
@@ -169,10 +195,13 @@ class StudentPreferenceControllerTest {
     @Test
     void givenAISuggestionResponse_whenResponding_thenDelegatesAndReturnsOk() {
         givenAISuggestionResponse();
+        givenStudentIdForUser();
 
         whenRespondingToSuggestion();
 
         thenSuggestionResponseIsOk();
+        thenIntermediatePlanWasRequired();
+        thenStudentSchoolLicenseWasRequired();
         thenAISuggestionWasAnswered();
     }
 
@@ -228,6 +257,10 @@ class StudentPreferenceControllerTest {
         userId = randomUUID();
     }
 
+    private void givenStudentId() {
+        studentId = randomUUID();
+    }
+
     private void givenParentPreferenceView() {
         userId = randomUUID();
         childId = randomUUID();
@@ -235,6 +268,8 @@ class StudentPreferenceControllerTest {
     }
 
     private void givenAISuggestionResponse() {
+        userId = randomUUID();
+        studentId = randomUUID();
         suggestionId = randomUUID();
     }
 
@@ -250,6 +285,10 @@ class StudentPreferenceControllerTest {
 
     private void givenStudentIdForUser() {
         when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+    }
+
+    private void givenUserHasNoStudent() {
+        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.empty());
     }
 
     private void givenPreferenceDetected() {
@@ -285,7 +324,7 @@ class StudentPreferenceControllerTest {
     }
 
     private void whenRespondingToSuggestion() {
-        voidResponse = controller.respond(suggestionId, true);
+        voidResponse = controller.respond(userId, suggestionId, true);
     }
 
     private void whenAddingFavorite() {
@@ -359,6 +398,14 @@ class StudentPreferenceControllerTest {
         verify(getFavoritesByStudent).execute(new GetFavoritesByStudentRequest(studentId));
     }
 
+    private void thenIntermediatePlanWasRequired() {
+        verify(planAccessGuard).requireUserOrInheritedTutorIntermediate(userId);
+    }
+
+    private void thenStudentSchoolLicenseWasRequired() {
+        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
+    }
+
     private DetectStudentPreferencesRequest detectRequest() {
         return new DetectStudentPreferencesRequest(studentId, buffetId);
     }
@@ -385,6 +432,9 @@ class StudentPreferenceControllerTest {
                 TipoSugerenciaIA.PREFERENCIA_DETECTADA,
                 title,
                 message,
+                null,
+                null,
+                null,
                 null,
                 null,
                 parentView

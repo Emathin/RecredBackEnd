@@ -37,6 +37,7 @@ import com.recred.backend.infrastructure.web.LowBalanceAlertController;
 import com.recred.backend.infrastructure.web.MenuBuffetController;
 import com.recred.backend.infrastructure.web.MenuProductoDTO;
 import com.recred.backend.infrastructure.web.NotificationTestController;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.SchoolAccessGuard;
 import com.recred.backend.infrastructure.web.TimeSlotResponse;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardController;
@@ -102,6 +103,8 @@ class SmallControllerDelegationTest {
     private GetBuffetByStudent getBuffetByStudent;
     @Mock
     private FirebasePushNotificationSender pushNotificationSender;
+    @Mock
+    private PlanAccessGuard planAccessGuard;
 
     @Test
     void tutorGlobalDashboardShouldUseAuthenticatedSubject() {
@@ -243,7 +246,11 @@ class SmallControllerDelegationTest {
     }
 
     private TutorGlobalDashboardController givenTutorGlobalDashboardController() {
-        return new TutorGlobalDashboardController(getTutorGlobalDashboard, updateTutorDashboardConfig);
+        return new TutorGlobalDashboardController(
+                getTutorGlobalDashboard,
+                updateTutorDashboardConfig,
+                planAccessGuard
+        );
     }
 
     private Authentication authenticatedAs(String cognitoSubject) {

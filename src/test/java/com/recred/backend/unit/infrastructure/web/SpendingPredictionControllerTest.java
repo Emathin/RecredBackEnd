@@ -4,12 +4,15 @@ import com.recred.backend.application.PredictStudentSpending;
 import com.recred.backend.application.PredictStudentSpendingRequest;
 import com.recred.backend.application.PredictStudentSpendingResponse;
 import com.recred.backend.domain.models.BudgetPeriod;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.SpendingPredictionController;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -21,8 +24,11 @@ class SpendingPredictionControllerTest {
     @Test
     void delegatePredictionWithRequestedPeriod() {
         PredictStudentSpending predictStudentSpending = mock(PredictStudentSpending.class);
-        SpendingPredictionController controller = new SpendingPredictionController(predictStudentSpending);
+        PlanAccessGuard planAccessGuard = mock(PlanAccessGuard.class);
+        SpendingPredictionController controller =
+                new SpendingPredictionController(predictStudentSpending, planAccessGuard);
         UUID studentId = UUID.randomUUID();
+        Authentication authentication = authentication();
         PredictStudentSpendingRequest request = request(studentId, BudgetPeriod.MENSUAL);
         PredictStudentSpendingResponse response = response(studentId, BudgetPeriod.MENSUAL);
         givenPrediction(predictStudentSpending, request, response);
@@ -30,18 +36,26 @@ class SpendingPredictionControllerTest {
         PredictStudentSpendingResponse result = whenPredictionIsRequested(
                 controller,
                 studentId,
-                BudgetPeriod.MENSUAL
+                BudgetPeriod.MENSUAL,
+                authentication
         );
 
         thenRequestedPeriodResponseMatches(result, studentId);
+        verify(planAccessGuard).requireTutorOrStudentIntermediateForStudent(
+                authentication,
+                studentId
+        );
         thenUseCaseWasCalledWith(predictStudentSpending, request);
     }
 
     @Test
     void delegatePredictionWithoutRequestedPeriod() {
         PredictStudentSpending predictStudentSpending = mock(PredictStudentSpending.class);
-        SpendingPredictionController controller = new SpendingPredictionController(predictStudentSpending);
+        PlanAccessGuard planAccessGuard = mock(PlanAccessGuard.class);
+        SpendingPredictionController controller =
+                new SpendingPredictionController(predictStudentSpending, planAccessGuard);
         UUID studentId = UUID.randomUUID();
+        Authentication authentication = authentication();
         PredictStudentSpendingRequest request = request(studentId, null);
         PredictStudentSpendingResponse response = response(studentId, BudgetPeriod.QUINCENAL);
         givenPrediction(predictStudentSpending, request, response);
@@ -49,10 +63,15 @@ class SpendingPredictionControllerTest {
         PredictStudentSpendingResponse result = whenPredictionIsRequested(
                 controller,
                 studentId,
-                null
+                null,
+                authentication
         );
 
         thenDefaultPeriodResponseMatches(result);
+        verify(planAccessGuard).requireTutorOrStudentIntermediateForStudent(
+                authentication,
+                studentId
+        );
         thenUseCaseWasCalledWith(predictStudentSpending, request);
     }
 
@@ -67,9 +86,10 @@ class SpendingPredictionControllerTest {
     private PredictStudentSpendingResponse whenPredictionIsRequested(
             SpendingPredictionController controller,
             UUID studentId,
-            BudgetPeriod period
+            BudgetPeriod period,
+            Authentication authentication
     ) {
-        return controller.predict(studentId, period);
+        return controller.predict(studentId, period, authentication);
     }
 
     private void thenRequestedPeriodResponseMatches(
@@ -120,5 +140,8 @@ class SpendingPredictionControllerTest {
                 )
         );
     }
-}
 
+    private Authentication authentication() {
+        return new TestingAuthenticationToken("tutor-sub", "");
+    }
+}

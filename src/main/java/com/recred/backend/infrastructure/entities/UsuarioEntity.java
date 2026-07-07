@@ -83,7 +83,6 @@ public class UsuarioEntity {
     @Column(name = "url_foto_perfil", columnDefinition = "TEXT")
     private String urlFotoPerfil;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "tipo_plan", nullable = false)
     private TipoPlan plan = TipoPlan.GRATUITO;
 

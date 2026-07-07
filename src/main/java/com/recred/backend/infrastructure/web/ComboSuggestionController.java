@@ -18,15 +18,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class ComboSuggestionController {
 
     private final GenerateComboSuggestion generateComboSuggestion;
+    private final PlanAccessGuard planAccessGuard;
 
-    public ComboSuggestionController(GenerateComboSuggestion generateComboSuggestion) {
+    public ComboSuggestionController(
+            GenerateComboSuggestion generateComboSuggestion,
+            PlanAccessGuard planAccessGuard
+    ) {
         this.generateComboSuggestion = generateComboSuggestion;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @GetMapping("/{productId}")
     public ResponseEntity<GenerateComboSuggestionResponse> getComboSuggestions(
             Authentication authentication,
             @PathVariable UUID productId) {
+        planAccessGuard.requireVendorAdvanced(authentication);
         GenerateComboSuggestionRequest request = new GenerateComboSuggestionRequest(
                 productId, cognitoSubject(authentication));
         return ResponseEntity.ok(generateComboSuggestion.execute(request));

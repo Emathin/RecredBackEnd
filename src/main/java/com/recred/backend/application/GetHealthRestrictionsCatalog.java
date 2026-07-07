@@ -3,7 +3,7 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 
-import java.util.stream.Collectors;
+import java.util.List;
 
 public class GetHealthRestrictionsCatalog {
 
@@ -16,9 +16,13 @@ public class GetHealthRestrictionsCatalog {
     public GetHealthRestrictionsCatalogResponse execute(
             GetHealthRestrictionsCatalogRequest request
     ) {
-        return new GetHealthRestrictionsCatalogResponse(repository.findAll().stream()
+        return new GetHealthRestrictionsCatalogResponse(restrictions());
+    }
+
+    private List<GetHealthRestrictionsResponse> restrictions() {
+        return repository.findAll().stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList()));
+                .toList();
     }
 
     private GetHealthRestrictionsResponse toResponse(ClasificacionSalud clasificacion) {

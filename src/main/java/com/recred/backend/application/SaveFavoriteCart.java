@@ -19,6 +19,8 @@ import java.util.UUID;
 
 public class SaveFavoriteCart {
 
+    private static final int FREE_PLAN_FAVORITE_CART_LIMIT = 5;
+
     private final CarritoFavoritoRepository carritoFavoritoRepository;
     private final UsuarioRepository usuarioRepository;
     private final TutorRepository tutorRepository;
@@ -114,10 +116,10 @@ public class SaveFavoriteCart {
         if (usuario.hasFreePlan()) {
             var existingCarts = carritoFavoritoRepository
                     .findByTutorIdAndFilters(tutor.getId(), null, null);
-            if (existingCarts.size() >= 3) {
+            if (existingCarts.size() >= FREE_PLAN_FAVORITE_CART_LIMIT) {
                 throw new IllegalArgumentException(
                         "Límite de carritos favoritos alcanzado "
-                        + "para cuenta gratuita (máximo 3)");
+                        + "para cuenta gratuita (máximo 5)");
             }
         }
     }

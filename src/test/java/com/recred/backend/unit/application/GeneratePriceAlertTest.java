@@ -5,6 +5,7 @@ import com.recred.backend.application.GeneratePriceAlertRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.PriceAlertSuggestion;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
@@ -118,18 +119,16 @@ class GeneratePriceAlertTest {
     }
 
     @Test
-    void saveAlertWithoutTutorUsersWhenTutorsHaveNoUserId() {
+    void execute_WhenTutorsHaveNoAdvancedPlan_ShouldNotAnalyzeOrSaveAlert() {
         Producto producto = product();
         UUID buffetId = UUID.randomUUID();
         Alumno alumno = studentWithTutorsWithoutUserIds();
         givenAffectedStudentWithoutRecentAlert(producto, alumno);
-        givenAiResult(alumno, producto);
-        givenFixedClock();
 
         whenExecute(request(producto, buffetId));
 
-        PriceAlertSuggestion saved = capturedSuggestion();
-        assertTrue(saved.tutorUserIds().isEmpty());
+        thenNoAlertAnalyzed();
+        thenNoPriceAlertSaved();
     }
 
     private void whenExecute(GeneratePriceAlertRequest request) {
@@ -240,6 +239,7 @@ class GeneratePriceAlertTest {
     private Alumno studentWithTutorUser(UUID tutorUserId, UUID studentUserId) {
         Usuario usuario = new Usuario();
         usuario.setId(tutorUserId);
+        usuario.setPlan(TipoPlan.AVANZADO);
 
         Tutor tutor = new Tutor();
         tutor.setUsuario(usuario);

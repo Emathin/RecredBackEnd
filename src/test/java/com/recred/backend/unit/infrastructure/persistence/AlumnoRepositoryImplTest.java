@@ -128,6 +128,18 @@ class AlumnoRepositoryImplTest {
         assertEquals(userId, result);
     }
 
+    @Test
+    void findSchoolIdByStudentIdShouldDelegateToRepository() {
+        UUID studentId = UUID.randomUUID();
+        UUID schoolId = UUID.randomUUID();
+        when(springDataRepository.findSchoolIdByStudentId(studentId))
+                .thenReturn(Optional.of(schoolId));
+
+        Optional<UUID> result = adapter.findSchoolIdByStudentId(studentId);
+
+        assertEquals(Optional.of(schoolId), result);
+    }
+
     private Alumno alumno(
             UUID studentId,
             UUID userId,

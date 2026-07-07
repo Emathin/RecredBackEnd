@@ -19,6 +19,9 @@ public record GetStudentPreferencesResponse(
             String title,
             String message,
             String productId,
+            String productName,
+            String productImageUrl,
+            java.math.BigDecimal productPrice,
             String aiReason,
             boolean parentView
     ) {

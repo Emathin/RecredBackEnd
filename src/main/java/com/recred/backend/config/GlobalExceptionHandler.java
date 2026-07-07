@@ -1,23 +1,23 @@
 package com.recred.backend.config;
 
-import com.recred.backend.domain.exceptions.NotificationNotFoundException;
-import com.recred.backend.domain.exceptions.UsernameExistsException;
-import com.recred.backend.domain.exceptions.FileValidationException;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.BuffetNotFoundException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.FileValidationException;
+import com.recred.backend.domain.exceptions.GradeAlreadyExistsException;
+import com.recred.backend.domain.exceptions.GradeNotFoundException;
 import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.InsufficientStockException;
-import com.recred.backend.domain.exceptions.InvalidChatMessageException;
-import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
-import com.recred.backend.domain.exceptions.InvalidTimeSlotException;
 import com.recred.backend.domain.exceptions.InventoryNotFoundException;
 import com.recred.backend.domain.exceptions.InventoryOperationException;
+import com.recred.backend.domain.exceptions.InvalidChatMessageException;
+import com.recred.backend.domain.exceptions.InvalidGradeException;
+import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
+import com.recred.backend.domain.exceptions.InvalidTimeSlotException;
 import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
 import com.recred.backend.domain.exceptions.KiosqueroPayoutConfigNotFoundException;
+import com.recred.backend.domain.exceptions.LevelNotFoundException;
 import com.recred.backend.domain.exceptions.NotificationNotFoundException;
 import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 import com.recred.backend.domain.exceptions.PickupCutoffTimeExceededException;
@@ -26,9 +26,6 @@ import com.recred.backend.domain.exceptions.PickupSlotRulesNotFoundException;
 import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
 import com.recred.backend.domain.exceptions.ProductDailyCapacityExceededException;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
-import com.recred.backend.domain.exceptions.InsufficientBalanceException;
-import com.recred.backend.domain.exceptions.InvalidChatMessageException;
-import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
 import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
@@ -38,6 +35,7 @@ import com.recred.backend.domain.exceptions.TimeSlotInUseException;
 import com.recred.backend.domain.exceptions.TimeSlotNotFoundException;
 import com.recred.backend.domain.exceptions.TimeSlotOverlapException;
 import com.recred.backend.domain.exceptions.TutorNoEncontradoException;
+import com.recred.backend.domain.exceptions.UsernameExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -221,6 +219,32 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleTimeSlotInUse(TimeSlotInUseException ex) {
         return buildResponse(HttpStatus.CONFLICT, "Franja horaria en uso",
                 ex.getMessage(), "TIME_SLOT_IN_USE");
+    }
+
+    @ExceptionHandler(GradeNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleGradeNotFound(GradeNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Grado no encontrado",
+                ex.getMessage(), "GRADE_NOT_FOUND");
+    }
+
+    @ExceptionHandler(InvalidGradeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidGrade(InvalidGradeException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Grado invalido",
+                ex.getMessage(), "INVALID_GRADE");
+    }
+
+    @ExceptionHandler(GradeAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleGradeAlreadyExists(
+            GradeAlreadyExistsException ex
+    ) {
+        return buildResponse(HttpStatus.CONFLICT, "Grado duplicado",
+                ex.getMessage(), "GRADE_ALREADY_EXISTS");
+    }
+
+    @ExceptionHandler(LevelNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleLevelNotFound(LevelNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Nivel no encontrado",
+                ex.getMessage(), "LEVEL_NOT_FOUND");
     }
 
     @ExceptionHandler(SchoolNotFoundException.class)

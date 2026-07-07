@@ -7,7 +7,6 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public class GetScheduledPickups {
 
@@ -18,8 +17,8 @@ public class GetScheduledPickups {
     }
 
     public List<GetScheduledPickupsResponse> execute(GetScheduledPickupsRequest request) {
-        List<Purchase> purchases = this.fetchScheduledPickups(request);
-        return this.mapToResponse(purchases);
+        List<Purchase> purchases = fetchScheduledPickups(request);
+        return mapToResponse(purchases);
     }
 
     private List<Purchase> fetchScheduledPickups(GetScheduledPickupsRequest request) {
@@ -36,14 +35,14 @@ public class GetScheduledPickups {
     private List<GetScheduledPickupsResponse> mapToResponse(List<Purchase> purchases) {
         return purchases.stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private GetScheduledPickupsResponse toResponse(Purchase purchase) {
         return new GetScheduledPickupsResponse(
                 purchase.getId(),
-                this.getStudentId(purchase),
-                this.getStudentName(purchase),
+                getStudentId(purchase),
+                getStudentName(purchase),
                 purchase.getTotalAmount(),
                 purchase.getStatus() != null ? purchase.getStatus().name() : null,
                 purchase.getStatus() != null ? purchase.getStatus().getLabel() : null,
@@ -56,7 +55,7 @@ public class GetScheduledPickups {
                 purchase.getPickupSlotId(),
                 purchase.getPickupSlotDescription(),
                 purchase.getPickupDate(),
-                this.mapItems(purchase)
+                mapItems(purchase)
         );
     }
 
@@ -82,7 +81,7 @@ public class GetScheduledPickups {
         }
         return purchase.getItems().entrySet().stream()
                 .map(this::toItemResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private GetScheduledPickupsResponse.PurchaseItemResponse toItemResponse(

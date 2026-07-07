@@ -10,6 +10,7 @@ import com.recred.backend.domain.models.ConsumptionAlertType;
 import com.recred.backend.domain.models.TipoNotificacion;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.infrastructure.entities.AIEventEntity;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
@@ -206,7 +207,8 @@ class ConsumptionAlertNotificationPersistenceRepositoryIT extends AbstractIntegr
                         studentId,
                         studentUserId,
                         "John Doe",
-                        List.of(new ConsumptionAlertTutor(tutorUserId, "Tutor Doe"))
+                        List.of(new ConsumptionAlertTutor(tutorUserId, "Tutor Doe",
+                                TipoPlan.AVANZADO))
                 ),
                 pattern(studentId, productId, ConsumptionAlertType.STATISTICAL_PATTERN),
                 messages()

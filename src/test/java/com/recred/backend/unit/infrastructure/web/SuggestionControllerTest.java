@@ -7,6 +7,7 @@ import com.recred.backend.application.GetSuggestionByTypeRequest;
 import com.recred.backend.application.GetSuggestionResponse;
 import com.recred.backend.config.GlobalExceptionHandler;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.SuggestionController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -30,14 +32,20 @@ class SuggestionControllerTest {
 
     private GetSuggestionByNotificationId getSuggestionByNotificationId;
     private GetSuggestionByType getSuggestionByType;
+    private PlanAccessGuard planAccessGuard;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         getSuggestionByNotificationId = mock(GetSuggestionByNotificationId.class);
         getSuggestionByType = mock(GetSuggestionByType.class);
+        planAccessGuard = mock(PlanAccessGuard.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new SuggestionController(getSuggestionByNotificationId, getSuggestionByType))
+                .standaloneSetup(new SuggestionController(
+                        getSuggestionByNotificationId,
+                        getSuggestionByType,
+                        planAccessGuard
+                ))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -87,6 +95,6 @@ class SuggestionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(suggestionId.toString()))
                 .andExpect(jsonPath("$[0].titulo").value("Title"));
+        verify(planAccessGuard).requireVendorAdvanced(authentication);
     }
 }
-
