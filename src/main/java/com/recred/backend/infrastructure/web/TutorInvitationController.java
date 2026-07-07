@@ -4,7 +4,7 @@ import com.recred.backend.application.AcceptTutorInvitation;
 import com.recred.backend.application.AcceptTutorInvitationRequest;
 import com.recred.backend.application.AcceptTutorInvitationResponse;
 import com.recred.backend.application.GetTutorInvitation;
-import com.recred.backend.domain.models.TutorInvitation;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
