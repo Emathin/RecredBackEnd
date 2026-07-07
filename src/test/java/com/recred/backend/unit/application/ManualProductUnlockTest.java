@@ -15,10 +15,16 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ManualProductUnlockTest {
+
+    private static final UUID STUDENT_ID = UUID.randomUUID();
+    private static final UUID PRODUCT_ID = UUID.randomUUID();
 
     @Mock
     private AlumnoRepository alumnoRepository;
@@ -27,30 +33,53 @@ class ManualProductUnlockTest {
     private ManualProductUnlock manualProductUnlock;
 
     @Test
-    void dadoAlumnoValido_cuandoExecute_entoncesDesbloqueaYGuarda() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        ManualProductUnlockRequest request = new ManualProductUnlockRequest(alumnoId, productoId);
+    void execute_ShouldUnlockProductAndSave() {
+        ManualProductUnlockRequest request = givenRequest();
+        Alumno alumno = givenExistingAlumno();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        whenExecute(request);
 
-        manualProductUnlock.execute(request);
-
-        verify(alumnoRepository).save(alumno);
+        thenAlumnoIsSaved(alumno);
     }
 
     @Test
-    void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        ManualProductUnlockRequest request = new ManualProductUnlockRequest(alumnoId, productoId);
+    void execute_ShouldThrowExceptionWhenAlumnoNotFound() {
+        ManualProductUnlockRequest request = givenRequest();
+        givenNonExistingAlumno();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        Executable execution = whenExecuteExecutable(request);
 
-        Executable execution = () -> manualProductUnlock.execute(request);
+        thenExceptionIsThrownAndNotSaved(execution);
+    }
 
+    private ManualProductUnlockRequest givenRequest() {
+        return new ManualProductUnlockRequest(STUDENT_ID, PRODUCT_ID);
+    }
+
+    private Alumno givenExistingAlumno() {
+        Alumno alumno = new Alumno();
+        when(alumnoRepository.findById(STUDENT_ID)).thenReturn(Optional.of(alumno));
+        return alumno;
+    }
+
+    private void givenNonExistingAlumno() {
+        when(alumnoRepository.findById(STUDENT_ID)).thenReturn(Optional.empty());
+    }
+
+    private void whenExecute(ManualProductUnlockRequest request) {
+        manualProductUnlock.execute(request);
+    }
+
+    private Executable whenExecuteExecutable(ManualProductUnlockRequest request) {
+        return () -> manualProductUnlock.execute(request);
+    }
+
+    private void thenAlumnoIsSaved(Alumno alumno) {
+        verify(alumnoRepository).save(alumno);
+    }
+
+    private void thenExceptionIsThrownAndNotSaved(Executable execution) {
         assertThrows(RuntimeException.class, execution);
-        verify(alumnoRepository, never()).save(any());
+        verify(alumnoRepository, never()).save(any(Alumno.class));
     }
 }
