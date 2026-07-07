@@ -30,15 +30,15 @@ public class GetFavoriteCartsByTutor {
 
     @Transactional(readOnly = true)
     public List<GetFavoriteCartsByTutorResponse> execute(
-            GetFavoriteCartsByTutorRequest request) {
+            GetFavoriteCartsByTutorRequest favoriteCartsRequest) {
 
-        Usuario usuario = this.findUsuarioByCognito(request.cognitoSub());
-        Tutor tutor = this.findTutorByUsuarioId(usuario.getId());
+        Tutor tutor = findAuthenticatedTutor(favoriteCartsRequest.cognitoSub());
+        List<CarritoFavorito> favoriteCarts = findFavoriteCartsForTutor(
+                tutor,
+                favoriteCartsRequest
+        );
 
-        List<CarritoFavorito> domainCarts = this.findCarritosFavoritosByTutorId(tutor.getId(),
-                request.alumnoId(), request.productoId());
-
-        return this.mapToResponses(domainCarts);
+        return mapToResponses(favoriteCarts);
     }
 
     private List<GetFavoriteCartsByTutorResponse> mapToResponses(
@@ -83,6 +83,22 @@ public class GetFavoriteCartsByTutor {
         );
     }
 
+    private Tutor findAuthenticatedTutor(String cognitoSub) {
+        Usuario usuario = findUsuarioByCognito(cognitoSub);
+        return findTutorByUsuarioId(usuario.getId());
+    }
+
+    private List<CarritoFavorito> findFavoriteCartsForTutor(
+            Tutor tutor,
+            GetFavoriteCartsByTutorRequest request
+    ) {
+        return findFavoriteCartsByTutorId(
+                tutor.getId(),
+                request.alumnoId(),
+                request.productoId()
+        );
+    }
+
     private Usuario findUsuarioByCognito(String cognitoSub) {
         return usuarioRepository.findByIdCognito(cognitoSub)
                 .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
@@ -94,8 +110,15 @@ public class GetFavoriteCartsByTutor {
                         "No se encontró perfil de tutor para el usuario"));
     }
 
-    private List<CarritoFavorito> findCarritosFavoritosByTutorId(UUID idTutor,
-                                                                 UUID idAlumno, UUID idProducto) {
-        return carritoFavoritoRepository.findByTutorIdAndFilters(idTutor, idAlumno, idProducto);
+    private List<CarritoFavorito> findFavoriteCartsByTutorId(
+            UUID tutorId,
+            UUID studentId,
+            UUID productId
+    ) {
+        return carritoFavoritoRepository.findByTutorIdAndFilters(
+                tutorId,
+                studentId,
+                productId
+        );
     }
 }

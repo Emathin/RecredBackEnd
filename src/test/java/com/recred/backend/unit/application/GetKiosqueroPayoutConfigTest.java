@@ -18,8 +18,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,17 +30,39 @@ class GetKiosqueroPayoutConfigTest {
 
     private GetKiosqueroPayoutConfig useCase;
 
+    private UUID kiosqueroId;
+    private KiosqueroPayoutConfig config;
+    private GetKiosqueroPayoutConfigResponse response;
+    private RuntimeException thrownException;
+
     @BeforeEach
     void setUp() {
         useCase = new GetKiosqueroPayoutConfig(repository);
     }
 
     @Test
-    void execute_WhenConfigExists_ShouldReturnResponse() {
-        UUID kiosqueroId = UUID.randomUUID();
-        GetKiosqueroPayoutConfigRequest request = new GetKiosqueroPayoutConfigRequest(kiosqueroId);
+    void givenExistingPayoutConfig_whenGettingPayoutConfig_thenReturnsConfig() {
+        givenPayoutConfigScenario();
+        givenPayoutConfigExists();
 
-        KiosqueroPayoutConfig config = new KiosqueroPayoutConfig();
+        whenGettingPayoutConfig();
+
+        thenPayoutConfigIsReturned();
+    }
+
+    @Test
+    void givenMissingPayoutConfig_whenGettingPayoutConfig_thenFails() {
+        givenPayoutConfigScenario();
+        givenPayoutConfigDoesNotExist();
+
+        whenGettingPayoutConfigFails();
+
+        thenPayoutConfigNotFoundIsThrown();
+    }
+
+    private void givenPayoutConfigScenario() {
+        kiosqueroId = UUID.randomUUID();
+        config = new KiosqueroPayoutConfig();
         config.setKiosqueroId(kiosqueroId);
         config.setDestinationCvu("cvu123");
         config.setDestinationCuit("cuit123");
@@ -48,23 +70,36 @@ class GetKiosqueroPayoutConfigTest {
         config.setCantidadIntervalo(1);
         config.setUnidadIntervalo(IntervalUnit.DAYS);
         config.setEstado(PayoutScheduleStatus.ACTIVE);
-
-        when(repository.findByKiosqueroId(kiosqueroId)).thenReturn(Optional.of(config));
-
-        GetKiosqueroPayoutConfigResponse response = useCase.execute(request);
-
-        assertNotNull(response);
-        assertEquals(kiosqueroId, response.kiosqueroId());
-        assertEquals("cvu123", response.destinationCvu());
     }
 
-    @Test
-    void execute_WhenConfigDoesNotExist_ShouldThrowException() {
-        UUID kiosqueroId = UUID.randomUUID();
-        GetKiosqueroPayoutConfigRequest request = new GetKiosqueroPayoutConfigRequest(kiosqueroId);
+    private void givenPayoutConfigExists() {
+        when(repository.findByKiosqueroId(kiosqueroId)).thenReturn(Optional.of(config));
+    }
 
+    private void givenPayoutConfigDoesNotExist() {
         when(repository.findByKiosqueroId(kiosqueroId)).thenReturn(Optional.empty());
+    }
 
-        assertThrows(KiosqueroPayoutConfigNotFoundException.class, () -> useCase.execute(request));
+    private void whenGettingPayoutConfig() {
+        response = useCase.execute(new GetKiosqueroPayoutConfigRequest(kiosqueroId));
+    }
+
+    private void whenGettingPayoutConfigFails() {
+        thrownException = assertThrows(RuntimeException.class, () ->
+                useCase.execute(new GetKiosqueroPayoutConfigRequest(kiosqueroId)));
+    }
+
+    private void thenPayoutConfigIsReturned() {
+        assertEquals(kiosqueroId, response.kiosqueroId());
+        assertEquals("cvu123", response.destinationCvu());
+        assertEquals("cuit123", response.destinationCuit());
+        assertEquals("John", response.accountHolderName());
+        assertEquals(1, response.cantidadIntervalo());
+        assertEquals(IntervalUnit.DAYS, response.unidadIntervalo());
+        assertEquals(PayoutScheduleStatus.ACTIVE, response.estado());
+    }
+
+    private void thenPayoutConfigNotFoundIsThrown() {
+        assertTrue(thrownException instanceof KiosqueroPayoutConfigNotFoundException);
     }
 }

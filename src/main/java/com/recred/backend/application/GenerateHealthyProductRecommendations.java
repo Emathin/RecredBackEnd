@@ -2,19 +2,22 @@ package com.recred.backend.application;
 
 import com.recred.backend.config.HealthyRecommendationProperties;
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
+import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.HealthyProductOption;
 import com.recred.backend.domain.models.HealthyProductRecommendation;
-import com.recred.backend.domain.models.HealthyRepeatedProductPattern;
 import com.recred.backend.domain.models.HealthyRecommendationAnalysisRequest;
 import com.recred.backend.domain.models.HealthyRecommendationMessages;
 import com.recred.backend.domain.models.HealthyRecommendationPattern;
+import com.recred.backend.domain.models.HealthyRepeatedProductPattern;
 import com.recred.backend.domain.models.RecentProductConsumption;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,7 +25,6 @@ import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.transaction.annotation.Transactional;
 
 public class GenerateHealthyProductRecommendations {
 
@@ -70,7 +72,7 @@ public class GenerateHealthyProductRecommendations {
     ) {
         int generatedRecommendations = 0;
         for (ConsumptionAlertCandidate candidate : studentRepository.findActiveCandidates()) {
-            if (saveRecommendationIfCandidateQualifies(
+            if (saveRecommendationIfAdvancedCandidateQualifies(
                     candidate,
                     calculationDate,
                     dateWindow)) {
@@ -78,6 +80,39 @@ public class GenerateHealthyProductRecommendations {
             }
         }
         return generatedRecommendations;
+    }
+
+    private boolean saveRecommendationIfAdvancedCandidateQualifies(
+            ConsumptionAlertCandidate candidate,
+            LocalDate calculationDate,
+            DateWindow dateWindow
+    ) {
+        return advancedCandidate(candidate)
+                .map(candidateWithAdvancedTutors -> saveRecommendationIfCandidateQualifies(
+                        candidateWithAdvancedTutors,
+                        calculationDate,
+                        dateWindow))
+                .orElse(false);
+    }
+
+    private Optional<ConsumptionAlertCandidate> advancedCandidate(
+            ConsumptionAlertCandidate candidate
+    ) {
+        List<ConsumptionAlertTutor> advancedTutors = candidate.tutors()
+                .stream()
+                .filter(ConsumptionAlertTutor::hasAdvancedPlan)
+                .toList();
+
+        if (advancedTutors.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new ConsumptionAlertCandidate(
+                candidate.studentId(),
+                candidate.studentUserId(),
+                candidate.studentName(),
+                advancedTutors
+        ));
     }
 
     private boolean saveRecommendationIfCandidateQualifies(

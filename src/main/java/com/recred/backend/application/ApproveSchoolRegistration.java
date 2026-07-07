@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.exceptions.UsernameExistsException;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.SchoolRegistrationRequest;
@@ -10,11 +11,10 @@ import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepositor
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.services.CognitoDirectorIdentityService;
 import com.recred.backend.domain.services.CreatedCognitoUser;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-
-import org.springframework.transaction.annotation.Transactional;
 
 public class ApproveSchoolRegistration {
 
@@ -34,16 +34,18 @@ public class ApproveSchoolRegistration {
     }
 
     @Transactional
-    public ApproveSchoolRegistrationResponse execute(ApproveSchoolRegistrationRequest request) {
-        SchoolRegistrationRequest registration = fetchPendingRegistration(request.registrationId());
-        Colegio newColegio = createAndSaveColegio(registration);
-        createAndSaveDirectorUser(registration, newColegio);
-        updateRegistrationStatus(registration);
+    public ApproveSchoolRegistrationResponse execute(
+            ApproveSchoolRegistrationRequest approvalRequest) {
+        SchoolRegistrationRequest registration =
+                findPendingRegistration(approvalRequest.registrationId());
+        Colegio school = createAndSaveSchool(registration);
+        createAndSaveDirectorUser(registration, school);
+        approveRegistration(registration);
         return new ApproveSchoolRegistrationResponse();
     }
 
-    private SchoolRegistrationRequest fetchPendingRegistration(UUID id) {
-        SchoolRegistrationRequest registration = registrationRepository.findById(id)
+    private SchoolRegistrationRequest findPendingRegistration(UUID registrationId) {
+        SchoolRegistrationRequest registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new IllegalArgumentException("Registration not found"));
         if (registration.getStatus() != SchoolRegistrationStatus.PENDING) {
             throw new IllegalStateException("Registration is not pending");
@@ -51,54 +53,70 @@ public class ApproveSchoolRegistration {
         return registration;
     }
 
-    private Colegio createAndSaveColegio(SchoolRegistrationRequest req) {
+    private Colegio createAndSaveSchool(SchoolRegistrationRequest registration) {
+        LocalDateTime now = LocalDateTime.now();
         Colegio colegio = new Colegio();
-        colegio.setNombre(req.getSchoolName());
-        colegio.setEmail(req.getSchoolEmail());
-        colegio.setTelefono(req.getSchoolPhone());
-        colegio.setCue(req.getSchoolCue());
+        colegio.setNombre(registration.getSchoolName());
+        colegio.setEmail(registration.getSchoolEmail());
+        colegio.setTelefono(registration.getSchoolPhone());
+        colegio.setCue(registration.getSchoolCue());
         colegio.setActivo(true);
-        colegio.setCreadoEn(LocalDateTime.now());
-        colegio.setActualizadoEn(LocalDateTime.now());
+        colegio.setCreadoEn(now);
+        colegio.setActualizadoEn(now);
         return colegioRepository.save(colegio);
     }
 
-    private void createAndSaveDirectorUser(SchoolRegistrationRequest req, Colegio colegio) {
-        CreatedCognitoUser cognitoUser;
-        try {
-            cognitoUser = cognitoService.createDirectorUser(
-                    req.getDirectorUsername(), 
-                    req.getDirectorEmail(), 
-                    req.getDirectorFirstName(), 
-                    req.getDirectorLastName());
-        } catch (com.recred.backend.domain.exceptions.UsernameExistsException e) {
-            String suffix = UUID.randomUUID().toString().substring(0, 4);
-            cognitoUser = cognitoService.createDirectorUser(
-                    req.getDirectorUsername() + "-" + suffix, 
-                    req.getDirectorEmail(), 
-                    req.getDirectorFirstName(), 
-                    req.getDirectorLastName());
-        }
-        Usuario usuario = buildUsuario(req, colegio, cognitoUser.sub());
+    private void createAndSaveDirectorUser(SchoolRegistrationRequest registration, Colegio school) {
+        CreatedCognitoUser cognitoUser = createDirectorCognitoUser(registration);
+        Usuario usuario = buildDirectorUser(registration, school, cognitoUser.sub());
         usuarioRepository.save(usuario);
     }
 
-    private Usuario buildUsuario(SchoolRegistrationRequest req, Colegio col, String idCognito) {
+    private CreatedCognitoUser createDirectorCognitoUser(
+            SchoolRegistrationRequest registration) {
+        try {
+            return createDirectorCognitoUser(registration, registration.getDirectorUsername());
+        } catch (UsernameExistsException e) {
+            return createDirectorCognitoUser(registration, usernameWithRandomSuffix(
+                    registration.getDirectorUsername()));
+        }
+    }
+
+    private CreatedCognitoUser createDirectorCognitoUser(
+            SchoolRegistrationRequest registration,
+            String username) {
+        return cognitoService.createDirectorUser(
+                username,
+                registration.getDirectorEmail(),
+                registration.getDirectorFirstName(),
+                registration.getDirectorLastName());
+    }
+
+    private String usernameWithRandomSuffix(String username) {
+        String suffix = UUID.randomUUID().toString().substring(0, 4);
+        return username + "-" + suffix;
+    }
+
+    private Usuario buildDirectorUser(
+            SchoolRegistrationRequest registration,
+            Colegio school,
+            String cognitoSubject) {
+        LocalDateTime now = LocalDateTime.now();
         Usuario usuario = new Usuario();
-        usuario.setColegio(col);
-        usuario.setIdCognito(idCognito);
-        usuario.setNombre(req.getDirectorFirstName());
-        usuario.setApellido(req.getDirectorLastName());
-        usuario.setEmail(req.getDirectorEmail());
-        usuario.setTelefono(req.getDirectorPhone());
-        usuario.setDni(req.getDirectorDni());
+        usuario.setColegio(school);
+        usuario.setIdCognito(cognitoSubject);
+        usuario.setNombre(registration.getDirectorFirstName());
+        usuario.setApellido(registration.getDirectorLastName());
+        usuario.setEmail(registration.getDirectorEmail());
+        usuario.setTelefono(registration.getDirectorPhone());
+        usuario.setDni(registration.getDirectorDni());
         usuario.setRol(RolUsuario.DIRECTIVO_COLEGIO);
-        usuario.setCreadoEn(LocalDateTime.now());
-        usuario.setActualizadoEn(LocalDateTime.now());
+        usuario.setCreadoEn(now);
+        usuario.setActualizadoEn(now);
         return usuario;
     }
 
-    private void updateRegistrationStatus(SchoolRegistrationRequest registration) {
+    private void approveRegistration(SchoolRegistrationRequest registration) {
         registration.setStatus(SchoolRegistrationStatus.APPROVED);
         registration.setUpdatedAt(LocalDateTime.now());
         registrationRepository.save(registration);

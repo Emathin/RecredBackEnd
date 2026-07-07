@@ -42,6 +42,7 @@ public class PurchaseController {
     private final CreateAdvancePurchase createAdvancePurchase;
     private final KiosqueroAccessGuard kiosqueroAccessGuard;
     private final PurchaseAccessGuard purchaseAccessGuard;
+    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public PurchaseController(ProcessPresentialPurchase processPresentialPurchase,
                               GetPresentialPurchase getPresentialPurchase,
@@ -52,7 +53,8 @@ public class PurchaseController {
                                       revertPurchaseCancellation,
                               CreateAdvancePurchase createAdvancePurchase,
                               KiosqueroAccessGuard kiosqueroAccessGuard,
-                              PurchaseAccessGuard purchaseAccessGuard) {
+                              PurchaseAccessGuard purchaseAccessGuard,
+                              SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
         this.processPresentialPurchase = processPresentialPurchase;
         this.getPresentialPurchase = getPresentialPurchase;
         this.getPurchaseStatus = getPurchaseStatus;
@@ -62,6 +64,7 @@ public class PurchaseController {
         this.createAdvancePurchase = createAdvancePurchase;
         this.kiosqueroAccessGuard = kiosqueroAccessGuard;
         this.purchaseAccessGuard = purchaseAccessGuard;
+        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping("/presential")
@@ -70,6 +73,7 @@ public class PurchaseController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, request.getBuffetId());
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(request.getStudentId());
 
         ProcessPresentialPurchaseRequest useCaseRequest = new ProcessPresentialPurchaseRequest(
                 request.getStudentId(),
@@ -90,6 +94,10 @@ public class PurchaseController {
             @Valid @RequestBody AdvancePurchaseRequest request,
             Authentication authentication
     ) {
+        schoolLicenseAccessGuard.requireActiveSchoolForStudents(
+                request.orders().stream()
+                        .map(AdvancePurchaseRequest.OrderRequest::studentId)
+                        .toList());
         CreateAdvancePurchaseRequest useCaseRequest = new CreateAdvancePurchaseRequest(
                 request.orders().stream()
                         .map(o -> new CreateAdvancePurchaseRequest.OrderRequest(
@@ -140,6 +148,7 @@ public class PurchaseController {
             @PathVariable UUID id,
             Authentication authentication
     ) {
+        purchaseAccessGuard.requirePurchaseAccess(authentication, id);
         return ResponseEntity.ok(PurchaseStatusResponseDTO.fromApplication(
                 getPurchaseStatus.execute(new GetPurchaseStatusRequest(
                         cognitoSubject(authentication),

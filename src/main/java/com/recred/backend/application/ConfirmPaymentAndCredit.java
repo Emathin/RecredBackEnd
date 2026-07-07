@@ -37,17 +37,21 @@ public class ConfirmPaymentAndCredit {
     @Transactional
     public ConfirmPaymentAndCreditResponse execute(ConfirmPaymentAndCreditRequest paymentRequest) {
         PaymentDetails paymentDetails = findPaymentDetails(paymentRequest);
-        creditWalletIfPaymentWasApproved(paymentDetails);
+        creditWalletIfPaymentWasApprovedTopUp(paymentDetails);
 
         return new ConfirmPaymentAndCreditResponse();
     }
 
     private PaymentDetails findPaymentDetails(ConfirmPaymentAndCreditRequest paymentRequest) {
+        if (paymentRequest.paymentDetails() != null) {
+            return paymentRequest.paymentDetails();
+        }
+
         return externalPaymentService.getPaymentDetails(paymentRequest.paymentId());
     }
 
-    private void creditWalletIfPaymentWasApproved(PaymentDetails paymentDetails) {
-        if (!paymentDetails.wasApproved()) {
+    private void creditWalletIfPaymentWasApprovedTopUp(PaymentDetails paymentDetails) {
+        if (!paymentDetails.isApprovedTopUp()) {
             return;
         }
 

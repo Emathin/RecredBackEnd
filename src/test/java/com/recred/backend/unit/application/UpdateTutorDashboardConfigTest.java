@@ -88,10 +88,10 @@ class UpdateTutorDashboardConfigTest {
     }
 
     @Test
-    void execute_shouldSaveConfig_whenPremiumPlanHasMoreThan5Cards() {
+    void execute_shouldSaveConfig_whenAdvancedPlanHasMoreThan5Cards() {
         String cognitoSubject = "sub-123";
         Usuario usuario = new Usuario();
-        usuario.setPlan(TipoPlan.PREMIUM);
+        usuario.setPlan(TipoPlan.AVANZADO);
         Tutor tutor = new Tutor();
         tutor.setUsuario(usuario);
 

@@ -19,15 +19,33 @@ public record GetGradesBySchoolResponse(
 
     public record Grade(
             UUID id,
+            UUID colegioId,
+            UUID nivelId,
+            String nivelDescripcion,
             String anio,
-            String division
+            String division,
+            Boolean activo
     ) {
 
         private static Grade fromDomain(Grado grade) {
+            UUID colegioId = grade.getColegio() != null
+                    ? grade.getColegio().getId()
+                    : null;
+            UUID nivelId = grade.getNivel() != null
+                    ? grade.getNivel().getId()
+                    : null;
+            String nivelDescripcion = grade.getNivel() != null
+                    ? grade.getNivel().getDescripcion()
+                    : null;
+
             return new Grade(
                     grade.getId(),
+                    colegioId,
+                    nivelId,
+                    nivelDescripcion,
                     grade.getAnio(),
-                    grade.getDivision()
+                    grade.getDivision(),
+                    grade.getActivo() != null ? grade.getActivo() : true
             );
         }
     }

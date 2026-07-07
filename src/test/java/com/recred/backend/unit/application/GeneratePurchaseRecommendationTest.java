@@ -3,9 +3,11 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.GeneratePurchaseRecommendation;
 import com.recred.backend.application.GeneratePurchaseRecommendationRequest;
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
+import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.PurchasePatternAnalysis;
 import com.recred.backend.domain.models.PurchaseRecommendationResult;
 import com.recred.backend.domain.models.PurchaseResume;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.AIEventRepository;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
@@ -111,7 +113,16 @@ class GeneratePurchaseRecommendationTest {
 
     private void givenActiveStudentCandidate() {
         when(studentRepository.findActiveCandidates()).thenReturn(List.of(
-                new ConsumptionAlertCandidate(studentId, userId, "Ana", List.of())
+                new ConsumptionAlertCandidate(
+                        studentId,
+                        userId,
+                        "Ana",
+                        List.of(new ConsumptionAlertTutor(
+                                UUID.randomUUID(),
+                                "Tutor Ana",
+                                TipoPlan.AVANZADO
+                        ))
+                )
         ));
     }
 

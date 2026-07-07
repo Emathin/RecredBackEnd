@@ -4,6 +4,11 @@ import java.util.UUID;
 
 public record ConsumptionAlertTutor(
         UUID userId,
-        String name
+        String name,
+        TipoPlan plan
 ) {
+
+    public boolean hasAdvancedPlan() {
+        return plan != null && plan.atLeast(TipoPlan.AVANZADO);
+    }
 }

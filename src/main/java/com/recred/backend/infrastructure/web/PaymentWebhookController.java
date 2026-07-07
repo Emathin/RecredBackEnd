@@ -2,6 +2,11 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.ConfirmPaymentAndCredit;
 import com.recred.backend.application.ConfirmPaymentAndCreditRequest;
+import com.recred.backend.application.ConfirmSchoolSubscriptionPayment;
+import com.recred.backend.application.ConfirmSchoolSubscriptionPaymentRequest;
+import com.recred.backend.application.ConfirmUserSubscriptionPayment;
+import com.recred.backend.application.ConfirmUserSubscriptionPaymentRequest;
+import com.recred.backend.domain.models.PaymentDetails;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import com.recred.backend.infrastructure.mercadopago.MercadoPagoWebhookParser;
 import com.recred.backend.infrastructure.mercadopago.WebhookEvent;
@@ -21,14 +26,20 @@ import java.util.Map;
 public class PaymentWebhookController {
 
     private final ConfirmPaymentAndCredit confirmPaymentAndCredit;
+    private final ConfirmUserSubscriptionPayment confirmUserSubscriptionPayment;
+    private final ConfirmSchoolSubscriptionPayment confirmSchoolSubscriptionPayment;
     private final ExternalPaymentService externalPaymentService;
     private final MercadoPagoWebhookParser webhookParser;
 
     public PaymentWebhookController(
             ConfirmPaymentAndCredit confirmPaymentAndCredit,
+            ConfirmUserSubscriptionPayment confirmUserSubscriptionPayment,
+            ConfirmSchoolSubscriptionPayment confirmSchoolSubscriptionPayment,
             ExternalPaymentService externalPaymentService,
             MercadoPagoWebhookParser webhookParser) {
         this.confirmPaymentAndCredit = confirmPaymentAndCredit;
+        this.confirmUserSubscriptionPayment = confirmUserSubscriptionPayment;
+        this.confirmSchoolSubscriptionPayment = confirmSchoolSubscriptionPayment;
         this.externalPaymentService = externalPaymentService;
         this.webhookParser = webhookParser;
     }
@@ -55,13 +66,27 @@ public class PaymentWebhookController {
         }
 
         try {
-            confirmPaymentAndCredit.execute(new ConfirmPaymentAndCreditRequest(
-                    event.paymentId()
-            ));
+            processPayment(event.paymentId());
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private void processPayment(String paymentId) {
+        PaymentDetails details = externalPaymentService.getPaymentDetails(paymentId);
+        if (details.isUserSubscription()) {
+            confirmUserSubscriptionPayment.execute(
+                    new ConfirmUserSubscriptionPaymentRequest(details));
+            return;
+        }
+        if (details.isSchoolSubscription()) {
+            confirmSchoolSubscriptionPayment.execute(
+                    new ConfirmSchoolSubscriptionPaymentRequest(details));
+            return;
+        }
+
+        confirmPaymentAndCredit.execute(new ConfirmPaymentAndCreditRequest(paymentId, details));
     }
 
     private boolean isSignatureValid(String signature, String requestId, WebhookEvent event) {

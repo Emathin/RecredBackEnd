@@ -2,7 +2,6 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Proveedor;
 import com.recred.backend.domain.repositories.ProveedorRepository;
-import org.springframework.security.access.AccessDeniedException;
 
 public class GetSupplier {
 
@@ -13,7 +12,6 @@ public class GetSupplier {
     }
 
     public SupplierDetailsResponse execute(GetSupplierRequest request) {
-        request.validate();
         Proveedor supplier = supplier(request);
         requireSupplierOwnership(supplier, request);
         return SupplierDetailsResponse.fromDomain(supplier);
@@ -26,7 +24,7 @@ public class GetSupplier {
 
     private void requireSupplierOwnership(Proveedor supplier, GetSupplierRequest request) {
         if (!supplier.belongsToKiosquero(request.kioskOwnerId())) {
-            throw new AccessDeniedException("You do not have access to this supplier");
+            throw new SecurityException("You do not have access to this supplier");
         }
     }
 }

@@ -8,10 +8,12 @@ import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.models.InventoryQuickActionType;
 import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.UUID;
+
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -25,27 +27,32 @@ class ApplyInventoryQuickActionTest {
     private UUID productId;
     private UUID userId;
     private Inventario inventory;
+    private ApplyInventoryQuickActionRequest quickActionRequest;
     private AdjustInventoryStockResponse response;
 
     @BeforeEach
     void setUp() {
         inventoryAvailabilityService = mock(InventoryAvailabilityService.class);
         applyInventoryQuickAction = new ApplyInventoryQuickAction(inventoryAvailabilityService);
-        buffetId = UUID.randomUUID();
-        productId = UUID.randomUUID();
-        userId = UUID.randomUUID();
-        inventory = inventory(buffetId, productId);
     }
 
     @Test
-    void execute_WhenQuickActionIsRequested_ShouldDelegateAndReturnResponse() {
-        ApplyInventoryQuickActionRequest request = quickActionRequest();
+    void givenQuickActionRequest_whenApplyingQuickAction_thenDelegatesAndReturnsResponse() {
+        givenQuickActionRequest();
         givenQuickActionWillBeApplied();
 
-        whenApplyingQuickAction(request);
+        whenApplyingQuickAction();
 
         thenQuickActionWasDelegated();
         thenInventoryResponseMatchesSavedInventory();
+    }
+
+    private void givenQuickActionRequest() {
+        buffetId = randomUUID();
+        productId = randomUUID();
+        userId = randomUUID();
+        inventory = inventory(buffetId, productId);
+        quickActionRequest = quickActionRequest();
     }
 
     private void givenQuickActionWillBeApplied() {
@@ -60,8 +67,8 @@ class ApplyInventoryQuickActionTest {
         )).thenReturn(inventory);
     }
 
-    private void whenApplyingQuickAction(ApplyInventoryQuickActionRequest request) {
-        response = applyInventoryQuickAction.execute(request);
+    private void whenApplyingQuickAction() {
+        response = applyInventoryQuickAction.execute(quickActionRequest);
     }
 
     private void thenQuickActionWasDelegated() {

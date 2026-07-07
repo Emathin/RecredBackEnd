@@ -79,9 +79,9 @@ class GenerateParentSummaryTest {
     }
 
     @Test
-    void givenPremiumTutorWithChildren_whenGeneratingParentSummary_thenSavesSummaryForTutor() {
+    void givenPaidTutorWithChildren_whenGeneratingParentSummary_thenSavesSummaryForTutor() {
         givenParentSummaryPeriod();
-        givenPremiumTutorWithChildren();
+        givenPaidTutorWithChildren();
         givenNoPurchasesForChildren();
         givenNoActiveBudgets();
 
@@ -95,7 +95,7 @@ class GenerateParentSummaryTest {
     void givenChildrenPurchasesAndBudget_whenGeneratingParentSummary_thenSavesAnalyzedSummary()
             throws Exception {
         givenParentSummaryPeriod();
-        givenPremiumTutorWithChildren();
+        givenPaidTutorWithChildren();
         givenAnaPurchasesFruitAndSnack();
         givenLuisPurchaseWithZeroTotal();
         givenAnaHasActiveBudget();
@@ -114,7 +114,7 @@ class GenerateParentSummaryTest {
     void givenProductsWithSameQuantity_whenGeneratingParentSummary_thenMostExpensiveProductWins()
             throws Exception {
         givenParentSummaryPeriod();
-        givenPremiumTutorWithChild("Ana");
+        givenPaidTutorWithChild("Ana");
         givenAnaBoughtProductsWithSameQuantity();
         givenAnaHasNoActiveBudget();
         givenAnalyzerMessage("Mensaje final");
@@ -140,29 +140,29 @@ class GenerateParentSummaryTest {
         end = LocalDateTime.of(2026, 6, 15, 23, 59);
     }
 
-    private void givenPremiumTutorWithChildren() {
+    private void givenPaidTutorWithChildren() {
         tutorUserId = UUID.randomUUID();
         ana = child("Ana");
         luis = child("Luis");
-        tutor = tutor(tutorUserId, TipoPlan.PREMIUM, Set.of(ana, luis));
+        tutor = tutor(tutorUserId, TipoPlan.AVANZADO, Set.of(ana, luis));
         when(tutorRepository.findAll()).thenReturn(List.of(tutor));
     }
 
-    private void givenPremiumTutorWithChild(String childName) {
+    private void givenPaidTutorWithChild(String childName) {
         tutorUserId = UUID.randomUUID();
         ana = child(childName);
-        tutor = tutor(tutorUserId, TipoPlan.PREMIUM, Set.of(ana));
+        tutor = tutor(tutorUserId, TipoPlan.AVANZADO, Set.of(ana));
         when(tutorRepository.findAll()).thenReturn(List.of(tutor));
     }
 
     private void givenOnlyIneligibleTutors() {
-        Tutor premiumWithoutChildren = tutor(UUID.randomUUID(), TipoPlan.PREMIUM, Set.of());
-        Tutor freeTutorWithChildren = tutor(
+        Tutor paidWithoutChildren = tutor(UUID.randomUUID(), TipoPlan.AVANZADO, Set.of());
+        Tutor freeWithChildren = tutor(
                 UUID.randomUUID(),
                 TipoPlan.GRATUITO,
                 Set.of(child("Ana")));
         when(tutorRepository.findAll())
-                .thenReturn(List.of(premiumWithoutChildren, freeTutorWithChildren));
+                .thenReturn(List.of(paidWithoutChildren, freeWithChildren));
     }
 
     private void givenNoPurchasesForChildren() {

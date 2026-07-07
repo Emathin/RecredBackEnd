@@ -10,7 +10,9 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.SchoolAssistantContext;
 import com.recred.backend.domain.models.SchoolAssistantIntent;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.TutorRepository;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
@@ -23,6 +25,7 @@ class SchoolAssistantQuickPurchaseHandler {
 
     private final SchoolAssistantPurchasePatternService purchasePatternService;
     private final ProductRepository productRepository;
+    private final TutorRepository tutorRepository;
     private final CreateAssistantAdvancePurchase createAssistantAdvancePurchase;
     private final Clock clock;
     private final SchoolAssistantPurchaseFailureMessages purchaseFailureMessages;
@@ -32,6 +35,7 @@ class SchoolAssistantQuickPurchaseHandler {
     SchoolAssistantQuickPurchaseHandler(
             SchoolAssistantPurchasePatternService purchasePatternService,
             ProductRepository productRepository,
+            TutorRepository tutorRepository,
             CreateAssistantAdvancePurchase createAssistantAdvancePurchase,
             Clock clock,
             SchoolAssistantReplyFormatter replyFormatter,
@@ -43,6 +47,7 @@ class SchoolAssistantQuickPurchaseHandler {
     ) {
         this.purchasePatternService = purchasePatternService;
         this.productRepository = productRepository;
+        this.tutorRepository = tutorRepository;
         this.createAssistantAdvancePurchase = createAssistantAdvancePurchase;
         this.clock = clock;
         this.purchaseFailureMessages = purchaseFailureMessages;
@@ -59,6 +64,14 @@ class SchoolAssistantQuickPurchaseHandler {
             SchoolAssistantContext context,
             Optional<LocalDate> selectedPurchaseDate
     ) {
+        Optional<SchoolAssistantFixedReply> denied = advancedPlanRequiredReply(
+                context,
+                SchoolAssistantIntent.REPEAT_LAST_PURCHASE
+        );
+        if (denied.isPresent()) {
+            return denied.get();
+        }
+
         return purchasePatternService.lastRebuyablePlan(context.studentId())
                 .map(plan -> purchasePlanReply(
                         plan,
@@ -76,6 +89,14 @@ class SchoolAssistantQuickPurchaseHandler {
             SchoolAssistantContext context,
             Optional<LocalDate> selectedPurchaseDate
     ) {
+        Optional<SchoolAssistantFixedReply> denied = advancedPlanRequiredReply(
+                context,
+                SchoolAssistantIntent.BUY_USUAL
+        );
+        if (denied.isPresent()) {
+            return denied.get();
+        }
+
         return purchasePatternService.mostFrequentPlan(context.studentId())
                 .map(plan -> purchasePlanReply(
                         plan,
@@ -94,6 +115,14 @@ class SchoolAssistantQuickPurchaseHandler {
             SchoolAssistantContext context,
             List<ChatMessage> recentMessages
     ) {
+        Optional<SchoolAssistantFixedReply> denied = advancedPlanRequiredReply(
+                context,
+                SchoolAssistantIntent.CONFIRM_PURCHASE
+        );
+        if (denied.isPresent()) {
+            return denied.get();
+        }
+
         return pendingPurchaseParser.pendingPurchase(recentMessages)
                 .map(pendingPurchase -> executePendingPurchase(context, pendingPurchase))
                 .orElseGet(() -> replyFactory.actionFailureReply(
@@ -107,6 +136,14 @@ class SchoolAssistantQuickPurchaseHandler {
             List<ChatMessage> recentMessages,
             LocalDate pickupDate
     ) {
+        Optional<SchoolAssistantFixedReply> denied = advancedPlanRequiredReply(
+                context,
+                SchoolAssistantIntent.SELECT_PURCHASE_DATE
+        );
+        if (denied.isPresent()) {
+            return denied.get();
+        }
+
         return pendingPurchaseParser.pendingPurchase(recentMessages)
                 .map(pendingPurchase -> withSelectedPurchaseDateReply(
                         context,
@@ -124,6 +161,14 @@ class SchoolAssistantQuickPurchaseHandler {
             List<ChatMessage> recentMessages,
             RecessTime recessTime
     ) {
+        Optional<SchoolAssistantFixedReply> denied = advancedPlanRequiredReply(
+                context,
+                SchoolAssistantIntent.SELECT_RECESS
+        );
+        if (denied.isPresent()) {
+            return denied.get();
+        }
+
         return pendingPurchaseParser.pendingPurchase(recentMessages)
                 .map(pendingPurchase -> withSelectedRecessReply(context, pendingPurchase,
                         recessTime))
@@ -301,6 +346,27 @@ class SchoolAssistantQuickPurchaseHandler {
         return cart.size() == pendingPurchase.items().size()
                 ? Optional.of(cart)
                 : Optional.empty();
+    }
+
+    private Optional<SchoolAssistantFixedReply> advancedPlanRequiredReply(
+            SchoolAssistantContext context,
+            SchoolAssistantIntent intent
+    ) {
+        if (studentHasAdvancedTutor(context.studentId())) {
+            return Optional.empty();
+        }
+
+        return Optional.of(replyFactory.actionFailureReply(
+                "Esta funcionalidad requiere plan AVANZADO.",
+                intent
+        ));
+    }
+
+    private boolean studentHasAdvancedTutor(UUID studentId) {
+        return tutorRepository.findByAlumnoId(studentId)
+                .stream()
+                .filter(tutor -> tutor.getUsuario() != null)
+                .anyMatch(tutor -> tutor.getUsuario().getPlan().atLeast(TipoPlan.AVANZADO));
     }
 
     private boolean studentDoesNotOwnPendingPurchase(

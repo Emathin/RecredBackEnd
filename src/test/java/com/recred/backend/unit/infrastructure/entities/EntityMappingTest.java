@@ -98,6 +98,7 @@ class EntityMappingTest {
         grado.setAnio("1");
         grado.setDivision("A");
         grado.setColegioEntity(colegio);
+        grado.setNivelEntity(nivel);
         BuffetEntity buffet = new BuffetEntity();
         buffet.setId(UUID.randomUUID());
         buffet.setNombre("Buffet");
@@ -105,6 +106,7 @@ class EntityMappingTest {
 
         assertEquals("Primario", colegio.toDomain().getNivel().getDescripcion());
         assertEquals(colegio.getId(), grado.toDomain().getColegio().getId());
+        assertEquals("Primario", grado.toDomain().getNivel().getDescripcion());
         assertEquals(colegio.getId(), buffet.toDomain().getColegio().getId());
     }
 
@@ -195,4 +197,3 @@ class EntityMappingTest {
     private static class TestCompraEntity extends CompraEntity {
     }
 }
-

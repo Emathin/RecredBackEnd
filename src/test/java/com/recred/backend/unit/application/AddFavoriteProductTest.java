@@ -47,6 +47,7 @@ class AddFavoriteProductTest {
     private AddFavoriteProduct addFavoriteProduct;
     private AddFavoriteProductRequest addFavoriteRequest;
     private Alumno alumno;
+    private Alumno otherChild;
     private Producto producto;
     private Throwable thrownException;
 
@@ -64,6 +65,7 @@ class AddFavoriteProductTest {
         givenDefaultFavoriteProductRequest();
         givenAlumnoExists();
         givenProductExists();
+        givenStudentHasNoTutors();
 
         whenAddFavoriteProduct();
 
@@ -137,16 +139,45 @@ class AddFavoriteProductTest {
     }
 
     @Test
-    void givenPremiumPlanStudentAtFavoriteLimit_whenAddingFavorite_thenAddsProductAndSaves() {
+    void givenPaidPlanStudentAtFavoriteLimit_whenAddingFavorite_thenAddsProductAndSaves() {
         givenFavoriteProductRequestForStudentAtFavoriteLimit();
         givenAlumnoExists();
         givenProductExists();
-        givenStudentHasTutorWithPlan(TipoPlan.PREMIUM);
+        givenStudentHasTutorWithPlan(TipoPlan.INTERMEDIO);
 
         whenAddFavoriteProduct();
 
         thenProductWasAddedAsFavorite();
         thenAlumnoHasFavoriteProductCount(6);
+        thenAlumnoWasSaved();
+    }
+
+    @Test
+    void givenFreePlanChildrenAtCombinedFavoriteLimit_whenAddingFavorite_thenThrowsException() {
+        givenFavoriteProductRequestForStudentWithFavoriteCount(2);
+        givenOtherChildWithFavoriteCount(3);
+        givenAlumnoExists();
+        givenProductExists();
+        givenStudentHasTutorWithPlanAndChildren(TipoPlan.GRATUITO, alumno, otherChild);
+
+        whenAddFavoriteProductFails(IllegalArgumentException.class);
+
+        thenErrorMessageIs(FREE_PLAN_LIMIT_MESSAGE);
+        thenAlumnoWasNotSaved();
+    }
+
+    @Test
+    void givenPaidPlanChildrenAtCombinedFavoriteLimit_whenAddingFavorite_thenAddsProductAndSaves() {
+        givenFavoriteProductRequestForStudentWithFavoriteCount(2);
+        givenOtherChildWithFavoriteCount(3);
+        givenAlumnoExists();
+        givenProductExists();
+        givenStudentHasTutorWithPlanAndChildren(TipoPlan.AVANZADO, alumno, otherChild);
+
+        whenAddFavoriteProduct();
+
+        thenProductWasAddedAsFavorite();
+        thenAlumnoHasFavoriteProductCount(3);
         thenAlumnoWasSaved();
     }
 
@@ -166,11 +197,17 @@ class AddFavoriteProductTest {
     }
 
     private void givenFavoriteProductRequestForStudentAtFavoriteLimit() {
+        givenFavoriteProductRequestForStudentWithFavoriteCount(FREE_PLAN_FAVORITE_LIMIT);
+    }
+
+    private void givenFavoriteProductRequestForStudentWithFavoriteCount(int count) {
         addFavoriteRequest = request(randomUUID(), randomUUID());
-        alumno = alumnoWithFavoriteProducts(
-                addFavoriteRequest.alumnoId(),
-                FREE_PLAN_FAVORITE_LIMIT);
+        alumno = alumnoWithFavoriteProducts(addFavoriteRequest.alumnoId(), count);
         producto = producto(addFavoriteRequest.productoId());
+    }
+
+    private void givenOtherChildWithFavoriteCount(int count) {
+        otherChild = alumnoWithFavoriteProducts(randomUUID(), count);
     }
 
     private void givenAlumnoExists() {
@@ -194,8 +231,15 @@ class AddFavoriteProductTest {
     }
 
     private void givenStudentHasTutorWithPlan(TipoPlan plan) {
+        givenStudentHasTutorWithPlanAndChildren(plan, alumno);
+    }
+
+    private void givenStudentHasTutorWithPlanAndChildren(TipoPlan plan, Alumno... children) {
+        Tutor tutor = tutorWithPlan(plan);
+        for (Alumno child : children)
+            tutor.addHijo(child);
         when(tutorRepository.findByAlumnoId(addFavoriteRequest.alumnoId()))
-                .thenReturn(List.of(tutorWithPlan(plan)));
+                .thenReturn(List.of(tutor));
     }
 
     private void givenStudentHasNoTutors() {
@@ -248,9 +292,8 @@ class AddFavoriteProductTest {
 
     private Alumno alumnoWithFavoriteProducts(UUID alumnoId, int count) {
         Alumno alumno = alumno(alumnoId);
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++)
             alumno.agregarProductoFavorito(producto(randomUUID()));
-        }
         return alumno;
     }
 
@@ -264,6 +307,7 @@ class AddFavoriteProductTest {
         Usuario usuario = new Usuario();
         usuario.setPlan(plan);
         Tutor tutor = new Tutor();
+        tutor.setId(randomUUID());
         tutor.setUsuario(usuario);
         return tutor;
     }

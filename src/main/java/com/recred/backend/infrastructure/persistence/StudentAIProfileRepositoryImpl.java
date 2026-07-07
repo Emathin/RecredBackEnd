@@ -83,6 +83,7 @@ public class StudentAIProfileRepositoryImpl implements StudentAIProfileRepositor
         usuario.setEmail(entity.getEmail());
         usuario.setRol(entity.getRol());
         usuario.setActivo(entity.getActivo());
+        usuario.setPlan(entity.getPlan());
         return usuario;
     }
 }

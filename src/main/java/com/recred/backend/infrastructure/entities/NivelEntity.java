@@ -40,4 +40,16 @@ public class NivelEntity {
 
         return nivel;
     }
+
+    public static NivelEntity fromDomain(Nivel nivel) {
+        if (nivel == null) {
+            return null;
+        }
+
+        NivelEntity entity = new NivelEntity();
+        entity.setId(nivel.getId());
+        entity.setDescripcion(nivel.getDescripcion());
+        entity.setActivo(nivel.getActivo() != null ? nivel.getActivo() : true);
+        return entity;
+    }
 }

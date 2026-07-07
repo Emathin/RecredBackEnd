@@ -20,16 +20,20 @@ public class SummaryController {
 
     private final GetLastSummary getLastSummary;
     private final UsuarioRepository usuarioRepository;
+    private final PlanAccessGuard planAccessGuard;
 
     public SummaryController(
                              GetLastSummary getLastSummary,
-                             UsuarioRepository usuarioRepository) {
+                             UsuarioRepository usuarioRepository,
+                             PlanAccessGuard planAccessGuard) {
         this.getLastSummary = getLastSummary;
         this.usuarioRepository = usuarioRepository;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @GetMapping("/me")
     public ResponseEntity<SummaryResponse> getLastSummary(Authentication authentication) {
+        planAccessGuard.requireTutorIntermediate(authentication);
         String cognitoId = cognitoSubject(authentication);
         UUID userId = usuarioRepository.findByIdCognito(cognitoId)
                 .map(Usuario::getId)

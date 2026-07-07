@@ -1,6 +1,7 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
+import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.PurchasePatternAnalysis;
 import com.recred.backend.domain.models.PurchaseRecommendationResult;
 import com.recred.backend.domain.models.PurchaseResume;
@@ -11,6 +12,7 @@ import com.recred.backend.domain.repositories.PurchaseRecommendationNotification
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SuggestionAiRepository;
 import com.recred.backend.domain.services.PurchaseAnalyzer;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,9 +47,16 @@ public class GeneratePurchaseRecommendation {
     public GeneratePurchaseRecommendationResponse execute(
             GeneratePurchaseRecommendationRequest request
     ) {
-        List<ConsumptionAlertCandidate> candidates = studentRepository.findActiveCandidates();
-        candidates.forEach(this::generateRecommendationForCandidate);
+        studentRepository.findActiveCandidates().stream()
+                .filter(this::candidateHasAdvancedTutor)
+                .forEach(this::generateRecommendationForCandidate);
         return new GeneratePurchaseRecommendationResponse();
+    }
+
+    private boolean candidateHasAdvancedTutor(ConsumptionAlertCandidate candidate) {
+        return candidate.tutors()
+                .stream()
+                .anyMatch(ConsumptionAlertTutor::hasAdvancedPlan);
     }
 
     private void generateRecommendationForCandidate(ConsumptionAlertCandidate candidate) {
@@ -86,5 +95,4 @@ public class GeneratePurchaseRecommendation {
         var savedSuggestion = suggestionAiRepository.save(eventId, result);
         notificationRepository.save(result, savedSuggestion, userId);
     }
-
 }

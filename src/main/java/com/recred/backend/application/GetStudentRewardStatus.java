@@ -13,25 +13,30 @@ public class GetStudentRewardStatus {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public StudentRewardResponse execute(GetStudentRewardStatusRequest request) {
-        Alumno alumno = alumnoRepository.findById(request.alumnoId())
-                .orElseThrow(() -> new AlumnoNoEncontradoException(request.alumnoId()));
+    public StudentRewardResponse execute(GetStudentRewardStatusRequest rewardRequest) {
+        Alumno student = findStudent(rewardRequest);
+        RewardLevel currentLevel = student.calculateCurrentLevel();
 
-        RewardLevel currentLevel = alumno.calculateCurrentLevel();
-        Integer nextPoints = alumno.getPointsToNextLevel();
-        String nextName = determineNextLevelName(currentLevel);
+        return rewardResponseFrom(student, currentLevel);
+    }
 
+    private Alumno findStudent(GetStudentRewardStatusRequest rewardRequest) {
+        return alumnoRepository.findById(rewardRequest.alumnoId())
+                .orElseThrow(() -> new AlumnoNoEncontradoException(rewardRequest.alumnoId()));
+    }
+
+    private StudentRewardResponse rewardResponseFrom(Alumno student, RewardLevel currentLevel) {
         return new StudentRewardResponse(
-                alumno.getPuntosRecompensa(),
+                student.getPuntosRecompensa(),
                 currentLevel.name(),
                 currentLevel.getMessage(),
-                nextPoints,
-                nextName
+                student.getPointsToNextLevel(),
+                nextLevelNameAfter(currentLevel)
         );
     }
 
-    private String determineNextLevelName(RewardLevel current) {
-        return switch (current) {
+    private String nextLevelNameAfter(RewardLevel currentLevel) {
+        return switch (currentLevel) {
             case BRONZE -> RewardLevel.SILVER.name();
             case SILVER -> RewardLevel.GOLD.name();
             case GOLD -> "MAX";

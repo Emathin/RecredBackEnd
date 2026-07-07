@@ -6,7 +6,6 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.Summary;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
@@ -45,7 +44,7 @@ public class GenerateParentSummary {
     }
 
     public GenerateParentSummaryResponse execute(GenerateParentSummaryRequest request) {
-        List<UUID> processedTutorUserIds = generateSummariesForPremiumTutors(
+        List<UUID> processedTutorUserIds = generateSummariesForEligibleTutors(
                 request.start(),
                 request.end()
         );
@@ -53,13 +52,13 @@ public class GenerateParentSummary {
         return buildResponse(processedTutorUserIds);
     }
 
-    private List<UUID> generateSummariesForPremiumTutors(
+    private List<UUID> generateSummariesForEligibleTutors(
             LocalDateTime start,
             LocalDateTime end
     ) {
         List<UUID> processedTutorUserIds = new ArrayList<>();
 
-        for (Tutor tutor : findPremiumTutorsWithChildren()) {
+        for (Tutor tutor : findTutorsWithPaidPlanAndChildren()) {
             saveSummaryForTutor(tutor, start, end);
             processedTutorUserIds.add(tutorUserId(tutor));
         }
@@ -71,19 +70,10 @@ public class GenerateParentSummary {
         return new GenerateParentSummaryResponse(processedTutorUserIds);
     }
 
-    private List<Tutor> findPremiumTutorsWithChildren() {
+    private List<Tutor> findTutorsWithPaidPlanAndChildren() {
         return tutorRepository.findAll().stream()
-                .filter(this::tutorHasPremiumPlan)
-                .filter(this::tutorHasChildren)
+                .filter(Tutor::canReceiveParentSummary)
                 .toList();
-    }
-
-    private boolean tutorHasPremiumPlan(Tutor tutor) {
-        return TipoPlan.PREMIUM.equals(tutor.getUsuario().getPlan());
-    }
-
-    private boolean tutorHasChildren(Tutor tutor) {
-        return !tutor.getHijos().isEmpty();
     }
 
     private UUID tutorUserId(Tutor tutor) {

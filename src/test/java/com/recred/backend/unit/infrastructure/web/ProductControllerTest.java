@@ -23,6 +23,7 @@ import com.recred.backend.application.UpdateProductPrice;
 import com.recred.backend.application.UpdateProductPriceRequest;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.infrastructure.web.ProductController;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.ProductRequestDTO;
 import com.recred.backend.infrastructure.web.ProductResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
@@ -76,6 +77,8 @@ class ProductControllerTest {
     private ParseBulkStock parseBulkStock;
     @Mock
     private SaveBulkProducts saveBulkProducts;
+    @Mock
+    private PlanAccessGuard planAccessGuard;
 
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
@@ -91,7 +94,8 @@ class ProductControllerTest {
                 deleteProduct,
                 updateProductPrice,
                 parseBulkStock,
-                saveBulkProducts
+                saveBulkProducts,
+                planAccessGuard
         );
         mockMvc = standaloneSetup(controller).build();
         objectMapper = new ObjectMapper();
@@ -152,7 +156,7 @@ class ProductControllerTest {
         when(parseBulkStock.execute(any()))
                 .thenReturn(new BulkStockParseResponse(List.of(bulkProductData())));
 
-        ResponseEntity<BulkStockParseResponse> response = controller.uploadFile(file);
+        ResponseEntity<BulkStockParseResponse> response = controller.uploadFile(null, file);
 
         ArgumentCaptor<com.recred.backend.application.ParseBulkStockRequest> captor =
                 ArgumentCaptor.forClass(
@@ -162,6 +166,7 @@ class ProductControllerTest {
         assertEquals("Yogur", response.getBody().products().get(0).nombre());
         assertArrayEquals(content, captor.getValue().fileContent());
         assertEquals("text/csv", captor.getValue().contentType());
+        verify(planAccessGuard).requireVendorAdvanced(null);
     }
 
     @Test
@@ -170,7 +175,7 @@ class ProductControllerTest {
         when(file.getBytes()).thenThrow(new IOException("read error"));
 
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> controller.uploadFile(file));
+                () -> controller.uploadFile(null, file));
 
         assertEquals("Error reading uploaded file", exception.getMessage());
     }
@@ -185,7 +190,10 @@ class ProductControllerTest {
                         ProductResponse.fromDomain(product(productId))
                 )));
 
-        ResponseEntity<List<ProductResponseDTO>> response = controller.createBulk(List.of(request));
+        ResponseEntity<List<ProductResponseDTO>> response = controller.createBulk(
+                null,
+                List.of(request)
+        );
 
         ArgumentCaptor<SaveBulkProductsRequest> captor =
                 ArgumentCaptor.forClass(SaveBulkProductsRequest.class);
@@ -194,6 +202,7 @@ class ProductControllerTest {
         assertEquals(1, captor.getValue().products().size());
         assertEquals(buffetId, captor.getValue().products().get(0).buffetId());
         assertEquals(productId, response.getBody().get(0).id());
+        verify(planAccessGuard).requireVendorAdvanced(null);
     }
 
     @Test
@@ -220,6 +229,7 @@ class ProductControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(productId, response.getBody().id());
+        verify(planAccessGuard).requireVendorAdvanced(null);
         verify(getProductById).execute(new GetProductByIdRequest(productId, buffetId));
     }
 
@@ -330,7 +340,7 @@ class ProductControllerTest {
     private ResponseEntity<ProductResponseDTO> whenFindingProductById(
             UUID productId,
             UUID buffetId) {
-        return controller.findById(productId, buffetId);
+        return controller.findById(null, productId, buffetId);
     }
 
     private ResponseEntity<ProductResponseDTO> whenCreatingProduct(ProductRequestDTO request) {

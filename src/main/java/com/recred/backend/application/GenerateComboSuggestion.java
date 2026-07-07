@@ -5,9 +5,10 @@ import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.UUID;
-import org.springframework.transaction.annotation.Transactional;
 
 public class GenerateComboSuggestion {
 
@@ -24,11 +25,15 @@ public class GenerateComboSuggestion {
     }
 
     @Transactional(readOnly = true)
-    public GenerateComboSuggestionResponse execute(GenerateComboSuggestionRequest request) {
-        UUID buffetId = getBuffetIdForUser(request.cognitoSubject());
-        Producto product = getProduct(request.productId());
-        List<Producto> topSold = getTopSoldProducts(buffetId, product.getCategoria().getId());
-        return buildResponse(product, topSold);
+    public GenerateComboSuggestionResponse execute(
+            GenerateComboSuggestionRequest comboSuggestionRequest) {
+        UUID buffetId = getBuffetIdForUser(comboSuggestionRequest.cognitoSubject());
+        Producto product = getProduct(comboSuggestionRequest.productId());
+        List<Producto> suggestedProducts = getTopSoldProducts(
+                buffetId,
+                product.getCategoria().getId());
+
+        return buildResponse(product, suggestedProducts);
     }
 
     private UUID getBuffetIdForUser(String cognitoSubject) {

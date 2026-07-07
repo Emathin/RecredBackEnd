@@ -7,10 +7,13 @@ import com.recred.backend.domain.exceptions.SchoolNotFoundException;
 import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
 import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.Colegio;
+import com.recred.backend.domain.models.EstadoLicenciaColegio;
 import com.recred.backend.domain.models.Kiosquero;
+import com.recred.backend.domain.models.SuscripcionColegio;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.BuffetRepository;
 import com.recred.backend.domain.repositories.ColegioRepository;
+import com.recred.backend.domain.repositories.SuscripcionColegioRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +21,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +40,10 @@ import static org.mockito.Mockito.when;
 class GetSchoolOverviewTest {
 
     private static final String COGNITO_SUBJECT = "test-subject";
+    private static final Clock CLOCK = Clock.fixed(
+            Instant.parse("2026-07-05T13:00:00Z"),
+            ZoneOffset.UTC
+    );
 
     @Mock
     private UsuarioRepository usuarioRepository;
@@ -39,13 +51,20 @@ class GetSchoolOverviewTest {
     private ColegioRepository colegioRepository;
     @Mock
     private BuffetRepository buffetRepository;
+    @Mock
+    private SuscripcionColegioRepository subscriptionRepository;
 
     private GetSchoolOverview useCase;
     private UUID schoolId;
 
     @BeforeEach
     void setUp() {
-        useCase = new GetSchoolOverview(usuarioRepository, colegioRepository, buffetRepository);
+        useCase = new GetSchoolOverview(
+                usuarioRepository,
+                colegioRepository,
+                buffetRepository,
+                subscriptionRepository,
+                CLOCK);
         schoolId = UUID.randomUUID();
     }
 
@@ -77,6 +96,7 @@ class GetSchoolOverviewTest {
         when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
         when(colegioRepository.findById(schoolId)).thenReturn(Optional.of(colegio));
         when(buffetRepository.findByColegioId(schoolId)).thenReturn(List.of(buffet));
+        givenNoActiveSubscription(schoolId);
 
         GetSchoolOverviewRequest request = new GetSchoolOverviewRequest(COGNITO_SUBJECT);
 
@@ -85,6 +105,7 @@ class GetSchoolOverviewTest {
         assertEquals(schoolId, response.id());
         assertEquals("Colegio Test", response.nombre());
         assertEquals("12345", response.cue());
+        assertEquals(EstadoLicenciaColegio.SIN_LICENCIA, response.licencia().estado());
         assertEquals(1, response.buffets().size());
         
         GetSchoolOverviewResponse.BuffetDto buffetDto = response.buffets().get(0);
@@ -98,6 +119,27 @@ class GetSchoolOverviewTest {
         assertEquals("Perez", vendedorDto.apellido());
         assertEquals("juan@test.com", vendedorDto.email());
         assertEquals("20-12345678-9", vendedorDto.cuit());
+    }
+
+    @Test
+    void execute_WhenSchoolHasActiveSubscription_ShouldReturnLicense() {
+        Usuario usuario = userWithSchool();
+        Colegio colegio = school();
+        SuscripcionColegio subscription = subscriptionStartedAt(now().minusDays(10));
+        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
+        when(colegioRepository.findById(schoolId)).thenReturn(Optional.of(colegio));
+        when(buffetRepository.findByColegioId(schoolId)).thenReturn(List.of());
+        givenActiveSubscription(schoolId, subscription);
+
+        GetSchoolOverviewResponse response = useCase.execute(
+                new GetSchoolOverviewRequest(COGNITO_SUBJECT));
+
+        assertEquals(EstadoLicenciaColegio.ACTIVA, response.licencia().estado());
+        assertEquals(subscription.getFechaInicio(), response.licencia().fechaInicio());
+        assertEquals(subscription.getFechaVencimiento(), response.licencia().fechaVencimiento());
+        assertEquals(subscription.getFechaGraciaHasta(), response.licencia().fechaGraciaHasta());
+        assertEquals(new BigDecimal("20.00"), response.licencia().monto());
+        assertEquals("USD", response.licencia().moneda());
     }
 
     @Test
@@ -159,6 +201,7 @@ class GetSchoolOverviewTest {
         when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
         when(colegioRepository.findById(schoolId)).thenReturn(Optional.of(colegio));
         when(buffetRepository.findByColegioId(schoolId)).thenReturn(List.of(buffet));
+        givenNoActiveSubscription(schoolId);
 
         GetSchoolOverviewRequest request = new GetSchoolOverviewRequest(COGNITO_SUBJECT);
 
@@ -166,5 +209,43 @@ class GetSchoolOverviewTest {
 
         assertEquals(1, response.buffets().size());
         assertNull(response.buffets().get(0).vendedor());
+    }
+
+    private void givenNoActiveSubscription(UUID schoolId) {
+        when(subscriptionRepository.findActiveByColegioId(schoolId)).thenReturn(Optional.empty());
+    }
+
+    private void givenActiveSubscription(UUID schoolId, SuscripcionColegio subscription) {
+        when(subscriptionRepository.findActiveByColegioId(schoolId))
+                .thenReturn(Optional.of(subscription));
+    }
+
+    private Usuario userWithSchool() {
+        Usuario usuario = new Usuario();
+        Colegio colegio = new Colegio();
+        colegio.setId(schoolId);
+        usuario.setColegio(colegio);
+        return usuario;
+    }
+
+    private Colegio school() {
+        Colegio colegio = new Colegio();
+        colegio.setId(schoolId);
+        colegio.setNombre("Colegio Test");
+        colegio.setCue("12345");
+        return colegio;
+    }
+
+    private SuscripcionColegio subscriptionStartedAt(LocalDateTime startDate) {
+        return SuscripcionColegio.activate(
+                schoolId,
+                new BigDecimal("20.00"),
+                "USD",
+                startDate
+        );
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.now(CLOCK);
     }
 }

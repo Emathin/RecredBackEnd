@@ -13,16 +13,20 @@ public class DisableBudget {
         this.repository = repository;
     }
 
-    public DisableBudgetResponse execute(DisableBudgetRequest request) {
-        PresupuestoAlumno presupuesto = this.findPresupuestoById(request.budgetId());
-        presupuesto.setActivo(false);
-        repository.save(presupuesto);
+    public DisableBudgetResponse execute(DisableBudgetRequest disableBudgetRequest) {
+        PresupuestoAlumno budget = findBudgetById(disableBudgetRequest.budgetId());
+        disableAndSaveBudget(budget);
         return new DisableBudgetResponse();
     }
 
-    private PresupuestoAlumno findPresupuestoById(UUID id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException
-                        ("Presupuesto no encontrado con ID: " + id));
+    private PresupuestoAlumno findBudgetById(UUID budgetId) {
+        return repository.findById(budgetId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Presupuesto no encontrado con ID: " + budgetId));
+    }
+
+    private void disableAndSaveBudget(PresupuestoAlumno budget) {
+        budget.setActivo(false);
+        repository.save(budget);
     }
 }

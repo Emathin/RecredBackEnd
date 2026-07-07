@@ -10,9 +10,9 @@ import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -23,8 +23,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GetScheduledPickupsTest {
@@ -32,83 +34,154 @@ class GetScheduledPickupsTest {
     @Mock
     private PurchaseRepository purchaseRepository;
 
-    @InjectMocks
-    private GetScheduledPickups getScheduledPickups;
+    private GetScheduledPickups useCase;
+    private UUID buffetId;
+    private LocalDate pickupDate;
+    private EstadoRetiro withdrawalStatus;
+    private EstadoCompra purchaseStatus;
+    private UUID pickupSlotId;
+    private UUID studentId;
+    private UUID productId;
+    private UUID purchaseId;
+    private String search;
 
-    @Test
-    void execute_deberiaDelegarAlRepositorioCorrectamente() {
-        UUID buffetId = UUID.randomUUID();
-        LocalDate fecha = LocalDate.now();
-        EstadoRetiro estadoRetiro = EstadoRetiro.PROGRAMADO;
-        EstadoCompra status = EstadoCompra.PENDIENTE;
-        UUID franjaId = UUID.randomUUID();
-        String search = "test";
-        Purchase purchase = new Purchase();
-        purchase.setId(UUID.randomUUID());
-
-        when(purchaseRepository.findScheduledPickups(
-                buffetId,
-                fecha,
-                estadoRetiro,
-                status,
-                franjaId,
-                search))
-                .thenReturn(List.of(purchase));
-
-        GetScheduledPickupsRequest request = new GetScheduledPickupsRequest(
-                buffetId, fecha, estadoRetiro, status, franjaId, search);
-
-        List<GetScheduledPickupsResponse> resultado = getScheduledPickups.execute(request);
-
-        assertEquals(1, resultado.size());
-        assertEquals(purchase.getId(), resultado.get(0).id());
-        verify(purchaseRepository, times(1))
-                .findScheduledPickups(buffetId, fecha, estadoRetiro, status, franjaId, search);
+    @BeforeEach
+    void setUp() {
+        useCase = new GetScheduledPickups(purchaseRepository);
     }
 
     @Test
-    void execute_CuandoNoHayRetirosProgramados_RetornaListaVacia() {
-        UUID buffetId = UUID.randomUUID();
-        LocalDate fecha = LocalDate.now();
-        EstadoRetiro estadoRetiro = EstadoRetiro.PROGRAMADO;
-        EstadoCompra status = EstadoCompra.LISTO;
-        UUID franjaId = UUID.randomUUID();
-        String search = "test";
+    void givenScheduledPickupsExist_whenGettingPickups_thenReturnsPickups() {
+        givenScheduledPickupFilters();
+        givenScheduledPickupsExist();
 
-        when(purchaseRepository.findScheduledPickups(
-                buffetId,
-                fecha,
-                estadoRetiro,
-                status,
-                franjaId,
-                search))
-                .thenReturn(List.of());
+        List<GetScheduledPickupsResponse> response = whenGetScheduledPickups();
 
-        GetScheduledPickupsRequest request = new GetScheduledPickupsRequest(
-                buffetId, fecha, estadoRetiro, status, franjaId, search);
-
-        List<GetScheduledPickupsResponse> resultado = getScheduledPickups.execute(request);
-
-        assertEquals(0, resultado.size());
-        verify(purchaseRepository, times(1))
-                .findScheduledPickups(buffetId, fecha, estadoRetiro, status, franjaId, search);
+        thenScheduledPickupWasReturned(response);
+        thenScheduledPickupsWereRequested();
     }
 
     @Test
-    void execute_CuandoCompraTieneAlumnoEItems_MapeaDetalleCompleto() {
-        UUID buffetId = UUID.randomUUID();
-        LocalDate fecha = LocalDate.of(2026, 7, 8);
-        UUID franjaId = UUID.randomUUID();
-        UUID pickupSlotId = UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
-        Producto product = product();
-        Purchase purchase = new Purchase();
-        Alumno student = new Alumno();
-        student.setId(studentId);
-        student.setNombre("Ana");
-        student.setApellido("Perez");
-        purchase.setId(UUID.randomUUID());
-        purchase.setStudent(student);
+    void givenNoScheduledPickupsExist_whenGettingPickups_thenReturnsEmptyList() {
+        givenScheduledPickupFilters();
+        givenNoScheduledPickupsExist();
+
+        List<GetScheduledPickupsResponse> response = whenGetScheduledPickups();
+
+        thenScheduledPickupsWereEmpty(response);
+    }
+
+    @Test
+    void givenScheduledPickupHasStudentAndItems_whenGettingPickups_thenMapsFullDetails() {
+        givenDetailedScheduledPickupFilters();
+        givenScheduledPickupHasStudentAndItems();
+
+        List<GetScheduledPickupsResponse> response = whenGetScheduledPickups();
+
+        thenScheduledPickupDetailsWereReturned(response);
+    }
+
+    private void givenScheduledPickupFilters() {
+        buffetId = randomUUID();
+        pickupDate = LocalDate.now();
+        withdrawalStatus = EstadoRetiro.PROGRAMADO;
+        purchaseStatus = EstadoCompra.PENDIENTE;
+        pickupSlotId = randomUUID();
+        search = "test";
+    }
+
+    private void givenDetailedScheduledPickupFilters() {
+        buffetId = randomUUID();
+        pickupDate = LocalDate.of(2026, 7, 8);
+        withdrawalStatus = EstadoRetiro.EN_PREPARACION;
+        purchaseStatus = EstadoCompra.EN_PREPARACION;
+        pickupSlotId = randomUUID();
+        search = "Ana";
+    }
+
+    private void givenScheduledPickupsExist() {
+        purchaseId = randomUUID();
+        whenFindScheduledPickupsReturns(List.of(purchase(purchaseId)));
+    }
+
+    private void givenNoScheduledPickupsExist() {
+        whenFindScheduledPickupsReturns(List.of());
+    }
+
+    private void givenScheduledPickupHasStudentAndItems() {
+        purchaseId = randomUUID();
+        studentId = randomUUID();
+        productId = randomUUID();
+        whenFindScheduledPickupsReturns(List.of(detailedPurchase()));
+    }
+
+    private List<GetScheduledPickupsResponse> whenGetScheduledPickups() {
+        return useCase.execute(new GetScheduledPickupsRequest(
+                buffetId,
+                pickupDate,
+                withdrawalStatus,
+                purchaseStatus,
+                pickupSlotId,
+                search
+        ));
+    }
+
+    private void thenScheduledPickupWasReturned(List<GetScheduledPickupsResponse> response) {
+        assertEquals(1, response.size());
+        assertEquals(purchaseId, response.get(0).id());
+    }
+
+    private void thenScheduledPickupsWereEmpty(List<GetScheduledPickupsResponse> response) {
+        assertEquals(List.of(), response);
+    }
+
+    private void thenScheduledPickupDetailsWereReturned(
+            List<GetScheduledPickupsResponse> response
+    ) {
+        GetScheduledPickupsResponse pickup = response.get(0);
+        GetScheduledPickupsResponse.PurchaseItemResponse item = pickup.items().get(0);
+
+        assertEquals(studentId, pickup.studentId());
+        assertEquals("Ana Perez", pickup.studentName());
+        assertEquals("EN_PREPARACION", pickup.status());
+        assertEquals("En preparacion", pickup.statusLabel());
+        assertEquals("EN_PREPARACION", pickup.withdrawalStatus());
+        assertEquals("CREDITOS", pickup.paymentMethod());
+        assertEquals("S111", pickup.withdrawalCode());
+        assertEquals(pickupSlotId, pickup.pickupSlotId());
+        assertEquals("Segundo recreo", pickup.pickupSlotDescription());
+        assertEquals(pickupDate, pickup.pickupDate());
+        assertEquals(productId, item.productId());
+        assertEquals("Muffin", item.name());
+        assertEquals(2, item.quantity());
+        assertEquals(new BigDecimal("900.00"), item.price());
+    }
+
+    private void thenScheduledPickupsWereRequested() {
+        verify(purchaseRepository).findScheduledPickups(
+                buffetId,
+                pickupDate,
+                withdrawalStatus,
+                purchaseStatus,
+                pickupSlotId,
+                search
+        );
+    }
+
+    private void whenFindScheduledPickupsReturns(List<Purchase> purchases) {
+        when(purchaseRepository.findScheduledPickups(
+                buffetId,
+                pickupDate,
+                withdrawalStatus,
+                purchaseStatus,
+                pickupSlotId,
+                search
+        )).thenReturn(purchases);
+    }
+
+    private Purchase detailedPurchase() {
+        Purchase purchase = purchase(purchaseId);
+        purchase.setStudent(student());
         purchase.setTotalAmount(new BigDecimal("1800.00"));
         purchase.setStatus(EstadoCompra.EN_PREPARACION);
         purchase.setWithdrawalStatus(EstadoRetiro.EN_PREPARACION);
@@ -117,49 +190,28 @@ class GetScheduledPickupsTest {
         purchase.setWithdrawalCode("S111");
         purchase.setPickupSlotId(pickupSlotId);
         purchase.setPickupSlotDescription("Segundo recreo");
-        purchase.setPickupDate(fecha);
-        purchase.setItems(Map.of(product, 2));
-        when(purchaseRepository.findScheduledPickups(
-                buffetId,
-                fecha,
-                EstadoRetiro.EN_PREPARACION,
-                EstadoCompra.EN_PREPARACION,
-                franjaId,
-                "Ana"))
-                .thenReturn(List.of(purchase));
+        purchase.setPickupDate(pickupDate);
+        purchase.setItems(Map.of(product(), 2));
+        return purchase;
+    }
 
-        List<GetScheduledPickupsResponse> result = getScheduledPickups.execute(
-                new GetScheduledPickupsRequest(
-                        buffetId,
-                        fecha,
-                        EstadoRetiro.EN_PREPARACION,
-                        EstadoCompra.EN_PREPARACION,
-                        franjaId,
-                        "Ana"
-                )
-        );
+    private Purchase purchase(UUID requestedPurchaseId) {
+        Purchase purchase = new Purchase();
+        purchase.setId(requestedPurchaseId);
+        return purchase;
+    }
 
-        GetScheduledPickupsResponse response = result.get(0);
-        GetScheduledPickupsResponse.PurchaseItemResponse item = response.items().get(0);
-        assertEquals(studentId, response.studentId());
-        assertEquals("Ana Perez", response.studentName());
-        assertEquals("EN_PREPARACION", response.status());
-        assertEquals("En preparacion", response.statusLabel());
-        assertEquals("EN_PREPARACION", response.withdrawalStatus());
-        assertEquals("CREDITOS", response.paymentMethod());
-        assertEquals("S111", response.withdrawalCode());
-        assertEquals(pickupSlotId, response.pickupSlotId());
-        assertEquals("Segundo recreo", response.pickupSlotDescription());
-        assertEquals(fecha, response.pickupDate());
-        assertEquals(product.getId(), item.productId());
-        assertEquals("Muffin", item.name());
-        assertEquals(2, item.quantity());
-        assertEquals(new BigDecimal("900.00"), item.price());
+    private Alumno student() {
+        Alumno student = new Alumno();
+        student.setId(studentId);
+        student.setNombre("Ana");
+        student.setApellido("Perez");
+        return student;
     }
 
     private Producto product() {
         Producto product = new Producto();
-        product.setId(UUID.randomUUID());
+        product.setId(productId);
         product.setNombre("Muffin");
         product.setPrecio(new BigDecimal("900.00"));
         return product;

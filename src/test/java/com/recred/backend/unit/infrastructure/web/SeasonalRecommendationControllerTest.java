@@ -5,6 +5,7 @@ import com.recred.backend.application.SeasonalRecommendationResponse;
 import com.recred.backend.application.SeasonalSuggestionResponse;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.SeasonalRecommendationController;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -34,6 +36,9 @@ class SeasonalRecommendationControllerTest {
 
     @MockitoBean
     private GenerateSeasonalRecommendation useCase;
+
+    @MockitoBean
+    private PlanAccessGuard planAccessGuard;
 
     @MockitoBean
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
@@ -70,6 +75,7 @@ class SeasonalRecommendationControllerTest {
                 .andExpect(jsonPath("$.tip_promocional").value("Promo 2x1 en helados."))
                 .andExpect(jsonPath("$.sugerencias[0].categoria").value("Bebidas Frias"))
                 .andExpect(jsonPath("$.sugerencias[0].accion").value("AUMENTAR"));
+        verify(planAccessGuard).requireVendorAdvanced(null);
     }
 
     @Test

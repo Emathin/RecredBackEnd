@@ -5,23 +5,28 @@ import com.recred.backend.domain.models.KiosqueroPayoutConfig;
 import com.recred.backend.domain.repositories.KiosqueroPayoutConfigRepository;
 
 public class GetKiosqueroPayoutConfig {
-    private final KiosqueroPayoutConfigRepository repository;
+    private final KiosqueroPayoutConfigRepository payoutConfigRepository;
 
-    public GetKiosqueroPayoutConfig(KiosqueroPayoutConfigRepository repository) {
-        this.repository = repository;
+    public GetKiosqueroPayoutConfig(
+            KiosqueroPayoutConfigRepository payoutConfigRepository) {
+        this.payoutConfigRepository = payoutConfigRepository;
     }
 
-    public GetKiosqueroPayoutConfigResponse execute(GetKiosqueroPayoutConfigRequest request) {
-        KiosqueroPayoutConfig config = repository
-                .findByKiosqueroId(request.kiosqueroId())
+    public GetKiosqueroPayoutConfigResponse execute(
+            GetKiosqueroPayoutConfigRequest configRequest) {
+        KiosqueroPayoutConfig config = findPayoutConfig(configRequest);
+
+        return responseFrom(config);
+    }
+
+    private KiosqueroPayoutConfig findPayoutConfig(
+            GetKiosqueroPayoutConfigRequest configRequest) {
+        return payoutConfigRepository.findByKiosqueroId(configRequest.kiosqueroId())
                 .orElseThrow(() -> new KiosqueroPayoutConfigNotFoundException(
-                        request.kiosqueroId()
-                ));
-
-        return toResponse(config);
+                        configRequest.kiosqueroId()));
     }
 
-    private GetKiosqueroPayoutConfigResponse toResponse(KiosqueroPayoutConfig config) {
+    private GetKiosqueroPayoutConfigResponse responseFrom(KiosqueroPayoutConfig config) {
         return new GetKiosqueroPayoutConfigResponse(
                 config.getKiosqueroId(),
                 config.getDestinationCvu(),

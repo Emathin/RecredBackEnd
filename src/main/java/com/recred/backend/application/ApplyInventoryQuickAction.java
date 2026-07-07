@@ -13,16 +13,22 @@ public class ApplyInventoryQuickAction {
     }
 
     @Transactional
-    public AdjustInventoryStockResponse execute(ApplyInventoryQuickActionRequest request) {
-        Inventario inventory = inventoryAvailabilityService.applyQuickAction(
-                request.buffetId(),
-                request.productId(),
-                request.action(),
-                request.quantity(),
-                request.stockMinimo(),
-                request.motivo(),
-                request.usuarioId()
+    public AdjustInventoryStockResponse execute(
+            ApplyInventoryQuickActionRequest inventoryActionRequest) {
+        Inventario updatedInventory = updateInventoryFromQuickAction(inventoryActionRequest);
+        return AdjustInventoryStockResponse.fromDomain(updatedInventory);
+    }
+
+    private Inventario updateInventoryFromQuickAction(
+            ApplyInventoryQuickActionRequest inventoryActionRequest) {
+        return inventoryAvailabilityService.applyQuickAction(
+                inventoryActionRequest.buffetId(),
+                inventoryActionRequest.productId(),
+                inventoryActionRequest.action(),
+                inventoryActionRequest.quantity(),
+                inventoryActionRequest.stockMinimo(),
+                inventoryActionRequest.motivo(),
+                inventoryActionRequest.usuarioId()
         );
-        return AdjustInventoryStockResponse.fromDomain(inventory);
     }
 }
