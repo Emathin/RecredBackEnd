@@ -2,6 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.config.HealthyRecommendationProperties;
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
+import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.HealthyProductOption;
@@ -77,11 +78,33 @@ public class GenerateHealthyProductRecommendations {
     ) {
         int generatedRecommendations = 0;
         for (ConsumptionAlertCandidate candidate : studentRepository.findActiveCandidates()) {
-            if (saveRecommendation(candidate, calculationDate, dateWindow)) {
+            Optional<ConsumptionAlertCandidate> advancedCandidate = advancedCandidate(candidate);
+            if (advancedCandidate.isPresent()
+                    && saveRecommendation(advancedCandidate.get(), calculationDate, dateWindow)) {
                 generatedRecommendations++;
             }
         }
         return generatedRecommendations;
+    }
+
+    private Optional<ConsumptionAlertCandidate> advancedCandidate(
+            ConsumptionAlertCandidate candidate
+    ) {
+        List<ConsumptionAlertTutor> advancedTutors = candidate.tutors()
+                .stream()
+                .filter(ConsumptionAlertTutor::hasAdvancedPlan)
+                .toList();
+
+        if (advancedTutors.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new ConsumptionAlertCandidate(
+                candidate.studentId(),
+                candidate.studentUserId(),
+                candidate.studentName(),
+                advancedTutors
+        ));
     }
 
     private boolean saveRecommendation(

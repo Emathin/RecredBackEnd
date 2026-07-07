@@ -21,6 +21,7 @@ import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.infrastructure.web.ActualizarRestriccionesDTO;
 import com.recred.backend.infrastructure.web.ControlParentalController;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.TutorAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -98,6 +99,11 @@ class ControlParentalControllerTest {
     @MockitoBean
     private TutorAccessGuard tutorAccessGuard;
 
+    @MockitoBean
+    private PlanAccessGuard planAccessGuard;
+
+    private UUID alumnoId;
+    private UUID clasificacionId;
     private UUID studentId;
     private UUID classificationId;
     private UUID buffetId;
@@ -181,6 +187,10 @@ class ControlParentalControllerTest {
 
         thenResponseIsOk();
         thenManualProductLockWasCalled();
+        verify(detectStudentPreferences).execute(
+                new DetectStudentPreferencesRequest(alumnoId, buffetId)
+        );
+        verify(planAccessGuard).requireTutorIntermediate(null);
     }
 
     @Test

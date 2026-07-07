@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -29,14 +30,20 @@ public class WalletController {
     private final LoadBalanceToChild loadBalanceToChild;
     private final TransferBalanceBetweenChildren transferBalanceBetweenChildren;
     private final GetStudentWalletSummary getStudentWalletSummary;
+    private final PlanAccessGuard planAccessGuard;
+    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public WalletController(
             LoadBalanceToChild loadBalanceToChild, 
             TransferBalanceBetweenChildren transferBalanceBetweenChildren,
-            GetStudentWalletSummary getStudentWalletSummary) {
+            GetStudentWalletSummary getStudentWalletSummary,
+            PlanAccessGuard planAccessGuard,
+            SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
         this.loadBalanceToChild = loadBalanceToChild;
         this.transferBalanceBetweenChildren = transferBalanceBetweenChildren;
         this.getStudentWalletSummary = getStudentWalletSummary;
+        this.planAccessGuard = planAccessGuard;
+        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     private String cognitoSubject(Authentication authentication) {
@@ -53,6 +60,7 @@ public class WalletController {
     public ResponseEntity<Void> loadBalance(
             @RequestBody LoadBalanceRequest request, 
             Authentication authentication) {
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(request.studentId());
         loadBalanceToChild.execute(
                 new com.recred.backend.application.LoadBalanceToChildRequest(
                         cognitoSubject(authentication), 
@@ -67,6 +75,9 @@ public class WalletController {
     public ResponseEntity<Void> transferBalance(
             @RequestBody TransferBalanceRequest request, 
             Authentication authentication) {
+        planAccessGuard.requireTutorAdvanced(authentication);
+        schoolLicenseAccessGuard.requireActiveSchoolForStudents(
+                List.of(request.fromStudentId(), request.toStudentId()));
         transferBalanceBetweenChildren.execute(
                 new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(
                         cognitoSubject(authentication), 
@@ -86,6 +97,7 @@ public class WalletController {
             @RequestParam(name = "hasta", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             Authentication authentication) {
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(studentId);
         return ResponseEntity.ok(StudentWalletSummaryResponseDTO.fromApplication(
                 getStudentWalletSummary.execute(new GetStudentWalletSummaryRequest(
                         cognitoSubject(authentication),

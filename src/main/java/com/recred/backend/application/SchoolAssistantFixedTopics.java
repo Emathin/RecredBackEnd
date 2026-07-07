@@ -8,6 +8,7 @@ import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolAssistantRole;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.repositories.TutorRepository;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.EnumSet;
@@ -42,6 +43,7 @@ public class SchoolAssistantFixedTopics {
     public SchoolAssistantFixedTopics(
             PurchaseRepository purchaseRepository,
             ProductRepository productRepository,
+            TutorRepository tutorRepository,
             CreateAssistantAdvancePurchase createAssistantAdvancePurchase,
             CancelPresentialPurchase cancelPresentialPurchase,
             Clock clock
@@ -71,6 +73,7 @@ public class SchoolAssistantFixedTopics {
         this.quickPurchaseHandler = new SchoolAssistantQuickPurchaseHandler(
                 purchasePatternService,
                 productRepository,
+                tutorRepository,
                 createAssistantAdvancePurchase,
                 clock,
                 replyFormatter,

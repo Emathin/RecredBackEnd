@@ -12,6 +12,7 @@ import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.ConsumptionAlertType;
 import com.recred.backend.domain.models.ConsumptionCategoryStatistic;
 import com.recred.backend.domain.models.ConsumptionProductStatistic;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.ConsumptionAlertNotificationRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertPurchaseRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
@@ -31,6 +32,12 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -235,6 +242,7 @@ class GenerateStatisticalConsumptionAlertsTest {
     }
 
     private void givenStudentOutsideCooldown(
+            ConsumptionAlertCandidate candidate,
             ConsumptionAlertType alertType,
             String cooldownStartDateTime
     ) {
@@ -376,6 +384,11 @@ class GenerateStatisticalConsumptionAlertsTest {
                 randomUUID(),
                 randomUUID(),
                 "Juan Perez",
+                List.of(new ConsumptionAlertTutor(
+                        UUID.randomUUID(),
+                        "Tutor Perez",
+                        TipoPlan.AVANZADO
+                ))
                 List.of(new ConsumptionAlertTutor(randomUUID(), "Tutor Perez"))
         );
     }

@@ -5,6 +5,7 @@ import com.recred.backend.application.GetTutorGlobalDashboardRequest;
 import com.recred.backend.application.GetTutorGlobalDashboardResponse;
 import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.application.UpdateTutorDashboardConfigRequest;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardController;
 import com.recred.backend.infrastructure.web.TutorGlobalDashboardDTO;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +39,8 @@ class TutorGlobalDashboardControllerTest {
     private GetTutorGlobalDashboard getTutorGlobalDashboard;
     @Mock
     private UpdateTutorDashboardConfig updateTutorDashboardConfig;
+    @Mock
+    private PlanAccessGuard planAccessGuard;
 
     private TutorGlobalDashboardController controller;
 
@@ -45,7 +48,8 @@ class TutorGlobalDashboardControllerTest {
     void setUp() {
         controller = new TutorGlobalDashboardController(
                 getTutorGlobalDashboard,
-                updateTutorDashboardConfig
+                updateTutorDashboardConfig,
+                planAccessGuard
         );
     }
 
@@ -53,6 +57,7 @@ class TutorGlobalDashboardControllerTest {
     void getGlobalDashboardShouldMapCompleteChildDashboard() {
         UUID studentId = UUID.randomUUID();
         LocalDateTime transactionDate = LocalDateTime.of(2026, 7, 3, 10, 30);
+        Authentication authentication = authentication();
         GetTutorGlobalDashboardRequest request =
                 new GetTutorGlobalDashboardRequest(COGNITO_SUBJECT);
         when(getTutorGlobalDashboard.execute(request)).thenReturn(new GetTutorGlobalDashboardResponse(
@@ -61,16 +66,16 @@ class TutorGlobalDashboardControllerTest {
                 new BigDecimal("250.00"),
                 "{\"cards\":[\"balance\"]}",
                 List.of(completeChild(studentId, transactionDate)),
-                "PREMIUM"
+                "AVANZADO"
         ));
 
         ResponseEntity<TutorGlobalDashboardDTO> response =
-                controller.getGlobalDashboard(authentication());
+                controller.getGlobalDashboard(authentication);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("tutor-1", response.getBody().tutorId());
         assertEquals(new BigDecimal("1500.00"), response.getBody().totalBalance());
-        assertEquals("PREMIUM", response.getBody().plan());
+        assertEquals("AVANZADO", response.getBody().plan());
         assertEquals(1, response.getBody().children().size());
 
         TutorGlobalDashboardDTO.ChildDashboardDTO child = response.getBody().children().get(0);
@@ -81,12 +86,14 @@ class TutorGlobalDashboardControllerTest {
         assertEquals("purchase-1", child.todayPickups().get(0).id());
         assertEquals(transactionDate, child.recentTransactions().get(0).date());
         assertEquals("Cargar saldo", child.smartAction().title());
+        verify(planAccessGuard).requireTutorIntermediate(authentication);
         verify(getTutorGlobalDashboard).execute(request);
     }
 
     @Test
     void getGlobalDashboardShouldKeepNullableSectionsAsNull() {
         UUID studentId = UUID.randomUUID();
+        Authentication authentication = authentication();
         GetTutorGlobalDashboardRequest request =
                 new GetTutorGlobalDashboardRequest(COGNITO_SUBJECT);
         when(getTutorGlobalDashboard.execute(request)).thenReturn(new GetTutorGlobalDashboardResponse(
@@ -99,7 +106,7 @@ class TutorGlobalDashboardControllerTest {
         ));
 
         ResponseEntity<TutorGlobalDashboardDTO> response =
-                controller.getGlobalDashboard(authentication());
+                controller.getGlobalDashboard(authentication);
 
         TutorGlobalDashboardDTO.ChildDashboardDTO child = response.getBody().children().get(0);
         assertEquals(studentId, child.studentId());
@@ -108,6 +115,7 @@ class TutorGlobalDashboardControllerTest {
         assertEquals(List.of(), child.todayPickups());
         assertEquals(List.of(), child.recentTransactions());
         assertNull(child.smartAction());
+        verify(planAccessGuard).requireTutorIntermediate(authentication);
         verify(getTutorGlobalDashboard).execute(request);
     }
 
@@ -120,11 +128,13 @@ class TutorGlobalDashboardControllerTest {
     @Test
     void updateDashboardConfigShouldDelegateWithAuthenticatedSubject() {
         String config = "{\"cards\":[\"children\",\"health\"]}";
+        Authentication authentication = authentication();
 
         ResponseEntity<Void> response =
-                controller.updateDashboardConfig(authentication(), config);
+                controller.updateDashboardConfig(authentication, config);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(planAccessGuard).requireTutorIntermediate(authentication);
         verify(updateTutorDashboardConfig).execute(
                 new UpdateTutorDashboardConfigRequest(COGNITO_SUBJECT, config));
     }

@@ -7,6 +7,7 @@ import com.recred.backend.infrastructure.web.CartSuggestionController;
 import com.recred.backend.infrastructure.web.CartSuggestionRequestDTO;
 import com.recred.backend.infrastructure.web.CartSuggestionResponseDTO;
 import com.recred.backend.infrastructure.web.PurchaseItemDTO;
+import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,12 +27,16 @@ import static org.mockito.Mockito.when;
 class CartSuggestionControllerTest {
 
     private GetCartSuggestions getCartSuggestions;
+    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
     private CartSuggestionController controller;
 
     @BeforeEach
     void setUp() {
         getCartSuggestions = mock(GetCartSuggestions.class);
-        controller = new CartSuggestionController(getCartSuggestions);
+        schoolLicenseAccessGuard = mock(SchoolLicenseAccessGuard.class);
+        controller = new CartSuggestionController(
+                getCartSuggestions,
+                schoolLicenseAccessGuard);
     }
 
     @Test
@@ -54,6 +59,7 @@ class CartSuggestionControllerTest {
         assertEquals(buffetId, useCaseRequest.buffetId());
         assertEquals(java.util.Set.of(cartProductId), useCaseRequest.cartProductIds());
         assertEquals(2, useCaseRequest.limit());
+        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
     }
 
     @Test
@@ -140,4 +146,3 @@ class CartSuggestionControllerTest {
         );
     }
 }
-

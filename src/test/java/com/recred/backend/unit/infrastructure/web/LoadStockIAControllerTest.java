@@ -10,6 +10,7 @@ import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.infrastructure.web.LoadStockIAController;
 import com.recred.backend.infrastructure.web.LoadStockPredictionDTO;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.ProductResponseDTO;
 import com.recred.backend.infrastructure.web.ProductRequestDTO;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,9 @@ class LoadStockIAControllerTest {
     @Mock
     private SaveProduct saveProduct;
 
+    @Mock
+    private PlanAccessGuard planAccessGuard;
+
     @InjectMocks
     private LoadStockIAController controller;
 
@@ -49,10 +53,11 @@ class LoadStockIAControllerTest {
         LoadStockIAResponse responseIa = new LoadStockIAResponse("Test", "Desc", "0", "false", "false", "false", "false", "url");
         when(loadStockIA.execute(any(LoadStockIARequest.class))).thenReturn(responseIa);
 
-        ResponseEntity<LoadStockPredictionDTO> response = controller.uploadImage(file);
+        ResponseEntity<LoadStockPredictionDTO> response = controller.uploadImage(null, file);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Test", response.getBody().getNombre());
+        verify(planAccessGuard).requireVendorIntermediate(null);
     }
 
     @Test
@@ -60,7 +65,7 @@ class LoadStockIAControllerTest {
         MockMultipartFile file = new MockMultipartFile("image", "", "image/jpeg", new byte[0]);
 
         ImageValidationException exception = assertThrows(ImageValidationException.class,
-                () -> controller.uploadImage(file));
+                () -> controller.uploadImage(null, file));
         assertEquals("El archivo no puede estar vacío", exception.getMessage());
     }
 
@@ -69,7 +74,7 @@ class LoadStockIAControllerTest {
         MockMultipartFile file = new MockMultipartFile("image", "test.txt", "text/plain", "content".getBytes());
 
         ImageValidationException exception = assertThrows(ImageValidationException.class,
-                () -> controller.uploadImage(file));
+                () -> controller.uploadImage(null, file));
         assertEquals("Solo se aceptan imágenes JPG, JPEG o PNG", exception.getMessage());
     }
 
@@ -78,7 +83,7 @@ class LoadStockIAControllerTest {
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", null, "content".getBytes());
 
         ImageValidationException exception = assertThrows(ImageValidationException.class,
-                () -> controller.uploadImage(file));
+                () -> controller.uploadImage(null, file));
         assertEquals("Solo se aceptan imágenes JPG, JPEG o PNG", exception.getMessage());
     }
 
@@ -88,7 +93,7 @@ class LoadStockIAControllerTest {
         LoadStockIAResponse responseIa = new LoadStockIAResponse("Test", "Desc", "0", "false", "false", "false", "false", "url");
         when(loadStockIA.execute(any(LoadStockIARequest.class))).thenReturn(responseIa);
 
-        ResponseEntity<LoadStockPredictionDTO> response = controller.uploadImage(file);
+        ResponseEntity<LoadStockPredictionDTO> response = controller.uploadImage(null, file);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Test", response.getBody().getNombre());
@@ -100,7 +105,7 @@ class LoadStockIAControllerTest {
         LoadStockIAResponse responseIa = new LoadStockIAResponse("Test", "Desc", "0", "false", "false", "false", "false", "url");
         when(loadStockIA.execute(any(LoadStockIARequest.class))).thenReturn(responseIa);
 
-        ResponseEntity<LoadStockPredictionDTO> response = controller.uploadImage(file);
+        ResponseEntity<LoadStockPredictionDTO> response = controller.uploadImage(null, file);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Test", response.getBody().getNombre());

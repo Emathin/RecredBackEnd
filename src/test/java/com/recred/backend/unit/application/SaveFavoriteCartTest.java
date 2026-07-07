@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -207,6 +208,36 @@ class SaveFavoriteCartTest {
     }
 
     @Test
+    void executeShouldRejectNewCartWhenFreePlanAlreadyHasFiveCarts() {
+        Usuario usuario = usuario();
+        Tutor tutor = tutor(usuario.getId());
+        Alumno alumno = alumno();
+        tutor.addHijo(alumno);
+        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
+                COGNITO_SUBJECT,
+                null,
+                "Merienda",
+                alumno.getId(),
+                Map.of()
+        );
+
+        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
+        when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
+        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
+        when(carritoFavoritoRepository.findByTutorIdAndFilters(tutor.getId(), null, null))
+                .thenReturn(existingCarts(5));
+
+        Executable execution = () -> saveFavoriteCart.execute(request);
+
+        IllegalArgumentException exception =
+                assertThrows(IllegalArgumentException.class, execution);
+        assertEquals("Límite de carritos favoritos alcanzado "
+                        + "para cuenta gratuita (máximo 5)",
+                exception.getMessage());
+        verify(carritoFavoritoRepository, never()).save(any());
+    }
+
+    @Test
     void executeShouldRejectNullQuantity() {
         Usuario usuario = usuario();
         Tutor tutor = tutor(usuario.getId());
@@ -360,5 +391,11 @@ class SaveFavoriteCartTest {
         product.setNombre("Alfajor");
         product.setActivo(active);
         return product;
+    }
+
+    private List<CarritoFavorito> existingCarts(int count) {
+        return java.util.stream.IntStream.range(0, count)
+                .mapToObj(index -> new CarritoFavorito())
+                .toList();
     }
 }

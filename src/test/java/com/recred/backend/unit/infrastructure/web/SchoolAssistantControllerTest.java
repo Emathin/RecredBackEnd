@@ -18,6 +18,7 @@ import java.util.UUID;
 import com.recred.backend.infrastructure.web.SchoolAssistantController;
 import com.recred.backend.infrastructure.web.SchoolAssistantMessageResponse;
 import com.recred.backend.infrastructure.web.SchoolAssistantSessionResponse;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -44,6 +45,7 @@ class SchoolAssistantControllerTest {
 
     private AskSchoolAssistant askSchoolAssistant;
     private SchoolAssistantConversations conversations;
+    private PlanAccessGuard planAccessGuard;
     private SchoolAssistantController controller;
     private MockMvc mockMvc;
 
@@ -51,7 +53,12 @@ class SchoolAssistantControllerTest {
     void setUp() {
         askSchoolAssistant = mock(AskSchoolAssistant.class);
         conversations = mock(SchoolAssistantConversations.class);
-        controller = new SchoolAssistantController(askSchoolAssistant, conversations);
+        planAccessGuard = mock(PlanAccessGuard.class);
+        controller = new SchoolAssistantController(
+                askSchoolAssistant,
+                conversations,
+                planAccessGuard
+        );
         mockMvc = MockMvcBuilders
                 .standaloneSetup(controller)
                 .build();
@@ -249,6 +256,7 @@ class SchoolAssistantControllerTest {
         verify(askSchoolAssistant).execute(requestCaptor.capture());
         assertEquals("kiosquero-sub", requestCaptor.getValue().cognitoSubject());
         assertEquals(SchoolAssistantRole.KIOSQUERO, requestCaptor.getValue().role());
+        verify(planAccessGuard).requireVendorIntermediate(authentication);
     }
 
     @Test
@@ -409,6 +417,8 @@ class SchoolAssistantControllerTest {
                 .getStatusCode().value());
         verify(conversations).closeKiosqueroSession("kiosquero-sub", sessionId);
         verify(conversations).deleteKiosqueroSession("kiosquero-sub", sessionId);
+        verify(planAccessGuard, org.mockito.Mockito.times(4))
+                .requireVendorIntermediate(authentication);
     }
 
     @Test

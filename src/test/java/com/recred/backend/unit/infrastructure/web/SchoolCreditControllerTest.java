@@ -1,5 +1,7 @@
 package com.recred.backend.unit.infrastructure.web;
 
+import com.recred.backend.infrastructure.web.*;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.EnableSchoolCredit;
 import com.recred.backend.application.EnableSchoolCreditRequest;
@@ -31,6 +33,13 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.repositories.UsuarioRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -50,6 +59,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = SchoolCreditController.class, excludeAutoConfiguration = {
@@ -92,6 +102,10 @@ class SchoolCreditControllerTest {
     private UUID tutorId;
     private UUID studentId;
     private UUID creditId;
+    @MockitoBean
+    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
+
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void givenValidCreditRequest_whenEnablingCredit_thenReturnsCreatedCredit() throws Exception {

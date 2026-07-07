@@ -8,7 +8,11 @@ import com.mercadopago.net.MPResponse;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.preference.Preference;
 import com.recred.backend.domain.models.PaymentDetails;
+import com.recred.backend.domain.models.PaymentPurpose;
+import com.recred.backend.domain.models.PaymentReference;
 import com.recred.backend.domain.models.PaymentStatus;
+import com.recred.backend.domain.models.PeriodoSuscripcion;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.config.MercadoPagoProperties;
 import com.recred.backend.infrastructure.mercadopago.MercadoPagoAdapter;
 import org.junit.jupiter.api.BeforeEach;
@@ -128,6 +132,81 @@ class MercadoPagoAdapterTest {
                     ArgumentCaptor.forClass(PreferenceRequest.class);
             verify(client).create(requestCaptor.capture());
             assertNotNull(requestCaptor.getValue());
+            assertEquals(PaymentReference.topUp(studentId).toExternalReference(),
+                    requestCaptor.getValue().getExternalReference());
+        }
+    }
+
+    @Test
+    void createUserSubscriptionPreference_ShouldCreatePreferenceWithSubscriptionReference()
+            throws Exception {
+        UUID userId = UUID.randomUUID();
+        Preference preference = org.mockito.Mockito.mock(Preference.class);
+        when(preference.getInitPoint()).thenReturn("https://mp.test/subscription");
+        when(properties.getSuccessUrl()).thenReturn(" https://front.test/success ");
+        when(properties.getPendingUrl()).thenReturn(" https://front.test/pending ");
+        when(properties.getFailureUrl()).thenReturn(" https://front.test/failure ");
+        when(properties.getNotificationUrl()).thenReturn(" https://api.test/webhook ");
+
+        try (MockedConstruction<PreferenceClient> mocked = mockConstruction(
+                PreferenceClient.class,
+                (client, context) -> when(client.create(any(PreferenceRequest.class)))
+                        .thenReturn(preference)
+        )) {
+            String result = mercadoPagoAdapter.createUserSubscriptionPreference(
+                    userId,
+                    TipoPlan.AVANZADO,
+                    PeriodoSuscripcion.ANUAL,
+                    new BigDecimal("97920.00")
+            );
+
+            assertEquals("https://mp.test/subscription", result);
+            PreferenceClient client = mocked.constructed().get(0);
+            ArgumentCaptor<PreferenceRequest> requestCaptor =
+                    ArgumentCaptor.forClass(PreferenceRequest.class);
+            verify(client).create(requestCaptor.capture());
+            assertEquals(
+                    PaymentReference.userSubscription(
+                            userId,
+                            TipoPlan.AVANZADO,
+                            PeriodoSuscripcion.ANUAL
+                    ).toExternalReference(),
+                    requestCaptor.getValue().getExternalReference()
+            );
+        }
+    }
+
+    @Test
+    void createSchoolSubscriptionPreference_ShouldCreatePreferenceWithSchoolReference()
+            throws Exception {
+        UUID schoolId = UUID.randomUUID();
+        Preference preference = org.mockito.Mockito.mock(Preference.class);
+        when(preference.getInitPoint()).thenReturn("https://mp.test/school");
+        when(properties.getSuccessUrl()).thenReturn(" https://front.test/success ");
+        when(properties.getPendingUrl()).thenReturn(" https://front.test/pending ");
+        when(properties.getFailureUrl()).thenReturn(" https://front.test/failure ");
+        when(properties.getNotificationUrl()).thenReturn(" https://api.test/webhook ");
+
+        try (MockedConstruction<PreferenceClient> mocked = mockConstruction(
+                PreferenceClient.class,
+                (client, context) -> when(client.create(any(PreferenceRequest.class)))
+                        .thenReturn(preference)
+        )) {
+            String result = mercadoPagoAdapter.createSchoolSubscriptionPreference(
+                    schoolId,
+                    new BigDecimal("20.00")
+            );
+
+            assertEquals("https://mp.test/school", result);
+            PreferenceClient client = mocked.constructed().get(0);
+            ArgumentCaptor<PreferenceRequest> requestCaptor =
+                    ArgumentCaptor.forClass(PreferenceRequest.class);
+            verify(client).create(requestCaptor.capture());
+            assertEquals(
+                    PaymentReference.schoolSubscription(schoolId).toExternalReference(),
+                    requestCaptor.getValue().getExternalReference()
+            );
+            assertEquals("USD", requestCaptor.getValue().getItems().get(0).getCurrencyId());
         }
     }
 
@@ -203,6 +282,60 @@ class MercadoPagoAdapterTest {
         }
     }
 
+    @Test
+    void getPaymentDetails_WhenReferenceIsSubscription_ShouldMapSubscriptionPayment()
+            throws Exception {
+        UUID userId = UUID.randomUUID();
+        Payment payment = org.mockito.Mockito.mock(Payment.class);
+        when(payment.getExternalReference()).thenReturn(PaymentReference.userSubscription(
+                userId,
+                TipoPlan.INTERMEDIO,
+                PeriodoSuscripcion.MENSUAL
+        ).toExternalReference());
+        when(payment.getStatus()).thenReturn("approved");
+        when(payment.getTransactionAmount()).thenReturn(new BigDecimal("5500.00"));
+
+        try (MockedConstruction<PaymentClient> ignored = mockConstruction(
+                PaymentClient.class,
+                (client, context) -> when(client.get(123L)).thenReturn(payment)
+        )) {
+            PaymentDetails details = mercadoPagoAdapter.getPaymentDetails("123");
+
+            assertEquals("123", details.paymentId());
+            assertEquals(PaymentPurpose.USER_SUBSCRIPTION, details.purpose());
+            assertEquals(userId, details.usuarioId());
+            assertEquals(TipoPlan.INTERMEDIO, details.plan());
+            assertEquals(PeriodoSuscripcion.MENSUAL, details.periodo());
+            assertEquals(new BigDecimal("5500.00"), details.amount());
+            assertEquals(PaymentStatus.APPROVED, details.status());
+        }
+    }
+
+    @Test
+    void getPaymentDetails_WhenReferenceIsSchoolSubscription_ShouldMapSchoolPayment()
+            throws Exception {
+        UUID schoolId = UUID.randomUUID();
+        Payment payment = org.mockito.Mockito.mock(Payment.class);
+        when(payment.getExternalReference()).thenReturn(PaymentReference
+                .schoolSubscription(schoolId)
+                .toExternalReference());
+        when(payment.getStatus()).thenReturn("approved");
+        when(payment.getTransactionAmount()).thenReturn(new BigDecimal("20.00"));
+
+        try (MockedConstruction<PaymentClient> ignored = mockConstruction(
+                PaymentClient.class,
+                (client, context) -> when(client.get(123L)).thenReturn(payment)
+        )) {
+            PaymentDetails details = mercadoPagoAdapter.getPaymentDetails("123");
+
+            assertEquals("123", details.paymentId());
+            assertEquals(PaymentPurpose.SCHOOL_SUBSCRIPTION, details.purpose());
+            assertEquals(schoolId, details.colegioId());
+            assertEquals(new BigDecimal("20.00"), details.amount());
+            assertEquals(PaymentStatus.APPROVED, details.status());
+        }
+    }
+
     @ParameterizedTest
     @CsvSource({
             "pending,PENDING",
@@ -247,4 +380,3 @@ class MercadoPagoAdapterTest {
         }
     }
 }
-
