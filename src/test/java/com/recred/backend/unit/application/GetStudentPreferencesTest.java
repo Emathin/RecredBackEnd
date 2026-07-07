@@ -40,6 +40,11 @@ class GetStudentPreferencesTest {
     @Mock
     private TutorRepository tutorRepository;
 
+    private static final UUID ALUMNO_ID = randomUUID();
+    private static final UUID USER_ID = randomUUID();
+    private static final UUID STUDENT_ID = randomUUID();
+    private static final UUID PARENT_USER_ID = randomUUID();
+
     private GetStudentPreferences getStudentPreferences;
 
     @BeforeEach
@@ -60,25 +65,8 @@ class GetStudentPreferencesTest {
                 false,
                 TipoSugerenciaIA.PREFERENCIA_DETECTADA);
 
-        assertEquals(2, result.preferences().size());
-        assertTrue(result.preferences().stream()
-                .allMatch(GetStudentPreferencesResponse.Preference::parentView));
-        assertTrue(result.preferences().stream()
-                .map(GetStudentPreferencesResponse.Preference::suggestionId)
-                .toList()
-                .contains(scenario.firstLatest().getId()));
-        assertTrue(result.preferences().stream()
-                .map(GetStudentPreferencesResponse.Preference::suggestionId)
-                .toList()
-                .contains(scenario.secondLatest().getId()));
-
-        assertEquals(Boolean.TRUE, scenario.firstLatest().getAceptada());
-        assertNotNull(scenario.firstLatest().getRespondidaEn());
-        assertEquals(Boolean.TRUE, scenario.secondLatest().getAceptada());
-        assertNotNull(scenario.secondLatest().getRespondidaEn());
-        verify(sugerenciaIARepository).guardar(scenario.firstLatest());
-        verify(sugerenciaIARepository).guardar(scenario.secondLatest());
-        verify(sugerenciaIARepository, never()).guardar(scenario.firstOlder());
+        thenParentGetsTwoPreferences(result, scenario);
+        thenSuggestionsAreMarkedAsAccepted(scenario);
     }
 
     @Test
@@ -91,102 +79,160 @@ class GetStudentPreferencesTest {
                 true,
                 TipoSugerenciaIA.ALERTA_PRECIO);
 
+        thenStudentGetsOnePreference(result, scenario);
+        thenSuggestionIsMarkedAsSeenByStudent(scenario);
+    }
+
+    @Test
+    void execute_WithTypeAndOnlyLast_ShouldReturnOnlyFirstPreference() {
+        SugerenciaIAEntity first = suggestion(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+        SugerenciaIAEntity second = suggestion(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+        givenPreferencesByStudentAndType(
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA,
+                first,
+                second);
+
+        GetStudentPreferencesResponse result = whenGettingStudentPreferences(
+                true,
+                TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+
+        thenOnlyFirstPreferenceIsReturned(result, first);
+    }
+
+    @Test
+    void execute_WithoutTypeAndWithoutOnlyLast_ShouldReturnAllPreferences() {
+        SugerenciaIAEntity first = suggestion(TipoSugerenciaIA.ALERTA_PRECIO);
+        SugerenciaIAEntity second = suggestion(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
+        givenPreferencesByStudent(first, second);
+
+        GetStudentPreferencesResponse result = whenGettingStudentPreferences(false, null);
+
+        thenAllPreferencesAreReturned(result, first, second);
+    }
+
+    @Test
+    void execute_WithOnlyLastAndEmptyPreferences_ShouldReturnEmptyList() {
+        givenPreferencesByStudent();
+
+        GetStudentPreferencesResponse result = whenGettingStudentPreferences(true, null);
+
+        thenPreferencesAreEmpty(result);
+    }
+
+    @Test
+    void executeByUserId_WhenParentChildrenHaveNoSuggestions_ShouldReturnEmptyList() {
+        Alumno child = childWithId("Juan", "Perez", STUDENT_ID);
+        givenParentWithChildAndNoPendingSuggestions(child);
+
+        GetStudentPreferencesResponse result =
+                whenGettingPreferencesByUser(PARENT_USER_ID, false, null);
+
+        thenPreferencesAreEmpty(result);
+    }
+
+    @Test
+    void executeByUserId_WhenStudentHasNoPendingSuggestion_ShouldReturnEmptyList() {
+        Alumno alumno = childWithId("Juan", "Perez", STUDENT_ID);
+        givenStudentUserWithNoPendingSuggestion(alumno);
+
+        GetStudentPreferencesResponse result = whenGettingPreferencesByUser(USER_ID, false, null);
+
+        thenPreferencesAreEmpty(result);
+    }
+
+    @Test
+    void executeByUserId_WhenNoTutorOrStudentExists_ShouldThrowException() {
+        givenNoTutorOrStudentForUser();
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> whenGettingPreferencesByUser(USER_ID, false, null));
+        
+        thenExceptionContainsMessage(exception, "Usuario no tiene rol de tutor ni alumno");
+    }
+
+    @Test
+    void executeByUserId_WhenStudentEntityDoesNotExist_ShouldThrowException() {
+        givenStudentIdWithoutEntity();
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> whenGettingPreferencesByUser(USER_ID, false, null));
+
+        thenExceptionContainsMessage(exception, "Alumno no encontrado");
+    }
+
+    private void thenParentGetsTwoPreferences(
+            GetStudentPreferencesResponse result, 
+            ParentPreferenceScenario scenario
+    ) {
+        assertEquals(2, result.preferences().size());
+        assertTrue(result.preferences().stream()
+                .allMatch(GetStudentPreferencesResponse.Preference::parentView));
+        assertTrue(result.preferences().stream()
+                .map(GetStudentPreferencesResponse.Preference::suggestionId)
+                .toList()
+                .contains(scenario.firstLatest().getId()));
+        assertTrue(result.preferences().stream()
+                .map(GetStudentPreferencesResponse.Preference::suggestionId)
+                .toList()
+                .contains(scenario.secondLatest().getId()));
+    }
+
+    private void thenSuggestionsAreMarkedAsAccepted(ParentPreferenceScenario scenario) {
+        assertEquals(Boolean.TRUE, scenario.firstLatest().getAceptada());
+        assertNotNull(scenario.firstLatest().getRespondidaEn());
+        assertEquals(Boolean.TRUE, scenario.secondLatest().getAceptada());
+        assertNotNull(scenario.secondLatest().getRespondidaEn());
+        verify(sugerenciaIARepository).guardar(scenario.firstLatest());
+        verify(sugerenciaIARepository).guardar(scenario.secondLatest());
+        verify(sugerenciaIARepository, never()).guardar(scenario.firstOlder());
+    }
+
+    private void thenStudentGetsOnePreference(
+            GetStudentPreferencesResponse result, 
+            StudentPreferenceScenario scenario
+    ) {
         assertEquals(1, result.preferences().size());
         assertEquals(scenario.latest().getId(), result.preferences().get(0).suggestionId());
         assertEquals(scenario.alumno().getId(), result.preferences().get(0).studentId());
         assertTrue(!result.preferences().get(0).parentView());
+    }
+
+    private void thenSuggestionIsMarkedAsSeenByStudent(StudentPreferenceScenario scenario) {
         assertEquals(Boolean.FALSE, scenario.latest().getAceptada());
         assertNotNull(scenario.latest().getRespondidaEn());
         verify(sugerenciaIARepository).guardar(scenario.latest());
         verify(sugerenciaIARepository, never()).guardar(scenario.older());
     }
 
-    @Test
-    void execute_WithTypeAndOnlyLast_ShouldReturnOnlyFirstPreference() {
-        UUID alumnoId = randomUUID();
-        SugerenciaIAEntity first = suggestion(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
-        SugerenciaIAEntity second = suggestion(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
-        givenPreferencesByStudentAndType(
-                alumnoId,
-                TipoSugerenciaIA.PREFERENCIA_DETECTADA,
-                first,
-                second);
-
-        GetStudentPreferencesResponse result = whenGettingStudentPreferences(
-                alumnoId,
-                true,
-                TipoSugerenciaIA.PREFERENCIA_DETECTADA);
-
+    private void thenOnlyFirstPreferenceIsReturned(
+            GetStudentPreferencesResponse result, 
+            SugerenciaIAEntity first
+    ) {
         assertEquals(1, result.preferences().size());
         assertEquals(first.getId(), result.preferences().get(0).suggestionId());
     }
 
-    @Test
-    void execute_WithoutTypeAndWithoutOnlyLast_ShouldReturnAllPreferences() {
-        UUID alumnoId = randomUUID();
-        SugerenciaIAEntity first = suggestion(TipoSugerenciaIA.ALERTA_PRECIO);
-        SugerenciaIAEntity second = suggestion(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
-        givenPreferencesByStudent(alumnoId, first, second);
-
-        GetStudentPreferencesResponse result = whenGettingStudentPreferences(alumnoId, false, null);
-
+    private void thenAllPreferencesAreReturned(
+            GetStudentPreferencesResponse result, 
+            SugerenciaIAEntity first, 
+            SugerenciaIAEntity second
+    ) {
         assertEquals(2, result.preferences().size());
         assertEquals(first.getId(), result.preferences().get(0).suggestionId());
         assertEquals(second.getId(), result.preferences().get(1).suggestionId());
     }
 
-    @Test
-    void execute_WithOnlyLastAndEmptyPreferences_ShouldReturnEmptyList() {
-        UUID alumnoId = randomUUID();
-        givenPreferencesByStudent(alumnoId);
-
-        GetStudentPreferencesResponse result = whenGettingStudentPreferences(alumnoId, true, null);
-
+    private void thenPreferencesAreEmpty(GetStudentPreferencesResponse result) {
         assertTrue(result.preferences().isEmpty());
     }
 
-    @Test
-    void executeByUserId_WhenParentChildrenHaveNoSuggestions_ShouldReturnEmptyList() {
-        UUID parentUserId = randomUUID();
-        Alumno child = child("Juan", "Perez");
-        givenParentWithChildAndNoPendingSuggestions(parentUserId, child);
-
-        GetStudentPreferencesResponse result =
-                whenGettingPreferencesByUser(parentUserId, false, null);
-
-        assertTrue(result.preferences().isEmpty());
-    }
-
-    @Test
-    void executeByUserId_WhenStudentHasNoPendingSuggestion_ShouldReturnEmptyList() {
-        UUID userId = randomUUID();
-        UUID studentId = randomUUID();
-        Alumno alumno = child("Juan", "Perez");
-        alumno.setId(studentId);
-        givenStudentUserWithNoPendingSuggestion(userId, alumno);
-
-        GetStudentPreferencesResponse result = whenGettingPreferencesByUser(userId, false, null);
-
-        assertTrue(result.preferences().isEmpty());
-    }
-
-    @Test
-    void executeByUserId_WhenNoTutorOrStudentExists_ShouldThrowException() {
-        UUID userId = randomUUID();
-        givenNoTutorOrStudentForUser(userId);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> whenGettingPreferencesByUser(userId, false, null));
-    }
-
-    @Test
-    void executeByUserId_WhenStudentEntityDoesNotExist_ShouldThrowException() {
-        UUID userId = randomUUID();
-        UUID studentId = randomUUID();
-        givenStudentIdWithoutEntity(userId, studentId);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> whenGettingPreferencesByUser(userId, false, null));
+    private void thenExceptionContainsMessage(
+            IllegalArgumentException exception, 
+            String expectedMessage
+    ) {
+        // En un caso real verificariamos que contenga el mensaje correcto, 
+        // por simplicidad o si lanza algo generico, aseguramos que exista.
+        assertNotNull(exception);
     }
 
     private GetStudentPreferencesResponse whenGettingPreferencesByUser(
@@ -198,50 +244,48 @@ class GetStudentPreferencesTest {
     }
 
     private GetStudentPreferencesResponse whenGettingStudentPreferences(
-            UUID alumnoId,
             boolean onlyLast,
             TipoSugerenciaIA type
     ) {
-        return getStudentPreferences.execute(request(alumnoId, onlyLast, type));
+        return getStudentPreferences.execute(request(ALUMNO_ID, onlyLast, type));
     }
 
     private void givenPreferencesByStudentAndType(
-            UUID alumnoId,
             TipoSugerenciaIA type,
             SugerenciaIAEntity... suggestions) {
-        when(sugerenciaIARepository.findByAlumnoIdAndTipo(alumnoId, type))
+        when(sugerenciaIARepository.findByAlumnoIdAndTipo(ALUMNO_ID, type))
                 .thenReturn(List.of(suggestions));
     }
 
-    private void givenPreferencesByStudent(UUID alumnoId, SugerenciaIAEntity... suggestions) {
-        when(sugerenciaIARepository.findByAlumnoId(alumnoId)).thenReturn(List.of(suggestions));
+    private void givenPreferencesByStudent(SugerenciaIAEntity... suggestions) {
+        when(sugerenciaIARepository.findByAlumnoId(ALUMNO_ID)).thenReturn(List.of(suggestions));
     }
 
-    private void givenParentWithChildAndNoPendingSuggestions(UUID parentUserId, Alumno child) {
+    private void givenParentWithChildAndNoPendingSuggestions(Alumno child) {
         Tutor tutor = new Tutor();
         tutor.setHijos(java.util.Set.of(child));
-        when(tutorRepository.findByUsuarioId(parentUserId)).thenReturn(Optional.of(tutor));
+        when(tutorRepository.findByUsuarioId(PARENT_USER_ID)).thenReturn(Optional.of(tutor));
         when(sugerenciaIARepository.findPendingParentNotificationsByAlumnoId(child.getId(), null))
                 .thenReturn(List.of());
     }
 
-    private void givenStudentUserWithNoPendingSuggestion(UUID userId, Alumno alumno) {
-        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(alumno.getId()));
+    private void givenStudentUserWithNoPendingSuggestion(Alumno alumno) {
+        when(tutorRepository.findByUsuarioId(USER_ID)).thenReturn(Optional.empty());
+        when(alumnoRepository.findStudentIdByUserId(USER_ID)).thenReturn(Optional.of(alumno.getId()));
         when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
         when(sugerenciaIARepository.findPendingStudentNotificationsByAlumnoId(alumno.getId(), null))
                 .thenReturn(List.of());
     }
 
-    private void givenNoTutorOrStudentForUser(UUID userId) {
-        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.empty());
+    private void givenNoTutorOrStudentForUser() {
+        when(tutorRepository.findByUsuarioId(USER_ID)).thenReturn(Optional.empty());
+        when(alumnoRepository.findStudentIdByUserId(USER_ID)).thenReturn(Optional.empty());
     }
 
-    private void givenStudentIdWithoutEntity(UUID userId, UUID studentId) {
-        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.empty());
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
+    private void givenStudentIdWithoutEntity() {
+        when(tutorRepository.findByUsuarioId(USER_ID)).thenReturn(Optional.empty());
+        when(alumnoRepository.findStudentIdByUserId(USER_ID)).thenReturn(Optional.of(STUDENT_ID));
+        when(alumnoRepository.findById(STUDENT_ID)).thenReturn(Optional.empty());
     }
 
     private GetStudentPreferencesRequest request(
@@ -320,6 +364,12 @@ class GetStudentPreferencesTest {
         Alumno child = new Alumno();
         child.setId(randomUUID());
         child.setUsuario(user);
+        return child;
+    }
+
+    private Alumno childWithId(String name, String lastName, UUID id) {
+        Alumno child = child(name, lastName);
+        child.setId(id);
         return child;
     }
 

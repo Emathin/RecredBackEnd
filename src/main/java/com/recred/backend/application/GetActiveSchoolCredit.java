@@ -16,8 +16,6 @@ public class GetActiveSchoolCredit {
     }
 
     public Optional<GetActiveSchoolCreditResponse> execute(GetActiveSchoolCreditRequest request) {
-        request.validate();
-        
         return schoolCreditRepository.findByStudentIdAndStatus(
                 request.studentId(), CreditStatus.ACTIVE)
                 .map(this::mapToResponse);

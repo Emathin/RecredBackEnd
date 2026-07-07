@@ -6,7 +6,6 @@ import com.recred.backend.application.GetHealthRestrictionsResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.repositories.AlumnoRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
@@ -18,11 +17,18 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GetHealthRestrictionsTest {
+
+    private static final UUID STUDENT_ID = UUID.randomUUID();
+    private static final UUID RESTRICTION_ID = UUID.randomUUID();
+    private static final String RESTRICTION_DESCRIPTION = "Celíaco";
 
     @Mock
     private AlumnoRepository alumnoRepository;
@@ -30,45 +36,68 @@ class GetHealthRestrictionsTest {
     @InjectMocks
     private GetHealthRestrictions useCase;
 
-    private UUID alumnoId;
-    private Alumno alumno;
+    @Test
+    void returnsRestrictionsWhenStudentExists() {
+        Alumno student = buildStudentWithRestriction();
+        givenStudentExists(student);
+        GetHealthRestrictionsRequest request = new GetHealthRestrictionsRequest(STUDENT_ID);
 
-    @BeforeEach
-    void setUp() {
-        alumnoId = UUID.randomUUID();
-        alumno = new Alumno();
-        alumno.setId(alumnoId);
+        Set<GetHealthRestrictionsResponse> result = whenExecute(request);
+
+        thenResultMatchesRestriction(result);
+        thenRepositoryWasQueriedByStudentId();
     }
 
     @Test
-    void ejecutar_CuandoAlumnoExiste_DeberiaRetornarRestricciones() {
-        ClasificacionSalud clasificacion = new ClasificacionSalud();
-        clasificacion.setId(UUID.randomUUID());
-        clasificacion.setDescripcion("Celíaco");
-        alumno.getRestriccionesSalud().add(clasificacion);
-        GetHealthRestrictionsRequest request = new GetHealthRestrictionsRequest(alumnoId);
+    void throwsExceptionWhenStudentDoesNotExist() {
+        givenStudentDoesNotExist();
+        GetHealthRestrictionsRequest request = new GetHealthRestrictionsRequest(STUDENT_ID);
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        Executable execution = () -> whenExecute(request);
 
-        Set<GetHealthRestrictionsResponse> resultado = useCase.execute(request);
-
-        assertNotNull(resultado);
-        assertEquals(1, resultado.size());
-        GetHealthRestrictionsResponse responseItem = resultado.iterator().next();
-        assertEquals(clasificacion.getId(), responseItem.id());
-        assertEquals("Celíaco", responseItem.descripcion());
+        thenThrowsStudentNotFoundException(execution);
+        thenRepositoryWasQueriedByStudentId();
     }
 
-    @Test
-    void ejecutar_CuandoAlumnoNoExiste_DeberiaLanzarExcepcion() {
-        GetHealthRestrictionsRequest request = new GetHealthRestrictionsRequest(alumnoId);
+    private Alumno buildStudentWithRestriction() {
+        Alumno student = new Alumno();
+        student.setId(STUDENT_ID);
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        ClasificacionSalud restriction = new ClasificacionSalud();
+        restriction.setId(RESTRICTION_ID);
+        restriction.setDescripcion(RESTRICTION_DESCRIPTION);
+        
+        student.getRestriccionesSalud().add(restriction);
+        return student;
+    }
 
-        Executable execution = () -> useCase.execute(request);
+    private void givenStudentExists(Alumno student) {
+        when(alumnoRepository.findById(STUDENT_ID)).thenReturn(Optional.of(student));
+    }
 
+    private void givenStudentDoesNotExist() {
+        when(alumnoRepository.findById(STUDENT_ID)).thenReturn(Optional.empty());
+    }
+
+    private Set<GetHealthRestrictionsResponse> whenExecute(GetHealthRestrictionsRequest request) {
+        return useCase.execute(request);
+    }
+
+    private void thenResultMatchesRestriction(Set<GetHealthRestrictionsResponse> result) {
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        
+        GetHealthRestrictionsResponse responseItem = result.iterator().next();
+        assertEquals(RESTRICTION_ID, responseItem.id());
+        assertEquals(RESTRICTION_DESCRIPTION, responseItem.descripcion());
+    }
+
+    private void thenRepositoryWasQueriedByStudentId() {
+        verify(alumnoRepository).findById(STUDENT_ID);
+    }
+
+    private void thenThrowsStudentNotFoundException(Executable execution) {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-
-        assertEquals("El alumno con ID " + alumnoId + " no existe.", exception.getMessage());
+        assertEquals("El alumno con ID " + STUDENT_ID + " no existe.", exception.getMessage());
     }
 }

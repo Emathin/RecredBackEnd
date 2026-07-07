@@ -8,12 +8,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static com.recred.backend.domain.models.EstadoCompra.EN_PREPARACION;
+import static com.recred.backend.domain.models.EstadoCompra.LISTO;
+import static com.recred.backend.domain.models.EstadoCompra.PENDIENTE;
+import static com.recred.backend.domain.models.EstadoCompra.VENCIDO;
+
 public class ExpireAdvancePurchases {
 
     private static final List<EstadoCompra> ACTIVE_ADVANCE_STATUSES = List.of(
-            EstadoCompra.PENDIENTE,
-            EstadoCompra.EN_PREPARACION,
-            EstadoCompra.LISTO
+            PENDIENTE,
+            EN_PREPARACION,
+            LISTO
     );
 
     private final PurchaseRepository purchaseRepository;
@@ -56,7 +61,7 @@ public class ExpireAdvancePurchases {
 
     private int expire(Purchase purchase) {
         EstadoCompra previousStatus = purchase.getStatus();
-        purchase.changeStatusTo(EstadoCompra.VENCIDO);
+        purchase.changeStatusTo(VENCIDO);
         int releasedReservations = 0;
 
         if (shouldReleaseReservation(purchase, previousStatus)) {
@@ -77,6 +82,6 @@ public class ExpireAdvancePurchases {
     private boolean shouldReleaseReservation(Purchase purchase, EstadoCompra previousStatus) {
         return purchase.shouldReleaseReservationWhenChangingFrom(
                 previousStatus,
-                EstadoCompra.VENCIDO);
+                VENCIDO);
     }
 }

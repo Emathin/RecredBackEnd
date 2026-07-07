@@ -48,8 +48,6 @@ public class GetCartSuggestions {
     }
 
     public GetCartSuggestionsResponse execute(GetCartSuggestionsRequest request) {
-        request.validate();
-
         Alumno alumno = findStudent(request.studentId());
 
         List<Producto> availableProducts = findAvailableProducts(request.buffetId());
