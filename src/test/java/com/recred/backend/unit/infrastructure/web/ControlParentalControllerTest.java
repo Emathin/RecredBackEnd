@@ -1,5 +1,6 @@
 package com.recred.backend.unit.infrastructure.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddHealthRestrictionRequest;
 import com.recred.backend.application.DetectStudentPreferences;
@@ -34,7 +35,6 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Set;
@@ -63,8 +63,7 @@ class ControlParentalControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @MockitoBean
     private ManualProductLock manualProductLock;
@@ -102,8 +101,6 @@ class ControlParentalControllerTest {
     @MockitoBean
     private PlanAccessGuard planAccessGuard;
 
-    private UUID alumnoId;
-    private UUID clasificacionId;
     private UUID studentId;
     private UUID classificationId;
     private UUID buffetId;
@@ -187,10 +184,6 @@ class ControlParentalControllerTest {
 
         thenResponseIsOk();
         thenManualProductLockWasCalled();
-        verify(detectStudentPreferences).execute(
-                new DetectStudentPreferencesRequest(alumnoId, buffetId)
-        );
-        verify(planAccessGuard).requireTutorIntermediate(null);
     }
 
     @Test
@@ -345,6 +338,7 @@ class ControlParentalControllerTest {
     private void thenDetectStudentPreferencesWasCalled() {
         verify(detectStudentPreferences).execute(
                 new DetectStudentPreferencesRequest(studentId, buffetId));
+        verify(planAccessGuard).requireTutorIntermediate(null);
     }
 
     private void thenManualProductLockWasCalled() {

@@ -1,11 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.EnableSchoolCredit;
-import com.recred.backend.application.PaySchoolCredit;
-import com.recred.backend.domain.models.SchoolCredit;
-import com.recred.backend.application.GetActiveSchoolCredit;
-import com.recred.backend.application.GetSchoolCreditHistory;
-import com.recred.backend.application.GetLastRecharge;
 import com.recred.backend.application.EnableSchoolCreditRequest;
 import com.recred.backend.application.EnableSchoolCreditResponse;
 import com.recred.backend.application.GetActiveSchoolCredit;
@@ -30,9 +25,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.security.core.Authentication;
-import com.recred.backend.domain.services.UsuarioService;
-import com.recred.backend.domain.models.Usuario;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -67,10 +60,9 @@ public class SchoolCreditController {
 
     @PostMapping
     public ResponseEntity<?> enableCredit(Authentication authentication,
-                                          @RequestBody EnableSchoolCreditRequest request) {
-        schoolLicenseAccessGuard.requireActiveSchoolForStudent(request.studentId());
                                           @Valid @RequestBody
                                           EnableSchoolCreditRequestDTO request) {
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(request.getStudentId());
         try {
             String cognitoSub = authentication.getName();
             Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoSub);
@@ -128,6 +120,7 @@ public class SchoolCreditController {
 
     @GetMapping("/alumno/{studentId}")
     public ResponseEntity<List<SchoolCredit>> getHistory(@PathVariable UUID studentId) {
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(studentId);
         try {
             List<SchoolCredit> history = getSchoolCreditHistory.execute(studentId);
             return ResponseEntity.ok(history);
