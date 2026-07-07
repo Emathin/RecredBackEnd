@@ -7,15 +7,17 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.HealthyProductOption;
 import com.recred.backend.domain.models.HealthyProductRecommendation;
-import com.recred.backend.domain.models.HealthyRepeatedProductPattern;
 import com.recred.backend.domain.models.HealthyRecommendationAnalysisRequest;
 import com.recred.backend.domain.models.HealthyRecommendationMessages;
 import com.recred.backend.domain.models.HealthyRecommendationPattern;
+import com.recred.backend.domain.models.HealthyRepeatedProductPattern;
 import com.recred.backend.domain.models.RecentProductConsumption;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -23,7 +25,6 @@ import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.transaction.annotation.Transactional;
 
 public class GenerateHealthyProductRecommendations {
 
@@ -58,33 +59,40 @@ public class GenerateHealthyProductRecommendations {
     public GenerateHealthyProductRecommendationsResponse execute(
             GenerateHealthyProductRecommendationsRequest request
     ) {
-        requireRequest(request);
         LocalDate calculationDate = LocalDate.now(clock);
-        DateWindow dateWindow = dateWindow(calculationDate);
+        DateWindow dateWindow = analysisWindowFor(calculationDate);
         return new GenerateHealthyProductRecommendationsResponse(
-                generateRecommendations(calculationDate, dateWindow)
+                generateRecommendationsForActiveStudents(calculationDate, dateWindow)
         );
     }
 
-    private void requireRequest(GenerateHealthyProductRecommendationsRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException("request is required");
-        }
-    }
-
-    private int generateRecommendations(
+    private int generateRecommendationsForActiveStudents(
             LocalDate calculationDate,
             DateWindow dateWindow
     ) {
         int generatedRecommendations = 0;
         for (ConsumptionAlertCandidate candidate : studentRepository.findActiveCandidates()) {
-            Optional<ConsumptionAlertCandidate> advancedCandidate = advancedCandidate(candidate);
-            if (advancedCandidate.isPresent()
-                    && saveRecommendation(advancedCandidate.get(), calculationDate, dateWindow)) {
+            if (saveRecommendationIfAdvancedCandidateQualifies(
+                    candidate,
+                    calculationDate,
+                    dateWindow)) {
                 generatedRecommendations++;
             }
         }
         return generatedRecommendations;
+    }
+
+    private boolean saveRecommendationIfAdvancedCandidateQualifies(
+            ConsumptionAlertCandidate candidate,
+            LocalDate calculationDate,
+            DateWindow dateWindow
+    ) {
+        return advancedCandidate(candidate)
+                .map(candidateWithAdvancedTutors -> saveRecommendationIfCandidateQualifies(
+                        candidateWithAdvancedTutors,
+                        calculationDate,
+                        dateWindow))
+                .orElse(false);
     }
 
     private Optional<ConsumptionAlertCandidate> advancedCandidate(
@@ -107,34 +115,34 @@ public class GenerateHealthyProductRecommendations {
         ));
     }
 
-    private boolean saveRecommendation(
+    private boolean saveRecommendationIfCandidateQualifies(
             ConsumptionAlertCandidate candidate,
             LocalDate calculationDate,
             DateWindow dateWindow
     ) {
-        return recommendationFor(candidate, calculationDate, dateWindow)
-                .map(this::saveRecommendation)
+        return recommendationForCandidate(candidate, calculationDate, dateWindow)
+                .map(this::saveHealthyRecommendation)
                 .orElse(false);
     }
 
-    private boolean saveRecommendation(HealthyProductRecommendation recommendation) {
+    private boolean saveHealthyRecommendation(HealthyProductRecommendation recommendation) {
         notificationRepository.save(recommendation);
         return true;
     }
 
-    private Optional<HealthyProductRecommendation> recommendationFor(
+    private Optional<HealthyProductRecommendation> recommendationForCandidate(
             ConsumptionAlertCandidate candidate,
             LocalDate calculationDate,
             DateWindow dateWindow
     ) {
-        if (shouldSkipForCooldown(candidate, calculationDate)) {
+        if (candidateIsInsideRecommendationCooldown(candidate, calculationDate)) {
             return Optional.empty();
         }
 
-        return buildRecommendation(candidate, calculationDate, dateWindow);
+        return recommendationFromRecentConsumption(candidate, calculationDate, dateWindow);
     }
 
-    private boolean shouldSkipForCooldown(
+    private boolean candidateIsInsideRecommendationCooldown(
             ConsumptionAlertCandidate candidate,
             LocalDate calculationDate
     ) {
@@ -143,37 +151,37 @@ public class GenerateHealthyProductRecommendations {
         return notificationRepository.hasRecommendationSince(candidate.studentId(), cooldownStart);
     }
 
-    private Optional<HealthyProductRecommendation> buildRecommendation(
+    private Optional<HealthyProductRecommendation> recommendationFromRecentConsumption(
             ConsumptionAlertCandidate candidate,
             LocalDate calculationDate,
             DateWindow dateWindow
     ) {
-        List<RecentProductConsumption> consumptions = purchaseRepository.findConsumptions(
+        List<RecentProductConsumption> recentConsumptions = purchaseRepository.findConsumptions(
                 candidate.studentId(),
                 EstadoCompra.healthyRecommendationStatuses(),
                 dateWindow.startDateTime(),
                 dateWindow.endDateTime()
         );
 
-        return repeatedPatterns(consumptions).stream()
-                .map(pattern -> buildRecommendationWithAiSuggestion(
+        return repeatedProductPatterns(recentConsumptions).stream()
+                .map(pattern -> recommendationWithSuggestedAlternative(
                         candidate,
                         calculationDate,
                         dateWindow,
-                        consumptions,
+                        recentConsumptions,
                         pattern
                 ))
                 .flatMap(Optional::stream)
                 .findFirst();
     }
 
-    private List<HealthyRepeatedProductPattern> repeatedPatterns(
+    private List<HealthyRepeatedProductPattern> repeatedProductPatterns(
             List<RecentProductConsumption> consumptions
     ) {
         return patternCalculator.calculate(consumptions, properties.minimumRepeatedDays());
     }
 
-    private Optional<HealthyProductRecommendation> buildRecommendationWithAiSuggestion(
+    private Optional<HealthyProductRecommendation> recommendationWithSuggestedAlternative(
             ConsumptionAlertCandidate candidate,
             LocalDate calculationDate,
             DateWindow dateWindow,
@@ -204,7 +212,12 @@ public class GenerateHealthyProductRecommendations {
                 .flatMap(messages -> selectedOption(messages, availableOptions)
                         .map(option -> new HealthyProductRecommendation(
                                 candidate,
-                                pattern(candidate, calculationDate, dateWindow, pattern, option),
+                                recommendationPattern(
+                                        candidate,
+                                        calculationDate,
+                                        dateWindow,
+                                        pattern,
+                                        option),
                                 messages
                         )));
     }
@@ -271,7 +284,7 @@ public class GenerateHealthyProductRecommendations {
                 .findFirst();
     }
 
-    private HealthyRecommendationPattern pattern(
+    private HealthyRecommendationPattern recommendationPattern(
             ConsumptionAlertCandidate candidate,
             LocalDate calculationDate,
             DateWindow dateWindow,
@@ -295,7 +308,7 @@ public class GenerateHealthyProductRecommendations {
         );
     }
 
-    private DateWindow dateWindow(LocalDate calculationDate) {
+    private DateWindow analysisWindowFor(LocalDate calculationDate) {
         int lookbackDays = Math.max(properties.lookbackDays(), MINIMUM_LOOKBACK_DAYS);
         LocalDate endDate = calculationDate.minusDays(1);
         LocalDate startDate = endDate.minusDays(lookbackDays - 1L);

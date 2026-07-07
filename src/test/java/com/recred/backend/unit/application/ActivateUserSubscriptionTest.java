@@ -13,8 +13,12 @@ import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -27,101 +31,122 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class ActivateUserSubscriptionTest {
 
-    private final UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
-    private final SuscripcionUsuarioRepository subscriptionRepository =
-            mock(SuscripcionUsuarioRepository.class);
-    private final Clock clock = Clock.fixed(
+    private static final Clock CLOCK = Clock.fixed(
             Instant.parse("2026-07-05T13:00:00Z"),
             ZoneOffset.UTC
     );
-    private final ActivateUserSubscription useCase = new ActivateUserSubscription(
-            usuarioRepository,
-            subscriptionRepository,
-            clock
-    );
 
-    @Test
-    void execute_WhenUserCanSubscribe_ShouldActivateSubscriptionAndUserPlan() {
-        UUID userId = UUID.randomUUID();
-        givenUser(user(userId, RolUsuario.PADRE));
-        givenNoActiveSubscription(userId);
-        givenSavedSubscriptionWithId(UUID.randomUUID());
-        ActivateUserSubscriptionRequest request = request(userId, TipoPlan.INTERMEDIO);
+    @Mock
+    private UsuarioRepository userRepository;
 
-        ActivateUserSubscriptionResponse result = whenExecuting(request);
+    @Mock
+    private SuscripcionUsuarioRepository subscriptionRepository;
 
-        assertEquals(TipoPlan.INTERMEDIO, result.plan());
-        assertEquals(EstadoSuscripcion.ACTIVA, result.estado());
-        assertEquals(fixedNow().plusMonths(1), result.fechaVencimiento());
-        verifyUserPlanWasUpdated(userId, TipoPlan.INTERMEDIO);
-        verifyNewSubscriptionWasSaved();
+    private ActivateUserSubscription useCase;
+
+    private UUID userId;
+    private UUID subscriptionId;
+    private Usuario user;
+    private SuscripcionUsuario activeSubscription;
+    private ActivateUserSubscriptionResponse response;
+    private RuntimeException thrownException;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new ActivateUserSubscription(
+                userRepository,
+                subscriptionRepository,
+                CLOCK
+        );
     }
 
     @Test
-    void execute_WhenUserHasActiveSubscription_ShouldCancelPreviousSubscription() {
-        UUID userId = UUID.randomUUID();
-        SuscripcionUsuario activeSubscription = activeSubscription(userId);
-        givenUser(user(userId, RolUsuario.VENDEDOR));
-        givenActiveSubscription(userId, activeSubscription);
-        givenSavedSubscriptionWithId(UUID.randomUUID());
-        ActivateUserSubscriptionRequest request = request(userId, TipoPlan.AVANZADO);
+    void givenUserCanSubscribe_whenActivatingSubscription_thenActivatesSubscriptionAndPlan() {
+        givenUserSubscriptionScenario(RolUsuario.PADRE, TipoPlan.INTERMEDIO);
+        givenUserExists();
+        givenNoActiveSubscription();
+        givenSavedSubscriptionWithId();
 
-        whenExecuting(request);
+        whenActivatingUserSubscription();
 
-        List<SuscripcionUsuario> savedSubscriptions = savedSubscriptions();
-        assertEquals(EstadoSuscripcion.CANCELADA, savedSubscriptions.get(0).getEstado());
-        assertEquals(EstadoSuscripcion.ACTIVA, savedSubscriptions.get(1).getEstado());
+        thenSubscriptionWasActivated(TipoPlan.INTERMEDIO);
+        thenUserPlanWasUpdated(TipoPlan.INTERMEDIO);
+        thenNewSubscriptionWasSaved();
     }
 
     @Test
-    void execute_WhenUserDoesNotExist_ShouldThrowException() {
-        UUID userId = UUID.randomUUID();
-        givenMissingUser(userId);
-        ActivateUserSubscriptionRequest request = request(userId, TipoPlan.INTERMEDIO);
+    void givenUserHasActiveSubscription_whenActivatingSubscription_thenCancelsPreviousOne() {
+        givenUserSubscriptionScenario(RolUsuario.VENDEDOR, TipoPlan.AVANZADO);
+        givenUserExists();
+        givenActiveSubscriptionExists();
+        givenSavedSubscriptionWithId();
 
-        assertThrows(UsuarioNoEncontradoException.class, () -> whenExecuting(request));
-        verify(subscriptionRepository, never()).save(any(SuscripcionUsuario.class));
-        verify(usuarioRepository, never()).updatePlan(any(UUID.class), any(TipoPlan.class));
+        whenActivatingUserSubscription();
+
+        thenPreviousSubscriptionWasCancelled();
+        thenNewSubscriptionWasActivated();
     }
 
     @Test
-    void execute_WhenUserRoleCannotSubscribe_ShouldThrowException() {
-        UUID userId = UUID.randomUUID();
-        givenUser(user(userId, RolUsuario.ALUMNO));
-        ActivateUserSubscriptionRequest request = request(userId, TipoPlan.INTERMEDIO);
+    void givenUserDoesNotExist_whenActivatingSubscription_thenFailsBeforeSaving() {
+        givenUserSubscriptionScenario(RolUsuario.PADRE, TipoPlan.INTERMEDIO);
+        givenUserDoesNotExist();
 
-        assertThrows(UserRoleCannotSubscribeException.class, () -> whenExecuting(request));
-        verify(subscriptionRepository, never()).save(any(SuscripcionUsuario.class));
-        verify(usuarioRepository, never()).save(any(Usuario.class));
-        verify(usuarioRepository, never()).updatePlan(any(UUID.class), any(TipoPlan.class));
+        whenActivatingUserSubscriptionFails();
+
+        thenUserWasNotFound();
+        thenSubscriptionWasNotSaved();
+        thenUserPlanWasNotUpdated();
     }
 
-    private void givenUser(Usuario user) {
-        when(usuarioRepository.findByIdForUpdate(user.getId())).thenReturn(Optional.of(user));
+    @Test
+    void givenUserRoleCannotSubscribe_whenActivatingSubscription_thenFailsBeforeSaving() {
+        givenUserSubscriptionScenario(RolUsuario.ALUMNO, TipoPlan.INTERMEDIO);
+        givenUserExists();
+
+        whenActivatingUserSubscriptionFails();
+
+        thenUserRoleCannotSubscribe();
+        thenSubscriptionWasNotSaved();
+        thenUserWasNotSaved();
+        thenUserPlanWasNotUpdated();
     }
 
-    private void givenMissingUser(UUID userId) {
-        when(usuarioRepository.findByIdForUpdate(userId)).thenReturn(Optional.empty());
+    private void givenUserSubscriptionScenario(RolUsuario role, TipoPlan plan) {
+        userId = UUID.randomUUID();
+        subscriptionId = UUID.randomUUID();
+        user = user(userId, role);
+        response = null;
+        activeSubscription = activeSubscription(userId, plan);
     }
 
-    private void givenNoActiveSubscription(UUID userId) {
+    private void givenUserExists() {
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
+    }
+
+    private void givenUserDoesNotExist() {
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.empty());
+    }
+
+    private void givenNoActiveSubscription() {
         when(subscriptionRepository.findActiveByUsuarioId(userId)).thenReturn(Optional.empty());
     }
 
-    private void givenActiveSubscription(UUID userId, SuscripcionUsuario subscription) {
+    private void givenActiveSubscriptionExists() {
         when(subscriptionRepository.findActiveByUsuarioId(userId))
-                .thenReturn(Optional.of(subscription));
+                .thenReturn(Optional.of(activeSubscription));
     }
 
-    private void givenSavedSubscriptionWithId(UUID subscriptionId) {
+    private void givenSavedSubscriptionWithId() {
         when(subscriptionRepository.save(any(SuscripcionUsuario.class))).thenAnswer(invocation -> {
             SuscripcionUsuario subscription = invocation.getArgument(0);
             if (subscription.getId() == null) {
@@ -131,21 +156,61 @@ class ActivateUserSubscriptionTest {
         });
     }
 
-    private ActivateUserSubscriptionResponse whenExecuting(
-            ActivateUserSubscriptionRequest request
-    ) {
-        return useCase.execute(request);
+    private void whenActivatingUserSubscription() {
+        response = useCase.execute(request(responsePlan()));
     }
 
-    private void verifyUserPlanWasUpdated(UUID userId, TipoPlan plan) {
-        verify(usuarioRepository).updatePlan(userId, plan);
-        verify(usuarioRepository, never()).save(any(Usuario.class));
+    private void whenActivatingUserSubscriptionFails() {
+        thrownException = assertThrows(
+                RuntimeException.class,
+                this::whenActivatingUserSubscription);
     }
 
-    private void verifyNewSubscriptionWasSaved() {
+    private void thenSubscriptionWasActivated(TipoPlan plan) {
+        assertEquals(plan, response.plan());
+        assertEquals(EstadoSuscripcion.ACTIVA, response.estado());
+        assertEquals(fixedNow().plusMonths(1), response.fechaVencimiento());
+    }
+
+    private void thenUserPlanWasUpdated(TipoPlan plan) {
+        verify(userRepository).updatePlan(userId, plan);
+        verify(userRepository, never()).save(any(Usuario.class));
+    }
+
+    private void thenNewSubscriptionWasSaved() {
         verify(subscriptionRepository).save(org.mockito.ArgumentMatchers.argThat(
                 subscription -> subscription.getEstado() == EstadoSuscripcion.ACTIVA
         ));
+    }
+
+    private void thenPreviousSubscriptionWasCancelled() {
+        List<SuscripcionUsuario> savedSubscriptions = savedSubscriptions();
+        assertEquals(EstadoSuscripcion.CANCELADA, savedSubscriptions.get(0).getEstado());
+    }
+
+    private void thenNewSubscriptionWasActivated() {
+        List<SuscripcionUsuario> savedSubscriptions = savedSubscriptions();
+        assertEquals(EstadoSuscripcion.ACTIVA, savedSubscriptions.get(1).getEstado());
+    }
+
+    private void thenUserWasNotFound() {
+        assertTrue(thrownException instanceof UsuarioNoEncontradoException);
+    }
+
+    private void thenUserRoleCannotSubscribe() {
+        assertTrue(thrownException instanceof UserRoleCannotSubscribeException);
+    }
+
+    private void thenSubscriptionWasNotSaved() {
+        verify(subscriptionRepository, never()).save(any(SuscripcionUsuario.class));
+    }
+
+    private void thenUserWasNotSaved() {
+        verify(userRepository, never()).save(any(Usuario.class));
+    }
+
+    private void thenUserPlanWasNotUpdated() {
+        verify(userRepository, never()).updatePlan(any(UUID.class), any(TipoPlan.class));
     }
 
     private List<SuscripcionUsuario> savedSubscriptions() {
@@ -155,7 +220,7 @@ class ActivateUserSubscriptionTest {
         return captor.getAllValues();
     }
 
-    private ActivateUserSubscriptionRequest request(UUID userId, TipoPlan plan) {
+    private ActivateUserSubscriptionRequest request(TipoPlan plan) {
         return new ActivateUserSubscriptionRequest(
                 userId,
                 plan,
@@ -163,6 +228,10 @@ class ActivateUserSubscriptionTest {
                 new BigDecimal("5500.00"),
                 null
         );
+    }
+
+    private TipoPlan responsePlan() {
+        return user.getRol() == RolUsuario.VENDEDOR ? TipoPlan.AVANZADO : TipoPlan.INTERMEDIO;
     }
 
     private Usuario user(UUID userId, RolUsuario role) {
@@ -173,10 +242,10 @@ class ActivateUserSubscriptionTest {
         return user;
     }
 
-    private SuscripcionUsuario activeSubscription(UUID userId) {
+    private SuscripcionUsuario activeSubscription(UUID userId, TipoPlan plan) {
         SuscripcionUsuario subscription = SuscripcionUsuario.activate(
                 userId,
-                TipoPlan.INTERMEDIO,
+                plan,
                 PeriodoSuscripcion.MENSUAL,
                 new BigDecimal("5500.00"),
                 fixedNow().minusDays(5)
@@ -186,6 +255,6 @@ class ActivateUserSubscriptionTest {
     }
 
     private LocalDateTime fixedNow() {
-        return LocalDateTime.now(clock);
+        return LocalDateTime.now(CLOCK);
     }
 }

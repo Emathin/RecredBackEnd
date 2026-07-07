@@ -13,8 +13,12 @@ import com.recred.backend.domain.models.PaymentDetails;
 import com.recred.backend.domain.models.PaymentPurpose;
 import com.recred.backend.domain.models.PaymentStatus;
 import com.recred.backend.domain.repositories.PagoSuscripcionColegioRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -28,83 +32,94 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class ConfirmSchoolSubscriptionPaymentTest {
 
-    private final PagoSuscripcionColegioRepository paymentRepository =
-            mock(PagoSuscripcionColegioRepository.class);
-    private final ActivateSchoolSubscription activateSchoolSubscription =
-            mock(ActivateSchoolSubscription.class);
-    private final Clock clock = Clock.fixed(
+    private static final Clock CLOCK = Clock.fixed(
             Instant.parse("2026-07-05T13:00:00Z"),
             ZoneOffset.UTC
     );
-    private final ConfirmSchoolSubscriptionPayment useCase = new ConfirmSchoolSubscriptionPayment(
-            paymentRepository,
-            activateSchoolSubscription,
-            clock
-    );
 
-    @Test
-    void execute_WhenPaymentIsApproved_ShouldActivateSubscriptionAndSavePayment() {
-        UUID schoolId = UUID.randomUUID();
-        UUID subscriptionId = UUID.randomUUID();
-        PaymentDetails details = schoolPayment(schoolId, PaymentStatus.APPROVED);
-        givenMissingPayment(details.paymentId());
-        givenActivatedSubscription(subscriptionId, schoolId);
+    @Mock
+    private PagoSuscripcionColegioRepository paymentRepository;
 
-        ConfirmSchoolSubscriptionPaymentResponse result = whenExecuting(details);
+    @Mock
+    private ActivateSchoolSubscription activateSchoolSubscription;
 
-        PagoSuscripcionColegio savedPayment = capturedSavedPayment();
-        assertTrue(result.subscriptionActivated());
-        assertEquals(EstadoPagoExterno.APROBADO, savedPayment.getEstado());
-        assertEquals(subscriptionId, savedPayment.getSuscripcionId());
-        assertEquals(fixedNow(), savedPayment.getAprobadoEn());
-        verify(activateSchoolSubscription).execute(any(ActivateSchoolSubscriptionRequest.class));
+    private ConfirmSchoolSubscriptionPayment useCase;
+
+    private UUID schoolId;
+    private UUID subscriptionId;
+    private PaymentDetails paymentDetails;
+    private ConfirmSchoolSubscriptionPaymentResponse response;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new ConfirmSchoolSubscriptionPayment(
+                paymentRepository,
+                activateSchoolSubscription,
+                CLOCK
+        );
     }
 
     @Test
-    void execute_WhenPaymentIsPending_ShouldSavePaymentWithoutActivatingSubscription() {
-        PaymentDetails details = schoolPayment(UUID.randomUUID(), PaymentStatus.PENDING);
-        givenMissingPayment(details.paymentId());
+    void givenApprovedPayment_whenConfirmingPayment_thenActivatesSubscriptionAndSavesPayment() {
+        givenSchoolPaymentScenario(PaymentStatus.APPROVED);
+        givenPaymentDoesNotExist();
+        givenSchoolSubscriptionIsActivated();
 
-        ConfirmSchoolSubscriptionPaymentResponse result = whenExecuting(details);
+        whenConfirmingSchoolSubscriptionPayment();
 
-        PagoSuscripcionColegio savedPayment = capturedSavedPayment();
-        assertFalse(result.subscriptionActivated());
-        assertEquals(EstadoPagoExterno.PENDIENTE, savedPayment.getEstado());
-        verify(activateSchoolSubscription, never()).execute(
-                any(ActivateSchoolSubscriptionRequest.class));
+        thenSubscriptionWasActivated();
+        thenPaymentWasApproved();
+        thenPaymentWasLinkedToSubscription();
     }
 
     @Test
-    void execute_WhenApprovedPaymentWasAlreadyProcessed_ShouldNotActivateAgain() {
-        PaymentDetails details = schoolPayment(UUID.randomUUID(), PaymentStatus.APPROVED);
-        PagoSuscripcionColegio payment = processedPayment(details);
-        givenExistingPayment(details.paymentId(), payment);
+    void givenPendingPayment_whenConfirmingPayment_thenSavesPaymentWithoutActivatingSubscription() {
+        givenSchoolPaymentScenario(PaymentStatus.PENDING);
+        givenPaymentDoesNotExist();
 
-        ConfirmSchoolSubscriptionPaymentResponse result = whenExecuting(details);
+        whenConfirmingSchoolSubscriptionPayment();
 
-        assertFalse(result.subscriptionActivated());
-        verify(activateSchoolSubscription, never()).execute(
-                any(ActivateSchoolSubscriptionRequest.class));
-        verify(paymentRepository, never()).save(any(PagoSuscripcionColegio.class));
+        thenSubscriptionWasNotActivated();
+        thenPaymentIsPending();
+        thenActivationUseCaseWasNotCalled();
     }
 
-    private void givenMissingPayment(String paymentId) {
-        when(paymentRepository.findByMercadoPagoPaymentId(paymentId)).thenReturn(Optional.empty());
+    @Test
+    void givenProcessedApprovedPayment_whenConfirmingPayment_thenDoesNotActivateAgain() {
+        givenSchoolPaymentScenario(PaymentStatus.APPROVED);
+        givenPaymentWasAlreadyProcessed();
+
+        whenConfirmingSchoolSubscriptionPayment();
+
+        thenSubscriptionWasNotActivated();
+        thenActivationUseCaseWasNotCalled();
+        thenPaymentWasNotSaved();
     }
 
-    private void givenExistingPayment(String paymentId, PagoSuscripcionColegio payment) {
-        when(paymentRepository.findByMercadoPagoPaymentId(paymentId))
-                .thenReturn(Optional.of(payment));
+    private void givenSchoolPaymentScenario(PaymentStatus status) {
+        schoolId = UUID.randomUUID();
+        subscriptionId = UUID.randomUUID();
+        paymentDetails = schoolPayment(schoolId, status);
     }
 
-    private void givenActivatedSubscription(UUID subscriptionId, UUID schoolId) {
+    private void givenPaymentDoesNotExist() {
+        when(paymentRepository.findByMercadoPagoPaymentId(paymentDetails.paymentId()))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenPaymentWasAlreadyProcessed() {
+        when(paymentRepository.findByMercadoPagoPaymentId(paymentDetails.paymentId()))
+                .thenReturn(Optional.of(processedPayment()));
+    }
+
+    private void givenSchoolSubscriptionIsActivated() {
         when(activateSchoolSubscription.execute(any(ActivateSchoolSubscriptionRequest.class)))
                 .thenReturn(new ActivateSchoolSubscriptionResponse(
                         subscriptionId,
@@ -118,19 +133,51 @@ class ConfirmSchoolSubscriptionPaymentTest {
                 ));
     }
 
-    private ConfirmSchoolSubscriptionPaymentResponse whenExecuting(PaymentDetails details) {
-        return useCase.execute(new ConfirmSchoolSubscriptionPaymentRequest(details));
+    private void whenConfirmingSchoolSubscriptionPayment() {
+        response = useCase.execute(new ConfirmSchoolSubscriptionPaymentRequest(paymentDetails));
     }
 
-    private PagoSuscripcionColegio capturedSavedPayment() {
+    private void thenSubscriptionWasActivated() {
+        assertTrue(response.subscriptionActivated());
+        verify(activateSchoolSubscription).execute(any(ActivateSchoolSubscriptionRequest.class));
+    }
+
+    private void thenSubscriptionWasNotActivated() {
+        assertFalse(response.subscriptionActivated());
+    }
+
+    private void thenPaymentWasApproved() {
+        assertEquals(EstadoPagoExterno.APROBADO, savedPayment().getEstado());
+        assertEquals(fixedNow(), savedPayment().getAprobadoEn());
+    }
+
+    private void thenPaymentWasLinkedToSubscription() {
+        assertEquals(subscriptionId, savedPayment().getSuscripcionId());
+    }
+
+    private void thenPaymentIsPending() {
+        assertEquals(EstadoPagoExterno.PENDIENTE, savedPayment().getEstado());
+    }
+
+    private void thenActivationUseCaseWasNotCalled() {
+        verify(activateSchoolSubscription, never()).execute(
+                any(ActivateSchoolSubscriptionRequest.class));
+    }
+
+    private void thenPaymentWasNotSaved() {
+        verify(paymentRepository, never()).save(any(PagoSuscripcionColegio.class));
+    }
+
+    private PagoSuscripcionColegio savedPayment() {
         ArgumentCaptor<PagoSuscripcionColegio> captor =
                 ArgumentCaptor.forClass(PagoSuscripcionColegio.class);
         verify(paymentRepository).save(captor.capture());
         return captor.getValue();
     }
 
-    private PagoSuscripcionColegio processedPayment(PaymentDetails details) {
-        PagoSuscripcionColegio payment = PagoSuscripcionColegio.fromPaymentDetails(details);
+    private PagoSuscripcionColegio processedPayment() {
+        PagoSuscripcionColegio payment =
+                PagoSuscripcionColegio.fromPaymentDetails(paymentDetails);
         payment.markSubscriptionActivated(UUID.randomUUID(), fixedNow());
         return payment;
     }
@@ -150,6 +197,6 @@ class ConfirmSchoolSubscriptionPaymentTest {
     }
 
     private LocalDateTime fixedNow() {
-        return LocalDateTime.now(clock);
+        return LocalDateTime.now(CLOCK);
     }
 }

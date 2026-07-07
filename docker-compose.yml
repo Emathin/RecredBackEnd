@@ -2,7 +2,7 @@ name: recred
 
 services:
   db:
-    image: postgres:17
+    image: postgres:16
     container_name: recred-db
     restart: unless-stopped
     env_file:
@@ -13,7 +13,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       TZ: America/Argentina/Buenos_Aires
     ports:
-      - "5435:5432"
+      - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     networks:

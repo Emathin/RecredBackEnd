@@ -43,16 +43,16 @@ public class RecommendSupplierForProducts {
 
     @Transactional(readOnly = true)
     public RecommendSupplierForProductsResponse execute(
-            RecommendSupplierForProductsRequest request
+            RecommendSupplierForProductsRequest recommendationRequest
     ) {
-        if (!request.hasProducts()) {
+        if (!recommendationRequest.hasProducts()) {
             return RecommendSupplierForProductsResponse.empty();
         }
 
-        SupplierIndex supplierIndex = supplierIndex(request.kioskOwnerId());
+        SupplierIndex supplierIndex = supplierIndexFor(recommendationRequest.kioskOwnerId());
         Map<UUID, List<ItemListaPrecioProveedor>> itemsByProduct =
-                itemsByProduct(request, supplierIndex);
-        List<Recommendation> recommendations = request.productIdsOrEmpty()
+                latestSupplierItemsByProduct(recommendationRequest, supplierIndex);
+        List<Recommendation> recommendations = recommendationRequest.productIdsOrEmpty()
                 .stream()
                 .map(productId -> recommendationFor(
                         productId,
@@ -64,7 +64,7 @@ public class RecommendSupplierForProducts {
         return new RecommendSupplierForProductsResponse(recommendations);
     }
 
-    private SupplierIndex supplierIndex(UUID kioskOwnerId) {
+    private SupplierIndex supplierIndexFor(UUID kioskOwnerId) {
         Map<UUID, String> supplierNames = new HashMap<>();
         Map<UUID, UUID> priceListSupplierIds = new HashMap<>();
         Map<UUID, LocalDateTime> priceListCreatedDates = new HashMap<>();
@@ -94,51 +94,31 @@ public class RecommendSupplierForProducts {
                 });
     }
 
-    private Map<UUID, List<ItemListaPrecioProveedor>> itemsByProduct(
-            RecommendSupplierForProductsRequest request,
+    private Map<UUID, List<ItemListaPrecioProveedor>> latestSupplierItemsByProduct(
+            RecommendSupplierForProductsRequest recommendationRequest,
             SupplierIndex supplierIndex
     ) {
         Map<UUID, List<ItemListaPrecioProveedor>> itemsByProduct =
-                emptyProductMap(request.productIdsOrEmpty());
+                emptyItemListByProduct(recommendationRequest.productIdsOrEmpty());
 
         List<ItemListaPrecioProveedor> allItems =
                 itemRepository.findItemsActivosByKiosqueroIdAndProductoIds(
-                        request.kioskOwnerId(),
-                        request.productIdsOrEmpty()
+                        recommendationRequest.kioskOwnerId(),
+                        recommendationRequest.productIdsOrEmpty()
                 );
 
         Map<UUID, Map<UUID, ItemListaPrecioProveedor>> latestItemPerProductAndSupplier =
-                new HashMap<>();
-        request.productIdsOrEmpty().forEach(productId ->
-                latestItemPerProductAndSupplier.put(productId, new HashMap<>()));
+                emptySupplierItemMapByProduct(recommendationRequest.productIdsOrEmpty());
 
         allItems.stream()
                 .filter(ItemListaPrecioProveedor::hasInventoryProduct)
                 .filter(item -> latestItemPerProductAndSupplier.containsKey(
                         item.getProductoInventarioId()))
-                .forEach(item -> {
-                    UUID productId = item.getProductoInventarioId();
-                    UUID supplierId = supplierIndex.supplierIdFor(item.getListaPrecioId());
-                    if (supplierId != null) {
-                        LocalDateTime createdDate =
-                                supplierIndex.createdDateFor(item.getListaPrecioId());
-                        if (createdDate != null) {
-                            Map<UUID, ItemListaPrecioProveedor> supplierMap =
-                                    latestItemPerProductAndSupplier.get(productId);
-                            ItemListaPrecioProveedor existing = supplierMap.get(supplierId);
-                            if (existing == null) {
-                                supplierMap.put(supplierId, item);
-                            } else {
-                                LocalDateTime existingCreatedDate =
-                                        supplierIndex.createdDateFor(existing.getListaPrecioId());
-                                if (existingCreatedDate == null
-                                        || createdDate.isAfter(existingCreatedDate)) {
-                                    supplierMap.put(supplierId, item);
-                                }
-                            }
-                        }
-                    }
-                });
+                .forEach(item -> rememberLatestItemForSupplier(
+                        item,
+                        latestItemPerProductAndSupplier,
+                        supplierIndex
+                ));
 
         latestItemPerProductAndSupplier.forEach((productId, supplierMap) -> {
             itemsByProduct.get(productId).addAll(supplierMap.values());
@@ -147,10 +127,55 @@ public class RecommendSupplierForProducts {
         return itemsByProduct;
     }
 
-    private Map<UUID, List<ItemListaPrecioProveedor>> emptyProductMap(List<UUID> productIds) {
+    private Map<UUID, List<ItemListaPrecioProveedor>> emptyItemListByProduct(
+            List<UUID> productIds
+    ) {
         Map<UUID, List<ItemListaPrecioProveedor>> products = new LinkedHashMap<>();
         productIds.forEach(productId -> products.put(productId, new ArrayList<>()));
         return products;
+    }
+
+    private Map<UUID, Map<UUID, ItemListaPrecioProveedor>> emptySupplierItemMapByProduct(
+            List<UUID> productIds
+    ) {
+        Map<UUID, Map<UUID, ItemListaPrecioProveedor>> itemsByProduct = new HashMap<>();
+        productIds.forEach(productId -> itemsByProduct.put(productId, new HashMap<>()));
+        return itemsByProduct;
+    }
+
+    private void rememberLatestItemForSupplier(
+            ItemListaPrecioProveedor item,
+            Map<UUID, Map<UUID, ItemListaPrecioProveedor>> latestItemPerProductAndSupplier,
+            SupplierIndex supplierIndex
+    ) {
+        UUID supplierId = supplierIndex.supplierIdFor(item.getListaPrecioId());
+        LocalDateTime priceListCreatedDate = supplierIndex.createdDateFor(item.getListaPrecioId());
+        if (supplierId == null || priceListCreatedDate == null) {
+            return;
+        }
+
+        UUID productId = item.getProductoInventarioId();
+        Map<UUID, ItemListaPrecioProveedor> latestItemBySupplier =
+                latestItemPerProductAndSupplier.get(productId);
+        ItemListaPrecioProveedor existingItem = latestItemBySupplier.get(supplierId);
+        if (itemBelongsToNewerPriceList(item, existingItem, supplierIndex)) {
+            latestItemBySupplier.put(supplierId, item);
+        }
+    }
+
+    private boolean itemBelongsToNewerPriceList(
+            ItemListaPrecioProveedor item,
+            ItemListaPrecioProveedor existingItem,
+            SupplierIndex supplierIndex
+    ) {
+        if (existingItem == null) {
+            return true;
+        }
+
+        LocalDateTime createdDate = supplierIndex.createdDateFor(item.getListaPrecioId());
+        LocalDateTime existingCreatedDate =
+                supplierIndex.createdDateFor(existingItem.getListaPrecioId());
+        return existingCreatedDate == null || createdDate.isAfter(existingCreatedDate);
     }
 
     private Recommendation recommendationFor(

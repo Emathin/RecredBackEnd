@@ -12,59 +12,62 @@ public class CreateUserSubscriptionPayment {
 
     private static final String CURRENCY = "ARS";
 
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioRepository userRepository;
     private final ExternalPaymentService externalPaymentService;
     private final SubscriptionPriceCatalog priceCatalog;
 
     public CreateUserSubscriptionPayment(
-            UsuarioRepository usuarioRepository,
+            UsuarioRepository userRepository,
             ExternalPaymentService externalPaymentService,
             SubscriptionPriceCatalog priceCatalog
     ) {
-        this.usuarioRepository = usuarioRepository;
+        this.userRepository = userRepository;
         this.externalPaymentService = externalPaymentService;
         this.priceCatalog = priceCatalog;
     }
 
     @Transactional(readOnly = true)
     public CreateUserSubscriptionPaymentResponse execute(
-            CreateUserSubscriptionPaymentRequest request
+            CreateUserSubscriptionPaymentRequest paymentRequest
     ) {
-        Usuario user = subscribableUser(request);
-        BigDecimal price = priceCatalog.priceFor(request.plan(), request.periodo());
-        String paymentUrl = createPreference(user, request, price);
-        return response(request, price, paymentUrl);
+        Usuario user = findUserAllowedToSubscribe(paymentRequest);
+        BigDecimal price = priceCatalog.priceFor(paymentRequest.plan(), paymentRequest.periodo());
+        String paymentUrl = paymentPreferenceUrlFor(user, paymentRequest, price);
+        return responseFrom(paymentRequest, price, paymentUrl);
     }
 
-    private Usuario subscribableUser(CreateUserSubscriptionPaymentRequest request) {
-        Usuario user = usuarioRepository.findById(request.usuarioId())
-                .orElseThrow(() -> new UsuarioNoEncontradoException(request.usuarioId()));
+    private Usuario findUserAllowedToSubscribe(
+            CreateUserSubscriptionPaymentRequest paymentRequest
+    ) {
+        Usuario user = userRepository.findById(paymentRequest.usuarioId())
+                .orElseThrow(() -> new UsuarioNoEncontradoException(
+                        paymentRequest.usuarioId()));
         user.validateCanHaveIndividualSubscription();
         return user;
     }
 
-    private String createPreference(
+    private String paymentPreferenceUrlFor(
             Usuario user,
-            CreateUserSubscriptionPaymentRequest request,
+            CreateUserSubscriptionPaymentRequest paymentRequest,
             BigDecimal price
     ) {
         return externalPaymentService.createUserSubscriptionPreference(
                 user.getId(),
-                request.plan(),
-                request.periodo(),
+                paymentRequest.plan(),
+                paymentRequest.periodo(),
                 price
         );
     }
 
-    private CreateUserSubscriptionPaymentResponse response(
-            CreateUserSubscriptionPaymentRequest request,
+    private CreateUserSubscriptionPaymentResponse responseFrom(
+            CreateUserSubscriptionPaymentRequest paymentRequest,
             BigDecimal price,
             String paymentUrl
     ) {
         return new CreateUserSubscriptionPaymentResponse(
                 paymentUrl,
-                request.plan(),
-                request.periodo(),
+                paymentRequest.plan(),
+                paymentRequest.periodo(),
                 price,
                 CURRENCY
         );

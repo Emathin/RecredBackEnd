@@ -2,22 +2,27 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.DeleteFavoriteProduct;
 import com.recred.backend.application.DeleteFavoriteProductRequest;
+import com.recred.backend.application.DeleteFavoriteProductResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.function.Executable;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DeleteFavoriteProductTest {
@@ -25,39 +30,93 @@ class DeleteFavoriteProductTest {
     @Mock
     private AlumnoRepository alumnoRepository;
 
-    @InjectMocks
-    private DeleteFavoriteProduct deleteFavoriteProduct;
+    private DeleteFavoriteProduct useCase;
 
-    @Test
-    void dadoDatosValidos_cuandoExecute_entoncesRemueveFavoritoYGuarda() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        Producto producto = new Producto();
-        producto.setId(productoId);
-        alumno.agregarProductoFavorito(producto);
-        DeleteFavoriteProductRequest request = new DeleteFavoriteProductRequest(alumnoId, productoId);
+    private UUID studentId;
+    private UUID productId;
+    private Alumno student;
+    private DeleteFavoriteProductResponse response;
+    private RuntimeException thrownException;
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-
-        deleteFavoriteProduct.execute(request);
-
-        assertFalse(alumno.getProductosFavoritos().contains(producto));
-        verify(alumnoRepository).save(alumno);
+    @BeforeEach
+    void setUp() {
+        useCase = new DeleteFavoriteProduct(alumnoRepository);
     }
 
     @Test
-    void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        DeleteFavoriteProductRequest request = new DeleteFavoriteProductRequest(alumnoId, productoId);
+    void givenFavoriteProduct_whenDeletingFavoriteProduct_thenRemovesAndSavesStudent() {
+        givenStudentWithFavoriteProduct();
+        givenStudentExists();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        whenDeletingFavoriteProduct();
 
-        Executable execution = () -> deleteFavoriteProduct.execute(request);
+        thenFavoriteProductWasRemoved();
+        thenStudentWasSaved();
+        thenEmptyResponseIsReturned();
+    }
 
-        assertThrows(RuntimeException.class, execution);
+    @Test
+    void givenMissingStudent_whenDeletingFavoriteProduct_thenFailsAndDoesNotSave() {
+        givenFavoriteProductScenario();
+        givenStudentDoesNotExist();
+
+        whenDeletingFavoriteProductFails();
+
+        thenDeleteFailsWith("Alumno no encontrado");
+        thenStudentWasNotSaved();
+    }
+
+    private void givenStudentWithFavoriteProduct() {
+        givenFavoriteProductScenario();
+        Producto product = new Producto();
+        product.setId(productId);
+        student.agregarProductoFavorito(product);
+    }
+
+    private void givenFavoriteProductScenario() {
+        studentId = UUID.randomUUID();
+        productId = UUID.randomUUID();
+        student = new Alumno();
+        student.setId(studentId);
+    }
+
+    private void givenStudentExists() {
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+    }
+
+    private void givenStudentDoesNotExist() {
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
+    }
+
+    private void whenDeletingFavoriteProduct() {
+        response = useCase.execute(deleteRequest());
+    }
+
+    private void whenDeletingFavoriteProductFails() {
+        thrownException = assertThrows(RuntimeException.class, () -> useCase.execute(deleteRequest()));
+    }
+
+    private void thenFavoriteProductWasRemoved() {
+        assertFalse(student.hasFavoriteProduct(productId));
+    }
+
+    private void thenStudentWasSaved() {
+        verify(alumnoRepository).save(student);
+    }
+
+    private void thenEmptyResponseIsReturned() {
+        assertNotNull(response);
+    }
+
+    private void thenDeleteFailsWith(String expectedMessage) {
+        assertEquals(expectedMessage, thrownException.getMessage());
+    }
+
+    private void thenStudentWasNotSaved() {
         verify(alumnoRepository, never()).save(any());
+    }
+
+    private DeleteFavoriteProductRequest deleteRequest() {
+        return new DeleteFavoriteProductRequest(studentId, productId);
     }
 }

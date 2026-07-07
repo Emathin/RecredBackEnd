@@ -15,18 +15,16 @@ import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.function.Executable;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -36,6 +34,12 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class CreateTimeRestrictionTest {
 
+    private static final String GLOBAL_HEALTH_RESTRICTION_MESSAGE =
+            "Student already has this health restriction assigned globally.";
+    private static final String OVERLAPPING_TIME_RESTRICTION_MESSAGE =
+            "Student already has an active restriction "
+                    + "for this category or type in the selected time slot.";
+
     @Mock
     private RestriccionHorariaRepository repository;
     @Mock
@@ -43,115 +47,207 @@ class CreateTimeRestrictionTest {
     @Mock
     private AlumnoRepository alumnoRepository;
 
-    @InjectMocks
     private CreateTimeRestriction useCase;
 
     private UUID studentId;
     private UUID timeSlotId;
     private UUID categoryId;
     private UUID classificationId;
+    private UUID creatorId;
+    private UUID savedRestrictionId;
     private String cognitoSub;
-    private Usuario usuario;
-    private Alumno alumno;
+    private Usuario creator;
+    private Alumno student;
+    private CreateTimeRestrictionResponse response;
+    private RuntimeException thrownException;
 
     @BeforeEach
     void setUp() {
+        useCase = new CreateTimeRestriction(repository, usuarioRepository, alumnoRepository);
+    }
+
+    @Test
+    void givenStudentWithoutRestrictions_whenCreatingCategoryRestriction_thenSavesRestriction() {
+        givenCategoryRestrictionScenario();
+        givenAuthenticatedUserExists();
+        givenStudentExists();
+        givenStudentHasNoTimeRestrictions();
+        givenRestrictionWillBeSaved();
+
+        whenCreatingCategoryRestriction();
+
+        thenCategoryRestrictionWasSaved();
+        thenCreatedCategoryRestrictionIsReturned();
+    }
+
+    @Test
+    void givenGlobalHealthRestriction_whenCreatingClassificationRestriction_thenFails() {
+        givenClassificationRestrictionScenario();
+        givenAuthenticatedUserExists();
+        givenStudentAlreadyHasGlobalHealthRestriction();
+
+        whenCreatingClassificationRestrictionFails();
+
+        thenRestrictionCreationFailsWith(GLOBAL_HEALTH_RESTRICTION_MESSAGE);
+        thenRestrictionWasNotSaved();
+    }
+
+    @Test
+    void givenOverlappingRestriction_whenCreatingCategoryRestriction_thenFails() {
+        givenCategoryRestrictionScenario();
+        givenAuthenticatedUserExists();
+        givenStudentExists();
+        givenStudentHasOverlappingCategoryRestriction();
+
+        whenCreatingCategoryRestrictionFails();
+
+        thenRestrictionCreationFailsWith(OVERLAPPING_TIME_RESTRICTION_MESSAGE);
+        thenRestrictionWasNotSaved();
+    }
+
+    private void givenCategoryRestrictionScenario() {
+        givenRestrictionScenario();
+        classificationId = null;
+    }
+
+    private void givenClassificationRestrictionScenario() {
+        givenRestrictionScenario();
+        categoryId = null;
+    }
+
+    private void givenRestrictionScenario() {
         studentId = UUID.randomUUID();
         timeSlotId = UUID.randomUUID();
         categoryId = UUID.randomUUID();
         classificationId = UUID.randomUUID();
+        creatorId = UUID.randomUUID();
+        savedRestrictionId = UUID.randomUUID();
         cognitoSub = "user-123";
 
-        usuario = new Usuario();
-        usuario.setId(UUID.randomUUID());
+        creator = new Usuario();
+        creator.setId(creatorId);
 
-        alumno = new Alumno();
-        alumno.setId(studentId);
+        student = new Alumno();
+        student.setId(studentId);
     }
 
-    @Test
-    void execute_WithValidDataAndCategory_ShouldCreateRestriction() {
-        CreateTimeRestrictionRequest request = new CreateTimeRestrictionRequest(
+    private void givenAuthenticatedUserExists() {
+        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(creator));
+    }
+
+    private void givenStudentExists() {
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+    }
+
+    private void givenStudentAlreadyHasGlobalHealthRestriction() {
+        ClasificacionSalud globalRestriction = new ClasificacionSalud();
+        globalRestriction.setId(classificationId);
+        student.getRestriccionesSalud().add(globalRestriction);
+        givenStudentExists();
+    }
+
+    private void givenStudentHasNoTimeRestrictions() {
+        when(repository.findAllByAlumnoEntityId(studentId)).thenReturn(List.of());
+    }
+
+    private void givenStudentHasOverlappingCategoryRestriction() {
+        RestriccionHoraria existingRestriction = new RestriccionHoraria(
+                null,
+                studentId,
+                timeSlot(),
+                category(),
+                null
+        );
+        when(repository.findAllByAlumnoEntityId(studentId))
+                .thenReturn(List.of(existingRestriction));
+    }
+
+    private void givenRestrictionWillBeSaved() {
+        when(repository.save(any(RestriccionHoraria.class))).thenAnswer(invocation -> {
+            RestriccionHoraria restriction = invocation.getArgument(0);
+            restriction.setId(savedRestrictionId);
+            return restriction;
+        });
+    }
+
+    private void whenCreatingCategoryRestriction() {
+        response = useCase.execute(categoryRestrictionRequest());
+    }
+
+    private void whenCreatingCategoryRestrictionFails() {
+        thrownException = assertThrows(
+                RuntimeException.class,
+                () -> useCase.execute(categoryRestrictionRequest()));
+    }
+
+    private void whenCreatingClassificationRestrictionFails() {
+        thrownException = assertThrows(
+                RuntimeException.class,
+                () -> useCase.execute(classificationRestrictionRequest()));
+    }
+
+    private void thenCategoryRestrictionWasSaved() {
+        RestriccionHoraria savedRestriction = savedRestriction();
+        assertEquals(studentId, savedRestriction.getAlumnoId());
+        assertEquals(timeSlotId, savedRestriction.getFranjaHoraria().getId());
+        assertEquals(categoryId, savedRestriction.getCategoria().getId());
+        assertNull(savedRestriction.getClasificacionSalud());
+        assertEquals(creatorId, savedRestriction.getCreadoPorUsuarioId());
+    }
+
+    private void thenCreatedCategoryRestrictionIsReturned() {
+        assertEquals(savedRestrictionId, response.id());
+        assertEquals(studentId, response.studentId());
+        assertEquals(timeSlotId, response.timeSlotId());
+        assertEquals(categoryId, response.categoryId());
+        assertNull(response.classificationId());
+        assertEquals(creatorId, response.creadoPorUsuarioId());
+    }
+
+    private void thenRestrictionCreationFailsWith(String expectedMessage) {
+        assertEquals(expectedMessage, thrownException.getMessage());
+    }
+
+    private void thenRestrictionWasNotSaved() {
+        verify(repository, never()).save(any());
+    }
+
+    private RestriccionHoraria savedRestriction() {
+        ArgumentCaptor<RestriccionHoraria> captor =
+                ArgumentCaptor.forClass(RestriccionHoraria.class);
+        verify(repository).save(captor.capture());
+        return captor.getValue();
+    }
+
+    private CreateTimeRestrictionRequest categoryRestrictionRequest() {
+        return new CreateTimeRestrictionRequest(
                 studentId,
                 timeSlotId,
                 categoryId,
                 null,
                 cognitoSub
         );
-        RestriccionHoraria saved = new RestriccionHoraria();
-        saved.setId(UUID.randomUUID());
-        saved.setAlumnoId(studentId);
-        FranjaHoraria fh = new FranjaHoraria();
-        fh.setId(timeSlotId);
-        saved.setFranjaHoraria(fh);
-        CategoriaProducto cp = new CategoriaProducto();
-        cp.setId(categoryId);
-        saved.setCategoria(cp);
-        saved.setCreadoPorUsuarioId(usuario.getId());
-
-        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(repository.findAllByAlumnoEntityId(studentId)).thenReturn(new ArrayList<>());
-        when(repository.save(any(RestriccionHoraria.class))).thenReturn(saved);
-
-        CreateTimeRestrictionResponse response = useCase.execute(request);
-
-        assertNotNull(response);
-        assertEquals(saved.getId(), response.id());
-        assertEquals(timeSlotId, response.timeSlotId());
-        assertEquals(categoryId, response.categoryId());
-        verify(repository).save(any(RestriccionHoraria.class));
     }
 
-    @Test
-    void execute_WhenClassificationAlreadyExistsGlobally_ShouldThrowException() {
-        CreateTimeRestrictionRequest request = new CreateTimeRestrictionRequest(
+    private CreateTimeRestrictionRequest classificationRestrictionRequest() {
+        return new CreateTimeRestrictionRequest(
                 studentId,
                 timeSlotId,
                 null,
                 classificationId,
                 cognitoSub
         );
-        ClasificacionSalud globalRestriction = new ClasificacionSalud();
-        globalRestriction.setId(classificationId);
-        alumno.getRestriccionesSalud().add(globalRestriction);
-
-        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-
-        Executable execution = () -> useCase.execute(request);
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("Student already has this health restriction assigned globally.", ex.getMessage());
-        verify(repository, never()).save(any());
     }
 
-    @Test
-    void execute_WhenRestrictionAlreadyExistsForTimeSlot_ShouldThrowException() {
-        CreateTimeRestrictionRequest request = new CreateTimeRestrictionRequest(
-                studentId,
-                timeSlotId,
-                categoryId,
-                null,
-                cognitoSub
-        );
-        RestriccionHoraria existing = new RestriccionHoraria();
-        existing.setActiva(true);
-        FranjaHoraria fh = new FranjaHoraria();
-        fh.setId(timeSlotId);
-        existing.setFranjaHoraria(fh);
-        CategoriaProducto cp = new CategoriaProducto();
-        cp.setId(categoryId);
-        existing.setCategoria(cp);
+    private FranjaHoraria timeSlot() {
+        FranjaHoraria timeSlot = new FranjaHoraria();
+        timeSlot.setId(timeSlotId);
+        return timeSlot;
+    }
 
-        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(usuario));
-        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
-        when(repository.findAllByAlumnoEntityId(studentId)).thenReturn(List.of(existing));
-
-        Executable execution = () -> useCase.execute(request);
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("Student already has an active restriction for this category or type in the selected time slot.", ex.getMessage());
-        verify(repository, never()).save(any());
+    private CategoriaProducto category() {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(categoryId);
+        return category;
     }
 }

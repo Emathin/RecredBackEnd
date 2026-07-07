@@ -7,23 +7,33 @@ import org.springframework.transaction.annotation.Transactional;
 
 public class UpdatePickupSlotRules {
 
-    private final FranjaHorariaRepository franjaHorariaRepository;
+    private final FranjaHorariaRepository timeSlotRepository;
 
-    public UpdatePickupSlotRules(FranjaHorariaRepository franjaHorariaRepository) {
-        this.franjaHorariaRepository = franjaHorariaRepository;
+    public UpdatePickupSlotRules(FranjaHorariaRepository timeSlotRepository) {
+        this.timeSlotRepository = timeSlotRepository;
     }
 
     @Transactional
-    public UpdatePickupSlotRulesResponse execute(UpdatePickupSlotRulesRequest request) {
-        FranjaHoraria slot = franjaHorariaRepository.findById(request.slotId())
-                .orElseThrow(() -> new PickupSlotRulesNotFoundException(request.slotId()));
-
-        slot.setCupoMaximo(request.cupoMaximo());
-        slot.setMinutosCorte(validatedCutoff(request.minutosCorte()));
-        return UpdatePickupSlotRulesResponse.fromDomain(franjaHorariaRepository.save(slot));
+    public UpdatePickupSlotRulesResponse execute(UpdatePickupSlotRulesRequest rulesRequest) {
+        FranjaHoraria timeSlot = findTimeSlot(rulesRequest);
+        applyPickupRules(timeSlot, rulesRequest);
+        return UpdatePickupSlotRulesResponse.fromDomain(timeSlotRepository.save(timeSlot));
     }
 
-    private int validatedCutoff(Integer minutosCorte) {
+    private FranjaHoraria findTimeSlot(UpdatePickupSlotRulesRequest rulesRequest) {
+        return timeSlotRepository.findById(rulesRequest.slotId())
+                .orElseThrow(() -> new PickupSlotRulesNotFoundException(rulesRequest.slotId()));
+    }
+
+    private void applyPickupRules(
+            FranjaHoraria timeSlot,
+            UpdatePickupSlotRulesRequest rulesRequest
+    ) {
+        timeSlot.setCupoMaximo(rulesRequest.cupoMaximo());
+        timeSlot.setMinutosCorte(cutoffMinutesFrom(rulesRequest.minutosCorte()));
+    }
+
+    private int cutoffMinutesFrom(Integer minutosCorte) {
         if (minutosCorte == null) {
             return 0;
         }

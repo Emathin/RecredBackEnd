@@ -2,14 +2,18 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.PaymentDetails;
-import com.recred.backend.domain.models.PaymentStatus;
 import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+
 public class ConfirmPaymentAndCredit {
+
+    private static final String PAYMENT_CREDIT_DESCRIPTION =
+            "Acreditacion de pago Mercado Pago: ";
 
     private final WalletRepository walletRepository;
     private final ExternalPaymentService externalPaymentService;
@@ -31,57 +35,57 @@ public class ConfirmPaymentAndCredit {
     }
 
     @Transactional
-    public ConfirmPaymentAndCreditResponse execute(ConfirmPaymentAndCreditRequest request) {
-        PaymentDetails details = paymentDetails(request);
-        creditWalletWhenPaymentIsApprovedTopUp(details);
+    public ConfirmPaymentAndCreditResponse execute(ConfirmPaymentAndCreditRequest paymentRequest) {
+        PaymentDetails paymentDetails = findPaymentDetails(paymentRequest);
+        creditWalletIfPaymentWasApprovedTopUp(paymentDetails);
+
         return new ConfirmPaymentAndCreditResponse();
     }
 
-    private void creditWalletWhenPaymentIsApprovedTopUp(PaymentDetails details) {
-        if (!isApprovedTopUp(details)) {
+    private PaymentDetails findPaymentDetails(ConfirmPaymentAndCreditRequest paymentRequest) {
+        if (paymentRequest.paymentDetails() != null) {
+            return paymentRequest.paymentDetails();
+        }
+
+        return externalPaymentService.getPaymentDetails(paymentRequest.paymentId());
+    }
+
+    private void creditWalletIfPaymentWasApprovedTopUp(PaymentDetails paymentDetails) {
+        if (!paymentDetails.isApprovedTopUp()) {
             return;
         }
 
-        Billetera wallet = wallet(details);
-        creditWallet(wallet, details);
-        registerTopUpMovement(wallet, details);
+        Billetera wallet = findStudentWallet(paymentDetails);
+        creditWallet(wallet, paymentDetails.amount());
+        registerPaymentCreditMovement(wallet, paymentDetails);
     }
 
-    private boolean isApprovedTopUp(PaymentDetails details) {
-        return details.isTopUp() && details.status() == PaymentStatus.APPROVED;
-    }
-
-    private Billetera wallet(PaymentDetails details) {
-        return walletRepository.findByStudentId(details.studentId())
+    private Billetera findStudentWallet(PaymentDetails paymentDetails) {
+        return walletRepository.findByStudentId(paymentDetails.studentId())
                 .orElseThrow(() -> new RuntimeException(
-                        "Billetera no encontrada para alumno: " + details.studentId()));
+                        "Billetera no encontrada para alumno: "
+                                + paymentDetails.studentId()));
     }
 
-    private void creditWallet(Billetera wallet, PaymentDetails details) {
-        wallet.credit(details.amount());
+    private void creditWallet(Billetera wallet, BigDecimal amount) {
+        wallet.credit(amount);
         walletRepository.save(wallet);
     }
 
-    private void registerTopUpMovement(Billetera wallet, PaymentDetails details) {
+    private void registerPaymentCreditMovement(
+            Billetera wallet,
+            PaymentDetails paymentDetails) {
         registerSystemMovement(
                 wallet,
                 TipoMovimientoBilletera.CARGA,
-                details.amount(),
-                "Acreditacion de pago Mercado Pago: " + details.paymentId());
-    }
-
-    private PaymentDetails paymentDetails(ConfirmPaymentAndCreditRequest request) {
-        if (request.paymentDetails() != null) {
-            return request.paymentDetails();
-        }
-
-        return externalPaymentService.getPaymentDetails(request.paymentId());
+                paymentDetails.amount(),
+                PAYMENT_CREDIT_DESCRIPTION + paymentDetails.paymentId());
     }
 
     private void registerSystemMovement(
             Billetera wallet,
             TipoMovimientoBilletera type,
-            java.math.BigDecimal amount,
+            BigDecimal amount,
             String description) {
         if (movimientoBilleteraRepository == null) {
             return;
