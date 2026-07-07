@@ -9,12 +9,14 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
@@ -26,59 +28,123 @@ class GetProductByIdTest {
     @Mock
     private ProductRepository productRepository;
 
-    private GetProductById getProductById;
+    private GetProductById useCase;
+    private UUID productId;
+    private UUID buffetId;
 
     @BeforeEach
     void setUp() {
-        getProductById = new GetProductById(productRepository);
+        useCase = new GetProductById(productRepository);
     }
 
     @Test
-    void dadoQueElBuffetIdEsNuloYExisteProducto_cuandoExecute_entoncesRetornaProducto() {
-        UUID id = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(id);
-        when(productRepository.findActiveById(id)).thenReturn(Optional.of(producto));
+    void givenProductExists_whenGettingProductWithoutBuffet_thenReturnsProduct() {
+        givenProductExists();
 
-        ProductResponse result = getProductById.execute(new GetProductByIdRequest(id, null));
+        final ProductResponse response = whenGetProductWithoutBuffet();
 
-        assertEquals(id, result.id());
-        verify(productRepository).findActiveById(id);
+        thenProductWasReturned(response);
+        thenProductWasRequestedWithoutBuffet();
     }
 
     @Test
-    void dadoQueElBuffetIdEsNuloYNoExisteProducto_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID id = UUID.randomUUID();
-        when(productRepository.findActiveById(id)).thenReturn(Optional.empty());
+    void givenProductDoesNotExist_whenGettingProductWithoutBuffet_thenThrowsException() {
+        givenProductDoesNotExist();
 
-        assertThrows(ProductNotFoundException.class,
-                () -> getProductById.execute(new GetProductByIdRequest(id, null)));
-        verify(productRepository).findActiveById(id);
+        final ProductNotFoundException exception = whenGetProductWithoutBuffetFails();
+
+        thenProductNotFoundWasThrown(exception);
+        thenProductWasRequestedWithoutBuffet();
     }
 
     @Test
-    void dadoQueElBuffetIdEsValidoYExisteProducto_cuandoExecute_entoncesRetornaProductoConStock() {
-        UUID id = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(id);
-        when(productRepository.findActiveByIdWithStock(id, buffetId)).thenReturn(Optional.of(producto));
+    void givenProductExistsForBuffet_whenGettingProductWithBuffet_thenReturnsProductWithStock() {
+        givenProductExistsForBuffet();
 
-        ProductResponse result = getProductById.execute(
-                new GetProductByIdRequest(id, buffetId));
+        final ProductResponse response = whenGetProductWithBuffet();
 
-        assertEquals(id, result.id());
-        verify(productRepository).findActiveByIdWithStock(id, buffetId);
+        thenProductWasReturned(response);
+        thenProductWasRequestedWithBuffet();
     }
 
     @Test
-    void dadoQueElBuffetIdEsValidoYNoExisteProducto_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID id = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        when(productRepository.findActiveByIdWithStock(id, buffetId)).thenReturn(Optional.empty());
+    void givenProductDoesNotExistForBuffet_whenGettingProductWithBuffet_thenThrowsException() {
+        givenProductDoesNotExistForBuffet();
 
-        assertThrows(ProductNotFoundException.class,
-                () -> getProductById.execute(new GetProductByIdRequest(id, buffetId)));
-        verify(productRepository).findActiveByIdWithStock(id, buffetId);
+        final ProductNotFoundException exception = whenGetProductWithBuffetFails();
+
+        thenProductNotFoundWasThrown(exception);
+        thenProductWasRequestedWithBuffet();
+    }
+
+    private void givenProductExists() {
+        productId = randomUUID();
+        when(productRepository.findActiveById(productId))
+                .thenReturn(Optional.of(product(productId)));
+    }
+
+    private void givenProductDoesNotExist() {
+        productId = randomUUID();
+        when(productRepository.findActiveById(productId)).thenReturn(Optional.empty());
+    }
+
+    private void givenProductExistsForBuffet() {
+        productId = randomUUID();
+        buffetId = randomUUID();
+        when(productRepository.findActiveByIdWithStock(productId, buffetId))
+                .thenReturn(Optional.of(product(productId)));
+    }
+
+    private void givenProductDoesNotExistForBuffet() {
+        productId = randomUUID();
+        buffetId = randomUUID();
+        when(productRepository.findActiveByIdWithStock(productId, buffetId))
+                .thenReturn(Optional.empty());
+    }
+
+    private ProductResponse whenGetProductWithoutBuffet() {
+        return useCase.execute(new GetProductByIdRequest(productId, null));
+    }
+
+    private ProductResponse whenGetProductWithBuffet() {
+        return useCase.execute(new GetProductByIdRequest(productId, buffetId));
+    }
+
+    private ProductNotFoundException whenGetProductWithoutBuffetFails() {
+        return assertThrows(ProductNotFoundException.class, executeWithoutBuffet());
+    }
+
+    private ProductNotFoundException whenGetProductWithBuffetFails() {
+        return assertThrows(ProductNotFoundException.class, executeWithBuffet());
+    }
+
+    private void thenProductWasReturned(ProductResponse response) {
+        assertEquals(productId, response.id());
+    }
+
+    private void thenProductNotFoundWasThrown(ProductNotFoundException exception) {
+        assertEquals(ProductNotFoundException.class, exception.getClass());
+    }
+
+    private void thenProductWasRequestedWithoutBuffet() {
+        verify(productRepository).findActiveById(productId);
+    }
+
+    private void thenProductWasRequestedWithBuffet() {
+        verify(productRepository).findActiveByIdWithStock(productId, buffetId);
+    }
+
+    private Executable executeWithoutBuffet() {
+        return () -> useCase.execute(new GetProductByIdRequest(productId, null));
+    }
+
+    private Executable executeWithBuffet() {
+        return () -> useCase.execute(new GetProductByIdRequest(productId, buffetId));
+    }
+
+    private Producto product(UUID requestedProductId) {
+        Producto product = new Producto();
+        product.setId(requestedProductId);
+        return product;
     }
 }

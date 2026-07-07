@@ -7,10 +7,10 @@ import com.recred.backend.domain.exceptions.SchoolNotFoundException;
 import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.repositories.ColegioRepository;
 import com.recred.backend.domain.repositories.GradoRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -33,68 +33,100 @@ class GetGradesBySchoolTest {
     @Mock
     private GradoRepository gradeRepository;
 
-    @InjectMocks
-    private GetGradesBySchool getGradesBySchool;
+    private GetGradesBySchool useCase;
+    private UUID schoolId;
+    private UUID firstGradeId;
+    private UUID secondGradeId;
 
-    @Test
-    void execute_WhenSchoolExists_ReturnsActiveGrades() {
-        UUID schoolId = randomUUID();
-        Grado firstGrade = grade("1", "A");
-        Grado secondGrade = grade("2", "B");
-
-        givenSchoolExists(schoolId);
-        givenActiveGradesForSchool(schoolId, firstGrade, secondGrade);
-
-        GetGradesBySchoolResponse result = whenGettingGrades(schoolId);
-
-        assertEquals(2, result.grades().size());
-        assertEquals(firstGrade.getId(), result.grades().get(0).id());
-        assertEquals("1", result.grades().get(0).anio());
-        assertEquals("A", result.grades().get(0).division());
-        assertEquals(secondGrade.getId(), result.grades().get(1).id());
-        assertEquals("2", result.grades().get(1).anio());
-        assertEquals("B", result.grades().get(1).division());
-        verify(schoolRepository).existsActiveById(schoolId);
-        verify(gradeRepository).findAllActiveByColegioId(schoolId);
+    @BeforeEach
+    void setUp() {
+        useCase = new GetGradesBySchool(schoolRepository, gradeRepository);
     }
 
     @Test
-    void execute_WhenSchoolDoesNotExist_ThrowsException() {
-        UUID schoolId = randomUUID();
+    void givenSchoolExists_whenGettingGrades_thenReturnsActiveGrades() {
+        givenSchoolExists();
+        givenSchoolHasActiveGrades();
 
-        givenSchoolDoesNotExist(schoolId);
+        final GetGradesBySchoolResponse response = whenGetGradesBySchool();
 
-        Executable execution = () -> whenGettingGrades(schoolId);
-
-        assertThrows(SchoolNotFoundException.class, execution);
-        verify(schoolRepository).existsActiveById(schoolId);
-        verifyNoInteractions(gradeRepository);
+        thenActiveGradesWereReturned(response);
+        thenSchoolWasValidated();
+        thenActiveGradesWereRequested();
     }
 
-    private GetGradesBySchoolRequest request(UUID schoolId) {
-        return new GetGradesBySchoolRequest(schoolId);
+    @Test
+    void givenSchoolDoesNotExist_whenGettingGrades_thenThrowsException() {
+        givenSchoolDoesNotExist();
+
+        final SchoolNotFoundException exception = whenGetGradesBySchoolFails();
+
+        thenSchoolNotFoundWasThrown(exception);
+        thenSchoolWasValidated();
+        thenGradesWereNotRequested();
     }
 
-    private void givenSchoolExists(UUID schoolId) {
+    private void givenSchoolExists() {
+        schoolId = randomUUID();
         when(schoolRepository.existsActiveById(schoolId)).thenReturn(true);
     }
 
-    private void givenSchoolDoesNotExist(UUID schoolId) {
+    private void givenSchoolDoesNotExist() {
+        schoolId = randomUUID();
         when(schoolRepository.existsActiveById(schoolId)).thenReturn(false);
     }
 
-    private void givenActiveGradesForSchool(UUID schoolId, Grado... grades) {
-        when(gradeRepository.findAllActiveByColegioId(schoolId))
-                .thenReturn(List.of(grades));
+    private void givenSchoolHasActiveGrades() {
+        firstGradeId = randomUUID();
+        secondGradeId = randomUUID();
+
+        when(gradeRepository.findAllActiveByColegioId(schoolId)).thenReturn(List.of(
+                grade(firstGradeId, "1", "A"),
+                grade(secondGradeId, "2", "B")
+        ));
     }
 
-    private GetGradesBySchoolResponse whenGettingGrades(UUID schoolId) {
-        return getGradesBySchool.execute(request(schoolId));
+    private GetGradesBySchoolResponse whenGetGradesBySchool() {
+        return useCase.execute(new GetGradesBySchoolRequest(schoolId));
     }
 
-    private Grado grade(String year, String division) {
+    private SchoolNotFoundException whenGetGradesBySchoolFails() {
+        return assertThrows(SchoolNotFoundException.class, executeUseCase());
+    }
+
+    private void thenActiveGradesWereReturned(GetGradesBySchoolResponse response) {
+        assertEquals(2, response.grades().size());
+        assertEquals(firstGradeId, response.grades().get(0).id());
+        assertEquals("1", response.grades().get(0).anio());
+        assertEquals("A", response.grades().get(0).division());
+        assertEquals(secondGradeId, response.grades().get(1).id());
+        assertEquals("2", response.grades().get(1).anio());
+        assertEquals("B", response.grades().get(1).division());
+    }
+
+    private void thenSchoolNotFoundWasThrown(SchoolNotFoundException exception) {
+        assertEquals("School not found: " + schoolId, exception.getMessage());
+    }
+
+    private void thenSchoolWasValidated() {
+        verify(schoolRepository).existsActiveById(schoolId);
+    }
+
+    private void thenActiveGradesWereRequested() {
+        verify(gradeRepository).findAllActiveByColegioId(schoolId);
+    }
+
+    private void thenGradesWereNotRequested() {
+        verifyNoInteractions(gradeRepository);
+    }
+
+    private Executable executeUseCase() {
+        return () -> useCase.execute(new GetGradesBySchoolRequest(schoolId));
+    }
+
+    private Grado grade(UUID gradeId, String year, String division) {
         Grado grade = new Grado();
-        grade.setId(randomUUID());
+        grade.setId(gradeId);
         grade.setAnio(year);
         grade.setDivision(division);
         return grade;
