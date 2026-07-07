@@ -124,6 +124,7 @@ class GeneratePriceAlertTest {
         UUID buffetId = UUID.randomUUID();
         Alumno alumno = studentWithTutorsWithoutUserIds();
         givenAffectedStudentWithoutRecentAlert(producto, alumno);
+        givenFixedClock();
 
         whenExecute(request(producto, buffetId));
 
