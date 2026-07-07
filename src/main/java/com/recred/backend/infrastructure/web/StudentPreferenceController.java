@@ -98,6 +98,25 @@ public class StudentPreferenceController {
                 : ResponseEntity.ok(preferences);
     }
 
+    @GetMapping("/alumnos/{alumnoId}/preferencias")
+    public ResponseEntity<List<StudentPreferenceResponseDTO>> getPreferencesByAlumno(
+            @PathVariable UUID alumnoId,
+            @RequestParam(name = "ultima", required = false, defaultValue = "false") boolean ultima,
+            @RequestParam(name = "tipo", required = false) TipoSugerenciaIA tipo
+    ) {
+        List<StudentPreferenceResponseDTO> preferences =
+                getStudentPreferences.execute(
+                        new GetStudentPreferencesRequest(alumnoId, ultima, tipo))
+                        .preferences()
+                        .stream()
+                        .map(StudentPreferenceResponseDTO::fromApplication)
+                        .toList();
+
+        return preferences.isEmpty()
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.ok(preferences);
+    }
+
     @PatchMapping("/usuarios/{userId}/preferencias/{sugerenciaId}/responder")
     public ResponseEntity<Void> respond(
             @PathVariable UUID userId,

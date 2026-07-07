@@ -47,4 +47,12 @@ public class Billetera {
         this.credit(amount);
         this.creditoHabilitado = true;
     }
+
+    public void payCredit(BigDecimal amount) {
+        if (!Boolean.TRUE.equals(this.creditoHabilitado)) {
+            throw new IllegalStateException("No active credit to pay.");
+        }
+        this.debit(amount);
+        this.creditoHabilitado = false;
+    }
 }

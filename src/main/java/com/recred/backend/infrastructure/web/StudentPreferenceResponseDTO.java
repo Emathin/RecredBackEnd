@@ -16,6 +16,9 @@ public record StudentPreferenceResponseDTO(
     String titulo,
     String mensaje,
     String productoId,
+    String productoNombre,
+    String productoImagen,
+    java.math.BigDecimal productoPrecio,
     String razonIA
 ) {
     public static StudentPreferenceResponseDTO fromDomain(PreferenciaDetectada domain) {
@@ -28,6 +31,9 @@ public record StudentPreferenceResponseDTO(
             domain.titulo(),
             domain.mensaje(),
             domain.productoId(),
+            null,
+            null,
+            null,
             domain.razonIA()
         );
     }
@@ -44,6 +50,9 @@ public record StudentPreferenceResponseDTO(
             response.titulo(),
             response.mensaje(),
             response.productoId().toString(),
+            null,
+            null,
+            null,
             response.razonIA()
         );
     }
@@ -58,6 +67,7 @@ public record StudentPreferenceResponseDTO(
         String message = messageForView(preference, studentName);
 
         return new StudentPreferenceResponseDTO(
+
                 preference.suggestionId(),
                 preference.studentId(),
                 preference.studentUserId(),
@@ -66,6 +76,9 @@ public record StudentPreferenceResponseDTO(
                 title,
                 message,
                 preference.productId(),
+                preference.productName(),
+                preference.productImageUrl(),
+                preference.productPrice(),
                 preference.aiReason()
         );
     }

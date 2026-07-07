@@ -23,7 +23,11 @@ public class GeminiSpendingPredictionAnalyzer implements SpendingPredictionAnaly
     private static final String PROMPT_TEMPLATE = """
             Sos un asistente para tutores y alumnos de una app escolar.
             Analiza una prediccion de gasto sin recalcular los importes.
-            Usa lenguaje simple, claro y accionable para usuario final.
+            Usa lenguaje simple, claro y accionable.
+            El mensaje sera leido por los tutores (padres), por lo tanto DEBE redactarse
+            refiriendose al alumno/hijo en tercera persona. Nunca le hables directamente al
+            usuario como si el fuera quien realiza los consumos (Ejemplo: usa "El gasto de
+            tu hijo", "El alumno consumio").
             No menciones modelo, confianza, calidad predictiva ni cantidad de datos historicos.
             No digas que el gasto proyectado sube respecto al actual como alerta: eso es esperable.
             Genera alertas solo si hay riesgo real o un punto concreto para revisar.
@@ -33,9 +37,9 @@ public class GeminiSpendingPredictionAnalyzer implements SpendingPredictionAnaly
             Cada texto debe tener menos de 140 caracteres.
             Responde solo JSON valido con esta forma:
             {
-              "resumen": "texto breve",
-              "alertas": ["texto"],
-              "recomendaciones": ["texto"]
+              "resumen": "texto breve sobre el hijo/alumno",
+              "alertas": ["texto sobre el hijo/alumno"],
+              "recomendaciones": ["texto para el padre sobre el hijo/alumno"]
             }
 
             Datos:

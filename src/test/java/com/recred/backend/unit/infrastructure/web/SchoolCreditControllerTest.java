@@ -55,6 +55,12 @@ public class SchoolCreditControllerTest {
     private GetActiveSchoolCredit getActiveSchoolCredit;
 
     @MockitoBean
+    private com.recred.backend.application.PaySchoolCredit paySchoolCredit;
+
+    @MockitoBean
+    private com.recred.backend.application.GetSchoolCreditHistory getSchoolCreditHistory;
+
+    @MockitoBean
     private UsuarioService usuarioService;
 
     @MockitoBean
