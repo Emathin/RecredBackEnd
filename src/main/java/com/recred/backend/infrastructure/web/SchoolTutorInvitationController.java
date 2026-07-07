@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.ImportTutorInvitationsFromCsv;
+import com.recred.backend.application.ImportTutorInvitationsFromCsvRequest;
 import com.recred.backend.application.InviteTutorToSchool;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -61,8 +62,17 @@ public class SchoolTutorInvitationController {
             Authentication authentication,
             @RequestParam("file") MultipartFile file) throws IOException {
         String content = new String(file.getBytes(), StandardCharsets.UTF_8);
+        if (content.isBlank()) {
+            throw new IllegalArgumentException("El archivo CSV esta vacio");
+        }
+
         ImportTutorInvitationsFromCsv.TutorInvitationImportResult result =
-                importTutorInvitationsFromCsv.execute(cognitoSubject(authentication), content);
+                importTutorInvitationsFromCsv.execute(
+                        new ImportTutorInvitationsFromCsvRequest(
+                                cognitoSubject(authentication),
+                                content
+                        )
+                );
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(TutorInvitationImportResponse.fromResult(result));
