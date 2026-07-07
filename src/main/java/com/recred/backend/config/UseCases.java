@@ -7,6 +7,32 @@ import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.ApplyInventoryQuickAction;
+import com.recred.backend.application.GenerateComboSuggestion;
+import com.recred.backend.application.GetActivePromotionsByBuffet;
+import com.recred.backend.application.GetActiveSchools;
+import com.recred.backend.application.GetTutorGlobalDashboard;
+import com.recred.backend.application.UpdateTutorDashboardConfig;
+import com.recred.backend.application.GetSuggestionByNotificationId;
+import com.recred.backend.application.GetSuggestionByType;
+import com.recred.backend.application.EnableSchoolCredit;
+import com.recred.backend.application.PaySchoolCredit;
+import com.recred.backend.application.GetActiveSchoolCredit;
+import com.recred.backend.application.GetSchoolCreditHistory;
+import com.recred.backend.application.GetLastRecharge;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
+import com.recred.backend.domain.repositories.ProveedorRepository;
+import com.recred.backend.domain.repositories.ListaPrecioProveedorRepository;
+import com.recred.backend.domain.repositories.ItemListaPrecioProveedorRepository;
+import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepository;
+import com.recred.backend.domain.services.CognitoDirectorIdentityService;
+import com.recred.backend.domain.services.StorageService;
+import com.recred.backend.domain.services.SupplierPriceListAnalyzer;
+import com.recred.backend.application.CreateSupplier;
+import com.recred.backend.application.ListSuppliers;
+import com.recred.backend.application.GetSupplier;
+import com.recred.backend.application.UpdateSupplier;
+import com.recred.backend.application.DeleteSupplier;
+import com.recred.backend.application.SubmitSchoolRegistration;
 import com.recred.backend.application.ApproveSchoolRegistration;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.CancelPresentialPurchase;
@@ -1521,10 +1547,28 @@ public class UseCases {
     }
 
     @Bean
+    public PaySchoolCredit paySchoolCredit(
+            SchoolCreditRepository schoolCreditRepository,
+            WalletRepository walletRepository,
+            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+        return new PaySchoolCredit(
+                schoolCreditRepository,
+                walletRepository,
+                movimientoBilleteraRepository
+        );
+    }
+
+    @Bean
     public GetLastRecharge getLastRecharge(
             AlumnoRepository alumnoRepository,
             MovimientoBilleteraRepository movimientoBilleteraRepository) {
         return new GetLastRecharge(alumnoRepository, movimientoBilleteraRepository);
+    }
+
+    @Bean
+    public GetSchoolCreditHistory getSchoolCreditHistory(
+            SchoolCreditRepository schoolCreditRepository) {
+        return new GetSchoolCreditHistory(schoolCreditRepository);
     }
 
     @Bean
