@@ -26,6 +26,9 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,29 +64,31 @@ public class GetStudentWalletSummary {
     }
 
     @Transactional(readOnly = true)
-    public GetStudentWalletSummaryResponse execute(GetStudentWalletSummaryRequest request) {
-        request.validate();
+    public GetStudentWalletSummaryResponse execute(
+            GetStudentWalletSummaryRequest summaryRequest) {
+        summaryRequest.validate();
 
-        ConsumptionRequester requester = findRequester(request.cognitoSubject());
-        UUID studentId = resolveStudentId(requester, request.studentId());
-        DateRange dateRange = resolveDateRange(request);
+        ConsumptionRequester requester = findConsumptionRequester(
+                summaryRequest.cognitoSubject());
+        UUID studentId = studentIdVisibleToRequester(requester, summaryRequest.studentId());
+        DateRange dateRange = dateRangeFrom(summaryRequest);
         Billetera wallet = findWallet(studentId);
         List<WalletMovement> movements = findMovements(studentId, dateRange);
         List<StudentConsumptionPurchase> purchases = findPurchases(studentId, dateRange);
 
-        return toResponse(buildSummary(studentId, dateRange, wallet, movements, purchases));
+        return responseFrom(summaryFrom(studentId, dateRange, wallet, movements, purchases));
     }
 
-    private ConsumptionRequester findRequester(String cognitoSubject) {
+    private ConsumptionRequester findConsumptionRequester(String cognitoSubject) {
         return accessRepository.findRequesterByCognitoSubject(cognitoSubject)
                 .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(
                         cognitoSubject));
     }
 
-    private DateRange resolveDateRange(GetStudentWalletSummaryRequest request) {
-        LocalDate to = request.to().orElse(LocalDate.now(clock));
-        LocalDate from = request.from().orElse(to.minusDays(DEFAULT_LOOKBACK_DAYS));
-        validateDateRange(from, to);
+    private DateRange dateRangeFrom(GetStudentWalletSummaryRequest summaryRequest) {
+        LocalDate to = summaryRequest.to().orElse(LocalDate.now(clock));
+        LocalDate from = summaryRequest.from().orElse(to.minusDays(DEFAULT_LOOKBACK_DAYS));
+        ensureDateRangeIsChronological(from, to);
         return new DateRange(from, to, clock);
     }
 
@@ -112,14 +117,14 @@ public class GetStudentWalletSummary {
         );
     }
 
-    private StudentWalletSummary buildSummary(
+    private StudentWalletSummary summaryFrom(
             UUID studentId,
             DateRange dateRange,
             Billetera wallet,
             List<WalletMovement> movements,
             List<StudentConsumptionPurchase> purchases) {
-        BigDecimal spentAmount = totalSpent(purchases);
-        BigDecimal incomeAmount = totalIncome(movements);
+        BigDecimal spentAmount = totalSpentFrom(purchases);
+        BigDecimal incomeAmount = totalIncomeFrom(movements);
 
         return new StudentWalletSummary(
                 studentId,
@@ -130,53 +135,67 @@ public class GetStudentWalletSummary {
                 spentAmount,
                 incomeAmount.subtract(spentAmount),
                 purchases.size(),
-                categorySpending(purchases, spentAmount),
-                healthSpending(purchases, spentAmount),
+                categorySpendingFrom(purchases, spentAmount),
+                healthSpendingFrom(purchases, spentAmount),
                 movements
         );
     }
 
-    private GetStudentWalletSummaryResponse toResponse(StudentWalletSummary summary) {
+    private GetStudentWalletSummaryResponse responseFrom(StudentWalletSummary summary) {
         return GetStudentWalletSummaryResponse.fromDomain(summary);
     }
 
-    private UUID resolveStudentId(ConsumptionRequester requester, UUID requestedStudentId) {
-        if (requester.role() == RolUsuario.ALUMNO) {
-            UUID studentId = requester.studentId();
-            if (studentId == null || !studentId.equals(requestedStudentId)) {
-                throw new ConsumoAlumnoNoAutorizadoException(requestedStudentId);
-            }
-            return studentId;
+    private UUID studentIdVisibleToRequester(
+            ConsumptionRequester requester,
+            UUID requestedStudentId) {
+        if (requesterIsRequestedStudent(requester, requestedStudentId)) {
+            return requester.studentId();
         }
 
-        if (requester.role() == RolUsuario.PADRE
-                && accessRepository.tutorCanAccessStudent(requester.userId(), requestedStudentId)) {
+        if (requesterIsTutorForStudent(requester, requestedStudentId)) {
             return requestedStudentId;
         }
 
         throw new ConsumoAlumnoNoAutorizadoException(requestedStudentId);
     }
 
-    private void validateDateRange(LocalDate from, LocalDate to) {
+    private boolean requesterIsRequestedStudent(
+            ConsumptionRequester requester,
+            UUID requestedStudentId) {
+        return requester.role() == RolUsuario.ALUMNO
+                && requester.studentId() != null
+                && requester.studentId().equals(requestedStudentId);
+    }
+
+    private boolean requesterIsTutorForStudent(
+            ConsumptionRequester requester,
+            UUID requestedStudentId) {
+        return requester.role() == RolUsuario.PADRE
+                && accessRepository.tutorCanAccessStudent(
+                        requester.userId(),
+                        requestedStudentId);
+    }
+
+    private void ensureDateRangeIsChronological(LocalDate from, LocalDate to) {
         if (from.isAfter(to)) {
             throw new RangoFechasConsumoInvalidoException(from, to);
         }
     }
 
-    private BigDecimal totalIncome(List<WalletMovement> movements) {
+    private BigDecimal totalIncomeFrom(List<WalletMovement> movements) {
         return movements.stream()
                 .filter(movement -> movement.direction() == WalletMovementDirection.ENTRADA)
                 .map(WalletMovement::amount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private BigDecimal totalSpent(List<StudentConsumptionPurchase> purchases) {
+    private BigDecimal totalSpentFrom(List<StudentConsumptionPurchase> purchases) {
         return purchases.stream()
                 .map(StudentConsumptionPurchase::totalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private List<WalletCategorySpending> categorySpending(
+    private List<WalletCategorySpending> categorySpendingFrom(
             List<StudentConsumptionPurchase> purchases,
             BigDecimal totalSpent) {
         Map<String, BigDecimal> amountByCategory = purchases.stream()
@@ -204,7 +223,7 @@ public class GetStudentWalletSummary {
         return product.categoryName() == null ? "Sin categoria" : product.categoryName();
     }
 
-    private List<WalletHealthSpending> healthSpending(
+    private List<WalletHealthSpending> healthSpendingFrom(
             List<StudentConsumptionPurchase> purchases,
             BigDecimal totalSpent) {
         Map<String, BigDecimal> amountByClassification = new LinkedHashMap<>();
@@ -228,11 +247,15 @@ public class GetStudentWalletSummary {
     }
 
     private String healthClassification(StudentConsumptionProduct product) {
-        if (product.healthClassifications() == null
-                || product.healthClassifications().isEmpty()) {
+        if (productHasNoHealthClassifications(product)) {
             return "Sin clasificar";
         }
         return product.healthClassifications().get(0);
+    }
+
+    private boolean productHasNoHealthClassifications(StudentConsumptionProduct product) {
+        return product.healthClassifications() == null
+                || product.healthClassifications().isEmpty();
     }
 
     private BigDecimal percentage(BigDecimal amount, BigDecimal total) {
@@ -246,15 +269,15 @@ public class GetStudentWalletSummary {
     private record DateRange(LocalDate from, LocalDate to, Clock clock) {
 
         private LocalDateTime startDateTime() {
-            java.time.ZoneId appZone = clock.getZone();
-            java.time.ZonedDateTime zdt = from.atStartOfDay().atZone(appZone);
-            return zdt.withZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime();
+            ZoneId appZone = clock.getZone();
+            ZonedDateTime zonedDateTime = from.atStartOfDay().atZone(appZone);
+            return zonedDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
         }
 
         private LocalDateTime endDateTime() {
-            java.time.ZoneId appZone = clock.getZone();
-            java.time.ZonedDateTime zdt = to.atTime(LocalTime.MAX).atZone(appZone);
-            return zdt.withZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime();
+            ZoneId appZone = clock.getZone();
+            ZonedDateTime zonedDateTime = to.atTime(LocalTime.MAX).atZone(appZone);
+            return zonedDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
         }
     }
 }

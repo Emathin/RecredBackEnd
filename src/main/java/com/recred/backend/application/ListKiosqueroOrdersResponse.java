@@ -20,7 +20,7 @@ public record ListKiosqueroOrdersResponse(
     public static ListKiosqueroOrdersResponse from(List<Purchase> purchases) {
         return new ListKiosqueroOrdersResponse(
                 purchases.stream()
-                        .map(OrderResponse::from)
+                        .map(OrderResponse::fromPurchase)
                         .toList()
         );
     }
@@ -42,7 +42,7 @@ public record ListKiosqueroOrdersResponse(
             List<ItemResponse> items
     ) {
 
-        private static OrderResponse from(Purchase purchase) {
+        private static OrderResponse fromPurchase(Purchase purchase) {
             return new OrderResponse(
                     purchase.getId(),
                     purchase.getBuffetId(),
@@ -54,10 +54,10 @@ public record ListKiosqueroOrdersResponse(
                     purchase.getDate(),
                     purchase.getWithdrawalCode(),
                     purchase.getPickupDate(),
-                    PickupSlotResponse.from(purchase),
-                    StudentResponse.from(purchase.getStudent()),
-                    BuyerResponse.from(purchase.getBuyerId(), purchase.getBuyerType()),
-                    ItemResponse.from(purchase.getItems())
+                    PickupSlotResponse.fromPurchase(purchase),
+                    StudentResponse.fromStudent(purchase.getStudent()),
+                    BuyerResponse.fromBuyer(purchase.getBuyerId(), purchase.getBuyerType()),
+                    ItemResponse.fromItems(purchase.getItems())
             );
         }
     }
@@ -69,8 +69,8 @@ public record ListKiosqueroOrdersResponse(
             LocalTime end
     ) {
 
-        private static PickupSlotResponse from(Purchase purchase) {
-            if (purchase.getPickupSlotId() == null) {
+        private static PickupSlotResponse fromPurchase(Purchase purchase) {
+            if (purchaseHasNoPickupSlot(purchase)) {
                 return null;
             }
 
@@ -80,6 +80,10 @@ public record ListKiosqueroOrdersResponse(
                     purchase.getPickupSlotStart(),
                     purchase.getPickupSlotEnd()
             );
+        }
+
+        private static boolean purchaseHasNoPickupSlot(Purchase purchase) {
+            return purchase.getPickupSlotId() == null;
         }
     }
 
@@ -91,25 +95,48 @@ public record ListKiosqueroOrdersResponse(
             String gradeDivision
     ) {
 
-        private static StudentResponse from(Alumno student) {
+        private static StudentResponse fromStudent(Alumno student) {
             if (student == null) {
                 return null;
             }
 
             Usuario user = student.getUsuario();
+            StudentGradeData grade = gradeDataFrom(student);
             return new StudentResponse(
                     student.getId(),
-                    user == null ? null : user.getNombre(),
-                    user == null ? null : user.getApellido(),
-                    student.getGrado() == null ? null : student.getGrado().getAnio(),
-                    student.getGrado() == null ? null : student.getGrado().getDivision()
+                    firstNameFrom(user),
+                    lastNameFrom(user),
+                    grade.year(),
+                    grade.division()
             );
+        }
+
+        private static String firstNameFrom(Usuario user) {
+            return user == null ? null : user.getNombre();
+        }
+
+        private static String lastNameFrom(Usuario user) {
+            return user == null ? null : user.getApellido();
+        }
+
+        private static StudentGradeData gradeDataFrom(Alumno student) {
+            if (student.getGrado() == null) {
+                return new StudentGradeData(null, null);
+            }
+
+            return new StudentGradeData(
+                    student.getGrado().getAnio(),
+                    student.getGrado().getDivision()
+            );
+        }
+
+        private record StudentGradeData(String year, String division) {
         }
     }
 
     public record BuyerResponse(UUID id, String type) {
 
-        private static BuyerResponse from(UUID buyerId, BuyerType buyerType) {
+        private static BuyerResponse fromBuyer(UUID buyerId, BuyerType buyerType) {
             return new BuyerResponse(buyerId, buyerType == null ? null : buyerType.name());
         }
     }
@@ -124,20 +151,18 @@ public record ListKiosqueroOrdersResponse(
             Integer dailyCapacity
     ) {
 
-        private static List<ItemResponse> from(Map<Producto, Integer> items) {
+        private static List<ItemResponse> fromItems(Map<Producto, Integer> items) {
             if (items == null) {
                 return List.of();
             }
 
             return items.entrySet().stream()
-                    .map(entry -> from(entry.getKey(), entry.getValue()))
+                    .map(entry -> fromProduct(entry.getKey(), entry.getValue()))
                     .toList();
         }
 
-        private static ItemResponse from(Producto product, Integer quantity) {
-            BigDecimal unitPrice = product.getPrecio() == null
-                    ? BigDecimal.ZERO
-                    : product.getPrecio();
+        private static ItemResponse fromProduct(Producto product, Integer quantity) {
+            BigDecimal unitPrice = unitPriceFrom(product);
             return new ItemResponse(
                     product.getId(),
                     product.getNombre(),
@@ -147,6 +172,10 @@ public record ListKiosqueroOrdersResponse(
                     product.getRequierePreparacion(),
                     product.getCupoMaximoDiario()
             );
+        }
+
+        private static BigDecimal unitPriceFrom(Producto product) {
+            return product.getPrecio() == null ? BigDecimal.ZERO : product.getPrecio();
         }
     }
 }

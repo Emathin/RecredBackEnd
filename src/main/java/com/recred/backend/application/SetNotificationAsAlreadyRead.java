@@ -12,17 +12,21 @@ public class SetNotificationAsAlreadyRead {
     }
 
     public SetNotificationAsAlreadyReadResponse execute(
-            SetNotificationAsAlreadyReadRequest request
+            SetNotificationAsAlreadyReadRequest readRequest
     ) {
         try {
-            notificationRepository.markAsRead(request.notificationId());
-            return new SetNotificationAsAlreadyReadResponse(request.notificationId());
+            notificationRepository.markAsRead(readRequest.notificationId());
+            return new SetNotificationAsAlreadyReadResponse(readRequest.notificationId());
         } catch (RuntimeException e) {
-            if ("Notification not found".equals(e.getMessage())) {
+            if (notificationDoesNotExist(e)) {
                 throw new NotificationNotFoundException(
-                        "La notificacion no existe: " + request.notificationId());
+                        "La notificacion no existe: " + readRequest.notificationId());
             }
             throw e;
         }
+    }
+
+    private boolean notificationDoesNotExist(RuntimeException exception) {
+        return "Notification not found".equals(exception.getMessage());
     }
 }

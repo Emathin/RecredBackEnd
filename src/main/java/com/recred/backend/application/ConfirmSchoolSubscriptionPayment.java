@@ -28,31 +28,32 @@ public class ConfirmSchoolSubscriptionPayment {
 
     @Transactional
     public ConfirmSchoolSubscriptionPaymentResponse execute(
-            ConfirmSchoolSubscriptionPaymentRequest request
+            ConfirmSchoolSubscriptionPaymentRequest confirmationRequest
     ) {
-        PagoSuscripcionColegio payment = payment(request.paymentDetails());
+        PaymentDetails paymentDetails = confirmationRequest.paymentDetails();
+        PagoSuscripcionColegio payment = paymentFrom(paymentDetails);
         if (payment.alreadyActivatedSubscription()) {
             return new ConfirmSchoolSubscriptionPaymentResponse(false);
         }
 
-        updatePayment(payment, request.paymentDetails());
-        activateSubscriptionIfApproved(payment, request.paymentDetails());
+        updatePayment(payment, paymentDetails);
+        activateSubscriptionIfApproved(payment, paymentDetails);
         paymentRepository.save(payment);
         return new ConfirmSchoolSubscriptionPaymentResponse(payment.getSuscripcionId() != null);
     }
 
-    private PagoSuscripcionColegio payment(PaymentDetails details) {
-        return paymentRepository.findByMercadoPagoPaymentId(details.paymentId())
-                .orElseGet(() -> PagoSuscripcionColegio.fromPaymentDetails(details));
+    private PagoSuscripcionColegio paymentFrom(PaymentDetails paymentDetails) {
+        return paymentRepository.findByMercadoPagoPaymentId(paymentDetails.paymentId())
+                .orElseGet(() -> PagoSuscripcionColegio.fromPaymentDetails(paymentDetails));
     }
 
-    private void updatePayment(PagoSuscripcionColegio payment, PaymentDetails details) {
-        payment.updateFrom(details);
+    private void updatePayment(PagoSuscripcionColegio payment, PaymentDetails paymentDetails) {
+        payment.updateFrom(paymentDetails);
     }
 
     private void activateSubscriptionIfApproved(
             PagoSuscripcionColegio payment,
-            PaymentDetails details
+            PaymentDetails paymentDetails
     ) {
         if (!payment.shouldActivateSubscription()) {
             return;
@@ -60,8 +61,8 @@ public class ConfirmSchoolSubscriptionPayment {
 
         ActivateSchoolSubscriptionResponse subscription = activateSchoolSubscription.execute(
                 new ActivateSchoolSubscriptionRequest(
-                        details.colegioId(),
-                        details.amount(),
+                        paymentDetails.colegioId(),
+                        paymentDetails.amount(),
                         CURRENCY,
                         LocalDateTime.now(clock)
                 )

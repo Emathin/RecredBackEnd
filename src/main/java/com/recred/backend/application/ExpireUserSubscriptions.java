@@ -13,58 +13,69 @@ import java.util.List;
 public class ExpireUserSubscriptions {
 
     private final SuscripcionUsuarioRepository subscriptionRepository;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioRepository userRepository;
     private final Clock clock;
 
     public ExpireUserSubscriptions(
             SuscripcionUsuarioRepository subscriptionRepository,
-            UsuarioRepository usuarioRepository,
+            UsuarioRepository userRepository,
             Clock clock
     ) {
         this.subscriptionRepository = subscriptionRepository;
-        this.usuarioRepository = usuarioRepository;
+        this.userRepository = userRepository;
         this.clock = clock;
     }
 
     @Transactional
-    public ExpireUserSubscriptionsResponse execute(ExpireUserSubscriptionsRequest request) {
-        LocalDateTime targetTime = targetTime(request);
-        return expire(expiredSubscriptions(targetTime), targetTime);
+    public ExpireUserSubscriptionsResponse execute(
+            ExpireUserSubscriptionsRequest expirationRequest
+    ) {
+        LocalDateTime referenceTime = referenceTimeFrom(expirationRequest);
+        List<SuscripcionUsuario> expiredSubscriptions =
+                activeSubscriptionsExpiredAt(referenceTime);
+        return expireSubscriptions(expiredSubscriptions, referenceTime);
     }
 
-    private LocalDateTime targetTime(ExpireUserSubscriptionsRequest request) {
-        if (request != null && request.targetTime() != null) {
-            return request.targetTime();
+    private LocalDateTime referenceTimeFrom(ExpireUserSubscriptionsRequest expirationRequest) {
+        if (expirationRequest != null && expirationRequest.targetTime() != null) {
+            return expirationRequest.targetTime();
         }
 
         return LocalDateTime.now(clock);
     }
 
-    private List<SuscripcionUsuario> expiredSubscriptions(LocalDateTime targetTime) {
-        return subscriptionRepository.findActiveExpiredAt(targetTime);
+    private List<SuscripcionUsuario> activeSubscriptionsExpiredAt(
+            LocalDateTime referenceTime
+    ) {
+        return subscriptionRepository.findActiveExpiredAt(referenceTime);
     }
 
-    private ExpireUserSubscriptionsResponse expire(
+    private ExpireUserSubscriptionsResponse expireSubscriptions(
             List<SuscripcionUsuario> subscriptions,
-            LocalDateTime targetTime
+            LocalDateTime referenceTime
     ) {
-        subscriptions.forEach(subscription -> expire(subscription, targetTime));
+        subscriptions.forEach(subscription -> expireSubscriptionAt(
+                subscription,
+                referenceTime));
         return new ExpireUserSubscriptionsResponse(subscriptions.size());
     }
 
-    private void expire(SuscripcionUsuario subscription, LocalDateTime targetTime) {
-        subscription.expireAt(targetTime);
+    private void expireSubscriptionAt(
+            SuscripcionUsuario subscription,
+            LocalDateTime referenceTime
+    ) {
+        subscription.expireAt(referenceTime);
         subscriptionRepository.save(subscription);
-        returnUserToFreePlan(subscription);
+        returnSubscriptionOwnerToFreePlan(subscription);
     }
 
-    private void returnUserToFreePlan(SuscripcionUsuario subscription) {
-        usuarioRepository.findById(subscription.getUsuarioId())
+    private void returnSubscriptionOwnerToFreePlan(SuscripcionUsuario subscription) {
+        userRepository.findById(subscription.getUsuarioId())
                 .ifPresent(this::returnUserToFreePlan);
     }
 
     private void returnUserToFreePlan(Usuario user) {
         user.returnToFreePlan();
-        usuarioRepository.updatePlan(user.getId(), user.getPlan());
+        userRepository.updatePlan(user.getId(), user.getPlan());
     }
 }

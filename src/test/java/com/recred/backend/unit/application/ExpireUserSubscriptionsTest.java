@@ -11,7 +11,11 @@ import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -24,91 +28,135 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class ExpireUserSubscriptionsTest {
 
-    private final SuscripcionUsuarioRepository subscriptionRepository =
-            mock(SuscripcionUsuarioRepository.class);
-    private final UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
-    private final Clock clock = Clock.fixed(
+    private static final Clock CLOCK = Clock.fixed(
             Instant.parse("2026-07-05T13:00:00Z"),
             ZoneOffset.UTC
     );
-    private final ExpireUserSubscriptions useCase = new ExpireUserSubscriptions(
-            subscriptionRepository,
-            usuarioRepository,
-            clock
-    );
 
-    @Test
-    void execute_WhenActiveSubscriptionsExpired_ShouldExpireAndReturnUsersToFreePlan() {
-        UUID userId = UUID.randomUUID();
-        LocalDateTime targetTime = fixedNow();
-        SuscripcionUsuario subscription = expiredSubscription(userId, targetTime);
-        Usuario user = user(userId, TipoPlan.AVANZADO);
-        givenExpiredSubscriptions(targetTime, List.of(subscription));
-        givenUser(user);
+    @Mock
+    private SuscripcionUsuarioRepository subscriptionRepository;
 
-        ExpireUserSubscriptionsResponse result = whenExecuting(targetTime);
+    @Mock
+    private UsuarioRepository userRepository;
 
-        assertEquals(1, result.expiredSubscriptions());
-        assertEquals(EstadoSuscripcion.VENCIDA, subscription.getEstado());
-        verify(subscriptionRepository).save(subscription);
-        verify(usuarioRepository).updatePlan(userId, TipoPlan.GRATUITO);
-        verify(usuarioRepository, never()).save(any(Usuario.class));
+    private ExpireUserSubscriptions useCase;
+
+    private UUID userId;
+    private LocalDateTime referenceTime;
+    private SuscripcionUsuario subscription;
+    private Usuario user;
+    private ExpireUserSubscriptionsResponse response;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new ExpireUserSubscriptions(
+                subscriptionRepository,
+                userRepository,
+                CLOCK
+        );
     }
 
     @Test
-    void execute_WhenThereAreNoExpiredSubscriptions_ShouldReturnZero() {
-        LocalDateTime targetTime = fixedNow();
-        givenExpiredSubscriptions(targetTime, List.of());
+    void givenExpiredSubscription_whenExpiringSubscriptions_thenExpiresAndFreesUserPlan() {
+        givenExpirationScenario();
+        givenExpiredSubscription();
+        givenSubscriptionOwnerWithPaidPlan();
+        givenExpiredSubscriptions(subscription);
 
-        ExpireUserSubscriptionsResponse result = whenExecuting(targetTime);
+        whenExpiringUserSubscriptions();
 
-        assertEquals(0, result.expiredSubscriptions());
-        verify(subscriptionRepository, never()).save(any(SuscripcionUsuario.class));
-        verify(usuarioRepository, never()).save(any(Usuario.class));
-        verify(usuarioRepository, never()).updatePlan(any(UUID.class), any(TipoPlan.class));
+        thenOneSubscriptionWasExpired();
+        thenSubscriptionStateIsExpired();
+        thenSubscriptionWasSaved();
+        thenUserReturnedToFreePlan();
+        thenUserWasNotSavedDirectly();
     }
 
-    private void givenExpiredSubscriptions(
-            LocalDateTime targetTime,
-            List<SuscripcionUsuario> subscriptions
-    ) {
-        when(subscriptionRepository.findActiveExpiredAt(targetTime)).thenReturn(subscriptions);
+    @Test
+    void givenNoExpiredSubscriptions_whenExpiringSubscriptions_thenReturnsZero() {
+        givenExpirationScenario();
+        givenExpiredSubscriptions();
+
+        whenExpiringUserSubscriptions();
+
+        thenNoSubscriptionsWereExpired();
+        thenNoSubscriptionWasSaved();
+        thenNoUserPlanWasUpdated();
     }
 
-    private void givenUser(Usuario user) {
-        when(usuarioRepository.findById(user.getId())).thenReturn(Optional.of(user));
+    private void givenExpirationScenario() {
+        userId = UUID.randomUUID();
+        referenceTime = fixedNow();
     }
 
-    private ExpireUserSubscriptionsResponse whenExecuting(LocalDateTime targetTime) {
-        return useCase.execute(new ExpireUserSubscriptionsRequest(targetTime));
-    }
-
-    private SuscripcionUsuario expiredSubscription(UUID userId, LocalDateTime targetTime) {
-        return SuscripcionUsuario.activate(
+    private void givenExpiredSubscription() {
+        subscription = SuscripcionUsuario.activate(
                 userId,
                 TipoPlan.AVANZADO,
                 PeriodoSuscripcion.MENSUAL,
                 new BigDecimal("10200.00"),
-                targetTime.minusMonths(1)
+                referenceTime.minusMonths(1)
         );
     }
 
-    private Usuario user(UUID userId, TipoPlan plan) {
-        Usuario user = new Usuario();
+    private void givenSubscriptionOwnerWithPaidPlan() {
+        user = new Usuario();
         user.setId(userId);
         user.setRol(RolUsuario.PADRE);
-        user.setPlan(plan);
-        return user;
+        user.setPlan(TipoPlan.AVANZADO);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    }
+
+    private void givenExpiredSubscriptions(SuscripcionUsuario... subscriptions) {
+        when(subscriptionRepository.findActiveExpiredAt(referenceTime))
+                .thenReturn(List.of(subscriptions));
+    }
+
+    private void whenExpiringUserSubscriptions() {
+        response = useCase.execute(new ExpireUserSubscriptionsRequest(referenceTime));
+    }
+
+    private void thenOneSubscriptionWasExpired() {
+        assertEquals(1, response.expiredSubscriptions());
+    }
+
+    private void thenNoSubscriptionsWereExpired() {
+        assertEquals(0, response.expiredSubscriptions());
+    }
+
+    private void thenSubscriptionStateIsExpired() {
+        assertEquals(EstadoSuscripcion.VENCIDA, subscription.getEstado());
+    }
+
+    private void thenSubscriptionWasSaved() {
+        verify(subscriptionRepository).save(subscription);
+    }
+
+    private void thenUserReturnedToFreePlan() {
+        verify(userRepository).updatePlan(userId, TipoPlan.GRATUITO);
+    }
+
+    private void thenUserWasNotSavedDirectly() {
+        verify(userRepository, never()).save(any(Usuario.class));
+    }
+
+    private void thenNoSubscriptionWasSaved() {
+        verify(subscriptionRepository, never()).save(any(SuscripcionUsuario.class));
+    }
+
+    private void thenNoUserPlanWasUpdated() {
+        verify(userRepository, never()).save(any(Usuario.class));
+        verify(userRepository, never()).updatePlan(any(UUID.class), any(TipoPlan.class));
     }
 
     private LocalDateTime fixedNow() {
-        return LocalDateTime.now(clock);
+        return LocalDateTime.now(CLOCK);
     }
 }

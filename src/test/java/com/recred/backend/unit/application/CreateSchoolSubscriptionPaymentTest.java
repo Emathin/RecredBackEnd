@@ -7,74 +7,124 @@ import com.recred.backend.application.SchoolSubscriptionPriceCatalog;
 import com.recred.backend.domain.exceptions.SchoolNotFoundException;
 import com.recred.backend.domain.repositories.ColegioRepository;
 import com.recred.backend.domain.services.ExternalPaymentService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class CreateSchoolSubscriptionPaymentTest {
 
-    private final ColegioRepository colegioRepository = mock(ColegioRepository.class);
-    private final ExternalPaymentService externalPaymentService =
-            mock(ExternalPaymentService.class);
-    private final CreateSchoolSubscriptionPayment useCase = new CreateSchoolSubscriptionPayment(
-            colegioRepository,
-            externalPaymentService,
-            new SchoolSubscriptionPriceCatalog()
-    );
+    @Mock
+    private ColegioRepository schoolRepository;
 
-    @Test
-    void execute_WhenSchoolExists_ShouldCreatePreferenceWithInstitutionalPrice() {
-        UUID schoolId = UUID.randomUUID();
-        givenActiveSchool(schoolId);
-        givenPaymentUrl(schoolId);
+    @Mock
+    private ExternalPaymentService externalPaymentService;
 
-        CreateSchoolSubscriptionPaymentResponse result = whenExecuting(schoolId);
+    private CreateSchoolSubscriptionPayment useCase;
 
-        assertEquals("https://pay.test/school", result.paymentUrl());
-        assertEquals(new BigDecimal("20.00"), result.price());
-        assertEquals("USD", result.currency());
-        verify(externalPaymentService).createSchoolSubscriptionPreference(
-                schoolId,
-                new BigDecimal("20.00")
+    private UUID schoolId;
+    private CreateSchoolSubscriptionPaymentResponse response;
+    private RuntimeException thrownException;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new CreateSchoolSubscriptionPayment(
+                schoolRepository,
+                externalPaymentService,
+                new SchoolSubscriptionPriceCatalog()
         );
     }
 
     @Test
-    void execute_WhenSchoolDoesNotExist_ShouldThrowException() {
-        UUID schoolId = UUID.randomUUID();
-        givenMissingSchool(schoolId);
+    void givenSchoolExists_whenCreatingSubscriptionPayment_thenCreatesInstitutionalPreference() {
+        givenSchoolPaymentScenario();
+        givenActiveSchool();
+        givenPaymentPreferenceUrl();
 
-        assertThrows(SchoolNotFoundException.class, () -> whenExecuting(schoolId));
-        verify(externalPaymentService, never()).createSchoolSubscriptionPreference(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any()
-        );
+        whenCreatingSchoolSubscriptionPayment();
+
+        thenPaymentPreferenceIsReturned();
+        thenInstitutionalPriceIsReturned();
+        thenPaymentPreferenceWasCreated();
     }
 
-    private void givenActiveSchool(UUID schoolId) {
-        when(colegioRepository.existsActiveById(schoolId)).thenReturn(true);
+    @Test
+    void givenSchoolDoesNotExist_whenCreatingSubscriptionPayment_thenFailsBeforeCreatingPayment() {
+        givenSchoolPaymentScenario();
+        givenSchoolDoesNotExist();
+
+        whenCreatingSchoolSubscriptionPaymentFails();
+
+        thenSchoolWasNotFound();
+        thenPaymentPreferenceWasNotCreated();
     }
 
-    private void givenMissingSchool(UUID schoolId) {
-        when(colegioRepository.existsActiveById(schoolId)).thenReturn(false);
+    private void givenSchoolPaymentScenario() {
+        schoolId = UUID.randomUUID();
     }
 
-    private void givenPaymentUrl(UUID schoolId) {
+    private void givenActiveSchool() {
+        when(schoolRepository.existsActiveById(schoolId)).thenReturn(true);
+    }
+
+    private void givenSchoolDoesNotExist() {
+        when(schoolRepository.existsActiveById(schoolId)).thenReturn(false);
+    }
+
+    private void givenPaymentPreferenceUrl() {
         when(externalPaymentService.createSchoolSubscriptionPreference(
                 schoolId,
                 new BigDecimal("20.00")
         )).thenReturn("https://pay.test/school");
     }
 
-    private CreateSchoolSubscriptionPaymentResponse whenExecuting(UUID schoolId) {
-        return useCase.execute(new CreateSchoolSubscriptionPaymentRequest(schoolId));
+    private void whenCreatingSchoolSubscriptionPayment() {
+        response = useCase.execute(new CreateSchoolSubscriptionPaymentRequest(schoolId));
+    }
+
+    private void whenCreatingSchoolSubscriptionPaymentFails() {
+        thrownException = assertThrows(
+                RuntimeException.class,
+                this::whenCreatingSchoolSubscriptionPayment);
+    }
+
+    private void thenPaymentPreferenceIsReturned() {
+        assertEquals("https://pay.test/school", response.paymentUrl());
+    }
+
+    private void thenInstitutionalPriceIsReturned() {
+        assertEquals(new BigDecimal("20.00"), response.price());
+        assertEquals("USD", response.currency());
+    }
+
+    private void thenPaymentPreferenceWasCreated() {
+        verify(externalPaymentService).createSchoolSubscriptionPreference(
+                schoolId,
+                new BigDecimal("20.00")
+        );
+    }
+
+    private void thenSchoolWasNotFound() {
+        assertTrue(thrownException instanceof SchoolNotFoundException);
+    }
+
+    private void thenPaymentPreferenceWasNotCreated() {
+        verify(externalPaymentService, never()).createSchoolSubscriptionPreference(
+                any(),
+                any()
+        );
     }
 }

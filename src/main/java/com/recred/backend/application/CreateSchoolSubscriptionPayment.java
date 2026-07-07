@@ -10,40 +10,54 @@ import java.util.UUID;
 
 public class CreateSchoolSubscriptionPayment {
 
-    private final ColegioRepository colegioRepository;
+    private final ColegioRepository schoolRepository;
     private final ExternalPaymentService externalPaymentService;
     private final SchoolSubscriptionPriceCatalog priceCatalog;
 
     public CreateSchoolSubscriptionPayment(
-            ColegioRepository colegioRepository,
+            ColegioRepository schoolRepository,
             ExternalPaymentService externalPaymentService,
             SchoolSubscriptionPriceCatalog priceCatalog
     ) {
-        this.colegioRepository = colegioRepository;
+        this.schoolRepository = schoolRepository;
         this.externalPaymentService = externalPaymentService;
         this.priceCatalog = priceCatalog;
     }
 
     @Transactional(readOnly = true)
     public CreateSchoolSubscriptionPaymentResponse execute(
-            CreateSchoolSubscriptionPaymentRequest request
+            CreateSchoolSubscriptionPaymentRequest paymentRequest
     ) {
-        requireActiveSchool(request.colegioId());
+        ensureSchoolExistsAndIsActive(paymentRequest.colegioId());
         BigDecimal price = priceCatalog.monthlyPrice();
-        String paymentUrl = externalPaymentService.createSchoolSubscriptionPreference(
-                request.colegioId(),
+        String paymentUrl = paymentPreferenceUrlFor(paymentRequest, price);
+        return responseFrom(paymentUrl, price);
+    }
+
+    private void ensureSchoolExistsAndIsActive(UUID schoolId) {
+        if (!schoolRepository.existsActiveById(schoolId)) {
+            throw new SchoolNotFoundException(schoolId);
+        }
+    }
+
+    private String paymentPreferenceUrlFor(
+            CreateSchoolSubscriptionPaymentRequest paymentRequest,
+            BigDecimal price
+    ) {
+        return externalPaymentService.createSchoolSubscriptionPreference(
+                paymentRequest.colegioId(),
                 price
         );
+    }
+
+    private CreateSchoolSubscriptionPaymentResponse responseFrom(
+            String paymentUrl,
+            BigDecimal price
+    ) {
         return new CreateSchoolSubscriptionPaymentResponse(
                 paymentUrl,
                 price,
                 priceCatalog.currency()
         );
-    }
-
-    private void requireActiveSchool(UUID colegioId) {
-        if (!colegioRepository.existsActiveById(colegioId)) {
-            throw new SchoolNotFoundException(colegioId);
-        }
     }
 }

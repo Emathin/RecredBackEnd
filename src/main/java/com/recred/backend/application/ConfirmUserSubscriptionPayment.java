@@ -31,50 +31,51 @@ public class ConfirmUserSubscriptionPayment {
 
     @Transactional
     public ConfirmUserSubscriptionPaymentResponse execute(
-            ConfirmUserSubscriptionPaymentRequest request
+            ConfirmUserSubscriptionPaymentRequest confirmationRequest
     ) {
-        PaymentDetails details = request.paymentDetails();
-        lockSubscriptionOwner(details);
-        PagoSuscripcionUsuario payment = payment(details);
+        PaymentDetails paymentDetails = confirmationRequest.paymentDetails();
+        lockSubscriptionOwner(paymentDetails);
+        PagoSuscripcionUsuario payment = paymentFrom(paymentDetails);
         if (payment.alreadyActivatedSubscription()) {
             return subscriptionNotActivated();
         }
 
-        PagoSuscripcionUsuario savedPayment = saveUpdatedPayment(payment, details);
-        return activateSubscriptionIfNeeded(savedPayment, details);
+        PagoSuscripcionUsuario savedPayment = saveUpdatedPayment(payment, paymentDetails);
+        return activateSubscriptionIfNeeded(savedPayment, paymentDetails);
     }
 
-    private void lockSubscriptionOwner(PaymentDetails details) {
-        usuarioRepository.findByIdForUpdate(details.usuarioId())
-                .orElseThrow(() -> new UsuarioNoEncontradoException(details.usuarioId()));
+    private void lockSubscriptionOwner(PaymentDetails paymentDetails) {
+        usuarioRepository.findByIdForUpdate(paymentDetails.usuarioId())
+                .orElseThrow(() -> new UsuarioNoEncontradoException(
+                        paymentDetails.usuarioId()));
     }
 
-    private PagoSuscripcionUsuario payment(PaymentDetails details) {
-        return paymentRepository.findByMercadoPagoPaymentId(details.paymentId())
-                .orElseGet(() -> PagoSuscripcionUsuario.fromPaymentDetails(details));
+    private PagoSuscripcionUsuario paymentFrom(PaymentDetails paymentDetails) {
+        return paymentRepository.findByMercadoPagoPaymentId(paymentDetails.paymentId())
+                .orElseGet(() -> PagoSuscripcionUsuario.fromPaymentDetails(paymentDetails));
     }
 
-    private void updatePayment(PagoSuscripcionUsuario payment, PaymentDetails details) {
-        payment.updateFrom(details);
+    private void updatePayment(PagoSuscripcionUsuario payment, PaymentDetails paymentDetails) {
+        payment.updateFrom(paymentDetails);
     }
 
     private PagoSuscripcionUsuario saveUpdatedPayment(
             PagoSuscripcionUsuario payment,
-            PaymentDetails details
+            PaymentDetails paymentDetails
     ) {
-        updatePayment(payment, details);
+        updatePayment(payment, paymentDetails);
         return paymentRepository.save(payment);
     }
 
     private ConfirmUserSubscriptionPaymentResponse activateSubscriptionIfNeeded(
             PagoSuscripcionUsuario payment,
-            PaymentDetails details
+            PaymentDetails paymentDetails
     ) {
         if (!payment.shouldActivateSubscription()) {
             return subscriptionNotActivated();
         }
 
-        activateSubscription(payment, details);
+        activateSubscription(payment, paymentDetails);
         paymentRepository.save(payment);
         return new ConfirmUserSubscriptionPaymentResponse(true);
     }
@@ -85,14 +86,14 @@ public class ConfirmUserSubscriptionPayment {
 
     private void activateSubscription(
             PagoSuscripcionUsuario payment,
-            PaymentDetails details
+            PaymentDetails paymentDetails
     ) {
         ActivateUserSubscriptionResponse subscription = activateUserSubscription.execute(
                 new ActivateUserSubscriptionRequest(
-                        details.usuarioId(),
-                        details.plan(),
-                        details.periodo(),
-                        details.amount(),
+                        paymentDetails.usuarioId(),
+                        paymentDetails.plan(),
+                        paymentDetails.periodo(),
+                        paymentDetails.amount(),
                         LocalDateTime.now(clock)
                 )
         );

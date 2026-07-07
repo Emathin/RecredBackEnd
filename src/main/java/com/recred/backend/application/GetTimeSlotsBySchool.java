@@ -8,28 +8,29 @@ import java.util.UUID;
 
 public class GetTimeSlotsBySchool {
 
-    private final FranjaHorariaRepository repository;
+    private final FranjaHorariaRepository timeSlotRepository;
 
-    public GetTimeSlotsBySchool(FranjaHorariaRepository repository) {
-        this.repository = repository;
+    public GetTimeSlotsBySchool(FranjaHorariaRepository timeSlotRepository) {
+        this.timeSlotRepository = timeSlotRepository;
     }
 
-    public List<GetTimeSlotsBySchoolResponse> execute(GetTimeSlotsBySchoolRequest request) {
-        List<FranjaHoraria> slots = this.findTimeSlotsByColegioId(request.colegioId());
-        return this.mapToResponse(slots);
+    public List<GetTimeSlotsBySchoolResponse> execute(
+            GetTimeSlotsBySchoolRequest slotsRequest) {
+        List<FranjaHoraria> slots = findTimeSlotsBySchool(slotsRequest.colegioId());
+        return responsesFrom(slots);
     }
 
-    private List<FranjaHoraria> findTimeSlotsByColegioId(UUID colegioId) {
-        return repository.findAllByColegioId(colegioId);
+    private List<FranjaHoraria> findTimeSlotsBySchool(UUID schoolId) {
+        return timeSlotRepository.findAllByColegioId(schoolId);
     }
 
-    private List<GetTimeSlotsBySchoolResponse> mapToResponse(List<FranjaHoraria> slots) {
+    private List<GetTimeSlotsBySchoolResponse> responsesFrom(List<FranjaHoraria> slots) {
         return slots.stream()
-                .map(this::mapToResponse)
+                .map(this::responseFrom)
                 .toList();
     }
 
-    private GetTimeSlotsBySchoolResponse mapToResponse(FranjaHoraria slot) {
+    private GetTimeSlotsBySchoolResponse responseFrom(FranjaHoraria slot) {
         return new GetTimeSlotsBySchoolResponse(
                 slot.getId(),
                 slot.getColegioId(),
@@ -41,4 +42,4 @@ public class GetTimeSlotsBySchool {
                 slot.getMinutosCorte()
         );
     }
-}
+}

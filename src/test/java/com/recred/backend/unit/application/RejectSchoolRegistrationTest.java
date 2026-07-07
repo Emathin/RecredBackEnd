@@ -5,10 +5,9 @@ import com.recred.backend.application.RejectSchoolRegistrationRequest;
 import com.recred.backend.domain.models.SchoolRegistrationRequest;
 import com.recred.backend.domain.models.SchoolRegistrationStatus;
 import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.function.Executable;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -17,6 +16,9 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,49 +28,92 @@ class RejectSchoolRegistrationTest {
     @Mock
     private SchoolRegistrationRequestRepository repository;
 
-    @InjectMocks
     private RejectSchoolRegistration useCase;
 
-    @Test
-    void execute_UpdatesStatusToRejected_WhenRequestIsPending() {
-        UUID requestId = UUID.randomUUID();
-        RejectSchoolRegistrationRequest request = new RejectSchoolRegistrationRequest(requestId);
-        SchoolRegistrationRequest requestEntity = new SchoolRegistrationRequest();
-        requestEntity.setId(requestId);
-        requestEntity.setStatus(SchoolRegistrationStatus.PENDING);
+    private UUID registrationId;
+    private SchoolRegistrationRequest registration;
+    private RuntimeException thrownException;
 
-        when(repository.findById(requestId)).thenReturn(Optional.of(requestEntity));
-
-        useCase.execute(request);
-
-        assertEquals(SchoolRegistrationStatus.REJECTED, requestEntity.getStatus());
-        verify(repository).save(requestEntity);
+    @BeforeEach
+    void setUp() {
+        useCase = new RejectSchoolRegistration(repository);
     }
 
     @Test
-    void execute_ThrowsException_WhenRequestNotFound() {
-        UUID requestId = UUID.randomUUID();
-        RejectSchoolRegistrationRequest request = new RejectSchoolRegistrationRequest(requestId);
+    void givenPendingRegistration_whenRejectingSchoolRegistration_thenRejectsRegistration() {
+        givenSchoolRegistrationScenario(SchoolRegistrationStatus.PENDING);
+        givenRegistrationExists();
 
-        when(repository.findById(requestId)).thenReturn(Optional.empty());
+        whenRejectingSchoolRegistration();
 
-        Executable execution = () -> useCase.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
+        thenRegistrationWasRejected();
+        thenRegistrationWasSaved();
     }
 
     @Test
-    void execute_ThrowsException_WhenRequestIsNotPending() {
-        UUID requestId = UUID.randomUUID();
-        SchoolRegistrationRequest requestEntity = new SchoolRegistrationRequest();
-        requestEntity.setId(requestId);
-        requestEntity.setStatus(SchoolRegistrationStatus.APPROVED);
-        RejectSchoolRegistrationRequest request = new RejectSchoolRegistrationRequest(requestId);
+    void givenRegistrationDoesNotExist_whenRejectingSchoolRegistration_thenFails() {
+        givenSchoolRegistrationScenario(SchoolRegistrationStatus.PENDING);
+        givenRegistrationDoesNotExist();
 
-        when(repository.findById(requestId)).thenReturn(Optional.of(requestEntity));
+        whenRejectingSchoolRegistrationFails();
 
-        Executable execution = () -> useCase.execute(request);
+        thenRegistrationNotFoundWasThrown();
+        thenRegistrationWasNotSaved();
+    }
 
-        assertThrows(IllegalStateException.class, execution);
+    @Test
+    void givenRegistrationIsNotPending_whenRejectingSchoolRegistration_thenFails() {
+        givenSchoolRegistrationScenario(SchoolRegistrationStatus.APPROVED);
+        givenRegistrationExists();
+
+        whenRejectingSchoolRegistrationFails();
+
+        thenRegistrationNotPendingWasThrown();
+        thenRegistrationWasNotSaved();
+    }
+
+    private void givenSchoolRegistrationScenario(SchoolRegistrationStatus status) {
+        registrationId = UUID.randomUUID();
+        registration = new SchoolRegistrationRequest();
+        registration.setId(registrationId);
+        registration.setStatus(status);
+    }
+
+    private void givenRegistrationExists() {
+        when(repository.findById(registrationId)).thenReturn(Optional.of(registration));
+    }
+
+    private void givenRegistrationDoesNotExist() {
+        when(repository.findById(registrationId)).thenReturn(Optional.empty());
+    }
+
+    private void whenRejectingSchoolRegistration() {
+        useCase.execute(new RejectSchoolRegistrationRequest(registrationId));
+    }
+
+    private void whenRejectingSchoolRegistrationFails() {
+        thrownException = assertThrows(
+                RuntimeException.class,
+                this::whenRejectingSchoolRegistration);
+    }
+
+    private void thenRegistrationWasRejected() {
+        assertEquals(SchoolRegistrationStatus.REJECTED, registration.getStatus());
+    }
+
+    private void thenRegistrationWasSaved() {
+        verify(repository).save(registration);
+    }
+
+    private void thenRegistrationNotFoundWasThrown() {
+        assertTrue(thrownException instanceof IllegalArgumentException);
+    }
+
+    private void thenRegistrationNotPendingWasThrown() {
+        assertTrue(thrownException instanceof IllegalStateException);
+    }
+
+    private void thenRegistrationWasNotSaved() {
+        verify(repository, never()).save(any());
     }
 }
