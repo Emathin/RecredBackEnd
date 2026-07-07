@@ -2,14 +2,18 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.PaymentDetails;
-import com.recred.backend.domain.models.PaymentStatus;
 import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+
 public class ConfirmPaymentAndCredit {
+
+    private static final String PAYMENT_CREDIT_DESCRIPTION =
+            "Acreditacion de pago Mercado Pago: ";
 
     private final WalletRepository walletRepository;
     private final ExternalPaymentService externalPaymentService;
@@ -31,31 +35,53 @@ public class ConfirmPaymentAndCredit {
     }
 
     @Transactional
-    public ConfirmPaymentAndCreditResponse execute(ConfirmPaymentAndCreditRequest request) {
+    public ConfirmPaymentAndCreditResponse execute(ConfirmPaymentAndCreditRequest paymentRequest) {
+        PaymentDetails paymentDetails = findPaymentDetails(paymentRequest);
+        creditWalletIfPaymentWasApproved(paymentDetails);
 
-        PaymentDetails details = externalPaymentService.getPaymentDetails(request.paymentId());
-
-        if (details.status() == PaymentStatus.APPROVED) {
-            Billetera wallet = walletRepository.findByStudentId(details.studentId())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Billetera no encontrada para alumno: " + details.studentId()));
-
-            wallet.credit(details.amount());
-
-            walletRepository.save(wallet);
-            registerSystemMovement(
-                    wallet,
-                    TipoMovimientoBilletera.CARGA,
-                    details.amount(),
-                    "Acreditacion de pago Mercado Pago: " + details.paymentId());
-        }
         return new ConfirmPaymentAndCreditResponse();
+    }
+
+    private PaymentDetails findPaymentDetails(ConfirmPaymentAndCreditRequest paymentRequest) {
+        return externalPaymentService.getPaymentDetails(paymentRequest.paymentId());
+    }
+
+    private void creditWalletIfPaymentWasApproved(PaymentDetails paymentDetails) {
+        if (!paymentDetails.wasApproved()) {
+            return;
+        }
+
+        Billetera wallet = findStudentWallet(paymentDetails);
+        creditWallet(wallet, paymentDetails.amount());
+        registerPaymentCreditMovement(wallet, paymentDetails);
+    }
+
+    private Billetera findStudentWallet(PaymentDetails paymentDetails) {
+        return walletRepository.findByStudentId(paymentDetails.studentId())
+                .orElseThrow(() -> new RuntimeException(
+                        "Billetera no encontrada para alumno: "
+                                + paymentDetails.studentId()));
+    }
+
+    private void creditWallet(Billetera wallet, BigDecimal amount) {
+        wallet.credit(amount);
+        walletRepository.save(wallet);
+    }
+
+    private void registerPaymentCreditMovement(
+            Billetera wallet,
+            PaymentDetails paymentDetails) {
+        registerSystemMovement(
+                wallet,
+                TipoMovimientoBilletera.CARGA,
+                paymentDetails.amount(),
+                PAYMENT_CREDIT_DESCRIPTION + paymentDetails.paymentId());
     }
 
     private void registerSystemMovement(
             Billetera wallet,
             TipoMovimientoBilletera type,
-            java.math.BigDecimal amount,
+            BigDecimal amount,
             String description) {
         if (movimientoBilleteraRepository == null) {
             return;

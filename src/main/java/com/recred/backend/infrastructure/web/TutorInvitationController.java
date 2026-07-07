@@ -2,6 +2,7 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AcceptTutorInvitation;
 import com.recred.backend.application.AcceptTutorInvitationRequest;
+import com.recred.backend.application.AcceptTutorInvitationResponse;
 import com.recred.backend.application.GetTutorInvitation;
 import com.recred.backend.domain.models.TutorInvitation;
 import org.springframework.http.ResponseEntity;
@@ -37,7 +38,7 @@ public class TutorInvitationController {
     public ResponseEntity<TutorInvitationResponse> acceptInvitation(
             @PathVariable String token,
             @AuthenticationPrincipal Jwt jwt) {
-        TutorInvitation invitation = acceptTutorInvitation.execute(
+        AcceptTutorInvitationResponse invitation = acceptTutorInvitation.execute(
                 new AcceptTutorInvitationRequest(
                         token,
                         jwt.getSubject(),
@@ -49,7 +50,7 @@ public class TutorInvitationController {
                         jwt.getClaimAsString("phone_number"),
                         jwt.getClaimAsString("custom:document_number")
                 ));
-        return ResponseEntity.ok(TutorInvitationResponse.fromDomain(
+        return ResponseEntity.ok(TutorInvitationResponse.fromApplication(
                 invitation, null, "ACCEPTED"));
     }
 

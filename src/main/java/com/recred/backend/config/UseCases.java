@@ -768,13 +768,15 @@ public class UseCases {
             WalletRepository walletRepository,
             InventoryAvailabilityService inventoryAvailabilityService,
             FranjaHorariaRepository franjaHorariaRepository,
-            MovimientoBilleteraRepository movimientoBilleteraRepository) {
+            MovimientoBilleteraRepository movimientoBilleteraRepository,
+            Clock clock) {
         return new CancelPresentialPurchase(
                 purchaseRepository,
                 walletRepository,
                 inventoryAvailabilityService,
                 franjaHorariaRepository,
-                movimientoBilleteraRepository);
+                movimientoBilleteraRepository,
+                clock);
     }
 
     @Bean
@@ -1287,9 +1289,10 @@ public class UseCases {
     public FindPurchaseSuggestionForToday findPurchaseSuggestionForToday(
             SuggestionAiRepository suggestionAiRepository,
             UsuarioRepository usuarioRepository,
-            AlumnoRepository alumnoRepository) {
+            AlumnoRepository alumnoRepository,
+            Clock clock) {
         return new FindPurchaseSuggestionForToday(
-                suggestionAiRepository, usuarioRepository, alumnoRepository);
+                suggestionAiRepository, usuarioRepository, alumnoRepository, clock);
     }
 
     @Bean
@@ -1414,8 +1417,8 @@ public class UseCases {
     }
 
     @Bean
-    public CreatePromotion createPromotion(PromotionRepository promotionRepository) {
-        return new CreatePromotion(promotionRepository);
+    public CreatePromotion createPromotion(PromotionRepository promotionRepository, Clock clock) {
+        return new CreatePromotion(promotionRepository, clock);
     }
 
     @Bean
@@ -1602,8 +1605,8 @@ public class UseCases {
     }
 
     @Bean
-    public CreateSupplier createSupplier(ProveedorRepository proveedorRepository) {
-        return new CreateSupplier(proveedorRepository);
+    public CreateSupplier createSupplier(ProveedorRepository proveedorRepository, Clock clock) {
+        return new CreateSupplier(proveedorRepository, clock);
     }
 
     @Bean

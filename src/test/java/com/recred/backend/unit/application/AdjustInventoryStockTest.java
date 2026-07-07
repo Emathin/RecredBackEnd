@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 class AdjustInventoryStockTest {
 
     private InventoryAvailabilityService inventoryAvailabilityService;
-    private AdjustInventoryStock adjustInventoryStock;
+    private AdjustInventoryStock useCase;
     private UUID buffetId;
     private UUID productId;
     private UUID userId;
@@ -29,7 +29,7 @@ class AdjustInventoryStockTest {
     @BeforeEach
     void setUp() {
         inventoryAvailabilityService = mock(InventoryAvailabilityService.class);
-        adjustInventoryStock = new AdjustInventoryStock(inventoryAvailabilityService);
+        useCase = new AdjustInventoryStock(inventoryAvailabilityService);
         buffetId = UUID.randomUUID();
         productId = UUID.randomUUID();
         userId = UUID.randomUUID();
@@ -37,17 +37,16 @@ class AdjustInventoryStockTest {
     }
 
     @Test
-    void execute_WhenInventoryAdjustmentIsRequested_ShouldDelegateAndReturnResponse() {
-        AdjustInventoryStockRequest request = inventoryAdjustmentRequest();
-        givenInventoryWillBeAdjusted();
+    void inventoryAdjustmentDelegatesToAvailabilityServiceAndReturnsUpdatedStock() {
+        givenInventoryCanBeAdjusted();
 
-        whenAdjustingInventory(request);
+        whenAdjustingInventory();
 
-        thenInventoryAdjustmentWasDelegated();
-        thenInventoryResponseMatchesSavedInventory();
+        thenInventoryAdjustmentWasRequested();
+        thenResponseMatchesAdjustedInventory();
     }
 
-    private void givenInventoryWillBeAdjusted() {
+    private void givenInventoryCanBeAdjusted() {
         when(inventoryAvailabilityService.adjustInventory(
                 buffetId,
                 productId,
@@ -62,11 +61,11 @@ class AdjustInventoryStockTest {
         )).thenReturn(inventory);
     }
 
-    private void whenAdjustingInventory(AdjustInventoryStockRequest request) {
-        response = adjustInventoryStock.execute(request);
+    private void whenAdjustingInventory() {
+        response = useCase.execute(inventoryAdjustmentRequest());
     }
 
-    private void thenInventoryAdjustmentWasDelegated() {
+    private void thenInventoryAdjustmentWasRequested() {
         verify(inventoryAvailabilityService).adjustInventory(
                 buffetId,
                 productId,
@@ -81,7 +80,7 @@ class AdjustInventoryStockTest {
         );
     }
 
-    private void thenInventoryResponseMatchesSavedInventory() {
+    private void thenResponseMatchesAdjustedInventory() {
         assertEquals(inventory.getId(), response.id());
         assertEquals(buffetId, response.buffetId());
         assertEquals(productId, response.productoId());

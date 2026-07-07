@@ -9,4 +9,7 @@ public record PaymentDetails(
     BigDecimal amount,
     PaymentStatus status
 ) {
+    public boolean wasApproved() {
+        return status == PaymentStatus.APPROVED;
+    }
 }

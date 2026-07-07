@@ -77,4 +77,8 @@ public class RestriccionHoraria {
 
         return sameCategory || sameClassification;
     }
+
+    public void disable() {
+        this.activa = false;
+    }
 }

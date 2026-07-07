@@ -13,6 +13,7 @@ import com.recred.backend.application.GetPromotionById;
 import com.recred.backend.application.GetPromotionByIdRequest;
 import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePromotionRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -84,7 +85,7 @@ public class PromotionController {
 
     @PostMapping
     public ResponseEntity<PromotionResponseDTO> createPromotion(
-            @RequestBody PromotionRequestDTO request) {
+            @Valid @RequestBody PromotionRequestDTO request) {
         CreatePromotionResponse response = createPromotion.execute(
                 new CreatePromotionRequest(
                         request.getProductIds(),
@@ -103,7 +104,7 @@ public class PromotionController {
     @PutMapping("/{id}")
     public ResponseEntity<PromotionResponseDTO> updatePromotion(
             @PathVariable UUID id, 
-            @RequestBody PromotionRequestDTO request) {
+            @Valid @RequestBody PromotionRequestDTO request) {
         CreatePromotionResponse response = updatePromotion.execute(new UpdatePromotionRequest(
                 id,
                 request.getProductIds(),
