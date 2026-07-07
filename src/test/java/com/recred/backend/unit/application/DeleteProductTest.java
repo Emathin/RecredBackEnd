@@ -6,6 +6,10 @@ import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -13,17 +17,20 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class DeleteProductTest {
 
     private static final UUID PRODUCT_ID = UUID.randomUUID();
 
-    private final ProductRepository productRepository = mock(ProductRepository.class);
-    private final DeleteProduct useCase = new DeleteProduct(productRepository);
+    @Mock
+    private ProductRepository productRepository;
+
+    @InjectMocks
+    private DeleteProduct useCase;
 
     @Test
     void deactivateProductSuccessfully() {

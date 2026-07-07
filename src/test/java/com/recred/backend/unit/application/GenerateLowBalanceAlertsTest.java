@@ -10,7 +10,12 @@ import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.PushNotificationSender;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -18,12 +23,12 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class GenerateLowBalanceAlertsTest {
 
     private static final BigDecimal LOW_BALANCE_THRESHOLD = new BigDecimal("5000.00");
@@ -31,18 +36,23 @@ class GenerateLowBalanceAlertsTest {
     private static final UUID STUDENT_USER_ID = UUID.randomUUID();
     private static final UUID PARENT_USER_ID = UUID.randomUUID();
 
-    private final WalletRepository walletRepository = mock(WalletRepository.class);
-    private final AlumnoRepository alumnoRepository = mock(AlumnoRepository.class);
-    private final TutorRepository tutorRepository = mock(TutorRepository.class);
-    private final PushNotificationSender pushNotificationSender = mock(PushNotificationSender.class);
-    private final ArgumentCaptor<PushNotification> notificationCaptor = ArgumentCaptor.forClass(PushNotification.class);
+    @Mock
+    private WalletRepository walletRepository;
+    
+    @Mock
+    private AlumnoRepository alumnoRepository;
+    
+    @Mock
+    private TutorRepository tutorRepository;
+    
+    @Mock
+    private PushNotificationSender pushNotificationSender;
 
-    private final GenerateLowBalanceAlerts useCase = new GenerateLowBalanceAlerts(
-            walletRepository,
-            alumnoRepository,
-            tutorRepository,
-            pushNotificationSender
-    );
+    @Captor
+    private ArgumentCaptor<PushNotification> notificationCaptor;
+
+    @InjectMocks
+    private GenerateLowBalanceAlerts useCase;
 
     @Test
     void sendNotificationsToStudentAndTutor() {

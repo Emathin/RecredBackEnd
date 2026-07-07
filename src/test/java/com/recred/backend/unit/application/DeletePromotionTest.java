@@ -6,6 +6,10 @@ import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.domain.repositories.PromotionRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -13,17 +17,20 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class DeletePromotionTest {
 
     private static final UUID PROMOTION_ID = UUID.randomUUID();
 
-    private final PromotionRepository promotionRepository = mock(PromotionRepository.class);
-    private final DeletePromotion useCase = new DeletePromotion(promotionRepository);
+    @Mock
+    private PromotionRepository promotionRepository;
+
+    @InjectMocks
+    private DeletePromotion useCase;
 
     @Test
     void rejectPromotionSuccessfully() {

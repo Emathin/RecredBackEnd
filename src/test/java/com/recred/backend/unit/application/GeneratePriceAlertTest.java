@@ -12,7 +12,11 @@ import com.recred.backend.domain.repositories.PriceAlertAIRepository.PriceAlertR
 import com.recred.backend.domain.repositories.StudentAIProfileRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -27,11 +31,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class GeneratePriceAlertTest {
 
     private static final Instant NOW = Instant.parse("2026-05-29T12:00:00Z");
@@ -42,17 +46,20 @@ class GeneratePriceAlertTest {
     private static final String AI_REASON = "Impacto inflacionario";
     private static final String PRODUCT_NAME = "Alfajor";
 
-    private final StudentAIProfileRepository studentAIProfileRepository = mock(StudentAIProfileRepository.class);
-    private final PriceAlertAIRepository priceAlertAIRepository = mock(PriceAlertAIRepository.class);
-    private final SugerenciaIARepository sugerenciaIARepository = mock(SugerenciaIARepository.class);
-    private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+    @Mock
+    private StudentAIProfileRepository studentAIProfileRepository;
+    
+    @Mock
+    private PriceAlertAIRepository priceAlertAIRepository;
+    
+    @Mock
+    private SugerenciaIARepository sugerenciaIARepository;
+    
+    @Mock
+    private Clock clock;
 
-    private final GeneratePriceAlert useCase = new GeneratePriceAlert(
-            studentAIProfileRepository,
-            priceAlertAIRepository,
-            sugerenciaIARepository,
-            clock
-    );
+    @InjectMocks
+    private GeneratePriceAlert useCase;
 
     @Test
     void executeAndSavePriceAlertsForAffectedStudentsWhenPriceChanges() {
@@ -64,6 +71,7 @@ class GeneratePriceAlertTest {
         
         givenAffectedStudentWithoutRecentAlert(producto, alumno);
         givenAiResult(alumno, producto);
+        givenFixedClock();
 
         whenExecute(request(producto, buffetId));
 
@@ -114,6 +122,7 @@ class GeneratePriceAlertTest {
         Alumno alumno = studentWithTutorsWithoutUserIds();
         givenAffectedStudentWithoutRecentAlert(producto, alumno);
         givenAiResult(alumno, producto);
+        givenFixedClock();
 
         whenExecute(request(producto, buffetId));
 
@@ -215,6 +224,11 @@ class GeneratePriceAlertTest {
 
     private void thenNoPriceAlertSaved() {
         verify(sugerenciaIARepository, never()).savePriceAlert(any());
+    }
+
+    private void givenFixedClock() {
+        when(clock.instant()).thenReturn(NOW);
+        when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
     private LocalDateTime recentAlertLimit() {

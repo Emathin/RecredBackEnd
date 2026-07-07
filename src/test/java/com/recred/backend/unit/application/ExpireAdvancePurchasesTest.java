@@ -9,6 +9,10 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -25,11 +29,11 @@ import static com.recred.backend.domain.models.TipoCompra.PRESENCIAL;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class ExpireAdvancePurchasesTest {
 
     private static final UUID BUFFET_ID = UUID.randomUUID();
@@ -37,9 +41,14 @@ class ExpireAdvancePurchasesTest {
     private static final UUID PRODUCT_ID = UUID.randomUUID();
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 5, 27, 11, 0);
 
-    private final PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
-    private final InventoryAvailabilityService inventoryAvailabilityService = mock(InventoryAvailabilityService.class);
-    private final ExpireAdvancePurchases useCase = new ExpireAdvancePurchases(purchaseRepository, inventoryAvailabilityService);
+    @Mock
+    private PurchaseRepository purchaseRepository;
+    
+    @Mock
+    private InventoryAvailabilityService inventoryAvailabilityService;
+    
+    @InjectMocks
+    private ExpireAdvancePurchases useCase;
 
     @Test
     void expirePurchasesAndReleaseReservationsSuccessfully() {

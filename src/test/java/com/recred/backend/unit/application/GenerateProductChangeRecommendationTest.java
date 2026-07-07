@@ -12,6 +12,10 @@ import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -19,27 +23,31 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class GenerateProductChangeRecommendationTest {
 
-    private final ProductRepository productRepository = mock(ProductRepository.class);
-    private final ProductChangeAnalyzer productChangeAnalyzer = mock(ProductChangeAnalyzer.class);
-    private final AIEventRepository aiEventRepository = mock(AIEventRepository.class);
-    private final KiosqueroRepository kiosqueroRepository = mock(KiosqueroRepository.class);
-    private final GetProductStatistics getProductStatistics = mock(GetProductStatistics.class);
+    @Mock
+    private ProductRepository productRepository;
+    
+    @Mock
+    private ProductChangeAnalyzer productChangeAnalyzer;
+    
+    @Mock
+    private AIEventRepository aiEventRepository;
+    
+    @Mock
+    private KiosqueroRepository kiosqueroRepository;
+    
+    @Mock
+    private GetProductStatistics getProductStatistics;
 
-    private final GenerateProductChangeRecommendation useCase = new GenerateProductChangeRecommendation(
-            productRepository,
-            productChangeAnalyzer,
-            aiEventRepository,
-            kiosqueroRepository,
-            getProductStatistics
-    );
+    @InjectMocks
+    private GenerateProductChangeRecommendation useCase;
 
     @Test
     void generateRecommendationsForAllKiosqueros() {

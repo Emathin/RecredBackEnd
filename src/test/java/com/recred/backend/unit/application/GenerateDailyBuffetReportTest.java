@@ -15,6 +15,10 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.StockMovementRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -42,27 +46,30 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class GenerateDailyBuffetReportTest {
 
     private static final UUID BUFFET_ID = UUID.randomUUID();
     private static final LocalDate REPORT_DATE = LocalDate.of(2026, 5, 27);
 
-    private final PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
-    private final ProductRepository productRepository = mock(ProductRepository.class);
-    private final StockMovementRepository stockMovementRepository = mock(StockMovementRepository.class);
-    private final DailyBuffetCloseRepository dailyBuffetCloseRepository = mock(DailyBuffetCloseRepository.class);
+    @Mock
+    private PurchaseRepository purchaseRepository;
+    
+    @Mock
+    private ProductRepository productRepository;
+    
+    @Mock
+    private StockMovementRepository stockMovementRepository;
+    
+    @Mock
+    private DailyBuffetCloseRepository dailyBuffetCloseRepository;
 
-    private final GenerateDailyBuffetReport useCase = new GenerateDailyBuffetReport(
-            purchaseRepository,
-            productRepository,
-            stockMovementRepository,
-            dailyBuffetCloseRepository
-    );
+    @InjectMocks
+    private GenerateDailyBuffetReport useCase;
 
     @Test
     void aggregateDailySalesAndInventory() {

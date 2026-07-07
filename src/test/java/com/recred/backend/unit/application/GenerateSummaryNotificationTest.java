@@ -6,7 +6,11 @@ import com.recred.backend.application.GenerateSummaryNotificationResponse;
 import com.recred.backend.domain.models.Notification;
 import com.recred.backend.domain.repositories.NotificationRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.UUID;
 
@@ -14,17 +18,20 @@ import static com.recred.backend.domain.models.TipoNotificacion.RESUMEN_SEMANAL;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+@ExtendWith(MockitoExtension.class)
 class GenerateSummaryNotificationTest {
 
     private static final String SUMMARY_TITLE = "Resumen Semanal";
     private static final String SUMMARY_MESSAGE = "Tu resumen semanal de gastos ya está disponible.";
     private static final String SUMMARY_TYPE = "RESUMEN_SEMANAL";
 
-    private final NotificationRepository notificationRepository = mock(NotificationRepository.class);
-    private final GenerateSummaryNotification useCase = new GenerateSummaryNotification(notificationRepository);
+    @Mock
+    private NotificationRepository notificationRepository;
+
+    @InjectMocks
+    private GenerateSummaryNotification useCase;
 
     @Test
     void createAndSaveSummaryNotification() {
