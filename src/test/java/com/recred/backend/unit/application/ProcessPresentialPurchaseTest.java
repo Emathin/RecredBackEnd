@@ -284,8 +284,6 @@ class ProcessPresentialPurchaseTest {
         );
     }
 
-    // --- Helpers: When ---
-
     private ProcessPresentialPurchaseResponse whenExecute(
             ProcessPresentialPurchaseRequest request) {
         return useCase.execute(request);

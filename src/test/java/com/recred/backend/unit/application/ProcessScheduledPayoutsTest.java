@@ -231,13 +231,9 @@ class ProcessScheduledPayoutsTest {
         return UUID.nameUUIDFromBytes(combinedKey.getBytes(StandardCharsets.UTF_8)).toString();
     }
 
-    // --- Helpers: When ---
-
     private void whenExecute() {
         useCase.execute();
     }
-
-    // --- Helpers: Then ---
 
     private void thenConfigIsSkippedAndNotSaved(KiosqueroPayoutConfig config) {
         verify(repository).findActiveConfigsDueOnOrBefore(TODAY);
