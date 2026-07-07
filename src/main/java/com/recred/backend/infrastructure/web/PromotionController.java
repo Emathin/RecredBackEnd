@@ -14,6 +14,7 @@ import com.recred.backend.application.GetPromotionByIdRequest;
 import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePromotionRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,6 +38,7 @@ public class PromotionController {
     private final GetActivePromotions getActivePromotions;
     private final GetActivePromotionsByBuffet getActivePromotionsByBuffet;
     private final GetPromotionById getPromotionById;
+    private final PlanAccessGuard planAccessGuard;
 
     public PromotionController(
             CreatePromotion createPromotion,
@@ -44,13 +46,15 @@ public class PromotionController {
             DeletePromotion deletePromotion,
             GetActivePromotions getActivePromotions,
             GetActivePromotionsByBuffet getActivePromotionsByBuffet,
-            GetPromotionById getPromotionById) {
+            GetPromotionById getPromotionById,
+            PlanAccessGuard planAccessGuard) {
         this.createPromotion = createPromotion;
         this.updatePromotion = updatePromotion;
         this.deletePromotion = deletePromotion;
         this.getActivePromotions = getActivePromotions;
         this.getActivePromotionsByBuffet = getActivePromotionsByBuffet;
         this.getPromotionById = getPromotionById;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @GetMapping
@@ -77,14 +81,17 @@ public class PromotionController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PromotionResponseDTO> getPromotionById(@PathVariable UUID id) {
+    public ResponseEntity<PromotionResponseDTO> getPromotionById(
+            @PathVariable UUID id) {
         return ResponseEntity.ok(PromotionResponseDTO.fromApplication(
                 getPromotionById.execute(new GetPromotionByIdRequest(id))));
     }
 
     @PostMapping
     public ResponseEntity<PromotionResponseDTO> createPromotion(
+            Authentication authentication,
             @RequestBody PromotionRequestDTO request) {
+        planAccessGuard.requireVendorAdvanced(authentication);
         CreatePromotionResponse response = createPromotion.execute(
                 new CreatePromotionRequest(
                         request.getProductIds(),
@@ -102,8 +109,10 @@ public class PromotionController {
 
     @PutMapping("/{id}")
     public ResponseEntity<PromotionResponseDTO> updatePromotion(
-            @PathVariable UUID id, 
+            @PathVariable UUID id,
+            Authentication authentication,
             @RequestBody PromotionRequestDTO request) {
+        planAccessGuard.requireVendorAdvanced(authentication);
         CreatePromotionResponse response = updatePromotion.execute(new UpdatePromotionRequest(
                 id,
                 request.getProductIds(),
@@ -116,7 +125,10 @@ public class PromotionController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePromotion(@PathVariable UUID id) {
+    public ResponseEntity<Void> deletePromotion(
+            Authentication authentication,
+            @PathVariable UUID id) {
+        planAccessGuard.requireVendorAdvanced(authentication);
         deletePromotion.execute(new DeletePromotionRequest(id));
         return ResponseEntity.noContent().build();
     }

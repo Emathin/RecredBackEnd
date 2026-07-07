@@ -42,7 +42,12 @@ class TutorRepositoryImplIT extends AbstractIntegrationTest {
         TutorEntity entity = generateTutorWithChild(student);
         UsuarioEntity user = entity.getUsuario();
 
-        assertTutorFindMethodsReturnCorrectDomainObject(entity.getId(), user.getId(), user.getIdCognito(), student.getId());
+        assertTutorFindMethodsReturnCorrectDomainObject(
+                entity.getId(),
+                user.getId(),
+                user.getIdCognito(),
+                student.getId()
+        );
     }
 
     @Test
@@ -119,11 +124,18 @@ class TutorRepositoryImplIT extends AbstractIntegrationTest {
         assertTrue(updated.getHijos().stream().anyMatch(h -> h.getId().equals(expectedChildId)));
     }
 
-    private void assertTutorFindMethodsReturnCorrectDomainObject(UUID tutorId, UUID userId, String idCognito, UUID studentId) {
+    private void assertTutorFindMethodsReturnCorrectDomainObject(
+            UUID tutorId,
+            UUID userId,
+            String idCognito,
+            UUID studentId
+    ) {
         assertEquals(tutorId, repository.findById(tutorId).orElseThrow().getId());
         assertEquals(tutorId, repository.findByUsuarioId(userId).orElseThrow().getId());
         assertEquals(tutorId, repository.findByUsuarioIdCognito(idCognito).orElseThrow().getId());
-        assertFalse(repository.findByAlumnoId(studentId).isEmpty());
+        Tutor tutorByStudent = repository.findByAlumnoId(studentId).get(0);
+        assertEquals(tutorId, tutorByStudent.getId());
+        assertEquals(userId, tutorByStudent.getUsuario().getId());
         assertFalse(repository.findAll().isEmpty());
     }
 }

@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.ColegioEntity;
@@ -27,6 +28,13 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
     @Transactional(readOnly = true)
     public Optional<Usuario> findById(UUID id) {
         return springDataUsuarioRepository.findById(id)
+                .map(UsuarioEntity::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public Optional<Usuario> findByIdForUpdate(UUID id) {
+        return springDataUsuarioRepository.findByIdForUpdate(id)
                 .map(UsuarioEntity::toDomain);
     }
 
@@ -115,5 +123,11 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
     @Transactional
     public void updateFotoPerfilByUsuarioId(UUID usuarioId, String urlFotoPerfil) {
         springDataUsuarioRepository.updateFotoPerfilByUsuarioId(usuarioId, urlFotoPerfil);
+    }
+
+    @Override
+    @Transactional
+    public void updatePlan(UUID usuarioId, TipoPlan plan) {
+        springDataUsuarioRepository.updatePlan(usuarioId, plan);
     }
 }

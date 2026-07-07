@@ -1,6 +1,7 @@
 package com.recred.backend.domain.repositories;
 
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.TipoPlan;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -8,6 +9,8 @@ import java.util.UUID;
 
 public interface UsuarioRepository {
     Optional<Usuario> findById(UUID id);
+
+    Optional<Usuario> findByIdForUpdate(UUID id);
 
     Usuario save(Usuario nuevoUsuario);
 
@@ -21,4 +24,6 @@ public interface UsuarioRepository {
     void updateFotoPerfil(String idCognito, String urlFotoPerfil);
 
     void updateFotoPerfilByUsuarioId(UUID usuarioId, String urlFotoPerfil);
+
+    void updatePlan(UUID usuarioId, TipoPlan plan);
 }

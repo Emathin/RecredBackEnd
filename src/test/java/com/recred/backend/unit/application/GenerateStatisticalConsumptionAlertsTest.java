@@ -12,6 +12,7 @@ import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.ConsumptionAlertType;
 import com.recred.backend.domain.models.ConsumptionCategoryStatistic;
 import com.recred.backend.domain.models.ConsumptionProductStatistic;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.ConsumptionAlertNotificationRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertPurchaseRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
@@ -335,7 +336,11 @@ class GenerateStatisticalConsumptionAlertsTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "Juan Perez",
-                List.of(new ConsumptionAlertTutor(UUID.randomUUID(), "Tutor Perez"))
+                List.of(new ConsumptionAlertTutor(
+                        UUID.randomUUID(),
+                        "Tutor Perez",
+                        TipoPlan.AVANZADO
+                ))
         );
     }
 

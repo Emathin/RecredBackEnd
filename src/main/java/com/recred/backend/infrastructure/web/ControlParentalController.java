@@ -42,6 +42,7 @@ public class ControlParentalController {
     private final ManualProductLock manualProductLock;
     private final ManualProductUnlock manualProductUnlock;
     private final TutorAccessGuard tutorAccessGuard;
+    private final PlanAccessGuard planAccessGuard;
 
     public ControlParentalController(ManageRestrictions useCase,
                                      GetHealthRestrictions obtenerRestriccionesUseCase,
@@ -50,7 +51,8 @@ public class ControlParentalController {
                                      DetectStudentPreferences detectarPreferenciasUseCase,
                                      ManualProductLock manualProductLock,
                                      ManualProductUnlock manualProductUnlock,
-                                     TutorAccessGuard tutorAccessGuard) {
+                                     TutorAccessGuard tutorAccessGuard,
+                                     PlanAccessGuard planAccessGuard) {
         this.useCase = useCase;
         this.obtenerRestriccionesUseCase = obtenerRestriccionesUseCase;
         this.addHealthRestriction = addHealthRestriction;
@@ -59,6 +61,7 @@ public class ControlParentalController {
         this.manualProductLock = manualProductLock;
         this.manualProductUnlock = manualProductUnlock;
         this.tutorAccessGuard = tutorAccessGuard;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @PutMapping("/alumnos/{alumnoId}/actualizar-restricciones-salud")
@@ -114,6 +117,7 @@ public class ControlParentalController {
             @RequestParam UUID buffetId,
             Authentication authentication) {
         tutorAccessGuard.requireStrictTutorStudentAccess(authentication, alumnoId);
+        planAccessGuard.requireTutorIntermediate(authentication);
         detectarPreferenciasUseCase.execute(
                 new DetectStudentPreferencesRequest(alumnoId, buffetId)
         );

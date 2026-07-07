@@ -18,16 +18,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProductChangeController {
 
     private final GetProductChangeRecommendation getProductChangeRecommendation;
+    private final PlanAccessGuard planAccessGuard;
 
     public ProductChangeController(
-            GetProductChangeRecommendation getProductChangeRecommendation
+            GetProductChangeRecommendation getProductChangeRecommendation,
+            PlanAccessGuard planAccessGuard
     ) {
         this.getProductChangeRecommendation = getProductChangeRecommendation;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @GetMapping("/me/lista-sugerencia-cambio-producto")
     public ResponseEntity<List<ProductChangeRecommendationResponse>>
     findAllProductChangeRecommendations(Authentication authentication) {
+        planAccessGuard.requireVendorAdvanced(authentication);
         Set<java.util.UUID> seenProducts = new HashSet<>();
         var request = new GetProductChangeRecommendationRequest(cognitoSubject(authentication));
         List<ProductChangeRecommendationResponse> responses = getProductChangeRecommendation

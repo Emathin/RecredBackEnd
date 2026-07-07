@@ -5,6 +5,7 @@ import com.recred.backend.application.GetGradesBySchoolRequest;
 import com.recred.backend.application.GetGradesBySchoolResponse;
 import com.recred.backend.domain.exceptions.SchoolNotFoundException;
 import com.recred.backend.domain.models.Grado;
+import com.recred.backend.domain.models.Nivel;
 import com.recred.backend.domain.repositories.ColegioRepository;
 import com.recred.backend.domain.repositories.GradoRepository;
 import org.junit.jupiter.api.Test;
@@ -39,8 +40,9 @@ class GetGradesBySchoolTest {
     @Test
     void execute_WhenSchoolExists_ReturnsActiveGrades() {
         UUID schoolId = randomUUID();
-        Grado firstGrade = grade("1", "A");
-        Grado secondGrade = grade("2", "B");
+        UUID levelId = randomUUID();
+        Grado firstGrade = grade("1", "A", levelId);
+        Grado secondGrade = grade("2", "B", levelId);
 
         givenSchoolExists(schoolId);
         givenActiveGradesForSchool(schoolId, firstGrade, secondGrade);
@@ -49,6 +51,8 @@ class GetGradesBySchoolTest {
 
         assertEquals(2, result.grades().size());
         assertEquals(firstGrade.getId(), result.grades().get(0).id());
+        assertEquals(levelId, result.grades().get(0).nivelId());
+        assertEquals("Primario", result.grades().get(0).nivelDescripcion());
         assertEquals("1", result.grades().get(0).anio());
         assertEquals("A", result.grades().get(0).division());
         assertEquals(secondGrade.getId(), result.grades().get(1).id());
@@ -92,11 +96,20 @@ class GetGradesBySchoolTest {
         return getGradesBySchool.execute(request(schoolId));
     }
 
-    private Grado grade(String year, String division) {
+    private Grado grade(String year, String division, UUID levelId) {
         Grado grade = new Grado();
         grade.setId(randomUUID());
+        grade.setNivel(level(levelId));
         grade.setAnio(year);
         grade.setDivision(division);
         return grade;
+    }
+
+    private Nivel level(UUID levelId) {
+        Nivel level = new Nivel();
+        level.setId(levelId);
+        level.setDescripcion("Primario");
+        level.setActivo(true);
+        return level;
     }
 }

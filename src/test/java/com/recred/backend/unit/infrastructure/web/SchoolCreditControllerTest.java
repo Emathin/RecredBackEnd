@@ -66,6 +66,9 @@ public class SchoolCreditControllerTest {
     @MockitoBean
     private UsuarioRepository usuarioRepository;
 
+    @MockitoBean
+    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
+
     private ObjectMapper objectMapper = new ObjectMapper();
 
     @Test

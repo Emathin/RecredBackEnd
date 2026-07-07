@@ -3,6 +3,7 @@ package com.recred.backend.unit.infrastructure.web;
 import com.recred.backend.application.GenerateProductChangeRecommendation;
 import com.recred.backend.application.GetProductChangeRecommendation;
 import com.recred.backend.application.GetProductChangeRecommendationResponse;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.ProductChangeController;
 import com.recred.backend.infrastructure.web.ProductChangeRecommendationResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,11 +32,15 @@ class ProductChangeControllerTest {
     @Mock
     private GetProductChangeRecommendation getProductChangeRecommendation;
 
+    @Mock
+    private PlanAccessGuard planAccessGuard;
+
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
         controller = new ProductChangeController(
-                getProductChangeRecommendation
+                getProductChangeRecommendation,
+                planAccessGuard
         );
     }
 
@@ -68,7 +73,7 @@ class ProductChangeControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
+        verify(planAccessGuard).requireVendorAdvanced(auth);
     }
 
 }
-

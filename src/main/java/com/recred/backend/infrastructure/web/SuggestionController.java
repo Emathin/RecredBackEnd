@@ -24,11 +24,14 @@ public class SuggestionController {
 
     private final GetSuggestionByNotificationId getSuggestionByNotificationId;
     private final GetSuggestionByType getSuggestionByType;
+    private final PlanAccessGuard planAccessGuard;
 
     public SuggestionController(GetSuggestionByNotificationId getSuggestionByNotificationId,
-                                GetSuggestionByType getSuggestionByType) {
+                                GetSuggestionByType getSuggestionByType,
+                                PlanAccessGuard planAccessGuard) {
         this.getSuggestionByNotificationId = getSuggestionByNotificationId;
         this.getSuggestionByType = getSuggestionByType;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @GetMapping("/sugerencias/por-notificacion/{idNotificacion}")
@@ -47,6 +50,7 @@ public class SuggestionController {
     @GetMapping("/sugerencias/agregar-producto")
     public ResponseEntity<List<GetSuggestionResponse>> getSuggestionsByBuffetIdAndType(
             Authentication authentication) {
+        planAccessGuard.requireVendorAdvanced(authentication);
         GetSuggestionByTypeRequest request = new GetSuggestionByTypeRequest(
                 cognitoSubject(authentication), TipoSugerenciaIA.AGREGAR_PRODUCTO);
         return ResponseEntity.ok(getSuggestionByType.execute(request));

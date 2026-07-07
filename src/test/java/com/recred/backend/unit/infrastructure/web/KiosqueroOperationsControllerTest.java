@@ -47,6 +47,7 @@ import com.recred.backend.infrastructure.web.KiosqueroAccessGuard;
 import com.recred.backend.infrastructure.web.KiosqueroOperationalAlertResponse;
 import com.recred.backend.infrastructure.web.KiosqueroOperationsController;
 import com.recred.backend.infrastructure.web.KiosqueroOrderResponse;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.SchoolAccessGuard;
 import com.recred.backend.infrastructure.web.TimeSlotResponse;
 import org.junit.jupiter.api.Test;
@@ -89,6 +90,7 @@ class KiosqueroOperationsControllerTest {
             mock(GetKiosqueroDashboard.class);
     private final KiosqueroAccessGuard kiosqueroAccessGuard = mock(KiosqueroAccessGuard.class);
     private final SchoolAccessGuard schoolAccessGuard = mock(SchoolAccessGuard.class);
+    private final PlanAccessGuard planAccessGuard = mock(PlanAccessGuard.class);
     private final KiosqueroOperationsController controller =
             new KiosqueroOperationsController(
                     closeDailyBuffet,
@@ -102,7 +104,8 @@ class KiosqueroOperationsControllerTest {
                     listKiosqueroOperationalAlerts,
                     getKiosqueroDashboard,
                     kiosqueroAccessGuard,
-                    schoolAccessGuard
+                    schoolAccessGuard,
+                    planAccessGuard
             );
 
     @Test
@@ -258,6 +261,7 @@ class KiosqueroOperationsControllerTest {
         );
 
         assertEquals(dashboard, response.getBody());
+        verify(planAccessGuard).requireVendorIntermediate(null);
         verify(getKiosqueroDashboard).execute(request);
     }
 
@@ -281,6 +285,7 @@ class KiosqueroOperationsControllerTest {
         );
 
         assertEquals(dashboard, response.getBody());
+        verify(planAccessGuard).requireVendorIntermediate(null);
         verify(getKiosqueroDashboard).execute(request);
     }
 

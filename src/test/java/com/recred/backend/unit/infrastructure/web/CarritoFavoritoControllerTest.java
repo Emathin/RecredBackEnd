@@ -34,6 +34,7 @@ class CarritoFavoritoControllerTest {
     private SaveFavoriteCart saveFavoriteCart;
     private GetFavoriteCartsByTutor getFavoriteCartsByTutor;
     private DeleteFavoriteCart deleteFavoriteCart;
+    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
     private CarritoFavoritoController controller;
 
     @BeforeEach
@@ -41,10 +42,12 @@ class CarritoFavoritoControllerTest {
         saveFavoriteCart = mock(SaveFavoriteCart.class);
         getFavoriteCartsByTutor = mock(GetFavoriteCartsByTutor.class);
         deleteFavoriteCart = mock(DeleteFavoriteCart.class);
+        schoolLicenseAccessGuard = mock(SchoolLicenseAccessGuard.class);
         controller = new CarritoFavoritoController(
                 saveFavoriteCart,
                 getFavoriteCartsByTutor,
-                deleteFavoriteCart
+                deleteFavoriteCart,
+                schoolLicenseAccessGuard
         );
     }
 
@@ -95,6 +98,7 @@ class CarritoFavoritoControllerTest {
         ArgumentCaptor<SaveFavoriteCartRequest> requestCaptor =
                 ArgumentCaptor.forClass(SaveFavoriteCartRequest.class);
         verify(saveFavoriteCart).execute(requestCaptor.capture());
+        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(alumnoId);
 
         SaveFavoriteCartRequest capturedRequest = requestCaptor.getValue();
         assertEquals("tutor-sub", capturedRequest.cognitoSub());
@@ -136,6 +140,7 @@ class CarritoFavoritoControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(cartId, response.getBody().get(0).id());
         assertEquals("Alvarez", response.getBody().get(0).alumnoApellido());
+        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(alumnoId);
         verify(getFavoriteCartsByTutor).execute(new GetFavoriteCartsByTutorRequest("tutor-sub", alumnoId, productId));
     }
 
@@ -165,4 +170,3 @@ class CarritoFavoritoControllerTest {
                 () -> controller.saveCart(null, request));
     }
 }
-

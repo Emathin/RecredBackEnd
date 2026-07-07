@@ -24,8 +24,12 @@ import com.recred.backend.domain.models.SchoolAssistantRequiredInput;
 import com.recred.backend.domain.models.SchoolAssistantRole;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.models.TipoDiaEscolar;
+import com.recred.backend.domain.models.TipoPlan;
+import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.repositories.TutorRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -46,8 +50,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -62,6 +68,9 @@ class SchoolAssistantFixedTopicsTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private TutorRepository tutorRepository;
 
     @Mock
     private CreateAssistantAdvancePurchase createAssistantAdvancePurchase;
@@ -79,6 +88,7 @@ class SchoolAssistantFixedTopicsTest {
         fixedTopics = new SchoolAssistantFixedTopics(
                 purchaseRepository,
                 productRepository,
+                tutorRepository,
                 createAssistantAdvancePurchase,
                 cancelPresentialPurchase,
                 Clock.fixed(Instant.parse("2026-05-27T12:00:00Z"),
@@ -87,6 +97,8 @@ class SchoolAssistantFixedTopicsTest {
         studentId = UUID.randomUUID();
         sessionId = UUID.randomUUID();
         buffetId = UUID.randomUUID();
+        lenient().when(tutorRepository.findByAlumnoId(any()))
+                .thenReturn(List.of(tutorWithPlan(TipoPlan.AVANZADO)));
     }
 
     @Test
@@ -165,6 +177,23 @@ class SchoolAssistantFixedTopicsTest {
         Map<?, ?> item = (Map<?, ?>) items.get(0);
         assertEquals(product.getId().toString(), item.get("productoId"));
         assertEquals(2, item.get("cantidad"));
+    }
+
+    @Test
+    void repeatLastPurchaseRequiresAdvancedTutorPlan() {
+        when(tutorRepository.findByAlumnoId(studentId))
+                .thenReturn(List.of(tutorWithPlan(TipoPlan.INTERMEDIO)));
+
+        Optional<SchoolAssistantFixedReply> reply = fixedTopics.respond(
+                "repeti mi ultima compra",
+                studentContext(new BigDecimal("5000.00")),
+                List.of()
+        );
+
+        assertTrue(reply.isPresent());
+        assertEquals("Esta funcionalidad requiere plan AVANZADO.",
+                reply.orElseThrow().answer());
+        verifyNoInteractions(purchaseRepository, productRepository, createAssistantAdvancePurchase);
     }
 
     @Test
@@ -1433,6 +1462,15 @@ class SchoolAssistantFixedTopicsTest {
                         + "|productosBloqueados=[Gaseosa]"),
                 List.of()
         );
+    }
+
+    private Tutor tutorWithPlan(TipoPlan plan) {
+        Usuario usuario = new Usuario();
+        usuario.setId(UUID.randomUUID());
+        usuario.setPlan(plan);
+        Tutor tutor = new Tutor();
+        tutor.setUsuario(usuario);
+        return tutor;
     }
 
     private Producto product(String name, BigDecimal price) {

@@ -62,9 +62,9 @@ public class GenerateParentSummaryTest {
     private GenerateParentSummary generateParentSummary;
 
     @Test
-    void testExecuteWithPremiumTutorsWithChildren() {
+    void execute_WhenTutorHasPaidPlanAndChildren_ShouldProcessTutor() {
         UUID usuarioId = UUID.randomUUID();
-        Tutor tutor = createTutor(usuarioId, TipoPlan.PREMIUM, Set.of(child("Ana")));
+        Tutor tutor = createTutor(usuarioId, TipoPlan.AVANZADO, Set.of(child("Ana")));
 
         when(tutorRepository.findAll()).thenReturn(List.of(tutor));
         when(summaryRepository.save(any(Summary.class))).thenReturn(new Summary());
@@ -85,7 +85,7 @@ public class GenerateParentSummaryTest {
         
         Alumno ana = child("Ana");
         Alumno luis = child("Luis");
-        Tutor tutor = createTutor(usuarioId, TipoPlan.PREMIUM, Set.of(ana, luis));
+        Tutor tutor = createTutor(usuarioId, TipoPlan.AVANZADO, Set.of(ana, luis));
 
         Producto fruta = product("Fruta", "20.00", category("Frutas"));
         Producto snack = product("Snack", "10.00", null);
@@ -136,7 +136,7 @@ public class GenerateParentSummaryTest {
         LocalDateTime inicio = LocalDateTime.of(2026, 6, 1, 0, 0);
         LocalDateTime fin = LocalDateTime.of(2026, 6, 15, 23, 59);
         Alumno child = child("Ana");
-        Tutor tutor = createTutor(usuarioId, TipoPlan.PREMIUM, Set.of(child));
+        Tutor tutor = createTutor(usuarioId, TipoPlan.AVANZADO, Set.of(child));
 
         Producto cheap = product("Agua", "10.00", category("Bebidas"));
         Producto expensive = product("Sandwich", "50.00", category("Comida"));
@@ -164,11 +164,14 @@ public class GenerateParentSummaryTest {
     }
 
     @Test
-    void execute_FiltersOutNonPremiumOrNoChildrenTutors() {
-        Tutor premiumNoChildren = createTutor(UUID.randomUUID(), TipoPlan.PREMIUM, Set.of());
-        Tutor basicWithChildren = createTutor(UUID.randomUUID(), TipoPlan.GRATUITO, Set.of(child("Ana")));
+    void execute_FiltersOutFreePlanOrNoChildrenTutors() {
+        Tutor paidPlanNoChildren = createTutor(UUID.randomUUID(), TipoPlan.AVANZADO, Set.of());
+        Tutor basicWithChildren = createTutor(
+                UUID.randomUUID(),
+                TipoPlan.GRATUITO,
+                Set.of(child("Ana")));
 
-        when(tutorRepository.findAll()).thenReturn(List.of(premiumNoChildren, basicWithChildren));
+        when(tutorRepository.findAll()).thenReturn(List.of(paidPlanNoChildren, basicWithChildren));
 
         GenerateParentSummaryRequest request = new GenerateParentSummaryRequest(
                 LocalDateTime.now().minusDays(7), LocalDateTime.now());

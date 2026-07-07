@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -26,11 +27,17 @@ class ComboSuggestionControllerTest {
     @Mock
     private GenerateComboSuggestion generateComboSuggestion;
 
+    @Mock
+    private PlanAccessGuard planAccessGuard;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = standaloneSetup(new ComboSuggestionController(generateComboSuggestion)).build();
+        mockMvc = standaloneSetup(new ComboSuggestionController(
+                generateComboSuggestion,
+                planAccessGuard
+        )).build();
     }
 
     @Test
@@ -59,6 +66,6 @@ class ComboSuggestionControllerTest {
                 .andExpect(jsonPath("$.idProduct").value(productId.toString()))
                 .andExpect(jsonPath("$.productName").value("Product Name"))
                 .andExpect(jsonPath("$.suggestedProducts[0].nombre").value("S1"));
+        verify(planAccessGuard).requireVendorAdvanced(auth);
     }
 }
-

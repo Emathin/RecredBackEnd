@@ -10,7 +10,10 @@ import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.preference.Preference;
 import com.recred.backend.config.MercadoPagoProperties;
 import com.recred.backend.domain.models.PaymentDetails;
+import com.recred.backend.domain.models.PaymentReference;
 import com.recred.backend.domain.models.PaymentStatus;
+import com.recred.backend.domain.models.PeriodoSuscripcion;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +38,53 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
 
     @Override
     public String createTopUpPreference(UUID studentId, BigDecimal amount) {
+        return createPreference(
+                studentId.toString(),
+                "Carga de Saldo - RecreoPago",
+                "Acreditacion de saldo para consumo escolar",
+                amount,
+                "ARS",
+                PaymentReference.topUp(studentId).toExternalReference()
+        );
+    }
+
+    @Override
+    public String createUserSubscriptionPreference(
+            UUID usuarioId,
+            TipoPlan plan,
+            PeriodoSuscripcion periodo,
+            BigDecimal amount
+    ) {
+        return createPreference(
+                usuarioId.toString(),
+                "Suscripcion " + plan.name() + " - RecreoPago",
+                "Suscripcion " + periodo.name().toLowerCase() + " para usuario",
+                amount,
+                "ARS",
+                PaymentReference.userSubscription(usuarioId, plan, periodo).toExternalReference()
+        );
+    }
+
+    @Override
+    public String createSchoolSubscriptionPreference(UUID colegioId, BigDecimal amount) {
+        return createPreference(
+                colegioId.toString(),
+                "Suscripcion Colegio - RecreoPago",
+                "Acceso mensual institucional a RecreoPago",
+                amount,
+                "USD",
+                PaymentReference.schoolSubscription(colegioId).toExternalReference()
+        );
+    }
+
+    private String createPreference(
+            String itemId,
+            String title,
+            String description,
+            BigDecimal amount,
+            String currencyId,
+            String externalReference
+    ) {
         try {
             String successUrl = properties.getSuccessUrl().trim();
             String notificationUrl = properties.getNotificationUrl().trim() 
@@ -43,11 +93,11 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
             PreferenceClient client = new PreferenceClient();
 
             PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
-                    .id(studentId.toString())
-                    .title("Carga de Saldo - RecreoPago")
-                    .description("Acreditacion de saldo para consumo escolar")
+                    .id(itemId)
+                    .title(title)
+                    .description(description)
                     .quantity(1)
-                    .currencyId("ARS")
+                    .currencyId(currencyId)
                     .unitPrice(amount)
                     .build();
 
@@ -65,7 +115,7 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
                     .autoReturn("approved")
                     .backUrls(backUrls)
                     .notificationUrl(notificationUrl)
-                    .externalReference(studentId.toString())
+                    .externalReference(externalReference)
                     .build();
 
             Preference preference = client.create(preferenceRequest);
@@ -147,8 +197,6 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
             PaymentClient client = new PaymentClient();
             Payment payment = client.get(Long.parseLong(paymentId));
 
-            UUID studentId = UUID.fromString(payment.getExternalReference());
-
             PaymentStatus status = switch (payment.getStatus()) {
                 case "approved" -> PaymentStatus.APPROVED;
                 case "pending", "in_process" -> PaymentStatus.PENDING;
@@ -159,9 +207,9 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
                 default -> PaymentStatus.PENDING;
             };
 
-            return new PaymentDetails(
+            return PaymentDetails.fromReference(
                     paymentId,
-                    studentId,
+                    PaymentReference.fromExternalReference(payment.getExternalReference()),
                     payment.getTransactionAmount(),
                     status
             );

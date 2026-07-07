@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -50,5 +51,41 @@ public class Tutor {
                 .filter(child -> child.getId().equals(studentId))
                 .findFirst()
                 .orElseThrow(() -> new SecurityException(message));
+    }
+
+    public boolean hasPaidPlan() {
+        return usuario != null && usuario.hasPaidPlan();
+    }
+
+    public boolean hasChildren() {
+        return hijos != null && !hijos.isEmpty();
+    }
+
+    public boolean canReceiveParentSummary() {
+        return hasPaidPlan() && hasChildren();
+    }
+
+    public boolean exceedsChildrenFavoriteProductLimit(
+            UUID studentId,
+            UUID productId,
+            int maximum
+    ) {
+        if (childAlreadyHasFavoriteProduct(studentId, productId)) {
+            return false;
+        }
+
+        return childrenFavoriteProductCount() >= maximum;
+    }
+
+    public int childrenFavoriteProductCount() {
+        return hijos.stream()
+                .mapToInt(child -> child.getProductosFavoritos().size())
+                .sum();
+    }
+
+    private boolean childAlreadyHasFavoriteProduct(UUID studentId, UUID productId) {
+        return hijos.stream()
+                .filter(child -> Objects.equals(child.getId(), studentId))
+                .anyMatch(child -> child.hasFavoriteProduct(productId));
     }
 }
