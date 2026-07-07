@@ -107,14 +107,30 @@ class SchoolTutorInvitationControllerTest {
                 () -> controller.invite(null, buildRequest()));
     }
 
-    // --- Given Helpers ---
+    @Test
+    void shouldThrowException_whenEmailIsBlank() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> controller.invite(authentication, new TutorInvitationRequest(" ", "Ana", "Gomez", "111")));
+        
+        assertEquals("El email es obligatorio", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowException_whenEmailIsInvalid() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> controller.invite(authentication, new TutorInvitationRequest("no-es-email", "Ana", "Gomez", "111")));
+        
+        assertEquals("El email no es valido", exception.getMessage());
+    }
+
+
 
     private void givenDirectorIsAuthenticated() {
         when(authentication.getName()).thenReturn(DIRECTOR_SUB);
     }
 
     private void givenInviteResult(String status, TutorInvitation invitation) {
-        when(inviteTutorToSchool.execute(eq(DIRECTOR_SUB), any()))
+        when(inviteTutorToSchool.execute(any(com.recred.backend.application.InviteTutorToSchoolRequest.class)))
                 .thenReturn(new InviteTutorToSchool.TutorInvitationResult(
                         invitation, INVITATION_LINK, status));
     }
@@ -135,7 +151,7 @@ class SchoolTutorInvitationControllerTest {
                 .thenReturn(result);
     }
 
-    // --- When Helpers ---
+
 
     private ResponseEntity<TutorInvitationResponse> whenInviteIsCalled(TutorInvitationRequest request) {
         return controller.invite(authentication, request);
@@ -145,12 +161,12 @@ class SchoolTutorInvitationControllerTest {
         return controller.importCsv(authentication, file);
     }
 
-    // --- Then Helpers ---
+
 
     private void thenInviteUseCaseWasCalledWithCorrectCommand() {
-        ArgumentCaptor<InviteTutorToSchool.TutorInvitationCommand> captor =
-                ArgumentCaptor.forClass(InviteTutorToSchool.TutorInvitationCommand.class);
-        verify(inviteTutorToSchool).execute(eq(DIRECTOR_SUB), captor.capture());
+        ArgumentCaptor<com.recred.backend.application.InviteTutorToSchoolRequest> captor =
+                ArgumentCaptor.forClass(com.recred.backend.application.InviteTutorToSchoolRequest.class);
+        verify(inviteTutorToSchool).execute(captor.capture());
         assertEquals(TUTOR_EMAIL, captor.getValue().email());
     }
 
@@ -174,7 +190,7 @@ class SchoolTutorInvitationControllerTest {
         assertEquals("bad@example.com", response.getBody().errors().get(0).email());
     }
 
-    // --- Model Builders ---
+
 
     private TutorInvitationRequest buildRequest() {
         return new TutorInvitationRequest(TUTOR_EMAIL, "Ana", "Gomez", "1122334455");

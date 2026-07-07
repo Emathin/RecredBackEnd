@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.ImportTutorInvitationsFromCsv;
 import com.recred.backend.application.ImportTutorInvitationsFromCsvRequest;
 import com.recred.backend.application.InviteTutorToSchool;
+import com.recred.backend.application.InviteTutorToSchoolRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -33,13 +34,24 @@ public class SchoolTutorInvitationController {
         this.importTutorInvitationsFromCsv = importTutorInvitationsFromCsv;
     }
 
+    private static final java.util.regex.Pattern EMAIL_PATTERN =
+            java.util.regex.Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
     @PostMapping
     public ResponseEntity<TutorInvitationResponse> invite(
             Authentication authentication,
             @RequestBody TutorInvitationRequest request) {
+        if (request.email() == null || request.email().isBlank()) {
+            throw new IllegalArgumentException("El email es obligatorio");
+        }
+        if (!EMAIL_PATTERN.matcher(request.email().trim()).matches()) {
+            throw new IllegalArgumentException("El email no es valido");
+        }
+
         InviteTutorToSchool.TutorInvitationResult result = inviteTutorToSchool.execute(
-                cognitoSubject(authentication),
-                new InviteTutorToSchool.TutorInvitationCommand(
+                new InviteTutorToSchoolRequest(
+                        cognitoSubject(authentication),
                         request.email(),
                         request.firstName(),
                         request.lastName(),

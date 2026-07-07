@@ -76,13 +76,22 @@ public class ImportTutorInvitationsFromCsv {
         return rawEmail == null ? "" : rawEmail.trim().toLowerCase(Locale.ROOT);
     }
 
+    private static final java.util.regex.Pattern EMAIL_PATTERN =
+            java.util.regex.Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
     private void inviteAndAccumulateResult(
             String directorCognitoSubject, List<String> values, String email, 
             int row, Header header, ImportContext context) {
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            context.errors.add(new TutorInvitationImportError(row, email, "El email no es valido"));
+            return;
+        }
+
         try {
             InviteTutorToSchool.TutorInvitationResult result = inviteTutorToSchool.execute(
-                    directorCognitoSubject,
-                    new InviteTutorToSchool.TutorInvitationCommand(
+                    new InviteTutorToSchoolRequest(
+                            directorCognitoSubject,
                             email,
                             value(values, header.firstNameIndex()),
                             value(values, header.lastNameIndex()),

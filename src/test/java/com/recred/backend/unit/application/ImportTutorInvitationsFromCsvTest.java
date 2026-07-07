@@ -31,7 +31,7 @@ class ImportTutorInvitationsFromCsvTest {
             created@test.com,Ana,Gomez,1111
             resent@test.com,Juan,Perez,2222
             associated@test.com,Lu,Diaz,3333
-            invalid@test.com,Bad,Mail,4444
+            invalid-email,Bad,Mail,4444
             """;
     private static final String QUOTED_VALUES_CSV = "email,nombre\n\"parent@test.com\",\"Ana \"\"Nani\"\"\"\n\n";
 
@@ -79,8 +79,7 @@ class ImportTutorInvitationsFromCsvTest {
 
     private void givenInvitationIsCreated() {
         when(inviteTutorToSchool.execute(
-                eq(DIRECTOR_SUBJECT),
-                any(InviteTutorToSchool.TutorInvitationCommand.class)))
+                any(com.recred.backend.application.InviteTutorToSchoolRequest.class)))
                 .thenReturn(new InviteTutorToSchool.TutorInvitationResult(
                         null,
                         null,
@@ -89,15 +88,13 @@ class ImportTutorInvitationsFromCsvTest {
 
     private void givenMixedInvitationResults() {
         when(inviteTutorToSchool.execute(
-                eq(DIRECTOR_SUBJECT),
-                any(InviteTutorToSchool.TutorInvitationCommand.class)))
+                any(com.recred.backend.application.InviteTutorToSchoolRequest.class)))
                 .thenReturn(new InviteTutorToSchool.TutorInvitationResult(
                         null, null, "CREATED_EMAIL_ERROR"))
                 .thenReturn(new InviteTutorToSchool.TutorInvitationResult(
                         null, null, "RESENT_EMAIL_ERROR"))
                 .thenReturn(new InviteTutorToSchool.TutorInvitationResult(
-                        null, null, "ALREADY_ASSOCIATED"))
-                .thenThrow(new IllegalArgumentException("El email no es valido"));
+                        null, null, "ALREADY_ASSOCIATED"));
     }
 
     private ImportTutorInvitationsFromCsv.TutorInvitationImportResult whenExecute(String csv) {
@@ -122,7 +119,7 @@ class ImportTutorInvitationsFromCsvTest {
 
     private void thenResultHasInvalidEmailError(ImportTutorInvitationsFromCsv.TutorInvitationImportResult result) {
         assertEquals(1, result.errors().size());
-        assertEquals("invalid@test.com", result.errors().get(0).email());
+        assertEquals("invalid-email", result.errors().get(0).email());
         assertEquals("El email no es valido", result.errors().get(0).message());
     }
 
