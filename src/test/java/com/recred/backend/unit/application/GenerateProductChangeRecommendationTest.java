@@ -4,7 +4,6 @@ import com.recred.backend.application.GenerateProductChangeRecommendation;
 import com.recred.backend.application.GenerateProductChangeRecommendationRequest;
 import com.recred.backend.application.GetProductStatistics;
 import com.recred.backend.application.ProductSaleStatisticsResponse;
-import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
 import com.recred.backend.domain.models.ProductChangeAnalysis;
 import com.recred.backend.domain.models.ProductChangeRecommendation;
 import com.recred.backend.domain.models.ProductRecommendationResult;
@@ -13,10 +12,6 @@ import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.services.ProductChangeAnalyzer;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -24,99 +19,139 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-public class GenerateProductChangeRecommendationTest {
+class GenerateProductChangeRecommendationTest {
 
-    @Mock
-    private ProductRepository productRepository;
+    private final ProductRepository productRepository = mock(ProductRepository.class);
+    private final ProductChangeAnalyzer productChangeAnalyzer = mock(ProductChangeAnalyzer.class);
+    private final AIEventRepository aiEventRepository = mock(AIEventRepository.class);
+    private final KiosqueroRepository kiosqueroRepository = mock(KiosqueroRepository.class);
+    private final GetProductStatistics getProductStatistics = mock(GetProductStatistics.class);
 
-    @Mock
-    private ProductChangeAnalyzer productChangeAnalyzer;
-
-    @Mock
-    private AIEventRepository aiEventRepository;
-
-    @Mock
-    private KiosqueroRepository kiosqueroRepository;
-
-    @Mock
-    private GetProductStatistics getProductStatistics;
-
-    @InjectMocks
-    private GenerateProductChangeRecommendation useCase;
+    private final GenerateProductChangeRecommendation useCase = new GenerateProductChangeRecommendation(
+            productRepository,
+            productChangeAnalyzer,
+            aiEventRepository,
+            kiosqueroRepository,
+            getProductStatistics
+    );
 
     @Test
-    void executeShouldGenerateRecommendationsForAllKiosqueros() {
+    void generateRecommendationsForAllKiosqueros() {
         UUID sellerId1 = UUID.randomUUID();
         UUID sellerId2 = UUID.randomUUID();
         UUID buffetId1 = UUID.randomUUID();
         UUID buffetId2 = UUID.randomUUID();
 
-        when(kiosqueroRepository.findAllIds()).thenReturn(List.of(sellerId1, sellerId2));
-        when(kiosqueroRepository.findBuffetById(sellerId1)).thenReturn(buffetId1);
-        when(kiosqueroRepository.findBuffetById(sellerId2)).thenReturn(buffetId2);
-        when(kiosqueroRepository.findUsuarioIdById(sellerId1)).thenReturn(UUID.randomUUID());
-        when(kiosqueroRepository.findUsuarioIdById(sellerId2)).thenReturn(UUID.randomUUID());
+        givenKiosquerosExist(sellerId1, sellerId2);
+        givenBuffetForKiosquero(sellerId1, buffetId1);
+        givenBuffetForKiosquero(sellerId2, buffetId2);
+        givenUsuarioIdForKiosquero(sellerId1);
+        givenUsuarioIdForKiosquero(sellerId2);
 
-        ProductChangeRecommendation product1 = buildProduct(buffetId1);
-        ProductChangeRecommendation product2 = buildProduct(buffetId2);
+        givenLeastSoldProductsForBuffet(buffetId1);
+        givenLeastSoldProductsForBuffet(buffetId2);
+        givenProductStatisticsAreAvailable();
+        givenAiAnalysisIsSuccessful();
 
-        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId1))
-                .thenReturn(List.of(product1));
-        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId2))
-                .thenReturn(List.of(product2));
+        whenExecute();
 
-        ProductChangeAnalysis analysis = new ProductChangeAnalysis(
-                "Resumen", List.of(), List.of(), "model"
-        );
-        when(getProductStatistics.execute(any())).thenReturn(statistics());
-        when(productChangeAnalyzer.analyze(any())).thenReturn(Optional.of(analysis));
-
-        useCase.execute(new GenerateProductChangeRecommendationRequest());
-
-        verify(kiosqueroRepository).findAllIds();
-        verify(kiosqueroRepository).findBuffetById(sellerId1);
-        verify(kiosqueroRepository).findBuffetById(sellerId2);
-        verify(aiEventRepository, times(2)).registerProductChangeRecommendation(any());
+        thenBuffetsAreSearched(sellerId1, sellerId2);
+        thenRecommendationsAreRegistered(2);
     }
 
     @Test
-    void executeShouldContinueWhenOneKiosqueroFails() {
+    void continueWhenOneKiosqueroFails() {
         UUID failingSellerId = UUID.randomUUID();
         UUID sellerId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
 
-        when(kiosqueroRepository.findAllIds()).thenReturn(List.of(failingSellerId, sellerId));
-        when(kiosqueroRepository.findBuffetById(failingSellerId)).thenReturn(null);
-        when(kiosqueroRepository.findBuffetById(sellerId)).thenReturn(buffetId);
-        when(kiosqueroRepository.findUsuarioIdById(sellerId)).thenReturn(UUID.randomUUID());
+        givenKiosquerosExist(failingSellerId, sellerId);
+        givenBuffetForKiosquero(failingSellerId, null); // Simulates failure
+        givenBuffetForKiosquero(sellerId, buffetId);
+        givenUsuarioIdForKiosquero(sellerId);
 
-        ProductChangeRecommendation product = buildProduct(buffetId);
-        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId))
-                .thenReturn(List.of(product));
-        when(getProductStatistics.execute(any())).thenReturn(statistics());
-        when(productChangeAnalyzer.analyze(product)).thenReturn(Optional.empty());
+        givenLeastSoldProductsForBuffet(buffetId);
+        givenProductStatisticsAreAvailable();
+        givenAiAnalysisFails();
 
-        useCase.execute(new GenerateProductChangeRecommendationRequest());
+        whenExecute();
 
-        verify(kiosqueroRepository).findBuffetById(failingSellerId);
-        verify(kiosqueroRepository).findBuffetById(sellerId);
-        verify(aiEventRepository).registerProductChangeRecommendation(
-                any(ProductRecommendationResult.class));
+        thenBuffetsAreSearched(failingSellerId, sellerId);
+        thenRecommendationsAreRegistered(1);
     }
 
     @Test
-    void executeShouldNotRegisterWhenNoKiosqueros() {
+    void doNotRegisterWhenNoKiosqueros() {
+        givenNoKiosquerosExist();
+
+        whenExecute();
+
+        thenNoProductsAreSearched();
+        thenNoRecommendationsAreRegistered();
+    }
+
+    private void givenKiosquerosExist(UUID... sellerIds) {
+        when(kiosqueroRepository.findAllIds()).thenReturn(List.of(sellerIds));
+    }
+
+    private void givenNoKiosquerosExist() {
         when(kiosqueroRepository.findAllIds()).thenReturn(List.of());
+    }
 
+    private void givenBuffetForKiosquero(UUID sellerId, UUID buffetId) {
+        when(kiosqueroRepository.findBuffetById(sellerId)).thenReturn(buffetId);
+    }
+
+    private void givenUsuarioIdForKiosquero(UUID sellerId) {
+        when(kiosqueroRepository.findUsuarioIdById(sellerId)).thenReturn(UUID.randomUUID());
+    }
+
+    private void givenLeastSoldProductsForBuffet(UUID buffetId) {
+        ProductChangeRecommendation product = buildProduct(buffetId);
+        when(productRepository.findBuffetTop5LeastSoldProducts(buffetId))
+                .thenReturn(List.of(product));
+    }
+
+    private void givenProductStatisticsAreAvailable() {
+        when(getProductStatistics.execute(any())).thenReturn(statistics());
+    }
+
+    private void givenAiAnalysisIsSuccessful() {
+        ProductChangeAnalysis analysis = new ProductChangeAnalysis(
+                "Resumen", List.of(), List.of(), "model"
+        );
+        when(productChangeAnalyzer.analyze(any())).thenReturn(Optional.of(analysis));
+    }
+
+    private void givenAiAnalysisFails() {
+        when(productChangeAnalyzer.analyze(any())).thenReturn(Optional.empty());
+    }
+
+    private void whenExecute() {
         useCase.execute(new GenerateProductChangeRecommendationRequest());
+    }
 
+    private void thenBuffetsAreSearched(UUID... sellerIds) {
+        for (UUID sellerId : sellerIds) {
+            verify(kiosqueroRepository).findBuffetById(sellerId);
+        }
+    }
+
+    private void thenRecommendationsAreRegistered(int times) {
+        verify(aiEventRepository, times(times)).registerProductChangeRecommendation(any(ProductRecommendationResult.class));
+    }
+
+    private void thenNoProductsAreSearched() {
         verify(productRepository, never()).findBuffetTop5LeastSoldProducts(any());
+    }
+
+    private void thenNoRecommendationsAreRegistered() {
         verify(aiEventRepository, never()).registerProductChangeRecommendation(any());
     }
 
