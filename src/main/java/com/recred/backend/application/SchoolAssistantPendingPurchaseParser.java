@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-class SchoolAssistantPendingPurchaseParser {
+public class SchoolAssistantPendingPurchaseParser {
 
     private static final String ACTION_STATUS_KEY = "estadoAccionChatbot";
     private static final String PENDING_ACTION_KEY = "accionPendienteChatbot";
@@ -21,7 +21,7 @@ class SchoolAssistantPendingPurchaseParser {
 
     private final SchoolAssistantIntentDetector intentDetector;
 
-    SchoolAssistantPendingPurchaseParser(SchoolAssistantIntentDetector intentDetector) {
+    public SchoolAssistantPendingPurchaseParser(SchoolAssistantIntentDetector intentDetector) {
         this.intentDetector = intentDetector;
     }
 

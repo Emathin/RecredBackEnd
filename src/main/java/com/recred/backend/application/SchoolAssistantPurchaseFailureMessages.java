@@ -7,7 +7,7 @@ import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
 import java.util.Map;
 
-class SchoolAssistantPurchaseFailureMessages {
+public class SchoolAssistantPurchaseFailureMessages {
 
     private static final String GENERIC_PURCHASE_FAILURE_MESSAGE =
             "No pude realizar la compra ahora. Intentalo de nuevo mas tarde.";
@@ -25,6 +25,9 @@ class SchoolAssistantPurchaseFailureMessages {
                     RestriccionSaludException.class,
                     "No pude realizar la compra porque incluye un producto que tenes restringido."
             );
+
+    public SchoolAssistantPurchaseFailureMessages() {
+    }
 
     String message(RuntimeException exception) {
         return PURCHASE_FAILURE_MESSAGES.getOrDefault(
