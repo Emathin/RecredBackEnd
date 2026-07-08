@@ -8,6 +8,8 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 public class RevertPurchaseCancellation {
     private final PurchaseRepository purchaseRepository;
     private final WalletRepository walletRepository;
@@ -23,35 +25,74 @@ public class RevertPurchaseCancellation {
     }
 
     @Transactional
-    public RevertPurchaseCancellationResponse execute(RevertPurchaseCancellationRequest request) {
-        request.validate();
-        
-        Purchase purchase = purchaseRepository.findById(request.purchaseId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Purchase not found: " + request.purchaseId()));
+    public RevertPurchaseCancellationResponse execute(
+            RevertPurchaseCancellationRequest cancellationRequest
+    ) {
+        Purchase purchase = revertCancellation(cancellationRequest);
+        return responseFrom(savePurchase(purchase), purchase);
+    }
 
+    private Purchase revertCancellation(RevertPurchaseCancellationRequest cancellationRequest) {
+        Purchase purchase = findPurchase(cancellationRequest.purchaseId());
         purchase.revertCancellation();
+        debitStudentWallet(purchase);
+        return purchase;
+    }
 
-        Billetera wallet = walletRepository.findByStudentId(purchase.requireStudentId())
-                .orElseThrow(() -> new IllegalStateException(
-                        "Student wallet not found for debit."));
+    private Purchase findPurchase(UUID purchaseId) {
+        ensurePurchaseIdIsPresent(purchaseId);
+        return purchaseRepository.findById(purchaseId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Purchase not found: " + purchaseId));
+    }
 
-        if (wallet.getSaldoCreditos().compareTo(purchase.getTotalAmount()) < 0) {
-            throw new IllegalStateException("Insufficient funds to revert cancellation.");
+    private void ensurePurchaseIdIsPresent(UUID purchaseId) {
+        if (purchaseId == null) {
+            throw new IllegalArgumentException("purchaseId cannot be null");
         }
+    }
+
+    private void debitStudentWallet(Purchase purchase) {
+        Billetera wallet = findStudentWallet(purchase);
+        validateWalletHasFunds(wallet, purchase);
 
         wallet.debit(purchase.getTotalAmount());
         walletRepository.save(wallet);
+        registerWalletMovement(wallet, purchase);
+    }
 
-        if (movimientoBilleteraRepository != null) {
-            movimientoBilleteraRepository.registrarMovimientoSistema(
-                    wallet.getId(),
-                    TipoMovimientoBilletera.COMPRA,
-                    purchase.getTotalAmount().negate(),
-                    "Débito por reversión de cancelación de compra");
+    private Billetera findStudentWallet(Purchase purchase) {
+        return walletRepository.findByStudentId(purchase.requireStudentId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "Student wallet not found for debit."));
+    }
+
+    private void validateWalletHasFunds(Billetera wallet, Purchase purchase) {
+        if (wallet.getSaldoCreditos().compareTo(purchase.getTotalAmount()) < 0) {
+            throw new IllegalStateException("Insufficient funds to revert cancellation.");
+        }
+    }
+
+    private void registerWalletMovement(Billetera wallet, Purchase purchase) {
+        if (movimientoBilleteraRepository == null) {
+            return;
         }
 
-        Purchase savedPurchase = purchaseRepository.save(purchase);
+        movimientoBilleteraRepository.registrarMovimientoSistema(
+                wallet.getId(),
+                TipoMovimientoBilletera.COMPRA,
+                purchase.getTotalAmount().negate(),
+                "Débito por reversión de cancelación de compra");
+    }
+
+    private Purchase savePurchase(Purchase purchase) {
+        return purchaseRepository.save(purchase);
+    }
+
+    private RevertPurchaseCancellationResponse responseFrom(
+            Purchase savedPurchase,
+            Purchase purchase
+    ) {
         return RevertPurchaseCancellationResponse.fromDomain(
                 savedPurchase == null ? purchase : savedPurchase);
     }
