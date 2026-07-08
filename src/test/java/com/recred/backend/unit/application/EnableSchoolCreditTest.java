@@ -13,6 +13,9 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
+import org.springframework.security.access.AccessDeniedException;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.TipoPlan;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
@@ -71,6 +74,14 @@ public class EnableSchoolCreditTest {
         wallet.setSaldoCreditos(BigDecimal.ZERO);
     }
 
+    private Tutor createPremiumTutor() {
+        Tutor tutor = new Tutor();
+        Usuario usuario = new Usuario();
+        usuario.setPlan(TipoPlan.PREMIUM);
+        tutor.setUsuario(usuario);
+        return tutor;
+    }
+
     @Test
     void execute_successfulWithZeroExpenses() {
         Alumno alumnoMock = new Alumno();
@@ -89,7 +100,7 @@ public class EnableSchoolCreditTest {
                 3
         );
 
-        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(createPremiumTutor()));
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumnoMock));
         when(schoolCreditRepository.save(any(SchoolCredit.class))).thenReturn(saved);
 
@@ -120,7 +131,7 @@ public class EnableSchoolCreditTest {
                 1
         );
 
-        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(createPremiumTutor()));
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumnoMock));
         when(schoolCreditRepository.save(any(SchoolCredit.class))).thenReturn(saved);
 
@@ -146,7 +157,7 @@ public class EnableSchoolCreditTest {
                 1
         );
 
-        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(createPremiumTutor()));
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumnoMock2));
 
         Executable execution = () -> enableSchoolCredit.execute(request);
@@ -165,7 +176,7 @@ public class EnableSchoolCreditTest {
                 0
         );
 
-        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(createPremiumTutor()));
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(alumno));
         when(schoolCreditRepository.save(any(SchoolCredit.class))).thenAnswer(invocation -> {
             SchoolCredit credit = invocation.getArgument(0);
@@ -192,7 +203,7 @@ public class EnableSchoolCreditTest {
         );
 
         when(tutorRepository.findById(tutorId)).thenReturn(Optional.empty(),
-                Optional.of(new Tutor()));
+                Optional.of(createPremiumTutor()));
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
 
         Executable missingTutorExecution = () -> enableSchoolCredit.execute(request);
@@ -256,5 +267,45 @@ public class EnableSchoolCreditTest {
         assertEquals("studentId cannot be null", missingStudent.getMessage());
         assertEquals("Credit amount must be greater than zero", invalidAmount.getMessage());
         verifyNoInteractions(tutorRepository, alumnoRepository, schoolCreditRepository);
+    }
+
+    @Test
+    void execute_throwsWhenTutorHasFreePlan_throwsAccessDenied() {
+        Tutor tutorMock = new Tutor();
+        Usuario usuarioMock = new Usuario();
+        usuarioMock.setPlan(TipoPlan.GRATUITO);
+        tutorMock.setUsuario(usuarioMock);
+
+        EnableSchoolCreditRequest request = new EnableSchoolCreditRequest(
+                tutorId,
+                studentId,
+                new BigDecimal("1000.00"),
+                1
+        );
+
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(tutorMock));
+
+        Executable execution = () -> enableSchoolCredit.execute(request);
+
+        assertThrows(AccessDeniedException.class, execution);
+    }
+
+    @Test
+    void execute_throwsWhenTutorHasNullUser_throwsAccessDenied() {
+        Tutor tutorMock = new Tutor();
+        tutorMock.setUsuario(null);
+
+        EnableSchoolCreditRequest request = new EnableSchoolCreditRequest(
+                tutorId,
+                studentId,
+                new BigDecimal("1000.00"),
+                1
+        );
+
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(tutorMock));
+
+        Executable execution = () -> enableSchoolCredit.execute(request);
+
+        assertThrows(AccessDeniedException.class, execution);
     }
 }

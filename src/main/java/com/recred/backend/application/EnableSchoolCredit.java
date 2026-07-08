@@ -16,6 +16,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 
 public class EnableSchoolCredit {
 
@@ -46,6 +47,10 @@ public class EnableSchoolCredit {
         request.validate();
 
         Tutor tutor = validateParentAndGetTutor(request.tutorId());
+        if (tutor.getUsuario() == null || tutor.getUsuario().hasFreePlan()) {
+            throw new AccessDeniedException(
+                    "La funcionalidad de Microcréditos está disponible solo para el plan AVANZADO");
+        }
         Alumno alumno = getHijo(request.studentId());
 
         Billetera wallet = getOrCreateWallet(alumno);
