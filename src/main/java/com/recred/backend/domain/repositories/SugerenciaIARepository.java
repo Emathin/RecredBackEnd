@@ -37,4 +37,5 @@ public interface SugerenciaIARepository {
 
     Optional<SugerenciaIAEntity> findById(UUID id);
 
+    java.util.Optional<SugerenciaIA> findSugerenciaById(UUID id);
 }

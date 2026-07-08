@@ -4,7 +4,7 @@ import com.recred.backend.application.AcceptTutorInvitation;
 import com.recred.backend.application.AcceptTutorInvitationRequest;
 import com.recred.backend.application.AcceptTutorInvitationResponse;
 import com.recred.backend.application.GetTutorInvitation;
-import com.recred.backend.domain.models.TutorInvitation;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -29,9 +29,20 @@ public class TutorInvitationController {
 
     @GetMapping("/{token}")
     public ResponseEntity<TutorInvitationResponse> getInvitation(@PathVariable String token) {
-        TutorInvitation invitation = getTutorInvitation.execute(token);
-        return ResponseEntity.ok(TutorInvitationResponse.fromDomain(
-                invitation, null, "VALIDATED"));
+        var response = getTutorInvitation.execute(token);
+        return ResponseEntity.ok(new TutorInvitationResponse(
+                response.id(),
+                response.schoolId(),
+                response.schoolName(),
+                response.email(),
+                response.firstName(),
+                response.lastName(),
+                response.phone(),
+                response.status() != null ? response.status().name() : null,
+                response.expiresAt(),
+                null,
+                "VALIDATED"
+        ));
     }
 
     @PostMapping("/{token}/aceptar")

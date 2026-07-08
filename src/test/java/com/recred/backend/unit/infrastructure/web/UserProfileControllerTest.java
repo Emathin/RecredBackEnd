@@ -10,6 +10,8 @@ import com.recred.backend.domain.repositories.SuscripcionColegioRepository;
 import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
+import com.recred.backend.domain.models.EstadoLicenciaColegio;
+import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import com.recred.backend.infrastructure.web.UserProfileController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,7 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -52,6 +55,7 @@ class UserProfileControllerTest {
     private CloudinaryService cloudinaryService;
     private SuscripcionUsuarioRepository suscripcionUsuarioRepository;
     private SuscripcionColegioRepository suscripcionColegioRepository;
+    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -60,13 +64,15 @@ class UserProfileControllerTest {
         cloudinaryService = mock(CloudinaryService.class);
         suscripcionUsuarioRepository = mock(SuscripcionUsuarioRepository.class);
         suscripcionColegioRepository = mock(SuscripcionColegioRepository.class);
+        schoolLicenseAccessGuard = mock(SchoolLicenseAccessGuard.class);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new UserProfileController(
                         usuarioService,
                         cloudinaryService,
                         suscripcionUsuarioRepository,
                         suscripcionColegioRepository,
-                        CLOCK
+                        CLOCK,
+                        schoolLicenseAccessGuard
                 ))
                 .build();
     }
@@ -212,13 +218,17 @@ class UserProfileControllerTest {
             UUID schoolId,
             SuscripcionColegio suscripcion
     ) {
-        when(suscripcionColegioRepository.findActiveByColegioId(schoolId))
-                .thenReturn(Optional.of(suscripcion));
+        when(schoolLicenseAccessGuard.getLicenseStatusForUser(any(Usuario.class)))
+                .thenReturn(EstadoLicenciaColegio.ACTIVA);
+        when(schoolLicenseAccessGuard.getLicenseExpirationForUser(any(Usuario.class)))
+                .thenReturn(suscripcion.getFechaVencimiento());
     }
 
     private void givenNoActiveSchoolSubscription(UUID schoolId) {
-        when(suscripcionColegioRepository.findActiveByColegioId(schoolId))
-                .thenReturn(Optional.empty());
+        when(schoolLicenseAccessGuard.getLicenseStatusForUser(any(Usuario.class)))
+                .thenReturn(EstadoLicenciaColegio.SIN_LICENCIA);
+        when(schoolLicenseAccessGuard.getLicenseExpirationForUser(any(Usuario.class)))
+                .thenReturn(null);
     }
 
     private ResultActions whenGetMyProfile() throws Exception {

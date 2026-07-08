@@ -5,9 +5,9 @@ import com.recred.backend.application.ManagePromotionStatusRequest;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.domain.repositories.PromotionRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -16,70 +16,98 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ManagePromotionStatusTest {
 
+    private static final UUID PROMOTION_ID = UUID.randomUUID();
+
     @Mock
     private PromotionRepository promotionRepository;
 
+    @InjectMocks
     private ManagePromotionStatus managePromotionStatus;
-
-    @BeforeEach
-    void setUp() {
-        managePromotionStatus = new ManagePromotionStatus(promotionRepository);
-        lenient().when(promotionRepository.findAllActive()).thenReturn(List.of());
-    }
 
     @Test
     void execute_ShouldActivateDraftPromotions() {
-        UUID promotionId = UUID.randomUUID();
-        Promotion draftPromotion = new Promotion();
-        draftPromotion.setId(promotionId);
-        draftPromotion.setStatus(PromotionStatus.DRAFT);
-        draftPromotion.setStartDate(LocalDateTime.now().minusDays(1));
-        ManagePromotionStatusRequest request = new ManagePromotionStatusRequest();
+        ManagePromotionStatusRequest request = givenRequest();
+        givenDraftPromotion(PromotionStatus.DRAFT);
+        givenNoActivePromotions();
 
-        when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
-                .thenReturn(List.of(draftPromotion));
+        whenExecute(request);
 
-        managePromotionStatus.execute(request);
-
-        verify(promotionRepository)
-                .save(argThat(p -> p.getId().equals(promotionId) && p.getStatus() == PromotionStatus.ACTIVE));
+        thenPromotionIsSavedWithStatus(PromotionStatus.ACTIVE);
     }
 
     @Test
     void execute_ShouldNotActivateAlreadyActivePromotions() {
-        Promotion activePromotion = new Promotion();
-        activePromotion.setStatus(PromotionStatus.ACTIVE);
-        ManagePromotionStatusRequest request = new ManagePromotionStatusRequest();
+        ManagePromotionStatusRequest request = givenRequest();
+        givenDraftPromotion(PromotionStatus.ACTIVE);
+        givenNoActivePromotions();
 
-        when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
-                .thenReturn(List.of(activePromotion));
+        whenExecute(request);
 
-        managePromotionStatus.execute(request);
-
-        verify(promotionRepository, never()).save(any(Promotion.class));
+        thenNoPromotionIsSaved();
     }
 
     @Test
     void execute_ShouldExpireActivePromotionsWhenEndDateHasPassed() {
-        UUID promotionId = UUID.randomUUID();
-        Promotion endedPromotion = new Promotion();
-        endedPromotion.setId(promotionId);
-        endedPromotion.setStatus(PromotionStatus.ACTIVE);
-        endedPromotion.setEndDate(LocalDateTime.now().minusDays(1));
-        ManagePromotionStatusRequest request = new ManagePromotionStatusRequest();
+        ManagePromotionStatusRequest request = givenRequest();
+        givenNoDraftPromotions();
+        givenActivePromotionWithPassedEndDate();
+
+        whenExecute(request);
+
+        thenPromotionIsSavedWithStatus(PromotionStatus.EXPIRED);
+    }
+
+    private ManagePromotionStatusRequest givenRequest() {
+        return new ManagePromotionStatusRequest();
+    }
+
+    private void givenDraftPromotion(PromotionStatus status) {
+        Promotion draftPromotion = new Promotion();
+        draftPromotion.setId(PROMOTION_ID);
+        draftPromotion.setStatus(status);
+        draftPromotion.setStartDate(LocalDateTime.now().minusDays(1));
 
         when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
+                .thenReturn(List.of(draftPromotion));
+    }
+
+    private void givenNoDraftPromotions() {
+        when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
                 .thenReturn(List.of());
+    }
+
+    private void givenActivePromotionWithPassedEndDate() {
+        Promotion endedPromotion = new Promotion();
+        endedPromotion.setId(PROMOTION_ID);
+        endedPromotion.setStatus(PromotionStatus.ACTIVE);
+        endedPromotion.setEndDate(LocalDateTime.now().minusDays(1));
+
         when(promotionRepository.findAllActive()).thenReturn(List.of(endedPromotion));
+    }
 
+    private void givenNoActivePromotions() {
+        when(promotionRepository.findAllActive()).thenReturn(List.of());
+    }
+
+    private void whenExecute(ManagePromotionStatusRequest request) {
         managePromotionStatus.execute(request);
+    }
 
-        verify(promotionRepository)
-                .save(argThat(p -> p.getId().equals(promotionId) && p.getStatus() == PromotionStatus.EXPIRED));
+    private void thenPromotionIsSavedWithStatus(PromotionStatus expectedStatus) {
+        verify(promotionRepository).save(argThat(p -> 
+                p.getId().equals(PROMOTION_ID) && p.getStatus() == expectedStatus
+        ));
+    }
+
+    private void thenNoPromotionIsSaved() {
+        verify(promotionRepository, never()).save(any(Promotion.class));
     }
 }

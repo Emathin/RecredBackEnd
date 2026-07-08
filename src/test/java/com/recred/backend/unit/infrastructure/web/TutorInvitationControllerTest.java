@@ -47,7 +47,9 @@ class TutorInvitationControllerTest {
     @Test
     void getInvitationShouldReturnValidatedInvitation() {
         TutorInvitation invitation = invitation();
-        when(getTutorInvitation.execute("token-123")).thenReturn(invitation);
+        when(getTutorInvitation.execute("token-123")).thenReturn(
+                com.recred.backend.application.GetTutorInvitationResponse.fromDomain(invitation)
+        );
 
         ResponseEntity<TutorInvitationResponse> response =
                 controller.getInvitation("token-123");

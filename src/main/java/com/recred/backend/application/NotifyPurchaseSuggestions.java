@@ -6,14 +6,14 @@ import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.PushNotificationSender;
 import com.recred.backend.domain.services.UsuarioService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.recred.backend.domain.repositories.NotificationRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NotifyPurchaseSuggestions {
 
@@ -30,50 +30,36 @@ public class NotifyPurchaseSuggestions {
     private final PushNotificationSender pushNotificationSender;
     private final UsuarioService usuarioService;
     private final ObjectMapper objectMapper;
+    private final NotificationRepository notificationRepository;
 
     public NotifyPurchaseSuggestions(
             PurchaseSuggestIA purchaseSuggestIA,
             PushNotificationSender pushNotificationSender,
             UsuarioService usuarioService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+           NotificationRepository notificationRepository
     ) {
         this.purchaseSuggestIA = purchaseSuggestIA;
         this.pushNotificationSender = pushNotificationSender;
         this.usuarioService = usuarioService;
         this.objectMapper = objectMapper;
+        this.notificationRepository = notificationRepository;
     }
 
-    public NotifyPurchaseSuggestionsResponse execute(
-            NotifyPurchaseSuggestionsRequest notificationRequest
-    ) {
-        String cognitoId = notificationRequest.cognitoId();
-        Optional<PurchaseSuggestionResponse> activeSuggestion =
-                findActivePurchaseSuggestion(cognitoId);
+    public NotifyPurchaseSuggestionsResponse execute(NotifyPurchaseSuggestionsRequest request) {
+        LOGGER.info("Buscando sugerencias para el usuario: {}", request.cognitoId());
+        Optional<PurchaseSuggestionResponse> suggestion = purchaseSuggestIA.execute(
+                new PurchaseSuggestIARequest(request.cognitoId())
+        );
 
-        return notifyActiveSuggestion(cognitoId, activeSuggestion);
-    }
-
-    private Optional<PurchaseSuggestionResponse> findActivePurchaseSuggestion(String cognitoId) {
-        LOGGER.info("Buscando sugerencias para el usuario: {}", cognitoId);
-        return purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId));
-    }
-
-    private NotifyPurchaseSuggestionsResponse withoutActiveSuggestion(String cognitoId) {
-        LOGGER.info("No se encontró sugerencia activa para notificar al usuario: {}",
-                cognitoId);
-        return new NotifyPurchaseSuggestionsResponse(null);
-    }
-
-    private NotifyPurchaseSuggestionsResponse notifyActiveSuggestion(
-            String cognitoId,
-            Optional<PurchaseSuggestionResponse> activeSuggestion
-    ) {
-        if (activeSuggestion.isEmpty()) {
-            return withoutActiveSuggestion(cognitoId);
+        if (suggestion.isEmpty()) {
+            LOGGER.info("No se encontró sugerencia activa para notificar al usuario: {}",
+                    request.cognitoId());
+            return new NotifyPurchaseSuggestionsResponse(null);
         }
 
         return new NotifyPurchaseSuggestionsResponse(
-                sendNotification(cognitoId, activeSuggestion.get())
+                sendNotification(request.cognitoId(), suggestion.get())
         );
     }
 
@@ -84,31 +70,52 @@ public class NotifyPurchaseSuggestions {
         Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoId);
         LOGGER.info("Enviando notificación de sugerencia al usuario id: {}", usuario.getId());
 
+        String message = randomMessage();
+
         PushNotification notification = createNotification(
                 usuario.getId(),
                 suggestion,
-                roleName(usuario)
+                rolName(usuario),
+                message
         );
         pushNotificationSender.send(notification);
+
+        com.recred.backend.domain.models.Notification dbNotification =
+                new com.recred.backend.domain.models.Notification(
+                        null,
+                        com.recred.backend.domain.models.TipoNotificacion.SUGERENCIA_IA,
+                        "Recomendación para tu recreo",
+                        message,
+                        false,
+                        java.time.LocalDateTime.now(),
+                        null,
+                        suggestion.alumnoId(),
+                        suggestion.producto() != null ? suggestion.producto().id() : null,
+                        null,
+                        suggestion.id()
+                );
+        notificationRepository.save(dbNotification, usuario.getId());
+
         return PushNotificationResponse.fromDomain(notification);
     }
 
     private PushNotification createNotification(
             UUID userId,
             PurchaseSuggestionResponse suggestion,
-            String role
+            String rol,
+            String message
     ) {
-        String productJson = productJson(suggestion);
+        String productoJson = productJson(suggestion);
 
         return PushNotification.dataOnly(
                 userId,
                 Map.of(
                         "type", "PURCHASE_SUGGESTION",
-                        "rol", role,
+                        "rol", rol,
                         "sugerenciaId", suggestion.id().toString(),
                         "titulo", "Recomendación para tu recreo",
-                        "mensaje", randomMessage(),
-                        "producto", productJson,
+                        "mensaje", message,
+                        "producto", productoJson,
                         "alumnoId", suggestion.alumnoId().toString()
                 )
         );
@@ -132,7 +139,7 @@ public class NotifyPurchaseSuggestions {
         return SUGGESTION_MESSAGES[random.nextInt(SUGGESTION_MESSAGES.length)];
     }
 
-    private String roleName(Usuario usuario) {
+    private String rolName(Usuario usuario) {
         return usuario.getRol() != null ? usuario.getRol().name() : "PENDIENTE";
     }
 
@@ -147,7 +154,8 @@ public class NotifyPurchaseSuggestions {
                 "descripcion", product.descripcion() != null ? product.descripcion() : "",
                 "categoria", category(product),
                 "estadoStock", "DISPONIBLE",
-                "clasificacionesSalud", healthClassifications(product)
+                "clasificacionesSalud", healthClassifications(product),
+                "imagen", product.urlImagen() != null ? product.urlImagen() : ""
         );
     }
 
@@ -175,4 +183,3 @@ public class NotifyPurchaseSuggestions {
                 .toList();
     }
 }
-

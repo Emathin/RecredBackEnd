@@ -1542,9 +1542,12 @@ public class UseCases {
             PurchaseSuggestIA purchaseSuggestIA,
             PushNotificationSender pushNotificationSender,
             UsuarioService usuarioService,
-            ObjectMapper objectMapper) {
-        return new NotifyPurchaseSuggestions(purchaseSuggestIA,
-                pushNotificationSender, usuarioService, objectMapper);
+            ObjectMapper objectMapper,
+            NotificationRepository notificationRepository
+    ) {
+        return new NotifyPurchaseSuggestions(
+                purchaseSuggestIA, pushNotificationSender,
+                usuarioService, objectMapper, notificationRepository);
     }
 
     @Bean
@@ -1683,9 +1686,9 @@ public class UseCases {
 
     @Bean
     public UploadProductImage uploadProductImage(
-            com.recred.backend.infrastructure.cloudinary.CloudinaryService cloudinaryService,
+            StorageService storageService,
             InventoryRepository inventoryRepository) {
-        return new UploadProductImage(cloudinaryService, inventoryRepository);
+        return new UploadProductImage(storageService, inventoryRepository);
     }
 
     @Bean
