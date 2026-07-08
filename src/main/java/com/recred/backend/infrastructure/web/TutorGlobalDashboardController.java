@@ -110,8 +110,11 @@ public class TutorGlobalDashboardController {
     @PutMapping("/me/dashboard-config")
     public ResponseEntity<Void> updateDashboardConfig(
             Authentication authentication,
-            @RequestBody String config) {
+            @RequestBody(required = false) String config) {
         planAccessGuard.requireTutorIntermediate(authentication);
+        if (config == null || config.isBlank()) {
+            throw new IllegalArgumentException("La configuración del dashboard es obligatoria");
+        }
         var updateRequest = new com.recred.backend.application.UpdateTutorDashboardConfigRequest(
                 cognitoSubject(authentication), config);
         updateTutorDashboardConfig.execute(updateRequest);
