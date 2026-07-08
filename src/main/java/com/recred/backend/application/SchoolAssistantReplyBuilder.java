@@ -11,13 +11,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-class SchoolAssistantReplyBuilder {
+public class SchoolAssistantReplyBuilder {
 
     private static final String INTENT_KEY = "intencionChatbot";
 
     private final SchoolAssistantSuggestionFactory suggestionFactory;
 
-    SchoolAssistantReplyBuilder(SchoolAssistantSuggestionFactory suggestionFactory) {
+    public SchoolAssistantReplyBuilder(SchoolAssistantSuggestionFactory suggestionFactory) {
         this.suggestionFactory = suggestionFactory;
     }
 

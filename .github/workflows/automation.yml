@@ -116,6 +116,33 @@ jobs:
 
             FIREBASE_ENABLED=${{ secrets.PROD_FIREBASE_ENABLED }}
             FIREBASE_SERVICE_ACCOUNT_PATH=/app/secrets/firebase-service-account.json
+
+            AWS_REGION=${{ secrets.PROD_AWS_REGION }}
+
+            CLOUDINARY_CLOUD_NAME=${{ secrets.PROD_CLOUDINARY_CLOUD_NAME }}
+            CLOUDINARY_API_KEY=${{ secrets.PROD_CLOUDINARY_API_KEY }}
+            CLOUDINARY_API_SECRET=${{ secrets.PROD_CLOUDINARY_API_SECRET }}
+
+            MERCADOPAGO_NOTIFICATION_URL=${{ secrets.PROD_MERCADOPAGO_NOTIFICATION_URL }}
+            MERCADOPAGO_ACCESS_TOKEN=${{ secrets.PROD_MERCADOPAGO_ACCESS_TOKEN }}
+            MERCADOPAGO_WEBHOOK_SECRET=${{ secrets.PROD_MERCADOPAGO_WEBHOOK_SECRET }}
+            MERCADOPAGO_SUCCESS_URL=${{ secrets.PROD_MERCADOPAGO_SUCCESS_URL }}
+            MERCADOPAGO_FAILURE_URL=${{ secrets.PROD_MERCADOPAGO_FAILURE_URL }}
+            MERCADOPAGO_PENDING_URL=${{ secrets.PROD_MERCADOPAGO_PENDING_URL }}
+
+            MAIL_HOST=${{ secrets.PROD_MAIL_HOST }}
+            MAIL_PORT=${{ secrets.PROD_MAIL_PORT }}
+            MAIL_USERNAME=${{ secrets.PROD_MAIL_USERNAME }}
+            MAIL_PASSWORD=${{ secrets.PROD_MAIL_PASSWORD }}
+            MAIL_FROM=${{ secrets.PROD_MAIL_FROM }}
+            MAIL_SMTP_AUTH=${{ secrets.PROD_MAIL_SMTP_AUTH }}
+            MAIL_SMTP_STARTTLS_ENABLE=${{ secrets.PROD_MAIL_SMTP_STARTTLS_ENABLE }}
+            MAIL_SMTP_SSL_TRUST=${{ secrets.PROD_MAIL_SMTP_SSL_TRUST }}
+            MAIL_SMTP_CONNECTION_TIMEOUT=${{ secrets.PROD_MAIL_SMTP_CONNECTION_TIMEOUT }}
+            MAIL_SMTP_TIMEOUT=${{ secrets.PROD_MAIL_SMTP_TIMEOUT }}
+            MAIL_SMTP_WRITE_TIMEOUT=${{ secrets.PROD_MAIL_SMTP_WRITE_TIMEOUT }}
+
+            RECRED_FRONTEND_BASE_URL=${{ secrets.PROD_RECRED_FRONTEND_BASE_URL }}
             EOF
 
             chmod 600 .env

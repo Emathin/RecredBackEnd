@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-class SchoolAssistantContentFormatter {
+public class SchoolAssistantContentFormatter {
 
     private static final String PRODUCT_WITHOUT_NAME = "Producto";
     private static final DateTimeFormatter DATE_FORMAT =
@@ -28,7 +28,7 @@ class SchoolAssistantContentFormatter {
     private final ProductRepository productRepository;
     private final SchoolAssistantReplyFormatter replyFormatter;
 
-    SchoolAssistantContentFormatter(
+    public SchoolAssistantContentFormatter(
             ProductRepository productRepository,
             SchoolAssistantReplyFormatter replyFormatter
     ) {
