@@ -1,5 +1,6 @@
-package com.recred.backend.application;
+package com.recred.backend.unit.application;
 
+import com.recred.backend.application.SchoolAssistantSuggestionFactory;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.SchoolAssistantAction;
 import com.recred.backend.domain.models.SchoolAssistantActionStatus;
