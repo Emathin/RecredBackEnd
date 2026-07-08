@@ -9,7 +9,7 @@ public interface BuffetRepository {
     Optional<Buffet> findById(UUID id);
     Optional<Buffet> findByAlumnoId(UUID alumnoId);
     List<Buffet> findByColegioId(UUID colegioId);
+    boolean existsByColegioId(UUID colegioId);
 
     Buffet save(Buffet buffet);
 }
-

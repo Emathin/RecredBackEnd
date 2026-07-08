@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.exceptions.BuffetAlreadyExistsForSchoolException;
 import com.recred.backend.domain.exceptions.SchoolNotFoundException;
 import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.Colegio;
@@ -25,11 +26,18 @@ public class RegisterBuffet {
         Colegio colegio = colegioRepository.findById(request.schoolId())
 
                 .orElseThrow(() -> new SchoolNotFoundException(request.schoolId()));
+        ensureSchoolHasNoBuffet(request);
 
         Buffet buffet = buildBuffet(request, colegio);
         Buffet savedBuffet = buffetRepository.save(buffet);
 
         return new RegisterBuffetResponse(savedBuffet.getId());
+    }
+
+    private void ensureSchoolHasNoBuffet(RegisterBuffetRequest request) {
+        if (buffetRepository.existsByColegioId(request.schoolId())) {
+            throw new BuffetAlreadyExistsForSchoolException(request.schoolId());
+        }
     }
 
     private Buffet buildBuffet(RegisterBuffetRequest request, Colegio colegio) {
