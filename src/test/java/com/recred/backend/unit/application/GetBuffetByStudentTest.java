@@ -3,13 +3,13 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.GetBuffetByStudent;
 import com.recred.backend.application.GetBuffetByStudentRequest;
 import com.recred.backend.application.GetBuffetByStudentResponse;
+import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.BuffetRepository;
-import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -20,61 +20,116 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GetBuffetByStudentTest {
 
     @Mock
     private AlumnoRepository alumnoRepository;
-
     @Mock
     private BuffetRepository buffetRepository;
 
-    @InjectMocks
-    private GetBuffetByStudent getBuffetByStudent;
+    private GetBuffetByStudent useCase;
+
+    private UUID studentId;
+    private Buffet buffet;
+    private Optional<GetBuffetByStudentResponse> response;
+    private RuntimeException thrownException;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new GetBuffetByStudent(buffetRepository, alumnoRepository);
+    }
 
     @Test
-    void dadoAlumnoExistenteYBuffetActivo_cuandoExecute_entoncesRetornaBuffet() {
-        UUID alumnoId = UUID.randomUUID();
-        Buffet buffet = new Buffet();
+    void givenExistingStudentWithBuffet_whenGettingBuffet_thenReturnsBuffet() {
+        givenStudentScenario();
+        givenStudentExists();
+        givenStudentHasBuffet("Buffet Central");
+
+        whenGettingBuffetByStudent();
+
+        thenBuffetIsReturned();
+        thenBuffetWasRequestedForStudent();
+    }
+
+    @Test
+    void givenMissingStudent_whenGettingBuffet_thenFailsWithoutSearchingBuffet() {
+        givenStudentScenario();
+        givenStudentDoesNotExist();
+
+        whenGettingBuffetByStudentFails();
+
+        thenStudentNotFoundIsThrown();
+        thenBuffetWasNotRequested();
+    }
+
+    @Test
+    void givenExistingStudentWithoutBuffet_whenGettingBuffet_thenReturnsEmpty() {
+        givenStudentScenario();
+        givenStudentExists();
+        givenStudentHasNoBuffet();
+
+        whenGettingBuffetByStudent();
+
+        thenBuffetIsEmpty();
+        thenBuffetWasRequestedForStudent();
+    }
+
+    private void givenStudentScenario() {
+        studentId = UUID.randomUUID();
+    }
+
+    private void givenStudentExists() {
+        when(alumnoRepository.existsById(studentId)).thenReturn(true);
+    }
+
+    private void givenStudentDoesNotExist() {
+        when(alumnoRepository.existsById(studentId)).thenReturn(false);
+    }
+
+    private void givenStudentHasBuffet(String name) {
+        buffet = new Buffet();
         buffet.setId(UUID.randomUUID());
-        buffet.setNombre("Buffet Central");
-
-        when(alumnoRepository.existsById(alumnoId)).thenReturn(true);
-        when(buffetRepository.findByAlumnoId(alumnoId)).thenReturn(Optional.of(buffet));
-
-        Optional<GetBuffetByStudentResponse> resultado = getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId));
-
-        assertTrue(resultado.isPresent());
-        assertEquals("Buffet Central", resultado.get().nombre());
-        verify(alumnoRepository, times(1)).existsById(alumnoId);
-        verify(buffetRepository, times(1)).findByAlumnoId(alumnoId);
+        buffet.setNombre(name);
+        when(buffetRepository.findByAlumnoId(studentId)).thenReturn(Optional.of(buffet));
     }
 
-    @Test
-    void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaAlumnoNoEncontradoException() {
-        UUID alumnoId = UUID.randomUUID();
-        when(alumnoRepository.existsById(alumnoId)).thenReturn(false);
+    private void givenStudentHasNoBuffet() {
+        when(buffetRepository.findByAlumnoId(studentId)).thenReturn(Optional.empty());
+    }
 
-        assertThrows(AlumnoNoEncontradoException.class, () ->
-                getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId))
-        );
+    private void whenGettingBuffetByStudent() {
+        response = useCase.execute(new GetBuffetByStudentRequest(studentId));
+    }
 
-        verify(alumnoRepository, times(1)).existsById(alumnoId);
+    private void whenGettingBuffetByStudentFails() {
+        thrownException = assertThrows(RuntimeException.class, () ->
+                useCase.execute(new GetBuffetByStudentRequest(studentId)));
+    }
+
+    private void thenBuffetIsReturned() {
+        assertTrue(response.isPresent());
+        assertEquals(buffet.getId(), response.get().id());
+        assertEquals("Buffet Central", response.get().nombre());
+    }
+
+    private void thenStudentNotFoundIsThrown() {
+        assertTrue(thrownException instanceof AlumnoNoEncontradoException);
+    }
+
+    private void thenBuffetIsEmpty() {
+        assertFalse(response.isPresent());
+    }
+
+    private void thenBuffetWasRequestedForStudent() {
+        verify(buffetRepository).findByAlumnoId(studentId);
+    }
+
+    private void thenBuffetWasNotRequested() {
         verifyNoInteractions(buffetRepository);
-    }
-
-    @Test
-    void dadoAlumnoExistentePeroSinBuffet_cuandoExecute_entoncesRetornaVacio() {
-        UUID alumnoId = UUID.randomUUID();
-        when(alumnoRepository.existsById(alumnoId)).thenReturn(true);
-        when(buffetRepository.findByAlumnoId(alumnoId)).thenReturn(Optional.empty());
-
-        Optional<GetBuffetByStudentResponse> resultado = getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId));
-
-        assertFalse(resultado.isPresent());
-        verify(alumnoRepository, times(1)).existsById(alumnoId);
-        verify(buffetRepository, times(1)).findByAlumnoId(alumnoId);
     }
 }

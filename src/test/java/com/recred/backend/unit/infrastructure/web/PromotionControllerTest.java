@@ -43,6 +43,7 @@ class PromotionControllerTest {
     private GetActivePromotions getActivePromotions;
     private GetActivePromotionsByBuffet getActivePromotionsByBuffet;
     private GetPromotionById getPromotionById;
+    private PlanAccessGuard planAccessGuard;
     private PromotionController controller;
 
     @BeforeEach
@@ -53,13 +54,15 @@ class PromotionControllerTest {
         getActivePromotions = mock(GetActivePromotions.class);
         getActivePromotionsByBuffet = mock(GetActivePromotionsByBuffet.class);
         getPromotionById = mock(GetPromotionById.class);
+        planAccessGuard = mock(PlanAccessGuard.class);
         controller = new PromotionController(
                 createPromotion,
                 updatePromotion,
                 deletePromotion,
                 getActivePromotions,
                 getActivePromotionsByBuffet,
-                getPromotionById
+                getPromotionById,
+                planAccessGuard
         );
     }
 
@@ -132,10 +135,11 @@ class PromotionControllerTest {
         )).thenReturn(createResponse);
 
         ResponseEntity<PromotionResponseDTO> response =
-                controller.createPromotion(request);
+                controller.createPromotion(null, request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(promotion.getId(), response.getBody().getId());
+        verify(planAccessGuard).requireVendorAdvanced(null);
         verify(createPromotion).execute(
                 any(CreatePromotionRequest.class)
         );
@@ -159,10 +163,11 @@ class PromotionControllerTest {
                 .thenReturn(CreatePromotionResponse.fromDomain(promotion));
 
         ResponseEntity<PromotionResponseDTO> response =
-                controller.updatePromotion(promotionId, request);
+                controller.updatePromotion(promotionId, null, request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(promotionId, response.getBody().getId());
+        verify(planAccessGuard).requireVendorAdvanced(null);
         verify(updatePromotion).execute(useCaseRequest);
     }
 
@@ -170,9 +175,10 @@ class PromotionControllerTest {
     void deletePromotionDelegatesAndReturnsNoContent() {
         UUID promotionId = UUID.randomUUID();
 
-        ResponseEntity<Void> response = controller.deletePromotion(promotionId);
+        ResponseEntity<Void> response = controller.deletePromotion(null, promotionId);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(planAccessGuard).requireVendorAdvanced(null);
         verify(deletePromotion).execute(new DeletePromotionRequest(promotionId));
     }
 

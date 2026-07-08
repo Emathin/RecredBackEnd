@@ -1,5 +1,7 @@
 package com.recred.backend.domain.models;
 
+import com.recred.backend.domain.exceptions.InvalidSubscriptionPlanException;
+import com.recred.backend.domain.exceptions.UserRoleCannotSubscribeException;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -54,7 +56,33 @@ public class Usuario {
     }
 
     public boolean hasFreePlan() {
-        return getPlan() == TipoPlan.GRATUITO;
+        return getPlan().isFree();
+    }
+
+    public boolean hasPaidPlan() {
+        return getPlan().isPaid();
+    }
+
+    public boolean canHaveIndividualSubscription() {
+        return rol == RolUsuario.PADRE || rol == RolUsuario.VENDEDOR;
+    }
+
+    public void validateCanHaveIndividualSubscription() {
+        if (!canHaveIndividualSubscription()) {
+            throw new UserRoleCannotSubscribeException(rol);
+        }
+    }
+
+    public void activatePaidPlan(TipoPlan paidPlan) {
+        if (paidPlan == null || !paidPlan.isPaid()) {
+            throw new InvalidSubscriptionPlanException(paidPlan);
+        }
+
+        this.plan = paidPlan;
+    }
+
+    public void returnToFreePlan() {
+        this.plan = TipoPlan.GRATUITO;
     }
 
     public void validateCanTransferBalanceBetweenChildren() {

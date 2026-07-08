@@ -6,15 +6,20 @@ import com.recred.backend.application.CreatePromotionResponse;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.domain.repositories.PromotionRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,332 +34,285 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class CreatePromotionTest {
 
+    private static final Clock CLOCK = Clock.fixed(
+            Instant.parse("2026-07-02T12:00:00Z"),
+            ZoneOffset.UTC);
+    private static final LocalDateTime NOW = LocalDateTime.now(CLOCK);
+    private static final String PROMOTION_NAME = "Promo Test";
+    private static final BigDecimal DISCOUNT = new BigDecimal("20");
+    private static final String IMAGE_URL =
+            "https://res.cloudinary.com/djzfudbze/image/upload/v1/collage.png";
+
     @Mock
     private PromotionRepository promotionRepository;
+    @Captor
+    private ArgumentCaptor<Promotion> promotionCaptor;
 
-    @InjectMocks
-    private CreatePromotion createPromotion;
+    private CreatePromotion useCase;
+    private List<UUID> productIds;
+    private UUID buffetId;
+    private CreatePromotionResponse response;
+    private Throwable thrownException;
 
-    @Test
-    void execute_shouldCreatePromotionWithDraftStatus_whenForceDraftIsTrue() {
-        UUID prod1 = UUID.randomUUID();
-        UUID prod2 = UUID.randomUUID();
-        List<UUID> productIds = List.of(prod1, prod2);
-        BigDecimal discount = new BigDecimal("20");
-        String name = "Promo Test";
-        LocalDateTime start = LocalDateTime.now().minusDays(1);
-        LocalDateTime end = LocalDateTime.now().plusDays(5);
-        CreatePromotionRequest request = request(
-                productIds,
-                discount,
-                name,
-                start,
-                end,
-                true,
-                null
-        );
-
-        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
-
-        CreatePromotionResponse result = createPromotion.execute(request);
-
-        assertNotNull(result);
-        assertEquals(name, result.name());
-        assertEquals(discount, result.discountPercentage());
-        assertEquals(start, result.startDate());
-        assertEquals(end, result.endDate());
-        assertEquals(PromotionStatus.DRAFT, result.status());
-        assertEquals(2, result.productIds().size());
-        assertEquals(prod1, result.productIds().get(0));
-        assertEquals(prod2, result.productIds().get(1));
-
-        verify(promotionRepository).save(any(Promotion.class));
+    @BeforeEach
+    void setUp() {
+        useCase = new CreatePromotion(promotionRepository, CLOCK);
+        productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+        buffetId = UUID.randomUUID();
     }
 
     @Test
-    void execute_shouldCreatePromotionWithActiveStatus_whenForceDraftIsFalseAndNowIsWithinDates() {
-        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
-        BigDecimal discount = new BigDecimal("15");
-        String name = "Promo Active";
-        LocalDateTime start = LocalDateTime.now().minusDays(1);
-        LocalDateTime end = LocalDateTime.now().plusDays(2);
-        CreatePromotionRequest request = request(
-                productIds,
-                discount,
-                name,
-                start,
-                end,
-                false,
-                null
-        );
+    void forcedDraftPromotionIsPersistedAsDraft() {
+        givenPromotionCanBeSaved();
 
-        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
+        whenCreatingPromotion(activePromotionRequest(true));
 
-        CreatePromotionResponse result = createPromotion.execute(request);
-
-        assertNotNull(result);
-        assertEquals(PromotionStatus.ACTIVE, result.status());
-        verify(promotionRepository).save(any(Promotion.class));
+        thenResponseHasStatus(PromotionStatus.DRAFT);
+        thenPromotionWasPersistedWithStatus(PromotionStatus.DRAFT);
+        thenResponseContainsPromotionData();
     }
 
     @Test
-    void execute_shouldCreatePromotionWithDraftStatus_whenForceDraftIsFalseAndNowIsOutsideDates() {
-        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
-        BigDecimal discount = new BigDecimal("15");
-        String name = "Promo Future";
-        LocalDateTime start = LocalDateTime.now().plusDays(5);
-        LocalDateTime end = LocalDateTime.now().plusDays(10);
-        CreatePromotionRequest request = request(
-                productIds,
-                discount,
-                name,
-                start,
-                end,
-                false,
-                null
-        );
+    void currentPromotionIsPersistedAsActiveWhenDraftIsNotForced() {
+        givenPromotionCanBeSaved();
 
-        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
+        whenCreatingPromotion(activePromotionRequest(false));
 
-        CreatePromotionResponse result = createPromotion.execute(request);
-
-        assertNotNull(result);
-        assertEquals(PromotionStatus.DRAFT, result.status());
-        verify(promotionRepository).save(any(Promotion.class));
+        thenResponseHasStatus(PromotionStatus.ACTIVE);
+        thenPromotionWasPersistedWithStatus(PromotionStatus.ACTIVE);
     }
 
     @Test
-    void execute_shouldThrowException_whenLessThanTwoProducts() {
-        List<UUID> productIds = List.of(UUID.randomUUID());
-        BigDecimal discount = new BigDecimal("15");
-        String name = "Promo Fail";
-        LocalDateTime start = LocalDateTime.now();
-        LocalDateTime end = LocalDateTime.now().plusDays(1);
-        CreatePromotionRequest request = request(
-                productIds,
-                discount,
-                name,
-                start,
-                end,
-                false,
-                null
-        );
+    void futurePromotionIsPersistedAsDraft() {
+        givenPromotionCanBeSaved();
 
-        Executable execution = () -> createPromotion.execute(request);
+        whenCreatingPromotion(futurePromotionRequest());
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, execution);
-
-        assertEquals("A promotion requires at least 2 products.", ex.getMessage());
-        verify(promotionRepository, never()).save(any());
+        thenResponseHasStatus(PromotionStatus.DRAFT);
+        thenPromotionWasPersistedWithStatus(PromotionStatus.DRAFT);
     }
 
     @Test
-    void execute_shouldThrowException_whenDiscountPercentageIsZero() {
-        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
-        String name = "Promo Fail";
-        LocalDateTime start = LocalDateTime.now();
-        LocalDateTime end = LocalDateTime.now().plusDays(1);
-        CreatePromotionRequest request = request(
-                productIds,
-                BigDecimal.ZERO,
-                name,
-                start,
-                end,
-                false,
-                null
-        );
+    void promotionCanBeCreatedWithBuffetAndImage() {
+        givenPromotionCanBeSaved();
 
-        Executable execution = () -> createPromotion.execute(request);
+        whenCreatingPromotion(requestWithBuffetAndImage());
 
-        assertThrows(IllegalArgumentException.class, execution);
-
-        verify(promotionRepository, never()).save(any());
+        thenPromotionWasPersistedWithBuffetAndImage();
+        thenResponseContainsBuffetAndImage();
     }
 
     @Test
-    void execute_shouldThrowException_whenDiscountPercentageIsNegative() {
-        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
-        String name = "Promo Fail";
-        LocalDateTime start = LocalDateTime.now();
-        LocalDateTime end = LocalDateTime.now().plusDays(1);
-        CreatePromotionRequest request = request(
-                productIds,
-                new BigDecimal("-5"),
-                name,
-                start,
-                end,
-                false,
-                null
-        );
+    void promotionWithLessThanTwoProductsIsRejected() {
+        whenCreatingPromotionFails(
+                requestWithProductIds(List.of(UUID.randomUUID())),
+                IllegalArgumentException.class);
 
-        Executable execution = () -> createPromotion.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-
-        verify(promotionRepository, never()).save(any());
+        thenErrorMessageIs("A promotion requires at least 2 products.");
+        thenPromotionWasNotSaved();
     }
 
     @Test
-    void execute_shouldThrowException_whenDiscountPercentageIsGreaterThan100() {
-        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
-        String name = "Promo Fail";
-        LocalDateTime start = LocalDateTime.now();
-        LocalDateTime end = LocalDateTime.now().plusDays(1);
-        CreatePromotionRequest request = request(
-                productIds,
-                new BigDecimal("101"),
-                name,
-                start,
-                end,
-                false,
-                null
-        );
+    void zeroDiscountIsRejected() {
+        whenCreatingPromotionFails(
+                requestWithDiscount(BigDecimal.ZERO),
+                IllegalArgumentException.class);
 
-        Executable execution = () -> createPromotion.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-
-        verify(promotionRepository, never()).save(any());
+        thenErrorMessageIs("Discount percentage must be between 0 and 100.");
+        thenPromotionWasNotSaved();
     }
 
     @Test
-    void execute_shouldThrowException_whenDiscountPercentageIsNull() {
-        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
-        String name = "Promo Fail";
-        LocalDateTime start = LocalDateTime.now();
-        LocalDateTime end = LocalDateTime.now().plusDays(1);
-        CreatePromotionRequest request = request(
+    void negativeDiscountIsRejected() {
+        whenCreatingPromotionFails(
+                requestWithDiscount(new BigDecimal("-5")),
+                IllegalArgumentException.class);
+
+        thenErrorMessageIs("Discount percentage must be between 0 and 100.");
+        thenPromotionWasNotSaved();
+    }
+
+    @Test
+    void discountGreaterThanOneHundredIsRejected() {
+        whenCreatingPromotionFails(
+                requestWithDiscount(new BigDecimal("101")),
+                IllegalArgumentException.class);
+
+        thenErrorMessageIs("Discount percentage must be between 0 and 100.");
+        thenPromotionWasNotSaved();
+    }
+
+    @Test
+    void startDateAfterEndDateIsRejected() {
+        whenCreatingPromotionFails(
+                requestWithDates(NOW.plusDays(5), NOW.plusDays(2)),
+                IllegalArgumentException.class);
+
+        thenErrorMessageIs("Invalid date range.");
+        thenPromotionWasNotSaved();
+    }
+
+    private void givenPromotionCanBeSaved() {
+        when(promotionRepository.save(any(Promotion.class))).thenAnswer(invocation ->
+                invocation.getArgument(0));
+    }
+
+    private void whenCreatingPromotion(CreatePromotionRequest request) {
+        response = useCase.execute(request);
+    }
+
+    private <T extends Throwable> void whenCreatingPromotionFails(
+            CreatePromotionRequest request,
+            Class<T> exceptionType) {
+        Executable execution = () -> useCase.execute(request);
+        thrownException = assertThrows(exceptionType, execution);
+    }
+
+    private void thenResponseHasStatus(PromotionStatus expectedStatus) {
+        assertNotNull(response);
+        assertEquals(expectedStatus, response.status());
+    }
+
+    private void thenPromotionWasPersistedWithStatus(PromotionStatus expectedStatus) {
+        verify(promotionRepository).save(promotionCaptor.capture());
+        assertEquals(expectedStatus, promotionCaptor.getValue().getStatus());
+    }
+
+    private void thenResponseContainsPromotionData() {
+        assertEquals(PROMOTION_NAME, response.name());
+        assertEquals(DISCOUNT, response.discountPercentage());
+        assertEquals(activeStartDate(), response.startDate());
+        assertEquals(activeEndDate(), response.endDate());
+        assertEquals(productIds, response.productIds());
+    }
+
+    private void thenPromotionWasPersistedWithBuffetAndImage() {
+        verify(promotionRepository).save(promotionCaptor.capture());
+        Promotion savedPromotion = promotionCaptor.getValue();
+        assertEquals(buffetId, savedPromotion.getBuffet().getId());
+        assertEquals(IMAGE_URL, savedPromotion.getImageUrl());
+    }
+
+    private void thenResponseContainsBuffetAndImage() {
+        assertEquals(buffetId, response.buffetId());
+        assertEquals(IMAGE_URL, response.imageUrl());
+    }
+
+    private void thenPromotionWasNotSaved() {
+        verify(promotionRepository, never()).save(any(Promotion.class));
+    }
+
+    private void thenErrorMessageIs(String expectedMessage) {
+        assertEquals(expectedMessage, thrownException.getMessage());
+    }
+
+    private CreatePromotionRequest activePromotionRequest(boolean forceDraft) {
+        return request(
                 productIds,
+                DISCOUNT,
+                PROMOTION_NAME,
+                activeStartDate(),
+                activeEndDate(),
                 null,
-                name,
-                start,
-                end,
-                false,
+                forceDraft,
                 null
         );
-
-        Executable execution = () -> createPromotion.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-
-        verify(promotionRepository, never()).save(any());
     }
 
-    @Test
-    void execute_shouldThrowException_whenStartDateIsAfterEndDate() {
-        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
-        BigDecimal discount = new BigDecimal("15");
-        String name = "Promo Fail";
-        LocalDateTime start = LocalDateTime.now().plusDays(5);
-        LocalDateTime end = LocalDateTime.now().plusDays(2);
-        CreatePromotionRequest request = request(
+    private CreatePromotionRequest futurePromotionRequest() {
+        return request(
                 productIds,
-                discount,
-                name,
-                start,
-                end,
-                false,
-                null
-        );
-
-        Executable execution = () -> createPromotion.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-
-        verify(promotionRepository, never()).save(any());
-    }
-
-    @Test
-    void execute_shouldThrowException_whenStartDateIsNull() {
-        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
-        BigDecimal discount = new BigDecimal("15");
-        String name = "Promo Fail";
-        LocalDateTime end = LocalDateTime.now().plusDays(2);
-        CreatePromotionRequest request = request(
-                productIds,
-                discount,
-                name,
-                null,
-                end,
-                false,
-                null
-        );
-
-        Executable execution = () -> createPromotion.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-
-        verify(promotionRepository, never()).save(any());
-    }
-
-    @Test
-    void execute_shouldThrowException_whenEndDateIsNull() {
-        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
-        BigDecimal discount = new BigDecimal("15");
-        String name = "Promo Fail";
-        LocalDateTime start = LocalDateTime.now().plusDays(5);
-        CreatePromotionRequest request = request(
-                productIds,
-                discount,
-                name,
-                start,
+                DISCOUNT,
+                "Promo Future",
+                NOW.plusDays(5),
+                NOW.plusDays(10),
                 null,
                 false,
                 null
         );
-
-        Executable execution = () -> createPromotion.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-
-        verify(promotionRepository, never()).save(any());
     }
 
-    @Test
-    void execute_shouldCreatePromotionWithImageUrl_whenImageUrlIsProvided() {
-        List<UUID> productIds = List.of(UUID.randomUUID(), UUID.randomUUID());
-        BigDecimal discount = new BigDecimal("15");
-        String name = "Promo Image";
-        LocalDateTime start = LocalDateTime.now().minusDays(1);
-        LocalDateTime end = LocalDateTime.now().plusDays(2);
-        String imageUrl = "https://res.cloudinary.com/djzfudbze/image/upload/v1/collage.png";
-        CreatePromotionRequest request = request(
+    private CreatePromotionRequest requestWithBuffetAndImage() {
+        return request(
+                productIds,
+                DISCOUNT,
+                PROMOTION_NAME,
+                activeStartDate(),
+                activeEndDate(),
+                buffetId,
+                false,
+                IMAGE_URL
+        );
+    }
+
+    private CreatePromotionRequest requestWithProductIds(List<UUID> requestedProductIds) {
+        return request(
+                requestedProductIds,
+                DISCOUNT,
+                PROMOTION_NAME,
+                activeStartDate(),
+                activeEndDate(),
+                null,
+                false,
+                null
+        );
+    }
+
+    private CreatePromotionRequest requestWithDiscount(BigDecimal discount) {
+        return request(
                 productIds,
                 discount,
-                name,
-                start,
-                end,
+                PROMOTION_NAME,
+                activeStartDate(),
+                activeEndDate(),
+                null,
                 false,
-                imageUrl
+                null
         );
+    }
 
-        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
-
-        CreatePromotionResponse result = createPromotion.execute(request);
-
-        assertNotNull(result);
-        assertEquals(imageUrl, result.imageUrl());
-        verify(promotionRepository).save(any(Promotion.class));
+    private CreatePromotionRequest requestWithDates(
+            LocalDateTime startDate,
+            LocalDateTime endDate) {
+        return request(
+                productIds,
+                DISCOUNT,
+                PROMOTION_NAME,
+                startDate,
+                endDate,
+                null,
+                false,
+                null
+        );
     }
 
     private CreatePromotionRequest request(
-            List<UUID> productIds,
+            List<UUID> requestedProductIds,
             BigDecimal discount,
             String name,
-            LocalDateTime start,
-            LocalDateTime end,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            UUID requestedBuffetId,
             boolean forceDraft,
             String imageUrl
     ) {
         return new CreatePromotionRequest(
-                productIds,
+                requestedProductIds,
                 discount,
                 name,
-                start,
-                end,
-                null,
+                startDate,
+                endDate,
+                requestedBuffetId,
                 forceDraft,
                 imageUrl
         );
+    }
+
+    private LocalDateTime activeStartDate() {
+        return NOW.minusDays(1);
+    }
+
+    private LocalDateTime activeEndDate() {
+        return NOW.plusDays(5);
     }
 }

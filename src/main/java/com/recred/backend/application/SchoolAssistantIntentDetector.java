@@ -11,12 +11,15 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-class SchoolAssistantIntentDetector {
+public class SchoolAssistantIntentDetector {
 
     private static final Pattern DIACRITICS = Pattern.compile("\\p{M}+");
     private static final Pattern DATE_PATTERN = Pattern.compile(
             "\\b(\\d{1,2})/(\\d{1,2})(?:/(\\d{2}|\\d{4}))?\\b"
     );
+
+    public SchoolAssistantIntentDetector() {
+    }
 
     SchoolAssistantIntent detectIntent(String message) {
         String normalized = normalize(message);

@@ -14,7 +14,8 @@ import com.recred.backend.infrastructure.entities.NotificacionEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
-import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
+import com.recred.backend.
+        infrastructure.push.PushNotificationRequestedEvent;
 import jakarta.persistence.EntityManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -51,7 +53,11 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
 
     @Override
     public SugerenciaIA save(SugerenciaIA sugerencia) {
-        SugerenciaIAEntity entity = new SugerenciaIAEntity();
+        SugerenciaIAEntity entity = sugerencia.getId() != null
+                ? springDataRepository.findById(sugerencia.getId())
+                        .orElseGet(SugerenciaIAEntity::new)
+                : new SugerenciaIAEntity();
+
         entity.setTipo(sugerencia.getTipo());
         entity.setTitulo(sugerencia.getTitulo());
         entity.setMensaje(sugerencia.getMensaje());
@@ -65,7 +71,8 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
         if (sugerencia.getProductoId() != null) {
             entity.setProductoEntity(reference(ProductoEntity.class, sugerencia.getProductoId()));
         }
-        entity.setAceptada(false);
+        entity.setAceptada(sugerencia.getAceptada() != null ? sugerencia.getAceptada() : false);
+        entity.setRespondidaEn(sugerencia.getRespondidaEn());
 
         SugerenciaIAEntity savedEntity = springDataRepository.save(entity);
         sugerencia.setId(savedEntity.getId());
@@ -168,6 +175,16 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
     }
 
     @Override
+    public Optional<SugerenciaIA> findLatestPendingByAlumnoIdsAndTipo(
+            List<UUID> alumnoIds,
+            TipoSugerenciaIA tipo
+    ) {
+        return springDataRepository.findLatestPendingByAlumnoIdsAndTipo(alumnoIds, tipo).stream()
+                .findFirst()
+                .map(SugerenciaIAEntity::toDomain);
+    }
+
+    @Override
     public List<SugerenciaIAEntity> findPendingParentNotificationsByAlumnoId(
             UUID alumnoId,
             TipoSugerenciaIA tipo
@@ -192,26 +209,32 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
     }
 
     @Override
-    public java.util.Optional<SugerenciaIAEntity> findById(UUID id) {
+    public Optional<SugerenciaIAEntity> findById(UUID id) {
         return springDataRepository.findById(id);
     }
 
-    private java.util.Optional<UUID> suggestedProductId(SugerenciaIAEntity suggestion) {
+    @Override
+    public java.util.Optional<SugerenciaIA> findSugerenciaById(UUID id) {
+        return springDataRepository.findById(id).map(SugerenciaIAEntity::toDomain);
+    }
+
+
+    private Optional<UUID> suggestedProductId(SugerenciaIAEntity suggestion) {
         if (suggestion.getProductoEntity() != null
                 && suggestion.getProductoEntity().getId() != null) {
-            return java.util.Optional.of(suggestion.getProductoEntity().getId());
+            return Optional.of(suggestion.getProductoEntity().getId());
         }
         if (suggestion.getMetadata() == null) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         Object value = suggestion.getMetadata().get("productoId");
         if (!(value instanceof String text) || text.isBlank()) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         try {
-            return java.util.Optional.of(UUID.fromString(text));
+            return Optional.of(UUID.fromString(text));
         } catch (IllegalArgumentException ignored) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
     }
 

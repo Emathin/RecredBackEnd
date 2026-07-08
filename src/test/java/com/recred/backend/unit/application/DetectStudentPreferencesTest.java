@@ -5,6 +5,7 @@ import com.recred.backend.application.DetectStudentPreferencesRequest;
 import com.recred.backend.application.DetectStudentPreferencesResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
@@ -13,11 +14,12 @@ import com.recred.backend.domain.repositories.PreferenceAIRepository.CompraResum
 import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -26,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -53,7 +56,20 @@ class DetectStudentPreferencesTest {
     @Mock
     private InventoryRepository inventoryRepository;
 
+    @Captor
+    private ArgumentCaptor<SugerenciaIA> suggestionCaptor;
+
     private DetectStudentPreferences detectStudentPreferences;
+    private DetectStudentPreferencesRequest detectPreferencesRequest;
+    private Optional<DetectStudentPreferencesResponse> detectPreferencesResponse;
+    private Throwable thrownException;
+    private UUID studentId;
+    private UUID buffetId;
+    private Alumno student;
+    private Producto product;
+    private List<Producto> availableStock;
+    private List<CompraResumen> purchaseHistory;
+    private PreferenciaDetectada detectedPreference;
 
     @BeforeEach
     void setUp() {
@@ -67,160 +83,231 @@ class DetectStudentPreferencesTest {
     }
 
     @Test
-    void executeAndSaveAISuggestionWhenValidPreferenceIsDetected() {
-        TestContext context = context();
-        Producto producto = product();
-        List<Producto> stock = List.of(producto);
-        List<CompraResumen> historial = sufficientHistory();
-        PreferenciaDetectada preference = detectedPreference(producto.getId());
+    void givenValidPreferenceDetected_whenDetectingPreferences_thenSavesSuggestion() {
+        givenValidPreferenceDetectionScenario();
+        givenPreferenceDetectedForAvailableProduct();
 
-        givenAlumnoExists(context);
-        givenPurchaseHistory(context, historial);
-        givenAvailableStock(context, stock);
-        givenPreferenceDetected(context.alumno(), historial, stock, preference);
+        whenDetectStudentPreferences();
 
-        Optional<DetectStudentPreferencesResponse> result =
-                detectStudentPreferences.execute(request(context));
-
-        SugerenciaIAEntity saved = savedSuggestion();
-        assertTrue(result.isPresent());
-        assertEquals(TITLE, result.orElseThrow().titulo());
-        assertEquals(producto.getId(), result.orElseThrow().productoId());
-        assertSavedSuggestion(saved, context, producto.getId());
+        thenDetectedPreferenceWasReturned();
+        thenSuggestionWasSaved();
     }
 
     @Test
-    void abortDetectionWhenInsufficientPurchaseHistory() {
-        TestContext context = context();
+    void givenInsufficientPurchaseHistory_whenDetectingPreferences_thenReturnsEmpty() {
+        givenStudentExists();
+        givenPurchaseHistory(insufficientHistory());
 
-        givenAlumnoExists(context);
-        givenPurchaseHistory(context, insufficientHistory());
+        whenDetectStudentPreferences();
 
-        Optional<DetectStudentPreferencesResponse> result =
-                detectStudentPreferences.execute(request(context));
-
-        assertTrue(result.isEmpty());
-        assertPreferenceWasNotAnalyzed();
-        assertSuggestionWasNotSaved();
+        thenNoPreferenceWasReturned();
+        thenPreferenceWasNotAnalyzed();
+        thenSuggestionWasNotSaved();
     }
 
     @Test
-    void discardAIResultWhenProductIdIsNotInAvailableStock() {
-        TestContext context = context();
-        Producto availableProduct = product();
-        List<Producto> stock = List.of(availableProduct);
-        List<CompraResumen> historial = sufficientHistory();
-        PreferenciaDetectada preference = detectedPreference(UUID.randomUUID());
+    void givenNoAvailableStock_whenDetectingPreferences_thenReturnsEmpty() {
+        givenStudentExists();
+        givenPurchaseHistory(sufficientHistory());
+        givenAvailableStock(List.of());
 
-        givenAlumnoExists(context);
-        givenPurchaseHistory(context, historial);
-        givenAvailableStock(context, stock);
-        givenPreferenceDetected(context.alumno(), historial, stock, preference);
+        whenDetectStudentPreferences();
 
-        Optional<DetectStudentPreferencesResponse> result =
-                detectStudentPreferences.execute(request(context));
-
-        assertTrue(result.isEmpty());
-        assertSuggestionWasNotSaved();
+        thenNoPreferenceWasReturned();
+        thenPreferenceWasNotAnalyzed();
+        thenSuggestionWasNotSaved();
     }
 
     @Test
-    void abortDetectionWhenNoStockIsAvailableInBuffet() {
-        TestContext context = context();
+    void givenDetectedProductOutsideStock_whenDetectingPreferences_thenReturnsEmpty() {
+        givenValidPreferenceDetectionScenario();
+        givenPreferenceDetectedForUnavailableProduct();
 
-        givenAlumnoExists(context);
-        givenPurchaseHistory(context, sufficientHistory());
-        givenAvailableStock(context, List.of());
+        whenDetectStudentPreferences();
 
-        Optional<DetectStudentPreferencesResponse> result =
-                detectStudentPreferences.execute(request(context));
-
-        assertTrue(result.isEmpty());
-        assertPreferenceWasNotAnalyzed();
-        assertSuggestionWasNotSaved();
+        thenNoPreferenceWasReturned();
+        thenSuggestionWasNotSaved();
     }
 
     @Test
-    void doNothingWhenAINoPreferenceDetected() {
-        TestContext context = context();
-        Producto producto = product();
-        List<Producto> stock = List.of(producto);
-        List<CompraResumen> historial = sufficientHistory();
+    void givenAiDoesNotDetectPreference_whenDetectingPreferences_thenReturnsEmpty() {
+        givenValidPreferenceDetectionScenario();
+        givenNoPreferenceDetected();
 
-        givenAlumnoExists(context);
-        givenPurchaseHistory(context, historial);
-        givenAvailableStock(context, stock);
-        givenNoPreferenceDetected(context.alumno(), historial, stock);
+        whenDetectStudentPreferences();
 
-        Optional<DetectStudentPreferencesResponse> result =
-                detectStudentPreferences.execute(request(context));
-
-        assertTrue(result.isEmpty());
-        assertSuggestionWasNotSaved();
+        thenNoPreferenceWasReturned();
+        thenSuggestionWasNotSaved();
     }
 
     @Test
-    void throwExceptionWhenTargetStudentDoesNotExist() {
-        TestContext context = context();
-        when(alumnoRepository.findById(context.studentId())).thenReturn(Optional.empty());
+    void givenMissingStudent_whenDetectingPreferences_thenThrowsException() {
+        givenRequest();
+        givenStudentDoesNotExist();
 
-        assertThrows(RuntimeException.class,
-                () -> detectStudentPreferences.execute(request(context)));
+        whenDetectStudentPreferencesFails(RuntimeException.class);
+
+        thenErrorMessageIs("Student not found: " + studentId);
     }
 
     @Test
-    void rethrowExceptionWhenUnexpectedErrorOccursInProcess() {
-        TestContext context = context();
-        when(alumnoRepository.findById(context.studentId()))
+    void givenUnexpectedRepositoryError_whenDetectingPreferences_thenRethrowsException() {
+        givenRequest();
+        givenStudentLookupFails();
+
+        whenDetectStudentPreferencesFails(RuntimeException.class);
+
+        thenErrorMessageIs("Database error");
+    }
+
+    @Test
+    void givenNullStudentId_whenDetectingPreferences_thenThrowsBeforeRepositories() {
+        detectPreferencesRequest = new DetectStudentPreferencesRequest(null, randomUUID());
+
+        whenDetectStudentPreferencesFails(IllegalArgumentException.class);
+
+        thenErrorMessageIs("El alumno es obligatorio");
+        thenStudentWasNotRead();
+    }
+
+    @Test
+    void givenNullBuffetId_whenDetectingPreferences_thenThrowsBeforeRepositories() {
+        detectPreferencesRequest = new DetectStudentPreferencesRequest(randomUUID(), null);
+
+        whenDetectStudentPreferencesFails(IllegalArgumentException.class);
+
+        thenErrorMessageIs("El buffet es obligatorio");
+        thenStudentWasNotRead();
+    }
+
+    private void givenValidPreferenceDetectionScenario() {
+        givenStudentExists();
+        givenPurchaseHistory(sufficientHistory());
+        givenAvailableStockWithProduct();
+    }
+
+    private void givenRequest() {
+        studentId = randomUUID();
+        buffetId = randomUUID();
+        detectPreferencesRequest = new DetectStudentPreferencesRequest(studentId, buffetId);
+    }
+
+    private void givenStudentExists() {
+        givenRequest();
+        student = student(studentId);
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+    }
+
+    private void givenStudentDoesNotExist() {
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
+    }
+
+    private void givenStudentLookupFails() {
+        when(alumnoRepository.findById(studentId))
                 .thenThrow(new RuntimeException("Database error"));
-
-        assertThrows(RuntimeException.class,
-                () -> detectStudentPreferences.execute(request(context)));
     }
 
-    @Test
-    void rejectNullAlumnoIdBeforeReadingRepositories() {
-        DetectStudentPreferencesRequest request =
-                new DetectStudentPreferencesRequest(null, UUID.randomUUID());
+    private void givenPurchaseHistory(List<CompraResumen> history) {
+        purchaseHistory = history;
+        when(purchaseRepository.findLastPurchasesByAlumno(studentId, PURCHASE_HISTORY_LIMIT))
+                .thenReturn(history);
+    }
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> detectStudentPreferences.execute(request));
+    private void givenAvailableStockWithProduct() {
+        product = product();
+        givenAvailableStock(List.of(product));
+    }
 
-        assertEquals("El alumno es obligatorio", exception.getMessage());
+    private void givenAvailableStock(List<Producto> stock) {
+        availableStock = stock;
+        when(inventoryRepository.findAvailableProductsByBuffet(buffetId)).thenReturn(stock);
+    }
+
+    private void givenPreferenceDetectedForAvailableProduct() {
+        detectedPreference = detectedPreference(product.getId());
+        givenPreferenceDetected(detectedPreference);
+    }
+
+    private void givenPreferenceDetectedForUnavailableProduct() {
+        detectedPreference = detectedPreference(randomUUID());
+        givenPreferenceDetected(detectedPreference);
+    }
+
+    private void givenPreferenceDetected(PreferenciaDetectada preference) {
+        when(preferenceAIRepository.analizarPreferencias(
+                student,
+                purchaseHistory,
+                availableStock))
+                .thenReturn(Optional.of(preference));
+    }
+
+    private void givenNoPreferenceDetected() {
+        when(preferenceAIRepository.analizarPreferencias(
+                student,
+                purchaseHistory,
+                availableStock))
+                .thenReturn(Optional.empty());
+    }
+
+    private void whenDetectStudentPreferences() {
+        detectPreferencesResponse = detectStudentPreferences.execute(detectPreferencesRequest);
+    }
+
+    private <T extends Throwable> void whenDetectStudentPreferencesFails(
+            Class<T> expectedException) {
+        Executable execution = () -> detectStudentPreferences.execute(detectPreferencesRequest);
+        thrownException = assertThrows(expectedException, execution);
+    }
+
+    private void thenDetectedPreferenceWasReturned() {
+        assertTrue(detectPreferencesResponse.isPresent());
+        assertEquals(TITLE, detectPreferencesResponse.orElseThrow().titulo());
+        assertEquals(product.getId(), detectPreferencesResponse.orElseThrow().productoId());
+    }
+
+    private void thenNoPreferenceWasReturned() {
+        assertTrue(detectPreferencesResponse.isEmpty());
+    }
+
+    private void thenSuggestionWasSaved() {
+        verify(sugerenciaIARepository).save(suggestionCaptor.capture());
+        SugerenciaIA savedSuggestion = suggestionCaptor.getValue();
+        assertEquals(TipoSugerenciaIA.PREFERENCIA_DETECTADA, savedSuggestion.getTipo());
+        assertEquals(TITLE, savedSuggestion.getTitulo());
+        assertEquals(MESSAGE, savedSuggestion.getMensaje());
+        assertEquals(product.getId(), savedSuggestion.getProductoId());
+        assertEquals(studentId, savedSuggestion.getAlumnoId());
+        assertEquals(buffetId, savedSuggestion.getBuffetId());
+        assertEquals(product.getId().toString(), savedSuggestion.getMetadata().get("productoId"));
+        assertEquals(AI_REASON, savedSuggestion.getMetadata().get("razonIA"));
+    }
+
+    private void thenPreferenceWasNotAnalyzed() {
+        verify(preferenceAIRepository, never()).analizarPreferencias(any(), any(), any());
+    }
+
+    private void thenSuggestionWasNotSaved() {
+        verify(sugerenciaIARepository, never()).save(any());
+    }
+
+    private void thenStudentWasNotRead() {
         verify(alumnoRepository, never()).findById(any());
     }
 
-    @Test
-    void rejectNullBuffetIdBeforeReadingRepositories() {
-        DetectStudentPreferencesRequest request =
-                new DetectStudentPreferencesRequest(UUID.randomUUID(), null);
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> detectStudentPreferences.execute(request));
-
-        assertEquals("El buffet es obligatorio", exception.getMessage());
-        verify(alumnoRepository, never()).findById(any());
+    private void thenErrorMessageIs(String expectedMessage) {
+        assertEquals(expectedMessage, thrownException.getMessage());
     }
 
-    private TestContext context() {
-        UUID studentId = UUID.randomUUID();
-        return new TestContext(studentId, UUID.randomUUID(), alumno(studentId));
-    }
-
-    private DetectStudentPreferencesRequest request(TestContext context) {
-        return new DetectStudentPreferencesRequest(context.studentId(), context.buffetId());
-    }
-
-    private Alumno alumno(UUID id) {
-        Alumno alumno = new Alumno();
-        alumno.setId(id);
-        return alumno;
+    private Alumno student(UUID id) {
+        Alumno student = new Alumno();
+        student.setId(id);
+        return student;
     }
 
     private Producto product() {
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        return producto;
+        Producto product = new Producto();
+        product.setId(randomUUID());
+        return product;
     }
 
     private List<CompraResumen> sufficientHistory() {
@@ -239,7 +326,7 @@ class DetectStudentPreferencesTest {
     }
 
     private CompraResumen purchase(String productName) {
-        return new CompraResumen(productName, "C", LocalDateTime.now());
+        return new CompraResumen(productName, "C", LocalDateTime.of(2026, 7, 6, 10, 0));
     }
 
     private PreferenciaDetectada detectedPreference(UUID productId) {
@@ -249,74 +336,5 @@ class DetectStudentPreferencesTest {
                 productId.toString(),
                 AI_REASON
         );
-    }
-
-    private void givenAlumnoExists(TestContext context) {
-        when(alumnoRepository.findById(context.studentId()))
-                .thenReturn(Optional.of(context.alumno()));
-    }
-
-    private void givenPurchaseHistory(TestContext context, List<CompraResumen> historial) {
-        when(purchaseRepository.findLastPurchasesByAlumno(
-                context.studentId(),
-                PURCHASE_HISTORY_LIMIT))
-                .thenReturn(historial);
-    }
-
-    private void givenAvailableStock(TestContext context, List<Producto> stock) {
-        when(inventoryRepository.findAvailableProductsByBuffet(context.buffetId()))
-                .thenReturn(stock);
-    }
-
-    private void givenPreferenceDetected(
-            Alumno alumno,
-            List<CompraResumen> historial,
-            List<Producto> stock,
-            PreferenciaDetectada preference
-    ) {
-        when(preferenceAIRepository.analizarPreferencias(alumno, historial, stock))
-                .thenReturn(Optional.of(preference));
-    }
-
-    private void givenNoPreferenceDetected(
-            Alumno alumno,
-            List<CompraResumen> historial,
-            List<Producto> stock
-    ) {
-        when(preferenceAIRepository.analizarPreferencias(alumno, historial, stock))
-                .thenReturn(Optional.empty());
-    }
-
-    private SugerenciaIAEntity savedSuggestion() {
-        ArgumentCaptor<SugerenciaIAEntity> captor =
-                ArgumentCaptor.forClass(SugerenciaIAEntity.class);
-        verify(sugerenciaIARepository).guardar(captor.capture());
-        return captor.getValue();
-    }
-
-    private void assertSavedSuggestion(
-            SugerenciaIAEntity saved,
-            TestContext context,
-            UUID productId
-    ) {
-        assertEquals(TipoSugerenciaIA.PREFERENCIA_DETECTADA, saved.getTipo());
-        assertEquals(TITLE, saved.getTitulo());
-        assertEquals(MESSAGE, saved.getMensaje());
-        assertEquals(productId, saved.getProductoEntity().getId());
-        assertEquals(context.studentId(), saved.getAlumnoEntity().getId());
-        assertEquals(context.buffetId(), saved.getBuffetEntity().getId());
-        assertEquals(productId.toString(), saved.getMetadata().get("productoId"));
-        assertEquals(AI_REASON, saved.getMetadata().get("razonIA"));
-    }
-
-    private void assertPreferenceWasNotAnalyzed() {
-        verify(preferenceAIRepository, never()).analizarPreferencias(any(), any(), any());
-    }
-
-    private void assertSuggestionWasNotSaved() {
-        verify(sugerenciaIARepository, never()).guardar(any());
-    }
-
-    private record TestContext(UUID studentId, UUID buffetId, Alumno alumno) {
     }
 }

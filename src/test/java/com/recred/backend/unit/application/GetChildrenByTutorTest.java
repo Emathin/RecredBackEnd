@@ -18,14 +18,18 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class GetChildrenByTutorTest {
+
+    private static final UUID TUTOR_ID = UUID.randomUUID();
+    private static final UUID CHILD_ID = UUID.randomUUID();
+    private static final String COGNITO_SUBJECT = "cognito-sub";
 
     @Mock
     private TutorRepository tutorRepository;
@@ -34,76 +38,114 @@ class GetChildrenByTutorTest {
     private GetChildrenByTutor getChildrenByTutor;
 
     @Test
-    void dadoUnTutorExistente_cuandoSeEjecuta_entoncesRetornaSusHijos() {
-        UUID tutorId = UUID.randomUUID();
-        Tutor tutor = new Tutor();
-        tutor.setId(tutorId);
+    void returnsChildrenWhenTutorExists() {
+        Tutor tutor = buildTutorWithChild();
+        givenTutorExistsById(tutor);
+        GetChildrenByTutorRequest request = GetChildrenByTutorRequest.byTutorId(TUTOR_ID);
 
-        Alumno hijo1 = new Alumno();
-        hijo1.setId(UUID.randomUUID());
-        tutor.addHijo(hijo1);
-        GetChildrenByTutorRequest request = GetChildrenByTutorRequest.byTutorId(tutorId);
+        List<GetChildrenByTutorResponse> result = whenExecute(request);
 
-        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(tutor));
-
-        List<GetChildrenByTutorResponse> resultado = getChildrenByTutor.execute(request);
-
-        assertNotNull(resultado);
-        assertEquals(1, resultado.size());
-        assertEquals(hijo1.getId(), resultado.get(0).id());
-        verify(tutorRepository, times(1)).findById(tutorId);
+        thenResultContainsChild(result);
+        thenRepositoryWasQueriedById();
     }
 
     @Test
-    void dadoUnTutorInexistente_cuandoSeEjecuta_entoncesLanzaExcepcion() {
-        UUID tutorId = UUID.randomUUID();
-        GetChildrenByTutorRequest request = GetChildrenByTutorRequest.byTutorId(tutorId);
+    void throwsExceptionWhenTutorDoesNotExistById() {
+        givenTutorDoesNotExistById();
+        GetChildrenByTutorRequest request = GetChildrenByTutorRequest.byTutorId(TUTOR_ID);
 
-        when(tutorRepository.findById(tutorId)).thenReturn(Optional.empty());
+        Executable execution = () -> whenExecute(request);
 
-        Executable execution = () -> getChildrenByTutor.execute(request);
-
-        RuntimeException exception = assertThrows(RuntimeException.class, execution);
-        assertEquals("Tutor no encontrado con ID: " + tutorId, exception.getMessage());
-        verify(tutorRepository, times(1)).findById(tutorId);
+        thenThrowsTutorNotFoundByIdException(execution);
+        thenRepositoryWasQueriedById();
     }
 
     @Test
-    void dadoUnSubjectConTutor_cuandoSeEjecutaPorCognito_entoncesRetornaSusHijos() {
-        String subject = "cognito-sub";
+    void returnsChildrenWhenTutorExistsByCognitoSubject() {
+        Tutor tutor = buildTutorWithChild();
+        givenTutorExistsByCognitoSubject(tutor);
+        GetChildrenByTutorRequest request = GetChildrenByTutorRequest.byCognitoSubject(COGNITO_SUBJECT);
+
+        List<GetChildrenByTutorResponse> result = whenExecute(request);
+
+        thenResultContainsChild(result);
+        thenRepositoryWasQueriedByCognitoSubject();
+    }
+
+    @Test
+    void throwsExceptionWhenTutorDoesNotExistByCognitoSubject() {
+        givenTutorDoesNotExistByCognitoSubject();
+        GetChildrenByTutorRequest request = GetChildrenByTutorRequest.byCognitoSubject(COGNITO_SUBJECT);
+
+        Executable execution = () -> whenExecute(request);
+
+        thenThrowsTutorNotFoundByCognitoSubjectException(execution);
+        thenRepositoryWasQueriedByCognitoSubject();
+    }
+
+    @Test
+    void throwsExceptionWhenBothParametersAreNull() {
+        GetChildrenByTutorRequest request = new GetChildrenByTutorRequest(null, null);
+
+        Executable execution = () -> whenExecute(request);
+
+        thenThrowsMissingParametersException(execution);
+    }
+
+    private Tutor buildTutorWithChild() {
         Tutor tutor = new Tutor();
-        Alumno hijo = new Alumno();
-        hijo.setId(UUID.randomUUID());
-        tutor.addHijo(hijo);
-        GetChildrenByTutorRequest request = GetChildrenByTutorRequest.byCognitoSubject(subject);
+        tutor.setId(TUTOR_ID);
+        Alumno child = new Alumno();
+        child.setId(CHILD_ID);
+        tutor.addHijo(child);
+        return tutor;
+    }
 
-        when(tutorRepository.findByUsuarioIdCognito(subject)).thenReturn(Optional.of(tutor));
+    private void givenTutorExistsById(Tutor tutor) {
+        when(tutorRepository.findById(TUTOR_ID)).thenReturn(Optional.of(tutor));
+    }
 
-        List<GetChildrenByTutorResponse> result = getChildrenByTutor.execute(request);
+    private void givenTutorDoesNotExistById() {
+        when(tutorRepository.findById(TUTOR_ID)).thenReturn(Optional.empty());
+    }
 
+    private void givenTutorExistsByCognitoSubject(Tutor tutor) {
+        when(tutorRepository.findByUsuarioIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(tutor));
+    }
+
+    private void givenTutorDoesNotExistByCognitoSubject() {
+        when(tutorRepository.findByUsuarioIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.empty());
+    }
+
+    private List<GetChildrenByTutorResponse> whenExecute(GetChildrenByTutorRequest request) {
+        return getChildrenByTutor.execute(request);
+    }
+
+    private void thenResultContainsChild(List<GetChildrenByTutorResponse> result) {
+        assertNotNull(result);
         assertEquals(1, result.size());
-        assertEquals(hijo.getId(), result.get(0).id());
+        assertEquals(CHILD_ID, result.get(0).id());
     }
 
-    @Test
-    void dadoUnSubjectSinTutor_cuandoSeEjecutaPorCognito_entoncesLanzaExcepcion() {
-        String subject = "cognito-sub";
-        GetChildrenByTutorRequest request = GetChildrenByTutorRequest.byCognitoSubject(subject);
+    private void thenRepositoryWasQueriedById() {
+        verify(tutorRepository).findById(TUTOR_ID);
+    }
 
-        when(tutorRepository.findByUsuarioIdCognito(subject)).thenReturn(Optional.empty());
+    private void thenRepositoryWasQueriedByCognitoSubject() {
+        verify(tutorRepository).findByUsuarioIdCognito(COGNITO_SUBJECT);
+    }
 
-        Executable execution = () -> getChildrenByTutor.execute(request);
+    private void thenThrowsTutorNotFoundByIdException(Executable execution) {
+        RuntimeException exception = assertThrows(RuntimeException.class, execution);
+        assertEquals("Tutor no encontrado con ID: " + TUTOR_ID, exception.getMessage());
+    }
 
+    private void thenThrowsTutorNotFoundByCognitoSubjectException(Executable execution) {
         RuntimeException exception = assertThrows(RuntimeException.class, execution);
         assertEquals("Tutor no encontrado para el usuario autenticado", exception.getMessage());
     }
 
-    @Test
-    void execute_CuandoAmbosParametrosSonNulos_LanzaIllegalArgumentException() {
-        GetChildrenByTutorRequest request = new GetChildrenByTutorRequest(null, null);
-
-        Executable execution = () -> getChildrenByTutor.execute(request);
-
+    private void thenThrowsMissingParametersException(Executable execution) {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("Debe proporcionar tutorId o cognitoSubject", exception.getMessage());
     }

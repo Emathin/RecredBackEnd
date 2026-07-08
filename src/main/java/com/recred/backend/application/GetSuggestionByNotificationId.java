@@ -17,10 +17,10 @@ public class GetSuggestionByNotificationId {
         if (suggestion == null) {
             return null;
         }
-        return mapToResponse(suggestion);
+        return toResponse(suggestion);
     }
 
-    private GetSuggestionResponse mapToResponse(SugerenciaIA suggestion) {
+    private GetSuggestionResponse toResponse(SugerenciaIA suggestion) {
         return new GetSuggestionResponse(
                 suggestion.getId(),
                 suggestion.getAlumnoId(),

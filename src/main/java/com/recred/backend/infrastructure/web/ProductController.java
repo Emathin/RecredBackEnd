@@ -22,6 +22,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -51,6 +52,7 @@ public class ProductController {
     private final UpdateProductPrice updateProductPrice;
     private final ParseBulkStock parseBulkStock;
     private final SaveBulkProducts saveBulkProducts;
+    private final PlanAccessGuard planAccessGuard;
 
     public ProductController(
             GetAllProducts getAllProducts,
@@ -60,7 +62,8 @@ public class ProductController {
             DeleteProduct deleteProduct,
             UpdateProductPrice updateProductPrice,
             ParseBulkStock parseBulkStock,
-            SaveBulkProducts saveBulkProducts) {
+            SaveBulkProducts saveBulkProducts,
+            PlanAccessGuard planAccessGuard) {
         this.getAllProducts = getAllProducts;
         this.getProductById = getProductById;
         this.saveProduct = saveProduct;
@@ -69,6 +72,7 @@ public class ProductController {
         this.updateProductPrice = updateProductPrice;
         this.parseBulkStock = parseBulkStock;
         this.saveBulkProducts = saveBulkProducts;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @PatchMapping("/{productId}/precio")
@@ -87,13 +91,19 @@ public class ProductController {
     private BigDecimal resolveNewPrice(
             BigDecimal queryPrice,
             UpdateProductPriceRequestDTO request) {
+        BigDecimal price = null;
         if (queryPrice != null) {
-            return queryPrice;
+            price = queryPrice;
+        } else if (request != null) {
+            price = request.nuevoPrecio();
         }
-        if (request != null) {
-            return request.nuevoPrecio();
+        if (price == null) {
+            throw new IllegalArgumentException("Product price is required");
         }
-        throw new IllegalArgumentException("Product price is required");
+        if (price.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Product price must be greater than zero");
+        }
+        return price;
     }
 
     private UUID resolveBuffetId(UUID queryBuffetId, UpdateProductPriceRequestDTO request) {
@@ -124,7 +134,9 @@ public class ProductController {
     @PostMapping(value = "/bulk-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Procesa un archivo (PDF, CSV) para extraer productos masivamente")
     public ResponseEntity<BulkStockParseResponse> uploadFile(
+            Authentication authentication,
             @RequestParam("file") MultipartFile file) {
+        planAccessGuard.requireVendorAdvanced(authentication);
         try {
             ParseBulkStockRequest parseRequest = new ParseBulkStockRequest(
                     file.getBytes(),
@@ -140,7 +152,9 @@ public class ProductController {
     @PostMapping("/bulk")
     @Operation(summary = "Guarda múltiples productos en una sola transacción")
     public ResponseEntity<List<ProductResponseDTO>> createBulk(
+            Authentication authentication,
             @Valid @RequestBody List<ProductRequestDTO> request) {
+        planAccessGuard.requireVendorAdvanced(authentication);
         List<SaveProductRequest> products = request.stream()
                 .map(ProductRequestDTO::toSaveRequest)
                 .collect(Collectors.toList());
@@ -155,8 +169,10 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponseDTO> findById(
+            Authentication authentication,
             @PathVariable UUID id,
             @RequestParam(required = false) UUID buffetId) {
+        planAccessGuard.requireVendorAdvanced(authentication);
         return ResponseEntity.ok(ProductResponseDTO.fromApplication(
                 getProductById.execute(new GetProductByIdRequest(id, buffetId))));
     }

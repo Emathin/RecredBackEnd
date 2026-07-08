@@ -4,7 +4,7 @@ import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.TutorInvitation;
-import com.recred.backend.domain.models.TutorInvitationStatus;
+
 import com.recred.backend.domain.models.TutorSchoolStatus;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.TutorInvitationRepository;
@@ -22,14 +22,12 @@ import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.regex.Pattern;
+
 
 public class InviteTutorToSchool {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InviteTutorToSchool.class);
-    private static final Pattern EMAIL_PATTERN =
-            Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$",
-                    Pattern.CASE_INSENSITIVE);
+
 
     private final UsuarioRepository userRepository;
     private final TutorRepository tutorRepository;
@@ -59,44 +57,76 @@ public class InviteTutorToSchool {
     }
 
     @Transactional
-    public TutorInvitationResult execute(String directorCognitoSubject,
-                                         TutorInvitationCommand command) {
-        Usuario director = findInvitingUser(directorCognitoSubject);
-        Colegio school = requireSchool(director);
-        String email = normalizeEmail(command.email());
+    public TutorInvitationResult execute(InviteTutorToSchoolRequest request) {
+        Colegio school = getSchoolForDirector(request.directorCognitoSubject());
+        String email = formatEmail(request.email());
 
         if (isAlreadyAssociated(email, school.getId())) {
-            return new TutorInvitationResult(null, null, "ALREADY_ASSOCIATED");
+            return buildAlreadyAssociatedResult();
         }
 
+        return createAndSendInvitation(school, email, request);
+    }
+
+    private Colegio getSchoolForDirector(String cognitoSubject) {
+        Usuario director = findInvitingUser(cognitoSubject);
+        return requireSchool(director);
+    }
+
+    private TutorInvitationResult buildAlreadyAssociatedResult() {
+        return new TutorInvitationResult(null, null, "ALREADY_ASSOCIATED");
+    }
+
+    private TutorInvitationResult createAndSendInvitation(Colegio school, String email, 
+                                                          InviteTutorToSchoolRequest request) {
         String token = tokenService.generateToken();
-        TutorInvitation invitation = invitationRepository
-                .findReusableBySchoolIdAndEmail(school.getId(), email)
-                .orElseGet(TutorInvitation::new);
-        String result = invitation.getId() == null ? "CREATED" : "RESENT";
+        TutorInvitation invitation = findOrCreateReusableInvitation(school.getId(), email);
+        String resultStatus = determineStatus(invitation);
 
-        invitation.setSchool(schoolRef(school.getId()));
-        invitation.setEmail(email);
-        invitation.setFirstName(normalizeOptional(command.firstName()));
-        invitation.setLastName(normalizeOptional(command.lastName()));
-        invitation.setPhone(normalizeOptional(command.phone()));
-        invitation.setTokenHash(tokenService.hash(token));
-        invitation.setStatus(TutorInvitationStatus.PENDING);
-        invitation.setExpiresAt(LocalDateTime.now(clock).plusDays(7));
-        invitation.setUsedAt(null);
-
-        TutorInvitation saved = invitationRepository.save(invitation);
+        setupInvitation(invitation, request, school, email, token);
+        
+        TutorInvitation saved = saveInvitation(invitation);
         String link = invitationLink(token);
 
+        return sendEmailAndBuildResult(saved, link, resultStatus);
+    }
+
+    private String determineStatus(TutorInvitation invitation) {
+        return invitation.getId() == null ? "CREATED" : "RESENT";
+    }
+
+    private void setupInvitation(TutorInvitation invitation, InviteTutorToSchoolRequest request, 
+                                 Colegio school, String email, String token) {
+        invitation.setupForInvitation(
+                schoolRef(school.getId()),
+                email,
+                normalizeOptional(request.firstName()),
+                normalizeOptional(request.lastName()),
+                normalizeOptional(request.phone()),
+                tokenService.hash(token),
+                LocalDateTime.now(clock).plusDays(7)
+        );
+    }
+
+    private TutorInvitationResult sendEmailAndBuildResult(TutorInvitation saved, String link, 
+                                                          String baseStatus) {
         try {
             emailSender.sendInvitation(saved, link);
+            return new TutorInvitationResult(saved, link, baseStatus);
         } catch (RuntimeException exception) {
             LOGGER.warn("No se pudo enviar por email la invitacion de tutor {}: {}",
                     saved.getId(), exception.getMessage());
-            return new TutorInvitationResult(saved, link, result + "_EMAIL_ERROR");
+            return new TutorInvitationResult(saved, link, baseStatus + "_EMAIL_ERROR");
         }
+    }
 
-        return new TutorInvitationResult(saved, link, result);
+    private TutorInvitation findOrCreateReusableInvitation(UUID schoolId, String email) {
+        return invitationRepository.findReusableBySchoolIdAndEmail(schoolId, email)
+                .orElseGet(TutorInvitation::new);
+    }
+
+    private TutorInvitation saveInvitation(TutorInvitation invitation) {
+        return invitationRepository.save(invitation);
     }
 
     private Usuario findInvitingUser(String cognitoSubject) {
@@ -137,15 +167,8 @@ public class InviteTutorToSchool {
         return school;
     }
 
-    private String normalizeEmail(String email) {
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("El email es obligatorio");
-        }
-        String normalized = email.trim().toLowerCase(Locale.ROOT);
-        if (!EMAIL_PATTERN.matcher(normalized).matches()) {
-            throw new IllegalArgumentException("El email no es valido");
-        }
-        return normalized;
+    private String formatEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private String normalizeOptional(String value) {
@@ -157,14 +180,6 @@ public class InviteTutorToSchool {
                 ? frontendBaseUrl.substring(0, frontendBaseUrl.length() - 1)
                 : frontendBaseUrl;
         return base + "/invitaciones/tutor?token=" + token;
-    }
-
-    public record TutorInvitationCommand(
-            String email,
-            String firstName,
-            String lastName,
-            String phone
-    ) {
     }
 
     public record TutorInvitationResult(

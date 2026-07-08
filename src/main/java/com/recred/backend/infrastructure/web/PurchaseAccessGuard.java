@@ -21,15 +21,18 @@ public class PurchaseAccessGuard {
     private final PurchaseRepository purchaseRepository;
     private final ConsumptionAccessRepository consumptionAccessRepository;
     private final KiosqueroAccessGuard kiosqueroAccessGuard;
+    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public PurchaseAccessGuard(
             PurchaseRepository purchaseRepository,
             ConsumptionAccessRepository consumptionAccessRepository,
-            KiosqueroAccessGuard kiosqueroAccessGuard
+            KiosqueroAccessGuard kiosqueroAccessGuard,
+            SchoolLicenseAccessGuard schoolLicenseAccessGuard
     ) {
         this.purchaseRepository = purchaseRepository;
         this.consumptionAccessRepository = consumptionAccessRepository;
         this.kiosqueroAccessGuard = kiosqueroAccessGuard;
+        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     public Purchase requirePurchaseAccess(Authentication authentication, UUID purchaseId) {
@@ -38,6 +41,7 @@ public class PurchaseAccessGuard {
         ConsumptionRequester requester = requester(authentication);
 
         if (canAccessByStudent(requester, purchase)) {
+            requireStudentLicense(purchase);
             return purchase;
         }
 
@@ -71,5 +75,9 @@ public class PurchaseAccessGuard {
                 && consumptionAccessRepository.tutorCanAccessStudent(
                 requester.userId(),
                 studentId);
+    }
+
+    private void requireStudentLicense(Purchase purchase) {
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(purchase.getStudent().getId());
     }
 }

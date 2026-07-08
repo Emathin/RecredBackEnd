@@ -5,18 +5,20 @@ import com.recred.backend.application.GenerateDailyBuffetReportRequest;
 import com.recred.backend.application.GenerateDailyBuffetReportResponse;
 import com.recred.backend.domain.models.DailyInventorySnapshot;
 import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.MovimientoStock;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.models.TipoMovimientoStock;
 import com.recred.backend.domain.repositories.DailyBuffetCloseRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.StockMovementRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,47 +28,62 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.recred.backend.domain.models.EstadoCompra.CANCELADO;
+import static com.recred.backend.domain.models.EstadoCompra.ENTREGADO;
+import static com.recred.backend.domain.models.EstadoCompra.EN_PREPARACION;
+import static com.recred.backend.domain.models.EstadoCompra.LISTO;
+import static com.recred.backend.domain.models.EstadoCompra.PENDIENTE;
+import static com.recred.backend.domain.models.EstadoCompra.RECHAZADO;
+import static com.recred.backend.domain.models.EstadoCompra.VENCIDO;
+import static com.recred.backend.domain.models.EstadoInventario.DISPONIBLE;
+import static com.recred.backend.domain.models.EstadoInventario.SIN_STOCK;
+import static com.recred.backend.domain.models.MedioPago.CREDITOS;
+import static com.recred.backend.domain.models.TipoManejoInventario.CUPO_DIARIO;
+import static com.recred.backend.domain.models.TipoManejoInventario.STOCK_EXACTO;
+import static com.recred.backend.domain.models.TipoMovimientoStock.LIBERACION;
+import static com.recred.backend.domain.models.TipoMovimientoStock.VENTA;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class GenerateDailyBuffetReportTest {
 
+    private static final UUID BUFFET_ID = UUID.randomUUID();
+    private static final LocalDate REPORT_DATE = LocalDate.of(2026, 5, 27);
+
+    @Mock
+    private PurchaseRepository purchaseRepository;
+    
+    @Mock
+    private ProductRepository productRepository;
+    
+    @Mock
+    private StockMovementRepository stockMovementRepository;
+    
+    @Mock
+    private DailyBuffetCloseRepository dailyBuffetCloseRepository;
+
+    @InjectMocks
+    private GenerateDailyBuffetReport useCase;
+
     @Test
-    void execute_ShouldAggregateDailySalesAndInventory() {
-        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
-        ProductRepository productRepository = mock(ProductRepository.class);
-        StockMovementRepository stockMovementRepository = mock(StockMovementRepository.class);
-        GenerateDailyBuffetReport useCase = new GenerateDailyBuffetReport(
-                purchaseRepository,
-                productRepository,
-                stockMovementRepository
-        );
-        UUID buffetId = UUID.randomUUID();
+    void aggregateDailySalesAndInventory() {
         Producto product = product("Alfajor", "20.00");
         Producto dailyCapacityProduct = dailyCapacityProduct("Sandwich", "50.00");
-        Purchase delivered = purchase(EstadoCompra.ENTREGADO, product, 2);
-        Purchase pending = purchase(EstadoCompra.PENDIENTE, product, 1);
-        LocalDate date = LocalDate.of(2026, 5, 27);
+        Purchase delivered = purchase(ENTREGADO, product, 2);
+        Purchase pending = purchase(PENDIENTE, product, 1);
 
-        when(purchaseRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
-                .thenReturn(List.of(delivered, pending));
-        when(productRepository.findAllActiveWithStock(buffetId))
-                .thenReturn(List.of(inventoryProduct(product), dailyCapacityProduct));
-        when(purchaseRepository.sumScheduledProductQuantity(
-                eq(buffetId),
-                eq(dailyCapacityProduct.getId()),
-                eq(date),
-                anyList()
-        )).thenReturn(4L);
+        givenPurchasesInDateRange(List.of(delivered, pending));
+        givenActiveProductsWithStock(List.of(inventoryProduct(product), dailyCapacityProduct));
+        givenScheduledProductQuantity(dailyCapacityProduct.getId(), 4L);
+        givenNoInventorySnapshotExists();
 
-        GenerateDailyBuffetReportResponse report = useCase.execute(
-                new GenerateDailyBuffetReportRequest(buffetId, date));
+        GenerateDailyBuffetReportResponse report = whenGenerateReport();
 
         assertEquals(2, report.totalOrders());
         assertEquals(1, report.deliveredOrders());
@@ -82,20 +99,7 @@ class GenerateDailyBuffetReportTest {
     }
 
     @Test
-    void execute_WhenDailyCloseSnapshotExists_ShouldUseSnapshotInventory() {
-        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
-        ProductRepository productRepository = mock(ProductRepository.class);
-        StockMovementRepository stockMovementRepository = mock(StockMovementRepository.class);
-        DailyBuffetCloseRepository dailyBuffetCloseRepository =
-                mock(DailyBuffetCloseRepository.class);
-        GenerateDailyBuffetReport useCase = new GenerateDailyBuffetReport(
-                purchaseRepository,
-                productRepository,
-                stockMovementRepository,
-                dailyBuffetCloseRepository
-        );
-        UUID buffetId = UUID.randomUUID();
-        LocalDate date = LocalDate.of(2026, 5, 27);
+    void useSnapshotInventoryWhenDailyCloseSnapshotExists() {
         DailyInventorySnapshot snapshot = new DailyInventorySnapshot(
                 UUID.randomUUID(),
                 "Alfajor",
@@ -105,84 +109,56 @@ class GenerateDailyBuffetReportTest {
                 2,
                 null,
                 null,
-                EstadoInventario.DISPONIBLE,
-                TipoManejoInventario.STOCK_EXACTO
+                DISPONIBLE,
+                STOCK_EXACTO
         );
 
-        when(purchaseRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
-                .thenReturn(List.of());
-        when(stockMovementRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
-                .thenReturn(List.of());
-        when(dailyBuffetCloseRepository.findInventorySnapshotByBuffetAndDate(buffetId, date))
-                .thenReturn(Optional.of(List.of(snapshot)));
+        givenPurchasesInDateRange(List.of());
+        givenMovementsInDateRange(List.of());
+        givenInventorySnapshotExists(List.of(snapshot));
 
-        GenerateDailyBuffetReportResponse report = useCase.execute(
-                new GenerateDailyBuffetReportRequest(buffetId, date));
+        GenerateDailyBuffetReportResponse report = whenGenerateReport();
 
         assertEquals(snapshot.productId(), report.inventory().get(0).productId());
         assertEquals(snapshot.productName(), report.inventory().get(0).productName());
         assertEquals(List.of(), report.soldOutProducts());
-        verify(productRepository, never()).findAllActiveWithStock(buffetId);
+        verify(productRepository, never()).findAllActiveWithStock(BUFFET_ID);
     }
 
     @Test
-    void execute_ShouldAggregateRefundsPaymentsMovementsAndFallbackInventory() {
-        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
-        ProductRepository productRepository = mock(ProductRepository.class);
-        StockMovementRepository stockMovementRepository = mock(StockMovementRepository.class);
-        DailyBuffetCloseRepository dailyBuffetCloseRepository =
-                mock(DailyBuffetCloseRepository.class);
-        GenerateDailyBuffetReport useCase = new GenerateDailyBuffetReport(
-                purchaseRepository,
-                productRepository,
-                stockMovementRepository,
-                dailyBuffetCloseRepository
-        );
-        UUID buffetId = UUID.randomUUID();
-        LocalDate date = LocalDate.of(2026, 5, 27);
+    void aggregateRefundsPaymentsMovementsAndFallbackInventory() {
         Producto paidProduct = product("Alfajor", "20.00");
         Producto freeProduct = product("Producto sin precio", "1.00");
         freeProduct.setPrecio(null);
         Producto withoutInventory = product("Sin inventario", "1.00");
         Producto soldOutProduct = inventoryProduct(product("Agotado", "1.00"));
         soldOutProduct.setStockDisponible(0);
-        soldOutProduct.setEstadoInventario(EstadoInventario.SIN_STOCK);
+        soldOutProduct.setEstadoInventario(SIN_STOCK);
         Producto saturatedDailyCapacity = dailyCapacityProduct("Cupo lleno", "5.00");
+
         List<Purchase> purchases = List.of(
-                purchase(EstadoCompra.ENTREGADO, paidProduct, 2, MedioPago.CREDITOS),
-                purchase(EstadoCompra.ENTREGADO, freeProduct, 1, null),
-                purchase(EstadoCompra.CANCELADO, paidProduct, 1, MedioPago.CREDITOS),
-                purchase(EstadoCompra.RECHAZADO, paidProduct, 1, MedioPago.CREDITOS),
-                purchase(EstadoCompra.EN_PREPARACION, paidProduct, 1, MedioPago.CREDITOS),
-                purchase(EstadoCompra.LISTO, paidProduct, 1, MedioPago.CREDITOS),
-                purchase(EstadoCompra.VENCIDO, paidProduct, 1, MedioPago.CREDITOS)
+                purchase(ENTREGADO, paidProduct, 2, CREDITOS),
+                purchase(ENTREGADO, freeProduct, 1, null),
+                purchase(CANCELADO, paidProduct, 1, CREDITOS),
+                purchase(RECHAZADO, paidProduct, 1, CREDITOS),
+                purchase(EN_PREPARACION, paidProduct, 1, CREDITOS),
+                purchase(LISTO, paidProduct, 1, CREDITOS),
+                purchase(VENCIDO, paidProduct, 1, CREDITOS)
         );
         List<MovimientoStock> movements = List.of(
-                movement(TipoMovimientoStock.LIBERACION, 3),
-                movement(TipoMovimientoStock.LIBERACION, null),
-                movement(TipoMovimientoStock.VENTA, 2),
+                movement(LIBERACION, 3),
+                movement(LIBERACION, null),
+                movement(VENTA, 2),
                 movement(null, 9)
         );
-        when(purchaseRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
-                .thenReturn(purchases);
-        when(stockMovementRepository.findByBuffetAndDateRange(eq(buffetId), any(), any()))
-                .thenReturn(movements);
-        when(dailyBuffetCloseRepository.findInventorySnapshotByBuffetAndDate(buffetId, date))
-                .thenReturn(Optional.empty());
-        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(
-                withoutInventory,
-                soldOutProduct,
-                saturatedDailyCapacity
-        ));
-        when(purchaseRepository.sumScheduledProductQuantity(
-                eq(buffetId),
-                eq(saturatedDailyCapacity.getId()),
-                eq(date),
-                anyList()
-        )).thenReturn(20L);
 
-        GenerateDailyBuffetReportResponse report = useCase.execute(
-                new GenerateDailyBuffetReportRequest(buffetId, date));
+        givenPurchasesInDateRange(purchases);
+        givenMovementsInDateRange(movements);
+        givenNoInventorySnapshotExists();
+        givenActiveProductsWithStock(List.of(withoutInventory, soldOutProduct, saturatedDailyCapacity));
+        givenScheduledProductQuantity(saturatedDailyCapacity.getId(), 20L);
+
+        GenerateDailyBuffetReportResponse report = whenGenerateReport();
 
         assertEquals(7, report.totalOrders());
         assertEquals(2, report.deliveredOrders());
@@ -196,8 +172,7 @@ class GenerateDailyBuffetReportTest {
         assertEquals(3, report.releasedReservations());
         assertEquals(2, report.products().size());
         assertEquals(1, report.salesByPaymentMethod().size());
-        assertEquals(MedioPago.CREDITOS,
-                report.salesByPaymentMethod().get(0).paymentMethod());
+        assertEquals(CREDITOS, report.salesByPaymentMethod().get(0).paymentMethod());
         assertEquals(2, report.stockMovements().size());
         assertEquals(List.of(soldOutProduct.getId()), report.soldOutProducts().stream()
                 .map(GenerateDailyBuffetReportResponse.DailyInventorySnapshotResponse::productId)
@@ -209,16 +184,49 @@ class GenerateDailyBuffetReportTest {
                 .cupoDisponibleDia());
     }
 
+    private void givenPurchasesInDateRange(List<Purchase> purchases) {
+        when(purchaseRepository.findByBuffetAndDateRange(eq(BUFFET_ID), any(), any()))
+                .thenReturn(purchases);
+    }
+
+    private void givenMovementsInDateRange(List<MovimientoStock> movements) {
+        when(stockMovementRepository.findByBuffetAndDateRange(eq(BUFFET_ID), any(), any()))
+                .thenReturn(movements);
+    }
+
+    private void givenActiveProductsWithStock(List<Producto> products) {
+        when(productRepository.findAllActiveWithStock(BUFFET_ID))
+                .thenReturn(products);
+    }
+
+    private void givenScheduledProductQuantity(UUID productId, long quantity) {
+        when(purchaseRepository.sumScheduledProductQuantity(
+                eq(BUFFET_ID),
+                eq(productId),
+                eq(REPORT_DATE),
+                anyList()
+        )).thenReturn(quantity);
+    }
+
+    private void givenInventorySnapshotExists(List<DailyInventorySnapshot> snapshot) {
+        when(dailyBuffetCloseRepository.findInventorySnapshotByBuffetAndDate(BUFFET_ID, REPORT_DATE))
+                .thenReturn(Optional.of(snapshot));
+    }
+
+    private void givenNoInventorySnapshotExists() {
+        when(dailyBuffetCloseRepository.findInventorySnapshotByBuffetAndDate(BUFFET_ID, REPORT_DATE))
+                .thenReturn(Optional.empty());
+    }
+
+    private GenerateDailyBuffetReportResponse whenGenerateReport() {
+        return useCase.execute(new GenerateDailyBuffetReportRequest(BUFFET_ID, REPORT_DATE));
+    }
+
     private Purchase purchase(EstadoCompra status, Producto product, int quantity) {
         return purchase(status, product, quantity, null);
     }
 
-    private Purchase purchase(
-            EstadoCompra status,
-            Producto product,
-            int quantity,
-            MedioPago paymentMethod
-    ) {
+    private Purchase purchase(EstadoCompra status, Producto product, int quantity, MedioPago paymentMethod) {
         Purchase purchase = new Purchase();
         purchase.setStatus(status);
         BigDecimal price = product.getPrecio() == null ? BigDecimal.ZERO : product.getPrecio();
@@ -243,8 +251,8 @@ class GenerateDailyBuffetReportTest {
         product.setStockReservado(2);
         product.setStockDisponible(8);
         product.setStockMinimo(4);
-        product.setEstadoInventario(EstadoInventario.DISPONIBLE);
-        product.setTipoManejoInventario(TipoManejoInventario.STOCK_EXACTO);
+        product.setEstadoInventario(DISPONIBLE);
+        product.setTipoManejoInventario(STOCK_EXACTO);
         return product;
     }
 
@@ -255,8 +263,8 @@ class GenerateDailyBuffetReportTest {
         product.setStockDisponible(12);
         product.setStockMinimo(4);
         product.setCupoMaximoDiario(12);
-        product.setEstadoInventario(EstadoInventario.DISPONIBLE);
-        product.setTipoManejoInventario(TipoManejoInventario.CUPO_DIARIO);
+        product.setEstadoInventario(DISPONIBLE);
+        product.setTipoManejoInventario(CUPO_DIARIO);
         return product;
     }
 

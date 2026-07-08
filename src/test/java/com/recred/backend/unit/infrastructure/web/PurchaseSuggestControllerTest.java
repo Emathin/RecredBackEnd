@@ -10,6 +10,7 @@ import com.recred.backend.application.NotifyPurchaseSuggestionsResponse;
 import com.recred.backend.application.PushNotificationResponse;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.RespondToAISuggestionRequest;
+import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.PurchaseStatus;
@@ -24,7 +25,9 @@ import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.PurchaseSuggestController;
+import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import com.recred.backend.infrastructure.web.TestSuggestionRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -100,6 +103,9 @@ class PurchaseSuggestControllerTest {
     private CreateAdvancePurchase createAdvancePurchase;
 
     @MockitoBean
+    private PrizeHealthyPurchase prizeHealthyPurchase;
+
+    @MockitoBean
     private SugerenciaIARepository sugerenciaIARepository;
 
     @MockitoBean
@@ -107,6 +113,12 @@ class PurchaseSuggestControllerTest {
 
     @MockitoBean
     private TutorRepository tutorRepository;
+
+    @MockitoBean
+    private PlanAccessGuard planAccessGuard;
+
+    @MockitoBean
+    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     @MockitoBean
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
@@ -136,6 +148,7 @@ class PurchaseSuggestControllerTest {
         result.andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(usuarioId.toString()))
                 .andExpect(jsonPath("$.data.type").value("PURCHASE_SUGGESTION"));
+        verify(planAccessGuard).requireTutorOrStudentAdvanced(auth);
     }
 
     @Test
@@ -146,6 +159,8 @@ class PurchaseSuggestControllerTest {
 
         result.andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").exists());
+        verify(planAccessGuard).requireTutorOrStudentAdvanced(auth);
+        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(alumnoId);
         verify(respondToAISuggestion).execute(
                 new RespondToAISuggestionRequest(sugerenciaId, true));
     }

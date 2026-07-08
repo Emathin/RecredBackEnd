@@ -11,7 +11,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-class SchoolAssistantTutorFactsFormatter {
+public class SchoolAssistantTutorFactsFormatter {
+
+    public SchoolAssistantTutorFactsFormatter() {
+    }
 
     List<String> children(List<String> children) {
         return tutorChildren(children).stream()

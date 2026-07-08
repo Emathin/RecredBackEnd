@@ -118,6 +118,9 @@ class StudentPreferenceResponseTest {
                 "Producto recomendado",
                 "Compra este producto",
                 "producto-1",
+                null,
+                null,
+                null,
                 "Preferencia detectada",
                 parentView
         );

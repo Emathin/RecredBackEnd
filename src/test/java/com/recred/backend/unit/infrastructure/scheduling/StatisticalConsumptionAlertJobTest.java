@@ -13,32 +13,50 @@ import static org.mockito.Mockito.verify;
 
 class StatisticalConsumptionAlertJobTest {
 
+    private GenerateStatisticalConsumptionAlerts useCase;
+    private StatisticalConsumptionAlertJob job;
+
     @Test
-    void runUseCaseWhenJobIsEnabled() {
-        GenerateStatisticalConsumptionAlerts useCase = mock(
-                GenerateStatisticalConsumptionAlerts.class);
-        StatisticalConsumptionAlertJob job = new StatisticalConsumptionAlertJob(
-                useCase,
-                properties(true)
-        );
+    void givenJobIsEnabled_whenRunningJob_thenRunsUseCase() {
+        givenJobIsEnabled();
 
-        job.run();
+        whenRunningJob();
 
-        verify(useCase).execute(new GenerateStatisticalConsumptionAlertsRequest());
+        thenUseCaseWasExecuted();
     }
 
     @Test
-    void doNotRunUseCaseWhenJobIsDisabled() {
-        GenerateStatisticalConsumptionAlerts useCase = mock(
-                GenerateStatisticalConsumptionAlerts.class);
-        StatisticalConsumptionAlertJob job = new StatisticalConsumptionAlertJob(
-                useCase,
-                properties(false)
-        );
+    void givenJobIsDisabled_whenRunningJob_thenDoesNotRunUseCase() {
+        givenJobIsDisabled();
 
+        whenRunningJob();
+
+        thenUseCaseWasNotExecuted();
+    }
+
+    private void givenJobIsEnabled() {
+        givenJobWithEnabledProperty(true);
+    }
+
+    private void givenJobIsDisabled() {
+        givenJobWithEnabledProperty(false);
+    }
+
+    private void whenRunningJob() {
         job.run();
+    }
 
+    private void thenUseCaseWasExecuted() {
+        verify(useCase).execute(new GenerateStatisticalConsumptionAlertsRequest());
+    }
+
+    private void thenUseCaseWasNotExecuted() {
         verify(useCase, never()).execute(any());
+    }
+
+    private void givenJobWithEnabledProperty(boolean enabled) {
+        useCase = mock(GenerateStatisticalConsumptionAlerts.class);
+        job = new StatisticalConsumptionAlertJob(useCase, properties(enabled));
     }
 
     private StatisticalConsumptionAlertProperties properties(boolean enabled) {

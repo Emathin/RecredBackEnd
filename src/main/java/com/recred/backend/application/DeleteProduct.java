@@ -15,11 +15,18 @@ public class DeleteProduct {
 
     @Transactional
     public DeleteProductResponse execute(DeleteProductRequest request) {
-        Producto product = productRepository.findActiveById(request.id())
-                .orElseThrow(() -> new ProductNotFoundException(request.id()));
-
+        Producto product = findProduct(request.id());
         product.deactivate();
-        productRepository.save(product);
+        saveProduct(product);
         return new DeleteProductResponse(product.getId());
+    }
+
+    private Producto findProduct(java.util.UUID id) {
+        return productRepository.findActiveById(id)
+                .orElseThrow(() -> new ProductNotFoundException(id));
+    }
+
+    private void saveProduct(Producto product) {
+        productRepository.save(product);
     }
 }

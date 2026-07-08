@@ -6,6 +6,7 @@ import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
@@ -130,6 +131,23 @@ class UsuarioRepositoryImplIT extends AbstractIntegrationTest {
         assertEquals(cuit, saved.getKiosquero().getCuit());
     }
 
+    @Test
+    void updatePlanShouldPreserveTutorStudents() {
+        TutorEntity tutorEntity = generateTutorEntityWithStudent();
+        UUID usuarioId = tutorEntity.getUsuario().getId();
+        UUID alumnoId = tutorEntity.getHijos().iterator().next().getId();
+
+        repository.updatePlan(usuarioId, TipoPlan.INTERMEDIO);
+        entityManager.flush();
+        entityManager.clear();
+
+        UsuarioEntity saved = springDataUsuarioRepository.findById(usuarioId).orElseThrow();
+
+        assertEquals(TipoPlan.INTERMEDIO, saved.getPlan());
+        assertTrue(saved.getTutor().getHijos().stream()
+                .anyMatch(student -> student.getId().equals(alumnoId)));
+    }
+
     private Usuario user() {
         Usuario usuario = new Usuario();
         usuario.setIdCognito("sub-domain-" + UUID.randomUUID().toString().substring(0, 8));
@@ -197,6 +215,14 @@ class UsuarioRepositoryImplIT extends AbstractIntegrationTest {
         tutorEntity.setUsuario(tutorUser);
         tutorEntity.setActiva(true);
         entityManager.persist(tutorEntity);
+        return tutorEntity;
+    }
+
+    private TutorEntity generateTutorEntityWithStudent() {
+        TutorEntity tutorEntity = generateTutorEntity();
+        AlumnoEntity alumnoEntity = generateStudentEntity();
+        tutorEntity.addHijo(alumnoEntity);
+        entityManager.flush();
         return tutorEntity;
     }
 

@@ -1,6 +1,6 @@
 package com.recred.backend.application;
 
-import java.util.stream.Collectors;
+import java.util.List;
 
 public class SaveBulkProducts {
 
@@ -10,9 +10,15 @@ public class SaveBulkProducts {
         this.saveProduct = saveProduct;
     }
 
-    public SaveBulkProductsResponse execute(SaveBulkProductsRequest request) {
-        return new SaveBulkProductsResponse(request.products().stream()
+    public SaveBulkProductsResponse execute(SaveBulkProductsRequest bulkProductsRequest) {
+        return new SaveBulkProductsResponse(savedProductsFrom(bulkProductsRequest));
+    }
+
+    private List<ProductResponse> savedProductsFrom(
+            SaveBulkProductsRequest bulkProductsRequest
+    ) {
+        return bulkProductsRequest.products().stream()
                 .map(saveProduct::execute)
-                .collect(Collectors.toList()));
+                .toList();
     }
 }

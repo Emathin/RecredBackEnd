@@ -16,8 +16,6 @@ import com.recred.backend.domain.repositories.PurchaseRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.function.Executable;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -26,6 +24,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -42,16 +41,135 @@ class GetPurchaseStatusTest {
     @Mock
     private ConsumptionAccessRepository accessRepository;
 
-    @InjectMocks
     private GetPurchaseStatus useCase;
 
     private UUID purchaseId;
     private UUID studentId;
     private UUID userId;
     private Purchase purchase;
+    private ConsumptionRequester requester;
+    private GetPurchaseStatusResponse response;
+    private RuntimeException thrownException;
 
     @BeforeEach
     void setUp() {
+        useCase = new GetPurchaseStatus(purchaseRepository, accessRepository);
+    }
+
+    @Test
+    void givenStudentOwnsPurchase_whenGettingPurchaseStatus_thenReturnsStatus() {
+        givenPurchaseStatusScenario();
+        givenRequesterIsStudentOwner();
+        givenPurchaseExists();
+        givenAuthenticatedRequesterExists();
+
+        whenGettingPurchaseStatus();
+
+        thenPurchaseStatusIsReturned();
+        thenTutorAccessWasNotChecked();
+    }
+
+    @Test
+    void givenTutorCanAccessStudent_whenGettingPurchaseStatus_thenReturnsStatus() {
+        givenPurchaseStatusScenario();
+        givenRequesterIsTutor();
+        givenPurchaseExists();
+        givenAuthenticatedRequesterExists();
+        givenTutorCanAccessStudent();
+
+        whenGettingPurchaseStatus();
+
+        thenPurchaseStatusIsReturned();
+        thenTutorAccessWasChecked();
+    }
+
+    @Test
+    void givenAuthenticatedUserDoesNotExist_whenGettingPurchaseStatus_thenFails() {
+        givenPurchaseStatusScenario();
+        givenPurchaseExists();
+        givenAuthenticatedRequesterDoesNotExist();
+
+        whenGettingPurchaseStatusFails();
+
+        thenAuthenticatedUserNotFoundIsThrown();
+    }
+
+    @Test
+    void givenRequesterCannotAccessStudent_whenGettingPurchaseStatus_thenFails() {
+        givenPurchaseStatusScenario();
+        givenRequesterIsStudentForAnotherStudent();
+        givenPurchaseExists();
+        givenAuthenticatedRequesterExists();
+
+        whenGettingPurchaseStatusFails();
+
+        thenPurchaseAccessIsDenied();
+    }
+
+    @Test
+    void givenPurchaseWithoutStudent_whenGettingPurchaseStatus_thenFails() {
+        givenPurchaseStatusScenario();
+        givenPurchaseHasNoStudent();
+        givenRequesterIsStudentOwner();
+        givenPurchaseExists();
+        givenAuthenticatedRequesterExists();
+
+        whenGettingPurchaseStatusFails();
+
+        thenPurchaseAccessIsDenied();
+    }
+
+    @Test
+    void givenPurchaseStudentWithoutId_whenGettingPurchaseStatus_thenFails() {
+        givenPurchaseStatusScenario();
+        givenPurchaseStudentHasNoId();
+        givenRequesterIsStudentOwner();
+        givenPurchaseExists();
+        givenAuthenticatedRequesterExists();
+
+        whenGettingPurchaseStatusFails();
+
+        thenPurchaseAccessIsDenied();
+    }
+
+    @Test
+    void givenTutorCannotAccessStudent_whenGettingPurchaseStatus_thenFails() {
+        givenPurchaseStatusScenario();
+        givenRequesterIsTutor();
+        givenPurchaseExists();
+        givenAuthenticatedRequesterExists();
+        givenTutorCannotAccessStudent();
+
+        whenGettingPurchaseStatusFails();
+
+        thenPurchaseAccessIsDenied();
+        thenTutorAccessWasChecked();
+    }
+
+    @Test
+    void givenUnsupportedRole_whenGettingPurchaseStatus_thenFails() {
+        givenPurchaseStatusScenario();
+        givenRequesterHasUnsupportedRole();
+        givenPurchaseExists();
+        givenAuthenticatedRequesterExists();
+
+        whenGettingPurchaseStatusFails();
+
+        thenPurchaseAccessIsDenied();
+    }
+
+    @Test
+    void givenMissingPurchase_whenGettingPurchaseStatus_thenFailsBeforeLoadingRequester() {
+        givenPurchaseStatusScenario();
+        givenPurchaseDoesNotExist();
+
+        whenGettingPurchaseStatusFails();
+
+        thenPurchaseNotFoundIsThrown();
+        thenAuthenticatedRequesterWasNotRequested();
+    }
+
+    private void givenPurchaseStatusScenario() {
         purchaseId = UUID.randomUUID();
         studentId = UUID.randomUUID();
         userId = UUID.randomUUID();
@@ -65,141 +183,28 @@ class GetPurchaseStatusTest {
         purchase.setStatus(EstadoCompra.PENDIENTE);
     }
 
-    @Test
-    void execute_WhenStudentOwnsPurchase_ShouldReturnStatus() {
-        ConsumptionRequester requester = new ConsumptionRequester(
-                userId,
-                RolUsuario.ALUMNO,
-                studentId
-        );
-
-        givenPurchaseExists();
-        givenAuthenticatedRequester(requester);
-        GetPurchaseStatusResponse result = whenGettingPurchaseStatus();
-
-        assertEquals(purchaseId, result.purchaseId());
-        assertEquals(studentId, result.studentId());
-        assertEquals("PENDIENTE", result.status());
-        assertEquals("A preparar", result.statusLabel());
-        verify(accessRepository, never()).tutorCanAccessStudent(userId, studentId);
+    private void givenRequesterIsStudentOwner() {
+        requester = new ConsumptionRequester(userId, RolUsuario.ALUMNO, studentId);
     }
 
-    @Test
-    void execute_WhenTutorCanAccessStudent_ShouldReturnStatus() {
-        ConsumptionRequester requester = new ConsumptionRequester(
-                userId,
-                RolUsuario.PADRE,
-                null
-        );
-
-        givenPurchaseExists();
-        givenAuthenticatedRequester(requester);
-        givenTutorCanAccessStudent(true);
-        GetPurchaseStatusResponse result = whenGettingPurchaseStatus();
-
-        assertEquals("PENDIENTE", result.status());
-        verify(accessRepository).tutorCanAccessStudent(userId, studentId);
+    private void givenRequesterIsTutor() {
+        requester = new ConsumptionRequester(userId, RolUsuario.PADRE, null);
     }
 
-    @Test
-    void execute_WhenAuthenticatedUserDoesNotExist_ShouldThrowException() {
-        givenPurchaseExists();
-        givenAuthenticatedRequesterDoesNotExist();
-
-        Executable execution = this::whenGettingPurchaseStatus;
-
-        assertThrows(UsuarioAutenticadoNoEncontradoException.class, execution);
+    private void givenRequesterIsStudentForAnotherStudent() {
+        requester = new ConsumptionRequester(userId, RolUsuario.ALUMNO, UUID.randomUUID());
     }
 
-    @Test
-    void execute_WhenRequesterCannotAccessPurchase_ShouldThrowException() {
-        ConsumptionRequester requester = new ConsumptionRequester(
-                userId,
-                RolUsuario.ALUMNO,
-                UUID.randomUUID()
-        );
-        givenPurchaseExists();
-        givenAuthenticatedRequester(requester);
-
-        Executable execution = this::whenGettingPurchaseStatus;
-
-        assertThrows(PurchaseAccessDeniedException.class, execution);
+    private void givenRequesterHasUnsupportedRole() {
+        requester = new ConsumptionRequester(userId, RolUsuario.ADMIN, null);
     }
 
-    @Test
-    void execute_WhenPurchaseHasNoStudent_ShouldThrowException() {
+    private void givenPurchaseHasNoStudent() {
         purchase.setStudent(null);
-        ConsumptionRequester requester = new ConsumptionRequester(
-                userId,
-                RolUsuario.ALUMNO,
-                studentId
-        );
-        givenPurchaseExists();
-        givenAuthenticatedRequester(requester);
-
-        Executable execution = this::whenGettingPurchaseStatus;
-
-        assertThrows(PurchaseAccessDeniedException.class, execution);
     }
 
-    @Test
-    void execute_WhenPurchaseStudentHasNoId_ShouldThrowException() {
+    private void givenPurchaseStudentHasNoId() {
         purchase.getStudent().setId(null);
-        ConsumptionRequester requester = new ConsumptionRequester(
-                userId,
-                RolUsuario.ALUMNO,
-                studentId
-        );
-        givenPurchaseExists();
-        givenAuthenticatedRequester(requester);
-
-        Executable execution = this::whenGettingPurchaseStatus;
-
-        assertThrows(PurchaseAccessDeniedException.class, execution);
-    }
-
-    @Test
-    void execute_WhenTutorCannotAccessStudent_ShouldThrowException() {
-        ConsumptionRequester requester = new ConsumptionRequester(
-                userId,
-                RolUsuario.PADRE,
-                null
-        );
-        givenPurchaseExists();
-        givenAuthenticatedRequester(requester);
-        givenTutorCanAccessStudent(false);
-
-        Executable execution = this::whenGettingPurchaseStatus;
-
-        assertThrows(PurchaseAccessDeniedException.class, execution);
-
-        verify(accessRepository).tutorCanAccessStudent(userId, studentId);
-    }
-
-    @Test
-    void execute_WhenRoleCannotAccessPurchases_ShouldThrowException() {
-        ConsumptionRequester requester = new ConsumptionRequester(
-                userId,
-                RolUsuario.ADMIN,
-                null
-        );
-        givenPurchaseExists();
-        givenAuthenticatedRequester(requester);
-
-        Executable execution = this::whenGettingPurchaseStatus;
-
-        assertThrows(PurchaseAccessDeniedException.class, execution);
-    }
-
-    @Test
-    void execute_WhenPurchaseDoesNotExist_ShouldThrowException() {
-        givenPurchaseDoesNotExist();
-
-        Executable execution = this::whenGettingPurchaseStatus;
-
-        assertThrows(PurchaseNotFoundException.class, execution);
-
-        verifyNoInteractions(accessRepository);
     }
 
     private void givenPurchaseExists() {
@@ -210,7 +215,7 @@ class GetPurchaseStatusTest {
         when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.empty());
     }
 
-    private void givenAuthenticatedRequester(ConsumptionRequester requester) {
+    private void givenAuthenticatedRequesterExists() {
         when(accessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
                 .thenReturn(Optional.of(requester));
     }
@@ -220,12 +225,51 @@ class GetPurchaseStatusTest {
                 .thenReturn(Optional.empty());
     }
 
-    private void givenTutorCanAccessStudent(boolean canAccess) {
-        when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(canAccess);
+    private void givenTutorCanAccessStudent() {
+        when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(true);
     }
 
-    private GetPurchaseStatusResponse whenGettingPurchaseStatus() {
-        return useCase.execute(request());
+    private void givenTutorCannotAccessStudent() {
+        when(accessRepository.tutorCanAccessStudent(userId, studentId)).thenReturn(false);
+    }
+
+    private void whenGettingPurchaseStatus() {
+        response = useCase.execute(request());
+    }
+
+    private void whenGettingPurchaseStatusFails() {
+        thrownException = assertThrows(RuntimeException.class, () -> useCase.execute(request()));
+    }
+
+    private void thenPurchaseStatusIsReturned() {
+        assertEquals(purchaseId, response.purchaseId());
+        assertEquals(studentId, response.studentId());
+        assertEquals("PENDIENTE", response.status());
+        assertEquals("A preparar", response.statusLabel());
+    }
+
+    private void thenTutorAccessWasNotChecked() {
+        verify(accessRepository, never()).tutorCanAccessStudent(userId, studentId);
+    }
+
+    private void thenTutorAccessWasChecked() {
+        verify(accessRepository).tutorCanAccessStudent(userId, studentId);
+    }
+
+    private void thenAuthenticatedUserNotFoundIsThrown() {
+        assertTrue(thrownException instanceof UsuarioAutenticadoNoEncontradoException);
+    }
+
+    private void thenPurchaseAccessIsDenied() {
+        assertTrue(thrownException instanceof PurchaseAccessDeniedException);
+    }
+
+    private void thenPurchaseNotFoundIsThrown() {
+        assertTrue(thrownException instanceof PurchaseNotFoundException);
+    }
+
+    private void thenAuthenticatedRequesterWasNotRequested() {
+        verifyNoInteractions(accessRepository);
     }
 
     private GetPurchaseStatusRequest request() {

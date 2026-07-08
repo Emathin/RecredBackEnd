@@ -19,6 +19,7 @@ import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import com.recred.backend.application.PrizeHealthyPurchase;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -37,22 +38,31 @@ public class PurchaseSuggestController {
     private final NotifyPurchaseSuggestions notifyPurchaseSuggestions;
     private final RespondToAISuggestion respondToAISuggestion;
     private final CreateAdvancePurchase createAdvancePurchase;
+    private final com.recred.backend.application.PrizeHealthyPurchase prizeHealthyPurchase;
     private final SugerenciaIARepository sugerenciaIARepository;
     private final UsuarioService usuarioService;
     private final TutorRepository tutorRepository;
+    private final PlanAccessGuard planAccessGuard;
+    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public PurchaseSuggestController(NotifyPurchaseSuggestions notifyPurchaseSuggestions,
                                      RespondToAISuggestion respondToAISuggestion,
                                      CreateAdvancePurchase createAdvancePurchase,
+                                        PrizeHealthyPurchase prizeHealthyPurchase,
                                      SugerenciaIARepository sugerenciaIARepository,
                                      UsuarioService usuarioService,
-                                     TutorRepository tutorRepository) {
+                                     TutorRepository tutorRepository,
+                                     PlanAccessGuard planAccessGuard,
+                                     SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
         this.notifyPurchaseSuggestions = notifyPurchaseSuggestions;
         this.respondToAISuggestion = respondToAISuggestion;
         this.createAdvancePurchase = createAdvancePurchase;
+        this.prizeHealthyPurchase = prizeHealthyPurchase;
         this.sugerenciaIARepository = sugerenciaIARepository;
         this.usuarioService = usuarioService;
         this.tutorRepository = tutorRepository;
+        this.planAccessGuard = planAccessGuard;
+        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping("/test-notificacion")
@@ -62,6 +72,7 @@ public class PurchaseSuggestController {
         String subject = (testRequest != null && testRequest.testCognitoId() != null) 
                 ? testRequest.testCognitoId() 
                 : cognitoSubject(authentication);
+        planAccessGuard.requireTutorOrStudentAdvanced(authentication);
         
         NotifyPurchaseSuggestionsResponse response = notifyPurchaseSuggestions.execute(
                 new NotifyPurchaseSuggestionsRequest(subject)
@@ -75,6 +86,7 @@ public class PurchaseSuggestController {
     public ResponseEntity<AdvancePurchaseResponse> buySuggestion(
             Authentication authentication,
             @RequestBody TestSuggestionRequest testRequest) {
+        planAccessGuard.requireTutorOrStudentAdvanced(authentication);
         
         UUID idSuggestion = testRequest.sugerenciaId();
         String subject = (testRequest.testCognitoId() != null) 
@@ -89,6 +101,7 @@ public class PurchaseSuggestController {
         respondToAISuggestion.execute(new RespondToAISuggestionRequest(idSuggestion, true));
 
         UUID idStudent = suggestion.getAlumnoEntity().getId();
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(idStudent);
         UUID idProduct = suggestion.getProductoEntity().getId();
         UUID idBuffet = suggestion.getBuffetEntity().getId();
 
@@ -123,6 +136,11 @@ public class PurchaseSuggestController {
 
         CreateAdvancePurchaseResponse useCaseResponse =
                 createAdvancePurchase.execute(request.withCognitoSub(subject));
+
+        prizeHealthyPurchase.execute(new com.recred.backend.application.PrizeHealthyPurchaseRequest(
+                idStudent,
+                UUID.fromString(useCaseResponse.orderId())
+        ));
 
         return ResponseEntity.ok(new AdvancePurchaseResponse(
                 useCaseResponse.orderId(),

@@ -1,6 +1,10 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.SuscripcionUsuario;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.repositories.SuscripcionColegioRepository;
+import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import org.springframework.http.MediaType;
@@ -16,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -26,11 +32,23 @@ public class UserProfileController {
 
     private final UsuarioService usuarioService;
     private final CloudinaryService cloudinaryService;
+    private final SuscripcionUsuarioRepository suscripcionUsuarioRepository;
+    private final SuscripcionColegioRepository suscripcionColegioRepository;
+    private final Clock clock;
+    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public UserProfileController(UsuarioService usuarioService,
-            CloudinaryService cloudinaryService) {
+            CloudinaryService cloudinaryService,
+            SuscripcionUsuarioRepository suscripcionUsuarioRepository,
+            SuscripcionColegioRepository suscripcionColegioRepository,
+            Clock clock,
+            SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
         this.usuarioService = usuarioService;
         this.cloudinaryService = cloudinaryService;
+        this.suscripcionUsuarioRepository = suscripcionUsuarioRepository;
+        this.suscripcionColegioRepository = suscripcionColegioRepository;
+        this.clock = clock;
+        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @GetMapping("/me")
@@ -103,7 +121,41 @@ public class UserProfileController {
         response.put("phone", usuario.getTelefono());
         response.put("documentNumber", usuario.getDni());
         response.put("urlFotoPerfil", usuario.getUrlFotoPerfil());
+        response.put("plan", usuario.getPlan().name());
+        response.put("fechaVencimientoPlan", planExpiration(usuario));
+        addSchoolLicenseData(response, usuario);
 
         return response;
+    }
+
+    private LocalDateTime planExpiration(Usuario usuario) {
+        if (usuario.getId() == null || usuario.hasFreePlan()) {
+            return null;
+        }
+
+        return suscripcionUsuarioRepository.findActiveByUsuarioId(usuario.getId())
+                .map(SuscripcionUsuario::getFechaVencimiento)
+                .orElse(null);
+    }
+
+    private void addSchoolLicenseData(Map<String, Object> response, Usuario usuario) {
+        if (!isSchoolUser(usuario)) {
+            return;
+        }
+
+        response.put(
+                "estadoLicenciaColegio",
+                schoolLicenseAccessGuard.getLicenseStatusForUser(usuario)
+        );
+        response.put(
+                "fechaVencimientoLicenciaColegio",
+                schoolLicenseAccessGuard.getLicenseExpirationForUser(usuario)
+        );
+    }
+
+    private boolean isSchoolUser(Usuario usuario) {
+        return usuario.getRol() == RolUsuario.DIRECTIVO_COLEGIO
+                || usuario.getRol() == RolUsuario.ALUMNO
+                || usuario.getRol() == RolUsuario.VENDEDOR;
     }
 }

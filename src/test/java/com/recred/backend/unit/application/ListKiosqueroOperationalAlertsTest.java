@@ -11,7 +11,11 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -22,35 +26,92 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class ListKiosqueroOperationalAlertsTest {
 
-    @Test
-    void execute_ShouldReturnOperationalAlerts() {
-        UUID buffetId = UUID.randomUUID();
-        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
-        ProductRepository productRepository = mock(ProductRepository.class);
-        Producto product = preparedProduct();
-        Purchase order = pendingOrder(buffetId, product);
-        ListKiosqueroOperationalAlertsRequest request =
-                new ListKiosqueroOperationalAlertsRequest(buffetId);
-        ListKiosqueroOperationalAlerts useCase = new ListKiosqueroOperationalAlerts(
+    private static final Clock CLOCK = Clock.fixed(
+            Instant.parse("2026-05-27T12:50:00Z"),
+            ZoneId.of("America/Argentina/Buenos_Aires")
+    );
+
+    @Mock
+    private PurchaseRepository purchaseRepository;
+
+    @Mock
+    private ProductRepository productRepository;
+
+    private ListKiosqueroOperationalAlerts useCase;
+
+    private UUID buffetId;
+    private Producto product;
+    private Purchase order;
+    private ListKiosqueroOperationalAlertsResponse response;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new ListKiosqueroOperationalAlerts(
                 purchaseRepository,
                 productRepository,
-                Clock.fixed(
-                        Instant.parse("2026-05-27T12:50:00Z"),
-                        ZoneId.of("America/Argentina/Buenos_Aires")
-                )
+                CLOCK
         );
+    }
 
+    @Test
+    void givenManyPendingOrdersAndLowCapacity_whenListingAlerts_thenReturnsOperationalAlerts() {
+        givenOperationalAlertsScenario();
+        givenManyPendingOrdersNearPickup();
+        givenProductHasLowDailyCapacity();
+
+        whenListingOperationalAlerts();
+
+        thenAlertIsReturned(OperationalAlertType.MANY_PENDING_ORDERS);
+        thenAlertIsReturned(OperationalAlertType.ORDER_UPCOMING_PICKUP);
+        thenAlertIsReturned(OperationalAlertType.DAILY_CAPACITY_LOW);
+    }
+
+    @Test
+    void givenAccumulatedExpiredOrders_whenListingAlerts_thenReturnsAccumulationAndExpiredAlerts() {
+        givenOperationalAlertsScenario();
+        givenOrdersAreAccumulatedAndExpired();
+        givenNoActiveProducts();
+
+        whenListingOperationalAlerts();
+
+        thenAlertIsReturned(OperationalAlertType.ORDER_ACCUMULATION);
+        thenAlertIsReturned(OperationalAlertType.ORDER_EXPIRED);
+        thenAlertIsNotReturned(OperationalAlertType.MANY_PENDING_ORDERS);
+    }
+
+    @Test
+    void givenMissingPickupStartAndInvalidCapacity_whenListingAlerts_thenSkipsThoseAlerts() {
+        givenOperationalAlertsScenario();
+        givenOrderHasNoPickupStart();
+        givenProductHasInvalidDailyCapacity();
+
+        whenListingOperationalAlerts();
+
+        thenAlertIsNotReturned(OperationalAlertType.ORDER_UPCOMING_PICKUP);
+        thenAlertIsNotReturned(OperationalAlertType.DAILY_CAPACITY_LOW);
+    }
+
+    private void givenOperationalAlertsScenario() {
+        buffetId = UUID.randomUUID();
+    }
+
+    private void givenManyPendingOrdersNearPickup() {
+        product = preparedProduct();
+        order = pendingOrder(buffetId, product);
         when(purchaseRepository.findByBuffetAndStatuses(eq(buffetId), anyList(), eq(100)))
                 .thenReturn(List.of(order, order, order, order, order));
+    }
+
+    private void givenProductHasLowDailyCapacity() {
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
         when(purchaseRepository.sumScheduledProductQuantity(
                 eq(buffetId),
@@ -58,19 +119,9 @@ class ListKiosqueroOperationalAlertsTest {
                 eq(LocalDate.of(2026, 5, 27)),
                 anyList()
         )).thenReturn(4L);
-
-        ListKiosqueroOperationalAlertsResponse alerts = useCase.execute(request);
-
-        assertTrue(hasAlert(alerts.alerts(), OperationalAlertType.MANY_PENDING_ORDERS));
-        assertTrue(hasAlert(alerts.alerts(), OperationalAlertType.ORDER_UPCOMING_PICKUP));
-        assertTrue(hasAlert(alerts.alerts(), OperationalAlertType.DAILY_CAPACITY_LOW));
     }
 
-    @Test
-    void execute_WhenOrdersAreAccumulatedAndExpired_ShouldReturnBothAlerts() {
-        UUID buffetId = UUID.randomUUID();
-        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
-        ProductRepository productRepository = mock(ProductRepository.class);
+    private void givenOrdersAreAccumulatedAndExpired() {
         Purchase expiredOrder = order(
                 buffetId,
                 EstadoCompra.EN_PREPARACION,
@@ -78,10 +129,6 @@ class ListKiosqueroOperationalAlertsTest {
                 LocalTime.of(9, 0),
                 LocalTime.of(9, 15)
         );
-        ListKiosqueroOperationalAlerts useCase = useCase(purchaseRepository, productRepository);
-        ListKiosqueroOperationalAlertsRequest request =
-                new ListKiosqueroOperationalAlertsRequest(buffetId);
-
         when(purchaseRepository.findByBuffetAndStatuses(eq(buffetId), anyList(), eq(100)))
                 .thenReturn(List.of(
                         expiredOrder,
@@ -93,41 +140,40 @@ class ListKiosqueroOperationalAlertsTest {
                         activeOrder(buffetId),
                         activeOrder(buffetId)
                 ));
-        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of());
-
-        ListKiosqueroOperationalAlertsResponse alerts = useCase.execute(request);
-
-        assertTrue(hasAlert(alerts.alerts(), OperationalAlertType.ORDER_ACCUMULATION));
-        assertTrue(hasAlert(alerts.alerts(), OperationalAlertType.ORDER_EXPIRED));
-        assertFalse(hasAlert(alerts.alerts(), OperationalAlertType.MANY_PENDING_ORDERS));
     }
 
-    @Test
-    void execute_WhenPickupStartIsMissingAndCapacityIsInvalid_ShouldSkipThoseAlerts() {
-        UUID buffetId = UUID.randomUUID();
-        PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
-        ProductRepository productRepository = mock(ProductRepository.class);
-        Producto product = preparedProduct();
-        product.setCupoMaximoDiario(0);
-        Purchase orderWithoutStart = order(
+    private void givenNoActiveProducts() {
+        when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of());
+    }
+
+    private void givenOrderHasNoPickupStart() {
+        order = order(
                 buffetId,
                 EstadoCompra.LISTO,
                 LocalDate.of(2026, 5, 27),
                 null,
                 null
         );
-        ListKiosqueroOperationalAlerts useCase = useCase(purchaseRepository, productRepository);
-        ListKiosqueroOperationalAlertsRequest request =
-                new ListKiosqueroOperationalAlertsRequest(buffetId);
-
         when(purchaseRepository.findByBuffetAndStatuses(eq(buffetId), anyList(), eq(100)))
-                .thenReturn(List.of(orderWithoutStart));
+                .thenReturn(List.of(order));
+    }
+
+    private void givenProductHasInvalidDailyCapacity() {
+        product = preparedProduct();
+        product.setCupoMaximoDiario(0);
         when(productRepository.findAllActiveWithStock(buffetId)).thenReturn(List.of(product));
+    }
 
-        ListKiosqueroOperationalAlertsResponse alerts = useCase.execute(request);
+    private void whenListingOperationalAlerts() {
+        response = useCase.execute(new ListKiosqueroOperationalAlertsRequest(buffetId));
+    }
 
-        assertFalse(hasAlert(alerts.alerts(), OperationalAlertType.ORDER_UPCOMING_PICKUP));
-        assertFalse(hasAlert(alerts.alerts(), OperationalAlertType.DAILY_CAPACITY_LOW));
+    private void thenAlertIsReturned(OperationalAlertType type) {
+        assertTrue(hasAlert(response.alerts(), type));
+    }
+
+    private void thenAlertIsNotReturned(OperationalAlertType type) {
+        assertFalse(hasAlert(response.alerts(), type));
     }
 
     private boolean hasAlert(
@@ -174,20 +220,6 @@ class ListKiosqueroOperationalAlertsTest {
         purchase.setPickupSlotStart(pickupStart);
         purchase.setPickupSlotEnd(pickupEnd);
         return purchase;
-    }
-
-    private ListKiosqueroOperationalAlerts useCase(
-            PurchaseRepository purchaseRepository,
-            ProductRepository productRepository
-    ) {
-        return new ListKiosqueroOperationalAlerts(
-                purchaseRepository,
-                productRepository,
-                Clock.fixed(
-                        Instant.parse("2026-05-27T12:50:00Z"),
-                        ZoneId.of("America/Argentina/Buenos_Aires")
-                )
-        );
     }
 
     private Producto preparedProduct() {

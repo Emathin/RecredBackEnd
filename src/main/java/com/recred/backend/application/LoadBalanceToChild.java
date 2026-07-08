@@ -33,55 +33,55 @@ public class LoadBalanceToChild {
     }
 
     @Transactional
-    public LoadBalanceToChildResponse execute(LoadBalanceToChildRequest request) {
-        request.validate();
-        LoadBalanceContext context = contextFor(request);
-        loadBalance(request.amount(), context);
+    public LoadBalanceToChildResponse execute(LoadBalanceToChildRequest loadRequest) {
+        loadRequest.validate();
+        LoadBalanceContext context = contextFor(loadRequest);
+        creditChildWallet(loadRequest.amount(), context);
         return new LoadBalanceToChildResponse();
     }
 
-    private LoadBalanceContext contextFor(LoadBalanceToChildRequest request) {
-        Usuario padre = getPadreValidate(request.cognitoSub());
-        Tutor tutor = getTutor(padre);
-        Alumno student = getHijo(tutor, request.studentId());
-        Billetera billetera = getWallet(request.studentId());
-        return new LoadBalanceContext(padre, student, billetera);
+    private LoadBalanceContext contextFor(LoadBalanceToChildRequest loadRequest) {
+        Usuario parentUser = findParentAllowedToLoadBalance(loadRequest.cognitoSub());
+        Tutor tutor = findTutorFor(parentUser);
+        Alumno student = findChildForTutor(tutor, loadRequest.studentId());
+        Billetera wallet = findWalletFor(loadRequest.studentId());
+        return new LoadBalanceContext(parentUser, student, wallet);
     }
 
-    private Usuario getPadreValidate(String cognitoSub) {
-        Usuario padre = usuarioRepository.findByIdCognito(cognitoSub)
+    private Usuario findParentAllowedToLoadBalance(String cognitoSub) {
+        Usuario parentUser = usuarioRepository.findByIdCognito(cognitoSub)
                 .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
-        padre.validateCanLoadBalanceToChild();
-        return padre;
+        parentUser.validateCanLoadBalanceToChild();
+        return parentUser;
     }
 
-    private Tutor getTutor(Usuario padre) {
-        return tutorRepository.findByUsuarioId(padre.getId())
+    private Tutor findTutorFor(Usuario parentUser) {
+        return tutorRepository.findByUsuarioId(parentUser.getId())
                 .orElseThrow(() -> new SecurityException("El usuario no es un tutor válido"));
     }
 
-    private Alumno getHijo(Tutor tutor, UUID studentId) {
+    private Alumno findChildForTutor(Tutor tutor, UUID studentId) {
         return tutor.childOrThrow(studentId, "El alumno no es hijo del tutor o no existe");
     }
 
-    private Billetera getWallet(UUID studentId) {
+    private Billetera findWalletFor(UUID studentId) {
         return walletRepository.findByStudentId(studentId)
                 .orElseThrow(() -> new RuntimeException(
                         "Billetera no encontrada para el alumno"));
     }
 
-    private void loadBalance(BigDecimal amount, LoadBalanceContext context) {
+    private void creditChildWallet(BigDecimal amount, LoadBalanceContext context) {
         context.billetera().credit(amount);
         walletRepository.save(context.billetera());
-        registerLoadMovement(context.billetera(), context.student(), amount,
-                context.padre().getId());
+        registerBalanceLoadMovement(context.billetera(), context.student(), amount,
+                context.parentUser().getId());
     }
 
-    private void registerLoadMovement(
+    private void registerBalanceLoadMovement(
             Billetera billetera,
             Alumno student,
             BigDecimal amount,
-            UUID padreId
+            UUID parentUserId
     ) {
         String desc = "Carga de saldo realizada por tutor a "
                 + student.getNombre() + " " + student.getApellido();
@@ -90,10 +90,14 @@ public class LoadBalanceToChild {
                 TipoMovimientoBilletera.CARGA,
                 amount,
                 desc,
-                padreId
+                parentUserId
         );
     }
 
-    private record LoadBalanceContext(Usuario padre, Alumno student, Billetera billetera) {
+    private record LoadBalanceContext(
+            Usuario parentUser,
+            Alumno student,
+            Billetera billetera
+    ) {
     }
 }

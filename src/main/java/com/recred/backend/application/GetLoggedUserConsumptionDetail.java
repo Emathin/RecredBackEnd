@@ -18,7 +18,6 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.transaction.annotation.Transactional;
 
 public class GetLoggedUserConsumptionDetail {
 
@@ -38,7 +37,6 @@ public class GetLoggedUserConsumptionDetail {
         this.clock = clock;
     }
 
-    @Transactional(readOnly = true)
     public GetLoggedUserConsumptionDetailResponse execute(
             GetLoggedUserConsumptionDetailRequest request
     ) {

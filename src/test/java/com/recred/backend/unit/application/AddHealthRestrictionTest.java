@@ -10,84 +10,169 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static java.util.UUID.randomUUID;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AddHealthRestrictionTest {
 
     @Mock
     private AlumnoRepository alumnoRepository;
-
     @Mock
     private ClasificacionSaludRepository clasificacionRepository;
 
-    @InjectMocks
-    private AddHealthRestriction useCase;
-
-    private UUID alumnoId;
-    private UUID clasificacionId;
-    private Alumno alumno;
-    private ClasificacionSalud clasificacion;
+    private AddHealthRestriction addHealthRestriction;
+    private AddHealthRestrictionRequest addRestrictionRequest;
+    private Alumno student;
+    private ClasificacionSalud classification;
+    private Throwable thrownException;
 
     @BeforeEach
     void setUp() {
-        alumnoId = UUID.randomUUID();
-        clasificacionId = UUID.randomUUID();
-
-        alumno = new Alumno();
-        alumno.setId(alumnoId);
-
-        clasificacion = new ClasificacionSalud();
-        clasificacion.setId(clasificacionId);
+        addHealthRestriction = new AddHealthRestriction(
+                alumnoRepository,
+                clasificacionRepository
+        );
     }
 
     @Test
-    void ejecutar_ConDatosValidos_DeberiaAgregarYGuardar() {
-        AddHealthRestrictionRequest request = new AddHealthRestrictionRequest(alumnoId, clasificacionId);
+    void givenValidHealthRestrictionRequest_whenAddingRestriction_thenAddsAndSavesStudent() {
+        givenDefaultHealthRestrictionRequest();
+        givenStudentExists();
+        givenClassificationExists();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(clasificacionRepository.findById(clasificacionId)).thenReturn(Optional.of(clasificacion));
+        whenAddHealthRestriction();
 
-        useCase.execute(request);
-
-        assertTrue(alumno.getRestriccionesSalud().contains(clasificacion));
-        verify(alumnoRepository).save(alumno);
+        thenClassificationWasAddedToStudent();
+        thenStudentWasSaved();
     }
 
     @Test
-    void ejecutar_CuandoAlumnoNoExiste_DeberiaLanzarExcepcion() {
-        AddHealthRestrictionRequest request = new AddHealthRestrictionRequest(alumnoId, clasificacionId);
+    void givenMissingStudent_whenAddingRestriction_thenThrowsException() {
+        givenDefaultHealthRestrictionRequest();
+        givenStudentDoesNotExist();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        whenAddHealthRestrictionFails(IllegalArgumentException.class);
 
-        Executable execution = () -> useCase.execute(request);
+        thenErrorMessageIs("El alumno no existe.");
+        thenClassificationWasNotSearched();
+        thenStudentWasNotSaved();
+    }
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("El alumno no existe.", exception.getMessage());
+    @Test
+    void givenMissingClassification_whenAddingRestriction_thenThrowsException() {
+        givenDefaultHealthRestrictionRequest();
+        givenStudentExists();
+        givenClassificationDoesNotExist();
+
+        whenAddHealthRestrictionFails(IllegalArgumentException.class);
+
+        thenErrorMessageIs("La clasificaciÃ³n mÃ©dica no existe.");
+        thenStudentWasNotSaved();
+    }
+
+    @Test
+    void givenExistingHealthRestriction_whenAddingRestriction_thenDoesNotDuplicateIt() {
+        givenHealthRestrictionAlreadyAssigned();
+        givenStudentExists();
+        givenClassificationExists();
+
+        whenAddHealthRestriction();
+
+        thenClassificationWasAddedToStudent();
+        thenStudentHasHealthRestrictionCount(1);
+        thenStudentWasSaved();
+    }
+
+    private void givenDefaultHealthRestrictionRequest() {
+        addRestrictionRequest = request(randomUUID(), randomUUID());
+        student = student(addRestrictionRequest.studentId());
+        classification = classification(addRestrictionRequest.classificationId());
+    }
+
+    private void givenHealthRestrictionAlreadyAssigned() {
+        givenDefaultHealthRestrictionRequest();
+        student.agregarRestriccionSalud(classification);
+    }
+
+    private void givenStudentExists() {
+        when(alumnoRepository.findById(addRestrictionRequest.studentId()))
+                .thenReturn(Optional.of(student));
+    }
+
+    private void givenStudentDoesNotExist() {
+        when(alumnoRepository.findById(addRestrictionRequest.studentId()))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenClassificationExists() {
+        when(clasificacionRepository.findById(addRestrictionRequest.classificationId()))
+                .thenReturn(Optional.of(classification));
+    }
+
+    private void givenClassificationDoesNotExist() {
+        when(clasificacionRepository.findById(addRestrictionRequest.classificationId()))
+                .thenReturn(Optional.empty());
+    }
+
+    private void whenAddHealthRestriction() {
+        addHealthRestriction.execute(addRestrictionRequest);
+    }
+
+    private <T extends Throwable> void whenAddHealthRestrictionFails(Class<T> expectedException) {
+        Executable execution = () -> addHealthRestriction.execute(addRestrictionRequest);
+        thrownException = assertThrows(expectedException, execution);
+    }
+
+    private void thenClassificationWasAddedToStudent() {
+        assertTrue(student.getRestriccionesSalud().contains(classification));
+    }
+
+    private void thenStudentHasHealthRestrictionCount(int expectedCount) {
+        assertEquals(expectedCount, student.getRestriccionesSalud().size());
+    }
+
+    private void thenStudentWasSaved() {
+        verify(alumnoRepository).save(student);
+    }
+
+    private void thenStudentWasNotSaved() {
+        verify(alumnoRepository, never()).save(any());
+    }
+
+    private void thenClassificationWasNotSearched() {
         verify(clasificacionRepository, never()).findById(any());
-        verify(alumnoRepository, never()).save(any());
     }
 
-    @Test
-    void ejecutar_CuandoClasificacionNoExiste_DeberiaLanzarExcepcion() {
-        AddHealthRestrictionRequest request = new AddHealthRestrictionRequest(alumnoId, clasificacionId);
+    private void thenErrorMessageIs(String expectedMessage) {
+        assertEquals(expectedMessage, thrownException.getMessage());
+    }
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(clasificacionRepository.findById(clasificacionId)).thenReturn(Optional.empty());
+    private Alumno student(UUID studentId) {
+        Alumno student = new Alumno();
+        student.setId(studentId);
+        return student;
+    }
 
-        Executable execution = () -> useCase.execute(request);
+    private ClasificacionSalud classification(UUID classificationId) {
+        ClasificacionSalud classification = new ClasificacionSalud();
+        classification.setId(classificationId);
+        return classification;
+    }
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-
-        assertEquals("La clasificación médica no existe.", exception.getMessage());
-        verify(alumnoRepository, never()).save(any());
+    private AddHealthRestrictionRequest request(UUID studentId, UUID classificationId) {
+        return new AddHealthRestrictionRequest(studentId, classificationId);
     }
 }

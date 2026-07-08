@@ -29,15 +29,7 @@ public class ListInventoryProducts {
 
     private List<Producto> inventoryProducts(ListInventoryProductsRequest request) {
         return productRepository.findAllActiveWithStock(request.buffetId()).stream()
-                .filter(this::hasInventory)
+                .filter(Producto::hasInventoryData)
                 .toList();
-    }
-
-    private boolean hasInventory(Producto product) {
-        return product.getStockActual() != null
-                || product.getStockReservado() != null
-                || product.getStockMinimo() != null
-                || product.getEstadoInventario() != null
-                || product.getTipoManejoInventario() != null;
     }
 }

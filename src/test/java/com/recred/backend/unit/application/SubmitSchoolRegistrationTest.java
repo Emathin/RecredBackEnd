@@ -2,48 +2,70 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.SubmitSchoolRegistration;
 import com.recred.backend.application.SubmitSchoolRegistrationRequest;
-import com.recred.backend.domain.models.Nivel;
 import com.recred.backend.domain.models.SchoolRegistrationRequest;
 import com.recred.backend.domain.models.SchoolRegistrationStatus;
 import com.recred.backend.domain.repositories.ColegioRepository;
 import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SubmitSchoolRegistrationTest {
 
     @Mock
-    private SchoolRegistrationRequestRepository repository;
+    private SchoolRegistrationRequestRepository registrationRepository;
 
     @Mock
-    private ColegioRepository colegioRepository;
+    private ColegioRepository schoolRepository;
 
     @Mock
-    private UsuarioRepository usuarioRepository;
+    private UsuarioRepository userRepository;
 
-    @InjectMocks
     private SubmitSchoolRegistration useCase;
 
+    private SubmitSchoolRegistrationRequest request;
+    private SchoolRegistrationRequest savedRegistration;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new SubmitSchoolRegistration(
+                registrationRepository,
+                schoolRepository,
+                userRepository
+        );
+    }
+
     @Test
-    void execute_SavesNewRequestWithPendingStatus() {
-        Nivel nivel = new Nivel();
-        SubmitSchoolRegistrationRequest request = new SubmitSchoolRegistrationRequest(
+    void givenAvailableSchoolAndDirector_whenSubmittingRegistration_thenSavesPendingRequest() {
+        givenSchoolRegistrationRequest();
+        givenDirectorEmailIsAvailable();
+
+        whenSubmittingSchoolRegistration();
+
+        thenSchoolDataWasSaved();
+        thenDirectorDataWasSaved();
+        thenRegistrationIsPending();
+        thenSubmissionTimestampsWereSaved();
+    }
+
+    private void givenSchoolRegistrationRequest() {
+        request = new SubmitSchoolRegistrationRequest(
                 "School Name",
                 "school@test.com",
                 "123456789",
                 "CUE-123",
-                nivel,
                 "Director",
                 "LastName",
                 "director@test.com",
@@ -51,31 +73,42 @@ class SubmitSchoolRegistrationTest {
                 "11223344",
                 "directorUser123"
         );
+    }
 
-        org.mockito.Mockito.when(usuarioRepository.findByEmail("director@test.com"))
-                .thenReturn(Optional.empty());
+    private void givenDirectorEmailIsAvailable() {
+        when(userRepository.findByEmail("director@test.com")).thenReturn(Optional.empty());
+    }
 
+    private void whenSubmittingSchoolRegistration() {
         useCase.execute(request);
-
-        ArgumentCaptor<SchoolRegistrationRequest> captor = 
+        ArgumentCaptor<SchoolRegistrationRequest> captor =
                 ArgumentCaptor.forClass(SchoolRegistrationRequest.class);
-        verify(repository).save(captor.capture());
+        verify(registrationRepository).save(captor.capture());
+        savedRegistration = captor.getValue();
+    }
 
-        SchoolRegistrationRequest savedEntity = captor.getValue();
-        
-        assertEquals("School Name", savedEntity.getSchoolName());
-        assertEquals("school@test.com", savedEntity.getSchoolEmail());
-        assertEquals("123456789", savedEntity.getSchoolPhone());
-        assertEquals("CUE-123", savedEntity.getSchoolCue());
-        assertEquals(nivel, savedEntity.getSchoolLevel());
-        assertEquals("Director", savedEntity.getDirectorFirstName());
-        assertEquals("LastName", savedEntity.getDirectorLastName());
-        assertEquals("director@test.com", savedEntity.getDirectorEmail());
-        assertEquals("987654321", savedEntity.getDirectorPhone());
-        assertEquals("11223344", savedEntity.getDirectorDni());
-        assertEquals("directorUser123", savedEntity.getDirectorUsername());
-        assertEquals(SchoolRegistrationStatus.PENDING, savedEntity.getStatus());
-        assertNotNull(savedEntity.getCreatedAt());
-        assertNotNull(savedEntity.getUpdatedAt());
+    private void thenSchoolDataWasSaved() {
+        assertEquals("School Name", savedRegistration.getSchoolName());
+        assertEquals("school@test.com", savedRegistration.getSchoolEmail());
+        assertEquals("123456789", savedRegistration.getSchoolPhone());
+        assertEquals("CUE-123", savedRegistration.getSchoolCue());
+    }
+
+    private void thenDirectorDataWasSaved() {
+        assertEquals("Director", savedRegistration.getDirectorFirstName());
+        assertEquals("LastName", savedRegistration.getDirectorLastName());
+        assertEquals("director@test.com", savedRegistration.getDirectorEmail());
+        assertEquals("987654321", savedRegistration.getDirectorPhone());
+        assertEquals("11223344", savedRegistration.getDirectorDni());
+        assertEquals("directorUser123", savedRegistration.getDirectorUsername());
+    }
+
+    private void thenRegistrationIsPending() {
+        assertEquals(SchoolRegistrationStatus.PENDING, savedRegistration.getStatus());
+    }
+
+    private void thenSubmissionTimestampsWereSaved() {
+        assertNotNull(savedRegistration.getCreatedAt());
+        assertNotNull(savedRegistration.getUpdatedAt());
     }
 }

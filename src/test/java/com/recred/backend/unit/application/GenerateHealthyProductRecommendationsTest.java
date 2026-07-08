@@ -5,11 +5,13 @@ import com.recred.backend.application.GenerateHealthyProductRecommendationsReque
 import com.recred.backend.application.GenerateHealthyProductRecommendationsResponse;
 import com.recred.backend.config.HealthyRecommendationProperties;
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
+import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.HealthyProductOption;
 import com.recred.backend.domain.models.HealthyProductRecommendation;
 import com.recred.backend.domain.models.HealthyRecommendationAnalysisRequest;
 import com.recred.backend.domain.models.HealthyRecommendationMessages;
 import com.recred.backend.domain.models.RecentProductConsumption;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationNotificationRepository;
 import com.recred.backend.domain.repositories.HealthyRecommendationPurchaseRepository;
@@ -72,7 +74,7 @@ class GenerateHealthyProductRecommendationsTest {
     }
 
     @Test
-    void generateRecommendationWhenAiSelectsAvailableProductFromRecentHistory() {
+    void givenRepeatedProductAndAiSuggestedAvailableAlternative_whenGeneratingRecommendations_thenSavesRecommendation() {
         ConsumptionAlertCandidate candidate = candidate();
         UUID cokeId = UUID.randomUUID();
         UUID waterId = UUID.randomUUID();
@@ -99,7 +101,7 @@ class GenerateHealthyProductRecommendationsTest {
     }
 
     @Test
-    void skipStudentInsideCooldown() {
+    void givenStudentInsideCooldown_whenGeneratingRecommendations_thenSkipsStudent() {
         ConsumptionAlertCandidate candidate = candidate();
         givenActiveCandidate(candidate);
         givenStudentInsideCooldown(candidate);
@@ -112,7 +114,7 @@ class GenerateHealthyProductRecommendationsTest {
     }
 
     @Test
-    void skipWhenProductWasNotRepeatedInEnoughDifferentDays() {
+    void givenProductRepeatedOnlySameDay_whenGeneratingRecommendations_thenSkipsStudent() {
         ConsumptionAlertCandidate candidate = candidate();
         UUID cokeId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -133,7 +135,7 @@ class GenerateHealthyProductRecommendationsTest {
     }
 
     @Test
-    void skipWhenAiDoesNotRecommendAnything() {
+    void givenAiDoesNotRecommendAlternative_whenGeneratingRecommendations_thenSkipsStudent() {
         ConsumptionAlertCandidate candidate = candidate();
         UUID sandwichId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -157,7 +159,7 @@ class GenerateHealthyProductRecommendationsTest {
     }
 
     @Test
-    void skipWhenNoAvailableOptionExists() {
+    void givenNoAvailableAlternative_whenGeneratingRecommendations_thenSkipsStudent() {
         ConsumptionAlertCandidate candidate = candidate();
         UUID cokeId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -179,7 +181,7 @@ class GenerateHealthyProductRecommendationsTest {
     }
 
     @Test
-    void skipWhenAiSelectsProductOutsideAvailableOptions() {
+    void givenAiSelectsUnavailableAlternative_whenGeneratingRecommendations_thenSkipsStudent() {
         ConsumptionAlertCandidate candidate = candidate();
         UUID cokeId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
@@ -320,7 +322,11 @@ class GenerateHealthyProductRecommendationsTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "Juan Perez",
-                List.of()
+                List.of(new ConsumptionAlertTutor(
+                        UUID.randomUUID(),
+                        "Tutor Perez",
+                        TipoPlan.AVANZADO
+                ))
         );
     }
 

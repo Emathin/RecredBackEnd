@@ -6,24 +6,22 @@ import com.recred.backend.domain.models.CreditStatus;
 import com.recred.backend.domain.models.SchoolCredit;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.repositories.AlumnoRepository;
-import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.security.access.AccessDeniedException;
 
 public class EnableSchoolCredit {
 
     private final TutorRepository tutorRepository;
     private final AlumnoRepository alumnoRepository;
     private final SchoolCreditRepository schoolCreditRepository;
-    private final PurchaseRepository purchaseRepository;
     private final WalletRepository walletRepository;
     private final Clock clock;
 
@@ -31,54 +29,40 @@ public class EnableSchoolCredit {
             TutorRepository tutorRepository,
             AlumnoRepository alumnoRepository,
             SchoolCreditRepository schoolCreditRepository,
-            PurchaseRepository purchaseRepository,
             WalletRepository walletRepository,
             Clock clock) {
         this.tutorRepository = tutorRepository;
         this.alumnoRepository = alumnoRepository;
         this.schoolCreditRepository = schoolCreditRepository;
-        this.purchaseRepository = purchaseRepository;
         this.walletRepository = walletRepository;
         this.clock = clock;
     }
 
     @Transactional
-    public EnableSchoolCreditResponse execute(EnableSchoolCreditRequest request) {
-        request.validate();
-
-        Tutor tutor = validateParentAndGetTutor(request.tutorId());
+    public EnableSchoolCreditResponse execute(EnableSchoolCreditRequest enableCreditRequest) {
+        Tutor tutor = tutorRepository.findById(enableCreditRequest.tutorId())
+                .orElseThrow(() -> new IllegalArgumentException("Tutor not found"));
         if (tutor.getUsuario() == null || tutor.getUsuario().hasFreePlan()) {
             throw new AccessDeniedException(
                     "La funcionalidad de Microcréditos está disponible solo para el plan AVANZADO");
         }
-        Alumno alumno = getHijo(request.studentId());
 
-        Billetera wallet = getOrCreateWallet(alumno);
+        Alumno student = findStudent(enableCreditRequest.studentId());
+        Billetera wallet = getOrCreateWallet(student);
 
-        int installments = request.installments() == null || request.installments() < 1 
-                ? 1 
-                : request.installments();
-
-        SchoolCredit savedCredit = createAndSaveCredit(
-                alumno.getId(), request.amount(), installments);
-
-        wallet.enableCredit(request.amount());
+        wallet.enableCredit(enableCreditRequest.amount());
+        SchoolCredit savedCredit = createAndSaveCredit(enableCreditRequest);
         walletRepository.save(wallet);
 
-        return new EnableSchoolCreditResponse(
-                savedCredit.getId(),
-                savedCredit.getAmount(),
-                savedCredit.getStatus().name(),
-                savedCredit.getInstallments()
-        );
+        return responseFrom(savedCredit);
     }
 
-    private Tutor validateParentAndGetTutor(UUID tutorId) {
-        return tutorRepository.findById(tutorId)
+    private void validateTutorExists(UUID tutorId) {
+        tutorRepository.findById(tutorId)
                 .orElseThrow(() -> new IllegalArgumentException("Tutor not found"));
     }
 
-    private Alumno getHijo(UUID studentId) {
+    private Alumno findStudent(UUID studentId) {
         return alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
     }
@@ -99,13 +83,29 @@ public class EnableSchoolCredit {
         return wallet;
     }
 
-    private SchoolCredit createAndSaveCredit(UUID studentId, BigDecimal amount, int installments) {
+    private SchoolCredit createAndSaveCredit(EnableSchoolCreditRequest request) {
         SchoolCredit newCredit = new SchoolCredit();
-        newCredit.setStudentId(studentId);
-        newCredit.setAmount(amount);
+        newCredit.setStudentId(request.studentId());
+        newCredit.setAmount(request.amount());
         newCredit.setStatus(CreditStatus.ACTIVE);
-        newCredit.setInstallments(installments);
+        newCredit.setInstallments(normalizeInstallments(request.installments()));
         newCredit.setCreatedAt(LocalDateTime.now(clock));
         return schoolCreditRepository.save(newCredit);
+    }
+
+    private int normalizeInstallments(Integer installments) {
+        if (installments == null || installments < 1) {
+            return 1;
+        }
+        return installments;
+    }
+
+    private EnableSchoolCreditResponse responseFrom(SchoolCredit savedCredit) {
+        return new EnableSchoolCreditResponse(
+                savedCredit.getId(),
+                savedCredit.getAmount(),
+                savedCredit.getStatus().name(),
+                savedCredit.getInstallments()
+        );
     }
 }

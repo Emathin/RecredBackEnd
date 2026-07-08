@@ -18,6 +18,7 @@ import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -95,10 +96,16 @@ class SmtpTutorInvitationEmailSenderTest {
                 .contains("Hola Ana"));
         assertTrue(String.valueOf(multipart.getBodyPart(0).getContent())
                 .contains("Colegio Central te invito a Recred"));
+        assertTrue(String.valueOf(multipart.getBodyPart(0).getContent())
+                .contains("El link vence el 5/7/2026 12:00."));
         assertTrue(String.valueOf(multipart.getBodyPart(1).getContent())
                 .contains("Abrir Recred"));
         assertTrue(String.valueOf(multipart.getBodyPart(1).getContent())
                 .contains(INVITATION_LINK));
+        assertTrue(String.valueOf(multipart.getBodyPart(1).getContent())
+                .contains("5/7/2026 12:00"));
+        assertFalse(String.valueOf(multipart.getBodyPart(1).getContent())
+                .contains("2026-07-05T12:00"));
     }
 
     @Test

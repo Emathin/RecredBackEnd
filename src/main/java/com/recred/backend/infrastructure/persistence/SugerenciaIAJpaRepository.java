@@ -14,8 +14,27 @@ public interface SugerenciaIAJpaRepository extends JpaRepository<SugerenciaIAEnt
 
     List<SugerenciaIAEntity> findAllByAlumnoEntityIdOrderByCreadoEnDesc(UUID alumnoId);
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {
+            "productoEntity",
+            "productoEntity.categoria",
+            "productoEntity.clasificacionesSalud",
+            "productoEntity.tipos"
+    })
     List<SugerenciaIAEntity> findAllByAlumnoEntityIdAndTipoOrderByCreadoEnDesc(
             UUID alumnoId, TipoSugerenciaIA tipo);
+
+    @Query("""
+            select s
+            from SugerenciaIAEntity s
+            where s.alumnoEntity.id in :alumnoIds
+            and s.tipo = :tipo
+            and s.aceptada is null
+            order by s.creadoEn desc
+            """)
+    List<SugerenciaIAEntity> findLatestPendingByAlumnoIdsAndTipo(
+            @Param("alumnoIds") List<UUID> alumnoIds,
+            @Param("tipo") TipoSugerenciaIA tipo
+    );
 
     @Query("""
             select s

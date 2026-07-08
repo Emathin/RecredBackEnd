@@ -6,12 +6,25 @@ import com.recred.backend.application.GenerateDailyBuffetReportResponse.DailyPay
 import com.recred.backend.application.GenerateDailyBuffetReportResponse.DailyProductReportResponse;
 import com.recred.backend.domain.models.DailyInventorySnapshot;
 import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.MovimientoStock;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoMovimientoStock;
+import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.repositories.DailyBuffetCloseRepository;
+import com.recred.backend.domain.repositories.StockMovementRepository;
+
+import static com.recred.backend.domain.models.EstadoCompra.CANCELADO;
+import static com.recred.backend.domain.models.EstadoCompra.ENTREGADO;
+import static com.recred.backend.domain.models.EstadoCompra.EN_PREPARACION;
+import static com.recred.backend.domain.models.EstadoCompra.LISTO;
+import static com.recred.backend.domain.models.EstadoCompra.PENDIENTE;
+import static com.recred.backend.domain.models.EstadoCompra.RECHAZADO;
+import static com.recred.backend.domain.models.EstadoCompra.VENCIDO;
+import static com.recred.backend.domain.models.EstadoInventario.SIN_STOCK;
+import static com.recred.backend.domain.models.TipoMovimientoStock.LIBERACION;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.DailyBuffetCloseRepository;
@@ -24,30 +37,21 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class GenerateDailyBuffetReport {
 
     private static final List<EstadoCompra> ACTIVE_ADVANCE_STATUSES = List.of(
-            EstadoCompra.PENDIENTE,
-            EstadoCompra.EN_PREPARACION,
-            EstadoCompra.LISTO
+            PENDIENTE,
+            EN_PREPARACION,
+            LISTO
     );
 
     private final PurchaseRepository purchaseRepository;
     private final ProductRepository productRepository;
     private final StockMovementRepository stockMovementRepository;
     private final DailyBuffetCloseRepository dailyBuffetCloseRepository;
-
-    public GenerateDailyBuffetReport(
-            PurchaseRepository purchaseRepository,
-            ProductRepository productRepository,
-            StockMovementRepository stockMovementRepository
-    ) {
-        this(purchaseRepository, productRepository, stockMovementRepository, null);
-    }
 
     public GenerateDailyBuffetReport(
             PurchaseRepository purchaseRepository,
@@ -62,15 +66,8 @@ public class GenerateDailyBuffetReport {
     }
 
     public GenerateDailyBuffetReportResponse execute(GenerateDailyBuffetReportRequest request) {
-        validate(request);
         ReportSource source = reportSource(request);
         return response(request, source);
-    }
-
-    private void validate(GenerateDailyBuffetReportRequest request) {
-        required(request, "request is required");
-        required(request.buffetId(), "buffetId is required");
-        required(request.date(), "date is required");
     }
 
     private ReportSource reportSource(GenerateDailyBuffetReportRequest request) {
@@ -91,13 +88,13 @@ public class GenerateDailyBuffetReport {
                 request.buffetId(),
                 request.date(),
                 source.purchases().size(),
-                countStatus(source.purchases(), EstadoCompra.ENTREGADO),
-                countStatus(source.purchases(), EstadoCompra.PENDIENTE),
-                countStatus(source.purchases(), EstadoCompra.EN_PREPARACION),
-                countStatus(source.purchases(), EstadoCompra.LISTO),
-                countStatus(source.purchases(), EstadoCompra.VENCIDO),
-                countStatus(source.purchases(), EstadoCompra.CANCELADO),
-                countStatus(source.purchases(), EstadoCompra.RECHAZADO),
+                countStatus(source.purchases(), ENTREGADO),
+                countStatus(source.purchases(), PENDIENTE),
+                countStatus(source.purchases(), EN_PREPARACION),
+                countStatus(source.purchases(), LISTO),
+                countStatus(source.purchases(), VENCIDO),
+                countStatus(source.purchases(), CANCELADO),
+                countStatus(source.purchases(), RECHAZADO),
                 deliveredTotal(source.purchases()),
                 refundedCredits(source.purchases()),
                 releasedReservations(source.movements()),
@@ -143,7 +140,7 @@ public class GenerateDailyBuffetReport {
 
     private int releasedReservations(List<MovimientoStock> movements) {
         return movements.stream()
-                .filter(movement -> movement.tipo() == TipoMovimientoStock.LIBERACION)
+                .filter(movement -> movement.tipo() == LIBERACION)
                 .map(MovimientoStock::cantidad)
                 .filter(quantity -> quantity != null)
                 .reduce(0, Integer::sum);
@@ -153,7 +150,7 @@ public class GenerateDailyBuffetReport {
             List<DailyInventorySnapshot> inventory
     ) {
         return inventory.stream()
-                .filter(item -> item.estadoInventario() == EstadoInventario.SIN_STOCK)
+                .filter(item -> item.estadoInventario() == SIN_STOCK)
                 .toList();
     }
 
@@ -218,11 +215,9 @@ public class GenerateDailyBuffetReport {
     }
 
     private List<DailyInventorySnapshot> inventory(UUID buffetId, LocalDate date) {
-        if (dailyBuffetCloseRepository != null) {
-            List<DailyInventorySnapshot> snapshot = savedInventorySnapshot(buffetId, date);
-            if (hasSavedInventorySnapshot(snapshot)) {
-                return snapshot;
-            }
+        List<DailyInventorySnapshot> snapshot = savedInventorySnapshot(buffetId, date);
+        if (hasSavedInventorySnapshot(snapshot)) {
+            return snapshot;
         }
 
         return productRepository.findAllActiveWithStock(buffetId).stream()
@@ -282,11 +277,6 @@ public class GenerateDailyBuffetReport {
 
     private boolean hasInventory(Producto product) {
         return product.hasInventoryData();
-    }
-
-    private <T> T required(T value, String message) {
-        return Optional.ofNullable(value)
-                .orElseThrow(() -> new IllegalArgumentException(message));
     }
 
     private static class ProductAccumulator {

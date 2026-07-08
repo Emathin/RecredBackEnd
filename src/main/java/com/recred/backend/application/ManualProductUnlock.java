@@ -18,12 +18,16 @@ public class ManualProductUnlock {
     public ManualProductUnlockResponse execute(ManualProductUnlockRequest request) {
         Alumno alumno = this.findAlumnoById(request.alumnoId());
         alumno.desbloquearProducto(request.productoId());
-        alumnoRepository.save(alumno);
+        this.saveAlumno(alumno);
         return new ManualProductUnlockResponse();
     }
 
     private Alumno findAlumnoById(UUID alumnoId) {
         return alumnoRepository.findById(alumnoId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
+    }
+
+    private void saveAlumno(Alumno alumno) {
+        alumnoRepository.save(alumno);
     }
 }

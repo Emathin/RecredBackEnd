@@ -51,36 +51,40 @@ public class GenerateBuffetMenu {
     }
 
     @Transactional(readOnly = true)
-    public GenerateBuffetMenuResponse execute(GenerateBuffetMenuRequest request) {
-        UUID buffetId = requireBuffetId(request);
-        Alumno alumno = findAlumno(request.alumnoId());
-        List<Producto> catalogo = productRepository.findAllActiveWithStock(buffetId);
-        LocalDateTime momentoLocal = localMoment(request.momentoConsulta());
-        BudgetAvailability budget = budgetAvailability(request.alumnoId(),
-                request.momentoConsulta());
-        return new GenerateBuffetMenuResponse(menuItems(
-                alumno, catalogo, buffetId, momentoLocal, budget));
+    public GenerateBuffetMenuResponse execute(GenerateBuffetMenuRequest menuRequest) {
+        Alumno student = findStudent(menuRequest.alumnoId());
+        List<Producto> activeProducts = findActiveProductsWithStock(menuRequest.buffetId());
+        LocalDateTime evaluationMoment = localBusinessMoment(menuRequest.momentoConsulta());
+        BudgetAvailability budget = budgetAvailabilityFor(
+                menuRequest.alumnoId(),
+                menuRequest.momentoConsulta());
+
+        return new GenerateBuffetMenuResponse(menuItemsFor(
+                student,
+                activeProducts,
+                menuRequest.buffetId(),
+                evaluationMoment,
+                budget));
     }
 
-    private UUID requireBuffetId(GenerateBuffetMenuRequest request) {
-        if (request.buffetId() == null) {
-            throw new IllegalArgumentException("buffetId is required");
-        }
-        return request.buffetId();
-    }
-
-    private Alumno findAlumno(UUID alumnoId) {
+    private Alumno findStudent(UUID alumnoId) {
         return alumnoRepository.findById(alumnoId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
     }
 
-    private LocalDateTime localMoment(LocalDateTime momentoConsulta) {
+    private List<Producto> findActiveProductsWithStock(UUID buffetId) {
+        return productRepository.findAllActiveWithStock(buffetId);
+    }
+
+    private LocalDateTime localBusinessMoment(LocalDateTime momentoConsulta) {
         return ZonedDateTime.of(momentoConsulta, ZoneId.systemDefault())
                 .withZoneSameInstant(ZONA_LOCAL)
                 .toLocalDateTime();
     }
 
-    private BudgetAvailability budgetAvailability(UUID alumnoId, LocalDateTime momentoConsulta) {
+    private BudgetAvailability budgetAvailabilityFor(
+            UUID alumnoId,
+            LocalDateTime momentoConsulta) {
         Optional<PresupuestoAlumno> presupuestoOpt =
                 presupuestoRepository.findActivoByAlumnoId(alumnoId);
         if (presupuestoOpt.isEmpty()
@@ -98,32 +102,33 @@ public class GenerateBuffetMenu {
                 rango.inicio(),
                 rango.fin()
         );
-        BigDecimal general = presupuesto.getMontoLimiteGeneral().subtract(gastadoHistorico);
+        BigDecimal generalBudgetAvailable = presupuesto.getMontoLimiteGeneral()
+                .subtract(gastadoHistorico);
         return new BudgetAvailability(
-                general,
-                presupuestoCategoriaDisponible(alumnoId, presupuesto, rango)
+                generalBudgetAvailable,
+                categoryBudgetAvailability(alumnoId, presupuesto, rango)
         );
     }
 
-    private List<MenuProductResponse> menuItems(
-            Alumno alumno,
-            List<Producto> catalogo,
+    private List<MenuProductResponse> menuItemsFor(
+            Alumno student,
+            List<Producto> activeProducts,
             UUID buffetId,
-            LocalDateTime momentoLocal,
+            LocalDateTime evaluationMoment,
             BudgetAvailability budget
     ) {
-        return catalogo.stream()
-                .map(producto -> menuItem(
-                        alumno,
-                        producto,
+        return activeProducts.stream()
+                .map(product -> menuItemFor(
+                        student,
+                        product,
                         buffetId,
-                        momentoLocal,
+                        evaluationMoment,
                         budget
                 ))
                 .toList();
     }
 
-    private Map<UUID, BigDecimal> presupuestoCategoriaDisponible(
+    private Map<UUID, BigDecimal> categoryBudgetAvailability(
             UUID alumnoId,
             PresupuestoAlumno presupuesto,
             RangoFechas rango
@@ -132,74 +137,76 @@ public class GenerateBuffetMenu {
             return Map.of();
         }
 
-        Map<UUID, BigDecimal> disponible = new HashMap<>();
+        Map<UUID, BigDecimal> availableByCategory = new HashMap<>();
         for (ReglaPresupuestoCategoria regla : presupuesto.getReglasCategoria()) {
-            UUID catId = regla.getCategoria().getId();
-            BigDecimal gastadoCat = purchaseRepository.sumarGastosPorCategoriaEnRango(
+            UUID categoryId = regla.getCategoria().getId();
+            BigDecimal spentByCategory = purchaseRepository.sumarGastosPorCategoriaEnRango(
                     alumnoId,
-                    catId,
+                    categoryId,
                     rango.inicio(),
                     rango.fin()
             );
-            disponible.put(catId, regla.getMontoLimiteCalculado().subtract(gastadoCat));
+            availableByCategory.put(
+                    categoryId,
+                    regla.getMontoLimiteCalculado().subtract(spentByCategory));
         }
-        return disponible;
+        return availableByCategory;
     }
 
-    private MenuProductResponse menuItem(
-            Alumno alumno,
-            Producto producto,
+    private MenuProductResponse menuItemFor(
+            Alumno student,
+            Producto product,
             UUID buffetId,
-            LocalDateTime momentoLocal,
+            LocalDateTime evaluationMoment,
             BudgetAvailability budget
     ) {
-        applyDailyCapacity(buffetId, producto, momentoLocal);
-        return blockingReason(alumno, producto, momentoLocal, budget)
-                .map(reason -> MenuProductResponse.bloqueado(producto, reason))
-                .orElseGet(() -> MenuProductResponse.permitido(producto));
+        applyDailyCapacityFor(buffetId, product, evaluationMoment);
+        return blockingReasonFor(student, product, evaluationMoment, budget)
+                .map(reason -> MenuProductResponse.bloqueado(product, reason))
+                .orElseGet(() -> MenuProductResponse.permitido(product));
     }
 
-    private Optional<String> blockingReason(
-            Alumno alumno,
-            Producto producto,
-            LocalDateTime momentoLocal,
+    private Optional<String> blockingReasonFor(
+            Alumno student,
+            Producto product,
+            LocalDateTime evaluationMoment,
             BudgetAvailability budget
     ) {
-        if (alumno.hasBlockedProduct(producto)) {
+        if (student.hasBlockedProduct(product)) {
             return Optional.of("Bloqueado por el tutor");
         }
-        if (producto.isDailyCapacityExhausted()) {
+        if (product.isDailyCapacityExhausted()) {
             return Optional.of("Cupo diario agotado");
         }
-        if (!producto.hasAvailableStock()) {
+        if (!product.hasAvailableStock()) {
             return Optional.of("Sin disponibilidad");
         }
-        Optional<String> healthConflict = alumno.healthConflictReasonFor(producto)
+        Optional<String> healthConflict = student.healthConflictReasonFor(product)
                 .map(conflict -> "Contiene: " + conflict);
         if (healthConflict.isPresent()) {
             return healthConflict;
         }
-        if (alumno.hasTimeRestrictionFor(producto, momentoLocal)) {
+        if (student.hasTimeRestrictionFor(product, evaluationMoment)) {
             return Optional.of("No permitido en este horario");
         }
-        return budget.blockingReasonFor(producto);
+        return budget.blockingReasonFor(product);
     }
 
-    private void applyDailyCapacity(
+    private void applyDailyCapacityFor(
             UUID buffetId,
-            Producto producto,
-            LocalDateTime momentoLocal
+            Producto product,
+            LocalDateTime evaluationMoment
     ) {
-        if (!producto.hasDailyCapacityLimit()) {
+        if (!product.hasDailyCapacityLimit()) {
             return;
         }
 
         long reserved = purchaseRepository.sumScheduledProductQuantity(
                 buffetId,
-                producto.getId(),
-                momentoLocal.toLocalDate(),
+                product.getId(),
+                evaluationMoment.toLocalDate(),
                 ACTIVE_ADVANCE_STATUSES);
-        producto.applyDailyCapacity(reserved);
+        product.applyDailyCapacity(reserved);
     }
 
     private record BudgetAvailability(

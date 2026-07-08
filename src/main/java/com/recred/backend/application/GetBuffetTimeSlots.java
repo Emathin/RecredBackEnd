@@ -8,6 +8,7 @@ import com.recred.backend.domain.repositories.BuffetRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 
 import java.util.List;
+import java.util.UUID;
 
 public class GetBuffetTimeSlots {
 
@@ -22,16 +23,19 @@ public class GetBuffetTimeSlots {
         this.franjaHorariaRepository = franjaHorariaRepository;
     }
 
-    public List<GetTimeSlotsBySchoolResponse> execute(GetBuffetTimeSlotsRequest request) {
-        return slotsFor(request).stream()
-                .map(this::mapSlot)
+    public List<GetTimeSlotsBySchoolResponse> execute(GetBuffetTimeSlotsRequest slotsRequest) {
+        Buffet buffet = findBuffet(slotsRequest.buffetId());
+        return findTimeSlotsFor(buffet).stream()
+                .map(this::responseFrom)
                 .toList();
     }
 
-    private List<FranjaHoraria> slotsFor(GetBuffetTimeSlotsRequest request) {
-        Buffet buffet = buffetRepository.findById(request.buffetId())
-                .orElseThrow(() -> new BuffetNotFoundException(request.buffetId()));
+    private Buffet findBuffet(UUID buffetId) {
+        return buffetRepository.findById(buffetId)
+                .orElseThrow(() -> new BuffetNotFoundException(buffetId));
+    }
 
+    private List<FranjaHoraria> findTimeSlotsFor(Buffet buffet) {
         if (buffet.getColegio() == null || buffet.getColegio().getId() == null) {
             throw new PickupTimeSlotNotFoundException(null, null);
         }
@@ -39,7 +43,7 @@ public class GetBuffetTimeSlots {
         return franjaHorariaRepository.findAllByColegioId(buffet.getColegio().getId());
     }
 
-    private GetTimeSlotsBySchoolResponse mapSlot(FranjaHoraria slot) {
+    private GetTimeSlotsBySchoolResponse responseFrom(FranjaHoraria slot) {
         return new GetTimeSlotsBySchoolResponse(
                 slot.getId(),
                 slot.getColegioId(),

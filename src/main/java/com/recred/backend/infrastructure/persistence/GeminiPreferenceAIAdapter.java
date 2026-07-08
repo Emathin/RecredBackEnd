@@ -81,10 +81,14 @@ public class GeminiPreferenceAIAdapter implements PreferenceAIRepository {
                    puedes recomendarla, pero tambien puedes recomendar otros productos si reflejan
                    mejor la preferencia detectada.
                 4. Si el producto es poco saludable, la razonIA debe mencionarlo como contexto.
-                5. Responde UNICAMENTE en formato JSON con la siguiente estructura:
+                5. El mensaje sera leido por los tutores (padres), por lo tanto DEBE redactarse
+                   refiriendose al alumno/hijo en tercera persona. Nunca hables en segunda persona
+                   como si el tutor fuera quien consume (Ejemplo correcto: "Notamos que a tu hijo
+                   le encantan...", "El alumno suele elegir...").
+                6. Responde UNICAMENTE en formato JSON con la siguiente estructura:
                    {
                      "titulo": "Titulo corto de la sugerencia",
-                     "mensaje": "Mensaje para el alumno",
+                     "mensaje": "Mensaje dirigido al tutor (en 3ra persona sobre el alumno)",
                      "productoId": "UUID del producto del stock",
                      "razonIA": "Explicacion tecnica"
                    }

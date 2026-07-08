@@ -156,6 +156,43 @@ class AlumnoTest {
     }
 
     @Test
+    void givenKnownHealthRestrictions_whenProductConflicts_thenReturnsUserFriendlyReason() {
+        ClasificacionSalud sinSodio = healthRestriction("Sin Sodio");
+        ClasificacionSalud sinAzucar = healthRestriction("Sin Azucar");
+        ClasificacionSalud vegano = healthRestriction("Apto Vegano");
+        alumno.setRestriccionesSalud(new java.util.LinkedHashSet<>(
+                java.util.List.of(sinSodio, sinAzucar, vegano)
+        ));
+        Producto product = productWithHealthClassifications();
+
+        String reason = alumno.healthConflictReasonFor(product).orElseThrow();
+
+        assertEquals("Alto sodio, Azucar, Ingredientes de origen animal", reason);
+    }
+
+    @Test
+    void givenUnknownHealthRestriction_whenProductConflicts_thenReturnsOriginalDescription() {
+        ClasificacionSalud colorante = healthRestriction("Colorante");
+        alumno.setRestriccionesSalud(Set.of(colorante));
+        Producto product = productWithHealthClassifications(
+                healthRestriction(colorante.getId(), "Colorante"));
+
+        String reason = alumno.healthConflictReasonFor(product).orElseThrow();
+
+        assertEquals("Colorante", reason);
+    }
+
+    @Test
+    void givenNullHealthRestrictionDescription_whenProductConflicts_thenReturnsEmptyReason() {
+        ClasificacionSalud restriction = healthRestriction(null);
+        alumno.setRestriccionesSalud(Set.of(restriction));
+        Producto product = productWithHealthClassifications(
+                healthRestriction(restriction.getId(), null));
+
+        assertTrue(alumno.healthConflictReasonFor(product).isEmpty());
+    }
+
+    @Test
     void dadoRestriccionHoraria_cuandoAgregarYRemover_entoncesActualizaColeccion() {
         RestriccionHoraria restriccion = new RestriccionHoraria();
 
@@ -207,43 +244,43 @@ class AlumnoTest {
     }
 
     @Test
-    void dadoPuntosNulos_cuandoCalculateCurrentLevel_entoncesRetornaBronze() {
+    void dadoPuntosNulos_cuandoCalculateCurrentLevel_entoncesRetornaPrincipiante() {
         givenPuntosRecompensa(null);
 
         RewardLevel level = whenCalculatingCurrentLevel();
 
-        thenCurrentLevelIs(RewardLevel.BRONZE, level);
+        thenCurrentLevelIs(RewardLevel.PRINCIPIANTE, level);
     }
 
     @Test
-    void dadoPuntosMenoresASilver_cuandoCalculateCurrentLevel_entoncesRetornaBronze() {
+    void dadoPuntosMenoresACrack_cuandoCalculateCurrentLevel_entoncesRetornaPrincipiante() {
         givenPuntosRecompensa(99);
 
         RewardLevel level = whenCalculatingCurrentLevel();
 
-        thenCurrentLevelIs(RewardLevel.BRONZE, level);
+        thenCurrentLevelIs(RewardLevel.PRINCIPIANTE, level);
     }
 
     @Test
-    void dadoPuntosSilver_cuandoCalculateCurrentLevel_entoncesRetornaSilver() {
+    void dadoPuntosCrack_cuandoCalculateCurrentLevel_entoncesRetornaCrack() {
         givenPuntosRecompensa(100);
 
         RewardLevel level = whenCalculatingCurrentLevel();
 
-        thenCurrentLevelIs(RewardLevel.SILVER, level);
+        thenCurrentLevelIs(RewardLevel.CRACK, level);
     }
 
     @Test
-    void dadoPuntosGold_cuandoCalculateCurrentLevel_entoncesRetornaGold() {
+    void dadoPuntosGoat_cuandoCalculateCurrentLevel_entoncesRetornaGoat() {
         givenPuntosRecompensa(250);
 
         RewardLevel level = whenCalculatingCurrentLevel();
 
-        thenCurrentLevelIs(RewardLevel.GOLD, level);
+        thenCurrentLevelIs(RewardLevel.GOAT, level);
     }
 
     @Test
-    void dadoPuntosNulos_cuandoGetPointsToNextLevel_entoncesRetornaPuntosParaSilver() {
+    void dadoPuntosNulos_cuandoGetPointsToNextLevel_entoncesRetornaPuntosParaCrack() {
         givenPuntosRecompensa(null);
 
         int pointsToNextLevel = whenGettingPointsToNextLevel();
@@ -252,7 +289,7 @@ class AlumnoTest {
     }
 
     @Test
-    void dadoPuntosSilver_cuandoGetPointsToNextLevel_entoncesRetornaPuntosParaGold() {
+    void dadoPuntosCrack_cuandoGetPointsToNextLevel_entoncesRetornaPuntosParaGoat() {
         givenPuntosRecompensa(120);
 
         int pointsToNextLevel = whenGettingPointsToNextLevel();
@@ -261,7 +298,7 @@ class AlumnoTest {
     }
 
     @Test
-    void dadoPuntosGold_cuandoGetPointsToNextLevel_entoncesRetornaCero() {
+    void dadoPuntosGoat_cuandoGetPointsToNextLevel_entoncesRetornaCero() {
         givenPuntosRecompensa(260);
 
         int pointsToNextLevel = whenGettingPointsToNextLevel();
@@ -287,5 +324,23 @@ class AlumnoTest {
 
     private void thenPointsToNextLevelAre(int expected, int actual) {
         assertEquals(expected, actual);
+    }
+
+    private Producto productWithHealthClassifications(ClasificacionSalud... classifications) {
+        Producto product = new Producto();
+        product.setId(UUID.randomUUID());
+        product.setClasificacionesSalud(Set.of(classifications));
+        return product;
+    }
+
+    private ClasificacionSalud healthRestriction(String description) {
+        return healthRestriction(UUID.randomUUID(), description);
+    }
+
+    private ClasificacionSalud healthRestriction(UUID id, String description) {
+        ClasificacionSalud restriction = new ClasificacionSalud();
+        restriction.setId(id);
+        restriction.setDescripcion(description);
+        return restriction;
     }
 }

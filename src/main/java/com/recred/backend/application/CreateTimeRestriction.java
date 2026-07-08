@@ -1,16 +1,17 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.RestriccionHoraria;
-import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.repositories.UsuarioRepository;
-import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
+import com.recred.backend.domain.repositories.UsuarioRepository;
 
 import java.util.List;
+import java.util.UUID;
 
 public class CreateTimeRestriction {
 
@@ -27,79 +28,101 @@ public class CreateTimeRestriction {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public CreateTimeRestrictionResponse execute(CreateTimeRestrictionRequest request) {
-        Usuario usuario = findUsuario(request.cognitoSub());
-        Alumno alumno = findAlumno(request.studentId());
+    public CreateTimeRestrictionResponse execute(CreateTimeRestrictionRequest creationRequest) {
+        Usuario creator = findCreatorByCognitoSubject(creationRequest.cognitoSub());
+        Alumno student = findStudent(creationRequest.studentId());
+        ensureStudentDoesNotHaveGlobalHealthRestriction(
+                student,
+                creationRequest.classificationId());
 
-        if (alumno.hasGlobalHealthRestriction(request.classificationId())) {
-            throw new IllegalArgumentException("Student already has this " +
-                    "health restriction assigned globally.");
-        }
+        RestriccionHoraria newRestriction = restrictionFrom(creationRequest, creator);
+        ensureStudentDoesNotHaveOverlappingTimeRestriction(
+                newRestriction,
+                creationRequest.studentId());
 
-        RestriccionHoraria newRestriction = buildRestriction(request, usuario);
-        validateExistingRestriction(newRestriction, request.studentId());
-
-        RestriccionHoraria saved = repository.save(newRestriction);
-
-        return buildResponse(saved);
+        RestriccionHoraria savedRestriction = repository.save(newRestriction);
+        return responseFrom(savedRestriction);
     }
 
-    private Usuario findUsuario(String cognitoSub) {
+    private Usuario findCreatorByCognitoSubject(String cognitoSub) {
         return usuarioRepository.findByIdCognito(cognitoSub)
                 .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
     }
 
-    private Alumno findAlumno(java.util.UUID studentId) {
+    private Alumno findStudent(UUID studentId) {
         return alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("Alumno no encontrado"));
     }
 
+    private void ensureStudentDoesNotHaveGlobalHealthRestriction(
+            Alumno student,
+            UUID classificationId) {
+        if (student.hasGlobalHealthRestriction(classificationId)) {
+            throw new IllegalArgumentException("Student already has this " +
+                    "health restriction assigned globally.");
+        }
+    }
 
-    private void validateExistingRestriction(
-            RestriccionHoraria newRestriction, java.util.UUID studentId) {
-        List<RestriccionHoraria> restriccionesActuales = 
-                repository.findAllByAlumnoEntityId(studentId);
-        
-        boolean alreadyExists = restriccionesActuales.stream().
-                anyMatch(r -> r.overlapsWith(newRestriction));
-
-        if (alreadyExists) {
+    private void ensureStudentDoesNotHaveOverlappingTimeRestriction(
+            RestriccionHoraria newRestriction,
+            UUID studentId) {
+        if (studentHasOverlappingRestriction(newRestriction, studentId)) {
             throw new IllegalArgumentException(
                     "Student already has an active restriction " +
                             "for this category or type in the selected time slot.");
         }
     }
 
-    private RestriccionHoraria buildRestriction(
-            CreateTimeRestrictionRequest request, 
-            Usuario usuario) {
-        FranjaHoraria timeSlot = new FranjaHoraria();
-        timeSlot.setId(request.timeSlotId());
+    private boolean studentHasOverlappingRestriction(
+            RestriccionHoraria newRestriction,
+            UUID studentId) {
+        List<RestriccionHoraria> currentRestrictions =
+                repository.findAllByAlumnoEntityId(studentId);
+        return currentRestrictions.stream()
+                .anyMatch(restriction -> restriction.overlapsWith(newRestriction));
+    }
 
-        CategoriaProducto category = null;
-        if (request.categoryId() != null) {
-            category = new CategoriaProducto();
-            category.setId(request.categoryId());
-        }
-
-        ClasificacionSalud classification = null;
-        if (request.classificationId() != null) {
-            classification = new ClasificacionSalud();
-            classification.setId(request.classificationId());
-        }
-
+    private RestriccionHoraria restrictionFrom(
+            CreateTimeRestrictionRequest creationRequest,
+            Usuario creator) {
         RestriccionHoraria restriction = new RestriccionHoraria(
                 null,
-                request.studentId(),
-                timeSlot,
-                category,
-                classification
+                creationRequest.studentId(),
+                timeSlotFrom(creationRequest.timeSlotId()),
+                categoryFrom(creationRequest.categoryId()),
+                classificationFrom(creationRequest.classificationId())
         );
-        restriction.setCreadoPorUsuarioId(usuario.getId());
+        restriction.setCreadoPorUsuarioId(creator.getId());
         return restriction;
     }
 
-    private CreateTimeRestrictionResponse buildResponse(RestriccionHoraria saved) {
+    private FranjaHoraria timeSlotFrom(UUID timeSlotId) {
+        FranjaHoraria timeSlot = new FranjaHoraria();
+        timeSlot.setId(timeSlotId);
+        return timeSlot;
+    }
+
+    private CategoriaProducto categoryFrom(UUID categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(categoryId);
+        return category;
+    }
+
+    private ClasificacionSalud classificationFrom(UUID classificationId) {
+        if (classificationId == null) {
+            return null;
+        }
+
+        ClasificacionSalud classification = new ClasificacionSalud();
+        classification.setId(classificationId);
+        return classification;
+    }
+
+    private CreateTimeRestrictionResponse responseFrom(RestriccionHoraria saved) {
         return new CreateTimeRestrictionResponse(
                 saved.getId(),
                 saved.getAlumnoId(),

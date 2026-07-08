@@ -57,6 +57,11 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
     }
 
     @Override
+    public Optional<UUID> findSchoolIdByStudentId(UUID studentId) {
+        return springDataRepository.findSchoolIdByStudentId(studentId);
+    }
+
+    @Override
     public UUID findUserID(UUID alumnoId) {
         return springDataRepository.findUserId(alumnoId);
     }
@@ -143,6 +148,9 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
                 entity.getProductosBloqueados().clear();
             }
         }
+
+        entity.setPuntosRecompensa(modelo.getPuntosRecompensa() != null ?
+                modelo.getPuntosRecompensa() : 0);
 
         return entity;
     }

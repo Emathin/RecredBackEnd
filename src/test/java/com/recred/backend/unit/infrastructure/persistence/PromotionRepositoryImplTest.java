@@ -98,7 +98,7 @@ class PromotionRepositoryImplTest {
         promotion.setName("Promo");
         promotion.setDiscountPercentage(new BigDecimal("10.00"));
         promotion.setStartDate(LocalDateTime.of(2026, 7, 4, 8, 0));
-        promotion.setEndDate(LocalDateTime.of(2026, 7, 5, 20, 0));
+        promotion.setEndDate(LocalDateTime.of(2099, 7, 5, 20, 0));
         promotion.setStatus(PromotionStatus.ACTIVE);
         promotion.setImageUrl("promo.png");
         promotion.setProducts(List.of(product));
@@ -112,7 +112,7 @@ class PromotionRepositoryImplTest {
         entity.setName("Promo");
         entity.setDiscountPercentage(new BigDecimal("10.00"));
         entity.setStartDate(LocalDateTime.of(2026, 7, 4, 8, 0));
-        entity.setEndDate(LocalDateTime.of(2026, 7, 5, 20, 0));
+        entity.setEndDate(LocalDateTime.of(2099, 7, 5, 20, 0));
         entity.setStatus(PromotionStatus.ACTIVE);
         return entity;
     }

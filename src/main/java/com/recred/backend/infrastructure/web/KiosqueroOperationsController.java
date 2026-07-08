@@ -15,6 +15,7 @@ import com.recred.backend.application.GetBuffetTimeSlotsRequest;
 import com.recred.backend.application.GetKiosqueroDashboard;
 import com.recred.backend.application.GetKiosqueroDashboardRequest;
 import com.recred.backend.application.GetKiosqueroDashboardResponse;
+import com.recred.backend.application.GetKiosqueroDashboardResponse.DashboardInventoryAttention;
 import com.recred.backend.application.ListDailyBuffetCloses;
 import com.recred.backend.application.ListDailyBuffetClosesRequest;
 import com.recred.backend.application.ListInventoryProducts;
@@ -44,6 +45,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +56,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/kiosqueros")
 public class KiosqueroOperationsController {
+
+    private static final String HOME_DASHBOARD_VIEW = "home";
 
     private final CloseDailyBuffet closeDailyBuffet;
     private final GetDailyBuffetCloseStatus getDailyBuffetCloseStatus;
@@ -67,6 +71,7 @@ public class KiosqueroOperationsController {
     private final GetKiosqueroDashboard getKiosqueroDashboard;
     private final KiosqueroAccessGuard kiosqueroAccessGuard;
     private final SchoolAccessGuard schoolAccessGuard;
+    private final PlanAccessGuard planAccessGuard;
 
     public KiosqueroOperationsController(
             CloseDailyBuffet closeDailyBuffet,
@@ -80,7 +85,8 @@ public class KiosqueroOperationsController {
             ListKiosqueroOperationalAlerts listKiosqueroOperationalAlerts,
             GetKiosqueroDashboard getKiosqueroDashboard,
             KiosqueroAccessGuard kiosqueroAccessGuard,
-            SchoolAccessGuard schoolAccessGuard
+            SchoolAccessGuard schoolAccessGuard,
+            PlanAccessGuard planAccessGuard
     ) {
         this.closeDailyBuffet = closeDailyBuffet;
         this.getDailyBuffetCloseStatus = getDailyBuffetCloseStatus;
@@ -94,6 +100,7 @@ public class KiosqueroOperationsController {
         this.getKiosqueroDashboard = getKiosqueroDashboard;
         this.kiosqueroAccessGuard = kiosqueroAccessGuard;
         this.schoolAccessGuard = schoolAccessGuard;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @GetMapping("/{buffetId}/orders")
@@ -138,7 +145,7 @@ public class KiosqueroOperationsController {
     }
 
     @GetMapping("/{buffetId}/dashboard")
-    public ResponseEntity<GetKiosqueroDashboardResponse> dashboard(
+    public ResponseEntity<?> dashboard(
             @PathVariable UUID buffetId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -149,12 +156,15 @@ public class KiosqueroOperationsController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate to,
+            @RequestParam(required = false) String view,
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
+        requireDashboardPlanAccess(authentication, view);
         GetKiosqueroDashboardRequest request =
                 new GetKiosqueroDashboardRequest(buffetId, date, from, to);
-        return ResponseEntity.ok(getKiosqueroDashboard.execute(request));
+        GetKiosqueroDashboardResponse response = getKiosqueroDashboard.execute(request);
+        return ResponseEntity.ok(dashboardResponseForView(response, view));
     }
 
     @GetMapping("/{buffetId}/time-slots")
@@ -207,6 +217,9 @@ public class KiosqueroOperationsController {
             LocalDate to,
             Authentication authentication
     ) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new IllegalArgumentException("startDate must be before or equal to endDate");
+        }
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
         return ResponseEntity.ok(listDailyBuffetCloses.execute(
                 new ListDailyBuffetClosesRequest(buffetId, from, to)).closes());
@@ -263,6 +276,28 @@ public class KiosqueroOperationsController {
         return date == null ? LocalDate.now() : date;
     }
 
+    private void requireDashboardPlanAccess(Authentication authentication, String view) {
+        if (!isHomeDashboardView(view)) {
+            planAccessGuard.requireVendorIntermediate(authentication);
+        }
+    }
+
+    private Object dashboardResponseForView(GetKiosqueroDashboardResponse response, String view) {
+        if (isHomeDashboardView(view)) {
+            return KiosqueroDashboardHomeResponse.from(response);
+        }
+
+        return response;
+    }
+
+    private boolean isHomeDashboardView(String view) {
+        return HOME_DASHBOARD_VIEW.equalsIgnoreCase(normalizedView(view));
+    }
+
+    private String normalizedView(String view) {
+        return view == null ? null : view.trim();
+    }
+
     private String csv(GenerateDailyBuffetReportResponse report) {
         return String.join("\n",
                 "metric,value",
@@ -303,6 +338,69 @@ public class KiosqueroOperationsController {
                     slot.horaFin(),
                     slot.cupoMaximo(),
                     slot.minutosCorte()
+            );
+        }
+    }
+
+    public record KiosqueroDashboardHomeResponse(
+            UUID buffetId,
+            LocalDate date,
+            HomeDashboardSummary summary,
+            HomeDashboardAlerts alerts,
+            HomeDashboardProducts products
+    ) {
+        static KiosqueroDashboardHomeResponse from(GetKiosqueroDashboardResponse response) {
+            return new KiosqueroDashboardHomeResponse(
+                    response.buffetId(),
+                    response.date(),
+                    HomeDashboardSummary.from(response.summary()),
+                    HomeDashboardAlerts.from(response.alerts()),
+                    HomeDashboardProducts.from(response.products())
+            );
+        }
+    }
+
+    public record HomeDashboardSummary(
+            BigDecimal totalSold,
+            int totalOrders,
+            int deliveredOrders,
+            int pendingOrders,
+            int soldOutProducts
+    ) {
+        static HomeDashboardSummary from(GetKiosqueroDashboardResponse.DashboardSummary summary) {
+            return new HomeDashboardSummary(
+                    summary.totalSold(),
+                    summary.totalOrders(),
+                    summary.deliveredOrders(),
+                    summary.pendingOrders(),
+                    summary.soldOutProducts()
+            );
+        }
+    }
+
+    public record HomeDashboardAlerts(
+            int pendingOrders,
+            int readyOrders,
+            int expiredOrders
+    ) {
+        static HomeDashboardAlerts from(GetKiosqueroDashboardResponse.DashboardAlerts alerts) {
+            return new HomeDashboardAlerts(
+                    alerts.pendingOrders(),
+                    alerts.readyOrders(),
+                    alerts.expiredOrders()
+            );
+        }
+    }
+
+    public record HomeDashboardProducts(
+            List<DashboardInventoryAttention> productsNeedingRestock,
+            List<DashboardInventoryAttention> soldOutProducts
+    ) {
+        static HomeDashboardProducts from(
+                GetKiosqueroDashboardResponse.DashboardProducts products) {
+            return new HomeDashboardProducts(
+                    products.productsNeedingRestock(),
+                    products.soldOutProducts()
             );
         }
     }

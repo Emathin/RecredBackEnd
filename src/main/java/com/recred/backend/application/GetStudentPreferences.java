@@ -31,6 +31,7 @@ public class GetStudentPreferences {
         this.tutorRepository = tutorRepository;
     }
 
+    @Transactional
     public GetStudentPreferencesResponse execute(GetStudentPreferencesRequest request) {
         request.validate();
 
@@ -65,7 +66,6 @@ public class GetStudentPreferences {
         return List.of(preferences.get(0));
     }
 
-    @Transactional
     private GetStudentPreferencesResponse preferencesForUser(GetStudentPreferencesRequest request) {
         Optional<Tutor> tutor = findTutorForUser(request.userId());
         if (tutor.isPresent()) {
@@ -182,6 +182,9 @@ public class GetStudentPreferences {
                 suggestion.getTitulo(),
                 suggestion.getMensaje(),
                 metadataValue(suggestion, "productoId"),
+                productoNombre(suggestion),
+                productoImagen(suggestion),
+                productoPrecio(suggestion),
                 metadataValue(suggestion, "razonIA"),
                 parentView
         );
@@ -219,6 +222,9 @@ public class GetStudentPreferences {
                 suggestion.getTitulo(),
                 suggestion.getMensaje(),
                 metadataValue(suggestion, "productoId"),
+                productoNombre(suggestion),
+                productoImagen(suggestion),
+                productoPrecio(suggestion),
                 metadataValue(suggestion, "razonIA"),
                 false
         );
@@ -238,9 +244,38 @@ public class GetStudentPreferences {
 
     private String metadataValue(SugerenciaIAEntity suggestion, String key) {
         Map<String, Object> metadata = suggestion.getMetadata();
-        if (metadata == null || metadata.get(key) == null) {
-            return null;
+        if (metadata != null && metadata.get(key) != null) {
+            return metadata.get(key).toString();
         }
-        return metadata.get(key).toString();
+        
+        // Fallback for productoId
+        if ("productoId".equals(key) && suggestion.getProductoEntity() != null) {
+            return suggestion.getProductoEntity().getId().toString();
+        }
+        
+        // Fallback for razonIA
+        if ("razonIA".equals(key)) {
+            return "Basado en el historial de consumos del alumno.";
+        }
+        
+        return null;
+    }
+
+    private String productoNombre(SugerenciaIAEntity suggestion) {
+        if (suggestion.getProductoEntity() != null) {
+            return suggestion.getProductoEntity().getNombre();
+        }
+        return null;
+    }
+
+    private String productoImagen(SugerenciaIAEntity suggestion) {
+        return null;
+    }
+
+    private java.math.BigDecimal productoPrecio(SugerenciaIAEntity suggestion) {
+        if (suggestion.getProductoEntity() != null) {
+            return suggestion.getProductoEntity().getPrecio();
+        }
+        return null;
     }
 }

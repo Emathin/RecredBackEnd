@@ -2,6 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
@@ -10,10 +11,6 @@ import com.recred.backend.domain.repositories.PreferenceAIRepository.CompraResum
 import com.recred.backend.domain.repositories.PreferenceAIRepository.PreferenciaDetectada;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import com.recred.backend.infrastructure.entities.AlumnoEntity;
-import com.recred.backend.infrastructure.entities.BuffetEntity;
-import com.recred.backend.infrastructure.entities.ProductoEntity;
-import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -47,22 +44,50 @@ public class DetectStudentPreferences {
     }
 
     public Optional<DetectStudentPreferencesResponse> execute(
-            DetectStudentPreferencesRequest request) {
-        request.validate();
+            DetectStudentPreferencesRequest detectPreferencesRequest) {
+        detectPreferencesRequest.ensureRequiredFieldsPresent();
+        Optional<PreferenceDetectionContext> context = detectionContext(
+                detectPreferencesRequest);
 
+        return context.flatMap(preferenceContext -> detectAndSavePreference(
+                detectPreferencesRequest,
+                preferenceContext));
+    }
+
+    private Optional<PreferenceDetectionContext> detectionContext(
+            DetectStudentPreferencesRequest request
+    ) {
         Alumno alumno = findAlumno(request.alumnoId());
+        List<CompraResumen> purchaseHistory = findPurchaseHistory(request.alumnoId());
+        if (!hasEnoughHistory(purchaseHistory)) {
+            return Optional.empty();
+        }
 
-        return findAnalyzableHistory(request.alumnoId())
-                .flatMap(historial -> findNonEmptyAvailableStock(request.buffetId())
-                        .flatMap(stockDisponible -> analyzePreference(
-                                alumno,
-                                historial,
-                                stockDisponible
-                        ).flatMap(preference -> saveIfProductIsAvailable(
-                                request,
-                                preference,
-                                stockDisponible
-                        ))));
+        List<Producto> availableStock = findAvailableStock(request.buffetId());
+        if (availableStock.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new PreferenceDetectionContext(
+                alumno,
+                purchaseHistory,
+                availableStock
+        ));
+    }
+
+    private Optional<DetectStudentPreferencesResponse> detectAndSavePreference(
+            DetectStudentPreferencesRequest request,
+            PreferenceDetectionContext context
+    ) {
+        return analyzePreference(
+                context.alumno(),
+                context.purchaseHistory(),
+                context.availableStock())
+                .flatMap(preference -> saveDetectedPreferenceIfAvailable(
+                        request,
+                        preference,
+                        context.availableStock()
+                ));
     }
 
     private Alumno findAlumno(UUID alumnoId) {
@@ -70,26 +95,16 @@ public class DetectStudentPreferences {
                 .orElseThrow(() -> new RuntimeException("Student not found: " + alumnoId));
     }
 
-    private Optional<List<CompraResumen>> findAnalyzableHistory(UUID alumnoId) {
-        List<CompraResumen> historial =
-                purchaseRepository.findLastPurchasesByAlumno(alumnoId, PURCHASE_HISTORY_LIMIT);
-
-        if (historial.size() < MIN_PURCHASES_FOR_ANALYSIS) {
-            return Optional.empty();
-        }
-
-        return Optional.of(historial);
+    private List<CompraResumen> findPurchaseHistory(UUID alumnoId) {
+        return purchaseRepository.findLastPurchasesByAlumno(alumnoId, PURCHASE_HISTORY_LIMIT);
     }
 
-    private Optional<List<Producto>> findNonEmptyAvailableStock(UUID buffetId) {
-        List<Producto> stockDisponible = inventoryRepository.findAvailableProductsByBuffet(
-                buffetId);
+    private boolean hasEnoughHistory(List<CompraResumen> historial) {
+        return historial.size() >= MIN_PURCHASES_FOR_ANALYSIS;
+    }
 
-        if (stockDisponible.isEmpty()) {
-            return Optional.empty();
-        }
-
-        return Optional.of(stockDisponible);
+    private List<Producto> findAvailableStock(UUID buffetId) {
+        return inventoryRepository.findAvailableProductsByBuffet(buffetId);
     }
 
     private Optional<PreferenciaDetectada> analyzePreference(
@@ -100,7 +115,7 @@ public class DetectStudentPreferences {
         return preferenceAIRepository.analizarPreferencias(alumno, historial, stockDisponible);
     }
 
-    private Optional<DetectStudentPreferencesResponse> saveIfProductIsAvailable(
+    private Optional<DetectStudentPreferencesResponse> saveDetectedPreferenceIfAvailable(
             DetectStudentPreferencesRequest request,
             PreferenciaDetectada preference,
             List<Producto> stockDisponible
@@ -138,24 +153,23 @@ public class DetectStudentPreferences {
             PreferenciaDetectada preference,
             UUID productoId
     ) {
-        sugerenciaIARepository.guardar(suggestion(request, preference, productoId));
+        sugerenciaIARepository.save(suggestion(request, preference, productoId));
     }
 
-    private SugerenciaIAEntity suggestion(
+    private SugerenciaIA suggestion(
             DetectStudentPreferencesRequest request,
             PreferenciaDetectada preference,
             UUID productoId
     ) {
-        SugerenciaIAEntity sugerencia = new SugerenciaIAEntity();
-        sugerencia.setTipo(TipoSugerenciaIA.PREFERENCIA_DETECTADA);
-        sugerencia.setTitulo(preference.titulo());
-        sugerencia.setMensaje(preference.mensaje());
-        sugerencia.setAceptada(null);
-        sugerencia.setMetadata(metadata(preference));
-        sugerencia.setAlumnoEntity(alumnoEntity(request.alumnoId()));
-        sugerencia.setBuffetEntity(buffetEntity(request.buffetId()));
-        sugerencia.setProductoEntity(productoEntity(productoId));
-        return sugerencia;
+        return SugerenciaIA.builder()
+                .tipo(TipoSugerenciaIA.PREFERENCIA_DETECTADA)
+                .titulo(preference.titulo())
+                .mensaje(preference.mensaje())
+                .metadata(metadata(preference))
+                .alumnoId(request.alumnoId())
+                .buffetId(request.buffetId())
+                .productoId(productoId)
+                .build();
     }
 
     private Map<String, Object> metadata(PreferenciaDetectada preference) {
@@ -165,21 +179,10 @@ public class DetectStudentPreferences {
         );
     }
 
-    private AlumnoEntity alumnoEntity(UUID alumnoId) {
-        AlumnoEntity alumnoEntity = new AlumnoEntity();
-        alumnoEntity.setId(alumnoId);
-        return alumnoEntity;
-    }
-
-    private BuffetEntity buffetEntity(UUID buffetId) {
-        BuffetEntity buffetEntity = new BuffetEntity();
-        buffetEntity.setId(buffetId);
-        return buffetEntity;
-    }
-
-    private ProductoEntity productoEntity(UUID productoId) {
-        ProductoEntity productoEntity = new ProductoEntity();
-        productoEntity.setId(productoId);
-        return productoEntity;
+    private record PreferenceDetectionContext(
+            Alumno alumno,
+            List<CompraResumen> purchaseHistory,
+            List<Producto> availableStock
+    ) {
     }
 }

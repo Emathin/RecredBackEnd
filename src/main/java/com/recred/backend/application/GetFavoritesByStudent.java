@@ -1,5 +1,7 @@
 package com.recred.backend.application;
 
+import com.recred.backend.application.GetFavoritesByStudentResponse.CategoriaResponse;
+import com.recred.backend.application.GetFavoritesByStudentResponse.ClasificacionResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -18,68 +20,76 @@ public class GetFavoritesByStudent {
     }
 
     @Transactional(readOnly = true)
-    public Set<GetFavoritesByStudentResponse> execute(GetFavoritesByStudentRequest request) {
-        Alumno alumno = this.getAlumnoById(request.alumnoId());
+    public Set<GetFavoritesByStudentResponse> execute(
+            GetFavoritesByStudentRequest favoritesRequest) {
+        Alumno student = findStudent(favoritesRequest.alumnoId());
 
-        return alumno.getProductosFavoritos().stream()
-                .map(this::toResponse)
+        return student.getProductosFavoritos().stream()
+                .map(this::responseFrom)
                 .collect(Collectors.toSet());
     }
 
-    private Alumno getAlumnoById(UUID id) {
-        return alumnoRepository.findById(id)
+    private Alumno findStudent(UUID studentId) {
+        return alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
     }
 
-    private GetFavoritesByStudentResponse toResponse(Producto producto) {
-        GetFavoritesByStudentResponse.CategoriaResponse categoriaDTO = null;
-        if (producto.getCategoria() != null) {
-            categoriaDTO = new GetFavoritesByStudentResponse.CategoriaResponse(
-                    producto.getCategoria().getId(),
-                    producto.getCategoria().getDescripcion()
+    private GetFavoritesByStudentResponse responseFrom(Producto product) {
+        return new GetFavoritesByStudentResponse(
+                product.getId(),
+                product.getNombre(),
+                product.getDescripcion(),
+                product.getPrecio(),
+                product.getPeso(),
+                product.getRequierePreparacion(),
+                product.getActivo(),
+                product.getCreadoEn(),
+                product.getActualizadoEn(),
+                product.getStockActual(),
+                product.getStockReservado(),
+                product.getStockMinimo(),
+                product.getStockDisponible(),
+                product.getEstadoInventario() == null
+                        ? null : product.getEstadoInventario().name(),
+                product.getTipoManejoInventario() == null
+                        ? null : product.getTipoManejoInventario().name(),
+                product.getCupoMaximoDiario(),
+                product.getCupoDisponibleDia(),
+                product.getUrlImagen(),
+                categoryResponseFrom(product),
+                healthClassificationResponsesFrom(product),
+                typeClassificationResponsesFrom(product)
+        );
+    }
+
+    private CategoriaResponse categoryResponseFrom(Producto product) {
+        CategoriaResponse categoryResponse = null;
+        if (product.getCategoria() != null) {
+            categoryResponse = new CategoriaResponse(
+                    product.getCategoria().getId(),
+                    product.getCategoria().getDescripcion()
             );
         }
+        return categoryResponse;
+    }
 
-        Set<GetFavoritesByStudentResponse.ClasificacionResponse> saludDTOs =
-                producto.getClasificacionesSalud() == null
+    private Set<ClasificacionResponse> healthClassificationResponsesFrom(
+            Producto product) {
+        return product.getClasificacionesSalud() == null
                 ? Set.of()
-                : producto.getClasificacionesSalud().stream()
-                        .map(cs -> new GetFavoritesByStudentResponse.ClasificacionResponse(
+                : product.getClasificacionesSalud().stream()
+                        .map(cs -> new ClasificacionResponse(
                                 cs.getId(), cs.getDescripcion()))
                         .collect(Collectors.toSet());
+    }
 
-        Set<GetFavoritesByStudentResponse.ClasificacionResponse> tiposDTOs =
-                producto.getTipos() == null
+    private Set<ClasificacionResponse> typeClassificationResponsesFrom(
+            Producto product) {
+        return product.getTipos() == null
                 ? Set.of()
-                : producto.getTipos().stream()
-                        .map(ct -> new GetFavoritesByStudentResponse.ClasificacionResponse(
+                : product.getTipos().stream()
+                        .map(ct -> new ClasificacionResponse(
                                 ct.getId(), ct.getDescripcion()))
                         .collect(Collectors.toSet());
-
-        return new GetFavoritesByStudentResponse(
-                producto.getId(),
-                producto.getNombre(),
-                producto.getDescripcion(),
-                producto.getPrecio(),
-                producto.getPeso(),
-                producto.getRequierePreparacion(),
-                producto.getActivo(),
-                producto.getCreadoEn(),
-                producto.getActualizadoEn(),
-                producto.getStockActual(),
-                producto.getStockReservado(),
-                producto.getStockMinimo(),
-                producto.getStockDisponible(),
-                producto.getEstadoInventario() == null
-                        ? null : producto.getEstadoInventario().name(),
-                producto.getTipoManejoInventario() == null
-                        ? null : producto.getTipoManejoInventario().name(),
-                producto.getCupoMaximoDiario(),
-                producto.getCupoDisponibleDia(),
-                producto.getUrlImagen(),
-                categoriaDTO,
-                saludDTOs,
-                tiposDTOs
-        );
     }
 }

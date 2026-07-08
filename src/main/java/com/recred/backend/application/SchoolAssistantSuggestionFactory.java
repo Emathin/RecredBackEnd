@@ -12,14 +12,14 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
-class SchoolAssistantSuggestionFactory {
+public class SchoolAssistantSuggestionFactory {
 
     private final EnumMap<SchoolAssistantRole, SchoolAssistantRoleSuggestionConfig>
             suggestionsByRole;
     private final EnumMap<SchoolAssistantActionStatus, List<SchoolAssistantSuggestion>>
             advancePurchaseSuggestions;
 
-    SchoolAssistantSuggestionFactory() {
+    public SchoolAssistantSuggestionFactory() {
         this.suggestionsByRole = suggestionsByRole();
         this.advancePurchaseSuggestions = advancePurchaseSuggestions();
     }

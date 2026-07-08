@@ -63,6 +63,12 @@ public class KiosqueroEntity {
         entity.setCreadoEn(kiosquero.getCreadoEn());
         entity.setActualizadoEn(kiosquero.getActualizadoEn());
 
+        if (kiosquero.getUsuario() != null && kiosquero.getUsuario().getId() != null) {
+            UsuarioEntity usuarioProxy = new UsuarioEntity();
+            usuarioProxy.setId(kiosquero.getUsuario().getId());
+            entity.setUsuario(usuarioProxy);
+        }
+
         if (kiosquero.getBuffet() != null && kiosquero.getBuffet().getId() != null) {
             BuffetEntity buffetProxy = new BuffetEntity();
             buffetProxy.setId(kiosquero.getBuffet().getId());

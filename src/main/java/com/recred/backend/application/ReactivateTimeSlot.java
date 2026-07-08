@@ -19,7 +19,7 @@ public class ReactivateTimeSlot {
         FranjaHoraria slot = slot(request);
         validate(slot, request);
         slot.setActivo(true);
-        return TimeSlotDetailsResponse.fromDomain(repository.save(slot));
+        return TimeSlotDetailsResponse.fromDomain(saveSlot(slot));
     }
 
     private FranjaHoraria slot(ReactivateTimeSlotRequest request) {
@@ -35,5 +35,9 @@ public class ReactivateTimeSlot {
                 request.slotId(),
                 slot.getHoraInicio(),
                 slot.getHoraFin());
+    }
+
+    private FranjaHoraria saveSlot(FranjaHoraria slot) {
+        return repository.save(slot);
     }
 }

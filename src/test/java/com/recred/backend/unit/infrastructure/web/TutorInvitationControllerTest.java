@@ -2,6 +2,7 @@ package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.application.AcceptTutorInvitation;
 import com.recred.backend.application.AcceptTutorInvitationRequest;
+import com.recred.backend.application.AcceptTutorInvitationResponse;
 import com.recred.backend.application.GetTutorInvitation;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.TutorInvitation;
@@ -46,7 +47,9 @@ class TutorInvitationControllerTest {
     @Test
     void getInvitationShouldReturnValidatedInvitation() {
         TutorInvitation invitation = invitation();
-        when(getTutorInvitation.execute("token-123")).thenReturn(invitation);
+        when(getTutorInvitation.execute("token-123")).thenReturn(
+                com.recred.backend.application.GetTutorInvitationResponse.fromDomain(invitation)
+        );
 
         ResponseEntity<TutorInvitationResponse> response =
                 controller.getInvitation("token-123");
@@ -62,7 +65,7 @@ class TutorInvitationControllerTest {
         TutorInvitation invitation = invitation();
         when(acceptTutorInvitation.execute(
                 org.mockito.ArgumentMatchers.any(AcceptTutorInvitationRequest.class)))
-                .thenReturn(invitation);
+                .thenReturn(AcceptTutorInvitationResponse.fromDomain(invitation));
 
         ResponseEntity<TutorInvitationResponse> response = controller.acceptInvitation(
                 "token-123",
@@ -94,7 +97,7 @@ class TutorInvitationControllerTest {
         TutorInvitation invitation = invitation();
         when(acceptTutorInvitation.execute(
                 org.mockito.ArgumentMatchers.any(AcceptTutorInvitationRequest.class)))
-                .thenReturn(invitation);
+                .thenReturn(AcceptTutorInvitationResponse.fromDomain(invitation));
 
         controller.acceptInvitation(
                 "token-123",
@@ -115,7 +118,7 @@ class TutorInvitationControllerTest {
         TutorInvitation invitation = invitation();
         when(acceptTutorInvitation.execute(
                 org.mockito.ArgumentMatchers.any(AcceptTutorInvitationRequest.class)))
-                .thenReturn(invitation);
+                .thenReturn(AcceptTutorInvitationResponse.fromDomain(invitation));
 
         controller.acceptInvitation(
                 "token-123",

@@ -19,23 +19,24 @@ public class GetBuffetByStudent {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public boolean existsById(UUID id) {
-        return alumnoRepository.existsById(id);
+    public Optional<GetBuffetByStudentResponse> execute(
+            GetBuffetByStudentRequest buffetRequest) {
+        ensureStudentExists(buffetRequest.alumnoId());
+        return findBuffetForStudent(buffetRequest.alumnoId())
+                .map(this::responseFrom);
     }
 
-    private void analizarExcepcionAlumnoNoEncontrado(UUID alumnoId) {
-        if (!existsById(alumnoId)) {
-            throw new AlumnoNoEncontradoException(alumnoId);
+    private void ensureStudentExists(UUID studentId) {
+        if (!alumnoRepository.existsById(studentId)) {
+            throw new AlumnoNoEncontradoException(studentId);
         }
     }
 
-    public Optional<GetBuffetByStudentResponse> execute(GetBuffetByStudentRequest request) {
-        analizarExcepcionAlumnoNoEncontrado(request.alumnoId());
-        return buffetRepository.findByAlumnoId(request.alumnoId())
-                .map(this::mapToResponse);
+    private Optional<Buffet> findBuffetForStudent(UUID studentId) {
+        return buffetRepository.findByAlumnoId(studentId);
     }
 
-    private GetBuffetByStudentResponse mapToResponse(Buffet buffet) {
+    private GetBuffetByStudentResponse responseFrom(Buffet buffet) {
         return new GetBuffetByStudentResponse(
                 buffet.getId(),
                 buffet.getNombre(),

@@ -2,10 +2,8 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateStudentFromParentRequest;
-import com.recred.backend.application.CreateStudentFromParentResponse;
 import com.recred.backend.application.GetChildrenByTutor;
 import com.recred.backend.application.GetChildrenByTutorRequest;
-import com.recred.backend.application.GetChildrenByTutorResponse;
 import com.recred.backend.application.GetTutorSchools;
 import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.application.UpdateStudentPhotoRequest;
@@ -13,6 +11,7 @@ import com.recred.backend.application.UpdateStudentPhotoResponse;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -63,7 +62,7 @@ public class TutorController {
         List<StudentDTO> alumnos = getChildrenByTutor
                 .execute(request)
                 .stream()
-                .map(this::toStudentDTO)
+                .map(StudentDTO::from)
                 .toList();
 
         return ResponseEntity.ok(alumnos);
@@ -71,20 +70,27 @@ public class TutorController {
 
     @PostMapping("/me/hijos")
     public ResponseEntity<StudentDTO> crearHijo(Authentication authentication,
-                                               @RequestBody CreateChildRequest request) {
-        StudentDTO alumno = toStudentDTO(createStudentFromParent.execute(
-                new CreateStudentFromParentRequest(
-                        cognitoSubject(authentication),
-                        request.username(),
-                        request.nombre(),
-                        request.apellido(),
-                        request.email(),
-                        request.dni(),
-                        request.gradoId(),
-                        request.urlFotoPerfil()
-                )));
+                                               @Valid @RequestBody CreateChildRequestDTO request) {
+        CreateStudentFromParentRequest createStudentRequest =
+                toCreateStudentFromParentRequest(authentication, request);
+        StudentDTO alumno = StudentDTO.from(createStudentFromParent.execute(createStudentRequest));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(alumno);
+    }
+
+    private CreateStudentFromParentRequest toCreateStudentFromParentRequest(
+            Authentication authentication,
+            CreateChildRequestDTO request) {
+        return new CreateStudentFromParentRequest(
+                cognitoSubject(authentication),
+                request.username(),
+                request.nombre(),
+                request.apellido(),
+                request.email(),
+                request.dni(),
+                request.gradoId(),
+                request.urlFotoPerfil()
+        );
     }
 
     @GetMapping("/me/colegios")
@@ -118,7 +124,7 @@ public class TutorController {
         var request = GetChildrenByTutorRequest.byTutorId(id);
         List<StudentDTO> alumnos = getChildrenByTutor.execute(request)
                 .stream()
-                .map(this::toStudentDTO)
+                .map(StudentDTO::from)
                 .toList();
 
         return ResponseEntity.ok(alumnos);
@@ -136,36 +142,10 @@ public class TutorController {
             UpdateStudentPhotoRequest request =
                     new UpdateStudentPhotoRequest(cognitoSub, alumnoId, url);
             UpdateStudentPhotoResponse response = updateStudentPhoto.execute(request);
-            return ResponseEntity.ok(toStudentDTO(response));
+            return ResponseEntity.ok(StudentDTO.from(response));
         } catch (java.io.IOException e) {
             throw new RuntimeException("Error al leer la imagen", e);
         }
-    }
-
-    private StudentDTO toStudentDTO(UpdateStudentPhotoResponse response) {
-        return new StudentDTO(
-                response.id(),
-                response.nombre(),
-                response.apellido(),
-                response.activo(),
-                response.grado(),
-                response.colegioId(),
-                response.saldo(),
-                response.urlFotoPerfil()
-        );
-    }
-
-    private StudentDTO toStudentDTO(GetChildrenByTutorResponse response) {
-        return new StudentDTO(
-                response.id(),
-                response.nombre(),
-                response.apellido(),
-                response.activo(),
-                response.grado(),
-                response.colegioId(),
-                response.saldo(),
-                response.urlFotoPerfil()
-        );
     }
 
     private String cognitoSubject(Authentication authentication) {
@@ -175,17 +155,4 @@ public class TutorController {
                         "Usuario no autenticado"));
     }
 
-    private StudentDTO toStudentDTO(CreateStudentFromParentResponse response) {
-        return StudentDTO.fromStudentData(
-                response.id(),
-                response.nombre(),
-                response.apellido(),
-                response.activo(),
-                response.gradoAnio(),
-                response.gradoDivision(),
-                response.colegioId(),
-                response.saldo(),
-                response.urlFotoPerfil()
-        );
-    }
 }

@@ -1,8 +1,8 @@
 package com.recred.backend.unit.application;
 
+import com.recred.backend.application.CreatePromotionResponse;
 import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePromotionRequest;
-import com.recred.backend.application.CreatePromotionResponse;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
@@ -10,14 +10,11 @@ import com.recred.backend.domain.repositories.PromotionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.function.Executable;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,6 +22,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -36,211 +34,292 @@ class UpdatePromotionTest {
     @Mock
     private PromotionRepository promotionRepository;
 
-    @InjectMocks
-    private UpdatePromotion updatePromotion;
+    private UpdatePromotion useCase;
 
-    private UUID promoId;
+    private UUID promotionId;
+    private UUID firstProductId;
+    private UUID secondProductId;
     private Promotion existingPromotion;
+    private UpdatePromotionRequest request;
+    private CreatePromotionResponse response;
+    private RuntimeException thrownException;
 
     @BeforeEach
     void setUp() {
-        promoId = UUID.randomUUID();
+        useCase = new UpdatePromotion(promotionRepository);
+    }
+
+    @Test
+    void givenPromotionExists_whenUpdatingAllFields_thenSavesUpdatedPromotion() {
+        givenPromotionUpdateScenario();
+        givenExistingPromotion();
+        givenCompletePromotionUpdateRequest();
+        givenPromotionExists();
+        givenPromotionCanBeSaved();
+
+        whenUpdatingPromotion();
+
+        thenPromotionResponseWasReturned();
+        thenPromotionFieldsWereUpdated();
+        thenPromotionProductsWereUpdated();
+        thenPromotionWasSaved();
+    }
+
+    @Test
+    void givenPromotionExists_whenUpdatingOnlyName_thenKeepsPreviousValues() {
+        givenPromotionUpdateScenario();
+        givenExistingPromotion();
+        givenNameOnlyUpdateRequest();
+        givenPromotionExists();
+        givenPromotionCanBeSaved();
+
+        whenUpdatingPromotion();
+
+        thenPromotionNameIs("Updated Title Only");
+        thenDiscountIs("10");
+        thenStartDateWasKept();
+        thenPromotionWasSaved();
+    }
+
+    @Test
+    void givenPromotionStartsInFuture_whenUpdatingPromotion_thenSetsDraftStatus() {
+        givenPromotionUpdateScenario();
+        givenExistingPromotion();
+        givenFutureDatesUpdateRequest();
+        givenPromotionExists();
+        givenPromotionCanBeSaved();
+
+        whenUpdatingPromotion();
+
+        thenPromotionStatusIs(PromotionStatus.DRAFT);
+    }
+
+    @Test
+    void givenPromotionDoesNotExist_whenUpdatingPromotion_thenFailsBeforeSaving() {
+        givenPromotionUpdateScenario();
+        givenEmptyPromotionUpdateRequest();
+        givenPromotionDoesNotExist();
+
+        whenUpdatingPromotionFails();
+
+        thenPromotionWasNotFound();
+        thenPromotionWasNotSaved();
+    }
+
+    @Test
+    void givenUpdatedProductsAreLessThanTwo_whenUpdatingPromotion_thenFailsBeforeSaving() {
+        givenPromotionUpdateScenario();
+        givenExistingPromotion();
+        givenInvalidProductsUpdateRequest();
+        givenPromotionExists();
+
+        whenUpdatingPromotionFails();
+
+        thenPromotionRequiresAtLeastTwoProducts();
+        thenPromotionWasNotSaved();
+    }
+
+    @Test
+    void givenUpdatedDiscountIsZero_whenUpdatingPromotion_thenFailsBeforeSaving() {
+        givenPromotionUpdateScenario();
+        givenExistingPromotion();
+        givenDiscountUpdateRequest(BigDecimal.ZERO);
+        givenPromotionExists();
+
+        whenUpdatingPromotionFails();
+
+        thenPromotionUpdateIsInvalid();
+        thenPromotionWasNotSaved();
+    }
+
+    @Test
+    void givenUpdatedDiscountIsGreaterThan100_whenUpdatingPromotion_thenFailsBeforeSaving() {
+        givenPromotionUpdateScenario();
+        givenExistingPromotion();
+        givenDiscountUpdateRequest(new BigDecimal("105"));
+        givenPromotionExists();
+
+        whenUpdatingPromotionFails();
+
+        thenPromotionUpdateIsInvalid();
+        thenPromotionWasNotSaved();
+    }
+
+    @Test
+    void givenUpdatedDatesAreInvalid_whenUpdatingPromotion_thenFailsBeforeSaving() {
+        givenPromotionUpdateScenario();
+        givenExistingPromotion();
+        givenInvalidDatesUpdateRequest();
+        givenPromotionExists();
+
+        whenUpdatingPromotionFails();
+
+        thenPromotionUpdateIsInvalid();
+        thenPromotionWasNotSaved();
+    }
+
+    private void givenPromotionUpdateScenario() {
+        promotionId = UUID.randomUUID();
+        firstProductId = UUID.randomUUID();
+        secondProductId = UUID.randomUUID();
+    }
+
+    private void givenExistingPromotion() {
         existingPromotion = new Promotion();
-        existingPromotion.setId(promoId);
+        existingPromotion.setId(promotionId);
         existingPromotion.setName("Old Promo");
         existingPromotion.setDiscountPercentage(new BigDecimal("10"));
         existingPromotion.setStartDate(LocalDateTime.now().minusDays(5));
         existingPromotion.setEndDate(LocalDateTime.now().plusDays(5));
         existingPromotion.setStatus(PromotionStatus.ACTIVE);
-        
-        Producto p1 = new Producto();
-        p1.setId(UUID.randomUUID());
-        Producto p2 = new Producto();
-        p2.setId(UUID.randomUUID());
-        existingPromotion.setProducts(List.of(p1, p2));
+        existingPromotion.setProducts(List.of(
+                product(UUID.randomUUID()),
+                product(UUID.randomUUID())
+        ));
     }
 
-    @Test
-    void execute_shouldUpdatePromotion_whenPromotionExistsAndAllFieldsValid() {
-        UUID newProd1 = UUID.randomUUID();
-        UUID newProd2 = UUID.randomUUID();
-        List<UUID> newProductIds = List.of(newProd1, newProd2);
-        BigDecimal newDiscount = new BigDecimal("25");
-        String newName = "New Name";
-        LocalDateTime newStart = LocalDateTime.now().minusDays(1);
-        LocalDateTime newEnd = LocalDateTime.now().plusDays(10);
-        UpdatePromotionRequest request = new UpdatePromotionRequest(
-                promoId,
-                newProductIds,
-                newDiscount,
-                newName,
-                newStart,
-                newEnd
+    private void givenCompletePromotionUpdateRequest() {
+        request = new UpdatePromotionRequest(
+                promotionId,
+                List.of(firstProductId, secondProductId),
+                new BigDecimal("25"),
+                "New Name",
+                LocalDateTime.now().minusDays(1),
+                LocalDateTime.now().plusDays(10)
         );
-
-        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
-        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
-
-        CreatePromotionResponse result = updatePromotion.execute(request);
-
-        assertNotNull(result);
-        assertEquals(newName, result.name());
-        assertEquals(newDiscount, result.discountPercentage());
-        assertEquals(newStart, result.startDate());
-        assertEquals(newEnd, result.endDate());
-        assertEquals(PromotionStatus.ACTIVE, result.status());
-        assertEquals(2, result.productIds().size());
-        assertEquals(newProd1, result.productIds().get(0));
-        assertEquals(newProd2, result.productIds().get(1));
-
-        verify(promotionRepository).save(any(Promotion.class));
     }
 
-    @Test
-    void execute_shouldUpdatePromotionPartially_whenPromotionExistsAndSomeFieldsNull() {
-        UpdatePromotionRequest request = new UpdatePromotionRequest(
-                promoId,
+    private void givenNameOnlyUpdateRequest() {
+        request = new UpdatePromotionRequest(
+                promotionId,
                 null,
                 null,
                 "Updated Title Only",
                 null,
                 null
         );
+    }
 
-        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
-        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
+    private void givenFutureDatesUpdateRequest() {
+        request = new UpdatePromotionRequest(
+                promotionId,
+                null,
+                null,
+                null,
+                LocalDateTime.now().plusDays(1),
+                LocalDateTime.now().plusDays(10)
+        );
+    }
 
-        CreatePromotionResponse result = updatePromotion.execute(request);
+    private void givenEmptyPromotionUpdateRequest() {
+        request = new UpdatePromotionRequest(promotionId, null, null, null, null, null);
+    }
 
-        assertNotNull(result);
-        assertEquals("Updated Title Only", result.name());
-        assertEquals(new BigDecimal("10"), result.discountPercentage());
-        assertEquals(existingPromotion.getStartDate(), result.startDate());
+    private void givenInvalidProductsUpdateRequest() {
+        request = new UpdatePromotionRequest(
+                promotionId,
+                List.of(UUID.randomUUID()),
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    private void givenDiscountUpdateRequest(BigDecimal discount) {
+        request = new UpdatePromotionRequest(promotionId, null, discount, null, null, null);
+    }
+
+    private void givenInvalidDatesUpdateRequest() {
+        request = new UpdatePromotionRequest(
+                promotionId,
+                null,
+                null,
+                null,
+                LocalDateTime.now().plusDays(10),
+                LocalDateTime.now().plusDays(2)
+        );
+    }
+
+    private void givenPromotionExists() {
+        when(promotionRepository.findById(promotionId))
+                .thenReturn(Optional.of(existingPromotion));
+    }
+
+    private void givenPromotionDoesNotExist() {
+        when(promotionRepository.findById(promotionId)).thenReturn(Optional.empty());
+    }
+
+    private void givenPromotionCanBeSaved() {
+        when(promotionRepository.save(any(Promotion.class)))
+                .thenAnswer(invocation -> invocation.getArguments()[0]);
+    }
+
+    private void whenUpdatingPromotion() {
+        response = useCase.execute(request);
+    }
+
+    private void whenUpdatingPromotionFails() {
+        thrownException = assertThrows(RuntimeException.class, this::whenUpdatingPromotion);
+    }
+
+    private void thenPromotionResponseWasReturned() {
+        assertNotNull(response);
+    }
+
+    private void thenPromotionFieldsWereUpdated() {
+        thenPromotionNameIs("New Name");
+        assertEquals(new BigDecimal("25"), response.discountPercentage());
+        assertEquals(request.startDate(), response.startDate());
+        assertEquals(request.endDate(), response.endDate());
+        thenPromotionStatusIs(PromotionStatus.ACTIVE);
+    }
+
+    private void thenPromotionProductsWereUpdated() {
+        assertEquals(2, response.productIds().size());
+        assertEquals(firstProductId, response.productIds().get(0));
+        assertEquals(secondProductId, response.productIds().get(1));
+    }
+
+    private void thenPromotionNameIs(String name) {
+        assertEquals(name, response.name());
+    }
+
+    private void thenDiscountIs(String discount) {
+        assertEquals(new BigDecimal(discount), response.discountPercentage());
+    }
+
+    private void thenStartDateWasKept() {
+        assertEquals(existingPromotion.getStartDate(), response.startDate());
+    }
+
+    private void thenPromotionStatusIs(PromotionStatus status) {
+        assertEquals(status, response.status());
+    }
+
+    private void thenPromotionWasSaved() {
         verify(promotionRepository).save(any(Promotion.class));
     }
 
-    @Test
-    void execute_shouldSetDraftStatus_whenPromotionStartsInFuture() {
-        LocalDateTime futureStart = LocalDateTime.now().plusDays(1);
-        LocalDateTime futureEnd = LocalDateTime.now().plusDays(10);
-        UpdatePromotionRequest request = new UpdatePromotionRequest(
-                promoId,
-                null,
-                null,
-                null,
-                futureStart,
-                futureEnd
-        );
-
-        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
-        when(promotionRepository.save(any(Promotion.class))).thenAnswer(i -> i.getArguments()[0]);
-
-        CreatePromotionResponse result = updatePromotion.execute(request);
-
-        assertEquals(PromotionStatus.DRAFT, result.status());
+    private void thenPromotionWasNotFound() {
+        assertTrue(thrownException instanceof IllegalArgumentException);
     }
 
-    @Test
-    void execute_shouldThrowException_whenPromotionNotFound() {
-        UpdatePromotionRequest request = new UpdatePromotionRequest(
-                promoId,
-                null,
-                null,
-                null,
-                null,
-                null
-        );
+    private void thenPromotionRequiresAtLeastTwoProducts() {
+        assertEquals("A promotion requires at least 2 products.", thrownException.getMessage());
+    }
 
-        when(promotionRepository.findById(promoId)).thenReturn(Optional.empty());
+    private void thenPromotionUpdateIsInvalid() {
+        assertTrue(thrownException instanceof IllegalArgumentException);
+    }
 
-        Executable execution = () -> updatePromotion.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-
+    private void thenPromotionWasNotSaved() {
         verify(promotionRepository, never()).save(any());
     }
 
-    @Test
-    void execute_shouldThrowException_whenUpdatedProductsLessThanTwo() {
-        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
-
-        List<UUID> invalidProducts = List.of(UUID.randomUUID());
-        UpdatePromotionRequest request = new UpdatePromotionRequest(
-                promoId,
-                invalidProducts,
-                null,
-                null,
-                null,
-                null
-        );
-
-        Executable execution = () -> updatePromotion.execute(request);
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, execution);
-
-        assertEquals("A promotion requires at least 2 products.", ex.getMessage());
-        verify(promotionRepository, never()).save(any());
-    }
-
-    @Test
-    void execute_shouldThrowException_whenUpdatedDiscountIsZero() {
-        UpdatePromotionRequest request = new UpdatePromotionRequest(
-                promoId,
-                null,
-                BigDecimal.ZERO,
-                null,
-                null,
-                null
-        );
-
-        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
-
-        Executable execution = () -> updatePromotion.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-
-        verify(promotionRepository, never()).save(any());
-    }
-
-    @Test
-    void execute_shouldThrowException_whenUpdatedDiscountIsGreaterThan100() {
-        UpdatePromotionRequest request = new UpdatePromotionRequest(
-                promoId,
-                null,
-                new BigDecimal("105"),
-                null,
-                null,
-                null
-        );
-
-        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
-
-        Executable execution = () -> updatePromotion.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-
-        verify(promotionRepository, never()).save(any());
-    }
-
-    @Test
-    void execute_shouldThrowException_whenUpdatedDatesAreInvalid() {
-        when(promotionRepository.findById(promoId)).thenReturn(Optional.of(existingPromotion));
-
-        LocalDateTime badStart = LocalDateTime.now().plusDays(10);
-        LocalDateTime badEnd = LocalDateTime.now().plusDays(2);
-        UpdatePromotionRequest request = new UpdatePromotionRequest(
-                promoId,
-                null,
-                null,
-                null,
-                badStart,
-                badEnd
-        );
-
-        Executable execution = () -> updatePromotion.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-
-        verify(promotionRepository, never()).save(any());
+    private Producto product(UUID productId) {
+        Producto product = new Producto();
+        product.setId(productId);
+        return product;
     }
 }

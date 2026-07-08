@@ -5,6 +5,7 @@ import com.recred.backend.domain.models.ConsumptionAlert;
 import com.recred.backend.domain.models.ConsumptionAlertAnalysisRequest;
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
 import com.recred.backend.domain.models.ConsumptionAlertPattern;
+import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.ConsumptionAlertType;
 import com.recred.backend.domain.models.ConsumptionCategoryStatistic;
 import com.recred.backend.domain.models.ConsumptionProductStatistic;
@@ -75,11 +76,33 @@ public class GenerateStatisticalConsumptionAlerts {
     ) {
         int generatedAlerts = 0;
         for (ConsumptionAlertCandidate candidate : studentRepository.findActiveCandidates()) {
-            if (saveAlert(candidate, calculationDate, dateWindow)) {
+            Optional<ConsumptionAlertCandidate> advancedCandidate = advancedCandidate(candidate);
+            if (advancedCandidate.isPresent()
+                    && saveAlert(advancedCandidate.get(), calculationDate, dateWindow)) {
                 generatedAlerts++;
             }
         }
         return generatedAlerts;
+    }
+
+    private Optional<ConsumptionAlertCandidate> advancedCandidate(
+            ConsumptionAlertCandidate candidate
+    ) {
+        List<ConsumptionAlertTutor> advancedTutors = candidate.tutors()
+                .stream()
+                .filter(ConsumptionAlertTutor::hasAdvancedPlan)
+                .toList();
+
+        if (advancedTutors.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new ConsumptionAlertCandidate(
+                candidate.studentId(),
+                candidate.studentUserId(),
+                candidate.studentName(),
+                advancedTutors
+        ));
     }
 
     private boolean saveAlert(

@@ -1,8 +1,8 @@
 package com.recred.backend.unit.application;
 
+import com.recred.backend.application.ProductResponse;
 import com.recred.backend.application.UpdateProduct;
 import com.recred.backend.application.UpdateProductRequest;
-import com.recred.backend.application.ProductResponse;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.Inventario;
@@ -14,7 +14,6 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -23,253 +22,403 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateProductTest {
 
     @Mock
     private ProductRepository productRepository;
+
     @Mock
     private InventoryRepository inventoryRepository;
+
     @Mock
     private CategoryRepository categoryRepository;
 
-    private UpdateProduct updateProduct;
+    private UpdateProduct useCase;
+
+    private UUID productId;
+    private UUID buffetId;
+    private UUID categoryId;
+    private UUID healthClassificationId;
+    private UUID typeId;
+    private Producto product;
+    private Inventario inventory;
+    private CategoriaProducto category;
+    private UpdateProductRequest request;
+    private ProductResponse response;
+    private RuntimeException thrownException;
 
     @BeforeEach
     void setUp() {
-        updateProduct = new UpdateProduct(productRepository, inventoryRepository, categoryRepository);
+        useCase = new UpdateProduct(productRepository, inventoryRepository, categoryRepository);
     }
 
     @Test
-    void dadoQueNoExisteProducto_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID id = UUID.randomUUID();
-        UpdateProductRequest command = new UpdateProductRequest(
-                id, "Nombre", "Desc", BigDecimal.TEN, new BigDecimal("0.5"), false, 
-                null, null, null, null, null, null
-        );
+    void givenProductDoesNotExist_whenUpdatingProduct_thenFailsBeforeSaving() {
+        givenProductUpdateScenario();
+        givenProductUpdateRequest();
+        givenProductDoesNotExist();
 
-        when(productRepository.findActiveById(id)).thenReturn(Optional.empty());
+        whenUpdatingProductFails();
 
-        Executable execution = () -> updateProduct.execute(command);
+        thenProductWasNotFound();
+        thenProductWasNotSaved();
+    }
 
-        assertThrows(ProductNotFoundException.class, execution);
+    @Test
+    void givenProductExists_whenUpdatingProductDetails_thenUpdatesAndSavesProduct() {
+        givenProductUpdateScenario();
+        givenProductUpdateRequest();
+        givenProductExists();
+        givenProductCanBeSaved();
+
+        whenUpdatingProduct();
+
+        thenUpdatedProductIsReturned();
+        thenProductDetailsWereUpdated();
+        thenProductWasSaved();
+        thenInventoryWasNotSaved();
+    }
+
+    @Test
+    void givenInventoryData_whenUpdatingProduct_thenUpdatesExistingInventoryStock() {
+        givenProductUpdateScenario();
+        givenInventoryStockUpdateRequest();
+        givenProductExists();
+        givenProductCanBeSaved();
+        givenInventoryExistsWithStock(10);
+
+        whenUpdatingProduct();
+
+        thenInventoryStockIs(100);
+        thenInventoryWasSaved();
+    }
+
+    @Test
+    void givenExistingCategoryName_whenUpdatingProduct_thenAssignsExistingCategory() {
+        givenProductUpdateScenario();
+        givenNewCategoryNameRequest("Frutas");
+        givenProductExists();
+        givenProductCanBeSaved();
+        givenCategoryExists("Frutas");
+
+        whenUpdatingProduct();
+
+        thenCategoryWasAssigned();
+        thenCategoryWasNotCreated();
+    }
+
+    @Test
+    void givenNewCategoryName_whenUpdatingProduct_thenCreatesAndAssignsCategory() {
+        givenProductUpdateScenario();
+        givenNewCategoryNameRequest("Nueva Categoria");
+        givenProductExists();
+        givenProductCanBeSaved();
+        givenCategoryDoesNotExist("Nueva Categoria");
+        givenCategoryCanBeCreated("Nueva Categoria");
+
+        whenUpdatingProduct();
+
+        thenCategoryWasAssigned();
+        thenCategoryWasCreated();
+    }
+
+    @Test
+    void givenCategoryIdWithoutNewName_whenUpdatingProduct_thenAssignsCategoryReference() {
+        givenProductUpdateScenario();
+        givenCategoryReferenceRequest();
+        givenProductExists();
+        givenProductCanBeSaved();
+
+        whenUpdatingProduct();
+
+        thenCategoryReferenceWasAssigned();
+        thenCategoryWasNotSearchedByName();
+    }
+
+    @Test
+    void givenHealthClassificationsAndTypes_whenUpdatingProduct_thenReplacesBothSets() {
+        givenProductUpdateScenario();
+        givenClassificationsAndTypesRequest();
+        givenProductExists();
+        givenProductCanBeSaved();
+
+        whenUpdatingProduct();
+
+        thenHealthClassificationsWereUpdated();
+        thenTypesWereUpdated();
+    }
+
+    @Test
+    void givenInventoryDoesNotExist_whenUpdatingProduct_thenCreatesInventory() {
+        givenProductUpdateScenario();
+        givenNewDailyCapacityInventoryRequest(TipoManejoInventario.CUPO_DIARIO, 25);
+        givenProductExists();
+        givenProductCanBeSaved();
+        givenInventoryDoesNotExist();
+
+        whenUpdatingProduct();
+
+        thenNewInventoryWasSavedWith(TipoManejoInventario.CUPO_DIARIO, 25);
+    }
+
+    @Test
+    void givenOnlyDailyCapacity_whenCreatingInventory_thenUsesDefaultInventoryHandlingType() {
+        givenProductUpdateScenario();
+        givenNewDailyCapacityInventoryRequest(null, 8);
+        givenProductExists();
+        givenProductCanBeSaved();
+        givenInventoryDoesNotExist();
+
+        whenUpdatingProduct();
+
+        thenNewInventoryWasSavedWith(TipoManejoInventario.STOCK_EXACTO, 8);
+    }
+
+    private void givenProductUpdateScenario() {
+        productId = UUID.randomUUID();
+        buffetId = UUID.randomUUID();
+        categoryId = UUID.randomUUID();
+        healthClassificationId = UUID.randomUUID();
+        typeId = UUID.randomUUID();
+        product = new Producto();
+        product.setId(productId);
+    }
+
+    private void givenProductUpdateRequest() {
+        request = baseRequest(null, null, null, null, null, null).request();
+    }
+
+    private void givenInventoryStockUpdateRequest() {
+        request = baseRequest(buffetId, 100, null, null, null, null).request();
+    }
+
+    private void givenNewCategoryNameRequest(String categoryName) {
+        request = baseRequest(null, null, null, null, null, null)
+                .withCategory(UUID.randomUUID(), categoryName);
+    }
+
+    private void givenCategoryReferenceRequest() {
+        request = baseRequest(null, null, null, null, null, null)
+                .withCategory(categoryId, " ");
+    }
+
+    private void givenClassificationsAndTypesRequest() {
+        request = baseRequest(
+                null,
+                null,
+                Set.of(healthClassificationId),
+                Set.of(typeId),
+                null,
+                null
+        ).request();
+    }
+
+    private void givenNewDailyCapacityInventoryRequest(
+            TipoManejoInventario inventoryHandlingType,
+            Integer dailyCapacity
+    ) {
+        request = baseRequest(
+                buffetId,
+                null,
+                null,
+                null,
+                inventoryHandlingType,
+                dailyCapacity
+        ).request();
+    }
+
+    private void givenProductDoesNotExist() {
+        when(productRepository.findActiveById(productId)).thenReturn(Optional.empty());
+    }
+
+    private void givenProductExists() {
+        when(productRepository.findActiveById(productId)).thenReturn(Optional.of(product));
+    }
+
+    private void givenProductCanBeSaved() {
+        when(productRepository.save(product)).thenReturn(product);
+    }
+
+    private void givenInventoryExistsWithStock(int stock) {
+        inventory = new Inventario();
+        inventory.setStockActual(stock);
+        when(inventoryRepository.findByBuffetAndProduct(buffetId, productId))
+                .thenReturn(Optional.of(inventory));
+    }
+
+    private void givenInventoryDoesNotExist() {
+        when(inventoryRepository.findByBuffetAndProduct(buffetId, productId))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenCategoryExists(String categoryName) {
+        category = category(categoryName);
+        when(categoryRepository.findByDescription(categoryName)).thenReturn(Optional.of(category));
+    }
+
+    private void givenCategoryDoesNotExist(String categoryName) {
+        when(categoryRepository.findByDescription(categoryName)).thenReturn(Optional.empty());
+    }
+
+    private void givenCategoryCanBeCreated(String categoryName) {
+        category = category(categoryName);
+        when(categoryRepository.save(any(CategoriaProducto.class))).thenReturn(category);
+    }
+
+    private void whenUpdatingProduct() {
+        response = useCase.execute(request);
+    }
+
+    private void whenUpdatingProductFails() {
+        thrownException = assertThrows(RuntimeException.class, this::whenUpdatingProduct);
+    }
+
+    private void thenProductWasNotFound() {
+        assertTrue(thrownException instanceof ProductNotFoundException);
+    }
+
+    private void thenProductWasNotSaved() {
         verify(productRepository, never()).save(any());
     }
 
-    @Test
-    void dadoQueExisteProductoYComandoValido_cuandoExecute_entoncesActualizaYGuarda() {
-        UUID id = UUID.randomUUID();
-        UpdateProductRequest command = new UpdateProductRequest(
-                id, "Nombre Act", "Desc Act", BigDecimal.TEN, new BigDecimal("0.5"), false, 
-                null, null, null, null, null, null
-        );
+    private void thenUpdatedProductIsReturned() {
+        assertEquals(productId, response.id());
+    }
 
-        Producto existing = new Producto();
-        existing.setId(id);
-        
-        when(productRepository.findActiveById(id)).thenReturn(Optional.of(existing));
-        when(productRepository.save(existing)).thenReturn(existing);
+    private void thenProductDetailsWereUpdated() {
+        assertEquals("Nombre Act", product.getNombre());
+        assertEquals("Desc Act", product.getDescripcion());
+    }
 
-        ProductResponse result = updateProduct.execute(command);
+    private void thenProductWasSaved() {
+        verify(productRepository).save(product);
+    }
 
-        assertEquals(id, result.id());
-        assertEquals("Nombre Act", existing.getNombre());
-        assertEquals("Desc Act", existing.getDescripcion());
-        verify(productRepository).save(existing);
+    private void thenInventoryWasNotSaved() {
         verify(inventoryRepository, never()).save(any());
     }
 
-    @Test
-    void dadoQueVieneDataDeInventario_cuandoExecute_entoncesActualizaStock() {
-        UUID id = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        UpdateProductRequest command = new UpdateProductRequest(
-                id, "Nombre Act", "Desc Act", BigDecimal.TEN, new BigDecimal("0.5"), false, 
-                null, null, buffetId, 100, null, null
-        );
-
-        Producto existing = new Producto();
-        existing.setId(id);
-
-        Inventario inventario = new Inventario();
-        inventario.setStockActual(10);
-        
-        when(productRepository.findActiveById(id)).thenReturn(Optional.of(existing));
-        when(productRepository.save(existing)).thenReturn(existing);
-        when(inventoryRepository.findByBuffetAndProduct(buffetId, id)).thenReturn(Optional.of(inventario));
-
-        updateProduct.execute(command);
-
-        assertEquals(100, inventario.getStockActual());
-        verify(inventoryRepository).save(inventario);
+    private void thenInventoryStockIs(int stock) {
+        assertEquals(stock, inventory.getStockActual());
     }
 
-    @Test
-    void dadoQueVieneCategoriaNuevaExistente_cuandoExecute_entoncesAsignaCategoria() {
-        UUID id = UUID.randomUUID();
-        CategoriaProducto category = new CategoriaProducto();
-        category.setId(UUID.randomUUID());
-        category.setDescripcion("Frutas");
-        UpdateProductRequest command = new UpdateProductRequest(
-                id, "Nombre Act", "Desc Act", BigDecimal.TEN, new BigDecimal("0.5"), false,
-                UUID.randomUUID(), "Frutas", null, null, null, null
-        );
-        Producto existing = new Producto();
-        existing.setId(id);
+    private void thenInventoryWasSaved() {
+        verify(inventoryRepository).save(inventory);
+    }
 
-        when(productRepository.findActiveById(id)).thenReturn(Optional.of(existing));
-        when(categoryRepository.findByDescription("Frutas")).thenReturn(Optional.of(category));
-        when(productRepository.save(existing)).thenReturn(existing);
+    private void thenCategoryWasAssigned() {
+        assertEquals(category, product.getCategoria());
+    }
 
-        updateProduct.execute(command);
-
-        assertEquals(category, existing.getCategoria());
+    private void thenCategoryWasNotCreated() {
         verify(categoryRepository, never()).save(any());
     }
 
-    @Test
-    void dadoQueVieneCategoriaNuevaInexistente_cuandoExecute_entoncesCreaCategoria() {
-        UUID id = UUID.randomUUID();
-        UpdateProductRequest command = new UpdateProductRequest(
-                id, "Nombre Act", "Desc Act", BigDecimal.TEN, new BigDecimal("0.5"), false,
-                null, "Nueva Categoria", null, null, null, null
-        );
-        Producto existing = new Producto();
-        existing.setId(id);
-        CategoriaProducto savedCategory = new CategoriaProducto();
-        savedCategory.setId(UUID.randomUUID());
-        savedCategory.setDescripcion("Nueva Categoria");
-
-        when(productRepository.findActiveById(id)).thenReturn(Optional.of(existing));
-        when(categoryRepository.findByDescription("Nueva Categoria")).thenReturn(Optional.empty());
-        when(categoryRepository.save(any(CategoriaProducto.class))).thenReturn(savedCategory);
-        when(productRepository.save(existing)).thenReturn(existing);
-
-        updateProduct.execute(command);
-
-        assertEquals(savedCategory, existing.getCategoria());
+    private void thenCategoryWasCreated() {
         verify(categoryRepository).save(any(CategoriaProducto.class));
     }
 
-    @Test
-    void dadoQueVieneCategoriaIdSinNombreNuevo_cuandoExecute_entoncesAsignaProxy() {
-        UUID id = UUID.randomUUID();
-        UUID categoryId = UUID.randomUUID();
-        UpdateProductRequest command = new UpdateProductRequest(
-                id, "Nombre Act", "Desc Act", BigDecimal.TEN, new BigDecimal("0.5"), false,
-                categoryId, " ", null, null, null, null
-        );
-        Producto existing = new Producto();
-        existing.setId(id);
+    private void thenCategoryReferenceWasAssigned() {
+        assertEquals(categoryId, product.getCategoria().getId());
+    }
 
-        when(productRepository.findActiveById(id)).thenReturn(Optional.of(existing));
-        when(productRepository.save(existing)).thenReturn(existing);
-
-        updateProduct.execute(command);
-
-        assertEquals(categoryId, existing.getCategoria().getId());
+    private void thenCategoryWasNotSearchedByName() {
         verify(categoryRepository, never()).findByDescription(any());
     }
 
-    @Test
-    void dadoQueVienenClasificacionesYTipos_cuandoExecute_entoncesLosActualiza() {
-        UUID id = UUID.randomUUID();
-        UUID healthId = UUID.randomUUID();
-        UUID typeId = UUID.randomUUID();
-        UpdateProductRequest command = new UpdateProductRequest(
-                id, "Nombre Act", "Desc Act", BigDecimal.TEN, new BigDecimal("0.5"), false,
-                null, null, null, null, Set.of(healthId), Set.of(typeId)
-        );
-        Producto existing = new Producto();
-        existing.setId(id);
-
-        when(productRepository.findActiveById(id)).thenReturn(Optional.of(existing));
-        when(productRepository.save(existing)).thenReturn(existing);
-
-        updateProduct.execute(command);
-
-        assertEquals(healthId, existing.getClasificacionesSalud().iterator().next().getId());
-        assertEquals(typeId, existing.getTipos().iterator().next().getId());
+    private void thenHealthClassificationsWereUpdated() {
+        assertEquals(healthClassificationId,
+                product.getClasificacionesSalud().iterator().next().getId());
     }
 
-    @Test
-    void dadoQueNoExisteInventario_cuandoExecute_entoncesCreaUnoNuevo() {
-        UUID id = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        UpdateProductRequest command = new UpdateProductRequest(
-                id,
-                "Nombre Act",
-                "Desc Act",
-                BigDecimal.TEN,
-                new BigDecimal("0.5"),
-                false,
-                null,
-                null,
-                buffetId,
-                null,
-                null,
-                null,
-                TipoManejoInventario.CUPO_DIARIO,
-                25,
-                null
-        );
-        Producto existing = new Producto();
-        existing.setId(id);
+    private void thenTypesWereUpdated() {
+        assertEquals(typeId, product.getTipos().iterator().next().getId());
+    }
 
-        when(productRepository.findActiveById(id)).thenReturn(Optional.of(existing));
-        when(productRepository.save(existing)).thenReturn(existing);
-        when(inventoryRepository.findByBuffetAndProduct(buffetId, id))
-                .thenReturn(Optional.empty());
-
-        updateProduct.execute(command);
-
+    private void thenNewInventoryWasSavedWith(
+            TipoManejoInventario inventoryHandlingType,
+            Integer dailyCapacity
+    ) {
         verify(inventoryRepository).save(argThat(inventory ->
                 buffetId.equals(inventory.getBuffetId())
-                        && id.equals(inventory.getProductoId())
-                        && TipoManejoInventario.CUPO_DIARIO.equals(inventory.getTipoManejo())
-                        && Integer.valueOf(25).equals(inventory.getCupoMaximoDiario())
+                        && productId.equals(inventory.getProductoId())
+                        && inventoryHandlingType.equals(inventory.getTipoManejo())
+                        && dailyCapacity.equals(inventory.getCupoMaximoDiario())
+                        && inventory.getStockActual() == null
         ));
     }
 
-    @Test
-    void dadoQueVieneSoloCupoDiario_cuandoNoExisteInventario_entoncesUsaTipoPorDefecto() {
-        UUID id = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        UpdateProductRequest command = new UpdateProductRequest(
-                id,
-                "Nombre Act",
-                "Desc Act",
-                BigDecimal.TEN,
-                new BigDecimal("0.5"),
-                false,
-                null,
-                null,
+    private ProductUpdateRequestBuilder baseRequest(
+            UUID buffetId,
+            Integer stock,
+            Set<UUID> healthClassifications,
+            Set<UUID> types,
+            TipoManejoInventario inventoryHandlingType,
+            Integer dailyCapacity
+    ) {
+        return new ProductUpdateRequestBuilder(
+                productId,
                 buffetId,
-                null,
-                null,
-                null,
-                null,
-                8,
-                null
+                stock,
+                healthClassifications,
+                types,
+                inventoryHandlingType,
+                dailyCapacity
         );
-        Producto existing = new Producto();
-        existing.setId(id);
+    }
 
-        when(productRepository.findActiveById(id)).thenReturn(Optional.of(existing));
-        when(productRepository.save(existing)).thenReturn(existing);
-        when(inventoryRepository.findByBuffetAndProduct(buffetId, id))
-                .thenReturn(Optional.empty());
+    private CategoriaProducto category(String categoryName) {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(UUID.randomUUID());
+        category.setDescripcion(categoryName);
+        return category;
+    }
 
-        updateProduct.execute(command);
+    private record ProductUpdateRequestBuilder(
+            UUID productId,
+            UUID buffetId,
+            Integer stock,
+            Set<UUID> healthClassifications,
+            Set<UUID> types,
+            TipoManejoInventario inventoryHandlingType,
+            Integer dailyCapacity
+    ) {
+        private UpdateProductRequest withCategory(UUID categoryId, String newCategoryName) {
+            return request(categoryId, newCategoryName);
+        }
 
-        verify(inventoryRepository).save(argThat(inventory ->
-                TipoManejoInventario.STOCK_EXACTO.equals(inventory.getTipoManejo())
-                        && Integer.valueOf(8).equals(inventory.getCupoMaximoDiario())
-                        && inventory.getStockActual() == null
-        ));
+        private UpdateProductRequest request() {
+            return request(null, null);
+        }
+
+        private UpdateProductRequest request(UUID categoryId, String newCategoryName) {
+            return new UpdateProductRequest(
+                    productId,
+                    "Nombre Act",
+                    "Desc Act",
+                    BigDecimal.TEN,
+                    new BigDecimal("0.5"),
+                    false,
+                    categoryId,
+                    newCategoryName,
+                    buffetId,
+                    stock,
+                    healthClassifications,
+                    types,
+                    inventoryHandlingType,
+                    dailyCapacity,
+                    null
+            );
+        }
     }
 }

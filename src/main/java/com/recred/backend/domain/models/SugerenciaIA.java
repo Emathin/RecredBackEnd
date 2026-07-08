@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
@@ -24,4 +25,6 @@ public class SugerenciaIA {
     private String titulo;
     private String mensaje;
     private Map<String, Object> metadata;
+    private Boolean aceptada;
+    private LocalDateTime respondidaEn;
 }

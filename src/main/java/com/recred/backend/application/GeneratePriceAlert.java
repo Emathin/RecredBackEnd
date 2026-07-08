@@ -3,6 +3,7 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.PriceAlertSuggestion;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
 import com.recred.backend.domain.repositories.StudentAIProfileRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
@@ -40,8 +41,6 @@ public class GeneratePriceAlert {
 
     @Transactional
     public GeneratePriceAlertResponse execute(GeneratePriceAlertRequest request) {
-        request.validate();
-
         Producto product = request.product();
         List<Alumno> affectedStudents = findStudentsWithFavoriteProduct(product);
 
@@ -82,6 +81,11 @@ public class GeneratePriceAlert {
     }
 
     private void generateAndSaveAlert(Alumno student, GeneratePriceAlertRequest request) {
+        Set<UUID> advancedTutorUserIds = advancedTutorUserIds(student);
+        if (advancedTutorUserIds.isEmpty()) {
+            return;
+        }
+
         Producto product = request.product();
         priceAlertAIRepository.analyzeImpact(
                         student,
@@ -89,7 +93,12 @@ public class GeneratePriceAlert {
                         request.oldPrice(),
                         request.newPrice()
                 )
-                .map(result -> buildPriceAlertSuggestion(student, request, result))
+                .map(result -> buildPriceAlertSuggestion(
+                        student,
+                        request,
+                        result,
+                        advancedTutorUserIds
+                ))
                 .ifPresentOrElse(
                         sugerenciaIARepository::savePriceAlert,
                         () -> logEmptyAIResult(student, product)
@@ -99,7 +108,8 @@ public class GeneratePriceAlert {
     private PriceAlertSuggestion buildPriceAlertSuggestion(
             Alumno student,
             GeneratePriceAlertRequest request,
-            PriceAlertAIRepository.PriceAlertResult result
+            PriceAlertAIRepository.PriceAlertResult result,
+            Set<UUID> tutorUserIds
     ) {
         Producto product = request.product();
         return new PriceAlertSuggestion(
@@ -107,7 +117,7 @@ public class GeneratePriceAlert {
                 student.getUsuarioId(),
                 product.getId(),
                 request.buffetId(),
-                tutorUserIds(student),
+                tutorUserIds,
                 product.getNombre(),
                 result.titulo(),
                 result.mensaje(),
@@ -137,10 +147,11 @@ public class GeneratePriceAlert {
         return LocalDateTime.now(clock).minusHours(COOLDOWN_HOURS);
     }
 
-    private Set<UUID> tutorUserIds(Alumno alumno) {
+    private Set<UUID> advancedTutorUserIds(Alumno alumno) {
         return alumno.getTutores().stream()
                 .filter(tutor -> tutor.getUsuario() != null)
                 .filter(tutor -> tutor.getUsuario().getId() != null)
+                .filter(tutor -> tutor.getUsuario().getPlan().atLeast(TipoPlan.AVANZADO))
                 .map(tutor -> tutor.getUsuario().getId())
                 .collect(Collectors.toSet());
     }

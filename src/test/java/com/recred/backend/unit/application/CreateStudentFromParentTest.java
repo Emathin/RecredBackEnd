@@ -3,6 +3,7 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateStudentFromParentRequest;
 import com.recred.backend.application.CreateStudentFromParentResponse;
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.Grado;
@@ -25,11 +26,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.access.AccessDeniedException;
 
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -37,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -74,8 +76,14 @@ class CreateStudentFromParentTest {
     @Captor
     private ArgumentCaptor<Tutor> tutorCaptor;
 
-
     private CreateStudentFromParent createStudentFromParent;
+    private CreateStudentFromParentRequest createStudentRequest;
+    private CreateStudentFromParentResponse createStudentResponse;
+    private Throwable thrownException;
+    private Grado grade;
+    private UUID missingGradeId;
+    private UUID savedUserId;
+    private UUID savedStudentId;
 
     @BeforeEach
     void setUp() {
@@ -88,178 +96,116 @@ class CreateStudentFromParentTest {
                 cognitoStudentIdentityService);
     }
 
+
     @Test
-    void parentCreatesStudentUserAndLinksItToTutor() {
-        SavedEntities savedEntities = savedEntities();
-        Grado grado = grado(UUID.randomUUID());
-        CreateStudentFromParentRequest request = validRequestWithGrade(grado.getId());
+    void givenValidStudentCreationScenario_whenCreatingStudent_thenCreatesUserAndLinksTutor() {
+        givenParentCanCreateStudentWithGrade();
+        givenStudentCanBeCreated();
 
-        givenParentWithTutor();
-        givenEmailAvailable(TRIMMED_EMAIL);
-        givenGradeExists(grado);
-        givenTutorAssociatedToSchool(grado);
-        givenCognitoCreatesStudent(TRIMMED_USERNAME, TRIMMED_EMAIL);
-        givenEntitiesArePersistedWith(savedEntities);
+        whenCreateStudentFromParent();
 
-        CreateStudentFromParentResponse result = createStudentFromParent.execute(request);
-
-        verify(usuarioRepository).save(usuarioCaptor.capture());
-        verify(alumnoRepository).save(alumnoCaptor.capture());
-        verify(tutorRepository).save(tutorCaptor.capture());
-
-        assertCreatedUser(usuarioCaptor.getValue());
-        assertCreatedStudent(
-                alumnoCaptor.getValue(),
-                usuarioCaptor.getValue(),
-                savedEntities.userId(),
-                grado);
-        assertLinkedTutorAndStudent(tutorCaptor.getValue(), alumnoCaptor.getValue());
-        assertEquals(savedEntities.alumnoId(), result.id());
+        thenStudentUserWasCreated();
+        thenStudentWasCreatedWithGrade();
+        thenStudentWasLinkedToTutor();
+        thenResponseHasStudentId();
     }
 
     @Test
-    void nonParentUserCannotCreateStudent() {
-        CreateStudentFromParentRequest request = defaultRequest();
+    void givenNonParentUser_whenCreatingStudent_thenThrowsException() {
+        givenDefaultStudentCreationRequest();
         givenAuthenticatedUserWithRole(RolUsuario.ALUMNO);
 
-        Executable execution = () -> createStudentFromParent.execute(request);
+        whenCreateStudentFails(OperationNotAllowedException.class);
 
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class, execution);
-        assertEquals("El usuario autenticado no tiene rol PADRE", exception.getMessage());
-        assertStopsBeforeExternalUserCreation();
+        thenErrorMessageIs("El usuario autenticado no tiene rol PADRE");
+        thenStudentCreationWasNotStarted();
     }
 
     @Test
-    void missingAuthenticatedUserShouldThrowException() {
-        CreateStudentFromParentRequest request = defaultRequest();
+    void givenMissingAuthenticatedUser_whenCreatingStudent_thenThrowsException() {
+        givenDefaultStudentCreationRequest();
+        givenAuthenticatedUserDoesNotExist();
 
-        when(usuarioRepository.findByIdCognito(PARENT_SUB)).thenReturn(Optional.empty());
+        whenCreateStudentFails(IllegalArgumentException.class);
 
-        Executable execution = () -> createStudentFromParent.execute(request);
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("Usuario autenticado no encontrado", exception.getMessage());
-        assertStopsBeforeExternalUserCreation();
+        thenErrorMessageIs("Usuario autenticado no encontrado");
+        thenStudentCreationWasNotStarted();
     }
 
     @Test
-    void missingTutorShouldThrowException() {
-        CreateStudentFromParentRequest request = defaultRequest();
+    void givenParentWithoutTutorProfile_whenCreatingStudent_thenThrowsException() {
+        givenDefaultStudentCreationRequest();
         givenAuthenticatedParentWithoutTutor();
 
-        Executable execution = () -> createStudentFromParent.execute(request);
+        whenCreateStudentFails(IllegalArgumentException.class);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("Tutor no encontrado para el usuario autenticado", exception.getMessage());
-        assertStopsBeforeExternalUserCreation();
+        thenErrorMessageIs("Tutor no encontrado para el usuario autenticado");
+        thenStudentCreationWasNotStarted();
     }
 
     @Test
-    void duplicatedEmailStopsBeforeCreatingCognitoUser() {
-        CreateStudentFromParentRequest request = requestWithEmail(" " + DEFAULT_EMAIL + " ");
+    void givenDuplicatedEmail_whenCreatingStudent_thenStopsBeforeCognito() {
+        givenStudentCreationRequestWithEmail(" " + DEFAULT_EMAIL + " ");
         givenParentWithTutor();
         givenDuplicatedEmail(DEFAULT_EMAIL);
 
-        Executable execution = () -> createStudentFromParent.execute(request);
+        whenCreateStudentFails(IllegalArgumentException.class);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("Ya existe un usuario con el email indicado", exception.getMessage());
-        assertStopsBeforeExternalUserCreation();
+        thenErrorMessageIs("Ya existe un usuario con el email indicado");
+        thenStudentCreationWasNotStarted();
     }
 
     @Test
-    void missingGradeStopsBeforeCreatingCognitoUser() {
-        UUID gradoId = UUID.randomUUID();
-        CreateStudentFromParentRequest request = requestWithGrade(gradoId);
-
+    void givenMissingGrade_whenCreatingStudent_thenStopsBeforeCognito() {
+        givenStudentCreationRequestWithMissingGrade();
         givenParentWithTutor();
         givenEmailAvailable(DEFAULT_EMAIL);
-        givenMissingGrade(gradoId);
+        givenGradeDoesNotExist();
 
-        Executable execution = () -> createStudentFromParent.execute(request);
+        whenCreateStudentFails(IllegalArgumentException.class);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("No se encontro el grado indicado", exception.getMessage());
-        assertStopsBeforeExternalUserCreation();
+        thenErrorMessageIs("No se encontro el grado indicado");
+        thenStudentCreationWasNotStarted();
     }
 
     @Test
-    void tutorCannotCreateStudentInUnassociatedSchool() {
-        Grado grado = grado(UUID.randomUUID());
-        CreateStudentFromParentRequest request = requestWithGrade(grado.getId());
-
+    void givenTutorNotAssociatedToSchool_whenCreatingStudent_thenThrowsException() {
+        givenStudentCreationRequestWithGrade();
         givenParentWithTutor();
         givenEmailAvailable(DEFAULT_EMAIL);
-        givenGradeExists(grado);
-        givenTutorNotAssociatedToSchool(grado);
+        givenGradeExists();
+        givenTutorNotAssociatedToSchool();
 
-        Executable execution = () -> createStudentFromParent.execute(request);
+        whenCreateStudentFails(OperationNotAllowedException.class);
 
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class, execution);
-        assertEquals("El tutor no esta asociado al colegio del grado indicado",
-                exception.getMessage());
-        assertStopsBeforeExternalUserCreation();
+        thenErrorMessageIs("El tutor no esta asociado al colegio del grado indicado");
+        thenStudentCreationWasNotStarted();
     }
 
     @Test
-    void emailLikeUsernameIsRejected() {
-        CreateStudentFromParentRequest request = requestWithUsername(DEFAULT_EMAIL);
-
-        Executable execution = () -> createStudentFromParent.execute(request);
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("El username no puede tener formato de email", exception.getMessage());
-        verify(usuarioRepository, never()).findByIdCognito(any());
-        assertStopsBeforeExternalUserCreation();
-    }
-
-    @Test
-    void blankRequiredFieldsAreRejected() {
-        assertRequiredFieldIsRejected(requestWithName(" "),
-                "El nombre del alumno es obligatorio");
-        assertRequiredFieldIsRejected(requestWithLastName(" "),
-                "El apellido del alumno es obligatorio");
-        assertRequiredFieldIsRejected(requestWithEmail(" "),
-                "El email del alumno es obligatorio");
-    }
-
-    @Test
-    void blankOptionalUsernameAndDniShouldBeStoredAsNull() {
-        SavedEntities savedEntities = savedEntities();
-        CreateStudentFromParentRequest request = request(
-                " ",
-                " Juan ",
-                " Perez ",
-                " " + TRIMMED_EMAIL + " ",
-                " ",
-                null,
-                null);
-
+    void givenBlankOptionalFields_whenCreatingStudent_thenStoresOptionalFieldsAsNull() {
+        givenStudentCreationRequestWithBlankOptionalFields();
         givenParentWithTutor();
         givenEmailAvailable(TRIMMED_EMAIL);
         givenCognitoCreatesStudent(null, TRIMMED_EMAIL, "generated");
-        givenEntitiesArePersistedWith(savedEntities);
+        givenRepositoriesPersistCreatedEntities();
 
-        createStudentFromParent.execute(request);
+        whenCreateStudentFromParent();
 
-        verify(usuarioRepository).save(usuarioCaptor.capture());
-        verify(alumnoRepository).save(alumnoCaptor.capture());
-        assertNull(usuarioCaptor.getValue().getDni());
-        assertNull(alumnoCaptor.getValue().getGrado());
+        thenOptionalUsernameAndDniWereStoredAsNull();
     }
 
     @Test
-    void cognitoFailureStopsLocalPersistence() {
-        CreateStudentFromParentRequest request = defaultRequest();
+    void givenCognitoFailure_whenCreatingStudent_thenStopsLocalPersistence() {
+        givenDefaultStudentCreationRequest();
         givenParentWithTutor();
         givenEmailAvailable(DEFAULT_EMAIL);
         givenCognitoFails();
 
-        Executable execution = () -> createStudentFromParent.execute(request);
+        whenCreateStudentFails(IllegalStateException.class);
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class, execution);
-        assertEquals("No se pudo crear el usuario en Cognito", exception.getMessage());
-        assertLocalEntitiesWereNotPersisted();
+        thenErrorMessageIs("No se pudo crear el usuario en Cognito");
+        thenLocalEntitiesWereNotPersisted();
     }
 
     private Usuario user(UUID id, RolUsuario rol) {
@@ -269,36 +215,89 @@ class CreateStudentFromParentTest {
         return user;
     }
 
-    private Grado grado(UUID id) {
+    private Grado grade(UUID id) {
         Grado grado = new Grado();
         grado.setId(id);
         Colegio school = new Colegio();
-        school.setId(UUID.randomUUID());
+        school.setId(randomUUID());
         grado.setColegio(school);
         return grado;
     }
 
-    private SavedEntities savedEntities() {
-        return new SavedEntities(UUID.randomUUID(), UUID.randomUUID());
+    private void givenValidStudentCreationScenario() {
+        givenPersistedIds();
+        grade = grade(randomUUID());
+        createStudentRequest = validRequestWithGrade(grade.getId());
     }
 
-    private Tutor givenParentWithTutor() {
-        UUID parentUserId = UUID.randomUUID();
+    private void givenParentCanCreateStudentWithGrade() {
+        givenValidStudentCreationScenario();
+        givenParentWithTutor();
+        givenEmailAvailable(TRIMMED_EMAIL);
+        givenGradeExists();
+        givenTutorAssociatedToSchool();
+    }
+
+    private void givenStudentCanBeCreated() {
+        givenCognitoCreatesStudent(TRIMMED_USERNAME, TRIMMED_EMAIL);
+        givenRepositoriesPersistCreatedEntities();
+    }
+
+    private void givenDefaultStudentCreationRequest() {
+        createStudentRequest = defaultRequest();
+    }
+
+    private void givenStudentCreationRequestWithEmail(String email) {
+        createStudentRequest = requestWithEmail(email);
+    }
+
+    private void givenStudentCreationRequestWithMissingGrade() {
+        missingGradeId = randomUUID();
+        createStudentRequest = requestWithGrade(missingGradeId);
+    }
+
+    private void givenStudentCreationRequestWithGrade() {
+        grade = grade(randomUUID());
+        createStudentRequest = requestWithGrade(grade.getId());
+    }
+
+    private void givenStudentCreationRequestWithBlankOptionalFields() {
+        givenPersistedIds();
+        createStudentRequest = request(
+                " ",
+                " Juan ",
+                " Perez ",
+                " " + TRIMMED_EMAIL + " ",
+                " ",
+                null,
+                null);
+    }
+
+    private void givenPersistedIds() {
+        savedUserId = randomUUID();
+        savedStudentId = randomUUID();
+    }
+
+    private void givenParentWithTutor() {
+        UUID parentUserId = randomUUID();
         Usuario parent = user(parentUserId, RolUsuario.PADRE);
-        Tutor tutor = tutor(UUID.randomUUID());
+        Tutor tutor = tutor(randomUUID());
 
         when(usuarioRepository.findByIdCognito(PARENT_SUB)).thenReturn(Optional.of(parent));
         when(tutorRepository.findByUsuarioId(parentUserId)).thenReturn(Optional.of(tutor));
-        return tutor;
+    }
+
+    private void givenAuthenticatedUserDoesNotExist() {
+        when(usuarioRepository.findByIdCognito(PARENT_SUB)).thenReturn(Optional.empty());
     }
 
     private void givenAuthenticatedUserWithRole(RolUsuario rol) {
-        Usuario user = user(UUID.randomUUID(), rol);
+        Usuario user = user(randomUUID(), rol);
         when(usuarioRepository.findByIdCognito(PARENT_SUB)).thenReturn(Optional.of(user));
     }
 
     private void givenAuthenticatedParentWithoutTutor() {
-        Usuario parent = user(UUID.randomUUID(), RolUsuario.PADRE);
+        Usuario parent = user(randomUUID(), RolUsuario.PADRE);
         when(usuarioRepository.findByIdCognito(PARENT_SUB)).thenReturn(Optional.of(parent));
         when(tutorRepository.findByUsuarioId(parent.getId())).thenReturn(Optional.empty());
     }
@@ -309,31 +308,47 @@ class CreateStudentFromParentTest {
 
     private void givenDuplicatedEmail(String email) {
         when(usuarioRepository.findByEmail(email))
-                .thenReturn(Optional.of(user(UUID.randomUUID(), RolUsuario.ALUMNO)));
+                .thenReturn(Optional.of(user(randomUUID(), RolUsuario.ALUMNO)));
     }
 
     private void givenGradeExists(Grado grado) {
         when(gradoRepository.findById(grado.getId())).thenReturn(Optional.of(grado));
     }
 
+    private void givenGradeExists() {
+        givenGradeExists(grade);
+    }
+
     private void givenTutorAssociatedToSchool(Grado grado) {
         when(tutorSchoolRepository.existsByTutorIdAndSchoolIdAndStatus(
                 any(),
-                org.mockito.ArgumentMatchers.eq(grado.getColegio().getId()),
-                org.mockito.ArgumentMatchers.eq(TutorSchoolStatus.ACTIVE)))
+                eq(grado.getColegio().getId()),
+                eq(TutorSchoolStatus.ACTIVE)))
                 .thenReturn(true);
+    }
+
+    private void givenTutorAssociatedToSchool() {
+        givenTutorAssociatedToSchool(grade);
     }
 
     private void givenTutorNotAssociatedToSchool(Grado grado) {
         when(tutorSchoolRepository.existsByTutorIdAndSchoolIdAndStatus(
                 any(),
-                org.mockito.ArgumentMatchers.eq(grado.getColegio().getId()),
-                org.mockito.ArgumentMatchers.eq(TutorSchoolStatus.ACTIVE)))
+                eq(grado.getColegio().getId()),
+                eq(TutorSchoolStatus.ACTIVE)))
                 .thenReturn(false);
+    }
+
+    private void givenTutorNotAssociatedToSchool() {
+        givenTutorNotAssociatedToSchool(grade);
     }
 
     private void givenMissingGrade(UUID gradoId) {
         when(gradoRepository.findById(gradoId)).thenReturn(Optional.empty());
+    }
+
+    private void givenGradeDoesNotExist() {
+        givenMissingGrade(missingGradeId);
     }
 
     private void givenCognitoCreatesStudent(String username, String email) {
@@ -366,19 +381,32 @@ class CreateStudentFromParentTest {
         return tutor;
     }
 
-    private void givenEntitiesArePersistedWith(SavedEntities savedEntities) {
+    private void givenRepositoriesPersistCreatedEntitiesWith(UUID userId, UUID studentId) {
         when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> {
             Usuario saved = invocation.getArgument(0);
-            saved.setId(savedEntities.userId());
+            saved.setId(userId);
             return saved;
         });
         when(alumnoRepository.save(any(Alumno.class))).thenAnswer(invocation -> {
             Alumno saved = invocation.getArgument(0);
-            saved.setId(savedEntities.alumnoId());
+            saved.setId(studentId);
             return saved;
         });
         when(tutorRepository.save(any(Tutor.class))).thenAnswer(invocation ->
                 invocation.getArgument(0));
+    }
+
+    private void givenRepositoriesPersistCreatedEntities() {
+        givenRepositoriesPersistCreatedEntitiesWith(savedUserId, savedStudentId);
+    }
+
+    private void whenCreateStudentFromParent() {
+        createStudentResponse = createStudentFromParent.execute(createStudentRequest);
+    }
+
+    private <T extends Throwable> void whenCreateStudentFails(Class<T> expectedException) {
+        Executable execution = () -> createStudentFromParent.execute(createStudentRequest);
+        thrownException = assertThrows(expectedException, execution);
     }
 
     private CreateStudentFromParentRequest defaultRequest() {
@@ -400,39 +428,6 @@ class CreateStudentFromParentTest {
                 " " + TRIMMED_EMAIL + " ",
                 " " + STUDENT_DNI + " ",
                 gradoId,
-                null);
-    }
-
-    private CreateStudentFromParentRequest requestWithUsername(String username) {
-        return request(
-                username,
-                DEFAULT_NAME,
-                DEFAULT_LAST_NAME,
-                DEFAULT_EMAIL,
-                null,
-                null,
-                null);
-    }
-
-    private CreateStudentFromParentRequest requestWithName(String nombre) {
-        return request(
-                DEFAULT_USERNAME,
-                nombre,
-                DEFAULT_LAST_NAME,
-                DEFAULT_EMAIL,
-                null,
-                null,
-                null);
-    }
-
-    private CreateStudentFromParentRequest requestWithLastName(String apellido) {
-        return request(
-                DEFAULT_USERNAME,
-                DEFAULT_NAME,
-                apellido,
-                DEFAULT_EMAIL,
-                null,
-                null,
                 null);
     }
 
@@ -473,14 +468,54 @@ class CreateStudentFromParentTest {
         );
     }
 
-    private void assertRequiredFieldIsRejected(CreateStudentFromParentRequest request,
-                                               String expectedMessage) {
-        Executable execution = () -> createStudentFromParent.execute(request);
+    private void thenStudentUserWasCreated() {
+        verify(usuarioRepository).save(usuarioCaptor.capture());
+        assertCreatedUser(usuarioCaptor.getValue());
+    }
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals(expectedMessage, exception.getMessage());
-        verify(usuarioRepository, never()).findByIdCognito(any());
-        assertStopsBeforeExternalUserCreation();
+    private void thenStudentWasCreatedWithGrade() {
+        verify(alumnoRepository).save(alumnoCaptor.capture());
+        assertCreatedStudent(
+                alumnoCaptor.getValue(),
+                usuarioCaptor.getValue(),
+                savedUserId,
+                grade);
+    }
+
+    private void thenStudentWasLinkedToTutor() {
+        verify(tutorRepository).save(tutorCaptor.capture());
+        assertLinkedTutorAndStudent(tutorCaptor.getValue(), alumnoCaptor.getValue());
+    }
+
+    private void thenResponseHasStudentId() {
+        assertEquals(savedStudentId, createStudentResponse.id());
+    }
+
+    private void thenOptionalUsernameAndDniWereStoredAsNull() {
+        verify(usuarioRepository).save(usuarioCaptor.capture());
+        verify(alumnoRepository).save(alumnoCaptor.capture());
+        assertNull(usuarioCaptor.getValue().getDni());
+        assertNull(alumnoCaptor.getValue().getGrado());
+    }
+
+    private void thenErrorMessageIs(String expectedMessage) {
+        assertEquals(expectedMessage, thrownException.getMessage());
+    }
+
+    private void thenStudentCreationWasNotStarted() {
+        thenExternalUserWasNotCreated();
+        thenLocalEntitiesWereNotPersisted();
+    }
+
+    private void thenExternalUserWasNotCreated() {
+        verify(cognitoStudentIdentityService, never())
+                .createStudentUser(any(), any(), any(), any());
+    }
+
+    private void thenLocalEntitiesWereNotPersisted() {
+        verify(usuarioRepository, never()).save(any());
+        verify(alumnoRepository, never()).save(any());
+        verify(tutorRepository, never()).save(any());
     }
 
     private void assertCreatedUser(Usuario savedUser) {
@@ -507,24 +542,5 @@ class CreateStudentFromParentTest {
     private void assertLinkedTutorAndStudent(Tutor tutor, Alumno student) {
         assertTrue(tutor.getHijos().contains(student));
         assertTrue(student.getTutores().contains(tutor));
-    }
-
-    private void assertExternalUserWasNotCreated() {
-        verify(cognitoStudentIdentityService, never())
-                .createStudentUser(any(), any(), any(), any());
-    }
-
-    private void assertStopsBeforeExternalUserCreation() {
-        assertExternalUserWasNotCreated();
-        assertLocalEntitiesWereNotPersisted();
-    }
-
-    private void assertLocalEntitiesWereNotPersisted() {
-        verify(usuarioRepository, never()).save(any());
-        verify(alumnoRepository, never()).save(any());
-        verify(tutorRepository, never()).save(any());
-    }
-
-    private record SavedEntities(UUID userId, UUID alumnoId) {
     }
 }

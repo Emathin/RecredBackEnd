@@ -22,8 +22,6 @@ public class UpdateProductPrice {
 
     @Transactional
     public UpdateProductPriceResponse execute(UpdateProductPriceRequest request) {
-        request.validate();
-
         Producto product = findProduct(request.productId());
         BigDecimal oldPrice = product.getPrecio();
 

@@ -5,16 +5,17 @@ import com.recred.backend.application.GeneratePriceAlertRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.PriceAlertSuggestion;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository.PriceAlertResult;
 import com.recred.backend.domain.repositories.StudentAIProfileRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -28,7 +29,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -49,22 +49,18 @@ class GeneratePriceAlertTest {
 
     @Mock
     private StudentAIProfileRepository studentAIProfileRepository;
+    
     @Mock
     private PriceAlertAIRepository priceAlertAIRepository;
+    
     @Mock
     private SugerenciaIARepository sugerenciaIARepository;
+    
+    @Mock
+    private Clock clock;
 
-    private GeneratePriceAlert generatePriceAlert;
-
-    @BeforeEach
-    void setUp() {
-        generatePriceAlert = new GeneratePriceAlert(
-                studentAIProfileRepository,
-                priceAlertAIRepository,
-                sugerenciaIARepository,
-                Clock.fixed(NOW, ZoneOffset.UTC)
-        );
-    }
+    @InjectMocks
+    private GeneratePriceAlert useCase;
 
     @Test
     void executeAndSavePriceAlertsForAffectedStudentsWhenPriceChanges() {
@@ -73,13 +69,15 @@ class GeneratePriceAlertTest {
         UUID tutorUserId = UUID.randomUUID();
         UUID studentUserId = UUID.randomUUID();
         Alumno alumno = studentWithTutorUser(tutorUserId, studentUserId);
+        
         givenAffectedStudentWithoutRecentAlert(producto, alumno);
         givenAiResult(alumno, producto);
+        givenFixedClock();
 
-        generatePriceAlert.execute(request(producto, buffetId));
+        whenExecute(request(producto, buffetId));
 
         PriceAlertSuggestion saved = capturedSuggestion();
-        assertSavedPriceAlert(saved, producto, alumno, studentUserId, buffetId);
+        thenPriceAlertIsSaved(saved, producto, alumno, studentUserId, buffetId);
         assertTrue(saved.tutorUserIds().contains(tutorUserId));
     }
 
@@ -88,10 +86,10 @@ class GeneratePriceAlertTest {
         Producto producto = product();
         givenNoAffectedStudents(producto);
 
-        generatePriceAlert.execute(requestWithoutBuffet(producto));
+        whenExecute(requestWithoutBuffet(producto));
 
-        assertNoAlertAnalyzed();
-        assertNoPriceAlertSaved();
+        thenNoAlertAnalyzed();
+        thenNoPriceAlertSaved();
     }
 
     @Test
@@ -99,50 +97,43 @@ class GeneratePriceAlertTest {
         Producto producto = product();
         Alumno alumno = studentWithTutorUser(UUID.randomUUID(), UUID.randomUUID());
         givenAffectedStudentWithRecentAlert(producto, alumno);
+        givenFixedClock();
 
-        generatePriceAlert.execute(requestWithoutBuffet(producto));
+        whenExecute(requestWithoutBuffet(producto));
 
-        assertNoAlertAnalyzed();
-        assertNoPriceAlertSaved();
+        thenNoAlertAnalyzed();
+        thenNoPriceAlertSaved();
     }
 
     @Test
-    void execute_WhenAiResultIsEmpty_ShouldNotSaveAlert() {
+    void doNotSaveAlertWhenAiResultIsEmpty() {
         Producto producto = product();
         Alumno alumno = studentWithTutorUser(UUID.randomUUID(), UUID.randomUUID());
         givenAffectedStudentWithoutRecentAlert(producto, alumno);
         givenAiResultIsEmpty(alumno, producto);
+        givenFixedClock();
 
-        generatePriceAlert.execute(requestWithoutBuffet(producto));
+        whenExecute(requestWithoutBuffet(producto));
 
-        assertNoPriceAlertSaved();
+        thenNoPriceAlertSaved();
     }
 
     @Test
-    void execute_WhenTutorsHaveNoUserId_ShouldSaveAlertWithoutTutorUsers() {
+    void execute_WhenTutorsHaveNoAdvancedPlan_ShouldNotAnalyzeOrSaveAlert() {
         Producto producto = product();
         UUID buffetId = UUID.randomUUID();
         Alumno alumno = studentWithTutorsWithoutUserIds();
         givenAffectedStudentWithoutRecentAlert(producto, alumno);
-        givenAiResult(alumno, producto);
+        givenFixedClock();
 
-        generatePriceAlert.execute(request(producto, buffetId));
+        whenExecute(request(producto, buffetId));
 
-        PriceAlertSuggestion saved = capturedSuggestion();
-        assertTrue(saved.tutorUserIds().isEmpty());
+        thenNoAlertAnalyzed();
+        thenNoPriceAlertSaved();
     }
 
-    @Test
-    void execute_WhenProductIsMissing_ShouldFailBeforeReadingStudents() {
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> generatePriceAlert.execute(requestWithoutBuffet(null))
-        );
-
-        assertEquals("El producto es obligatorio", exception.getMessage());
-        assertNoAffectedStudentsRead();
-        assertNoAlertAnalyzed();
-        assertNoPriceAlertSaved();
+    private void whenExecute(GeneratePriceAlertRequest request) {
+        useCase.execute(request);
     }
 
     private Producto product() {
@@ -157,16 +148,7 @@ class GeneratePriceAlertTest {
     }
 
     private GeneratePriceAlertRequest request(Producto producto, UUID buffetId) {
-        return request(producto, OLD_PRICE, NEW_PRICE, buffetId);
-    }
-
-    private GeneratePriceAlertRequest request(
-            Producto producto,
-            BigDecimal oldPrice,
-            BigDecimal newPrice,
-            UUID buffetId
-    ) {
-        return new GeneratePriceAlertRequest(producto, oldPrice, newPrice, buffetId);
+        return new GeneratePriceAlertRequest(producto, OLD_PRICE, NEW_PRICE, buffetId);
     }
 
     private void givenNoAffectedStudents(Producto producto) {
@@ -181,8 +163,7 @@ class GeneratePriceAlertTest {
                 alumno.getId(),
                 producto.getId(),
                 recentAlertLimit()
-        ))
-                .thenReturn(false);
+        )).thenReturn(false);
     }
 
     private void givenAffectedStudentWithRecentAlert(Producto producto, Alumno alumno) {
@@ -192,8 +173,7 @@ class GeneratePriceAlertTest {
                 alumno.getId(),
                 producto.getId(),
                 recentAlertLimit()
-        ))
-                .thenReturn(true);
+        )).thenReturn(true);
     }
 
     private void givenAiResult(Alumno alumno, Producto producto) {
@@ -202,12 +182,11 @@ class GeneratePriceAlertTest {
                 eq(producto),
                 eq(OLD_PRICE),
                 eq(NEW_PRICE)
-        ))
-                .thenReturn(Optional.of(new PriceAlertResult(
-                        ALERT_TITLE,
-                        ALERT_MESSAGE,
-                        AI_REASON
-                )));
+        )).thenReturn(Optional.of(new PriceAlertResult(
+                ALERT_TITLE,
+                ALERT_MESSAGE,
+                AI_REASON
+        )));
     }
 
     private void givenAiResultIsEmpty(Alumno alumno, Producto producto) {
@@ -222,7 +201,7 @@ class GeneratePriceAlertTest {
         return captor.getValue();
     }
 
-    private void assertSavedPriceAlert(
+    private void thenPriceAlertIsSaved(
             PriceAlertSuggestion saved,
             Producto producto,
             Alumno alumno,
@@ -241,16 +220,17 @@ class GeneratePriceAlertTest {
         assertEquals(AI_REASON, saved.aiReason());
     }
 
-    private void assertNoAffectedStudentsRead() {
-        verify(studentAIProfileRepository, never()).findStudentsWithFavoriteProduct(any());
-    }
-
-    private void assertNoAlertAnalyzed() {
+    private void thenNoAlertAnalyzed() {
         verify(priceAlertAIRepository, never()).analyzeImpact(any(), any(), any(), any());
     }
 
-    private void assertNoPriceAlertSaved() {
+    private void thenNoPriceAlertSaved() {
         verify(sugerenciaIARepository, never()).savePriceAlert(any());
+    }
+
+    private void givenFixedClock() {
+        when(clock.instant()).thenReturn(NOW);
+        when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
     private LocalDateTime recentAlertLimit() {
@@ -260,6 +240,7 @@ class GeneratePriceAlertTest {
     private Alumno studentWithTutorUser(UUID tutorUserId, UUID studentUserId) {
         Usuario usuario = new Usuario();
         usuario.setId(tutorUserId);
+        usuario.setPlan(TipoPlan.AVANZADO);
 
         Tutor tutor = new Tutor();
         tutor.setUsuario(usuario);

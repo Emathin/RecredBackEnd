@@ -5,8 +5,8 @@ import com.recred.backend.application.GetLastSummaryRequest;
 import com.recred.backend.application.GetLastSummaryResponse;
 import com.recred.backend.domain.models.Summary;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.repositories.SummaryRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.SummaryController;
 import com.recred.backend.infrastructure.web.SummaryResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,12 +22,14 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SummaryControllerTest {
 
     private GetLastSummary getLastSummary;
     private UsuarioRepository usuarioRepository;
+    private PlanAccessGuard planAccessGuard;
     private SummaryController controller;
     private Authentication authentication;
 
@@ -35,8 +37,9 @@ class SummaryControllerTest {
     void setUp() {
         getLastSummary = mock(GetLastSummary.class);
         usuarioRepository = mock(UsuarioRepository.class);
+        planAccessGuard = mock(PlanAccessGuard.class);
         authentication = mock(Authentication.class);
-        controller = new SummaryController(getLastSummary, usuarioRepository);
+        controller = new SummaryController(getLastSummary, usuarioRepository, planAccessGuard);
     }
 
     @Test
@@ -59,6 +62,7 @@ class SummaryControllerTest {
         assertEquals(summary.getId().toString(), response.getBody().getId());
         assertEquals("01/06/26", response.getBody().getFechaDesde());
         assertEquals("Resumen semanal", response.getBody().getResumen());
+        verify(planAccessGuard).requireTutorIntermediate(authentication);
     }
 
     @Test
@@ -76,6 +80,7 @@ class SummaryControllerTest {
         ResponseEntity<SummaryResponse> response = controller.getLastSummary(authentication);
 
         assertEquals(404, response.getStatusCode().value());
+        verify(planAccessGuard).requireTutorIntermediate(authentication);
     }
     
     @Test
@@ -107,4 +112,3 @@ class SummaryControllerTest {
         return summary;
     }
 }
-

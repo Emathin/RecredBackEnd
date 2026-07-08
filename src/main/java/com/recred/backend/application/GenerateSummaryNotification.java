@@ -1,10 +1,12 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Notification;
-import com.recred.backend.domain.models.TipoNotificacion;
 import com.recred.backend.domain.repositories.NotificationRepository;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
+
+import static com.recred.backend.domain.models.TipoNotificacion.RESUMEN_SEMANAL;
 
 public class GenerateSummaryNotification {
 
@@ -23,7 +25,7 @@ public class GenerateSummaryNotification {
     private Notification createNotification() {
         return new Notification(
                 null,
-                TipoNotificacion.RESUMEN_SEMANAL,
+                RESUMEN_SEMANAL,
                 "Resumen Semanal",
                 "Tu resumen semanal de gastos ya está disponible.",
                 false,
@@ -36,11 +38,11 @@ public class GenerateSummaryNotification {
         );
     }
 
-    private void saveNotification(Notification notification, java.util.UUID userId) {
+    private void saveNotification(Notification notification, UUID userId) {
         notificationRepository.save(notification, userId);
     }
 
-    private GenerateSummaryNotificationResponse createResponse(java.util.UUID userId,
+    private GenerateSummaryNotificationResponse createResponse(UUID userId,
                                                                Notification notification) {
         return new GenerateSummaryNotificationResponse(
                 userId,

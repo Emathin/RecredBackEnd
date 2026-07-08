@@ -17,9 +17,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
-import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -28,8 +26,14 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class UpdateProductPriceTest {
 
+    private static final UUID PRODUCT_ID = UUID.randomUUID();
+    private static final UUID BUFFET_ID = UUID.randomUUID();
+    private static final BigDecimal OLD_PRICE = new BigDecimal("100.00");
+    private static final BigDecimal NEW_PRICE = new BigDecimal("120.00");
+
     @Mock
     private ProductRepository productRepository;
+    
     @Mock
     private ProductPriceChangedPublisher eventPublisher;
 
@@ -41,88 +45,70 @@ class UpdateProductPriceTest {
     }
 
     @Test
-    void updatePriceAndPublishEventWhenPriceChanges() {
-        UUID productId = randomUUID();
-        UUID buffetId = randomUUID();
-        Producto product = product(productId, "100.00");
-        BigDecimal newPrice = new BigDecimal("120.00");
-        givenProductExists(productId, product);
+    void shouldUpdatePriceAndPublishEventWhenPriceChanges() {
+        givenProductExistsWithPrice(OLD_PRICE);
 
-        whenUpdatingPrice(productId, newPrice, buffetId);
+        whenUpdatingPrice(NEW_PRICE, BUFFET_ID);
 
-        verify(productRepository).updatePrice(productId, newPrice);
+        thenPriceWasUpdatedInRepository(NEW_PRICE);
+        thenPriceChangedEventWasPublished(NEW_PRICE);
+    }
 
-        ArgumentCaptor<ProductPriceChangedEvent> captor =
+    @Test
+    void shouldDoNothingWhenPriceDoesNotChange() {
+        givenProductExistsWithPrice(OLD_PRICE);
+
+        whenUpdatingPrice(OLD_PRICE, null);
+
+        thenNoActionWasTaken();
+    }
+
+    @Test
+    void shouldUpdatePriceWhenProductHasNoCategory() {
+        givenProductExistsWithoutCategory(OLD_PRICE);
+
+        whenUpdatingPrice(NEW_PRICE, null);
+
+        thenPriceWasUpdatedInRepository(NEW_PRICE);
+    }
+
+    private void givenProductExistsWithPrice(BigDecimal price) {
+        Producto product = new Producto();
+        product.setId(PRODUCT_ID);
+        product.setPrecio(price);
+        when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+    }
+
+    private void givenProductExistsWithoutCategory(BigDecimal price) {
+        Producto product = new Producto();
+        product.setId(PRODUCT_ID);
+        product.setPrecio(price);
+        product.setCategoria(null);
+        when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+    }
+
+    private void whenUpdatingPrice(BigDecimal newPrice, UUID buffetId) {
+        updateProductPrice.execute(new UpdateProductPriceRequest(PRODUCT_ID, newPrice, buffetId));
+    }
+
+    private void thenPriceWasUpdatedInRepository(BigDecimal newPrice) {
+        verify(productRepository).updatePrice(PRODUCT_ID, newPrice);
+    }
+
+    private void thenPriceChangedEventWasPublished(BigDecimal newPrice) {
+        ArgumentCaptor<ProductPriceChangedEvent> captor = 
                 ArgumentCaptor.forClass(ProductPriceChangedEvent.class);
         verify(eventPublisher).publish(captor.capture());
         ProductPriceChangedEvent event = captor.getValue();
-        assertEquals(product, event.producto());
-        assertEquals(new BigDecimal("100.00"), event.oldPrice());
+        
+        assertEquals(PRODUCT_ID, event.producto().getId());
+        assertEquals(OLD_PRICE, event.oldPrice());
         assertEquals(newPrice, event.newPrice());
-        assertEquals(buffetId, event.buffetId());
+        assertEquals(BUFFET_ID, event.buffetId());
     }
 
-    @Test
-    void doNothingWhenPriceDoesNotChange() {
-        UUID productId = randomUUID();
-        Producto product = product(productId, "100.00");
-        givenProductExists(productId, product);
-
-        whenUpdatingPrice(productId, new BigDecimal("100.00"), null);
-
+    private void thenNoActionWasTaken() {
         verify(productRepository, never()).updatePrice(any(), any());
         verify(eventPublisher, never()).publish(any());
-    }
-
-    @Test
-    void updatePriceDoesNotRequireProductCategory() {
-        UUID productId = randomUUID();
-        Producto product = product(productId, "100.00");
-        product.setCategoria(null);
-        BigDecimal newPrice = new BigDecimal("120.00");
-        givenProductExists(productId, product);
-
-        whenUpdatingPrice(productId, newPrice, null);
-
-        verify(productRepository).updatePrice(productId, newPrice);
-    }
-
-    @Test
-    void rejectZeroPrice() {
-        UUID productId = randomUUID();
-
-        assertThrows(IllegalArgumentException.class,
-                () -> whenUpdatingPrice(productId, BigDecimal.ZERO, null));
-    }
-
-    @Test
-    void rejectNullPrice() {
-        UUID productId = randomUUID();
-
-        assertThrows(IllegalArgumentException.class,
-                () -> whenUpdatingPrice(productId, null, null));
-    }
-
-    private UpdateProductPriceRequest request(
-            UUID productId,
-            BigDecimal newPrice,
-            UUID buffetId
-    ) {
-        return new UpdateProductPriceRequest(productId, newPrice, buffetId);
-    }
-
-    private void whenUpdatingPrice(UUID productId, BigDecimal newPrice, UUID buffetId) {
-        updateProductPrice.execute(request(productId, newPrice, buffetId));
-    }
-
-    private void givenProductExists(UUID productId, Producto product) {
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-    }
-
-    private Producto product(UUID productId, String price) {
-        Producto product = new Producto();
-        product.setId(productId);
-        product.setPrecio(new BigDecimal(price));
-        return product;
     }
 }

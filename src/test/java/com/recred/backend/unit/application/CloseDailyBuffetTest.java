@@ -18,14 +18,19 @@ import com.recred.backend.domain.models.DailyInventorySnapshot;
 import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.repositories.DailyBuffetCloseRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -33,124 +38,132 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class CloseDailyBuffetTest {
 
+    private static final LocalDate CLOSE_DATE = LocalDate.of(2026, 6, 8);
+
+    @Mock
     private ExpireAdvancePurchases expireAdvancePurchases;
+    @Mock
     private GenerateDailyBuffetReport generateDailyBuffetReport;
+    @Mock
     private DailyBuffetCloseRepository closeRepository;
+    @Mock
     private KiosqueroRealtimeEventPublisher realtimeEventPublisher;
+    @Captor
+    private ArgumentCaptor<KiosqueroRealtimeEvent> eventCaptor;
+
     private CloseDailyBuffet useCase;
     private UUID buffetId;
-    private LocalDate date;
     private DailyInventorySnapshot inventorySnapshot;
+    private DailyBuffetClose close;
     private CloseDailyBuffetResponse response;
 
     @BeforeEach
     void setUp() {
-        expireAdvancePurchases = mock(ExpireAdvancePurchases.class);
-        generateDailyBuffetReport = mock(GenerateDailyBuffetReport.class);
-        closeRepository = mock(DailyBuffetCloseRepository.class);
-        realtimeEventPublisher = mock(KiosqueroRealtimeEventPublisher.class);
+        buffetId = UUID.randomUUID();
+        inventorySnapshot = inventorySnapshot();
         useCase = new CloseDailyBuffet(
                 expireAdvancePurchases,
                 generateDailyBuffetReport,
                 closeRepository,
                 realtimeEventPublisher
         );
-        buffetId = UUID.randomUUID();
-        date = LocalDate.of(2026, 6, 8);
-        inventorySnapshot = snapshot();
     }
 
     @Test
-    void execute_WhenCloseDoesNotExist_ShouldExpireAndSaveClose() {
-        DailyBuffetClose close = close(2, 4);
-        givenCloseDoesNotExist();
-        givenPurchasesWillExpire(2, 4);
-        givenReportWillBeGenerated(List.of(inventorySnapshot));
-        givenCloseWillBeSaved(close);
+    void openBusinessDayCanBeClosedWithInventorySnapshotAndRealtimeEvent() {
+        givenBusinessDayWasNotClosedYet();
+        givenAdvancePurchasesExpire(2, 4);
+        givenDailyReportCanBeGenerated();
+        givenCloseWillBeSavedWith(2, 4);
 
         whenClosingDailyBuffet();
 
-        thenCloseIsReturnedAsNew(close);
+        thenCloseIsReturnedAsNew();
         thenInventorySnapshotWasSaved();
         thenDailyReportChangedEventWasPublished();
     }
 
     @Test
-    void execute_WhenCloseExists_ShouldNotExpireAgain() {
-        DailyBuffetClose close = close(1, 3);
-        givenCloseExists(close);
-        givenReportWillBeGenerated(List.of(inventorySnapshot));
+    void alreadyClosedBusinessDayReturnsExistingCloseWithoutExpiringAgain() {
+        givenBusinessDayWasAlreadyClosed(1, 3);
+        givenDailyReportCanBeGenerated();
 
         whenClosingDailyBuffet();
 
-        thenCloseIsReturnedAsAlreadyClosed(close);
-        verify(expireAdvancePurchases, never()).execute(any(ExpireAdvancePurchasesRequest.class));
+        thenCloseIsReturnedAsAlreadyClosed();
+        thenAdvancePurchasesWereNotExpiredAgain();
     }
 
     @Test
-    void execute_WhenUsingDefaultPublisherAndCloseDoesNotExist_ShouldClose() {
+    void defaultPublisherKeepsCloseFlowAvailable() {
         useCase = new CloseDailyBuffet(
                 expireAdvancePurchases,
                 generateDailyBuffetReport,
                 closeRepository
         );
-        DailyBuffetClose close = close(0, 0);
-        givenCloseDoesNotExist();
-        givenPurchasesWillExpire(0, 0);
-        givenReportWillBeGenerated(List.of(inventorySnapshot));
-        givenCloseWillBeSaved(close);
+        givenBusinessDayWasNotClosedYet();
+        givenAdvancePurchasesExpire(0, 0);
+        givenDailyReportCanBeGenerated();
+        givenCloseWillBeSavedWith(0, 0);
 
         whenClosingDailyBuffet();
 
-        assertFalse(response.alreadyClosed());
-        assertEquals(0, response.expiredPurchases());
-        verify(closeRepository).saveWithInventorySnapshot(any(DailyBuffetClose.class), anyList());
+        thenCloseIsReturnedAsNew();
+        thenInventorySnapshotWasSaved();
     }
 
-    private void givenCloseDoesNotExist() {
-        when(closeRepository.findByBuffetAndDate(buffetId, date)).thenReturn(Optional.empty());
+    private void givenBusinessDayWasNotClosedYet() {
+        when(closeRepository.findByBuffetAndDate(buffetId, CLOSE_DATE))
+                .thenReturn(Optional.empty());
     }
 
-    private void givenCloseExists(DailyBuffetClose close) {
-        when(closeRepository.findByBuffetAndDate(buffetId, date))
+    private void givenBusinessDayWasAlreadyClosed(
+            int expiredPurchases,
+            int releasedReservations) {
+        close = close(expiredPurchases, releasedReservations);
+        when(closeRepository.findByBuffetAndDate(buffetId, CLOSE_DATE))
                 .thenReturn(Optional.of(close));
     }
 
-    private void givenPurchasesWillExpire(int expiredPurchases, int releasedReservations) {
+    private void givenAdvancePurchasesExpire(
+            int expiredPurchases,
+            int releasedReservations) {
         when(expireAdvancePurchases.execute(any(ExpireAdvancePurchasesRequest.class)))
-                .thenReturn(new ExpireAdvancePurchasesResponse(expiredPurchases, releasedReservations));
+                .thenReturn(new ExpireAdvancePurchasesResponse(
+                        expiredPurchases,
+                        releasedReservations));
     }
 
-    private void givenReportWillBeGenerated(List<DailyInventorySnapshot> inventory) {
-        when(generateDailyBuffetReport.execute(new GenerateDailyBuffetReportRequest(
-                buffetId,
-                date
-        ))).thenReturn(report(buffetId, date, inventory));
+    private void givenDailyReportCanBeGenerated() {
+        when(generateDailyBuffetReport.execute(
+                new GenerateDailyBuffetReportRequest(buffetId, CLOSE_DATE)))
+                .thenReturn(report(List.of(inventorySnapshot)));
     }
 
-    private void givenCloseWillBeSaved(DailyBuffetClose close) {
+    private void givenCloseWillBeSavedWith(int expiredPurchases, int releasedReservations) {
+        close = close(expiredPurchases, releasedReservations);
         when(closeRepository.saveWithInventorySnapshot(any(DailyBuffetClose.class), anyList()))
                 .thenReturn(close);
     }
 
     private void whenClosingDailyBuffet() {
-        response = useCase.execute(new CloseDailyBuffetRequest(buffetId, date));
+        response = useCase.execute(defaultRequest());
     }
 
-    private void thenCloseIsReturnedAsNew(DailyBuffetClose close) {
+    private void thenCloseIsReturnedAsNew() {
         assertFalse(response.alreadyClosed());
         assertEquals(close.expiredPurchases(), response.expiredPurchases());
         assertEquals(close.releasedReservations(), response.releasedReservations());
     }
 
-    private void thenCloseIsReturnedAsAlreadyClosed(DailyBuffetClose close) {
+    private void thenCloseIsReturnedAsAlreadyClosed() {
         assertTrue(response.alreadyClosed());
         assertEquals(close.expiredPurchases(), response.expiredPurchases());
         assertEquals(close.releasedReservations(), response.releasedReservations());
@@ -163,20 +176,26 @@ class CloseDailyBuffetTest {
     }
 
     private void thenDailyReportChangedEventWasPublished() {
-        ArgumentCaptor<KiosqueroRealtimeEvent> eventCaptor =
-                ArgumentCaptor.forClass(KiosqueroRealtimeEvent.class);
         verify(realtimeEventPublisher).publish(eventCaptor.capture());
-        assertEquals(KiosqueroRealtimeEventType.DAILY_REPORT_CHANGED,
-                eventCaptor.getValue().type());
-        assertEquals(buffetId, eventCaptor.getValue().buffetId());
-        assertEquals(date, eventCaptor.getValue().date());
+        KiosqueroRealtimeEvent event = eventCaptor.getValue();
+        assertEquals(KiosqueroRealtimeEventType.DAILY_REPORT_CHANGED, event.type());
+        assertEquals(buffetId, event.buffetId());
+        assertEquals(CLOSE_DATE, event.date());
+    }
+
+    private void thenAdvancePurchasesWereNotExpiredAgain() {
+        verify(expireAdvancePurchases, never()).execute(any(ExpireAdvancePurchasesRequest.class));
+    }
+
+    private CloseDailyBuffetRequest defaultRequest() {
+        return new CloseDailyBuffetRequest(buffetId, CLOSE_DATE);
     }
 
     private DailyBuffetClose close(int expiredPurchases, int releasedReservations) {
         return new DailyBuffetClose(
                 UUID.randomUUID(),
                 buffetId,
-                date,
+                CLOSE_DATE,
                 expiredPurchases,
                 releasedReservations,
                 BigDecimal.ZERO
@@ -184,13 +203,10 @@ class CloseDailyBuffetTest {
     }
 
     private GenerateDailyBuffetReportResponse report(
-            UUID buffetId,
-            LocalDate date,
-            List<DailyInventorySnapshot> inventory
-    ) {
+            List<DailyInventorySnapshot> inventory) {
         return new GenerateDailyBuffetReportResponse(
                 buffetId,
-                date,
+                CLOSE_DATE,
                 0,
                 0,
                 0,
@@ -225,7 +241,7 @@ class CloseDailyBuffetTest {
         );
     }
 
-    private DailyInventorySnapshot snapshot() {
+    private DailyInventorySnapshot inventorySnapshot() {
         return new DailyInventorySnapshot(
                 UUID.randomUUID(),
                 "Alfajor",
