@@ -20,6 +20,19 @@ public interface SugerenciaIAJpaRepository extends JpaRepository<SugerenciaIAEnt
     @Query("""
             select s
             from SugerenciaIAEntity s
+            where s.alumnoEntity.id in :alumnoIds
+            and s.tipo = :tipo
+            and s.aceptada is null
+            order by s.creadoEn desc
+            """)
+    List<SugerenciaIAEntity> findLatestPendingByAlumnoIdsAndTipo(
+            @Param("alumnoIds") List<UUID> alumnoIds,
+            @Param("tipo") TipoSugerenciaIA tipo
+    );
+
+    @Query("""
+            select s
+            from SugerenciaIAEntity s
             where s.alumnoEntity.id = :alumnoId
             and (:tipo is null or s.tipo = :tipo)
             and (s.aceptada is null or s.aceptada = false)

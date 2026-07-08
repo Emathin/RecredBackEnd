@@ -7,6 +7,7 @@ import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface SugerenciaIARepository {
@@ -22,6 +23,10 @@ public interface SugerenciaIARepository {
 
     List<SugerenciaIAEntity> findByAlumnoIdAndTipo(UUID alumnoId, TipoSugerenciaIA tipo);
 
+    Optional<SugerenciaIA> findLatestPendingByAlumnoIdsAndTipo(
+            List<UUID> alumnoIds,
+            TipoSugerenciaIA tipo);
+
     List<SugerenciaIAEntity> findPendingParentNotificationsByAlumnoId(
             UUID alumnoId, TipoSugerenciaIA tipo);
 
@@ -30,6 +35,6 @@ public interface SugerenciaIARepository {
 
     List<UUID> findProductIdsByAlumnoIdAndTipo(UUID alumnoId, TipoSugerenciaIA tipo);
 
-    java.util.Optional<SugerenciaIAEntity> findById(UUID id);
+    Optional<SugerenciaIAEntity> findById(UUID id);
 
 }
