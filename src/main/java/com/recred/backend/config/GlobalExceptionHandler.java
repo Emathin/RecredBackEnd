@@ -1,6 +1,7 @@
 package com.recred.backend.config;
 
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
+import com.recred.backend.domain.exceptions.BuffetAlreadyExistsForSchoolException;
 import com.recred.backend.domain.exceptions.BuffetNotFoundException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.FileValidationException;
@@ -267,6 +268,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBuffetNotFound(BuffetNotFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Buffet no encontrado",
                 ex.getMessage(), "BUFFET_NOT_FOUND");
+    }
+
+    @ExceptionHandler(BuffetAlreadyExistsForSchoolException.class)
+    public ResponseEntity<ErrorResponse> handleBuffetAlreadyExistsForSchool(
+            BuffetAlreadyExistsForSchoolException ex
+    ) {
+        return buildResponse(HttpStatus.CONFLICT, "Buffet duplicado",
+                ex.getMessage(), "BUFFET_ALREADY_EXISTS_FOR_SCHOOL");
     }
 
     @ExceptionHandler(InvalidChatMessageException.class)
