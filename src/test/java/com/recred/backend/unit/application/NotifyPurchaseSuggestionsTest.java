@@ -1,13 +1,14 @@
 package com.recred.backend.unit.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.NotifyPurchaseSuggestionsRequest;
 import com.recred.backend.application.NotifyPurchaseSuggestionsResponse;
-import com.recred.backend.application.NotifyPurchaseSuggestions;
+import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.PurchaseSuggestIARequest;
 import com.recred.backend.application.PurchaseSuggestionResponse;
-import com.recred.backend.application.PurchaseSuggestIA;
 import com.recred.backend.application.PushNotificationResponse;
 import com.recred.backend.domain.models.CategoriaProducto;
 import com.recred.backend.domain.models.ClasificacionSalud;
@@ -18,14 +19,8 @@ import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.PushNotificationSender;
 import com.recred.backend.domain.services.UsuarioService;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -34,233 +29,287 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class NotifyPurchaseSuggestionsTest {
 
-    @Mock
-    private PurchaseSuggestIA purchaseSuggestIA;
-    @Mock
-    private PushNotificationSender pushNotificationSender;
-    @Mock
-    private UsuarioService usuarioService;
-    @Spy
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private final PurchaseSuggestIA purchaseSuggestIA = mock(PurchaseSuggestIA.class);
+    private final PushNotificationSender pushNotificationSender =
+            mock(PushNotificationSender.class);
+    private final UsuarioService usuarioService = mock(UsuarioService.class);
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private NotifyPurchaseSuggestions useCase = new NotifyPurchaseSuggestions(
+            purchaseSuggestIA,
+            pushNotificationSender,
+            usuarioService,
+            objectMapper
+    );
 
-    @InjectMocks
-    private NotifyPurchaseSuggestions useCase;
+    private final String cognitoId = "cognito-id-test";
+    private UUID userId;
+    private UUID studentId;
+    private UUID suggestionId;
+    private SugerenciaIA suggestion;
+    private Usuario user;
+    private NotifyPurchaseSuggestionsResponse response;
+    private PushNotification sentNotification;
 
     @Test
-    @DisplayName("execute_CuandoHaySugerencia_EnviaNotificacionConMetadatos")
-    void execute_CuandoHaySugerencia_EnviaNotificacionConMetadatos() {
-        String cognitoId = "cognito-id-test";
-        UUID userId = UUID.randomUUID();
-        UUID alumnoId = UUID.randomUUID();
-        UUID suggestionId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
+    void execute_WhenSuggestionExists_SendsDataNotification() {
+        givenStudentUser();
+        givenSuggestionWithoutProduct();
+        givenPurchaseSuggestionExists();
 
-        SugerenciaIA sugerencia = SugerenciaIA.builder()
+        whenNotifyingPurchaseSuggestions();
+
+        thenNotificationWasSent();
+        thenNotificationHasSuggestionMetadata();
+    }
+
+    @Test
+    void execute_WhenSuggestionDoesNotExist_ReturnsWithoutNotification() {
+        givenPurchaseSuggestionDoesNotExist();
+
+        whenNotifyingPurchaseSuggestions();
+
+        thenResponseHasNoNotification();
+        thenUserWasNotLoaded();
+        thenNotificationWasNotSent();
+    }
+
+    @Test
+    void execute_WhenUserHasNoRole_UsesPendingRole() {
+        givenUserWithoutRole();
+        givenSuggestionWithoutProduct();
+        givenPurchaseSuggestionExists();
+
+        whenNotifyingPurchaseSuggestions();
+
+        thenResponseNotificationHasRole("PENDIENTE");
+        thenNotificationWasSent();
+    }
+
+    @Test
+    void execute_WhenSuggestionHasProduct_SerializesProductInData() throws Exception {
+        givenStudentUser();
+        givenSuggestionWithProduct(healthyProduct());
+        givenPurchaseSuggestionExists();
+
+        whenNotifyingPurchaseSuggestions();
+
+        thenNotificationWasSent();
+        thenSerializedProductHasHealthyProductData();
+    }
+
+    @Test
+    void execute_WhenProductSerializationFails_UsesEmptyProduct() throws Exception {
+        givenUseCaseWithFailingProductSerialization();
+        givenStudentUser();
+        givenSuggestionWithProduct(healthyProduct());
+        givenPurchaseSuggestionExists();
+
+        whenNotifyingPurchaseSuggestions();
+
+        thenNotificationWasSent();
+        thenProductDataIs("{}");
+    }
+
+    @Test
+    void execute_WhenProductHasNoCategoryOrClassifications_UsesProductFallbacks()
+            throws Exception {
+        givenParentUser();
+        givenSuggestionWithProduct(productWithoutCategoryOrClassifications());
+        givenPurchaseSuggestionExists();
+
+        whenNotifyingPurchaseSuggestions();
+
+        thenNotificationWasSent();
+        thenSerializedProductHasFallbacks();
+    }
+
+    private void givenStudentUser() {
+        givenUserWithRole(RolUsuario.ALUMNO);
+    }
+
+    private void givenParentUser() {
+        givenUserWithRole(RolUsuario.PADRE);
+    }
+
+    private void givenUserWithoutRole() {
+        userId = randomUUID();
+        user = new Usuario();
+        user.setId(userId);
+        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(user);
+    }
+
+    private void givenUserWithRole(RolUsuario role) {
+        userId = randomUUID();
+        user = new Usuario();
+        user.setId(userId);
+        user.setRol(role);
+        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(user);
+    }
+
+    private void givenSuggestionWithoutProduct() {
+        studentId = randomUUID();
+        suggestionId = randomUUID();
+        suggestion = SugerenciaIA.builder()
                 .id(suggestionId)
-                .alumnoId(alumnoId)
-                .productoId(productId)
+                .alumnoId(studentId)
+                .productoId(randomUUID())
                 .mensaje("Mensaje test")
                 .build();
-
-        Usuario usuario = new Usuario();
-        usuario.setId(userId);
-        usuario.setRol(RolUsuario.ALUMNO);
-
-        when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
-                .thenReturn(Optional.of(PurchaseSuggestionResponse.fromDomain(sugerencia)));
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
-
-
-        useCase.execute(new NotifyPurchaseSuggestionsRequest(cognitoId));
-
-
-        ArgumentCaptor<PushNotification> captor = ArgumentCaptor.forClass(PushNotification.class);
-        verify(pushNotificationSender, times(1)).send(captor.capture());
-
-        PushNotification sentNotification = captor.getValue();
-        assertEquals(userId, sentNotification.userId());
-        assertNull(sentNotification.title());
-        assertNull(sentNotification.message());
-        assertEquals("PURCHASE_SUGGESTION", sentNotification.data().get("type"));
-        assertEquals(suggestionId.toString(), sentNotification.data().get("sugerenciaId"));
-        assertEquals(alumnoId.toString(), sentNotification.data().get("alumnoId"));
-        assertNotNull(sentNotification.data().get("titulo"));
-        assertNotNull(sentNotification.data().get("mensaje"));
-        assertNotNull(sentNotification.data().get("producto"));
     }
 
-    @Test
-    @DisplayName("execute_CuandoNoHaySugerencia_NoEnviaNada")
-    void execute_CuandoNoHaySugerencia_NoEnviaNada() {
+    private void givenSuggestionWithProduct(Producto product) {
+        studentId = randomUUID();
+        suggestionId = randomUUID();
+        suggestion = SugerenciaIA.builder()
+                .id(suggestionId)
+                .alumnoId(studentId)
+                .producto(product)
+                .build();
+    }
 
-        String cognitoId = "cognito-id-test";
+    private void givenPurchaseSuggestionExists() {
+        when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
+                .thenReturn(Optional.of(PurchaseSuggestionResponse.fromDomain(suggestion)));
+    }
+
+    private void givenPurchaseSuggestionDoesNotExist() {
         when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
                 .thenReturn(Optional.empty());
-
-        useCase.execute(new NotifyPurchaseSuggestionsRequest(cognitoId));
-
-        verifyNoInteractions(pushNotificationSender);
     }
 
-    @Test
-    void execute_CuandoElUsuarioNoTieneRol_UsaRolPendiente() {
-        String cognitoId = "cognito-id-test";
-        UUID userId = UUID.randomUUID();
-        UUID alumnoId = UUID.randomUUID();
-        SugerenciaIA sugerencia = SugerenciaIA.builder()
-                .id(UUID.randomUUID())
-                .alumnoId(alumnoId)
-                .build();
-        Usuario usuario = new Usuario();
-        usuario.setId(userId);
-        when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
-                .thenReturn(Optional.of(PurchaseSuggestionResponse.fromDomain(sugerencia)));
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
-
-        NotifyPurchaseSuggestionsResponse response = useCase.execute(
-                new NotifyPurchaseSuggestionsRequest(cognitoId));
-        PushNotificationResponse notification = response.notification();
-
-        assertEquals("PENDIENTE", notification.data().get("rol"));
-        verify(pushNotificationSender).send(any(PushNotification.class));
-    }
-
-    @Test
-    void execute_CuandoLaSugerenciaTieneProducto_SerializaProductoEnData() {
-        UUID userId = UUID.randomUUID();
-        UUID alumnoId = UUID.randomUUID();
-        String cognitoId = "alumno-sub";
-        SugerenciaIA sugerencia = SugerenciaIA.builder()
-                .id(UUID.randomUUID())
-                .alumnoId(alumnoId)
-                .producto(producto())
-                .build();
-        Usuario usuario = new Usuario();
-        usuario.setId(userId);
-        usuario.setRol(RolUsuario.ALUMNO);
-        when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
-                .thenReturn(Optional.of(PurchaseSuggestionResponse.fromDomain(sugerencia)));
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
-
-        useCase.execute(new NotifyPurchaseSuggestionsRequest(cognitoId));
-
-        ArgumentCaptor<PushNotification> captor =
-                ArgumentCaptor.forClass(PushNotification.class);
-        verify(pushNotificationSender).send(captor.capture());
-        PushNotification notification = captor.getValue();
-
-        assertEquals(userId, notification.userId());
-        assertEquals("PURCHASE_SUGGESTION", notification.data().get("type"));
-        assertEquals("ALUMNO", notification.data().get("rol"));
-        assertNotNull(notification.data().get("producto"));
-        org.junit.jupiter.api.Assertions.assertTrue(
-                notification.data().get("producto").contains("Yogur")
-        );
-        org.junit.jupiter.api.Assertions.assertTrue(
-                notification.data().get("producto").contains("Saludable")
-        );
-    }
-
-    @Test
-    void execute_CuandoFallaSerializacion_UsaProductoVacio() throws Exception {
+    private void givenUseCaseWithFailingProductSerialization() throws Exception {
         ObjectMapper failingMapper = mock(ObjectMapper.class);
         when(failingMapper.writeValueAsString(any()))
                 .thenThrow(new JsonProcessingException("boom") {});
-        NotifyPurchaseSuggestions failingUseCase = new NotifyPurchaseSuggestions(
+        useCase = new NotifyPurchaseSuggestions(
                 purchaseSuggestIA,
                 pushNotificationSender,
                 usuarioService,
                 failingMapper
         );
-        SugerenciaIA sugerencia = SugerenciaIA.builder()
-                .id(UUID.randomUUID())
-                .alumnoId(UUID.randomUUID())
-                .producto(producto())
-                .build();
-        String cognitoId = "alumno-sub";
-        Usuario usuario = new Usuario();
-        usuario.setId(UUID.randomUUID());
-        usuario.setRol(RolUsuario.ALUMNO);
-        when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
-                .thenReturn(Optional.of(PurchaseSuggestionResponse.fromDomain(sugerencia)));
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
-
-        failingUseCase.execute(new NotifyPurchaseSuggestionsRequest(cognitoId));
-
-        ArgumentCaptor<PushNotification> captor =
-                ArgumentCaptor.forClass(PushNotification.class);
-        verify(pushNotificationSender).send(captor.capture());
-        PushNotification notification = captor.getValue();
-        assertEquals("{}", notification.data().get("producto"));
     }
 
-    @Test
-    void execute_CuandoProductoNoTieneCategoriaNiClasificaciones_UsaFallbacks()
-            throws Exception {
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        producto.setNombre("Manzana");
-        producto.setPrecio(BigDecimal.ONE);
-        producto.setDescripcion(null);
-        producto.setCategoria(null);
-        producto.setClasificacionesSalud(null);
-        SugerenciaIA sugerencia = SugerenciaIA.builder()
-                .id(UUID.randomUUID())
-                .alumnoId(UUID.randomUUID())
-                .producto(producto)
-                .build();
-        String cognitoId = "padre-sub";
-        Usuario usuario = new Usuario();
-        usuario.setId(UUID.randomUUID());
-        usuario.setRol(RolUsuario.PADRE);
-        when(purchaseSuggestIA.execute(new PurchaseSuggestIARequest(cognitoId)))
-                .thenReturn(Optional.of(PurchaseSuggestionResponse.fromDomain(sugerencia)));
-        when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuario);
+    private void whenNotifyingPurchaseSuggestions() {
+        response = useCase.execute(new NotifyPurchaseSuggestionsRequest(cognitoId));
+    }
 
-        useCase.execute(new NotifyPurchaseSuggestionsRequest(cognitoId));
-
+    private void thenNotificationWasSent() {
         ArgumentCaptor<PushNotification> captor =
                 ArgumentCaptor.forClass(PushNotification.class);
         verify(pushNotificationSender).send(captor.capture());
-        PushNotification notification = captor.getValue();
+        sentNotification = captor.getValue();
+    }
 
-        Map<String, Object> productoData = objectMapper.readValue(
-                (String) notification.data().get("producto"),
-                new com.fasterxml.jackson.core.type.TypeReference<>() {
+    private void thenNotificationHasSuggestionMetadata() {
+        assertEquals(userId, sentNotification.userId());
+        assertNull(sentNotification.title());
+        assertNull(sentNotification.message());
+        assertEquals("PURCHASE_SUGGESTION", sentNotification.data().get("type"));
+        assertEquals("ALUMNO", sentNotification.data().get("rol"));
+        assertEquals(suggestionId.toString(), sentNotification.data().get("sugerenciaId"));
+        assertEquals(studentId.toString(), sentNotification.data().get("alumnoId"));
+        assertNotNull(sentNotification.data().get("titulo"));
+        assertNotNull(sentNotification.data().get("mensaje"));
+        assertEquals("{}", sentNotification.data().get("producto"));
+    }
+
+    private void thenResponseHasNoNotification() {
+        assertNull(response.notification());
+    }
+
+    private void thenUserWasNotLoaded() {
+        verifyNoInteractions(usuarioService);
+    }
+
+    private void thenNotificationWasNotSent() {
+        verifyNoInteractions(pushNotificationSender);
+    }
+
+    private void thenResponseNotificationHasRole(String expectedRole) {
+        PushNotificationResponse notification = response.notification();
+        assertEquals(expectedRole, notification.data().get("rol"));
+    }
+
+    private void thenSerializedProductHasHealthyProductData() throws Exception {
+        Map<String, Object> productData = productData();
+        assertEquals("Yogur", productData.get("nombre"));
+        assertEquals("Saludable", firstHealthClassification(productData).get("descripcion"));
+    }
+
+    private void thenProductDataIs(String expectedProductData) {
+        assertEquals(expectedProductData, sentNotification.data().get("producto"));
+    }
+
+    private void thenSerializedProductHasFallbacks() throws Exception {
+        Map<String, Object> productData = productData();
+        Map<String, Object> category = category(productData);
+        assertEquals("", productData.get("descripcion"));
+        assertEquals("", category.get("id"));
+        assertEquals("General", category.get("descripcion"));
+        assertEquals(List.of(), productData.get("clasificacionesSalud"));
+    }
+
+    private Map<String, Object> productData() throws Exception {
+        return objectMapper.readValue(
+                sentNotification.data().get("producto"),
+                new TypeReference<>() {
                 }
         );
-        @SuppressWarnings("unchecked")
-        Map<String, Object> categoria = (Map<String, Object>) productoData.get("categoria");
-        assertEquals("", productoData.get("descripcion"));
-        assertEquals("", categoria.get("id"));
-        assertEquals("General", categoria.get("descripcion"));
-        assertEquals(List.of(), productoData.get("clasificacionesSalud"));
     }
 
-    private Producto producto() {
-        CategoriaProducto categoria = new CategoriaProducto();
-        categoria.setId(UUID.randomUUID());
-        categoria.setDescripcion("Lacteos");
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> category(Map<String, Object> productData) {
+        return (Map<String, Object>) productData.get("categoria");
+    }
 
-        ClasificacionSalud clasificacion = new ClasificacionSalud();
-        clasificacion.setId(UUID.randomUUID());
-        clasificacion.setDescripcion("Saludable");
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> firstHealthClassification(Map<String, Object> productData) {
+        List<Map<String, Object>> classifications =
+                (List<Map<String, Object>>) productData.get("clasificacionesSalud");
+        return classifications.get(0);
+    }
 
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        producto.setNombre("Yogur");
-        producto.setPrecio(new BigDecimal("120.00"));
-        producto.setDescripcion(null);
-        producto.setCategoria(categoria);
-        producto.setClasificacionesSalud(Set.of(clasificacion));
-        return producto;
+    private Producto healthyProduct() {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(randomUUID());
+        category.setDescripcion("Lacteos");
+
+        ClasificacionSalud classification = new ClasificacionSalud();
+        classification.setId(randomUUID());
+        classification.setDescripcion("Saludable");
+
+        Producto product = product("Yogur");
+        product.setCategoria(category);
+        product.setClasificacionesSalud(Set.of(classification));
+        return product;
+    }
+
+    private Producto productWithoutCategoryOrClassifications() {
+        Producto product = product("Manzana");
+        product.setDescripcion(null);
+        product.setCategoria(null);
+        product.setClasificacionesSalud(null);
+        return product;
+    }
+
+    private Producto product(String name) {
+        Producto product = new Producto();
+        product.setId(randomUUID());
+        product.setNombre(name);
+        product.setPrecio(BigDecimal.ONE);
+        product.setDescripcion(null);
+        return product;
     }
 }

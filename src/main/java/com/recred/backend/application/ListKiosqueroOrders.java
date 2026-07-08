@@ -1,6 +1,7 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.models.EstadoCompra;
+import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 
 import java.util.List;
@@ -16,16 +17,22 @@ public class ListKiosqueroOrders {
         this.purchaseRepository = purchaseRepository;
     }
 
-    public ListKiosqueroOrdersResponse execute(ListKiosqueroOrdersRequest request) {
-        requireRequest(request);
-        requireBuffetId(request.buffetId());
-        return ListKiosqueroOrdersResponse.from(purchaseRepository.findKiosqueroOrders(
+    public ListKiosqueroOrdersResponse execute(ListKiosqueroOrdersRequest listOrdersRequest) {
+        requireRequest(listOrdersRequest);
+        requireBuffetId(listOrdersRequest.buffetId());
+        return ListKiosqueroOrdersResponse.from(findKiosqueroOrders(listOrdersRequest));
+    }
+
+    private List<Purchase> findKiosqueroOrders(
+            ListKiosqueroOrdersRequest request
+    ) {
+        return purchaseRepository.findKiosqueroOrders(
                 request.buffetId(),
                 normalizedStatuses(request.statuses()),
                 request.date(),
                 request.pickupSlotId(),
                 normalizedLimit(request.limit())
-        ));
+        );
     }
 
     private void requireRequest(ListKiosqueroOrdersRequest request) {
