@@ -14,15 +14,18 @@ public class ExpireUserSubscriptions {
 
     private final SuscripcionUsuarioRepository subscriptionRepository;
     private final UsuarioRepository userRepository;
+    private final TutorChildrenPlanPropagator tutorChildrenPlanPropagator;
     private final Clock clock;
 
     public ExpireUserSubscriptions(
             SuscripcionUsuarioRepository subscriptionRepository,
             UsuarioRepository userRepository,
+            TutorChildrenPlanPropagator tutorChildrenPlanPropagator,
             Clock clock
     ) {
         this.subscriptionRepository = subscriptionRepository;
         this.userRepository = userRepository;
+        this.tutorChildrenPlanPropagator = tutorChildrenPlanPropagator;
         this.clock = clock;
     }
 
@@ -77,5 +80,6 @@ public class ExpireUserSubscriptions {
     private void returnUserToFreePlan(Usuario user) {
         user.returnToFreePlan();
         userRepository.updatePlan(user.getId(), user.getPlan());
+        tutorChildrenPlanPropagator.propagatePlanChangeFor(user);
     }
 }

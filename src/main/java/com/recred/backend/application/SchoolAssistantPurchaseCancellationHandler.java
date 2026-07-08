@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-class SchoolAssistantPurchaseCancellationHandler {
+public class SchoolAssistantPurchaseCancellationHandler {
 
     private static final int CANCELABLE_PURCHASES_TO_SHOW = 3;
     private static final String ACTION_STATUS_KEY = "estadoAccionChatbot";
@@ -30,7 +30,7 @@ class SchoolAssistantPurchaseCancellationHandler {
     private final SchoolAssistantContentFormatter contentFormatter;
     private final SchoolAssistantReplyBuilder replyBuilder;
 
-    SchoolAssistantPurchaseCancellationHandler(
+    public SchoolAssistantPurchaseCancellationHandler(
             PurchaseRepository purchaseRepository,
             CancelPresentialPurchase cancelPresentialPurchase,
             SchoolAssistantContentFormatter contentFormatter,
