@@ -3,22 +3,23 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.UpdatePriceListItemMapping;
 import com.recred.backend.application.UpdatePriceListItemMappingRequest;
 import com.recred.backend.application.UpdatePriceListItemMappingResponse;
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 import com.recred.backend.domain.models.ItemListaPrecioProveedor;
 import com.recred.backend.domain.models.ListaPrecioProveedor;
 import com.recred.backend.domain.models.Proveedor;
 import com.recred.backend.domain.repositories.ItemListaPrecioProveedorRepository;
 import com.recred.backend.domain.repositories.ListaPrecioProveedorRepository;
 import com.recred.backend.domain.repositories.ProveedorRepository;
-import java.math.BigDecimal;
-import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.access.AccessDeniedException;
+
+import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,6 +29,12 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class UpdatePriceListItemMappingTest {
+
+    private static final UUID KIOSK_OWNER_ID = UUID.randomUUID();
+    private static final UUID ITEM_ID = UUID.randomUUID();
+    private static final UUID PRICE_LIST_ID = UUID.randomUUID();
+    private static final UUID SUPPLIER_ID = UUID.randomUUID();
+    private static final UUID INVENTORY_PRODUCT_ID = UUID.randomUUID();
 
     @Mock
     private ItemListaPrecioProveedorRepository itemRepository;
@@ -39,11 +46,6 @@ class UpdatePriceListItemMappingTest {
     private ProveedorRepository proveedorRepository;
 
     private UpdatePriceListItemMapping useCase;
-    private UUID kioskOwnerId;
-    private UUID itemId;
-    private UUID priceListId;
-    private UUID supplierId;
-    private UUID inventoryProductId;
 
     @BeforeEach
     void setUp() {
@@ -52,116 +54,109 @@ class UpdatePriceListItemMappingTest {
                 listaRepository,
                 proveedorRepository
         );
-        kioskOwnerId = UUID.randomUUID();
-        itemId = UUID.randomUUID();
-        priceListId = UUID.randomUUID();
-        supplierId = UUID.randomUUID();
-        inventoryProductId = UUID.randomUUID();
     }
 
     @Test
     void executeShouldConfirmMappingWhenSupplierBelongsToKioskOwner() {
-        UpdatePriceListItemMappingRequest request = request();
+        givenItemPriceListAndSupplierExist(KIOSK_OWNER_ID);
+        givenSavedItemReturnsItself();
 
-        givenItemPriceListAndSupplier(kioskOwnerId);
-        when(itemRepository.save(any(ItemListaPrecioProveedor.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        UpdatePriceListItemMappingResponse response = whenUpdatingMapping(request());
 
-        UpdatePriceListItemMappingResponse response = useCase.execute(request);
-
-        assertEquals(itemId, response.id());
-        assertEquals(priceListId, response.priceListId());
-        assertEquals(inventoryProductId, response.inventoryProductId());
-        assertTrue(response.mappingConfirmed());
+        thenMappingIsConfirmed(response);
     }
 
     @Test
     void executeShouldRejectWhenSupplierDoesNotBelongToKioskOwner() {
-        UpdatePriceListItemMappingRequest request = request();
+        givenItemPriceListAndSupplierExist(UUID.randomUUID());
 
-        givenItemPriceListAndSupplier(UUID.randomUUID());
+        Executable execution = () -> whenUpdatingMapping(request());
 
-        Executable execution = () -> useCase.execute(request);
-
-        assertThrows(AccessDeniedException.class, execution);
+        thenThrowsOperationNotAllowedException(execution);
     }
 
     @Test
     void executeShouldValidateKioskOwnerId() {
         UpdatePriceListItemMappingRequest request = new UpdatePriceListItemMappingRequest(
-                null,
-                itemId,
-                inventoryProductId
-        );
+                null, ITEM_ID, INVENTORY_PRODUCT_ID);
 
-        Executable execution = () -> useCase.execute(request);
+        Executable execution = () -> whenUpdatingMapping(request);
 
-        assertThrows(IllegalArgumentException.class, execution);
+        thenThrowsIllegalArgumentException(execution);
     }
 
     @Test
     void executeShouldFailWhenItemDoesNotExist() {
-        UpdatePriceListItemMappingRequest request = request();
+        givenItemNotFound();
 
-        when(itemRepository.findById(itemId)).thenReturn(Optional.empty());
+        Executable execution = () -> whenUpdatingMapping(request());
 
-        Executable execution = () -> useCase.execute(request);
-
-        assertEquals("Price list item not found",
-                assertThrows(IllegalArgumentException.class,
-                        execution).getMessage());
+        thenThrowsIllegalArgumentExceptionWithMessage(execution, "Price list item not found");
     }
 
     @Test
     void executeShouldFailWhenPriceListDoesNotExist() {
-        ItemListaPrecioProveedor item = item();
-        UpdatePriceListItemMappingRequest request = request();
+        givenItemExists();
+        givenPriceListNotFound();
 
-        when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
-        when(listaRepository.findById(priceListId)).thenReturn(Optional.empty());
+        Executable execution = () -> whenUpdatingMapping(request());
 
-        Executable execution = () -> useCase.execute(request);
-
-        assertEquals("Associated price list not found",
-                assertThrows(IllegalArgumentException.class,
-                        execution).getMessage());
+        thenThrowsIllegalArgumentExceptionWithMessage(execution, "Associated price list not found");
     }
 
     @Test
     void executeShouldFailWhenSupplierDoesNotExist() {
-        ItemListaPrecioProveedor item = item();
-        ListaPrecioProveedor priceList = priceList();
-        UpdatePriceListItemMappingRequest request = request();
+        givenItemExists();
+        givenPriceListExists();
+        givenSupplierNotFound();
 
-        when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
-        when(listaRepository.findById(priceListId)).thenReturn(Optional.of(priceList));
-        when(proveedorRepository.findById(supplierId)).thenReturn(Optional.empty());
+        Executable execution = () -> whenUpdatingMapping(request());
 
-        Executable execution = () -> useCase.execute(request);
-
-        assertEquals("Associated supplier not found",
-                assertThrows(IllegalArgumentException.class,
-                        execution).getMessage());
+        thenThrowsIllegalArgumentExceptionWithMessage(execution, "Associated supplier not found");
     }
+
 
     private UpdatePriceListItemMappingRequest request() {
         return new UpdatePriceListItemMappingRequest(
-                kioskOwnerId,
-                itemId,
-                inventoryProductId
-        );
+                KIOSK_OWNER_ID, ITEM_ID, INVENTORY_PRODUCT_ID);
     }
 
-    private void givenItemPriceListAndSupplier(UUID ownerId) {
-        when(itemRepository.findById(itemId)).thenReturn(Optional.of(item()));
-        when(listaRepository.findById(priceListId)).thenReturn(Optional.of(priceList()));
-        when(proveedorRepository.findById(supplierId)).thenReturn(Optional.of(supplier(ownerId)));
+    private void givenItemPriceListAndSupplierExist(UUID ownerId) {
+        givenItemExists();
+        givenPriceListExists();
+        when(proveedorRepository.findById(SUPPLIER_ID))
+                .thenReturn(Optional.of(supplier(ownerId)));
+    }
+
+    private void givenItemExists() {
+        when(itemRepository.findById(ITEM_ID)).thenReturn(Optional.of(item()));
+    }
+
+    private void givenItemNotFound() {
+        when(itemRepository.findById(ITEM_ID)).thenReturn(Optional.empty());
+    }
+
+    private void givenPriceListExists() {
+        when(listaRepository.findById(PRICE_LIST_ID)).thenReturn(Optional.of(priceList()));
+    }
+
+    private void givenPriceListNotFound() {
+        when(listaRepository.findById(PRICE_LIST_ID)).thenReturn(Optional.empty());
+    }
+
+    private void givenSupplierNotFound() {
+        when(proveedorRepository.findById(SUPPLIER_ID)).thenReturn(Optional.empty());
+    }
+
+    private void givenSavedItemReturnsItself() {
+        when(itemRepository.save(any(ItemListaPrecioProveedor.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     private ItemListaPrecioProveedor item() {
         ItemListaPrecioProveedor item = new ItemListaPrecioProveedor();
-        item.setId(itemId);
-        item.setListaPrecioId(priceListId);
+        item.setId(ITEM_ID);
+        item.setListaPrecioId(PRICE_LIST_ID);
         item.setNombreProductoProveedor("Alfajor proveedor");
         item.setPrecio(new BigDecimal("350.00"));
         item.setUnidad("caja");
@@ -171,15 +166,41 @@ class UpdatePriceListItemMappingTest {
 
     private ListaPrecioProveedor priceList() {
         ListaPrecioProveedor priceList = new ListaPrecioProveedor();
-        priceList.setId(priceListId);
-        priceList.setProveedorId(supplierId);
+        priceList.setId(PRICE_LIST_ID);
+        priceList.setProveedorId(SUPPLIER_ID);
         return priceList;
     }
 
     private Proveedor supplier(UUID ownerId) {
         Proveedor supplier = new Proveedor();
-        supplier.setId(supplierId);
+        supplier.setId(SUPPLIER_ID);
         supplier.setKiosqueroId(ownerId);
         return supplier;
+    }
+
+    private UpdatePriceListItemMappingResponse whenUpdatingMapping(
+            UpdatePriceListItemMappingRequest request) {
+        return useCase.execute(request);
+    }
+
+    private void thenMappingIsConfirmed(UpdatePriceListItemMappingResponse response) {
+        assertEquals(ITEM_ID, response.id());
+        assertEquals(PRICE_LIST_ID, response.priceListId());
+        assertEquals(INVENTORY_PRODUCT_ID, response.inventoryProductId());
+        assertTrue(response.mappingConfirmed());
+    }
+
+    private void thenThrowsOperationNotAllowedException(Executable execution) {
+        assertThrows(OperationNotAllowedException.class, execution);
+    }
+
+    private void thenThrowsIllegalArgumentException(Executable execution) {
+        assertThrows(IllegalArgumentException.class, execution);
+    }
+
+    private void thenThrowsIllegalArgumentExceptionWithMessage(
+            Executable execution, String message) {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, execution);
+        assertEquals(message, ex.getMessage());
     }
 }
