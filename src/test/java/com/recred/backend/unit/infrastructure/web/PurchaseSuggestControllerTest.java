@@ -10,6 +10,7 @@ import com.recred.backend.application.NotifyPurchaseSuggestionsResponse;
 import com.recred.backend.application.PushNotificationResponse;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.RespondToAISuggestionRequest;
+import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.PurchaseStatus;
@@ -100,6 +101,9 @@ class PurchaseSuggestControllerTest {
 
     @MockitoBean
     private CreateAdvancePurchase createAdvancePurchase;
+
+    @MockitoBean
+    private PrizeHealthyPurchase prizeHealthyPurchase;
 
     @MockitoBean
     private SugerenciaIARepository sugerenciaIARepository;
