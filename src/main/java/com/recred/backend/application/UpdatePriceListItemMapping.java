@@ -6,7 +6,7 @@ import com.recred.backend.domain.models.Proveedor;
 import com.recred.backend.domain.repositories.ItemListaPrecioProveedorRepository;
 import com.recred.backend.domain.repositories.ListaPrecioProveedorRepository;
 import com.recred.backend.domain.repositories.ProveedorRepository;
-import org.springframework.security.access.AccessDeniedException;
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 
 public class UpdatePriceListItemMapping {
 
@@ -58,7 +58,7 @@ public class UpdatePriceListItemMapping {
             UpdatePriceListItemMappingRequest request
     ) {
         if (!supplier.belongsToKiosquero(request.kioskOwnerId())) {
-            throw new AccessDeniedException(
+            throw new OperationNotAllowedException(
                     "You do not have access to modify this price list item");
         }
     }

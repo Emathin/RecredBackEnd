@@ -84,6 +84,8 @@ public class SugerenciaIAEntity {
                 .titulo(this.titulo)
                 .mensaje(this.mensaje)
                 .metadata(this.metadata)
+                .aceptada(this.aceptada)
+                .respondidaEn(this.respondidaEn)
                 .build();
     }
 }

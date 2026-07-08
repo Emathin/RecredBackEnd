@@ -1,7 +1,7 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -21,16 +21,21 @@ public class RespondToAISuggestion {
 
         findSuggestion(request)
                 .ifPresent(suggestion -> respondToSuggestion(suggestion, request.accepted()));
+        
         return new RespondToAISuggestionResponse();
     }
 
-    private Optional<SugerenciaIAEntity> findSuggestion(RespondToAISuggestionRequest request) {
-        return sugerenciaIARepository.findById(request.suggestionId());
+    private Optional<SugerenciaIA> findSuggestion(RespondToAISuggestionRequest request) {
+        return sugerenciaIARepository.findSugerenciaById(request.suggestionId());
     }
 
-    private void respondToSuggestion(SugerenciaIAEntity suggestion, boolean accepted) {
+    private void respondToSuggestion(SugerenciaIA suggestion, boolean accepted) {
         suggestion.setAceptada(accepted);
         suggestion.setRespondidaEn(LocalDateTime.now());
-        sugerenciaIARepository.guardar(suggestion);
+        saveSuggestion(suggestion);
+    }
+    
+    private void saveSuggestion(SugerenciaIA suggestion) {
+        sugerenciaIARepository.save(suggestion);
     }
 }

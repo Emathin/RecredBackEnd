@@ -53,7 +53,7 @@ public class ProcessPresentialPurchase {
 
     @Transactional
     public ProcessPresentialPurchaseResponse execute(ProcessPresentialPurchaseRequest request) {
-        UUID buffetId = requireBuffetId(request);
+        UUID buffetId = request.buffetId();
         Alumno student = findStudent(request.studentId());
         Map<Producto, Integer> resolvedCart = resolveCart(request.cart());
         Purchase purchase = validatedPurchase(student, resolvedCart, buffetId);
@@ -61,13 +61,6 @@ public class ProcessPresentialPurchase {
         processPaymentAndInventory(buffetId, resolvedCart, wallet, purchase.getTotalAmount());
         Purchase savedPurchase = saveAndRegister(purchase, wallet, student);
         return response(savedPurchase);
-    }
-
-    private UUID requireBuffetId(ProcessPresentialPurchaseRequest request) {
-        if (request.buffetId() == null) {
-            throw new IllegalArgumentException("buffetId is required");
-        }
-        return request.buffetId();
     }
 
     private Purchase validatedPurchase(

@@ -19,9 +19,13 @@ public class ManagePromotionStatus {
 
     @Transactional
     public ManagePromotionStatusResponse execute(ManagePromotionStatusRequest request) {
-        LocalDateTime today = LocalDateTime.now().with(LocalTime.MIN);
-        LocalDateTime tomorrow = today.plusDays(1);
+        activateDraftPromotions();
+        expireActivePromotions();
+        return new ManagePromotionStatusResponse();
+    }
 
+    private void activateDraftPromotions() {
+        LocalDateTime tomorrow = LocalDateTime.now().with(LocalTime.MIN).plusDays(1);
         List<Promotion> promotionsToActivate =
                 promotionRepository.findDraftPromotionsByStartDateBefore(tomorrow);
 
@@ -31,7 +35,9 @@ public class ManagePromotionStatus {
                 promotionRepository.save(promotion);
             }
         }
+    }
 
+    private void expireActivePromotions() {
         List<Promotion> activePromotions = promotionRepository.findAllActive();
         LocalDateTime now = LocalDateTime.now();
         for (Promotion promotion : activePromotions) {
@@ -40,7 +46,5 @@ public class ManagePromotionStatus {
                 promotionRepository.save(promotion);
             }
         }
-
-        return new ManagePromotionStatusResponse();
     }
 }

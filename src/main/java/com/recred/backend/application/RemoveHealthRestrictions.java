@@ -15,12 +15,16 @@ public class RemoveHealthRestrictions {
     public RemoveHealthRestrictionsResponse execute(RemoveHealthRestrictionsRequest request) {
         Alumno alumno = this.findAlumnoById(request.alumnoId());
         alumno.removerRestriccionSalud(request.clasificacionId());
-        alumnoRepository.save(alumno);
+        saveAlumno(alumno);
         return new RemoveHealthRestrictionsResponse();
     }
 
     private Alumno findAlumnoById(UUID id) {
         return alumnoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
+    }
+
+    private void saveAlumno(Alumno alumno) {
+        alumnoRepository.save(alumno);
     }
 }
