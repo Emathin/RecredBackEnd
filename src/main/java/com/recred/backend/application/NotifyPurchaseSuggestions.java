@@ -2,22 +2,28 @@ package com.recred.backend.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recred.backend.domain.models.Notification;
 import com.recred.backend.domain.models.PushNotification;
+import com.recred.backend.domain.models.TipoNotificacion;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.repositories.NotificationRepository;
 import com.recred.backend.domain.services.PushNotificationSender;
 import com.recred.backend.domain.services.UsuarioService;
-import com.recred.backend.domain.repositories.NotificationRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class NotifyPurchaseSuggestions {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NotifyPurchaseSuggestions.class);
+    private static final String NOTIFICATION_TITLE = "Recomendación para tu recreo";
+    private static final String PURCHASE_SUGGESTION_TYPE = "PURCHASE_SUGGESTION";
 
     private static final String[] SUGGESTION_MESSAGES = {
             "Elegí mejor, ganá más. Comprá esta opción saludable y sumá puntos.",
@@ -37,7 +43,7 @@ public class NotifyPurchaseSuggestions {
             PushNotificationSender pushNotificationSender,
             UsuarioService usuarioService,
             ObjectMapper objectMapper,
-           NotificationRepository notificationRepository
+            NotificationRepository notificationRepository
     ) {
         this.purchaseSuggestIA = purchaseSuggestIA;
         this.pushNotificationSender = pushNotificationSender;
@@ -46,21 +52,47 @@ public class NotifyPurchaseSuggestions {
         this.notificationRepository = notificationRepository;
     }
 
-    public NotifyPurchaseSuggestionsResponse execute(NotifyPurchaseSuggestionsRequest request) {
-        LOGGER.info("Buscando sugerencias para el usuario: {}", request.cognitoId());
-        Optional<PurchaseSuggestionResponse> suggestion = purchaseSuggestIA.execute(
-                new PurchaseSuggestIARequest(request.cognitoId())
-        );
+    public NotifyPurchaseSuggestionsResponse execute(
+            NotifyPurchaseSuggestionsRequest notificationRequest
+    ) {
+        Optional<PurchaseSuggestionResponse> suggestion = findSuggestion(notificationRequest);
+        return buildNotificationResponse(notificationRequest, suggestion);
+    }
 
+    private Optional<PurchaseSuggestionResponse> findSuggestion(
+            NotifyPurchaseSuggestionsRequest notificationRequest
+    ) {
+        LOGGER.info("Buscando sugerencias para el usuario: {}", notificationRequest.cognitoId());
+        return purchaseSuggestIA.execute(
+                new PurchaseSuggestIARequest(notificationRequest.cognitoId())
+        );
+    }
+
+    private NotifyPurchaseSuggestionsResponse buildNotificationResponse(
+            NotifyPurchaseSuggestionsRequest notificationRequest,
+            Optional<PurchaseSuggestionResponse> suggestion
+    ) {
         if (suggestion.isEmpty()) {
-            LOGGER.info("No se encontró sugerencia activa para notificar al usuario: {}",
-                    request.cognitoId());
-            return new NotifyPurchaseSuggestionsResponse(null);
+            return noSuggestionFound(notificationRequest);
         }
+        return notifyUser(notificationRequest, suggestion.get());
+    }
 
+    private NotifyPurchaseSuggestionsResponse notifyUser(
+            NotifyPurchaseSuggestionsRequest notificationRequest,
+            PurchaseSuggestionResponse suggestion
+    ) {
         return new NotifyPurchaseSuggestionsResponse(
-                sendNotification(request.cognitoId(), suggestion.get())
+                sendNotification(notificationRequest.cognitoId(), suggestion)
         );
+    }
+
+    private NotifyPurchaseSuggestionsResponse noSuggestionFound(
+            NotifyPurchaseSuggestionsRequest notificationRequest
+    ) {
+        LOGGER.info("No se encontró sugerencia activa para notificar al usuario: {}",
+                notificationRequest.cognitoId());
+        return new NotifyPurchaseSuggestionsResponse(null);
     }
 
     private PushNotificationResponse sendNotification(
@@ -79,22 +111,7 @@ public class NotifyPurchaseSuggestions {
                 message
         );
         pushNotificationSender.send(notification);
-
-        com.recred.backend.domain.models.Notification dbNotification =
-                new com.recred.backend.domain.models.Notification(
-                        null,
-                        com.recred.backend.domain.models.TipoNotificacion.SUGERENCIA_IA,
-                        "Recomendación para tu recreo",
-                        message,
-                        false,
-                        java.time.LocalDateTime.now(),
-                        null,
-                        suggestion.alumnoId(),
-                        suggestion.producto() != null ? suggestion.producto().id() : null,
-                        null,
-                        suggestion.id()
-                );
-        notificationRepository.save(dbNotification, usuario.getId());
+        saveNotificationForUser(usuario, suggestion, message);
 
         return PushNotificationResponse.fromDomain(notification);
     }
@@ -110,15 +127,49 @@ public class NotifyPurchaseSuggestions {
         return PushNotification.dataOnly(
                 userId,
                 Map.of(
-                        "type", "PURCHASE_SUGGESTION",
+                        "type", PURCHASE_SUGGESTION_TYPE,
                         "rol", rol,
                         "sugerenciaId", suggestion.id().toString(),
-                        "titulo", "Recomendación para tu recreo",
+                        "titulo", NOTIFICATION_TITLE,
                         "mensaje", message,
                         "producto", productoJson,
                         "alumnoId", suggestion.alumnoId().toString()
                 )
         );
+    }
+
+    private void saveNotificationForUser(
+            Usuario usuario,
+            PurchaseSuggestionResponse suggestion,
+            String message
+    ) {
+        notificationRepository.save(
+                buildDbNotification(suggestion, message),
+                usuario.getId()
+        );
+    }
+
+    private Notification buildDbNotification(
+            PurchaseSuggestionResponse suggestion,
+            String message
+    ) {
+        return new Notification(
+                null,
+                TipoNotificacion.SUGERENCIA_IA,
+                NOTIFICATION_TITLE,
+                message,
+                false,
+                LocalDateTime.now(),
+                null,
+                suggestion.alumnoId(),
+                productId(suggestion),
+                null,
+                suggestion.id()
+        );
+    }
+
+    private UUID productId(PurchaseSuggestionResponse suggestion) {
+        return suggestion.producto() != null ? suggestion.producto().id() : null;
     }
 
     private String productJson(PurchaseSuggestionResponse suggestion) {
