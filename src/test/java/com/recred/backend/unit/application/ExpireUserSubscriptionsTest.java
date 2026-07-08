@@ -3,6 +3,7 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.ExpireUserSubscriptions;
 import com.recred.backend.application.ExpireUserSubscriptionsRequest;
 import com.recred.backend.application.ExpireUserSubscriptionsResponse;
+import com.recred.backend.application.TutorChildrenPlanPropagator;
 import com.recred.backend.domain.models.EstadoSuscripcion;
 import com.recred.backend.domain.models.PeriodoSuscripcion;
 import com.recred.backend.domain.models.RolUsuario;
@@ -46,6 +47,9 @@ class ExpireUserSubscriptionsTest {
     @Mock
     private UsuarioRepository userRepository;
 
+    @Mock
+    private TutorChildrenPlanPropagator tutorChildrenPlanPropagator;
+
     private ExpireUserSubscriptions useCase;
 
     private UUID userId;
@@ -59,6 +63,7 @@ class ExpireUserSubscriptionsTest {
         useCase = new ExpireUserSubscriptions(
                 subscriptionRepository,
                 userRepository,
+                tutorChildrenPlanPropagator,
                 CLOCK
         );
     }
@@ -76,6 +81,7 @@ class ExpireUserSubscriptionsTest {
         thenSubscriptionStateIsExpired();
         thenSubscriptionWasSaved();
         thenUserReturnedToFreePlan();
+        thenPlanChangeWasPropagated();
         thenUserWasNotSavedDirectly();
     }
 
@@ -89,6 +95,7 @@ class ExpireUserSubscriptionsTest {
         thenNoSubscriptionsWereExpired();
         thenNoSubscriptionWasSaved();
         thenNoUserPlanWasUpdated();
+        thenPlanChangeWasNotPropagated();
     }
 
     private void givenExpirationScenario() {
@@ -141,6 +148,14 @@ class ExpireUserSubscriptionsTest {
 
     private void thenUserReturnedToFreePlan() {
         verify(userRepository).updatePlan(userId, TipoPlan.GRATUITO);
+    }
+
+    private void thenPlanChangeWasPropagated() {
+        verify(tutorChildrenPlanPropagator).propagatePlanChangeFor(user);
+    }
+
+    private void thenPlanChangeWasNotPropagated() {
+        verify(tutorChildrenPlanPropagator, never()).propagatePlanChangeFor(any(Usuario.class));
     }
 
     private void thenUserWasNotSavedDirectly() {

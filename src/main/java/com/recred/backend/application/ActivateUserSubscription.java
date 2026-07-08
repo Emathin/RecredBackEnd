@@ -16,15 +16,18 @@ public class ActivateUserSubscription {
 
     private final UsuarioRepository usuarioRepository;
     private final SuscripcionUsuarioRepository subscriptionRepository;
+    private final TutorChildrenPlanPropagator tutorChildrenPlanPropagator;
     private final Clock clock;
 
     public ActivateUserSubscription(
             UsuarioRepository usuarioRepository,
             SuscripcionUsuarioRepository subscriptionRepository,
+            TutorChildrenPlanPropagator tutorChildrenPlanPropagator,
             Clock clock
     ) {
         this.usuarioRepository = usuarioRepository;
         this.subscriptionRepository = subscriptionRepository;
+        this.tutorChildrenPlanPropagator = tutorChildrenPlanPropagator;
         this.clock = clock;
     }
 
@@ -77,6 +80,7 @@ public class ActivateUserSubscription {
     private void activateUserPlan(Usuario user, TipoPlan plan) {
         user.activatePaidPlan(plan);
         usuarioRepository.updatePlan(user.getId(), user.getPlan());
+        tutorChildrenPlanPropagator.propagatePlanChangeFor(user);
     }
 
     private SuscripcionUsuario saveSubscription(SuscripcionUsuario subscription) {

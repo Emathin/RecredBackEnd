@@ -17,7 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-class SchoolAssistantFixedTopicResponses {
+public class SchoolAssistantFixedTopicResponses {
 
     private static final int RECENT_PURCHASES_TO_SHOW = 3;
     private static final int FREQUENT_PURCHASES_TO_SHOW = 3;
@@ -30,7 +30,7 @@ class SchoolAssistantFixedTopicResponses {
     private final SchoolAssistantTutorFactsFormatter tutorFactsFormatter;
     private final SchoolAssistantReplyBuilder replyBuilder;
 
-    SchoolAssistantFixedTopicResponses(
+    public SchoolAssistantFixedTopicResponses(
             PurchaseRepository purchaseRepository,
             ProductRepository productRepository,
             SchoolAssistantPurchasePatternService purchasePatternService,
@@ -46,18 +46,6 @@ class SchoolAssistantFixedTopicResponses {
         this.contentFormatter = contentFormatter;
         this.tutorFactsFormatter = tutorFactsFormatter;
         this.replyBuilder = replyBuilder;
-    }
-
-    SchoolAssistantFixedReply forbiddenQuickPurchaseReply(
-            SchoolAssistantFixedTopicRequest request
-    ) {
-        return reply(
-                "Por ahora solo los alumnos pueden hacer compras rapidas "
-                        + "desde el asistente.",
-                request.intent(),
-                forbiddenQuickPurchaseAction(),
-                request.context().role()
-        );
     }
 
     SchoolAssistantFixedReply kiosqueroPendingOrdersReply(
@@ -331,10 +319,6 @@ class SchoolAssistantFixedTopicResponses {
             Map<String, Object> data
     ) {
         return replyBuilder.informativeAction(type, data);
-    }
-
-    private SchoolAssistantAction forbiddenQuickPurchaseAction() {
-        return replyBuilder.forbiddenQuickPurchaseAction();
     }
 
     private List<EstadoCompra> pendingStatuses() {

@@ -3,6 +3,7 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.ActivateUserSubscription;
 import com.recred.backend.application.ActivateUserSubscriptionRequest;
 import com.recred.backend.application.ActivateUserSubscriptionResponse;
+import com.recred.backend.application.TutorChildrenPlanPropagator;
 import com.recred.backend.domain.exceptions.UserRoleCannotSubscribeException;
 import com.recred.backend.domain.exceptions.UsuarioNoEncontradoException;
 import com.recred.backend.domain.models.EstadoSuscripcion;
@@ -51,6 +52,9 @@ class ActivateUserSubscriptionTest {
     @Mock
     private SuscripcionUsuarioRepository subscriptionRepository;
 
+    @Mock
+    private TutorChildrenPlanPropagator tutorChildrenPlanPropagator;
+
     private ActivateUserSubscription useCase;
 
     private UUID userId;
@@ -65,6 +69,7 @@ class ActivateUserSubscriptionTest {
         useCase = new ActivateUserSubscription(
                 userRepository,
                 subscriptionRepository,
+                tutorChildrenPlanPropagator,
                 CLOCK
         );
     }
@@ -80,6 +85,7 @@ class ActivateUserSubscriptionTest {
 
         thenSubscriptionWasActivated(TipoPlan.INTERMEDIO);
         thenUserPlanWasUpdated(TipoPlan.INTERMEDIO);
+        thenPlanChangeWasPropagated();
         thenNewSubscriptionWasSaved();
     }
 
@@ -93,6 +99,7 @@ class ActivateUserSubscriptionTest {
         whenActivatingUserSubscription();
 
         thenPreviousSubscriptionWasCancelled();
+        thenPlanChangeWasPropagated();
         thenNewSubscriptionWasActivated();
     }
 
@@ -106,6 +113,7 @@ class ActivateUserSubscriptionTest {
         thenUserWasNotFound();
         thenSubscriptionWasNotSaved();
         thenUserPlanWasNotUpdated();
+        thenPlanChangeWasNotPropagated();
     }
 
     @Test
@@ -119,6 +127,7 @@ class ActivateUserSubscriptionTest {
         thenSubscriptionWasNotSaved();
         thenUserWasNotSaved();
         thenUserPlanWasNotUpdated();
+        thenPlanChangeWasNotPropagated();
     }
 
     private void givenUserSubscriptionScenario(RolUsuario role, TipoPlan plan) {
@@ -175,6 +184,14 @@ class ActivateUserSubscriptionTest {
     private void thenUserPlanWasUpdated(TipoPlan plan) {
         verify(userRepository).updatePlan(userId, plan);
         verify(userRepository, never()).save(any(Usuario.class));
+    }
+
+    private void thenPlanChangeWasPropagated() {
+        verify(tutorChildrenPlanPropagator).propagatePlanChangeFor(user);
+    }
+
+    private void thenPlanChangeWasNotPropagated() {
+        verify(tutorChildrenPlanPropagator, never()).propagatePlanChangeFor(any(Usuario.class));
     }
 
     private void thenNewSubscriptionWasSaved() {
