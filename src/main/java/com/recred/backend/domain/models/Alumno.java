@@ -173,12 +173,12 @@ public class Alumno {
     public RewardLevel calculateCurrentLevel() {
         int points = this.puntosRecompensa != null ? this.puntosRecompensa : 0;
         if (points >= 250) {
-            return RewardLevel.GOLD;
+            return RewardLevel.GOAT;
         }
         if (points >= 100) {
-            return RewardLevel.SILVER;
+            return RewardLevel.CRACK;
         }
-        return RewardLevel.BRONZE;
+        return RewardLevel.PRINCIPIANTE;
     }
 
     public Integer getPointsToNextLevel() {

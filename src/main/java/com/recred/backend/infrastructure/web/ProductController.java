@@ -91,13 +91,19 @@ public class ProductController {
     private BigDecimal resolveNewPrice(
             BigDecimal queryPrice,
             UpdateProductPriceRequestDTO request) {
+        BigDecimal price = null;
         if (queryPrice != null) {
-            return queryPrice;
+            price = queryPrice;
+        } else if (request != null) {
+            price = request.nuevoPrecio();
         }
-        if (request != null) {
-            return request.nuevoPrecio();
+        if (price == null) {
+            throw new IllegalArgumentException("Product price is required");
         }
-        throw new IllegalArgumentException("Product price is required");
+        if (price.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Product price must be greater than zero");
+        }
+        return price;
     }
 
     private UUID resolveBuffetId(UUID queryBuffetId, UpdateProductPriceRequestDTO request) {

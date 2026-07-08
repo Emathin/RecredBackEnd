@@ -14,70 +14,104 @@ public class ImportTutorInvitationsFromCsv {
         this.inviteTutorToSchool = inviteTutorToSchool;
     }
 
-    public TutorInvitationImportResult execute(String directorCognitoSubject, String csvContent) {
-        if (csvContent == null || csvContent.isBlank()) {
-            throw new IllegalArgumentException("El archivo CSV esta vacio");
-        }
-
-        List<String> lines = csvContent.lines().toList();
-        if (lines.isEmpty()) {
-            throw new IllegalArgumentException("El archivo CSV esta vacio");
-        }
-
+    public TutorInvitationImportResult execute(ImportTutorInvitationsFromCsvRequest request) {
+        List<String> lines = splitIntoLines(request.csvContent());
         Header header = parseHeader(lines.get(0));
-        Set<String> seenEmails = new HashSet<>();
-        int created = 0;
-        int resent = 0;
-        int alreadyAssociated = 0;
-        List<TutorInvitationImportError> errors = new ArrayList<>();
+        
+        ImportContext context = processAllRows(request.directorCognitoSubject(), lines, header);
 
+        return buildResult(lines, context);
+    }
+
+    private List<String> splitIntoLines(String csvContent) {
+        return csvContent.lines().toList();
+    }
+
+    private ImportContext processAllRows(
+            String directorCognitoSubject, List<String> lines, Header header) {
+        ImportContext context = new ImportContext();
         for (int i = 1; i < lines.size(); i++) {
-            String line = lines.get(i);
-            if (line == null || line.isBlank()) {
-                continue;
-            }
-            int row = i + 1;
-            List<String> values = parseCsvLine(line);
-            String rawEmail = value(values, header.emailIndex());
-            String email = rawEmail == null ? "" : rawEmail.trim().toLowerCase(Locale.ROOT);
-            if (email.isBlank()) {
-                errors.add(new TutorInvitationImportError(row, email, "El email es obligatorio"));
-                continue;
-            }
-            if (!seenEmails.add(email)) {
-                errors.add(new TutorInvitationImportError(row, email,
-                        "El email esta duplicado en el archivo"));
-                continue;
-            }
-            try {
-                InviteTutorToSchool.TutorInvitationResult result = inviteTutorToSchool.execute(
-                        directorCognitoSubject,
-                        new InviteTutorToSchool.TutorInvitationCommand(
-                                email,
-                                value(values, header.firstNameIndex()),
-                                value(values, header.lastNameIndex()),
-                                value(values, header.phoneIndex())
-                        ));
-                if ("CREATED".equals(result.status())
-                        || "CREATED_EMAIL_ERROR".equals(result.status())) {
-                    created++;
-                } else if ("RESENT".equals(result.status())
-                        || "RESENT_EMAIL_ERROR".equals(result.status())) {
-                    resent++;
-                } else if ("ALREADY_ASSOCIATED".equals(result.status())) {
-                    alreadyAssociated++;
-                }
-            } catch (RuntimeException exception) {
-                errors.add(new TutorInvitationImportError(row, email, exception.getMessage()));
-            }
+            processRow(directorCognitoSubject, lines.get(i), i + 1, header, context);
         }
+        return context;
+    }
 
+    private TutorInvitationImportResult buildResult(List<String> lines, ImportContext context) {
         return new TutorInvitationImportResult(
                 Math.max(lines.size() - 1, 0),
-                created,
-                resent,
-                alreadyAssociated,
-                errors);
+                context.created,
+                context.resent,
+                context.alreadyAssociated,
+                context.errors);
+    }
+
+    private void processRow(
+            String directorCognitoSubject, String line, int row, 
+            Header header, ImportContext context) {
+        if (line == null || line.isBlank()) {
+            return;
+        }
+
+        List<String> values = parseCsvLine(line);
+        String email = extractEmail(values, header);
+
+        if (email.isBlank()) {
+            context.errors.add(
+                    new TutorInvitationImportError(row, email, "El email es obligatorio"));
+            return;
+        }
+
+        if (!context.seenEmails.add(email)) {
+            context.errors.add(
+                    new TutorInvitationImportError(
+                            row, email, "El email esta duplicado en el archivo"));
+            return;
+        }
+
+        inviteAndAccumulateResult(directorCognitoSubject, values, email, row, header, context);
+    }
+
+    private String extractEmail(List<String> values, Header header) {
+        String rawEmail = value(values, header.emailIndex());
+        return rawEmail == null ? "" : rawEmail.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static final java.util.regex.Pattern EMAIL_PATTERN =
+            java.util.regex.Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    private void inviteAndAccumulateResult(
+            String directorCognitoSubject, List<String> values, String email, 
+            int row, Header header, ImportContext context) {
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            context.errors.add(new TutorInvitationImportError(row, email, "El email no es valido"));
+            return;
+        }
+
+        try {
+            InviteTutorToSchool.TutorInvitationResult result = inviteTutorToSchool.execute(
+                    new InviteTutorToSchoolRequest(
+                            directorCognitoSubject,
+                            email,
+                            value(values, header.firstNameIndex()),
+                            value(values, header.lastNameIndex()),
+                            value(values, header.phoneIndex())
+                    ));
+            
+            accumulateResult(result.status(), context);
+        } catch (RuntimeException exception) {
+            context.errors.add(new TutorInvitationImportError(row, email, exception.getMessage()));
+        }
+    }
+
+    private void accumulateResult(String status, ImportContext context) {
+        if ("CREATED".equals(status) || "CREATED_EMAIL_ERROR".equals(status)) {
+            context.created++;
+        } else if ("RESENT".equals(status) || "RESENT_EMAIL_ERROR".equals(status)) {
+            context.resent++;
+        } else if ("ALREADY_ASSOCIATED".equals(status)) {
+            context.alreadyAssociated++;
+        }
     }
 
     private Header parseHeader(String headerLine) {
@@ -148,5 +182,13 @@ public class ImportTutorInvitationsFromCsv {
             String email,
             String message
     ) {
+    }
+
+    private static class ImportContext {
+        Set<String> seenEmails = new HashSet<>();
+        int created = 0;
+        int resent = 0;
+        int alreadyAssociated = 0;
+        List<TutorInvitationImportError> errors = new ArrayList<>();
     }
 }

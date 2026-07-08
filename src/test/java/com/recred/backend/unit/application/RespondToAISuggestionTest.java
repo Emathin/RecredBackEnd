@@ -2,8 +2,8 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.RespondToAISuggestionRequest;
+import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -23,6 +22,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RespondToAISuggestionTest {
+
+    private static final UUID SUGGESTION_ID = UUID.randomUUID();
 
     @Mock
     private SugerenciaIARepository sugerenciaIARepository;
@@ -36,47 +37,56 @@ class RespondToAISuggestionTest {
 
     @Test
     void execute_WhenSuggestionExists_ShouldMarkItAsResponded() {
-        UUID suggestionId = randomUUID();
-        SugerenciaIAEntity suggestion = suggestion(suggestionId);
-        givenSuggestionExists(suggestionId, suggestion);
+        SugerenciaIA suggestion = givenSuggestion();
+        givenSuggestionExists(suggestion);
+        RespondToAISuggestionRequest request = givenRequest(true);
 
-        whenRespondingToSuggestion(suggestionId, true);
+        whenExecute(request);
 
-        assertEquals(true, suggestion.getAceptada());
-        assertNotNull(suggestion.getRespondidaEn());
-        verify(sugerenciaIARepository).guardar(suggestion);
+        thenSuggestionIsRespondedAndSaved(suggestion, true);
     }
 
     @Test
     void execute_WhenSuggestionDoesNotExist_ShouldDoNothing() {
-        UUID suggestionId = randomUUID();
-        givenSuggestionDoesNotExist(suggestionId);
+        givenSuggestionDoesNotExist();
+        RespondToAISuggestionRequest request = givenRequest(false);
 
-        whenRespondingToSuggestion(suggestionId, false);
+        whenExecute(request);
 
-        verify(sugerenciaIARepository, never()).guardar(any(SugerenciaIAEntity.class));
+        thenNoSuggestionIsSaved();
     }
 
-    private RespondToAISuggestionRequest request(UUID suggestionId, boolean accepted) {
-        return new RespondToAISuggestionRequest(suggestionId, accepted);
-    }
-
-    private void whenRespondingToSuggestion(UUID suggestionId, boolean accepted) {
-        useCase.execute(request(suggestionId, accepted));
-    }
-
-    private void givenSuggestionExists(UUID suggestionId, SugerenciaIAEntity suggestion) {
-        when(sugerenciaIARepository.findById(suggestionId)).thenReturn(Optional.of(suggestion));
-    }
-
-    private void givenSuggestionDoesNotExist(UUID suggestionId) {
-        when(sugerenciaIARepository.findById(suggestionId)).thenReturn(Optional.empty());
-    }
-
-    private SugerenciaIAEntity suggestion(UUID suggestionId) {
-        SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
-        suggestion.setId(suggestionId);
+    private SugerenciaIA givenSuggestion() {
+        SugerenciaIA suggestion = new SugerenciaIA();
+        suggestion.setId(SUGGESTION_ID);
         return suggestion;
     }
 
+    private RespondToAISuggestionRequest givenRequest(boolean accepted) {
+        return new RespondToAISuggestionRequest(SUGGESTION_ID, accepted);
+    }
+
+    private void givenSuggestionExists(SugerenciaIA suggestion) {
+        when(sugerenciaIARepository.findSugerenciaById(SUGGESTION_ID))
+                .thenReturn(Optional.of(suggestion));
+    }
+
+    private void givenSuggestionDoesNotExist() {
+        when(sugerenciaIARepository.findSugerenciaById(SUGGESTION_ID))
+                .thenReturn(Optional.empty());
+    }
+
+    private void whenExecute(RespondToAISuggestionRequest request) {
+        useCase.execute(request);
+    }
+
+    private void thenSuggestionIsRespondedAndSaved(SugerenciaIA suggestion, boolean expectedAccepted) {
+        assertEquals(expectedAccepted, suggestion.getAceptada());
+        assertNotNull(suggestion.getRespondidaEn());
+        verify(sugerenciaIARepository).save(suggestion);
+    }
+
+    private void thenNoSuggestionIsSaved() {
+        verify(sugerenciaIARepository, never()).save(any(SugerenciaIA.class));
+    }
 }

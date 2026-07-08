@@ -16,11 +16,17 @@ public class DeactivateTimeSlot {
     @Transactional
     public TimeSlotDetailsResponse execute(DeactivateTimeSlotRequest request) {
         TimeSlotValidation.validateIds(request.colegioId(), request.slotId());
-        FranjaHoraria slot = repository.findByIdAndColegioId(
-                        request.slotId(),
-                        request.colegioId())
-                .orElseThrow(() -> new TimeSlotNotFoundException(request.slotId()));
+        FranjaHoraria slot = findSlot(request);
         slot.setActivo(false);
-        return TimeSlotDetailsResponse.fromDomain(repository.save(slot));
+        return TimeSlotDetailsResponse.fromDomain(saveSlot(slot));
+    }
+
+    private FranjaHoraria findSlot(DeactivateTimeSlotRequest request) {
+        return repository.findByIdAndColegioId(request.slotId(), request.colegioId())
+                .orElseThrow(() -> new TimeSlotNotFoundException(request.slotId()));
+    }
+
+    private FranjaHoraria saveSlot(FranjaHoraria slot) {
+        return repository.save(slot);
     }
 }

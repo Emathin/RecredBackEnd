@@ -36,7 +36,7 @@ class PrizeHealthyPurchaseTest {
     private PrizeHealthyPurchase prizeHealthyPurchase;
 
     @Test
-    void execute_DebePremiarConNivelBronce_CuandoEsLaPrimeraCompraSaludable() {
+    void execute_DebePremiarConNivelPrincipiante_CuandoEsLaPrimeraCompraSaludable() {
         UUID alumnoId = UUID.randomUUID();
         UUID compraId = UUID.randomUUID();
         UUID suggestionId = UUID.randomUUID();
@@ -56,11 +56,11 @@ class PrizeHealthyPurchaseTest {
 
         ArgumentCaptor<Alumno> alumnoCaptor = ArgumentCaptor.forClass(Alumno.class);
         verify(alumnoRepository).save(alumnoCaptor.capture());
-        assertEquals(RewardLevel.BRONZE.getPoints(), alumnoCaptor.getValue().getPuntosRecompensa());
+        assertEquals(RewardLevel.PRINCIPIANTE.getPoints(), alumnoCaptor.getValue().getPuntosRecompensa());
     }
 
     @Test
-    void execute_DebePremiarConNivelPlata_CuandoTieneTresComprasEnSieteDias() {
+    void execute_DebePremiarConNivelCrack_CuandoTieneTresComprasEnSieteDias() {
         UUID alumnoId = UUID.randomUUID();
         UUID compraId = UUID.randomUUID();
         UUID suggestionId = UUID.randomUUID();
@@ -80,11 +80,11 @@ class PrizeHealthyPurchaseTest {
 
         ArgumentCaptor<Alumno> alumnoCaptor = ArgumentCaptor.forClass(Alumno.class);
         verify(alumnoRepository).save(alumnoCaptor.capture());
-        assertEquals(10 + RewardLevel.SILVER.getPoints(), alumnoCaptor.getValue().getPuntosRecompensa());
+        assertEquals(10 + RewardLevel.CRACK.getPoints(), alumnoCaptor.getValue().getPuntosRecompensa());
     }
 
     @Test
-    void execute_DebePremiarConNivelOro_CuandoTieneMasDeCincoComprasEnQuinceDias() {
+    void execute_DebePremiarConNivelGoat_CuandoTieneMasDeCincoComprasEnQuinceDias() {
         UUID alumnoId = UUID.randomUUID();
         UUID compraId = UUID.randomUUID();
         UUID suggestionId = UUID.randomUUID();
@@ -111,7 +111,7 @@ class PrizeHealthyPurchaseTest {
 
         ArgumentCaptor<Alumno> alumnoCaptor = ArgumentCaptor.forClass(Alumno.class);
         verify(alumnoRepository).save(alumnoCaptor.capture());
-        assertEquals(50 + RewardLevel.GOLD.getPoints(), alumnoCaptor.getValue().getPuntosRecompensa());
+        assertEquals(50 + RewardLevel.GOAT.getPoints(), alumnoCaptor.getValue().getPuntosRecompensa());
     }
 
     @Test

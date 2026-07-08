@@ -51,7 +51,7 @@ public class UpdateTimeSlot {
         requireEditable(slot, request, descripcion);
         requireNoOverlap(slot, request);
         update(slot, request, descripcion, cupoMaximo, minutosCorte);
-        return TimeSlotDetailsResponse.fromDomain(franjaHorariaRepository.save(slot));
+        return TimeSlotDetailsResponse.fromDomain(saveSlot(slot));
     }
 
     private void requireActiveSchool(UpdateTimeSlotRequest request) {
@@ -113,5 +113,9 @@ public class UpdateTimeSlot {
         slot.setHoraFin(request.horaFin());
         slot.setCupoMaximo(cupoMaximo);
         slot.setMinutosCorte(minutosCorte);
+    }
+
+    private FranjaHoraria saveSlot(FranjaHoraria slot) {
+        return franjaHorariaRepository.save(slot);
     }
 }

@@ -14,7 +14,8 @@ import com.recred.backend.infrastructure.entities.NotificacionEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
-import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
+import com.recred.backend.
+        infrastructure.push.PushNotificationRequestedEvent;
 import jakarta.persistence.EntityManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -51,7 +52,11 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
 
     @Override
     public SugerenciaIA save(SugerenciaIA sugerencia) {
-        SugerenciaIAEntity entity = new SugerenciaIAEntity();
+        SugerenciaIAEntity entity = sugerencia.getId() != null
+                ? springDataRepository.findById(sugerencia.getId())
+                        .orElseGet(SugerenciaIAEntity::new)
+                : new SugerenciaIAEntity();
+
         entity.setTipo(sugerencia.getTipo());
         entity.setTitulo(sugerencia.getTitulo());
         entity.setMensaje(sugerencia.getMensaje());
@@ -65,7 +70,8 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
         if (sugerencia.getProductoId() != null) {
             entity.setProductoEntity(reference(ProductoEntity.class, sugerencia.getProductoId()));
         }
-        entity.setAceptada(false);
+        entity.setAceptada(sugerencia.getAceptada() != null ? sugerencia.getAceptada() : false);
+        entity.setRespondidaEn(sugerencia.getRespondidaEn());
 
         SugerenciaIAEntity savedEntity = springDataRepository.save(entity);
         sugerencia.setId(savedEntity.getId());
@@ -194,6 +200,11 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
     @Override
     public java.util.Optional<SugerenciaIAEntity> findById(UUID id) {
         return springDataRepository.findById(id);
+    }
+
+    @Override
+    public java.util.Optional<SugerenciaIA> findSugerenciaById(UUID id) {
+        return springDataRepository.findById(id).map(SugerenciaIAEntity::toDomain);
     }
 
     private java.util.Optional<UUID> suggestedProductId(SugerenciaIAEntity suggestion) {

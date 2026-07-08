@@ -1,9 +1,9 @@
 package com.recred.backend.domain.models;
 
 public enum RewardLevel {
-    BRONZE(10, "¡Buen comienzo! Seguí eligiendo sano."),
-    SILVER(25, "¡Excelente ritmo! Tu cuerpo te lo agradece."),
-    GOLD(50, "¡Sos un experto saludable! Recompensa máxima alcanzada.");
+    PRINCIPIANTE(10, "¡Buen inicio! Seguí eligiendo sano para sumar puntos."),
+    CRACK(25, "¡Estás a otro nivel! Ser sano te sale natural."),
+    GOAT(50, "¡Sos el GOAT! Nadie te gana eligiendo snacks saludables.");
 
     private final int points;
     private final String message;
@@ -23,11 +23,11 @@ public enum RewardLevel {
 
     public static RewardLevel forHealthyPurchaseHistory(long last7Days, long last15Days) {
         if (last15Days > 5) {
-            return GOLD;
+            return GOAT;
         }
         if (last7Days >= 3) {
-            return SILVER;
+            return CRACK;
         }
-        return BRONZE;
+        return PRINCIPIANTE;
     }
 }

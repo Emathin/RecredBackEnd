@@ -80,10 +80,13 @@ public class SugerenciaIAEntity {
                 .alumnoId(this.alumnoEntity != null ? this.alumnoEntity.getId() : null)
                 .buffetId(this.buffetEntity != null ? this.buffetEntity.getId() : null)
                 .productoId(this.productoEntity != null ? this.productoEntity.getId() : null)
+                .producto(this.productoEntity != null ? this.productoEntity.toDomain() : null)
                 .tipo(this.tipo)
                 .titulo(this.titulo)
                 .mensaje(this.mensaje)
                 .metadata(this.metadata)
+                .aceptada(this.aceptada)
+                .respondidaEn(this.respondidaEn)
                 .build();
     }
 }

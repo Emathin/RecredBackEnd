@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.InviteTutorToSchool;
+import com.recred.backend.application.InviteTutorToSchoolRequest;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Tutor;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
@@ -44,6 +46,8 @@ import static org.mockito.Mockito.when;
 class InviteTutorToSchoolTest {
 
     private static final String DIRECTOR_SUBJECT = "director-sub";
+    private static final String TUTOR_EMAIL = "parent@test.com";
+    private static final UUID SCHOOL_ID = UUID.randomUUID();
     private static final Clock CLOCK = Clock.fixed(
             Instant.parse("2026-07-02T12:00:00Z"),
             ZoneOffset.UTC);
@@ -58,27 +62,21 @@ class InviteTutorToSchoolTest {
     private TutorInvitationRepository invitationRepository;
     @Mock
     private TutorInvitationEmailSender emailSender;
-    @Captor
-    private ArgumentCaptor<TutorInvitation> invitationCaptor;
 
     private InviteTutorToSchool useCase;
-    private UUID schoolId;
+
+    @Captor
+    private ArgumentCaptor<TutorInvitation> invitationCaptor;
 
     @BeforeEach
     void setUp() {
         useCase = new InviteTutorToSchool(
-                userRepository,
-                tutorRepository,
-                tutorSchoolRepository,
-                invitationRepository,
-                emailSender,
-                CLOCK,
-                "https://app.test/");
-        schoolId = UUID.randomUUID();
+                userRepository, tutorRepository, tutorSchoolRepository,
+                invitationRepository, emailSender, CLOCK, "https://app.test/");
     }
 
     @Test
-    void givenDirectorAndNewEmail_whenInvitingTutor_thenCreatesPendingInvitationAndSendsEmail() {
+    void shouldCreatePendingInvitationAndSendEmail_whenInvitingNewTutor() {
         givenDirectorWithSchool();
         givenTutorEmailIsNotRegistered();
         givenNoReusableInvitation();
@@ -86,165 +84,188 @@ class InviteTutorToSchoolTest {
 
         InviteTutorToSchool.TutorInvitationResult result = whenInvitingTutor();
 
-        verify(invitationRepository).save(invitationCaptor.capture());
-        verify(emailSender).sendInvitation(any(TutorInvitation.class),
-                org.mockito.ArgumentMatchers.contains("/invitaciones/tutor?token="));
-        TutorInvitation saved = invitationCaptor.getValue();
-        assertEquals("parent@test.com", saved.getEmail());
-        assertEquals(TutorInvitationStatus.PENDING, saved.getStatus());
-        assertEquals(CLOCK.instant().atZone(ZoneOffset.UTC).toLocalDateTime().plusDays(7),
-                saved.getExpiresAt());
-        assertEquals("CREATED", result.status());
-        assertNotNull(result.invitationLink());
+        thenInvitationWasSavedAndEmailSent(result);
     }
 
     @Test
-    void givenTutorAlreadyAssociated_whenInvitingTutor_thenReturnsAlreadyAssociated() {
-        UUID userId = UUID.randomUUID();
-        UUID tutorId = UUID.randomUUID();
-        Usuario existingUser = new Usuario();
-        existingUser.setId(userId);
-        Tutor tutor = new Tutor();
-        tutor.setId(tutorId);
+    void shouldReturnAlreadyAssociated_whenTutorIsAlreadyInSchool() {
         givenDirectorWithSchool();
-        when(userRepository.findByEmail("parent@test.com")).thenReturn(Optional.of(existingUser));
-        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
-        when(tutorSchoolRepository.existsByTutorIdAndSchoolIdAndStatus(
-                tutorId,
-                schoolId,
-                TutorSchoolStatus.ACTIVE
-        )).thenReturn(true);
+        givenTutorIsAlreadyAssociated();
 
         InviteTutorToSchool.TutorInvitationResult result = whenInvitingTutor();
 
-        assertEquals("ALREADY_ASSOCIATED", result.status());
-        assertNull(result.invitation());
-        assertNull(result.invitationLink());
-        verifyNoInteractions(invitationRepository, emailSender);
+        thenResultIsAlreadyAssociated(result);
     }
 
     @Test
-    void givenReusableInvitationAndEmailFailure_whenInvitingTutor_thenReturnsResentEmailError() {
-        TutorInvitation reusable = new TutorInvitation();
-        reusable.setId(UUID.randomUUID());
-        reusable.setUsedAt(LocalDateTime.now(CLOCK).minusDays(1));
-        reusable.setStatus(TutorInvitationStatus.EXPIRED);
+    void shouldReturnResentEmailError_whenReusingInvitationAndEmailFails() {
         givenDirectorWithSchool();
         givenTutorEmailIsNotRegistered();
-        when(invitationRepository.findReusableBySchoolIdAndEmail(schoolId, "parent@test.com"))
-                .thenReturn(Optional.of(reusable));
+        givenReusableInvitation();
         givenInvitationIsSaved();
-        doThrow(new RuntimeException("smtp down")).when(emailSender)
-                .sendInvitation(any(TutorInvitation.class), any(String.class));
-        InviteTutorToSchool.TutorInvitationCommand command =
-                new InviteTutorToSchool.TutorInvitationCommand(
-                        "parent@test.com",
-                        " ",
-                        null,
-                        "\t"
-                );
+        givenEmailSenderThrowsError();
 
-        InviteTutorToSchool.TutorInvitationResult result = useCase.execute(DIRECTOR_SUBJECT, command);
+        InviteTutorToSchool.TutorInvitationResult result = whenInvitingTutor();
 
-        verify(invitationRepository).save(invitationCaptor.capture());
-        TutorInvitation saved = invitationCaptor.getValue();
-        assertEquals("RESENT_EMAIL_ERROR", result.status());
-        assertNotNull(result.invitationLink());
-        assertEquals(TutorInvitationStatus.PENDING, saved.getStatus());
-        assertNull(saved.getFirstName());
-        assertNull(saved.getLastName());
-        assertNull(saved.getPhone());
-        assertNull(saved.getUsedAt());
+        thenInvitationWasUpdatedAndResultIsEmailError(result);
     }
 
     @Test
-    void givenMissingDirector_whenInvitingTutor_thenFails() {
-        when(userRepository.findByIdCognito(DIRECTOR_SUBJECT)).thenReturn(Optional.empty());
+    void shouldThrowException_whenDirectorIsMissing() {
+        givenUserNotFound();
 
-        Executable execution = this::whenInvitingTutor;
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                this::whenInvitingTutor);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("No se encontro el usuario autenticado", exception.getMessage());
-        verifyNoInteractions(invitationRepository, emailSender);
+        thenExceptionMessageIs(exception, "No se encontro el usuario autenticado");
+        thenNoInteractionsWithInvitationOrEmail();
     }
 
     @Test
-    void givenNonDirectorUser_whenInvitingTutor_thenFails() {
-        Usuario user = new Usuario();
-        user.setRol(RolUsuario.PADRE);
-        when(userRepository.findByIdCognito(DIRECTOR_SUBJECT)).thenReturn(Optional.of(user));
+    void shouldThrowException_whenUserIsNotDirector() {
+        givenNonDirectorUser();
 
-        Executable execution = this::whenInvitingTutor;
+        assertThrows(AccessDeniedException.class, this::whenInvitingTutor);
 
-        assertThrows(AccessDeniedException.class, execution);
-        verifyNoInteractions(invitationRepository, emailSender);
+        thenNoInteractionsWithInvitationOrEmail();
     }
 
     @Test
-    void givenDirectorWithoutSchool_whenInvitingTutor_thenFails() {
-        Usuario director = new Usuario();
-        director.setRol(RolUsuario.DIRECTIVO_COLEGIO);
-        when(userRepository.findByIdCognito(DIRECTOR_SUBJECT)).thenReturn(Optional.of(director));
+    void shouldThrowException_whenDirectorHasNoSchool() {
+        givenDirectorWithoutSchool();
 
-        Executable execution = this::whenInvitingTutor;
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                this::whenInvitingTutor);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("El usuario autenticado no tiene un colegio asignado",
-                exception.getMessage());
-        verifyNoInteractions(invitationRepository, emailSender);
-    }
-
-    @Test
-    void givenInvalidEmail_whenInvitingTutor_thenFails() {
-        givenDirectorWithSchool();
-        InviteTutorToSchool.TutorInvitationCommand command =
-                new InviteTutorToSchool.TutorInvitationCommand(
-                        "no-es-email",
-                        "Ana",
-                        "Gomez",
-                        null
-                );
-
-        Executable execution = () -> useCase.execute(DIRECTOR_SUBJECT, command);
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("El email no es valido", exception.getMessage());
-        verifyNoInteractions(invitationRepository, emailSender);
+        thenExceptionMessageIs(exception, "El usuario autenticado no tiene un colegio asignado");
+        thenNoInteractionsWithInvitationOrEmail();
     }
 
     private void givenDirectorWithSchool() {
         Usuario director = new Usuario();
         director.setRol(RolUsuario.DIRECTIVO_COLEGIO);
         Colegio school = new Colegio();
-        school.setId(schoolId);
+        school.setId(SCHOOL_ID);
         director.setColegio(school);
         when(userRepository.findByIdCognito(DIRECTOR_SUBJECT)).thenReturn(Optional.of(director));
     }
 
     private void givenTutorEmailIsNotRegistered() {
-        when(userRepository.findByEmail("parent@test.com")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail(TUTOR_EMAIL)).thenReturn(Optional.empty());
     }
 
     private void givenNoReusableInvitation() {
-        when(invitationRepository.findReusableBySchoolIdAndEmail(schoolId, "parent@test.com"))
+        when(invitationRepository.findReusableBySchoolIdAndEmail(SCHOOL_ID, TUTOR_EMAIL))
                 .thenReturn(Optional.empty());
+    }
+
+    private void givenReusableInvitation() {
+        TutorInvitation reusable = new TutorInvitation();
+        reusable.setId(UUID.randomUUID());
+        reusable.setUsedAt(LocalDateTime.now(CLOCK).minusDays(1));
+        reusable.setStatus(TutorInvitationStatus.EXPIRED);
+        when(invitationRepository.findReusableBySchoolIdAndEmail(SCHOOL_ID, TUTOR_EMAIL))
+                .thenReturn(Optional.of(reusable));
     }
 
     private void givenInvitationIsSaved() {
         when(invitationRepository.save(any(TutorInvitation.class))).thenAnswer(invocation -> {
             TutorInvitation invitation = invocation.getArgument(0);
-            invitation.setId(UUID.randomUUID());
+            if (invitation.getId() == null) {
+                invitation.setId(UUID.randomUUID());
+            }
             return invitation;
         });
     }
 
+    private void givenTutorIsAlreadyAssociated() {
+        UUID userId = UUID.randomUUID();
+        UUID tutorId = UUID.randomUUID();
+        Usuario existingUser = new Usuario();
+        existingUser.setId(userId);
+        Tutor tutor = new Tutor();
+        tutor.setId(tutorId);
+        
+        when(userRepository.findByEmail(TUTOR_EMAIL)).thenReturn(Optional.of(existingUser));
+        when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
+        when(tutorSchoolRepository.existsByTutorIdAndSchoolIdAndStatus(
+                tutorId, SCHOOL_ID, TutorSchoolStatus.ACTIVE)).thenReturn(true);
+    }
+
+    private void givenEmailSenderThrowsError() {
+        doThrow(new RuntimeException("smtp down")).when(emailSender)
+                .sendInvitation(any(TutorInvitation.class), any(String.class));
+    }
+
+    private void givenUserNotFound() {
+        when(userRepository.findByIdCognito(DIRECTOR_SUBJECT)).thenReturn(Optional.empty());
+    }
+
+    private void givenNonDirectorUser() {
+        Usuario user = new Usuario();
+        user.setRol(RolUsuario.PADRE);
+        when(userRepository.findByIdCognito(DIRECTOR_SUBJECT)).thenReturn(Optional.of(user));
+    }
+
+    private void givenDirectorWithoutSchool() {
+        Usuario director = new Usuario();
+        director.setRol(RolUsuario.DIRECTIVO_COLEGIO);
+        when(userRepository.findByIdCognito(DIRECTOR_SUBJECT)).thenReturn(Optional.of(director));
+    }
+
     private InviteTutorToSchool.TutorInvitationResult whenInvitingTutor() {
-        return useCase.execute(
+        InviteTutorToSchoolRequest request = new InviteTutorToSchoolRequest(
                 DIRECTOR_SUBJECT,
-                new InviteTutorToSchool.TutorInvitationCommand(
-                        " Parent@Test.com ",
-                        " Ana ",
-                        " Gomez ",
-                        " 1111 "));
+                " Parent@Test.com ",
+                " Ana ",
+                " Gomez ",
+                " 1111 ");
+        return useCase.execute(request);
+    }
+
+
+
+    private void thenInvitationWasSavedAndEmailSent(InviteTutorToSchool.TutorInvitationResult result) {
+        verify(invitationRepository).save(invitationCaptor.capture());
+        verify(emailSender).sendInvitation(any(TutorInvitation.class),
+                org.mockito.ArgumentMatchers.contains("/invitaciones/tutor?token="));
+        
+        TutorInvitation saved = invitationCaptor.getValue();
+        assertEquals(TUTOR_EMAIL, saved.getEmail());
+        assertEquals(TutorInvitationStatus.PENDING, saved.getStatus());
+        assertEquals(CLOCK.instant().atZone(ZoneOffset.UTC).toLocalDateTime().plusDays(7),
+                saved.getExpiresAt());
+        
+        assertEquals("CREATED", result.status());
+        assertNotNull(result.invitationLink());
+    }
+
+    private void thenResultIsAlreadyAssociated(InviteTutorToSchool.TutorInvitationResult result) {
+        assertEquals("ALREADY_ASSOCIATED", result.status());
+        assertNull(result.invitation());
+        assertNull(result.invitationLink());
+        thenNoInteractionsWithInvitationOrEmail();
+    }
+
+    private void thenInvitationWasUpdatedAndResultIsEmailError(
+            InviteTutorToSchool.TutorInvitationResult result) {
+        verify(invitationRepository).save(invitationCaptor.capture());
+        TutorInvitation saved = invitationCaptor.getValue();
+        
+        assertEquals("RESENT_EMAIL_ERROR", result.status());
+        assertNotNull(result.invitationLink());
+        assertEquals(TutorInvitationStatus.PENDING, saved.getStatus());
+        assertEquals("Ana", saved.getFirstName());
+        assertEquals("Gomez", saved.getLastName());
+        assertEquals("1111", saved.getPhone());
+        assertNull(saved.getUsedAt());
+    }
+
+    private void thenExceptionMessageIs(IllegalArgumentException exception, String expected) {
+        assertEquals(expected, exception.getMessage());
+    }
+
+    private void thenNoInteractionsWithInvitationOrEmail() {
+        verifyNoInteractions(invitationRepository, emailSender);
     }
 }

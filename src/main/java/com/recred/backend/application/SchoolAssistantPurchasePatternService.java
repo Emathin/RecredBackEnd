@@ -13,7 +13,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-class SchoolAssistantPurchasePatternService {
+public class SchoolAssistantPurchasePatternService {
 
     private static final int PURCHASE_PATTERN_LOOKBACK = 30;
     private static final int MIN_FREQUENT_PURCHASE_OCCURRENCES = 2;
@@ -22,7 +22,7 @@ class SchoolAssistantPurchasePatternService {
     private final ProductRepository productRepository;
     private final SchoolAssistantContentFormatter contentFormatter;
 
-    SchoolAssistantPurchasePatternService(
+    public SchoolAssistantPurchasePatternService(
             PurchaseRepository purchaseRepository,
             ProductRepository productRepository,
             SchoolAssistantContentFormatter contentFormatter

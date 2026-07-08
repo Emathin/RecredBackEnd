@@ -19,12 +19,12 @@ public class LoadStockIA {
         
         return new LoadStockIAResponse(
                 prediction.name(),
-            prediction.description(),
-            prediction.weight(),
-            prediction.containsSugar(),
-            prediction.containsPeanuts(),
-            prediction.containsLactose(),
-            prediction.containsGluten(),
+                prediction.description(),
+                prediction.weight(),
+                prediction.containsSugar(),
+                prediction.containsPeanuts(),
+                prediction.containsLactose(),
+                prediction.containsGluten(),
                 imageUrl
         );
     }

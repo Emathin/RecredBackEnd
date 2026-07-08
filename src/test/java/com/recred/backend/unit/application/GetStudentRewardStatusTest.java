@@ -40,36 +40,36 @@ class GetStudentRewardStatusTest {
     }
 
     @Test
-    void givenStudentWithBronzePoints_whenGettingRewardStatus_thenReturnsBronzeStatus() {
+    void givenStudentWithPrincipiantePoints_whenGettingRewardStatus_thenReturnsPrincipianteStatus() {
         givenRewardStatusScenario();
         givenStudentHasRewardPoints(50);
         givenStudentExists();
 
         whenGettingRewardStatus();
 
-        thenRewardStatusIs(50, RewardLevel.BRONZE, 50, RewardLevel.SILVER.name());
+        thenRewardStatusIs(50, RewardLevel.PRINCIPIANTE, 50, RewardLevel.CRACK.name());
     }
 
     @Test
-    void givenStudentWithSilverPoints_whenGettingRewardStatus_thenReturnsSilverStatus() {
+    void givenStudentWithCrackPoints_whenGettingRewardStatus_thenReturnsCrackStatus() {
         givenRewardStatusScenario();
         givenStudentHasRewardPoints(150);
         givenStudentExists();
 
         whenGettingRewardStatus();
 
-        thenRewardStatusIs(150, RewardLevel.SILVER, 100, RewardLevel.GOLD.name());
+        thenRewardStatusIs(150, RewardLevel.CRACK, 100, RewardLevel.GOAT.name());
     }
 
     @Test
-    void givenStudentWithGoldPoints_whenGettingRewardStatus_thenReturnsGoldStatus() {
+    void givenStudentWithGoatPoints_whenGettingRewardStatus_thenReturnsGoatStatus() {
         givenRewardStatusScenario();
         givenStudentHasRewardPoints(300);
         givenStudentExists();
 
         whenGettingRewardStatus();
 
-        thenRewardStatusIs(300, RewardLevel.GOLD, 0, "MAX");
+        thenRewardStatusIs(300, RewardLevel.GOAT, 0, "MAX");
     }
 
     @Test

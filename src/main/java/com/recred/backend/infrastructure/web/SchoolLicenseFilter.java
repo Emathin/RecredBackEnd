@@ -28,14 +28,17 @@ public class SchoolLicenseFilter extends OncePerRequestFilter {
             "/api/v1/users/me/profile",
             "/api/v1/colegios/me",
             "/api/v1/usuarios/sync",
-            "/api/v1/usuarios/rol"
+            "/api/v1/usuarios/rol",
+            "/api/v1/sugerencias-consumo/test-notificacion"
     );
 
     private static final List<String> EXCLUDED_PREFIXES = List.of(
             "/swagger-ui",
             "/v3/api-docs",
             "/api/v1/invitaciones/tutor",
-            "/api/v1/payments/subscriptions"
+            "/api/v1/payments/subscriptions",
+            "/api/v1/dispositivos",
+            "/api/v1/notifications"
     );
 
     private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
