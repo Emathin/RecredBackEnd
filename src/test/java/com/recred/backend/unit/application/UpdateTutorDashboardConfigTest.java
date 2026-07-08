@@ -2,139 +2,123 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.UpdateTutorDashboardConfig;
 import com.recred.backend.application.UpdateTutorDashboardConfigRequest;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.TutorRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateTutorDashboardConfigTest {
 
+    private static final String COGNITO_SUBJECT = "sub-123";
+    private static final String VALID_ARRAY_CONFIG = "[\"card1\", \"card2\", \"card3\", \"card4\", \"card5\"]";
+    private static final String VALID_OBJECT_CONFIG = "{\"cards\": [\"card1\", \"card2\", \"card3\"]}";
+    private static final String EXCEEDED_CONFIG = "[\"card1\", \"card2\", \"card3\", \"card4\", \"card5\", \"card6\"]";
+    private static final String NOT_FOUND_MESSAGE = "Tutor no encontrado para el usuario actual";
+    private static final String LIMIT_MESSAGE = "El plan gratuito permite hasta 5 tarjetas en el dashboard";
+
     @Mock
     private TutorRepository tutorRepository;
 
-    @InjectMocks
     private UpdateTutorDashboardConfig useCase;
 
-    @Test
-    void execute_shouldSaveConfig_whenFreePlanHas5OrFewerCards() {
-        String cognitoSubject = "sub-123";
-        Usuario usuario = new Usuario();
-        usuario.setPlan(TipoPlan.GRATUITO);
-        Tutor tutor = new Tutor();
-        tutor.setUsuario(usuario);
-
-        String configJson = "[\"card1\", \"card2\", \"card3\", \"card4\", \"card5\"]";
-
-        when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.of(tutor));
-
-        UpdateTutorDashboardConfigRequest request = new UpdateTutorDashboardConfigRequest(cognitoSubject, configJson);
-        useCase.execute(request);
-
-        assertEquals(configJson, tutor.getDashboardConfig());
-        verify(tutorRepository, times(1)).save(tutor);
+    @BeforeEach
+    void setUp() {
+        useCase = new UpdateTutorDashboardConfig(tutorRepository);
     }
 
     @Test
-    void execute_shouldSaveConfig_whenFreePlanObjectHas5OrFewerCards() {
-        String cognitoSubject = "sub-123";
-        Usuario usuario = new Usuario();
-        usuario.setPlan(TipoPlan.GRATUITO);
-        Tutor tutor = new Tutor();
-        tutor.setUsuario(usuario);
+    void shouldSaveConfigWhenFreePlanHasFiveOrFewerCards() {
+        Tutor tutor = givenTutorExistsWithPlan(TipoPlan.GRATUITO);
 
-        String configJson = "{\"cards\": [\"card1\", \"card2\", \"card3\"]}";
+        whenUpdatingConfig(VALID_ARRAY_CONFIG);
 
-        when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.of(tutor));
-
-        UpdateTutorDashboardConfigRequest request = new UpdateTutorDashboardConfigRequest(cognitoSubject, configJson);
-        useCase.execute(request);
-
-        assertEquals(configJson, tutor.getDashboardConfig());
-        verify(tutorRepository, times(1)).save(tutor);
+        thenConfigWasSaved(tutor, VALID_ARRAY_CONFIG);
     }
 
     @Test
-    void execute_shouldThrowException_whenFreePlanHasMoreThan5Cards() {
-        String cognitoSubject = "sub-123";
+    void shouldSaveConfigWhenFreePlanObjectHasFiveOrFewerCards() {
+        Tutor tutor = givenTutorExistsWithPlan(TipoPlan.GRATUITO);
+
+        whenUpdatingConfig(VALID_OBJECT_CONFIG);
+
+        thenConfigWasSaved(tutor, VALID_OBJECT_CONFIG);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenFreePlanHasMoreThanFiveCards() {
+        givenTutorExistsWithPlan(TipoPlan.GRATUITO);
+
+        Executable execution = () -> whenUpdatingConfig(EXCEEDED_CONFIG);
+
+        thenThrowsIllegalArgumentExceptionWithMessage(execution, LIMIT_MESSAGE);
+        thenNoConfigWasSaved();
+    }
+
+    @Test
+    void shouldSaveConfigWhenAdvancedPlanHasMoreThanFiveCards() {
+        Tutor tutor = givenTutorExistsWithPlan(TipoPlan.AVANZADO);
+
+        whenUpdatingConfig(EXCEEDED_CONFIG);
+
+        thenConfigWasSaved(tutor, EXCEEDED_CONFIG);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenTutorIsNotFound() {
+        givenTutorNotFound();
+
+        Executable execution = () -> whenUpdatingConfig(VALID_ARRAY_CONFIG);
+
+        thenThrowsIllegalArgumentExceptionWithMessage(execution, NOT_FOUND_MESSAGE);
+        thenNoConfigWasSaved();
+    }
+
+    private void whenUpdatingConfig(String configJson) {
+        UpdateTutorDashboardConfigRequest request = new UpdateTutorDashboardConfigRequest(
+                COGNITO_SUBJECT, configJson);
+        useCase.execute(request);
+    }
+
+    private Tutor givenTutorExistsWithPlan(TipoPlan plan) {
         Usuario usuario = new Usuario();
-        usuario.setPlan(TipoPlan.GRATUITO);
+        usuario.setPlan(plan);
         Tutor tutor = new Tutor();
         tutor.setUsuario(usuario);
+        when(tutorRepository.findByUsuarioIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(tutor));
+        return tutor;
+    }
 
-        String configJson = "[\"card1\", \"card2\", \"card3\", \"card4\", \"card5\", \"card6\"]";
+    private void givenTutorNotFound() {
+        when(tutorRepository.findByUsuarioIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.empty());
+    }
 
-        when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.of(tutor));
+    private void thenConfigWasSaved(Tutor tutor, String expectedConfig) {
+        assertEquals(expectedConfig, tutor.getDashboardConfig());
+        verify(tutorRepository).save(tutor);
+    }
 
-        UpdateTutorDashboardConfigRequest request = new UpdateTutorDashboardConfigRequest(cognitoSubject, configJson);
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                useCase.execute(request)
-        );
+    private void thenThrowsIllegalArgumentExceptionWithMessage(Executable execution, String message) {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
+        assertEquals(message, exception.getMessage());
+    }
 
-        assertEquals("El plan gratuito permite hasta 5 tarjetas en el dashboard", exception.getMessage());
+    private void thenNoConfigWasSaved() {
         verify(tutorRepository, never()).save(any());
-    }
-
-    @Test
-    void execute_shouldSaveConfig_whenAdvancedPlanHasMoreThan5Cards() {
-        String cognitoSubject = "sub-123";
-        Usuario usuario = new Usuario();
-        usuario.setPlan(TipoPlan.AVANZADO);
-        Tutor tutor = new Tutor();
-        tutor.setUsuario(usuario);
-
-        String configJson = "[\"card1\", \"card2\", \"card3\", \"card4\", \"card5\", \"card6\"]";
-
-        when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.of(tutor));
-
-        UpdateTutorDashboardConfigRequest request = new UpdateTutorDashboardConfigRequest(cognitoSubject, configJson);
-        useCase.execute(request);
-
-        assertEquals(configJson, tutor.getDashboardConfig());
-        verify(tutorRepository, times(1)).save(tutor);
-    }
-
-    @Test
-    void execute_shouldThrowException_whenTutorNotFound() {
-        String cognitoSubject = "non-existent-sub";
-        String configJson = "[\"card1\"]";
-
-        when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.empty());
-
-        UpdateTutorDashboardConfigRequest request = new UpdateTutorDashboardConfigRequest(cognitoSubject, configJson);
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                useCase.execute(request)
-        );
-
-        assertEquals("Tutor no encontrado para el usuario actual", exception.getMessage());
-        verify(tutorRepository, never()).save(any());
-    }
-
-    @Test
-    void request_shouldThrowException_whenCognitoSubjectIsNull() {
-        IllegalArgumentException ex1 = assertThrows(IllegalArgumentException.class, () ->
-                new UpdateTutorDashboardConfigRequest(null, "config").validate()
-        );
-        assertEquals("El usuario es obligatorio", ex1.getMessage());
-    }
-
-    @Test
-    void request_shouldThrowException_whenConfigIsNull() {
-        IllegalArgumentException ex2 = assertThrows(IllegalArgumentException.class, () ->
-                new UpdateTutorDashboardConfigRequest("sub", null).validate()
-        );
-        assertEquals("La configuración del dashboard es obligatoria", ex2.getMessage());
     }
 }

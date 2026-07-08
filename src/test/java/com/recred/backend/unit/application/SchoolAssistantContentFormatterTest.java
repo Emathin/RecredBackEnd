@@ -1,11 +1,10 @@
 package com.recred.backend.application;
 
-
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
-import com.recred.backend.domain.models.TipoDiaEscolar;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +17,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static com.recred.backend.domain.models.RecessTime.AFTER_HOURS;
+import static com.recred.backend.domain.models.RecessTime.NOON;
+import static com.recred.backend.domain.models.RecessTime.SECOND_RECESS;
+import static com.recred.backend.domain.models.TipoDiaEscolar.CLASE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -25,6 +28,11 @@ import static org.mockito.Mockito.mock;
 @ExtendWith(MockitoExtension.class)
 @SuppressWarnings("unchecked")
 class SchoolAssistantContentFormatterTest {
+
+    private static final UUID DUMMY_ID = UUID.randomUUID();
+    private static final String SIN_ESTADO = "sin estado";
+    private static final String SIN_FECHA = "sin fecha";
+    private static final String ZERO_DOLLARS = "$0.00";
 
     private SchoolAssistantContentFormatter formatter;
 
@@ -36,70 +44,127 @@ class SchoolAssistantContentFormatterTest {
     }
 
     @Test
-    void moneyAndLabels_ShouldFormatNullsAndAllRecesses() {
-        assertEquals("$0.00", formatter.money(null));
-        assertEquals("segundo recreo", formatter.recessLabel(RecessTime.SECOND_RECESS));
-        assertEquals("mediodia", formatter.recessLabel(RecessTime.NOON));
-        assertEquals("salida", formatter.recessLabel(RecessTime.AFTER_HOURS));
-        assertEquals("sin estado", formatter.purchaseStatusLabel(null));
+    void shouldFormatMoneyAndLabelsWithNullsAndAllRecesses() {
+        final String money = whenFormatMoney(null);
+        final String secondRecess = whenFormatRecessLabel(SECOND_RECESS);
+        final String noon = whenFormatRecessLabel(NOON);
+        final String afterHours = whenFormatRecessLabel(AFTER_HOURS);
+        final String purchaseStatus = whenFormatPurchaseStatusLabel(null);
+
+        thenResultIs(money, ZERO_DOLLARS);
+        thenResultIs(secondRecess, "segundo recreo");
+        thenResultIs(noon, "mediodia");
+        thenResultIs(afterHours, "salida");
+        thenResultIs(purchaseStatus, SIN_ESTADO);
     }
 
     @Test
-    void purchaseData_WhenItemsAreNull_ShouldUseEmptyItemList() {
+    void shouldReturnEmptyItemListWhenPurchaseItemsAreNull() {
+        Purchase purchase = givenPurchaseWithNullItems();
+
+        Map<String, Object> result = whenFormatPurchaseData(purchase);
+
+        thenItemListIsEmpty(result);
+    }
+
+    @Test
+    void shouldFormatNullDateNullAmountAndSkipInvalidQuantities() {
+        Purchase purchase = givenPurchaseWithInvalidItemsAndNullData();
+
+        String result = whenFormatPurchaseList(purchase);
+
+        thenResultContains(result, SIN_FECHA);
+        thenResultContains(result, ZERO_DOLLARS);
+        thenResultContains(result, SIN_ESTADO);
+    }
+
+    @Test
+    void shouldUseFallbackDateWhenEventDateIsNull() {
+        SchoolCalendarEvent event = givenEventWithNullDate();
+
+        String result = whenFormatEventsList(event);
+
+        thenResultContains(result, SIN_FECHA);
+    }
+
+    @Test
+    void shouldFormatSubtotalFromUnitPrice() {
+        PurchasePlan plan = givenPurchasePlanWithOneItem("Jugo", 2, "10.00");
+
+        Map<String, Object> result = whenFormatPurchasePlanData(plan);
+
+        thenSubtotalIs(result, "20.00");
+    }
+
+    private String whenFormatMoney(BigDecimal amount) {
+        return formatter.money(amount);
+    }
+
+    private String whenFormatRecessLabel(RecessTime recessTime) {
+        return formatter.recessLabel(recessTime);
+    }
+
+    private String whenFormatPurchaseStatusLabel(EstadoCompra status) {
+        return formatter.purchaseStatusLabel(status);
+    }
+
+    private Purchase givenPurchaseWithNullItems() {
         Purchase purchase = new Purchase();
         purchase.setItems(null);
-
-        Map<String, Object> result = formatter.purchaseData(purchase);
-
-        assertEquals(List.of(), result.get("items"));
+        return purchase;
     }
 
-    @Test
-    void purchaseList_ShouldFormatNullDateNullAmountAndSkipInvalidQuantities() {
+    private Map<String, Object> whenFormatPurchaseData(Purchase purchase) {
+        return formatter.purchaseData(purchase);
+    }
+
+    private Purchase givenPurchaseWithInvalidItemsAndNullData() {
         Producto product = new Producto();
-        product.setId(UUID.randomUUID());
+        product.setId(DUMMY_ID);
         product.setNombre("Alfajor");
         Purchase purchase = new Purchase();
         purchase.setItems(new HashMap<>(Map.of(product, 0)));
         purchase.setTotalAmount(null);
         purchase.setDate(null);
         purchase.setStatus(null);
-
-        String result = formatter.purchaseList(List.of(purchase));
-
-        assertTrue(result.contains("sin fecha"));
-        assertTrue(result.contains("$0.00"));
-        assertTrue(result.contains("sin estado"));
+        return purchase;
     }
 
-    @Test
-    void eventsList_WhenDateIsNull_ShouldUseFallbackDate() {
-        SchoolCalendarEvent event = new SchoolCalendarEvent(
-                null,
-                TipoDiaEscolar.CLASE,
-                "Clase normal");
-
-        String result = formatter.eventsList(List.of(event));
-
-        assertTrue(result.contains("sin fecha"));
+    private String whenFormatPurchaseList(Purchase purchase) {
+        return formatter.purchaseList(List.of(purchase));
     }
 
-    @Test
-    void purchasePlanItemList_ShouldFormatSubtotalFromUnitPrice() {
-        PurchasePlanItem item = new PurchasePlanItem(
-                UUID.randomUUID(),
-                "Jugo",
-                2,
-                new BigDecimal("10.00"));
+    private SchoolCalendarEvent givenEventWithNullDate() {
+        return new SchoolCalendarEvent(null, CLASE, "Clase normal");
+    }
 
-        Map<String, Object> result = formatter.purchasePlanData(new PurchasePlan(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                List.of(item),
-                1,
-                null));
+    private String whenFormatEventsList(SchoolCalendarEvent event) {
+        return formatter.eventsList(List.of(event));
+    }
 
+    private PurchasePlan givenPurchasePlanWithOneItem(String name, int quantity, String price) {
+        PurchasePlanItem item = new PurchasePlanItem(DUMMY_ID, name, quantity, new BigDecimal(price));
+        return new PurchasePlan(DUMMY_ID, DUMMY_ID, List.of(item), 1, null);
+    }
+
+    private Map<String, Object> whenFormatPurchasePlanData(PurchasePlan plan) {
+        return formatter.purchasePlanData(plan);
+    }
+
+    private void thenResultIs(String actual, String expected) {
+        assertEquals(expected, actual);
+    }
+
+    private void thenResultContains(String result, String expectedContent) {
+        assertTrue(result.contains(expectedContent));
+    }
+
+    private void thenItemListIsEmpty(Map<String, Object> result) {
+        assertEquals(List.of(), result.get("items"));
+    }
+
+    private void thenSubtotalIs(Map<String, Object> result, String expectedSubtotal) {
         List<Map<String, Object>> items = (List<Map<String, Object>>) result.get("items");
-        assertEquals(new BigDecimal("20.00"), items.get(0).get("subtotal"));
+        assertEquals(new BigDecimal(expectedSubtotal), items.get(0).get("subtotal"));
     }
 }

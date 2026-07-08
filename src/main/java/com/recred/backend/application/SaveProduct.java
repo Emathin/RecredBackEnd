@@ -31,7 +31,7 @@ public class SaveProduct {
 
     public ProductResponse execute(SaveProductRequest request) {
         Producto producto = mapToModel(request);
-        Producto savedProduct = productRepository.save(producto);
+        Producto savedProduct = persistProduct(producto);
 
         if (hasInventoryData(request)) {
             saveInventory(request, savedProduct);
@@ -48,8 +48,8 @@ public class SaveProduct {
     }
 
     private void saveInventory(SaveProductRequest request, Producto savedProduct) {
-        Inventario inventario = inventoryRepository
-                .findByBuffetAndProduct(request.buffetId(), savedProduct.getId())
+        Inventario inventario = findInventoryByBuffetAndProduct(
+                request.buffetId(), savedProduct.getId())
                 .orElseGet(() -> createNewInventory(request, savedProduct.getId()));
 
         if (request.stockActual() != null) {
@@ -58,7 +58,7 @@ public class SaveProduct {
         inventario.setTipoManejo(tipoManejo(request));
         inventario.setCupoMaximoDiario(request.cupoMaximoDiario());
         inventario.setUrlImagen(request.urlImagen());
-        inventoryRepository.save(inventario);
+        persistInventory(inventario);
     }
 
     private boolean hasInventoryData(SaveProductRequest request) {
@@ -122,8 +122,7 @@ public class SaveProduct {
     private void handleCategory(SaveProductRequest request, Producto producto) {
         if (request.nuevaCategoriaNombre() != null
                 && !request.nuevaCategoriaNombre().isBlank()) {
-            CategoriaProducto category = categoryRepository
-                    .findByDescription(request.nuevaCategoriaNombre())
+            CategoriaProducto category = findCategoryByDescription(request.nuevaCategoriaNombre())
                     .orElseGet(() -> createAndSaveCategory(request.nuevaCategoriaNombre()));
             producto.setCategoria(category);
             return;
@@ -140,6 +139,27 @@ public class SaveProduct {
         CategoriaProducto category = new CategoriaProducto();
         category.setDescripcion(name);
         category.setActivo(true);
+        return persistCategory(category);
+    }
+
+    private Producto persistProduct(Producto producto) {
+        return productRepository.save(producto);
+    }
+
+    private void persistInventory(Inventario inventario) {
+        inventoryRepository.save(inventario);
+    }
+
+    private java.util.Optional<Inventario> findInventoryByBuffetAndProduct(
+            UUID buffetId, UUID productId) {
+        return inventoryRepository.findByBuffetAndProduct(buffetId, productId);
+    }
+
+    private CategoriaProducto persistCategory(CategoriaProducto category) {
         return categoryRepository.save(category);
+    }
+
+    private java.util.Optional<CategoriaProducto> findCategoryByDescription(String description) {
+        return categoryRepository.findByDescription(description);
     }
 }

@@ -34,7 +34,7 @@ public class CreateTimeSlot {
                 request.horaInicio(),
                 request.horaFin());
 
-        return TimeSlotDetailsResponse.fromDomain(franjaHorariaRepository.save(
+        return TimeSlotDetailsResponse.fromDomain(saveSlot(
                 slot(request, descripcion, cupoMaximo, minutosCorte)));
     }
 
@@ -59,5 +59,9 @@ public class CreateTimeSlot {
         slot.setCupoMaximo(cupoMaximo);
         slot.setMinutosCorte(minutosCorte);
         return slot;
+    }
+
+    private FranjaHoraria saveSlot(FranjaHoraria slot) {
+        return franjaHorariaRepository.save(slot);
     }
 }

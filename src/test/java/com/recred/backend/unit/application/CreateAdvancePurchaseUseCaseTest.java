@@ -105,6 +105,315 @@ class CreateAdvancePurchaseUseCaseTest {
         CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, SUGGESTION_ID);
         CreateAdvancePurchaseResponse response = whenExecute(request);
 
+        thenPurchaseIsCreatedForTutor(response);
+    }
+
+    @Test
+    void execute_WhenStudentBuysForThemself_ShouldCreateStudentPurchase() {
+        givenValidContextForStudentPurchase();
+
+        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+        CreateAdvancePurchaseResponse response = whenExecute(request);
+
+        thenPurchaseIsCreatedForStudent(response);
+    }
+
+    @Test
+    void execute_WhenBuffetIdIsMissing_ShouldUseStudentSchoolBuffet() {
+        givenValidContextForStudentSchoolPurchase();
+
+        CreateAdvancePurchaseRequest request = givenRequest(null, null);
+        whenExecute(request);
+
+        thenInventoryIsReserved();
+    }
+
+    @Test
+    void execute_WhenTutorDoesNotOwnStudent_ShouldThrowSecurityException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExistsForDifferentStudent();
+        givenStudentExists(STUDENT_ID);
+
+        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+        
+        thenThrowsSecurityExceptionAndNoPurchase(request);
+    }
+
+    @Test
+    void execute_WhenStudentBuysForAnotherStudent_ShouldThrowSecurityException() {
+        givenUserExists(USER_ID, RolUsuario.ALUMNO);
+        givenUserIsDifferentStudent();
+        givenStudentExists(STUDENT_ID);
+
+        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+        
+        thenThrowsSecurityExceptionForStudentRole(request);
+    }
+
+    @Test
+    void execute_WhenBalanceIsInsufficient_ShouldThrowException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentExists(STUDENT_ID);
+        givenSlotResolved();
+        givenProductExists(PRODUCT_ID, DEFAULT_PRICE);
+        givenWalletWithInsufficientBalance();
+
+        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+        
+        thenThrowsInsufficientBalanceException(request);
+    }
+
+    @Test
+    void execute_WhenOrdersAreEmpty_ShouldThrowException() {
+        CreateAdvancePurchaseRequest request = new CreateAdvancePurchaseRequest(List.of());
+        thenThrowsIllegalArgumentExceptionBeforeProcessing(request);
+    }
+
+    @Test
+    void execute_WhenRequestIsNull_ShouldThrowException() {
+        thenThrowsIllegalArgumentExceptionBeforeProcessing(null);
+    }
+
+    @Test
+    void execute_WhenOrdersAreNull_ShouldThrowException() {
+        CreateAdvancePurchaseRequest request = new CreateAdvancePurchaseRequest(null);
+        thenThrowsIllegalArgumentExceptionBeforeProcessing(request);
+    }
+
+    @Test
+    void execute_WhenUserDoesNotExist_ShouldThrowSecurityException() {
+        when(usuarioRepository.findByIdCognito(COGNITO_SUB)).thenReturn(Optional.empty());
+        
+        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+        
+        thenThrowsSecurityException(request);
+    }
+
+    @Test
+    void execute_WhenStudentDoesNotExist_ShouldThrowAlumnoNoEncontradoException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        when(alumnoRepository.findById(STUDENT_ID)).thenReturn(Optional.empty());
+        
+        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+        
+        thenThrowsAlumnoNoEncontradoException(request);
+    }
+
+    @Test
+    void execute_WhenRoleIsNotAllowed_ShouldThrowSecurityException() {
+        givenUserExists(USER_ID, RolUsuario.VENDEDOR);
+        givenStudentExists(STUDENT_ID);
+        
+        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+        
+        thenThrowsSecurityException(request);
+    }
+
+    @Test
+    void execute_WhenTutorProfileDoesNotExist_ShouldThrowSecurityException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        when(tutorRepository.findByUsuarioId(USER_ID)).thenReturn(Optional.empty());
+        givenStudentExists(STUDENT_ID);
+        
+        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+        
+        thenThrowsSecurityException(request);
+    }
+
+    @Test
+    void execute_WhenDefaultBuffetDoesNotExist_ShouldThrowException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentWithSchoolExists(STUDENT_ID, SCHOOL_ID);
+        when(buffetRepository.findByColegioId(SCHOOL_ID)).thenReturn(List.of());
+
+        CreateAdvancePurchaseRequest request = givenRequest(null, null);
+        
+        thenThrowsIllegalArgumentException(request);
+    }
+
+    @Test
+    void execute_WhenStudentSchoolIsMissing_ShouldThrowException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentExistsWithoutSchool();
+        
+        CreateAdvancePurchaseRequest request = givenRequest(null, null);
+        
+        thenThrowsIllegalArgumentException(request);
+    }
+
+    @Test
+    void execute_WhenDateIsMissing_ShouldThrowException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentExists(STUDENT_ID);
+
+        CreateAdvancePurchaseRequest request = givenRequestWithNoDate();
+        
+        thenThrowsIllegalArgumentException(request);
+    }
+
+    @Test
+    void execute_WhenDateIsInvalid_ShouldThrowException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentExists(STUDENT_ID);
+
+        CreateAdvancePurchaseRequest request = givenRequestWithInvalidDate();
+        
+        thenThrowsIllegalArgumentException(request);
+    }
+
+    @Test
+    void execute_WhenItemsAreMissing_ShouldThrowException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentExists(STUDENT_ID);
+        givenSlotResolved();
+
+        CreateAdvancePurchaseRequest request = givenRequestWithNoItems();
+        
+        thenThrowsIllegalArgumentException(request);
+    }
+
+    @Test
+    void execute_WhenProductDoesNotExist_ShouldThrowException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentExists(STUDENT_ID);
+        givenSlotResolved();
+        when(productRepository.findActiveByIdWithStock(PRODUCT_ID, BUFFET_ID))
+                .thenReturn(Optional.empty());
+
+        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+        
+        thenThrowsProductNotFoundException(request);
+    }
+
+    @Test
+    void execute_WhenWalletDoesNotExist_ShouldThrowException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentExists(STUDENT_ID);
+        givenSlotResolved();
+        givenProductExists(PRODUCT_ID, DEFAULT_PRICE);
+        when(walletRepository.findByStudentId(STUDENT_ID)).thenReturn(Optional.empty());
+
+        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+        
+        thenThrowsIllegalStateException(request);
+    }
+
+    @Test
+    void execute_WhenProductPriceIsNull_ShouldUseZeroTotal() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentExists(STUDENT_ID);
+        givenSlotResolved();
+        givenProductExists(PRODUCT_ID, null);
+        givenWalletExists(STUDENT_ID, DEFAULT_BALANCE);
+        givenWithdrawalCodeGenerated("ABC123");
+        givenPurchaseIsSaved();
+
+        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+        CreateAdvancePurchaseResponse response = whenExecute(request);
+
+        thenResponseTotalIsZero(response);
+    }
+
+    @Test
+    void execute_WithShortConstructor_ShouldCreatePurchaseWithoutMovementRepository() {
+        CreateAdvancePurchase localUseCase = buildUseCaseWithoutMovementRepository();
+        
+        givenValidContextForTutorPurchase();
+
+        CreateAdvancePurchaseRequest request = givenRequestWithCognitoSub(BUFFET_ID, null);
+        CreateAdvancePurchaseResponse response = localUseCase.execute(request);
+
+        thenOrderIdMatches(response);
+    }
+
+    @Test
+    void execute_WhenMovementRepositoryExists_ShouldRegisterPurchaseMovement() {
+        MovimientoBilleteraRepository movementRepository = mock(MovimientoBilleteraRepository.class);
+        CreateAdvancePurchase localUseCase = buildUseCaseWithMovementRepository(movementRepository);
+
+        givenValidContextForTutorPurchase();
+        
+        CreateAdvancePurchaseRequest request = givenRequestWithCognitoSub(BUFFET_ID, null);
+        localUseCase.execute(request);
+
+        thenMovementIsRegistered(movementRepository);
+    }
+
+    @Test
+    void execute_WhenPromotionIsNotActive_ShouldThrowIllegalArgumentException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentExists(STUDENT_ID);
+        givenSlotResolved();
+        when(productRepository.findActiveByIdWithStock(PROMOTION_ID, BUFFET_ID))
+                .thenReturn(Optional.empty());
+        givenPromotionExists(
+                PROMOTION_ID, 
+                PromotionStatus.DRAFT, 
+                BUFFET_ID, 
+                PICKUP_DATE.atStartOfDay().minusDays(1), 
+                PICKUP_DATE.atStartOfDay().plusDays(1)
+        );
+
+        CreateAdvancePurchaseRequest request = givenPromotionRequest();
+        
+        thenThrowsIllegalArgumentExceptionWithMessage(request, "Promotion is not active");
+    }
+
+    @Test
+    void execute_WhenPromotionDoesNotBelongToBuffet_ShouldThrowIllegalArgumentException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentExists(STUDENT_ID);
+        givenSlotResolved();
+        when(productRepository.findActiveByIdWithStock(PROMOTION_ID, BUFFET_ID))
+                .thenReturn(Optional.empty());
+        givenPromotionExists(
+                PROMOTION_ID, 
+                PromotionStatus.ACTIVE, 
+                UUID.randomUUID(), 
+                PICKUP_DATE.atStartOfDay().minusDays(1), 
+                PICKUP_DATE.atStartOfDay().plusDays(1)
+        );
+
+        CreateAdvancePurchaseRequest request = givenPromotionRequest();
+        
+        thenThrowsIllegalArgumentExceptionWithMessage(request, "Promotion does not belong to this buffet");
+    }
+
+    @Test
+    void execute_WhenPromotionContainsInactiveProduct_ShouldThrowProductNotFoundException() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentExists(STUDENT_ID);
+        givenSlotResolved();
+        when(productRepository.findActiveByIdWithStock(PROMOTION_ID, BUFFET_ID))
+                .thenReturn(Optional.empty());
+        
+        Promotion promotion = givenPromotionExists(
+                PROMOTION_ID, 
+                PromotionStatus.ACTIVE, 
+                BUFFET_ID, 
+                PICKUP_DATE.atStartOfDay().minusDays(1), 
+                PICKUP_DATE.atStartOfDay().plusDays(1)
+        );
+        givenPromotionWithInactiveProduct(promotion);
+
+        CreateAdvancePurchaseRequest request = givenPromotionRequest();
+        
+        thenThrowsProductNotFoundException(request);
+    }
+
+    private void thenPurchaseIsCreatedForTutor(CreateAdvancePurchaseResponse response) {
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
         Purchase savedPurchase = purchaseCaptor.getValue();
@@ -126,13 +435,7 @@ class CreateAdvancePurchaseUseCaseTest {
         verify(walletRepository).save(any(Billetera.class));
     }
 
-    @Test
-    void execute_WhenStudentBuysForThemself_ShouldCreateStudentPurchase() {
-        givenValidContextForStudentPurchase();
-
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
-        CreateAdvancePurchaseResponse response = whenExecute(request);
-
+    private void thenPurchaseIsCreatedForStudent(CreateAdvancePurchaseResponse response) {
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
         Purchase savedPurchase = purchaseCaptor.getValue();
@@ -144,248 +447,63 @@ class CreateAdvancePurchaseUseCaseTest {
         verifyNoInteractions(tutorRepository);
     }
 
-    @Test
-    void execute_WhenBuffetIdIsMissing_ShouldUseStudentSchoolBuffet() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentWithSchoolExists(STUDENT_ID, SCHOOL_ID);
-        givenSchoolBuffetExists(SCHOOL_ID, BUFFET_ID);
-        givenSlotResolved();
-        givenProductExists(PRODUCT_ID, DEFAULT_PRICE);
-        givenWalletExists(STUDENT_ID, DEFAULT_BALANCE);
-        givenWithdrawalCodeGenerated("ABC123");
-        givenPurchaseIsSaved();
-
-        CreateAdvancePurchaseRequest request = givenRequest(null, null);
-        whenExecute(request);
-
+    private void thenInventoryIsReserved() {
         verify(inventoryAvailabilityService).reserve(eq(BUFFET_ID), anyMap());
     }
 
-    @Test
-    void execute_WhenTutorDoesNotOwnStudent_ShouldThrowSecurityException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, UUID.randomUUID()); // tutor of other student
-        givenStudentExists(STUDENT_ID);
-
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+    private void thenThrowsSecurityExceptionAndNoPurchase(CreateAdvancePurchaseRequest request) {
         assertThrows(SecurityException.class, () -> whenExecute(request));
-
         verifyNoInteractions(productRepository, walletRepository, inventoryAvailabilityService);
         verify(purchaseRepository, never()).save(any());
     }
 
-    @Test
-    void execute_WhenStudentBuysForAnotherStudent_ShouldThrowSecurityException() {
-        givenUserExists(USER_ID, RolUsuario.ALUMNO);
-        givenUserIsStudent(UUID.randomUUID()); // logged in as different student
-        givenStudentExists(STUDENT_ID);
-
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+    private void thenThrowsSecurityExceptionForStudentRole(CreateAdvancePurchaseRequest request) {
         assertThrows(SecurityException.class, () -> whenExecute(request));
-
         verifyNoInteractions(tutorRepository, productRepository, walletRepository);
         verify(purchaseRepository, never()).save(any());
     }
 
-    @Test
-    void execute_WhenBalanceIsInsufficient_ShouldThrowException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentExists(STUDENT_ID);
-        givenSlotResolved();
-        givenProductExists(PRODUCT_ID, DEFAULT_PRICE);
-        givenWalletExists(STUDENT_ID, new BigDecimal("10.00")); // insufficient for 50.00
-
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+    private void thenThrowsInsufficientBalanceException(CreateAdvancePurchaseRequest request) {
         assertThrows(InsufficientBalanceException.class, () -> whenExecute(request));
-
         verify(inventoryAvailabilityService, never()).reserve(any(), anyMap());
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
     }
 
-    @Test
-    void execute_WhenOrdersAreEmpty_ShouldThrowException() {
-        CreateAdvancePurchaseRequest request = new CreateAdvancePurchaseRequest(List.of());
-        assertThrows(IllegalArgumentException.class, () -> whenExecute(request));
+    private void thenThrowsIllegalArgumentExceptionBeforeProcessing(CreateAdvancePurchaseRequest req) {
+        assertThrows(IllegalArgumentException.class, () -> whenExecute(req));
         verifyNoInteractions(usuarioRepository);
     }
 
-    @Test
-    void execute_WhenRequestIsNull_ShouldThrowException() {
-        assertThrows(IllegalArgumentException.class, () -> whenExecute(null));
-        verifyNoInteractions(usuarioRepository);
-    }
-
-    @Test
-    void execute_WhenOrdersAreNull_ShouldThrowException() {
-        CreateAdvancePurchaseRequest request = new CreateAdvancePurchaseRequest(null);
-        assertThrows(IllegalArgumentException.class, () -> whenExecute(request));
-        verifyNoInteractions(usuarioRepository);
-    }
-
-    @Test
-    void execute_WhenUserDoesNotExist_ShouldThrowSecurityException() {
-        when(usuarioRepository.findByIdCognito(COGNITO_SUB)).thenReturn(Optional.empty());
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+    private void thenThrowsSecurityException(CreateAdvancePurchaseRequest request) {
         assertThrows(SecurityException.class, () -> whenExecute(request));
     }
 
-    @Test
-    void execute_WhenStudentDoesNotExist_ShouldThrowAlumnoNoEncontradoException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        when(alumnoRepository.findById(STUDENT_ID)).thenReturn(Optional.empty());
-        
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+    private void thenThrowsAlumnoNoEncontradoException(CreateAdvancePurchaseRequest request) {
         assertThrows(AlumnoNoEncontradoException.class, () -> whenExecute(request));
     }
 
-    @Test
-    void execute_WhenRoleIsNotAllowed_ShouldThrowSecurityException() {
-        givenUserExists(USER_ID, RolUsuario.VENDEDOR);
-        givenStudentExists(STUDENT_ID);
-        
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
-        assertThrows(SecurityException.class, () -> whenExecute(request));
-    }
-
-    @Test
-    void execute_WhenTutorProfileDoesNotExist_ShouldThrowSecurityException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        when(tutorRepository.findByUsuarioId(USER_ID)).thenReturn(Optional.empty());
-        givenStudentExists(STUDENT_ID);
-        
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
-        assertThrows(SecurityException.class, () -> whenExecute(request));
-    }
-
-    @Test
-    void execute_WhenDefaultBuffetDoesNotExist_ShouldThrowException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentWithSchoolExists(STUDENT_ID, SCHOOL_ID);
-        when(buffetRepository.findByColegioId(SCHOOL_ID)).thenReturn(List.of());
-
-        CreateAdvancePurchaseRequest request = givenRequest(null, null);
+    private void thenThrowsIllegalArgumentException(CreateAdvancePurchaseRequest request) {
         assertThrows(IllegalArgumentException.class, () -> whenExecute(request));
     }
 
-    @Test
-    void execute_WhenStudentSchoolIsMissing_ShouldThrowException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentExists(STUDENT_ID); // without school
-        
-        CreateAdvancePurchaseRequest request = givenRequest(null, null);
-        assertThrows(IllegalArgumentException.class, () -> whenExecute(request));
-    }
-
-    @Test
-    void execute_WhenDateIsMissing_ShouldThrowException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentExists(STUDENT_ID);
-
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null, null, List.of(new CreateAdvancePurchaseRequest.ItemRequest(PRODUCT_ID, 2)));
-        assertThrows(IllegalArgumentException.class, () -> whenExecute(request));
-    }
-
-    @Test
-    void execute_WhenDateIsInvalid_ShouldThrowException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentExists(STUDENT_ID);
-
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null, "invalid-date", List.of(new CreateAdvancePurchaseRequest.ItemRequest(PRODUCT_ID, 2)));
-        assertThrows(IllegalArgumentException.class, () -> whenExecute(request));
-    }
-
-    @Test
-    void execute_WhenItemsAreMissing_ShouldThrowException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentExists(STUDENT_ID);
-        givenSlotResolved();
-
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null, PICKUP_DATE.toString(), List.of());
-        assertThrows(IllegalArgumentException.class, () -> whenExecute(request));
-    }
-
-    @Test
-    void execute_WhenProductDoesNotExist_ShouldThrowException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentExists(STUDENT_ID);
-        givenSlotResolved();
-        when(productRepository.findActiveByIdWithStock(PRODUCT_ID, BUFFET_ID)).thenReturn(Optional.empty());
-
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+    private void thenThrowsProductNotFoundException(CreateAdvancePurchaseRequest request) {
         assertThrows(ProductNotFoundException.class, () -> whenExecute(request));
     }
 
-    @Test
-    void execute_WhenWalletDoesNotExist_ShouldThrowException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentExists(STUDENT_ID);
-        givenSlotResolved();
-        givenProductExists(PRODUCT_ID, DEFAULT_PRICE);
-        when(walletRepository.findByStudentId(STUDENT_ID)).thenReturn(Optional.empty());
-
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
+    private void thenThrowsIllegalStateException(CreateAdvancePurchaseRequest request) {
         assertThrows(IllegalStateException.class, () -> whenExecute(request));
     }
 
-    @Test
-    void execute_WhenProductPriceIsNull_ShouldUseZeroTotal() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentExists(STUDENT_ID);
-        givenSlotResolved();
-        givenProductExists(PRODUCT_ID, null);
-        givenWalletExists(STUDENT_ID, DEFAULT_BALANCE);
-        givenWithdrawalCodeGenerated("ABC123");
-        givenPurchaseIsSaved();
-
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null);
-        CreateAdvancePurchaseResponse response = whenExecute(request);
-
+    private void thenResponseTotalIsZero(CreateAdvancePurchaseResponse response) {
         assertEquals(0.0, response.total());
     }
 
-    @Test
-    void execute_WithShortConstructor_ShouldCreatePurchaseWithoutMovementRepository() {
-        CreateAdvancePurchase localUseCase = new CreateAdvancePurchase(
-                purchaseValidator, alumnoRepository, productRepository, purchaseRepository,
-                withdrawalCodeService, inventoryAvailabilityService, recessTimeSlotResolver,
-                advancePurchaseRulesService, walletRepository, buffetRepository,
-                usuarioRepository, tutorRepository, promotionRepository
-        );
-        
-        givenValidContextForTutorPurchase();
-
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null).withCognitoSub(COGNITO_SUB);
-        CreateAdvancePurchaseResponse response = localUseCase.execute(request);
-
+    private void thenOrderIdMatches(CreateAdvancePurchaseResponse response) {
         assertEquals(PURCHASE_ID.toString(), response.orderId());
     }
 
-    @Test
-    void execute_WhenMovementRepositoryExists_ShouldRegisterPurchaseMovement() {
-        MovimientoBilleteraRepository movementRepository = mock(MovimientoBilleteraRepository.class);
-        CreateAdvancePurchase localUseCase = new CreateAdvancePurchase(
-                purchaseValidator, alumnoRepository, productRepository, purchaseRepository,
-                withdrawalCodeService, inventoryAvailabilityService, recessTimeSlotResolver,
-                advancePurchaseRulesService, walletRepository, buffetRepository,
-                usuarioRepository, tutorRepository, promotionRepository, movementRepository
-        );
-
-        givenValidContextForTutorPurchase();
-        
-        CreateAdvancePurchaseRequest request = givenRequest(BUFFET_ID, null).withCognitoSub(COGNITO_SUB);
-        localUseCase.execute(request);
-
+    private void thenMovementIsRegistered(MovimientoBilleteraRepository movementRepository) {
         verify(movementRepository).registrarMovimiento(
                 any(),
                 eq(TipoMovimientoBilletera.COMPRA),
@@ -395,59 +513,21 @@ class CreateAdvancePurchaseUseCaseTest {
         );
     }
 
-    @Test
-    void execute_WhenPromotionIsNotActive_ShouldThrowIllegalArgumentException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentExists(STUDENT_ID);
-        givenSlotResolved();
-        when(productRepository.findActiveByIdWithStock(PROMOTION_ID, BUFFET_ID)).thenReturn(Optional.empty());
-        givenPromotionExists(PROMOTION_ID, PromotionStatus.DRAFT, BUFFET_ID, PICKUP_DATE.atStartOfDay().minusDays(1), PICKUP_DATE.atStartOfDay().plusDays(1));
-
-        CreateAdvancePurchaseRequest request = givenPromotionRequest();
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> whenExecute(request));
-        assertEquals("Promotion is not active", exception.getMessage());
+    private void thenThrowsIllegalArgumentExceptionWithMessage(
+            CreateAdvancePurchaseRequest request, String message) {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class, () -> whenExecute(request)
+        );
+        assertEquals(message, exception.getMessage());
     }
 
-    @Test
-    void execute_WhenPromotionDoesNotBelongToBuffet_ShouldThrowIllegalArgumentException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentExists(STUDENT_ID);
-        givenSlotResolved();
-        when(productRepository.findActiveByIdWithStock(PROMOTION_ID, BUFFET_ID)).thenReturn(Optional.empty());
-        givenPromotionExists(PROMOTION_ID, PromotionStatus.ACTIVE, UUID.randomUUID(), PICKUP_DATE.atStartOfDay().minusDays(1), PICKUP_DATE.atStartOfDay().plusDays(1));
-
-        CreateAdvancePurchaseRequest request = givenPromotionRequest();
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> whenExecute(request));
-        assertEquals("Promotion does not belong to this buffet", exception.getMessage());
-    }
-
-    @Test
-    void execute_WhenPromotionContainsInactiveProduct_ShouldThrowProductNotFoundException() {
-        givenUserExists(USER_ID, RolUsuario.PADRE);
-        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
-        givenStudentExists(STUDENT_ID);
-        givenSlotResolved();
-        when(productRepository.findActiveByIdWithStock(PROMOTION_ID, BUFFET_ID)).thenReturn(Optional.empty());
-        
-        Promotion promotion = givenPromotionExists(PROMOTION_ID, PromotionStatus.ACTIVE, BUFFET_ID, PICKUP_DATE.atStartOfDay().minusDays(1), PICKUP_DATE.atStartOfDay().plusDays(1));
-        Producto prod = new Producto();
-        prod.setId(PRODUCT_ID);
-        promotion.setProducts(List.of(prod));
-        promotion.setDiscountPercentage(new BigDecimal("10.00"));
-        
-        when(productRepository.findActiveByIdWithStock(PRODUCT_ID, BUFFET_ID)).thenReturn(Optional.empty());
-
-        CreateAdvancePurchaseRequest request = givenPromotionRequest();
-        assertThrows(ProductNotFoundException.class, () -> whenExecute(request));
-    }
-
-    // --- Private Helpers ---
+    // --- Helpers: When ---
 
     private CreateAdvancePurchaseResponse whenExecute(CreateAdvancePurchaseRequest request) {
         return useCase.execute(request == null ? null : request.withCognitoSub(COGNITO_SUB));
     }
+
+    // --- Helpers: Given ---
 
     private void givenValidContextForTutorPurchase() {
         givenUserExists(USER_ID, RolUsuario.PADRE);
@@ -471,6 +551,18 @@ class CreateAdvancePurchaseUseCaseTest {
         givenPurchaseIsSaved();
     }
 
+    private void givenValidContextForStudentSchoolPurchase() {
+        givenUserExists(USER_ID, RolUsuario.PADRE);
+        givenTutorExists(USER_ID, TUTOR_ID, STUDENT_ID);
+        givenStudentWithSchoolExists(STUDENT_ID, SCHOOL_ID);
+        givenSchoolBuffetExists(SCHOOL_ID, BUFFET_ID);
+        givenSlotResolved();
+        givenProductExists(PRODUCT_ID, DEFAULT_PRICE);
+        givenWalletExists(STUDENT_ID, DEFAULT_BALANCE);
+        givenWithdrawalCodeGenerated("ABC123");
+        givenPurchaseIsSaved();
+    }
+
     private void givenUserExists(UUID userId, RolUsuario role) {
         Usuario user = new Usuario();
         user.setId(userId);
@@ -485,6 +577,10 @@ class CreateAdvancePurchaseUseCaseTest {
         user.setAlumno(student);
     }
 
+    private void givenUserIsDifferentStudent() {
+        givenUserIsStudent(UUID.randomUUID());
+    }
+
     private void givenTutorExists(UUID userId, UUID tutorId, UUID childId) {
         Tutor tutor = new Tutor();
         tutor.setId(tutorId);
@@ -494,10 +590,18 @@ class CreateAdvancePurchaseUseCaseTest {
         when(tutorRepository.findByUsuarioId(userId)).thenReturn(Optional.of(tutor));
     }
 
+    private void givenTutorExistsForDifferentStudent() {
+        givenTutorExists(USER_ID, TUTOR_ID, UUID.randomUUID());
+    }
+
     private void givenStudentExists(UUID studentId) {
         Alumno student = new Alumno();
         student.setId(studentId);
         when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+    }
+
+    private void givenStudentExistsWithoutSchool() {
+        givenStudentExists(STUDENT_ID);
     }
 
     private void givenStudentWithSchoolExists(UUID studentId, UUID schoolId) {
@@ -522,7 +626,8 @@ class CreateAdvancePurchaseUseCaseTest {
         Producto product = new Producto();
         product.setId(productId);
         product.setPrecio(price);
-        when(productRepository.findActiveByIdWithStock(productId, BUFFET_ID)).thenReturn(Optional.of(product));
+        when(productRepository.findActiveByIdWithStock(productId, BUFFET_ID))
+                .thenReturn(Optional.of(product));
     }
 
     private void givenWalletExists(UUID studentId, BigDecimal balance) {
@@ -530,6 +635,10 @@ class CreateAdvancePurchaseUseCaseTest {
         wallet.setId(UUID.randomUUID());
         wallet.setSaldoCreditos(balance);
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+    }
+
+    private void givenWalletWithInsufficientBalance() {
+        givenWalletExists(STUDENT_ID, new BigDecimal("10.00"));
     }
 
     private void givenSchoolBuffetExists(UUID schoolId, UUID buffetId) {
@@ -551,7 +660,12 @@ class CreateAdvancePurchaseUseCaseTest {
         });
     }
 
-    private Promotion givenPromotionExists(UUID promotionId, PromotionStatus status, UUID buffetId, LocalDateTime start, LocalDateTime end) {
+    private Promotion givenPromotionExists(
+            UUID promotionId, 
+            PromotionStatus status, 
+            UUID buffetId, 
+            LocalDateTime start, 
+            LocalDateTime end) {
         Promotion promotion = new Promotion();
         promotion.setId(promotionId);
         promotion.setStatus(status);
@@ -564,19 +678,96 @@ class CreateAdvancePurchaseUseCaseTest {
         return promotion;
     }
 
-    private CreateAdvancePurchaseRequest givenRequest(UUID requestBuffetId, UUID requestSuggestionId) {
-        return givenRequest(requestBuffetId, requestSuggestionId, PICKUP_DATE.toString(), List.of(new CreateAdvancePurchaseRequest.ItemRequest(PRODUCT_ID, 2)));
+    private void givenPromotionWithInactiveProduct(Promotion promotion) {
+        Producto prod = new Producto();
+        prod.setId(PRODUCT_ID);
+        promotion.setProducts(List.of(prod));
+        promotion.setDiscountPercentage(new BigDecimal("10.00"));
+        when(productRepository.findActiveByIdWithStock(PRODUCT_ID, BUFFET_ID))
+                .thenReturn(Optional.empty());
     }
 
-    private CreateAdvancePurchaseRequest givenRequest(UUID requestBuffetId, UUID requestSuggestionId, String date, List<CreateAdvancePurchaseRequest.ItemRequest> items) {
+    private CreateAdvancePurchaseRequest givenRequest(UUID requestBuffetId, UUID suggestionId) {
+        return givenRequest(
+                requestBuffetId, 
+                suggestionId, 
+                PICKUP_DATE.toString(), 
+                List.of(new CreateAdvancePurchaseRequest.ItemRequest(PRODUCT_ID, 2))
+        );
+    }
+
+    private CreateAdvancePurchaseRequest givenRequest(
+            UUID requestBuffetId, 
+            UUID suggestionId, 
+            String date, 
+            List<CreateAdvancePurchaseRequest.ItemRequest> items) {
         CreateAdvancePurchaseRequest.OrderRequest orderRequest =
                 new CreateAdvancePurchaseRequest.OrderRequest(
-                        STUDENT_ID, USER_ID, BuyerType.TUTOR, requestBuffetId, date, RecessTime.FIRST_RECESS, items, requestSuggestionId, TUTOR_ID
+                        STUDENT_ID, 
+                        USER_ID, 
+                        BuyerType.TUTOR, 
+                        requestBuffetId, 
+                        date, 
+                        RecessTime.FIRST_RECESS, 
+                        items, 
+                        suggestionId, 
+                        TUTOR_ID
                 );
         return new CreateAdvancePurchaseRequest(List.of(orderRequest));
     }
 
+    private CreateAdvancePurchaseRequest givenRequestWithNoDate() {
+        return givenRequest(
+                BUFFET_ID, 
+                null, 
+                null, 
+                List.of(new CreateAdvancePurchaseRequest.ItemRequest(PRODUCT_ID, 2))
+        );
+    }
+
+    private CreateAdvancePurchaseRequest givenRequestWithInvalidDate() {
+        return givenRequest(
+                BUFFET_ID, 
+                null, 
+                "invalid-date", 
+                List.of(new CreateAdvancePurchaseRequest.ItemRequest(PRODUCT_ID, 2))
+        );
+    }
+
+    private CreateAdvancePurchaseRequest givenRequestWithNoItems() {
+        return givenRequest(BUFFET_ID, null, PICKUP_DATE.toString(), List.of());
+    }
+
     private CreateAdvancePurchaseRequest givenPromotionRequest() {
-        return givenRequest(BUFFET_ID, null, PICKUP_DATE.toString(), List.of(new CreateAdvancePurchaseRequest.ItemRequest(PROMOTION_ID, 1)));
+        return givenRequest(
+                BUFFET_ID, 
+                null, 
+                PICKUP_DATE.toString(), 
+                List.of(new CreateAdvancePurchaseRequest.ItemRequest(PROMOTION_ID, 1))
+        );
+    }
+
+    private CreateAdvancePurchaseRequest givenRequestWithCognitoSub(
+            UUID requestBuffetId, UUID suggestionId) {
+        return givenRequest(requestBuffetId, suggestionId).withCognitoSub(COGNITO_SUB);
+    }
+
+    private CreateAdvancePurchase buildUseCaseWithoutMovementRepository() {
+        return new CreateAdvancePurchase(
+                purchaseValidator, alumnoRepository, productRepository, purchaseRepository,
+                withdrawalCodeService, inventoryAvailabilityService, recessTimeSlotResolver,
+                advancePurchaseRulesService, walletRepository, buffetRepository,
+                usuarioRepository, tutorRepository, promotionRepository
+        );
+    }
+
+    private CreateAdvancePurchase buildUseCaseWithMovementRepository(
+            MovimientoBilleteraRepository movementRepository) {
+        return new CreateAdvancePurchase(
+                purchaseValidator, alumnoRepository, productRepository, purchaseRepository,
+                withdrawalCodeService, inventoryAvailabilityService, recessTimeSlotResolver,
+                advancePurchaseRulesService, walletRepository, buffetRepository,
+                usuarioRepository, tutorRepository, promotionRepository, movementRepository
+        );
     }
 }

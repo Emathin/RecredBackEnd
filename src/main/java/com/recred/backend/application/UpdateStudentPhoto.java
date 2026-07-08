@@ -8,7 +8,7 @@ import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
-import org.springframework.security.access.AccessDeniedException;
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -30,34 +30,37 @@ public class UpdateStudentPhoto {
     public UpdateStudentPhotoResponse execute(UpdateStudentPhotoRequest request) {
         Usuario parent = this.findUsuarioByCognito(request.parentCognitoSubject());
 
-        this.analizarRolUsuario(parent);
+        this.requireParentRole(parent);
 
         Tutor tutor = this.findTutorByUsuarioId(parent.getId());
         Alumno alumno = this.findAlumnoById(request.alumnoId());
 
-        boolean esHijo = this.isTutorOfStudent(tutor, alumno);
-        this.analizarExcepcion(esHijo);
+        this.requireTutorOwnership(tutor, alumno);
 
-        String idCognitoAlumno = alumno.getUsuario().getIdCognito();
-        usuarioRepository.updateFotoPerfil(idCognitoAlumno, request.urlFotoPerfil());
-
-        alumno.getUsuario().setUrlFotoPerfil(request.urlFotoPerfil());
+        this.saveStudentPhoto(alumno, request.urlFotoPerfil());
 
         return toResponse(alumno);
     }
 
-    private void analizarRolUsuario(Usuario parent){
+    private void requireParentRole(Usuario parent){
         if (parent.getRol() != RolUsuario.PADRE) {
-            throw new AccessDeniedException("El usuario autenticado no tiene rol PADRE");
+            throw new OperationNotAllowedException("El usuario autenticado no tiene rol PADRE");
         }
-
     }
 
-    private void analizarExcepcion(boolean esHijo){
+    private void requireTutorOwnership(Tutor tutor, Alumno alumno){
+        boolean esHijo = tutor.getHijos().stream()
+                .anyMatch(hijo -> hijo.getId().equals(alumno.getId()));
         if (!esHijo) {
-            throw new AccessDeniedException(
+            throw new OperationNotAllowedException(
                     "El alumno no pertenece al tutor autenticado");
         }
+    }
+
+    private void saveStudentPhoto(Alumno alumno, String urlFotoPerfil) {
+        String idCognitoAlumno = alumno.getUsuario().getIdCognito();
+        usuarioRepository.updateFotoPerfil(idCognitoAlumno, urlFotoPerfil);
+        alumno.getUsuario().setUrlFotoPerfil(urlFotoPerfil);
     }
 
     private Usuario findUsuarioByCognito(String cognitoSubject) {
@@ -77,10 +80,6 @@ public class UpdateStudentPhoto {
                 .orElseThrow(() -> new AlumnoNoEncontradoException(id));
     }
 
-    private boolean isTutorOfStudent(Tutor tutor, Alumno alumno) {
-        return tutor.getHijos().stream()
-                .anyMatch(hijo -> hijo.getId().equals(alumno.getId()));
-    }
 
     private UpdateStudentPhotoResponse toResponse(Alumno alumno) {
         String nombre = alumno.getUsuario() != null ?

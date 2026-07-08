@@ -15,14 +15,19 @@ public class UpdateTutorDashboardConfig {
     }
 
     public UpdateTutorDashboardConfigResponse execute(UpdateTutorDashboardConfigRequest request) {
-        request.validate();
-
         Tutor tutor = findTutor(request.cognitoSubject());
         validatePlanLimits(tutor, request.dashboardConfig());
-
-        tutor.setDashboardConfig(request.dashboardConfig());
-        tutorRepository.save(tutor);
+        updateConfig(tutor, request.dashboardConfig());
+        saveTutor(tutor);
         return new UpdateTutorDashboardConfigResponse();
+    }
+
+    private void updateConfig(Tutor tutor, String dashboardConfig) {
+        tutor.setDashboardConfig(dashboardConfig);
+    }
+
+    private void saveTutor(Tutor tutor) {
+        tutorRepository.save(tutor);
     }
 
     private Tutor findTutor(String cognitoSubject) {

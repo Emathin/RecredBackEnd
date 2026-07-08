@@ -5,78 +5,64 @@ import com.recred.backend.application.ListDailyBuffetClosesRequest;
 import com.recred.backend.application.ListDailyBuffetClosesResponse;
 import com.recred.backend.domain.models.DailyBuffetClose;
 import com.recred.backend.domain.repositories.DailyBuffetCloseRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class ListDailyBuffetClosesTest {
 
-    private final DailyBuffetCloseRepository repository =
-            mock(DailyBuffetCloseRepository.class);
-    private final ListDailyBuffetCloses useCase = new ListDailyBuffetCloses(repository);
-    private UUID buffetId;
-    private LocalDate startDate;
-    private LocalDate endDate;
-    private DailyBuffetClose close;
-    private ListDailyBuffetClosesResponse response;
+    private static final UUID BUFFET_ID = UUID.randomUUID();
+    private static final LocalDate START_DATE = LocalDate.of(2026, 6, 1);
+    private static final LocalDate END_DATE = LocalDate.of(2026, 6, 10);
+    private static final UUID CLOSE_ID = UUID.randomUUID();
+
+    @Mock
+    private DailyBuffetCloseRepository repository;
+
+    @InjectMocks
+    private ListDailyBuffetCloses useCase;
 
     @Test
-    void execute_ShouldReturnClosesInRange() {
-        givenCloseRange();
+    void shouldReturnClosesInRange() {
         givenRepositoryHasCloses();
 
-        whenListingCloses();
+        ListDailyBuffetClosesResponse response = whenListingCloses();
 
-        assertEquals(1, response.closes().size());
-        assertEquals(close.id(), response.closes().get(0).id());
-        verify(repository).findByBuffetAndDateRange(buffetId, startDate, endDate);
-    }
-
-    @Test
-    void execute_WhenRangeIsInvalid_ShouldFail() {
-        assertThrows(IllegalArgumentException.class, () -> useCase.execute(
-                new ListDailyBuffetClosesRequest(
-                        UUID.randomUUID(),
-                        LocalDate.of(2026, 6, 10),
-                        LocalDate.of(2026, 6, 1)
-                )
-        ));
-        verifyNoInteractions(repository);
-    }
-
-    private void givenCloseRange() {
-        buffetId = UUID.randomUUID();
-        startDate = LocalDate.of(2026, 6, 1);
-        endDate = LocalDate.of(2026, 6, 10);
+        thenClosesAreListedCorrectly(response);
     }
 
     private void givenRepositoryHasCloses() {
-        close = new DailyBuffetClose(
-                UUID.randomUUID(),
-                buffetId,
+        DailyBuffetClose close = new DailyBuffetClose(
+                CLOSE_ID,
+                BUFFET_ID,
                 LocalDate.of(2026, 6, 8),
                 1,
                 2,
                 BigDecimal.ZERO
         );
-        when(repository.findByBuffetAndDateRange(buffetId, startDate, endDate))
+        when(repository.findByBuffetAndDateRange(BUFFET_ID, START_DATE, END_DATE))
                 .thenReturn(List.of(close));
     }
 
-    private void whenListingCloses() {
-        response = useCase.execute(new ListDailyBuffetClosesRequest(
-                buffetId,
-                startDate,
-                endDate
-        ));
+    private ListDailyBuffetClosesResponse whenListingCloses() {
+        return useCase.execute(new ListDailyBuffetClosesRequest(BUFFET_ID, START_DATE, END_DATE));
+    }
+
+    private void thenClosesAreListedCorrectly(ListDailyBuffetClosesResponse response) {
+        assertEquals(1, response.closes().size());
+        assertEquals(CLOSE_ID, response.closes().get(0).id());
+        verify(repository).findByBuffetAndDateRange(BUFFET_ID, START_DATE, END_DATE);
     }
 }

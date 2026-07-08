@@ -1719,9 +1719,9 @@ public class UseCases {
 
     @Bean
     public UploadProductImage uploadProductImage(
-            com.recred.backend.infrastructure.cloudinary.CloudinaryService cloudinaryService,
+            StorageService storageService,
             InventoryRepository inventoryRepository) {
-        return new UploadProductImage(cloudinaryService, inventoryRepository);
+        return new UploadProductImage(storageService, inventoryRepository);
     }
 
     @Bean
