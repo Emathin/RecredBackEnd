@@ -55,4 +55,30 @@ public class RestriccionHoraria {
 
         return coincideCategoria || coincideClasificacion;
     }
+
+    public boolean overlapsWith(RestriccionHoraria other) {
+        if (!this.activa || !other.activa) {
+            return false;
+        }
+
+        boolean sameTimeSlot = this.franjaHoraria != null && other.franjaHoraria != null &&
+                               this.franjaHoraria.getId().equals(other.franjaHoraria.getId());
+
+        if (!sameTimeSlot) {
+            return false;
+        }
+
+        boolean sameCategory = this.categoria != null && other.categoria != null &&
+                               this.categoria.getId().equals(other.categoria.getId());
+
+        boolean sameClassification = this.clasificacionSalud != null &&
+                other.clasificacionSalud != null &&
+                this.clasificacionSalud.getId().equals(other.clasificacionSalud.getId());
+
+        return sameCategory || sameClassification;
+    }
+
+    public void disable() {
+        this.activa = false;
+    }
 }

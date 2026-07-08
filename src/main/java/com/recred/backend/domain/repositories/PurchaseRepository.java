@@ -57,6 +57,13 @@ public interface PurchaseRepository {
                         LocalDateTime start,
                         LocalDateTime end);
 
+        List<Purchase> findByBuffetAndPickupOrCreationDateRange(
+                        UUID buffetId,
+                        LocalDate startDate,
+                        LocalDate endDate,
+                        LocalDateTime start,
+                        LocalDateTime end);
+
         List<Purchase> findExpiredAdvancePurchases(LocalDate date,
                         LocalTime time,
                         List<EstadoCompra> statuses);
@@ -69,6 +76,10 @@ public interface PurchaseRepository {
         long countScheduledAdvancePurchases(UUID buffetId,
                         UUID pickupSlotId,
                         LocalDate pickupDate,
+                        List<EstadoCompra> statuses);
+
+        boolean existsActiveFutureScheduledByPickupSlotId(UUID pickupSlotId,
+                        LocalDate fromDate,
                         List<EstadoCompra> statuses);
 
         long sumScheduledProductQuantity(UUID buffetId,
@@ -89,6 +100,7 @@ public interface PurchaseRepository {
                         UUID buffetId,
                         LocalDate fecha,
                         EstadoRetiro estadoRetiro,
+                        EstadoCompra status,
                         UUID franjaId,
                         String search);
 

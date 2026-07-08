@@ -13,7 +13,13 @@ public class GetActivePromotions {
         this.promotionRepository = promotionRepository;
     }
 
-    public List<Promotion> execute() {
+    public GetActivePromotionsResponse execute(GetActivePromotionsRequest request) {
+        return new GetActivePromotionsResponse(promotions().stream()
+                .map(CreatePromotionResponse::fromDomain)
+                .toList());
+    }
+
+    private List<Promotion> promotions() {
         return promotionRepository.findAllActive();
     }
 }

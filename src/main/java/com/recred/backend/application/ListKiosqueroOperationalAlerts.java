@@ -6,7 +6,6 @@ import com.recred.backend.domain.models.OperationalAlertSeverity;
 import com.recred.backend.domain.models.OperationalAlertType;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 
@@ -45,34 +44,51 @@ public class ListKiosqueroOperationalAlerts {
         this.clock = clock;
     }
 
-    public List<KiosqueroOperationalAlert> execute(UUID buffetId) {
+    public ListKiosqueroOperationalAlertsResponse execute(
+            ListKiosqueroOperationalAlertsRequest alertsRequest
+    ) {
+        return new ListKiosqueroOperationalAlertsResponse(
+                operationalAlertsFor(alertsRequest.buffetId()).stream()
+                .map(OperationalAlertResponse::fromDomain)
+                .toList());
+    }
+
+    private List<KiosqueroOperationalAlert> operationalAlertsFor(UUID buffetId) {
         LocalDateTime now = LocalDateTime.now(clock);
-        List<Purchase> activeOrders = purchaseRepository.findByBuffetAndStatuses(
+        List<Purchase> activeOrders = activeOrdersFor(buffetId);
+        Map<UUID, Producto> productsById = activeProductsById(buffetId);
+        List<KiosqueroOperationalAlert> alerts = new ArrayList<>();
+        addPendingOrderAlerts(buffetId, now, activeOrders, alerts);
+        addPickupWindowAlerts(buffetId, now, activeOrders, alerts);
+        addDailyCapacityAlerts(buffetId, now, productsById, alerts);
+        return alerts;
+    }
+
+    private List<Purchase> activeOrdersFor(UUID buffetId) {
+        return purchaseRepository.findByBuffetAndStatuses(
                 buffetId,
                 ACTIVE_STATUSES,
                 100
         );
-        Map<UUID, Producto> products = productRepository.findAllActiveWithStock(buffetId)
-                .stream()
-                .collect(Collectors.toMap(Producto::getId, Function.identity()));
-        List<KiosqueroOperationalAlert> alerts = new ArrayList<>();
-        addPendingAlerts(buffetId, now, activeOrders, alerts);
-        addPickupAlerts(buffetId, now, activeOrders, alerts);
-        addDailyCapacityAlerts(buffetId, now, products, alerts);
-        return alerts;
     }
 
-    private void addPendingAlerts(
+    private Map<UUID, Producto> activeProductsById(UUID buffetId) {
+        return productRepository.findAllActiveWithStock(buffetId)
+                .stream()
+                .collect(Collectors.toMap(Producto::getId, Function.identity()));
+    }
+
+    private void addPendingOrderAlerts(
             UUID buffetId,
             LocalDateTime now,
             List<Purchase> orders,
             List<KiosqueroOperationalAlert> alerts
     ) {
         long pending = orders.stream()
-                .filter(order -> order.getStatus() == EstadoCompra.PENDIENTE)
+                .filter(Purchase::isPending)
                 .count();
-        if (pending >= MANY_PENDING_THRESHOLD) {
-            alerts.add(alert(
+        if (hasManyPendingOrders(pending)) {
+            alerts.add(operationalAlert(
                     buffetId,
                     OperationalAlertType.MANY_PENDING_ORDERS,
                     OperationalAlertSeverity.WARNING,
@@ -83,8 +99,8 @@ public class ListKiosqueroOperationalAlerts {
             ));
         }
 
-        if (orders.size() >= ACCUMULATION_THRESHOLD) {
-            alerts.add(alert(
+        if (hasOrderAccumulation(orders)) {
+            alerts.add(operationalAlert(
                     buffetId,
                     OperationalAlertType.ORDER_ACCUMULATION,
                     OperationalAlertSeverity.WARNING,
@@ -96,7 +112,15 @@ public class ListKiosqueroOperationalAlerts {
         }
     }
 
-    private void addPickupAlerts(
+    private boolean hasManyPendingOrders(long pendingOrders) {
+        return pendingOrders >= MANY_PENDING_THRESHOLD;
+    }
+
+    private boolean hasOrderAccumulation(List<Purchase> orders) {
+        return orders.size() >= ACCUMULATION_THRESHOLD;
+    }
+
+    private void addPickupWindowAlerts(
             UUID buffetId,
             LocalDateTime now,
             List<Purchase> orders,
@@ -114,9 +138,8 @@ public class ListKiosqueroOperationalAlerts {
             Purchase order,
             List<KiosqueroOperationalAlert> alerts
     ) {
-        if (order.getPickupSlotEnd() != null
-                && now.toLocalTime().isAfter(order.getPickupSlotEnd())) {
-            alerts.add(alert(
+        if (pickupAlreadyExpired(order, now)) {
+            alerts.add(operationalAlert(
                     buffetId,
                     OperationalAlertType.ORDER_EXPIRED,
                     OperationalAlertSeverity.CRITICAL,
@@ -128,15 +151,12 @@ public class ListKiosqueroOperationalAlerts {
             return;
         }
 
-        if (order.getPickupSlotStart() == null) {
+        if (pickupStartIsMissing(order)) {
             return;
         }
 
-        LocalDateTime pickupStart = LocalDateTime.of(order.getPickupDate(),
-                order.getPickupSlotStart());
-        if (!pickupStart.isBefore(now)
-                && !pickupStart.isAfter(now.plusMinutes(UPCOMING_PICKUP_MINUTES))) {
-            alerts.add(alert(
+        if (pickupIsUpcoming(order, now)) {
+            alerts.add(operationalAlert(
                     buffetId,
                     OperationalAlertType.ORDER_UPCOMING_PICKUP,
                     OperationalAlertSeverity.INFO,
@@ -148,21 +168,32 @@ public class ListKiosqueroOperationalAlerts {
         }
     }
 
+    private boolean pickupAlreadyExpired(Purchase order, LocalDateTime now) {
+        return order.getPickupSlotEnd() != null
+                && now.toLocalTime().isAfter(order.getPickupSlotEnd());
+    }
+
+    private boolean pickupStartIsMissing(Purchase order) {
+        return order.getPickupSlotStart() == null;
+    }
+
+    private boolean pickupIsUpcoming(Purchase order, LocalDateTime now) {
+        LocalDateTime pickupStart = LocalDateTime.of(
+                order.getPickupDate(),
+                order.getPickupSlotStart());
+        return !pickupStart.isBefore(now)
+                && !pickupStart.isAfter(now.plusMinutes(UPCOMING_PICKUP_MINUTES));
+    }
+
     private void addDailyCapacityAlerts(
             UUID buffetId,
             LocalDateTime now,
-            Map<UUID, Producto> products,
+            Map<UUID, Producto> productsById,
             List<KiosqueroOperationalAlert> alerts
     ) {
-        products.values().stream()
-                .filter(this::hasDailyCapacity)
+        productsById.values().stream()
+                .filter(Producto::hasDailyCapacityLimit)
                 .forEach(product -> addDailyCapacityAlert(buffetId, now, product, alerts));
-    }
-
-    private boolean hasDailyCapacity(Producto product) {
-        return product.getTipoManejoInventario() == TipoManejoInventario.CUPO_DIARIO
-                && product.getCupoMaximoDiario() != null
-                && product.getCupoMaximoDiario() > 0;
     }
 
     private void addDailyCapacityAlert(
@@ -178,9 +209,9 @@ public class ListKiosqueroOperationalAlerts {
                 ACTIVE_STATUSES
         );
         int remaining = product.getCupoMaximoDiario() - (int) reserved;
-        product.setCupoDisponibleDia(Math.max(0, remaining));
-        if (remaining <= Math.max(1, product.getCupoMaximoDiario() / 5)) {
-            alerts.add(alert(
+        product.applyDailyCapacity(reserved);
+        if (dailyCapacityIsLow(product, remaining)) {
+            alerts.add(operationalAlert(
                     buffetId,
                     OperationalAlertType.DAILY_CAPACITY_LOW,
                     OperationalAlertSeverity.WARNING,
@@ -192,7 +223,11 @@ public class ListKiosqueroOperationalAlerts {
         }
     }
 
-    private KiosqueroOperationalAlert alert(
+    private boolean dailyCapacityIsLow(Producto product, int remaining) {
+        return remaining <= Math.max(1, product.getCupoMaximoDiario() / 5);
+    }
+
+    private KiosqueroOperationalAlert operationalAlert(
             UUID buffetId,
             OperationalAlertType type,
             OperationalAlertSeverity severity,

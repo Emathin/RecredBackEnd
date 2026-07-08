@@ -1,23 +1,33 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.CloseDailyBuffet;
+import com.recred.backend.application.CloseDailyBuffetRequest;
+import com.recred.backend.application.CloseDailyBuffetResponse;
+import com.recred.backend.application.DailyBuffetCloseResponse;
 import com.recred.backend.application.GenerateDailyBuffetReport;
+import com.recred.backend.application.GenerateDailyBuffetReportRequest;
+import com.recred.backend.application.GenerateDailyBuffetReportResponse;
 import com.recred.backend.application.GetDailyBuffetCloseStatus;
+import com.recred.backend.application.GetDailyBuffetCloseStatusRequest;
+import com.recred.backend.application.GetDailyBuffetCloseStatusResponse;
 import com.recred.backend.application.GetBuffetTimeSlots;
+import com.recred.backend.application.GetBuffetTimeSlotsRequest;
 import com.recred.backend.application.GetKiosqueroDashboard;
+import com.recred.backend.application.GetKiosqueroDashboardRequest;
+import com.recred.backend.application.GetKiosqueroDashboardResponse;
 import com.recred.backend.application.ListDailyBuffetCloses;
+import com.recred.backend.application.ListDailyBuffetClosesRequest;
 import com.recred.backend.application.ListInventoryProducts;
+import com.recred.backend.application.ListInventoryProductsRequest;
+import com.recred.backend.application.ListInventoryProductsResponse.InventoryProductResponse;
 import com.recred.backend.application.ListKiosqueroOrders;
+import com.recred.backend.application.ListKiosqueroOrdersRequest;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
+import com.recred.backend.application.ListKiosqueroOperationalAlertsRequest;
 import com.recred.backend.application.UpdatePickupSlotRules;
-import com.recred.backend.domain.models.DailyBuffetReport;
-import com.recred.backend.domain.models.DailyBuffetClose;
-import com.recred.backend.domain.models.DailyCloseResult;
-import com.recred.backend.domain.models.DailyCloseStatus;
+import com.recred.backend.application.UpdatePickupSlotRulesRequest;
+import com.recred.backend.application.UpdatePickupSlotRulesResponse;
 import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.FranjaHoraria;
-import com.recred.backend.domain.models.KiosqueroDashboard;
-import com.recred.backend.domain.models.Producto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -56,6 +66,8 @@ public class KiosqueroOperationsController {
     private final ListKiosqueroOperationalAlerts listKiosqueroOperationalAlerts;
     private final GetKiosqueroDashboard getKiosqueroDashboard;
     private final KiosqueroAccessGuard kiosqueroAccessGuard;
+    private final SchoolAccessGuard schoolAccessGuard;
+    private final PlanAccessGuard planAccessGuard;
 
     public KiosqueroOperationsController(
             CloseDailyBuffet closeDailyBuffet,
@@ -68,7 +80,9 @@ public class KiosqueroOperationsController {
             ListInventoryProducts listInventoryProducts,
             ListKiosqueroOperationalAlerts listKiosqueroOperationalAlerts,
             GetKiosqueroDashboard getKiosqueroDashboard,
-            KiosqueroAccessGuard kiosqueroAccessGuard
+            KiosqueroAccessGuard kiosqueroAccessGuard,
+            SchoolAccessGuard schoolAccessGuard,
+            PlanAccessGuard planAccessGuard
     ) {
         this.closeDailyBuffet = closeDailyBuffet;
         this.getDailyBuffetCloseStatus = getDailyBuffetCloseStatus;
@@ -81,6 +95,8 @@ public class KiosqueroOperationsController {
         this.listKiosqueroOperationalAlerts = listKiosqueroOperationalAlerts;
         this.getKiosqueroDashboard = getKiosqueroDashboard;
         this.kiosqueroAccessGuard = kiosqueroAccessGuard;
+        this.schoolAccessGuard = schoolAccessGuard;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @GetMapping("/{buffetId}/orders")
@@ -95,18 +111,17 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        Map<UUID, Producto> inventoryProducts = listInventoryProducts.execute(buffetId)
+        Map<UUID, InventoryProductResponse> inventoryProducts = listInventoryProducts
+                .execute(new ListInventoryProductsRequest(buffetId))
+                .products()
                 .stream()
-                .collect(Collectors.toMap(Producto::getId, Function.identity()));
-        List<KiosqueroOrderResponse> orders = listKiosqueroOrders.execute(
-                        buffetId,
-                        statuses,
-                        date,
-                        pickupSlotId,
-                        limit
-                )
+                .collect(Collectors.toMap(InventoryProductResponse::id, Function.identity()));
+        ListKiosqueroOrdersRequest request =
+                new ListKiosqueroOrdersRequest(buffetId, statuses, date, pickupSlotId, limit);
+        List<KiosqueroOrderResponse> orders = listKiosqueroOrders.execute(request)
+                .orders()
                 .stream()
-                .map(order -> KiosqueroOrderResponse.fromDomain(order, inventoryProducts))
+                .map(order -> KiosqueroOrderResponse.fromApplication(order, inventoryProducts))
                 .toList();
         return ResponseEntity.ok(orders);
     }
@@ -117,14 +132,16 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(listKiosqueroOperationalAlerts.execute(buffetId)
+        return ResponseEntity.ok(listKiosqueroOperationalAlerts
+                .execute(new ListKiosqueroOperationalAlertsRequest(buffetId))
+                .alerts()
                 .stream()
-                .map(KiosqueroOperationalAlertResponse::fromDomain)
+                .map(KiosqueroOperationalAlertResponse::fromApplication)
                 .toList());
     }
 
     @GetMapping("/{buffetId}/dashboard")
-    public ResponseEntity<KiosqueroDashboard> dashboard(
+    public ResponseEntity<GetKiosqueroDashboardResponse> dashboard(
             @PathVariable UUID buffetId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -138,7 +155,10 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(getKiosqueroDashboard.execute(buffetId, date, from, to));
+        planAccessGuard.requireVendorIntermediate(authentication);
+        GetKiosqueroDashboardRequest request =
+                new GetKiosqueroDashboardRequest(buffetId, date, from, to);
+        return ResponseEntity.ok(getKiosqueroDashboard.execute(request));
     }
 
     @GetMapping("/{buffetId}/time-slots")
@@ -147,14 +167,15 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(getBuffetTimeSlots.execute(buffetId)
+        return ResponseEntity.ok(getBuffetTimeSlots
+                .execute(new GetBuffetTimeSlotsRequest(buffetId))
                 .stream()
-                .map(TimeSlotResponse::fromDomain)
+                .map(TimeSlotResponse::fromUseCaseResponse)
                 .toList());
     }
 
     @PostMapping("/{buffetId}/daily-close")
-    public ResponseEntity<DailyCloseResult> closeDaily(
+    public ResponseEntity<CloseDailyBuffetResponse> closeDaily(
             @PathVariable UUID buffetId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -162,11 +183,12 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(closeDailyBuffet.execute(buffetId, requestedDate(date)));
+        return ResponseEntity.ok(closeDailyBuffet.execute(
+                new CloseDailyBuffetRequest(buffetId, requestedDate(date))));
     }
 
     @GetMapping("/{buffetId}/daily-close/status")
-    public ResponseEntity<DailyCloseStatus> dailyCloseStatus(
+    public ResponseEntity<GetDailyBuffetCloseStatusResponse> dailyCloseStatus(
             @PathVariable UUID buffetId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -175,13 +197,11 @@ public class KiosqueroOperationsController {
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
         return ResponseEntity.ok(getDailyBuffetCloseStatus.execute(
-                buffetId,
-                requestedDate(date)
-        ));
+                new GetDailyBuffetCloseStatusRequest(buffetId, requestedDate(date))));
     }
 
     @GetMapping("/{buffetId}/daily-closes")
-    public ResponseEntity<List<DailyBuffetClose>> dailyCloses(
+    public ResponseEntity<List<DailyBuffetCloseResponse>> dailyCloses(
             @PathVariable UUID buffetId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -192,11 +212,12 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(listDailyBuffetCloses.execute(buffetId, from, to));
+        return ResponseEntity.ok(listDailyBuffetCloses.execute(
+                new ListDailyBuffetClosesRequest(buffetId, from, to)).closes());
     }
 
     @GetMapping("/{buffetId}/reports/daily")
-    public ResponseEntity<DailyBuffetReport> dailyReport(
+    public ResponseEntity<GenerateDailyBuffetReportResponse> dailyReport(
             @PathVariable UUID buffetId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -204,8 +225,8 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        return ResponseEntity.ok(generateDailyBuffetReport.execute(buffetId,
-                requestedDate(date)));
+        return ResponseEntity.ok(generateDailyBuffetReport.execute(
+                new GenerateDailyBuffetReportRequest(buffetId, requestedDate(date))));
     }
 
     @GetMapping("/{buffetId}/reports/daily.csv")
@@ -217,10 +238,8 @@ public class KiosqueroOperationsController {
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
-        DailyBuffetReport report = generateDailyBuffetReport.execute(
-                buffetId,
-                requestedDate(date)
-        );
+        GenerateDailyBuffetReportResponse report = generateDailyBuffetReport.execute(
+                new GenerateDailyBuffetReportRequest(buffetId, requestedDate(date)));
         return ResponseEntity.ok()
                 .contentType(new MediaType("text", "csv"))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -231,21 +250,24 @@ public class KiosqueroOperationsController {
     @PatchMapping("/time-slots/{slotId}/rules")
     public ResponseEntity<PickupSlotRulesResponse> updatePickupSlotRules(
             @PathVariable UUID slotId,
-            @Valid @RequestBody PickupSlotRulesRequest request
+            @Valid @RequestBody PickupSlotRulesRequest request,
+            Authentication authentication
     ) {
-        FranjaHoraria slot = updatePickupSlotRules.execute(
-                slotId,
-                request.cupoMaximo(),
-                request.minutosCorte()
-        );
-        return ResponseEntity.ok(PickupSlotRulesResponse.fromDomain(slot));
+        schoolAccessGuard.requireTimeSlotAccess(authentication, slotId);
+        UpdatePickupSlotRulesResponse slot = updatePickupSlotRules.execute(
+                new UpdatePickupSlotRulesRequest(
+                        slotId,
+                        request.cupoMaximo(),
+                        request.minutosCorte()
+                ));
+        return ResponseEntity.ok(PickupSlotRulesResponse.fromApplication(slot));
     }
 
     private LocalDate requestedDate(LocalDate date) {
         return date == null ? LocalDate.now() : date;
     }
 
-    private String csv(DailyBuffetReport report) {
+    private String csv(GenerateDailyBuffetReportResponse report) {
         return String.join("\n",
                 "metric,value",
                 "buffetId," + report.buffetId(),
@@ -276,15 +298,15 @@ public class KiosqueroOperationsController {
             Integer cupoMaximo,
             Integer minutosCorte
     ) {
-        static PickupSlotRulesResponse fromDomain(FranjaHoraria slot) {
+        static PickupSlotRulesResponse fromApplication(UpdatePickupSlotRulesResponse slot) {
             return new PickupSlotRulesResponse(
-                    slot.getId(),
-                    slot.getColegioId(),
-                    slot.getDescripcion(),
-                    slot.getHoraInicio(),
-                    slot.getHoraFin(),
-                    slot.getCupoMaximo(),
-                    slot.getMinutosCorte()
+                    slot.id(),
+                    slot.colegioId(),
+                    slot.descripcion(),
+                    slot.horaInicio(),
+                    slot.horaFin(),
+                    slot.cupoMaximo(),
+                    slot.minutosCorte()
             );
         }
     }

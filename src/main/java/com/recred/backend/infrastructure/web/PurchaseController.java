@@ -2,13 +2,16 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CreateAdvancePurchase;
+import com.recred.backend.application.CreateAdvancePurchaseRequest;
+import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import com.recred.backend.application.GetPresentialPurchase;
 import com.recred.backend.application.GetPurchaseStatus;
+import com.recred.backend.application.GetPurchaseStatusRequest;
 import com.recred.backend.application.ProcessPresentialPurchase;
+import com.recred.backend.application.ProcessPresentialPurchaseRequest;
+import com.recred.backend.application.ProcessPresentialPurchaseResponse;
 import com.recred.backend.application.UpdatePurchaseStatus;
-import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.repositories.ProductRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -22,10 +25,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/purchases")
@@ -36,51 +37,56 @@ public class PurchaseController {
     private final GetPurchaseStatus getPurchaseStatus;
     private final UpdatePurchaseStatus updatePurchaseStatus;
     private final CancelPresentialPurchase cancelPresentialPurchase;
-    private final ProductRepository productRepository;
+    private final com.recred.backend.application.RevertPurchaseCancellation 
+            revertPurchaseCancellation;
     private final CreateAdvancePurchase createAdvancePurchase;
     private final KiosqueroAccessGuard kiosqueroAccessGuard;
     private final PurchaseAccessGuard purchaseAccessGuard;
+    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public PurchaseController(ProcessPresentialPurchase processPresentialPurchase,
                               GetPresentialPurchase getPresentialPurchase,
                               GetPurchaseStatus getPurchaseStatus,
                               UpdatePurchaseStatus updatePurchaseStatus,
                               CancelPresentialPurchase cancelPresentialPurchase,
-                              ProductRepository productRepository,
+                              com.recred.backend.application.RevertPurchaseCancellation 
+                                      revertPurchaseCancellation,
                               CreateAdvancePurchase createAdvancePurchase,
                               KiosqueroAccessGuard kiosqueroAccessGuard,
-                              PurchaseAccessGuard purchaseAccessGuard) {
+                              PurchaseAccessGuard purchaseAccessGuard,
+                              SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
         this.processPresentialPurchase = processPresentialPurchase;
         this.getPresentialPurchase = getPresentialPurchase;
         this.getPurchaseStatus = getPurchaseStatus;
         this.updatePurchaseStatus = updatePurchaseStatus;
         this.cancelPresentialPurchase = cancelPresentialPurchase;
-        this.productRepository = productRepository;
+        this.revertPurchaseCancellation = revertPurchaseCancellation;
         this.createAdvancePurchase = createAdvancePurchase;
         this.kiosqueroAccessGuard = kiosqueroAccessGuard;
         this.purchaseAccessGuard = purchaseAccessGuard;
+        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping("/presential")
-    public ResponseEntity<PurchaseResponseDTO> processPurchase(
+    public ResponseEntity<ProcessPresentialPurchaseResponse> processPurchase(
             @Valid @RequestBody ProcessPurchaseRequestDTO request,
             Authentication authentication
     ) {
         kiosqueroAccessGuard.requireBuffetAccess(authentication, request.getBuffetId());
-        Map<Producto, Integer> cart = request.getItems().stream()
-                .collect(Collectors.toMap(
-                        item -> productRepository.findById(item.getProductId())
-                                .orElseThrow(() ->
-                                new RuntimeException("Product not found: " + item.getProductId())),
-                        PurchaseItemDTO::getQuantity
-                ));
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(request.getStudentId());
 
-        Purchase purchase = processPresentialPurchase.execute(
+        ProcessPresentialPurchaseRequest useCaseRequest = new ProcessPresentialPurchaseRequest(
                 request.getStudentId(),
-                cart,
+                request.getItems().stream()
+                        .map(item -> new ProcessPresentialPurchaseRequest.ItemRequest(
+                                item.getProductId(), item.getQuantity()))
+                        .toList(),
                 request.getBuffetId()
         );
-        return ResponseEntity.ok(new PurchaseResponseDTO(purchase));
+
+        ProcessPresentialPurchaseResponse response = 
+                processPresentialPurchase.execute(useCaseRequest);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/advance")
@@ -88,9 +94,40 @@ public class PurchaseController {
             @Valid @RequestBody AdvancePurchaseRequest request,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
-                createAdvancePurchase.execute(request, cognitoSubject(authentication))
+        schoolLicenseAccessGuard.requireActiveSchoolForStudents(
+                request.orders().stream()
+                        .map(AdvancePurchaseRequest.OrderRequest::studentId)
+                        .toList());
+        CreateAdvancePurchaseRequest useCaseRequest = new CreateAdvancePurchaseRequest(
+                request.orders().stream()
+                        .map(o -> new CreateAdvancePurchaseRequest.OrderRequest(
+                                o.studentId(),
+                                o.buyerId(),
+                                o.buyerType(),
+                                o.buffetId(),
+                                o.date(),
+                                o.recessTime(),
+                                o.items().stream()
+                                        .map(i -> new CreateAdvancePurchaseRequest.ItemRequest(
+                                                i.productId(),
+                                                i.quantity()
+                                        ))
+                                        .toList(),
+                                o.suggestionId(),
+                                o.tutorId()
+                        ))
+                        .toList()
         );
+
+        CreateAdvancePurchaseResponse useCaseResponse = createAdvancePurchase.execute(
+                useCaseRequest.withCognitoSub(cognitoSubject(authentication)));
+
+        return ResponseEntity.ok(new AdvancePurchaseResponse(
+                useCaseResponse.orderId(),
+                useCaseResponse.status(),
+                useCaseResponse.total(),
+                useCaseResponse.codes()
+        ));
     }
 
     @GetMapping("/{id}")
@@ -99,7 +136,11 @@ public class PurchaseController {
             Authentication authentication
     ) {
         Purchase purchase = purchaseAccessGuard.requirePurchaseAccess(authentication, id);
-        return ResponseEntity.ok(new PurchaseResponseDTO(purchase));
+        com.recred.backend.application.GetPresentialPurchaseRequest useCaseRequest = 
+                new com.recred.backend.application.GetPresentialPurchaseRequest(purchase.getId());
+        return ResponseEntity.ok(new PurchaseResponseDTO(
+                getPresentialPurchase.execute(useCaseRequest)
+        ));
     }
 
     @GetMapping("/{id}/status")
@@ -107,8 +148,12 @@ public class PurchaseController {
             @PathVariable UUID id,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(PurchaseStatusResponseDTO.fromDomain(
-                getPurchaseStatus.execute(cognitoSubject(authentication), id)
+        purchaseAccessGuard.requirePurchaseAccess(authentication, id);
+        return ResponseEntity.ok(PurchaseStatusResponseDTO.fromApplication(
+                getPurchaseStatus.execute(new GetPurchaseStatusRequest(
+                        cognitoSubject(authentication),
+                        id
+                ))
         ));
     }
 
@@ -120,8 +165,19 @@ public class PurchaseController {
     ) {
         Purchase purchase = purchaseAccessGuard.requirePurchaseAccess(authentication, id);
         kiosqueroAccessGuard.requireBuffetAccess(authentication, purchase.getBuffetId());
-        return ResponseEntity.ok(PurchaseStatusResponseDTO.fromDomain(
-                updatePurchaseStatus.execute(id, request.status())
+        
+        com.recred.backend.application.UpdatePurchaseStatusRequest useCaseRequest = 
+                new com.recred.backend.application.UpdatePurchaseStatusRequest(
+                        id, request.status());
+        com.recred.backend.application.UpdatePurchaseStatusResponse useCaseResponse = 
+                updatePurchaseStatus.execute(useCaseRequest);
+                
+        return ResponseEntity.ok(new PurchaseStatusResponseDTO(
+                useCaseResponse.id(),
+                useCaseResponse.studentId(),
+                useCaseResponse.status(),
+                useCaseResponse.label(),
+                useCaseResponse.date()
         ));
     }
 
@@ -131,7 +187,43 @@ public class PurchaseController {
             Authentication authentication
     ) {
         purchaseAccessGuard.requirePurchaseAccess(authentication, id);
-        cancelPresentialPurchase.execute(id);
+        cancelPresentialPurchase.execute(
+                new com.recred.backend.application.CancelPresentialPurchaseRequest(id));
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{id}/revert")
+    public ResponseEntity<Void> revertPurchase(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        purchaseAccessGuard.requirePurchaseAccess(authentication, id);
+        revertPurchaseCancellation.execute(
+                new com.recred.backend.application.RevertPurchaseCancellationRequest(id));
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/deliver")
+    public ResponseEntity<Void> deliverPurchase(
+            @PathVariable UUID id,
+            @Valid @RequestBody DeliverPurchaseRequestDTO request,
+            Authentication authentication
+    ) {
+        Purchase purchase = purchaseAccessGuard.requirePurchaseAccess(authentication, id);
+        kiosqueroAccessGuard.requireBuffetAccess(authentication, purchase.getBuffetId());
+
+        if (request == null || request.withdrawalCode() == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        String providedCode = request.withdrawalCode().trim();
+        String actualCode = purchase.getWithdrawalCode() != null
+                ? purchase.getWithdrawalCode().trim() : "";
+
+        if (actualCode.isEmpty() || !providedCode.equalsIgnoreCase(actualCode)) {
+            return ResponseEntity.badRequest().build();
+        }
+
         return ResponseEntity.ok().build();
     }
 

@@ -1,7 +1,10 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetProductsByBuffetUser;
+import com.recred.backend.application.GetProductsByBuffetUserRequest;
 import com.recred.backend.application.GetScheduledPickups;
+import com.recred.backend.application.GetScheduledPickupsRequest;
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.UsuarioService;
@@ -38,9 +41,11 @@ public class BuffetController {
     public ResponseEntity<List<ProductResponseDTO>> findAllByUserId(
             @PathVariable UUID userId) {
         List<ProductResponseDTO> products =
-                getProductsByBuffetUser.execute(userId)
+                getProductsByBuffetUser
+                .execute(new GetProductsByBuffetUserRequest(userId))
+                .products()
                 .stream()
-                .map(ProductResponseDTO::fromDomain)
+                .map(ProductResponseDTO::fromApplication)
                 .toList();
         return ResponseEntity.ok(products);
     }
@@ -50,6 +55,7 @@ public class BuffetController {
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(required = false) LocalDate fecha,
             @RequestParam(required = false) EstadoRetiro estadoRetiro,
+            @RequestParam(required = false) EstadoCompra status,
             @RequestParam(required = false) UUID franjaId,
             @RequestParam(required = false) String search
     ) {
@@ -60,8 +66,10 @@ public class BuffetController {
         }
         UUID buffetId = usuario.getKiosquero().getBuffet().getId();
 
-        List<ScheduledPickupResponseDTO> pickups = getScheduledPickups.execute(
-                        buffetId, fecha, estadoRetiro, franjaId, search)
+        GetScheduledPickupsRequest request = new GetScheduledPickupsRequest(
+                buffetId, fecha, estadoRetiro, status, franjaId, search);
+
+        List<ScheduledPickupResponseDTO> pickups = getScheduledPickups.execute(request)
                 .stream()
                 .map(ScheduledPickupResponseDTO::new)
                 .toList();

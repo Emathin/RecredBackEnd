@@ -22,42 +22,124 @@ public class UpdateTimeRestriction {
         this.alumnoRepository = alumnoRepository;
     }
 
-    public RestriccionHoraria execute(UUID restrictionId, TimeRestrictionCommand command) {
-        RestriccionHoraria existingRestriction = repository.findById(restrictionId)
+    public UpdateTimeRestrictionResponse execute(UpdateTimeRestrictionRequest request) {
+        RestriccionHoraria existingRestriction = this.findRestrictionById(request.restrictionId());
+        Alumno alumno = this.findAlumnoById(existingRestriction.getAlumnoId());
+
+        this.validateClassificationConstraints(alumno, request.classificationId());
+        this.updateRestrictionFields(existingRestriction, request);
+
+        RestriccionHoraria saved = this.saveRestriction(existingRestriction);
+        return mapToResponse(saved);
+    }
+
+    private RestriccionHoraria findRestrictionById(UUID restrictionId) {
+        return repository.findById(restrictionId)
                 .orElseThrow(() -> new RuntimeException("Restricción no encontrada"));
+    }
 
-        Alumno alumno = alumnoRepository.findById(existingRestriction.getAlumnoId())
+    private Alumno findAlumnoById(UUID alumnoId) {
+        return alumnoRepository.findById(alumnoId)
                 .orElseThrow(() -> new IllegalArgumentException("Alumno no encontrado"));
+    }
 
-        if (command.classificationId() != null) {
+    private void validateClassificationConstraints(Alumno alumno, UUID classificationId) {
+        if (classificationId != null) {
             boolean saludGlobalActiva = alumno.getRestriccionesSalud().stream()
-                    .anyMatch(r -> r.getId().equals(command.classificationId()));
+                    .anyMatch(r -> r.getId().equals(classificationId));
             if (saludGlobalActiva) {
                 throw new IllegalArgumentException(
                         "El alumno ya posee esta restricción de salud asignada globalmente.");
             }
         }
+    }
 
+    private void updateRestrictionFields(
+            RestriccionHoraria restriction, UpdateTimeRestrictionRequest request) {
+        this.updateTimeSlot(restriction, request.timeSlotId());
+        this.updateCategory(restriction, request.categoryId());
+        this.updateClassification(restriction, request.classificationId());
+    }
+
+    private void updateTimeSlot(RestriccionHoraria restriction, UUID timeSlotId) {
         FranjaHoraria timeSlot = new FranjaHoraria();
-        timeSlot.setId(command.timeSlotId());
-        existingRestriction.setFranjaHoraria(timeSlot);
+        timeSlot.setId(timeSlotId);
+        restriction.setFranjaHoraria(timeSlot);
+    }
 
-        if (command.categoryId() != null) {
+    private void updateCategory(RestriccionHoraria restriction, UUID categoryId) {
+        if (categoryId != null) {
             CategoriaProducto category = new CategoriaProducto();
-            category.setId(command.categoryId());
-            existingRestriction.setCategoria(category);
+            category.setId(categoryId);
+            restriction.setCategoria(category);
         } else {
-            existingRestriction.setCategoria(null);
+            restriction.setCategoria(null);
         }
+    }
 
-        if (command.classificationId() != null) {
+    private void updateClassification(RestriccionHoraria restriction, UUID classificationId) {
+        if (classificationId != null) {
             ClasificacionSalud classification = new ClasificacionSalud();
-            classification.setId(command.classificationId());
-            existingRestriction.setClasificacionSalud(classification);
+            classification.setId(classificationId);
+            restriction.setClasificacionSalud(classification);
         } else {
-            existingRestriction.setClasificacionSalud(null);
+            restriction.setClasificacionSalud(null);
         }
+    }
 
-        return repository.save(existingRestriction);
+    private RestriccionHoraria saveRestriction(RestriccionHoraria restriction) {
+        return repository.save(restriction);
+    }
+
+    private UpdateTimeRestrictionResponse mapToResponse(RestriccionHoraria r) {
+        return new UpdateTimeRestrictionResponse(
+                r.getId(),
+                r.getAlumnoId(),
+                mapFranja(r.getFranjaHoraria()),
+                mapCategoria(r.getCategoria()),
+                mapClasificacion(r.getClasificacionSalud()),
+                r.isActiva(),
+                r.getCreadoPorUsuarioId()
+        );
+    }
+
+    private UpdateTimeRestrictionResponse.FranjaHorariaResponse mapFranja(FranjaHoraria fh) {
+        if (fh == null) {
+            return null;
+        }
+        return new UpdateTimeRestrictionResponse.FranjaHorariaResponse(
+                fh.getId(),
+                fh.getColegioId(),
+                fh.getDescripcion(),
+                fh.getHoraInicio(),
+                fh.getHoraFin(),
+                fh.isActivo(),
+                fh.getCupoMaximo(),
+                fh.getMinutosCorte()
+        );
+    }
+
+    private UpdateTimeRestrictionResponse.CategoriaProductoResponse mapCategoria(
+            CategoriaProducto cp) {
+        if (cp == null) {
+            return null;
+        }
+        return new UpdateTimeRestrictionResponse.CategoriaProductoResponse(
+                cp.getId(),
+                cp.getDescripcion(),
+                cp.getActivo()
+        );
+    }
+
+    private UpdateTimeRestrictionResponse.ClasificacionSaludResponse mapClasificacion(
+            ClasificacionSalud cs) {
+        if (cs == null) {
+            return null;
+        }
+        return new UpdateTimeRestrictionResponse.ClasificacionSaludResponse(
+                cs.getId(),
+                cs.getDescripcion(),
+                cs.getActivo()
+        );
     }
 }

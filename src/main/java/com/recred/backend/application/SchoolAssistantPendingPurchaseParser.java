@@ -2,13 +2,15 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.ChatMessage;
 import com.recred.backend.domain.models.RolChatMensaje;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-class SchoolAssistantPendingPurchaseParser {
+public class SchoolAssistantPendingPurchaseParser {
 
     private static final String ACTION_STATUS_KEY = "estadoAccionChatbot";
     private static final String PENDING_ACTION_KEY = "accionPendienteChatbot";
@@ -19,7 +21,7 @@ class SchoolAssistantPendingPurchaseParser {
 
     private final SchoolAssistantIntentDetector intentDetector;
 
-    SchoolAssistantPendingPurchaseParser(SchoolAssistantIntentDetector intentDetector) {
+    public SchoolAssistantPendingPurchaseParser(SchoolAssistantIntentDetector intentDetector) {
         this.intentDetector = intentDetector;
     }
 
@@ -65,6 +67,7 @@ class SchoolAssistantPendingPurchaseParser {
                         studentId.orElseThrow(),
                         buffetId.orElseThrow(),
                         items,
+                        localDate(action.get("fechaRetiro")),
                         intentDetector.recessTime(value(action.get("recreo")))
                 ))
                 : Optional.empty();
@@ -129,6 +132,14 @@ class SchoolAssistantPendingPurchaseParser {
         } catch (NumberFormatException exception) {
             Optional<Integer> empty = Optional.empty();
             return empty;
+        }
+    }
+
+    private Optional<LocalDate> localDate(Object value) {
+        try {
+            return Optional.of(LocalDate.parse(value(value)));
+        } catch (DateTimeParseException exception) {
+            return Optional.empty();
         }
     }
 

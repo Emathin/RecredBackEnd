@@ -1,7 +1,8 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetProductStatistics;
-import com.recred.backend.domain.models.ProductSaleStatistics;
+import com.recred.backend.application.GetProductStatisticsRequest;
+import com.recred.backend.application.ProductSaleStatisticsResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,10 +22,11 @@ public class SalesController {
     }
 
     @GetMapping
-    public ResponseEntity<ProductSaleStatistics> getProductStatistics(
+    public ResponseEntity<ProductSaleStatisticsResponse> getProductStatistics(
             @PathVariable("idUsuario") UUID idKiosquero,
             @PathVariable("idProducto") UUID idProducto
     ) {
-        return ResponseEntity.ok(getProductStatistics.execute(idProducto, idKiosquero));
+        return ResponseEntity.ok(getProductStatistics.execute(
+                new GetProductStatisticsRequest(idProducto, idKiosquero)));
     }
 }

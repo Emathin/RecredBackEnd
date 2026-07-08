@@ -20,19 +20,23 @@ public class GetStockMovements {
         this.stockMovementRepository = stockMovementRepository;
     }
 
-    public List<MovimientoStock> execute(UUID buffetId, UUID productId) {
-        if (buffetId == null) {
-            throw new IllegalArgumentException("buffetId is required");
-        }
+    public GetStockMovementsResponse execute(GetStockMovementsRequest movementsRequest) {
+        UUID inventoryId = findInventoryId(movementsRequest);
 
-        if (productId == null) {
-            throw new IllegalArgumentException("productId is required");
-        }
+        return GetStockMovementsResponse.fromDomain(stockMovementsFor(inventoryId));
+    }
 
-        UUID inventoryId = inventoryRepository.findByBuffetAndProduct(buffetId, productId)
-                .orElseThrow(() -> new InventoryNotFoundException(buffetId, productId))
+    private UUID findInventoryId(GetStockMovementsRequest movementsRequest) {
+        return inventoryRepository.findByBuffetAndProduct(
+                        movementsRequest.buffetId(),
+                        movementsRequest.productId())
+                .orElseThrow(() -> new InventoryNotFoundException(
+                        movementsRequest.buffetId(),
+                        movementsRequest.productId()))
                 .getId();
+    }
 
+    private List<MovimientoStock> stockMovementsFor(UUID inventoryId) {
         return stockMovementRepository.findByInventoryId(inventoryId);
     }
 }

@@ -13,12 +13,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,8 +45,6 @@ class UsuarioServiceTest {
     void updateProfileNormalizesFieldsAndKeepsNotProvidedFields() {
         Usuario usuario = usuario();
         when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(usuarioRepository.save(any(Usuario.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
 
         Usuario actualizado = usuarioService.updateProfile(
                 COGNITO_SUBJECT,
@@ -60,15 +60,20 @@ class UsuarioServiceTest {
         assertEquals("45238796", actualizado.getDni());
         assertEquals(RolUsuario.PADRE, actualizado.getRol());
         assertNotNull(actualizado.getActualizadoEn());
-        verify(usuarioRepository).save(usuario);
+        verify(usuarioRepository).updateProfile(
+                eq(COGNITO_SUBJECT),
+                eq("Mateo"),
+                eq("Perez"),
+                eq("112233"),
+                eq("45238796"),
+                any(LocalDateTime.class));
+        verify(usuarioRepository, never()).save(any(Usuario.class));
     }
 
     @Test
     void updateProfileUpdatesLastNameWhenProvided() {
         Usuario usuario = usuario();
         when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(usuarioRepository.save(any(Usuario.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
 
         Usuario actualizado = usuarioService.updateProfile(
                 COGNITO_SUBJECT,
@@ -80,7 +85,14 @@ class UsuarioServiceTest {
 
         assertEquals("Juan", actualizado.getNombre());
         assertEquals("Gomez", actualizado.getApellido());
-        verify(usuarioRepository).save(usuario);
+        verify(usuarioRepository).updateProfile(
+                eq(COGNITO_SUBJECT),
+                eq("Juan"),
+                eq("Gomez"),
+                eq("115566"),
+                eq("12345678"),
+                any(LocalDateTime.class));
+        verify(usuarioRepository, never()).save(any(Usuario.class));
     }
 
     @Test
@@ -91,6 +103,13 @@ class UsuarioServiceTest {
         );
 
         verify(usuarioRepository, never()).save(any(Usuario.class));
+        verify(usuarioRepository, never()).updateProfile(
+                any(String.class),
+                any(String.class),
+                any(String.class),
+                any(String.class),
+                any(String.class),
+                any(LocalDateTime.class));
     }
 
     @Test
@@ -104,6 +123,13 @@ class UsuarioServiceTest {
         );
 
         verify(usuarioRepository, never()).save(any(Usuario.class));
+        verify(usuarioRepository, never()).updateProfile(
+                any(String.class),
+                any(String.class),
+                any(String.class),
+                any(String.class),
+                any(String.class),
+                any(LocalDateTime.class));
     }
 
     @Test

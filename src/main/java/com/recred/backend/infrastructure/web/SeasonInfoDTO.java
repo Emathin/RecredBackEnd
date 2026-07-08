@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.recred.backend.application.SeasonInfoResponse;
 
 public class SeasonInfoDTO {
     
@@ -43,5 +44,17 @@ public class SeasonInfoDTO {
 
     public void setNextSeason(String nextSeason) {
         this.nextSeason = nextSeason;
+    }
+
+    public static SeasonInfoDTO fromApplication(SeasonInfoResponse response) {
+        if (response == null) {
+            return null;
+        }
+
+        return new SeasonInfoDTO(
+                response.currentSeason(),
+                response.daysRemaining(),
+                response.nextSeason()
+        );
     }
 }

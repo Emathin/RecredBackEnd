@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.GenerateLowBalanceAlerts;
+import com.recred.backend.application.GenerateLowBalanceAlertsRequest;
 import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
@@ -20,75 +21,106 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GenerateLowBalanceAlertsTest {
 
+    private static final BigDecimal LOW_BALANCE_THRESHOLD = new BigDecimal("5000.00");
+    private static final UUID STUDENT_ID = UUID.randomUUID();
+    private static final UUID STUDENT_USER_ID = UUID.randomUUID();
+    private static final UUID PARENT_USER_ID = UUID.randomUUID();
+
     @Mock
     private WalletRepository walletRepository;
-
+    
     @Mock
     private AlumnoRepository alumnoRepository;
-
+    
     @Mock
     private TutorRepository tutorRepository;
-
+    
     @Mock
     private PushNotificationSender pushNotificationSender;
-
-    @InjectMocks
-    private GenerateLowBalanceAlerts generateLowBalanceAlerts;
 
     @Captor
     private ArgumentCaptor<PushNotification> notificationCaptor;
 
-    @Test
-    void execute_DeberiaEnviarNotificacion_AAlumnoYTutor() {
-        UUID studentId = UUID.randomUUID();
-        UUID studentUserId = UUID.randomUUID();
-        UUID parentUserId = UUID.randomUUID();
+    @InjectMocks
+    private GenerateLowBalanceAlerts useCase;
 
+    @Test
+    void sendNotificationsToStudentAndTutor() {
+        givenStudentWithLowBalance();
+        givenStudentUserExists();
+        givenTutorUserExists();
+
+        whenExecuteAlerts();
+
+        thenNotificationsAreSentToStudentAndTutor();
+    }
+
+    @Test
+    void doNothingWhenNoLowBalances() {
+        givenNoStudentsWithLowBalance();
+
+        whenExecuteAlerts();
+
+        thenNoNotificationsAreSent();
+    }
+
+    private void givenStudentWithLowBalance() {
+        when(walletRepository.findAlumnoIdsWithLowBalance(LOW_BALANCE_THRESHOLD))
+                .thenReturn(List.of(STUDENT_ID));
+    }
+
+    private void givenNoStudentsWithLowBalance() {
+        when(walletRepository.findAlumnoIdsWithLowBalance(any()))
+                .thenReturn(List.of());
+    }
+
+    private void givenStudentUserExists() {
+        when(alumnoRepository.findUserID(STUDENT_ID))
+                .thenReturn(STUDENT_USER_ID);
+    }
+
+    private void givenTutorUserExists() {
         Usuario parentUser = new Usuario();
-        parentUser.setId(parentUserId);
+        parentUser.setId(PARENT_USER_ID);
 
         Tutor tutor = new Tutor();
         tutor.setId(UUID.randomUUID());
         tutor.setUsuario(parentUser);
 
-        when(walletRepository.findAlumnoIdsWithLowBalance(new BigDecimal("5000.00")))
-                .thenReturn(List.of(studentId));
-        when(alumnoRepository.findUserID(studentId))
-                .thenReturn(studentUserId);
-        when(tutorRepository.findByAlumnoId(studentId))
+        when(tutorRepository.findByAlumnoId(STUDENT_ID))
                 .thenReturn(List.of(tutor));
+    }
 
-        generateLowBalanceAlerts.execute();
+    private void whenExecuteAlerts() {
+        useCase.execute(new GenerateLowBalanceAlertsRequest());
+    }
 
+    private void thenNotificationsAreSentToStudentAndTutor() {
         verify(pushNotificationSender, times(2)).send(notificationCaptor.capture());
         List<PushNotification> sentNotifications = notificationCaptor.getAllValues();
 
         boolean studentNotificationSent = sentNotifications.stream()
-                .anyMatch(n -> n.userId().equals(studentUserId) && 
+                .anyMatch(n -> n.userId().equals(STUDENT_USER_ID) && 
                         n.message().contains("Tu saldo es bajo"));
         boolean parentNotificationSent = sentNotifications.stream()
-                .anyMatch(n -> n.userId().equals(parentUserId) && 
+                .anyMatch(n -> n.userId().equals(PARENT_USER_ID) && 
                         n.message().contains("El saldo de tu hijo es bajo"));
 
-        assertTrue(studentNotificationSent, "Deberia enviar notificacion al alumno");
-        assertTrue(parentNotificationSent, "Deberia enviar notificacion al tutor");
+        assertTrue(studentNotificationSent, "Should send notification to student");
+        assertTrue(parentNotificationSent, "Should send notification to tutor");
     }
 
-    @Test
-    void execute_NoDeberiaHacerNada_CuandoNoHaySaldosBajos() {
-        when(walletRepository.findAlumnoIdsWithLowBalance(any()))
-                .thenReturn(List.of());
-
-        generateLowBalanceAlerts.execute();
-
+    private void thenNoNotificationsAreSent() {
         verifyNoInteractions(alumnoRepository, tutorRepository, pushNotificationSender);
     }
 }

@@ -2,14 +2,13 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
-import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.TipoMovimientoBilletera;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
-import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -23,7 +22,7 @@ public class LoadBalanceToChild {
     private final MovimientoBilleteraRepository movimientoBilleteraRepository;
 
     public LoadBalanceToChild(
-            UsuarioRepository usuarioRepository, 
+            UsuarioRepository usuarioRepository,
             TutorRepository tutorRepository,
             WalletRepository walletRepository,
             MovimientoBilleteraRepository movimientoBilleteraRepository) {
@@ -34,43 +33,71 @@ public class LoadBalanceToChild {
     }
 
     @Transactional
-    public void execute(String cognitoSub, UUID studentId, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than zero");
-        }
+    public LoadBalanceToChildResponse execute(LoadBalanceToChildRequest loadRequest) {
+        loadRequest.validate();
+        LoadBalanceContext context = contextFor(loadRequest);
+        creditChildWallet(loadRequest.amount(), context);
+        return new LoadBalanceToChildResponse();
+    }
 
-        Usuario padre = usuarioRepository.findByIdCognito(cognitoSub)
+    private LoadBalanceContext contextFor(LoadBalanceToChildRequest loadRequest) {
+        Usuario parentUser = findParentAllowedToLoadBalance(loadRequest.cognitoSub());
+        Tutor tutor = findTutorFor(parentUser);
+        Alumno student = findChildForTutor(tutor, loadRequest.studentId());
+        Billetera wallet = findWalletFor(loadRequest.studentId());
+        return new LoadBalanceContext(parentUser, student, wallet);
+    }
+
+    private Usuario findParentAllowedToLoadBalance(String cognitoSub) {
+        Usuario parentUser = usuarioRepository.findByIdCognito(cognitoSub)
                 .orElseThrow(() -> new SecurityException("Usuario no encontrado"));
+        parentUser.validateCanLoadBalanceToChild();
+        return parentUser;
+    }
 
-        if (padre.getRol() != RolUsuario.PADRE) {
-            throw new SecurityException("Solo un padre puede cargar saldo");
-        }
-
-        Tutor tutor = tutorRepository.findByUsuarioId(padre.getId())
+    private Tutor findTutorFor(Usuario parentUser) {
+        return tutorRepository.findByUsuarioId(parentUser.getId())
                 .orElseThrow(() -> new SecurityException("El usuario no es un tutor válido"));
+    }
 
-        Alumno student = tutor.getHijos().stream()
-                .filter(h -> h.getId().equals(studentId))
-                .findFirst()
-                .orElseThrow(() -> new SecurityException(
-                        "El alumno no es hijo del tutor o no existe"));
+    private Alumno findChildForTutor(Tutor tutor, UUID studentId) {
+        return tutor.childOrThrow(studentId, "El alumno no es hijo del tutor o no existe");
+    }
 
-        Billetera billetera = walletRepository.findByStudentId(studentId)
+    private Billetera findWalletFor(UUID studentId) {
+        return walletRepository.findByStudentId(studentId)
                 .orElseThrow(() -> new RuntimeException(
                         "Billetera no encontrada para el alumno"));
+    }
 
-        billetera.credit(amount);
-        walletRepository.save(billetera);
+    private void creditChildWallet(BigDecimal amount, LoadBalanceContext context) {
+        context.billetera().credit(amount);
+        walletRepository.save(context.billetera());
+        registerBalanceLoadMovement(context.billetera(), context.student(), amount,
+                context.parentUser().getId());
+    }
 
-        String desc = "Carga de saldo realizada por tutor a " 
+    private void registerBalanceLoadMovement(
+            Billetera billetera,
+            Alumno student,
+            BigDecimal amount,
+            UUID parentUserId
+    ) {
+        String desc = "Carga de saldo realizada por tutor a "
                 + student.getNombre() + " " + student.getApellido();
         movimientoBilleteraRepository.registrarMovimiento(
-                billetera.getId(), 
-                TipoMovimientoBilletera.CARGA, 
-                amount, 
-                desc, 
-                padre.getId()
+                billetera.getId(),
+                TipoMovimientoBilletera.CARGA,
+                amount,
+                desc,
+                parentUserId
         );
     }
-}
 
+    private record LoadBalanceContext(
+            Usuario parentUser,
+            Alumno student,
+            Billetera billetera
+    ) {
+    }
+}

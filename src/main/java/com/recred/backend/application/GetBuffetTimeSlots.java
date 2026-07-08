@@ -23,14 +23,36 @@ public class GetBuffetTimeSlots {
         this.franjaHorariaRepository = franjaHorariaRepository;
     }
 
-    public List<FranjaHoraria> execute(UUID buffetId) {
-        Buffet buffet = buffetRepository.findById(buffetId)
-                .orElseThrow(() -> new BuffetNotFoundException(buffetId));
+    public List<GetTimeSlotsBySchoolResponse> execute(GetBuffetTimeSlotsRequest slotsRequest) {
+        Buffet buffet = findBuffet(slotsRequest.buffetId());
+        return findTimeSlotsFor(buffet).stream()
+                .map(this::responseFrom)
+                .toList();
+    }
 
+    private Buffet findBuffet(UUID buffetId) {
+        return buffetRepository.findById(buffetId)
+                .orElseThrow(() -> new BuffetNotFoundException(buffetId));
+    }
+
+    private List<FranjaHoraria> findTimeSlotsFor(Buffet buffet) {
         if (buffet.getColegio() == null || buffet.getColegio().getId() == null) {
             throw new PickupTimeSlotNotFoundException(null, null);
         }
 
         return franjaHorariaRepository.findAllByColegioId(buffet.getColegio().getId());
+    }
+
+    private GetTimeSlotsBySchoolResponse responseFrom(FranjaHoraria slot) {
+        return new GetTimeSlotsBySchoolResponse(
+                slot.getId(),
+                slot.getColegioId(),
+                slot.getDescripcion(),
+                slot.getHoraInicio(),
+                slot.getHoraFin(),
+                slot.isActivo(),
+                slot.getCupoMaximo(),
+                slot.getMinutosCorte()
+        );
     }
 }

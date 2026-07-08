@@ -1,17 +1,15 @@
 package com.recred.backend.application;
 
-import com.recred.backend.application.ExpireAdvancePurchases.ExpirationResult;
 import com.recred.backend.domain.events.KiosqueroRealtimeEvent;
 import com.recred.backend.domain.events.KiosqueroRealtimeEventPublisher;
 import com.recred.backend.domain.models.DailyBuffetClose;
-import com.recred.backend.domain.models.DailyBuffetReport;
-import com.recred.backend.domain.models.DailyCloseResult;
 import com.recred.backend.domain.repositories.DailyBuffetCloseRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Optional;
 import java.util.UUID;
 
 public class CloseDailyBuffet {
@@ -44,30 +42,59 @@ public class CloseDailyBuffet {
     }
 
     @Transactional
-    public DailyCloseResult execute(UUID buffetId, LocalDate date) {
-        return dailyBuffetCloseRepository.findByBuffetAndDate(buffetId, date)
-                .map(close -> result(close, true))
-                .orElseGet(() -> close(buffetId, date));
+    public CloseDailyBuffetResponse execute(CloseDailyBuffetRequest closeRequest) {
+        return findExistingClose(closeRequest)
+                .map(this::alreadyClosedResponse)
+                .orElseGet(() -> closeDailyBuffet(closeRequest));
     }
 
-    private DailyCloseResult close(UUID buffetId, LocalDate date) {
-        ExpirationResult expiration = expireAdvancePurchases.executeDetailed(
-                buffetId,
-                date.atTime(LocalTime.MAX));
-        DailyBuffetReport report = generateDailyBuffetReport.execute(buffetId, date);
-        DailyBuffetClose close = dailyBuffetCloseRepository.saveWithInventorySnapshot(
+    private Optional<DailyBuffetClose> findExistingClose(CloseDailyBuffetRequest closeRequest) {
+        return dailyBuffetCloseRepository.findByBuffetAndDate(
+                closeRequest.buffetId(),
+                closeRequest.date());
+    }
+
+    private CloseDailyBuffetResponse closeDailyBuffet(CloseDailyBuffetRequest closeRequest) {
+        ExpireAdvancePurchasesResponse expiration = expirePurchasesUntilEndOfDay(closeRequest);
+        GenerateDailyBuffetReportResponse report = generateDailyReport(closeRequest);
+        DailyBuffetClose close = saveCloseWithInventorySnapshot(
+                closeRequest,
+                expiration,
+                report);
+
+        publishDailyReportChanged(close);
+        return newCloseResponse(close, report);
+    }
+
+    private ExpireAdvancePurchasesResponse expirePurchasesUntilEndOfDay(
+            CloseDailyBuffetRequest closeRequest) {
+        return expireAdvancePurchases.execute(
+                new ExpireAdvancePurchasesRequest(
+                        closeRequest.buffetId(), closeRequest.date().atTime(LocalTime.MAX)
+                )
+        );
+    }
+
+    private GenerateDailyBuffetReportResponse generateDailyReport(
+            CloseDailyBuffetRequest closeRequest) {
+        return dailyReport(closeRequest.buffetId(), closeRequest.date());
+    }
+
+    private DailyBuffetClose saveCloseWithInventorySnapshot(
+            CloseDailyBuffetRequest closeRequest,
+            ExpireAdvancePurchasesResponse expiration,
+            GenerateDailyBuffetReportResponse report) {
+        return dailyBuffetCloseRepository.saveWithInventorySnapshot(
                 new DailyBuffetClose(
                         null,
-                        buffetId,
-                        date,
+                        closeRequest.buffetId(),
+                        closeRequest.date(),
                         expiration.expiredPurchases(),
                         expiration.releasedReservations(),
                         BigDecimal.ZERO
                 ),
-                report.inventory()
+                report.inventorySnapshotDomain()
         );
-        publishDailyReportChanged(close);
-        return result(close, false, report);
     }
 
     private void publishDailyReportChanged(DailyBuffetClose close) {
@@ -78,25 +105,36 @@ public class CloseDailyBuffet {
         ));
     }
 
-    private DailyCloseResult result(DailyBuffetClose close, boolean alreadyClosed) {
-        return result(
+    private CloseDailyBuffetResponse alreadyClosedResponse(DailyBuffetClose close) {
+        return closeResponse(
                 close,
-                alreadyClosed,
-                generateDailyBuffetReport.execute(close.buffetId(), close.date())
+                true,
+                dailyReport(close.buffetId(), close.date())
         );
     }
 
-    private DailyCloseResult result(
+    private CloseDailyBuffetResponse newCloseResponse(
+            DailyBuffetClose close,
+            GenerateDailyBuffetReportResponse report) {
+        return closeResponse(close, false, report);
+    }
+
+    private CloseDailyBuffetResponse closeResponse(
             DailyBuffetClose close,
             boolean alreadyClosed,
-            DailyBuffetReport report
+            GenerateDailyBuffetReportResponse report
     ) {
-        return new DailyCloseResult(
+        return new CloseDailyBuffetResponse(
                 alreadyClosed,
                 close.expiredPurchases(),
                 close.releasedReservations(),
                 close.refundedCredits(),
                 report
         );
+    }
+
+    private GenerateDailyBuffetReportResponse dailyReport(UUID buffetId, LocalDate date) {
+        return generateDailyBuffetReport.execute(
+                new GenerateDailyBuffetReportRequest(buffetId, date));
     }
 }

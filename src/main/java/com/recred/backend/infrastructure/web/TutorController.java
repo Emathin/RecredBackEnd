@@ -1,9 +1,17 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.ActualizarFotoAlumno;
 import com.recred.backend.application.CreateStudentFromParent;
-import com.recred.backend.application.ObtenerHijosPorPadre;
+import com.recred.backend.application.CreateStudentFromParentRequest;
+import com.recred.backend.application.GetChildrenByTutor;
+import com.recred.backend.application.GetChildrenByTutorRequest;
+import com.recred.backend.application.GetTutorSchools;
+import com.recred.backend.application.UpdateStudentPhoto;
+import com.recred.backend.application.UpdateStudentPhotoRequest;
+import com.recred.backend.application.UpdateStudentPhotoResponse;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,38 +30,39 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.services.UsuarioService;
-
 
 @RestController
 @RequestMapping("/api/v1/tutores")
 public class TutorController {
 
-    private final ObtenerHijosPorPadre obtenerHijosPorPadre;
+    private final GetChildrenByTutor getChildrenByTutor;
     private final UsuarioService usuarioService;
     private final CreateStudentFromParent createStudentFromParent;
-    private final ActualizarFotoAlumno actualizarFotoAlumno;
+    private final UpdateStudentPhoto updateStudentPhoto;
     private final CloudinaryService cloudinaryService;
+    private final GetTutorSchools getTutorSchools;
 
-    public TutorController(ObtenerHijosPorPadre obtenerHijosPorPadre,
+    public TutorController(GetChildrenByTutor getChildrenByTutor,
                            UsuarioService usuarioService,
                            CreateStudentFromParent createStudentFromParent,
-                           ActualizarFotoAlumno actualizarFotoAlumno,
-                           CloudinaryService cloudinaryService) {
-        this.obtenerHijosPorPadre = obtenerHijosPorPadre;
+                           UpdateStudentPhoto updateStudentPhoto,
+                           CloudinaryService cloudinaryService,
+                           GetTutorSchools getTutorSchools) {
+        this.getChildrenByTutor = getChildrenByTutor;
         this.usuarioService = usuarioService;
         this.createStudentFromParent = createStudentFromParent;
-        this.actualizarFotoAlumno = actualizarFotoAlumno;
+        this.updateStudentPhoto = updateStudentPhoto;
         this.cloudinaryService = cloudinaryService;
+        this.getTutorSchools = getTutorSchools;
     }
 
     @GetMapping("/me/hijos")
     public ResponseEntity<List<StudentDTO>> obtenerMisHijos(Authentication authentication) {
-        List<StudentDTO> alumnos = obtenerHijosPorPadre
-                .executeByCognitoSubject(cognitoSubject(authentication))
+        var request = GetChildrenByTutorRequest.byCognitoSubject(cognitoSubject(authentication));
+        List<StudentDTO> alumnos = getChildrenByTutor
+                .execute(request)
                 .stream()
-                .map(StudentDTO::fromDomain)
+                .map(StudentDTO::from)
                 .toList();
 
         return ResponseEntity.ok(alumnos);
@@ -61,8 +70,18 @@ public class TutorController {
 
     @PostMapping("/me/hijos")
     public ResponseEntity<StudentDTO> crearHijo(Authentication authentication,
-                                               @RequestBody CreateChildRequest request) {
-        StudentDTO alumno = StudentDTO.fromDomain(createStudentFromParent.execute(
+                                               @Valid @RequestBody CreateChildRequestDTO request) {
+        CreateStudentFromParentRequest createStudentRequest =
+                toCreateStudentFromParentRequest(authentication, request);
+        StudentDTO alumno = StudentDTO.from(createStudentFromParent.execute(createStudentRequest));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(alumno);
+    }
+
+    private CreateStudentFromParentRequest toCreateStudentFromParentRequest(
+            Authentication authentication,
+            CreateChildRequestDTO request) {
+        return new CreateStudentFromParentRequest(
                 cognitoSubject(authentication),
                 request.username(),
                 request.nombre(),
@@ -71,9 +90,18 @@ public class TutorController {
                 request.dni(),
                 request.gradoId(),
                 request.urlFotoPerfil()
-        ));
+        );
+    }
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(alumno);
+    @GetMapping("/me/colegios")
+    public ResponseEntity<List<SchoolResponseDTO>> obtenerMisColegios(
+            Authentication authentication) {
+        List<SchoolResponseDTO> schools = getTutorSchools.execute(cognitoSubject(authentication))
+                .stream()
+                .map(SchoolResponseDTO::fromDomain)
+                .toList();
+
+        return ResponseEntity.ok(schools);
     }
 
     @GetMapping("/{tutorId}/hijos")
@@ -93,9 +121,10 @@ public class TutorController {
             id = UUID.fromString(tutorId);
         }
 
-        List<StudentDTO> alumnos = obtenerHijosPorPadre.execute(id)
+        var request = GetChildrenByTutorRequest.byTutorId(id);
+        List<StudentDTO> alumnos = getChildrenByTutor.execute(request)
                 .stream()
-                .map(StudentDTO::fromDomain)
+                .map(StudentDTO::from)
                 .toList();
 
         return ResponseEntity.ok(alumnos);
@@ -108,10 +137,15 @@ public class TutorController {
             @PathVariable UUID alumnoId,
             @RequestParam("foto") MultipartFile foto) {
         String cognitoSub = cognitoSubject(authentication);
-        String url = cloudinaryService.uploadImage(foto);
-        com.recred.backend.domain.models.Alumno alumno =
-                actualizarFotoAlumno.execute(cognitoSub, alumnoId, url);
-        return ResponseEntity.ok(StudentDTO.fromDomain(alumno));
+        try {
+            String url = cloudinaryService.uploadImage(foto.getBytes(), foto.getOriginalFilename());
+            UpdateStudentPhotoRequest request =
+                    new UpdateStudentPhotoRequest(cognitoSub, alumnoId, url);
+            UpdateStudentPhotoResponse response = updateStudentPhoto.execute(request);
+            return ResponseEntity.ok(StudentDTO.from(response));
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Error al leer la imagen", e);
+        }
     }
 
     private String cognitoSubject(Authentication authentication) {
@@ -120,4 +154,5 @@ public class TutorController {
                 .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
                         "Usuario no autenticado"));
     }
+
 }

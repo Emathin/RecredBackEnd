@@ -1,10 +1,6 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.Producto;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class SaveBulkProducts {
 
@@ -14,10 +10,15 @@ public class SaveBulkProducts {
         this.saveProduct = saveProduct;
     }
 
-    @Transactional
-    public List<Producto> execute(List<SaveProductCommand> commands) {
-        return commands.stream()
+    public SaveBulkProductsResponse execute(SaveBulkProductsRequest bulkProductsRequest) {
+        return new SaveBulkProductsResponse(savedProductsFrom(bulkProductsRequest));
+    }
+
+    private List<ProductResponse> savedProductsFrom(
+            SaveBulkProductsRequest bulkProductsRequest
+    ) {
+        return bulkProductsRequest.products().stream()
                 .map(saveProduct::execute)
-                .collect(Collectors.toList());
+                .toList();
     }
 }

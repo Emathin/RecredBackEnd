@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.UpdateProductPrice;
+import com.recred.backend.application.UpdateProductPriceRequest;
 import com.recred.backend.domain.events.ProductPriceChangedEvent;
 import com.recred.backend.domain.events.ProductPriceChangedPublisher;
 import com.recred.backend.domain.models.Producto;
@@ -16,6 +17,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,15 +42,16 @@ class UpdateProductPriceTest {
 
     @Test
     void updatePriceAndPublishEventWhenPriceChanges() {
-        UUID productId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
+        UUID productId = randomUUID();
+        UUID buffetId = randomUUID();
         Producto product = product(productId, "100.00");
         BigDecimal newPrice = new BigDecimal("120.00");
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        givenProductExists(productId, product);
 
-        updateProductPrice.execute(productId, newPrice, buffetId);
+        whenUpdatingPrice(productId, newPrice, buffetId);
 
         verify(productRepository).updatePrice(productId, newPrice);
+
         ArgumentCaptor<ProductPriceChangedEvent> captor =
                 ArgumentCaptor.forClass(ProductPriceChangedEvent.class);
         verify(eventPublisher).publish(captor.capture());
@@ -61,11 +64,11 @@ class UpdateProductPriceTest {
 
     @Test
     void doNothingWhenPriceDoesNotChange() {
-        UUID productId = UUID.randomUUID();
+        UUID productId = randomUUID();
         Producto product = product(productId, "100.00");
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        givenProductExists(productId, product);
 
-        updateProductPrice.execute(productId, new BigDecimal("100.00"), null);
+        whenUpdatingPrice(productId, new BigDecimal("100.00"), null);
 
         verify(productRepository, never()).updatePrice(any(), any());
         verify(eventPublisher, never()).publish(any());
@@ -73,29 +76,47 @@ class UpdateProductPriceTest {
 
     @Test
     void updatePriceDoesNotRequireProductCategory() {
-        UUID productId = UUID.randomUUID();
+        UUID productId = randomUUID();
         Producto product = product(productId, "100.00");
         product.setCategoria(null);
         BigDecimal newPrice = new BigDecimal("120.00");
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        givenProductExists(productId, product);
 
-        updateProductPrice.execute(productId, newPrice, null);
+        whenUpdatingPrice(productId, newPrice, null);
 
         verify(productRepository).updatePrice(productId, newPrice);
     }
 
     @Test
-    void rejectNullOrNonPositivePrices() {
-        UUID productId = UUID.randomUUID();
+    void rejectZeroPrice() {
+        UUID productId = randomUUID();
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> updateProductPrice.execute(productId, BigDecimal.ZERO, null)
-        );
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> updateProductPrice.execute(productId, null, null)
-        );
+        assertThrows(IllegalArgumentException.class,
+                () -> whenUpdatingPrice(productId, BigDecimal.ZERO, null));
+    }
+
+    @Test
+    void rejectNullPrice() {
+        UUID productId = randomUUID();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> whenUpdatingPrice(productId, null, null));
+    }
+
+    private UpdateProductPriceRequest request(
+            UUID productId,
+            BigDecimal newPrice,
+            UUID buffetId
+    ) {
+        return new UpdateProductPriceRequest(productId, newPrice, buffetId);
+    }
+
+    private void whenUpdatingPrice(UUID productId, BigDecimal newPrice, UUID buffetId) {
+        updateProductPrice.execute(request(productId, newPrice, buffetId));
+    }
+
+    private void givenProductExists(UUID productId, Producto product) {
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
     }
 
     private Producto product(UUID productId, String price) {

@@ -60,73 +60,141 @@ public class PredictStudentSpending {
     }
 
     @Transactional
-    public SpendingPredictionResult execute(UUID studentId, BudgetPeriod requestedPeriod) {
-        UUID resolvedStudentId = resolvedStudentId(studentId);
+    public PredictStudentSpendingResponse execute(PredictStudentSpendingRequest predictionRequest) {
+        ensurePredictionRequestHasRequiredData(predictionRequest);
+        UUID studentId = studentIdFromRequest(predictionRequest.studentId());
+        SpendingPredictionContext context = predictionContextFor(
+                studentId,
+                predictionRequest.period());
+        SpendingPredictionData data = predictionDataFor(context);
+        SpendingPredictionResult result = predictionResultFrom(context, data);
+        aiEventRepository.registerPrediction(result);
+        return PredictStudentSpendingResponse.fromDomain(result);
+    }
 
+    private void ensurePredictionRequestHasRequiredData(
+            PredictStudentSpendingRequest predictionRequest) {
+        if (predictionRequest == null) {
+            throw new IllegalArgumentException("request is required");
+        }
+
+        ensurePredictionRequestHasStudent(predictionRequest.studentId());
+    }
+
+    private void ensurePredictionRequestHasStudent(UUID studentId) {
+        if (studentId == null) {
+            throw new IllegalArgumentException("studentId is required");
+        }
+    }
+
+    private SpendingPredictionContext predictionContextFor(
+            UUID studentId,
+            BudgetPeriod requestedPeriod
+    ) {
         LocalDate calculationDate = LocalDate.now(clock);
-        Optional<SpendingPeriodPreference> preference = getPreference(
-                resolvedStudentId,
-                calculationDate
-        );
-        BudgetPeriod period = resolvePeriod(requestedPeriod, preference);
+        Optional<SpendingPeriodPreference> preference = activePreferenceFor(
+                studentId,
+                calculationDate);
+        BudgetPeriod period = periodFromRequestOrPreference(requestedPeriod, preference);
         DateRange currentRange = DateRange.fromBudgetPeriod(period, calculationDate);
-        DateRange historicalRange = new DateRange(
+        DateRange historicalRange = historicalRange(currentRange);
+        return new SpendingPredictionContext(
+                studentId,
+                period,
+                calculationDate,
+                preference,
+                currentRange,
+                historicalRange
+        );
+    }
+
+    private DateRange historicalRange(DateRange currentRange) {
+        return new DateRange(
                 currentRange.startDate().minusDays(HISTORICAL_DAYS),
                 currentRange.startDate().minusDays(1)
         );
+    }
 
-        List<PurchaseSpending> currentPeriodSpending = purchaseSpendingRepository.findSpending(
-                resolvedStudentId,
-                ACTUAL_SPENDING_STATUSES,
-                startOfDay(currentRange.startDate()),
-                endOfDay(calculationDate)
+    private SpendingPredictionData predictionDataFor(SpendingPredictionContext context) {
+        return new SpendingPredictionData(
+                currentPeriodSpendingFor(context),
+                historicalSpendingFor(context),
+                mostConsumedCategoriesFor(context)
         );
-        List<PurchaseSpending> historicalSpending = purchaseSpendingRepository.findSpending(
-                resolvedStudentId,
+    }
+
+    private List<PurchaseSpending> currentPeriodSpendingFor(
+            SpendingPredictionContext context
+    ) {
+        return purchaseSpendingRepository.findSpending(
+                context.studentId(),
                 ACTUAL_SPENDING_STATUSES,
-                startOfDay(historicalRange.startDate()),
-                endOfDay(historicalRange.endDate())
+                startOfDay(context.currentRange().startDate()),
+                endOfDay(context.calculationDate())
         );
-        List<ConsumptionCategory> categories = purchaseSpendingRepository
+    }
+
+    private List<PurchaseSpending> historicalSpendingFor(
+            SpendingPredictionContext context
+    ) {
+        return purchaseSpendingRepository.findSpending(
+                context.studentId(),
+                ACTUAL_SPENDING_STATUSES,
+                startOfDay(context.historicalRange().startDate()),
+                endOfDay(context.historicalRange().endDate())
+        );
+    }
+
+    private List<ConsumptionCategory> mostConsumedCategoriesFor(
+            SpendingPredictionContext context
+    ) {
+        return purchaseSpendingRepository
                 .findMostConsumedCategories(
-                        resolvedStudentId,
+                        context.studentId(),
                         ACTUAL_SPENDING_STATUSES,
-                        startOfDay(currentRange.startDate()),
-                        endOfDay(calculationDate)
+                        startOfDay(context.currentRange().startDate()),
+                        endOfDay(context.calculationDate())
                 )
                 .stream()
                 .limit(MAX_CATEGORIES)
                 .toList();
-
-        SpendingPrediction spendingPrediction = spendingPredictionCalculator.calculate(
-                resolvedStudentId,
-                period,
-                calculationDate,
-                currentRange,
-                historicalRange,
-                currentPeriodSpending,
-                historicalSpending,
-                preference,
-                categories
-        );
-        Optional<SpendingPredictionAnalysis> aiAnalysis = spendingPredictionAnalyzer
-                .analyze(spendingPrediction);
-        SpendingPredictionResult result = new SpendingPredictionResult(
-                spendingPrediction,
-                aiAnalysis
-        );
-        aiEventRepository.registerPrediction(result);
-        return result;
     }
 
-    private UUID resolvedStudentId(UUID studentIdOrUserId) {
+    private SpendingPredictionResult predictionResultFrom(
+            SpendingPredictionContext context,
+            SpendingPredictionData data
+    ) {
+        SpendingPrediction spendingPrediction = predictionFrom(context, data);
+        Optional<SpendingPredictionAnalysis> aiAnalysis = spendingPredictionAnalyzer
+                .analyze(spendingPrediction);
+        return new SpendingPredictionResult(spendingPrediction, aiAnalysis);
+    }
+
+    private SpendingPrediction predictionFrom(
+            SpendingPredictionContext context,
+            SpendingPredictionData data
+    ) {
+        return spendingPredictionCalculator.calculate(
+                context.studentId(),
+                context.period(),
+                context.calculationDate(),
+                context.currentRange(),
+                context.historicalRange(),
+                data.currentPeriodSpending(),
+                data.historicalSpending(),
+                context.preference(),
+                data.categories()
+        );
+    }
+
+    private UUID studentIdFromRequest(UUID studentIdOrUserId) {
         return alumnoRepository.existsById(studentIdOrUserId)
                 ? studentIdOrUserId
                 : alumnoRepository.findStudentIdByUserId(studentIdOrUserId)
                         .orElseThrow(() -> new AlumnoNoEncontradoException(studentIdOrUserId));
     }
 
-    private Optional<SpendingPeriodPreference> getPreference(
+    private Optional<SpendingPeriodPreference> activePreferenceFor(
             UUID studentId,
             LocalDate calculationDate
     ) {
@@ -136,7 +204,7 @@ public class PredictStudentSpending {
                 .findFirst();
     }
 
-    private BudgetPeriod resolvePeriod(
+    private BudgetPeriod periodFromRequestOrPreference(
             BudgetPeriod requestedPeriod,
             Optional<SpendingPeriodPreference> preference
     ) {
@@ -154,5 +222,22 @@ public class PredictStudentSpending {
 
     private LocalDateTime endOfDay(LocalDate date) {
         return date.atTime(LocalTime.MAX);
+    }
+
+    private record SpendingPredictionContext(
+            UUID studentId,
+            BudgetPeriod period,
+            LocalDate calculationDate,
+            Optional<SpendingPeriodPreference> preference,
+            DateRange currentRange,
+            DateRange historicalRange
+    ) {
+    }
+
+    private record SpendingPredictionData(
+            List<PurchaseSpending> currentPeriodSpending,
+            List<PurchaseSpending> historicalSpending,
+            List<ConsumptionCategory> categories
+    ) {
     }
 }

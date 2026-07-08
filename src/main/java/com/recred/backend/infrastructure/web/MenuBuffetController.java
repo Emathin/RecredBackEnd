@@ -1,7 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.GenerarMenuBuffet;
-import com.recred.backend.application.GetBuffetByAlumno;
+import com.recred.backend.application.GenerateBuffetMenu;
+import com.recred.backend.application.GenerateBuffetMenuRequest;
+import com.recred.backend.application.GetBuffetByStudent;
+import com.recred.backend.application.GetBuffetByStudentRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,13 +19,13 @@ import java.util.UUID;
 @RequestMapping("/api/v1/alumnos")
 public class MenuBuffetController {
 
-    private final GenerarMenuBuffet generarMenuBuffet;
-    private final GetBuffetByAlumno getBuffetByAlumno;
+    private final GenerateBuffetMenu generateBuffetMenu;
+    private final GetBuffetByStudent getBuffetByStudent;
 
-    public MenuBuffetController(GenerarMenuBuffet generarMenuBuffet,
-            GetBuffetByAlumno getBuffetByAlumno) {
-        this.generarMenuBuffet = generarMenuBuffet;
-        this.getBuffetByAlumno = getBuffetByAlumno;
+    public MenuBuffetController(GenerateBuffetMenu generateBuffetMenu,
+            GetBuffetByStudent getBuffetByStudent) {
+        this.generateBuffetMenu = generateBuffetMenu;
+        this.getBuffetByStudent = getBuffetByStudent;
     }
 
     @GetMapping("/{alumnoId}/menu-buffet")
@@ -36,11 +38,13 @@ public class MenuBuffetController {
                 ? fechaHoraConsulta
                 : LocalDateTime.now();
 
-        List<MenuProductoDTO> menu = generarMenuBuffet.execute(
+        List<MenuProductoDTO> menu = generateBuffetMenu.execute(new GenerateBuffetMenuRequest(
                 alumnoId,
                 buffetId,
                 momentoEvaluacion
-        );
+        )).products().stream()
+                .map(MenuProductoDTO::fromApplication)
+                .toList();
 
         return ResponseEntity.ok(menu);
     }
@@ -48,8 +52,8 @@ public class MenuBuffetController {
     @GetMapping("/{alumnoId}/buffet")
     public ResponseEntity<AlumnoBuffetResponseDTO> obtenerBuffet(
             @PathVariable UUID alumnoId) {
-        return getBuffetByAlumno.execute(alumnoId)
-                .map(AlumnoBuffetResponseDTO::fromDomain)
+        return getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId))
+                .map(AlumnoBuffetResponseDTO::fromResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

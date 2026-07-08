@@ -5,8 +5,6 @@ import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
 import com.recred.backend.domain.models.ConsumptionRequester;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.PurchaseStatus;
-import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 
@@ -25,50 +23,44 @@ public class GetPurchaseStatus {
         this.accessRepository = accessRepository;
     }
 
-    public PurchaseStatus execute(String cognitoSubject, UUID purchaseId) {
-        Purchase purchase = purchaseRepository.findById(purchaseId)
+    public GetPurchaseStatusResponse execute(GetPurchaseStatusRequest statusRequest) {
+        Purchase purchase = findPurchase(statusRequest.purchaseId());
+        ConsumptionRequester requester = findAuthenticatedRequester(
+                statusRequest.cognitoSubject());
+        ensureRequesterCanReadPurchaseStatus(requester, purchase, statusRequest.purchaseId());
+        return GetPurchaseStatusResponse.from(purchase);
+    }
+
+    private Purchase findPurchase(UUID purchaseId) {
+        return purchaseRepository.findById(purchaseId)
                 .orElseThrow(() -> new PurchaseNotFoundException(purchaseId));
-        ConsumptionRequester requester = accessRepository
-                .findRequesterByCognitoSubject(cognitoSubject)
+    }
+
+    private ConsumptionRequester findAuthenticatedRequester(String cognitoSubject) {
+        return accessRepository.findRequesterByCognitoSubject(cognitoSubject)
                 .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(cognitoSubject));
+    }
 
-        if (requesterCannotAccessPurchase(requester, purchase)) {
-            PurchaseAccessDeniedException exception = new PurchaseAccessDeniedException(purchaseId);
-            throw exception;
+    private void ensureRequesterCanReadPurchaseStatus(
+            ConsumptionRequester requester,
+            Purchase purchase,
+            UUID purchaseId
+    ) {
+        if (!purchase.hasStudentId()
+                || !requesterCanAccessStudent(requester, purchase.studentIdOrNull())) {
+            throw new PurchaseAccessDeniedException(purchaseId);
         }
-
-        return PurchaseStatus.from(purchase);
     }
 
-    private boolean requesterCannotAccessPurchase(
-            ConsumptionRequester requester,
-            Purchase purchase
-    ) {
-        return purchase.getStudent() == null
-                || purchase.getStudent().getId() == null
-                || !requesterCanAccessStudent(requester, purchase.getStudent().getId());
+    private boolean requesterCanAccessStudent(ConsumptionRequester requester, UUID studentId) {
+        return requester.isStudentFor(studentId) || tutorCanAccessStudent(requester, studentId);
     }
 
-    private boolean requesterCanAccessStudent(
+    private boolean tutorCanAccessStudent(
             ConsumptionRequester requester,
             UUID studentId
     ) {
-        return studentUserCanAccessStudent(requester, studentId)
-                || tutorUserCanAccessStudent(requester, studentId);
-    }
-
-    private boolean studentUserCanAccessStudent(
-            ConsumptionRequester requester,
-            UUID studentId
-    ) {
-        return requester.role() == RolUsuario.ALUMNO && studentId.equals(requester.studentId());
-    }
-
-    private boolean tutorUserCanAccessStudent(
-            ConsumptionRequester requester,
-            UUID studentId
-    ) {
-        return requester.role() == RolUsuario.PADRE
+        return requester.isTutor()
                 && accessRepository.tutorCanAccessStudent(requester.userId(), studentId);
     }
 }

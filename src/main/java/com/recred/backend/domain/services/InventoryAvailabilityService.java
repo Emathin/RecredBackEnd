@@ -246,7 +246,17 @@ public class InventoryAvailabilityService {
             BiConsumer<Inventario, Integer> operation,
             UUID purchaseId
     ) {
-        Inventario inventory = lockedInventory(buffetId, product.getId());
+        Inventario inventory;
+        try {
+            inventory = lockedInventory(buffetId, product.getId());
+        } catch (InventoryNotFoundException e) {
+            if (movementType == TipoMovimientoStock.LIBERACION 
+                    || movementType == TipoMovimientoStock.CONSUMO) {
+                return;
+            }
+            throw e;
+        }
+        
         int previousAvailable = inventory.stockDisponible();
         operation.accept(inventory, quantity);
         Inventario savedInventory = inventoryRepository.save(inventory);
@@ -420,7 +430,7 @@ public class InventoryAvailabilityService {
             TipoMovimientoStock movementType,
             String reason
     ) {
-        if (isSoldOut(inventory)) {
+        if (inventory.isSoldOut()) {
             publishSoldOutEvent(inventory, movementType, reason);
             return;
         }
@@ -449,7 +459,7 @@ public class InventoryAvailabilityService {
             String reason
     ) {
         Optional.of(inventory)
-                .filter(this::isLowStock)
+                .filter(Inventario::isLowStock)
                 .ifPresent(lowStockInventory -> publishLowStockEvent(
                         lowStockInventory,
                         movementType,
@@ -494,15 +504,6 @@ public class InventoryAvailabilityService {
         return Optional.ofNullable(CHANGE_KIND_BY_QUICK_ACTION.get(action))
                 .orElseThrow(() -> new InventoryOperationException(
                         "La accion no esta configurada."));
-    }
-
-    private boolean isSoldOut(Inventario inventory) {
-        return inventory.estadoActual() == EstadoInventario.SIN_STOCK
-                || inventory.stockDisponible() <= 0;
-    }
-
-    private boolean isLowStock(Inventario inventory) {
-        return inventory.estadoActual() == EstadoInventario.BAJO_STOCK;
     }
 
     private static EnumMap<TipoMovimientoStock, KiosqueroRealtimeChangeKind>

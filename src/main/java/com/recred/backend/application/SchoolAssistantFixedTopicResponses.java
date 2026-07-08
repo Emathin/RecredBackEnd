@@ -10,33 +10,30 @@ import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
-import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-class SchoolAssistantFixedTopicResponses {
+public class SchoolAssistantFixedTopicResponses {
 
     private static final int RECENT_PURCHASES_TO_SHOW = 3;
     private static final int FREQUENT_PURCHASES_TO_SHOW = 3;
-    private static final int PURCHASE_PATTERN_LOOKBACK = 30;
-    private static final int MIN_FREQUENT_PURCHASE_OCCURRENCES = 2;
 
     private final PurchaseRepository purchaseRepository;
     private final ProductRepository productRepository;
+    private final SchoolAssistantPurchasePatternService purchasePatternService;
     private final SchoolAssistantReplyFormatter replyFormatter;
     private final SchoolAssistantContentFormatter contentFormatter;
     private final SchoolAssistantTutorFactsFormatter tutorFactsFormatter;
     private final SchoolAssistantReplyBuilder replyBuilder;
 
-    SchoolAssistantFixedTopicResponses(
+    public SchoolAssistantFixedTopicResponses(
             PurchaseRepository purchaseRepository,
             ProductRepository productRepository,
+            SchoolAssistantPurchasePatternService purchasePatternService,
             SchoolAssistantReplyFormatter replyFormatter,
             SchoolAssistantContentFormatter contentFormatter,
             SchoolAssistantTutorFactsFormatter tutorFactsFormatter,
@@ -44,22 +41,11 @@ class SchoolAssistantFixedTopicResponses {
     ) {
         this.purchaseRepository = purchaseRepository;
         this.productRepository = productRepository;
+        this.purchasePatternService = purchasePatternService;
         this.replyFormatter = replyFormatter;
         this.contentFormatter = contentFormatter;
         this.tutorFactsFormatter = tutorFactsFormatter;
         this.replyBuilder = replyBuilder;
-    }
-
-    SchoolAssistantFixedReply forbiddenQuickPurchaseReply(
-            SchoolAssistantFixedTopicRequest request
-    ) {
-        return reply(
-                "Por ahora solo los alumnos pueden hacer compras rapidas "
-                        + "desde el asistente.",
-                request.intent(),
-                forbiddenQuickPurchaseAction(),
-                request.context().role()
-        );
     }
 
     SchoolAssistantFixedReply kiosqueroPendingOrdersReply(
@@ -182,9 +168,10 @@ class SchoolAssistantFixedTopicResponses {
     }
 
     SchoolAssistantFixedReply frequentPurchasesReply(SchoolAssistantContext context) {
-        List<PurchasePattern> patterns = purchasePatterns(context.studentId()).stream()
-                .limit(FREQUENT_PURCHASES_TO_SHOW)
-                .toList();
+        List<PurchasePattern> patterns = purchasePatternService.frequentPatterns(
+                context.studentId(),
+                FREQUENT_PURCHASES_TO_SHOW
+        );
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("patrones", contentFormatter.patternsData(patterns));
@@ -303,48 +290,7 @@ class SchoolAssistantFixedTopicResponses {
     }
 
     private boolean hasAvailability(Producto product) {
-        return product.getStockDisponible() != null && product.getStockDisponible() > 0;
-    }
-
-    private List<PurchasePattern> purchasePatterns(UUID studentId) {
-        return purchaseHistory(studentId).stream()
-                .filter(this::isRebuyablePurchase)
-                .limit(PURCHASE_PATTERN_LOOKBACK)
-                .map(this::patternCandidate)
-                .filter(candidate -> !candidate.items().isEmpty())
-                .collect(Collectors.toMap(
-                        PurchasePatternCandidate::key,
-                        PurchasePatternAccumulator::new,
-                        PurchasePatternAccumulator::merge,
-                        LinkedHashMap::new
-                ))
-                .values()
-                .stream()
-                .map(PurchasePatternAccumulator::pattern)
-                .filter(this::hasMinimumOccurrences)
-                .sorted(this::comparePatterns)
-                .toList();
-    }
-
-    private PurchasePatternCandidate patternCandidate(Purchase purchase) {
-        List<PurchaseItemRequest> items = itemRequests(purchase);
-        String key = items.stream()
-                .map(item -> item.productId() + ":" + item.quantity())
-                .collect(Collectors.joining("|"));
-        return new PurchasePatternCandidate(key, items, purchase.getDate());
-    }
-
-    private List<PurchaseItemRequest> itemRequests(Purchase purchase) {
-        return purchase.getItems().entrySet()
-                .stream()
-                .filter(entry -> isValidPurchaseItem(entry.getKey(), entry.getValue()))
-                .map(entry -> new PurchaseItemRequest(
-                        entry.getKey().getId(),
-                        entry.getValue(),
-                        purchase.getBuffetId()
-                ))
-                .sorted(Comparator.comparing(item -> item.productId().toString()))
-                .toList();
+        return product.hasAvailableStock();
     }
 
     private List<Purchase> purchaseHistory(UUID studentId) {
@@ -375,41 +321,6 @@ class SchoolAssistantFixedTopicResponses {
         return replyBuilder.informativeAction(type, data);
     }
 
-    private SchoolAssistantAction forbiddenQuickPurchaseAction() {
-        return replyBuilder.forbiddenQuickPurchaseAction();
-    }
-
-    private boolean isRebuyablePurchase(Purchase purchase) {
-        return purchase != null
-                && purchase.getStatus() == EstadoCompra.ENTREGADO
-                && purchase.getItems() != null
-                && !purchase.getItems().isEmpty();
-    }
-
-    private boolean isValidPurchaseItem(Producto product, Integer quantity) {
-        return product != null
-                && product.getId() != null
-                && quantity != null
-                && quantity > 0;
-    }
-
-    private boolean hasMinimumOccurrences(PurchasePattern pattern) {
-        return pattern.occurrences() >= MIN_FREQUENT_PURCHASE_OCCURRENCES;
-    }
-
-    private int comparePatterns(PurchasePattern first, PurchasePattern second) {
-        int occurrencesComparison = Integer.compare(second.occurrences(), first.occurrences());
-        return occurrencesComparison != 0
-                ? occurrencesComparison
-                : compareDates(first.lastDate(), second.lastDate());
-    }
-
-    private int compareDates(LocalDateTime first, LocalDateTime second) {
-        return Comparator.nullsLast(LocalDateTime::compareTo)
-                .reversed()
-                .compare(first, second);
-    }
-
     private List<EstadoCompra> pendingStatuses() {
         return List.of(
                 EstadoCompra.PENDIENTE,
@@ -420,17 +331,14 @@ class SchoolAssistantFixedTopicResponses {
 
     private List<Purchase> pendingStudentPurchases(UUID studentId) {
         return purchaseHistory(studentId).stream()
-                .filter(this::isPendingPurchase)
+                .filter(Objects::nonNull)
+                .filter(Purchase::isActivePendingOrder)
                 .limit(RECENT_PURCHASES_TO_SHOW)
                 .toList();
     }
 
-    private boolean isPendingPurchase(Purchase purchase) {
-        return purchase != null && pendingStatuses().contains(purchase.getStatus());
-    }
-
     private boolean hasWithdrawalCode(Purchase purchase) {
-        return purchase.getWithdrawalCode() != null && !purchase.getWithdrawalCode().isBlank();
+        return purchase.hasWithdrawalCode();
     }
 
     private Optional<UUID> lastBuffetId(UUID studentId) {

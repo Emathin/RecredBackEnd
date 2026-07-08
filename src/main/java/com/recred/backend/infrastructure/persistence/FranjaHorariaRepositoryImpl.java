@@ -7,6 +7,7 @@ import com.recred.backend.infrastructure.entities.FranjaHorariaEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,8 +33,36 @@ public class FranjaHorariaRepositoryImpl implements FranjaHorariaRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public List<FranjaHoraria> findAllByColegioIdIncludingInactive(UUID colegioId) {
+        return springDataRepository.findByColegioEntityIdOrderByActivoDescHoraInicioAsc(
+                        colegioId)
+                .stream()
+                .map(FranjaHorariaEntity::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<FranjaHoraria> findById(UUID id) {
         return springDataRepository.findById(id).map(FranjaHorariaEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<FranjaHoraria> findByIdAndColegioId(UUID id, UUID colegioId) {
+        return springDataRepository.findByIdAndColegioEntityId(id, colegioId)
+                .map(FranjaHorariaEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsActiveOverlap(UUID colegioId, UUID excludedId,
+                                       LocalTime horaInicio, LocalTime horaFin) {
+        return springDataRepository.existsActiveOverlap(
+                colegioId,
+                excludedId,
+                horaInicio,
+                horaFin);
     }
 
     @Override

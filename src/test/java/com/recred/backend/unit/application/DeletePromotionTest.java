@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.DeletePromotion;
+import com.recred.backend.application.DeletePromotionRequest;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.domain.repositories.PromotionRepository;
@@ -23,33 +24,54 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class DeletePromotionTest {
 
+    private static final UUID PROMOTION_ID = UUID.randomUUID();
+
     @Mock
     private PromotionRepository promotionRepository;
 
     @InjectMocks
-    private DeletePromotion deletePromotion;
+    private DeletePromotion useCase;
 
     @Test
-    void execute_shouldDeletePromotionBySettingStatusToRejected_whenPromotionExists() {
-        UUID id = UUID.randomUUID();
+    void rejectPromotionSuccessfully() {
         Promotion promotion = new Promotion();
-        promotion.setId(id);
+        promotion.setId(PROMOTION_ID);
         promotion.setStatus(PromotionStatus.ACTIVE);
+        
+        givenAnExistingPromotion(promotion);
 
-        when(promotionRepository.findById(id)).thenReturn(Optional.of(promotion));
+        whenExecuteUseCase();
 
-        deletePromotion.execute(id);
+        thenPromotionShouldBeRejectedAndSaved(promotion);
+    }
 
+    @Test
+    void throwExceptionWhenPromotionNotFound() {
+        givenPromotionNotFound();
+
+        assertThrows(IllegalArgumentException.class, this::whenExecuteUseCase);
+        
+        thenPromotionShouldNotBeSaved();
+    }
+
+    private void givenAnExistingPromotion(Promotion promotion) {
+        when(promotionRepository.findById(PROMOTION_ID)).thenReturn(Optional.of(promotion));
+    }
+
+    private void givenPromotionNotFound() {
+        when(promotionRepository.findById(PROMOTION_ID)).thenReturn(Optional.empty());
+    }
+
+    private void whenExecuteUseCase() {
+        useCase.execute(new DeletePromotionRequest(PROMOTION_ID));
+    }
+
+    private void thenPromotionShouldBeRejectedAndSaved(Promotion promotion) {
         assertEquals(PromotionStatus.REJECTED, promotion.getStatus());
         verify(promotionRepository).save(promotion);
     }
 
-    @Test
-    void execute_shouldThrowException_whenPromotionDoesNotExist() {
-        UUID id = UUID.randomUUID();
-        when(promotionRepository.findById(id)).thenReturn(Optional.empty());
-
-        assertThrows(IllegalArgumentException.class, () -> deletePromotion.execute(id));
+    private void thenPromotionShouldNotBeSaved() {
         verify(promotionRepository, never()).save(any());
     }
 }

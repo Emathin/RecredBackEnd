@@ -1,5 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.UserNotificationResponse;
 import com.recred.backend.domain.models.Notification;
 import com.recred.backend.domain.models.TipoNotificacion;
 
@@ -13,7 +14,11 @@ public record NotificationResponse(
         String message,
         Boolean read,
         LocalDateTime createdAt,
-        LocalDateTime readAt
+        LocalDateTime readAt,
+        UUID studentId,
+        UUID productId,
+        UUID purchaseId,
+        UUID suggestionId
 ) {
     public static NotificationResponse fromDomain(Notification notification) {
         return new NotificationResponse(
@@ -23,7 +28,27 @@ public record NotificationResponse(
                 notification.message(),
                 notification.read(),
                 notification.createdAt(),
-                notification.readAt()
+                notification.readAt(),
+                notification.studentId(),
+                notification.productId(),
+                notification.purchaseId(),
+                notification.suggestionId()
+        );
+    }
+
+    public static NotificationResponse fromApplication(UserNotificationResponse notification) {
+        return new NotificationResponse(
+                notification.id(),
+                notification.type(),
+                notification.title(),
+                notification.message(),
+                notification.read(),
+                notification.createdAt(),
+                notification.readAt(),
+                notification.studentId(),
+                notification.productId(),
+                notification.purchaseId(),
+                notification.suggestionId()
         );
     }
 }

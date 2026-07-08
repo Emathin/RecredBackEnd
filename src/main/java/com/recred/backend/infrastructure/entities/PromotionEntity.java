@@ -55,6 +55,9 @@ public class PromotionEntity {
     @Column(nullable = false)
     private PromotionStatus status;
 
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -83,6 +86,7 @@ public class PromotionEntity {
         domain.setStartDate(this.startDate);
         domain.setEndDate(this.endDate);
         domain.setStatus(this.status);
+        domain.setImageUrl(this.imageUrl);
         domain.setCreatedAt(this.createdAt);
         domain.setUpdatedAt(this.updatedAt);
         

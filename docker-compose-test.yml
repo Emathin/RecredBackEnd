@@ -1,0 +1,24 @@
+name: recred-test
+
+services:
+  db:
+    image: postgres:16
+    container_name: recred-db-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: recred_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_data_test:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "psql -U test_user -d recred_test" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+volumes:
+  db_data_test:

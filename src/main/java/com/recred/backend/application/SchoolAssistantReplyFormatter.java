@@ -3,9 +3,12 @@ package com.recred.backend.application;
 import java.util.List;
 import java.util.stream.Collectors;
 
-class SchoolAssistantReplyFormatter {
+public class SchoolAssistantReplyFormatter {
 
     private static final int TEXT_LIST_ITEMS_TO_SHOW = 8;
+
+    public SchoolAssistantReplyFormatter() {
+    }
 
     String formattedItems(List<String> items) {
         List<String> visibleItems = items.stream()

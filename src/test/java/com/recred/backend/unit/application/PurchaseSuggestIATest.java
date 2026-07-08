@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.PurchaseSuggestIA;
+import com.recred.backend.application.PurchaseSuggestIARequest;
+import com.recred.backend.application.PurchaseSuggestionResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.FranjaHoraria;
@@ -78,10 +80,10 @@ class PurchaseSuggestIATest {
         when(sugerenciaIARepository.findByAlumnoIdAndTipo(hijo.getId(), TipoSugerenciaIA.RECOMENDACION_SALUDABLE))
                 .thenReturn(List.of(sugerenciaEntity));
 
-        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+        Optional<PurchaseSuggestionResponse> result = execute();
 
         assertTrue(result.isPresent());
-        assertEquals(sugerenciaEntity.getId(), result.get().getId());
+        assertEquals(sugerenciaEntity.getId(), result.get().id());
     }
 
     @Test
@@ -94,7 +96,7 @@ class PurchaseSuggestIATest {
 
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
 
-        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+        Optional<PurchaseSuggestionResponse> result = execute();
 
         assertFalse(result.isPresent());
     }
@@ -109,7 +111,7 @@ class PurchaseSuggestIATest {
 
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
 
-        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+        Optional<PurchaseSuggestionResponse> result = execute();
 
         assertFalse(result.isPresent());
     }
@@ -141,10 +143,10 @@ class PurchaseSuggestIATest {
         when(sugerenciaIARepository.findByAlumnoIdAndTipo(alumno.getId(), TipoSugerenciaIA.RECOMENDACION_SALUDABLE))
                 .thenReturn(List.of(sugerenciaEntity));
 
-        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+        Optional<PurchaseSuggestionResponse> result = execute();
 
         assertTrue(result.isPresent());
-        assertEquals(sugerenciaEntity.getId(), result.get().getId());
+        assertEquals(sugerenciaEntity.getId(), result.get().id());
     }
 
     @Test
@@ -169,7 +171,7 @@ class PurchaseSuggestIATest {
         when(sugerenciaIARepository.findByAlumnoIdAndTipo(alumno.getId(), TipoSugerenciaIA.RECOMENDACION_SALUDABLE))
                 .thenReturn(List.of(sugerenciaEntity));
 
-        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+        Optional<PurchaseSuggestionResponse> result = execute();
 
         assertTrue(result.isPresent());
     }
@@ -184,7 +186,7 @@ class PurchaseSuggestIATest {
 
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(vendedor);
 
-        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+        Optional<PurchaseSuggestionResponse> result = execute();
 
         assertFalse(result.isPresent());
         verifyNoInteractions(sugerenciaIARepository);
@@ -200,7 +202,7 @@ class PurchaseSuggestIATest {
 
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(padre);
 
-        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+        Optional<PurchaseSuggestionResponse> result = execute();
 
         assertFalse(result.isPresent());
         verifyNoInteractions(sugerenciaIARepository);
@@ -216,7 +218,7 @@ class PurchaseSuggestIATest {
 
         when(usuarioService.obtenerUsuarioActual(cognitoId)).thenReturn(usuarioAlumno);
 
-        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+        Optional<PurchaseSuggestionResponse> result = execute();
 
         assertFalse(result.isPresent());
         verifyNoInteractions(sugerenciaIARepository);
@@ -246,10 +248,10 @@ class PurchaseSuggestIATest {
                 TipoSugerenciaIA.RECOMENDACION_SALUDABLE))
                 .thenReturn(List.of(accepted, olderPending, latestPending));
 
-        Optional<SugerenciaIA> result = useCase.execute(cognitoId);
+        Optional<PurchaseSuggestionResponse> result = execute();
 
         assertTrue(result.isPresent());
-        assertEquals(latestPending.getId(), result.get().getId());
+        assertEquals(latestPending.getId(), result.get().id());
     }
 
     @Test
@@ -302,5 +304,9 @@ class PurchaseSuggestIATest {
         suggestion.setTitulo("Test");
         suggestion.setMensaje("Mensaje");
         return suggestion;
+    }
+
+    private Optional<PurchaseSuggestionResponse> execute() {
+        return useCase.execute(new PurchaseSuggestIARequest(cognitoId));
     }
 }

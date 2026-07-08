@@ -83,7 +83,6 @@ public class UsuarioEntity {
     @Column(name = "url_foto_perfil", columnDefinition = "TEXT")
     private String urlFotoPerfil;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "tipo_plan", nullable = false)
     private TipoPlan plan = TipoPlan.GRATUITO;
 
@@ -152,6 +151,7 @@ public class UsuarioEntity {
         if (this.kiosquero != null) {
             Kiosquero k = new Kiosquero();
             k.setId(this.kiosquero.getId());
+            k.setCuit(this.kiosquero.getCuit());
             k.setBuffet(buffet(this.kiosquero));
             usuario.setKiosquero(k);
         }

@@ -57,6 +57,11 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
     }
 
     @Override
+    public Optional<UUID> findSchoolIdByStudentId(UUID studentId) {
+        return springDataRepository.findSchoolIdByStudentId(studentId);
+    }
+
+    @Override
     public UUID findUserID(UUID alumnoId) {
         return springDataRepository.findUserId(alumnoId);
     }

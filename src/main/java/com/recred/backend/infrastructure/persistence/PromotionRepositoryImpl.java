@@ -28,7 +28,14 @@ public class PromotionRepositoryImpl implements PromotionRepository {
     @Override
     @Transactional(readOnly = true)
     public List<Promotion> findAllActive() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
         return repository.findByStatus(PromotionStatus.ACTIVE).stream()
+                .filter(entity -> entity.getEndDate() == null || !now.isAfter(entity.getEndDate()))
+                .peek(entity -> {
+                    if (entity.getProducts() != null) {
+                        entity.getProducts().size();
+                    }
+                })
                 .map(PromotionEntity::toDomain)
                 .collect(Collectors.toList());
     }
@@ -36,7 +43,14 @@ public class PromotionRepositoryImpl implements PromotionRepository {
     @Override
     @Transactional(readOnly = true)
     public List<Promotion> findAllActiveByBuffet(UUID buffetId) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
         return repository.findByStatusAndBuffetEntityId(PromotionStatus.ACTIVE, buffetId).stream()
+                .filter(entity -> entity.getEndDate() == null || !now.isAfter(entity.getEndDate()))
+                .peek(entity -> {
+                    if (entity.getProducts() != null) {
+                        entity.getProducts().size();
+                    }
+                })
                 .map(PromotionEntity::toDomain)
                 .collect(Collectors.toList());
     }
@@ -45,6 +59,11 @@ public class PromotionRepositoryImpl implements PromotionRepository {
     @Transactional(readOnly = true)
     public List<Promotion> findDraftPromotionsByStartDateBefore(java.time.LocalDateTime date) {
         return repository.findByStatusAndStartDateBefore(PromotionStatus.DRAFT, date).stream()
+                .peek(entity -> {
+                    if (entity.getProducts() != null) {
+                        entity.getProducts().size();
+                    }
+                })
                 .map(PromotionEntity::toDomain)
                 .collect(Collectors.toList());
     }
@@ -53,7 +72,12 @@ public class PromotionRepositoryImpl implements PromotionRepository {
     @Transactional(readOnly = true)
     public Optional<Promotion> findById(UUID id) {
         return repository.findById(id)
-                .map(PromotionEntity::toDomain);
+                .map(entity -> {
+                    if (entity.getProducts() != null) {
+                        entity.getProducts().size();
+                    }
+                    return entity.toDomain();
+                });
     }
 
     @Override
@@ -72,6 +96,7 @@ public class PromotionRepositoryImpl implements PromotionRepository {
         entity.setStartDate(promotion.getStartDate());
         entity.setEndDate(promotion.getEndDate());
         entity.setStatus(promotion.getStatus());
+        entity.setImageUrl(promotion.getImageUrl());
         
         if (promotion.getProducts() != null) {
             entity.setProducts(promotion.getProducts().stream().map(p -> {

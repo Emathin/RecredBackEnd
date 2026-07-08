@@ -98,9 +98,18 @@ public class UsuarioService {
             usuario.setDni(normalizeField("documentNumber", documentNumber));
         }
 
-        usuario.setActualizadoEn(LocalDateTime.now());
+        LocalDateTime updatedAt = LocalDateTime.now();
+        usuario.setActualizadoEn(updatedAt);
 
-        return usuarioRepository.save(usuario);
+        usuarioRepository.updateProfile(
+                cognitoId,
+                usuario.getNombre(),
+                usuario.getApellido(),
+                usuario.getTelefono(),
+                usuario.getDni(),
+                updatedAt
+        );
+        return obtenerUsuarioActual(cognitoId);
     }
 
     public Usuario actualizarRol(String cognitoId, String nuevoRol) {

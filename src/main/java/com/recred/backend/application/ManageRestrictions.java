@@ -22,18 +22,23 @@ public class ManageRestrictions {
         this.healthClassificationRepository = healthClassificationRepository;
     }
 
-    public void execute(UUID studentId, List<UUID> newClassificationIds) {
-        Alumno student = studentRepository.findById(studentId)
+    public ManageRestrictionsResponse execute(ManageRestrictionsRequest restrictionsRequest) {
+        Alumno student = findStudent(restrictionsRequest.studentId());
+        Set<ClasificacionSalud> requestedRestrictions =
+                healthRestrictionsFrom(restrictionsRequest.newClassificationIds());
+        student.setRestriccionesSalud(requestedRestrictions);
+        studentRepository.save(student);
+        return new ManageRestrictionsResponse();
+    }
+
+    private Alumno findStudent(UUID studentId) {
+        return studentRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "El alumno con ID " + studentId + " no existe."
                 ));
+    }
 
-        Set<ClasificacionSalud> newRestrictions = new HashSet<>(
-                healthClassificationRepository.findAllById(newClassificationIds)
-        );
-
-        student.setRestriccionesSalud(newRestrictions);
-
-        studentRepository.save(student);
+    private Set<ClasificacionSalud> healthRestrictionsFrom(List<UUID> classificationIds) {
+        return new HashSet<>(healthClassificationRepository.findAllById(classificationIds));
     }
 }

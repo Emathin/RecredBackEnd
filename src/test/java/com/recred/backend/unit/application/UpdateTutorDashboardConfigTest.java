@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.UpdateTutorDashboardConfig;
+import com.recred.backend.application.UpdateTutorDashboardConfigRequest;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.models.TipoPlan;
@@ -39,7 +40,8 @@ class UpdateTutorDashboardConfigTest {
 
         when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.of(tutor));
 
-        useCase.execute(cognitoSubject, configJson);
+        UpdateTutorDashboardConfigRequest request = new UpdateTutorDashboardConfigRequest(cognitoSubject, configJson);
+        useCase.execute(request);
 
         assertEquals(configJson, tutor.getDashboardConfig());
         verify(tutorRepository, times(1)).save(tutor);
@@ -57,7 +59,8 @@ class UpdateTutorDashboardConfigTest {
 
         when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.of(tutor));
 
-        useCase.execute(cognitoSubject, configJson);
+        UpdateTutorDashboardConfigRequest request = new UpdateTutorDashboardConfigRequest(cognitoSubject, configJson);
+        useCase.execute(request);
 
         assertEquals(configJson, tutor.getDashboardConfig());
         verify(tutorRepository, times(1)).save(tutor);
@@ -75,8 +78,9 @@ class UpdateTutorDashboardConfigTest {
 
         when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.of(tutor));
 
+        UpdateTutorDashboardConfigRequest request = new UpdateTutorDashboardConfigRequest(cognitoSubject, configJson);
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                useCase.execute(cognitoSubject, configJson)
+                useCase.execute(request)
         );
 
         assertEquals("El plan gratuito permite hasta 5 tarjetas en el dashboard", exception.getMessage());
@@ -84,10 +88,10 @@ class UpdateTutorDashboardConfigTest {
     }
 
     @Test
-    void execute_shouldSaveConfig_whenPremiumPlanHasMoreThan5Cards() {
+    void execute_shouldSaveConfig_whenAdvancedPlanHasMoreThan5Cards() {
         String cognitoSubject = "sub-123";
         Usuario usuario = new Usuario();
-        usuario.setPlan(TipoPlan.PREMIUM);
+        usuario.setPlan(TipoPlan.AVANZADO);
         Tutor tutor = new Tutor();
         tutor.setUsuario(usuario);
 
@@ -95,9 +99,42 @@ class UpdateTutorDashboardConfigTest {
 
         when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.of(tutor));
 
-        useCase.execute(cognitoSubject, configJson);
+        UpdateTutorDashboardConfigRequest request = new UpdateTutorDashboardConfigRequest(cognitoSubject, configJson);
+        useCase.execute(request);
 
         assertEquals(configJson, tutor.getDashboardConfig());
         verify(tutorRepository, times(1)).save(tutor);
+    }
+
+    @Test
+    void execute_shouldThrowException_whenTutorNotFound() {
+        String cognitoSubject = "non-existent-sub";
+        String configJson = "[\"card1\"]";
+
+        when(tutorRepository.findByUsuarioIdCognito(cognitoSubject)).thenReturn(Optional.empty());
+
+        UpdateTutorDashboardConfigRequest request = new UpdateTutorDashboardConfigRequest(cognitoSubject, configJson);
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                useCase.execute(request)
+        );
+
+        assertEquals("Tutor no encontrado para el usuario actual", exception.getMessage());
+        verify(tutorRepository, never()).save(any());
+    }
+
+    @Test
+    void request_shouldThrowException_whenCognitoSubjectIsNull() {
+        IllegalArgumentException ex1 = assertThrows(IllegalArgumentException.class, () ->
+                new UpdateTutorDashboardConfigRequest(null, "config").validate()
+        );
+        assertEquals("El usuario es obligatorio", ex1.getMessage());
+    }
+
+    @Test
+    void request_shouldThrowException_whenConfigIsNull() {
+        IllegalArgumentException ex2 = assertThrows(IllegalArgumentException.class, () ->
+                new UpdateTutorDashboardConfigRequest("sub", null).validate()
+        );
+        assertEquals("La configuración del dashboard es obligatoria", ex2.getMessage());
     }
 }

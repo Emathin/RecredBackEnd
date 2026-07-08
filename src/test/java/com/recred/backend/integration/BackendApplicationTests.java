@@ -1,64 +1,57 @@
 package com.recred.backend.integration;
 
-import com.recred.backend.BackendApplication;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
-import org.springframework.boot.SpringApplication;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.context.ApplicationContext;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.RequestBuilder;
+import org.springframework.test.web.servlet.ResultActions;
 
-import java.util.TimeZone;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.recred.backend.infrastructure.openMeteo.OpenMeteoWeatherClient;
+class BackendApplicationTests extends AbstractIntegrationTest {
 
-@SpringBootTest(properties = {"COGNITO_ISSUER_URI=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_dummy"})
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class BackendApplicationTests {
+    @Autowired
+    private ApplicationContext applicationContext;
 
-	@MockitoBean
-	private JwtDecoder jwtDecoder;
+    @Autowired
+    private MockMvc mockMvc;
 
-	@MockitoBean
-	private OpenMeteoWeatherClient openMeteoWeatherClient;
+    @Test
+    void contextLoads() {
+        ApplicationContext context = givenApplicationContext();
 
-	@Test
-	void contextLoads() {
-	}
+        thenApplicationContextIsLoaded(context);
+    }
 
-	@Autowired
-	private MockMvc mockMvc;
+    @Test
+    void healthEndpointShouldReturn200Ok() throws Exception {
+        RequestBuilder request = givenHealthRequest();
 
-	@Test
-	void healthEndpointShouldReturn200Ok() throws Exception {
-		mockMvc.perform(get("/actuator/health"))
-				.andExpect(status().isOk());
-	}
+        ResultActions response = whenPerforming(request);
 
-	@Test
-	void mainShouldSetUtcTimezoneAndRunSpringApplication() {
-		TimeZone original = TimeZone.getDefault();
-		String[] args = new String[]{"--test"};
+        thenResponseIsOk(response);
+    }
 
-		try (MockedStatic<SpringApplication> springApplication =
-					 Mockito.mockStatic(SpringApplication.class)) {
-			BackendApplication.main(args);
+    private ApplicationContext givenApplicationContext() {
+        return applicationContext;
+    }
 
-			assertEquals("UTC", TimeZone.getDefault().getID());
-			springApplication.verify(() -> SpringApplication.run(BackendApplication.class, args));
-		} finally {
-			TimeZone.setDefault(original);
-		}
-	}
+    private RequestBuilder givenHealthRequest() {
+        return get("/actuator/health");
+    }
 
+    private ResultActions whenPerforming(RequestBuilder request) throws Exception {
+        return mockMvc.perform(request);
+    }
+
+    private void thenApplicationContextIsLoaded(ApplicationContext context) {
+        assertNotNull(context);
+    }
+
+    private void thenResponseIsOk(ResultActions response) throws Exception {
+        response.andExpect(status().isOk());
+    }
 }

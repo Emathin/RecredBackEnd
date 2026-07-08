@@ -1,40 +1,46 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.application.GeneratePurchaseRecommendation;
-import com.recred.backend.infrastructure.entities.NotificacionEntity;
+import com.recred.backend.application.FindPurchaseSuggestionForToday;
+import com.recred.backend.application.FindPurchaseSuggestionForTomorrow;
+import com.recred.backend.application.FindPurchaseSuggestionRequest;
+import com.recred.backend.application.FindPurchaseSuggestionResponse;
+import java.util.Optional;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
-
-
 @RestController
-
 public class PurchaseRecommendationController {
 
-    private GeneratePurchaseRecommendation generatePurchaseRecommendation;
+    private final FindPurchaseSuggestionForToday findPurchaseSuggestionForToday;
+    private final FindPurchaseSuggestionForTomorrow findPurchaseSuggestionForTomorrow;
 
     public PurchaseRecommendationController(
-            GeneratePurchaseRecommendation generatePurchaseRecommendation) {
-        this.generatePurchaseRecommendation = generatePurchaseRecommendation;
+            FindPurchaseSuggestionForToday findPurchaseSuggestionForToday,
+            FindPurchaseSuggestionForTomorrow findPurchaseSuggestionForTomorrow) {
+        this.findPurchaseSuggestionForToday = findPurchaseSuggestionForToday;
+        this.findPurchaseSuggestionForTomorrow = findPurchaseSuggestionForTomorrow;
     }
 
-    @RequestMapping("/api/v1/ia/alumnos/{idAlumno}/obtenerSugerenciaDelDia")
-    @GetMapping
-    public NotificacionEntity getTodayPurchaseRecommendation(
-            @PathVariable("idAlumno") UUID studentID
-    ) {
-        return generatePurchaseRecommendation.findSuggestionForToday(studentID);
+    @GetMapping("/api/v1/ia/alumnos/me/obtenerSugerenciaDelDia")
+    public FindPurchaseSuggestionResponse getTodayPurchaseRecommendation(
+            Authentication authentication) {
+        var request = new FindPurchaseSuggestionRequest(cognitoSubject(authentication));
+        return findPurchaseSuggestionForToday.execute(request);
     }
 
-    @RequestMapping("/api/v1/ia/alumnos/{idAlumno}/obtenerSugerenciaManiana")
-    @GetMapping
-    public NotificacionEntity getTomorrowPurchaseRecommendation(
-            @PathVariable("idAlumno") UUID studentID
-    ) {
-        return generatePurchaseRecommendation.findSuggestionForToday(studentID);
+    @GetMapping("/api/v1/ia/alumnos/me/obtenerSugerenciaManiana")
+    public FindPurchaseSuggestionResponse getTomorrowPurchaseRecommendation(
+            Authentication authentication) {
+        var request = new FindPurchaseSuggestionRequest(cognitoSubject(authentication));
+        return findPurchaseSuggestionForTomorrow.execute(request);
     }
 
+    private String cognitoSubject(Authentication authentication) {
+        return Optional.ofNullable(authentication)
+                .map(Authentication::getName)
+                .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
+                        "Usuario no autenticado"));
+    }
 }

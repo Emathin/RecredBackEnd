@@ -1,5 +1,7 @@
 package com.recred.backend.domain.models;
 
+import com.recred.backend.domain.exceptions.InvalidSubscriptionPlanException;
+import com.recred.backend.domain.exceptions.UserRoleCannotSubscribeException;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -27,19 +29,76 @@ public class Usuario {
     private LocalDateTime actualizadoEn;
     private String urlFotoPerfil;
     private TipoPlan plan = TipoPlan.GRATUITO;
+    private Alumno alumno;
+    private Tutor tutor;
+    private Kiosquero kiosquero;
 
     public TipoPlan getPlan() {
         return plan != null ? plan : TipoPlan.GRATUITO;
     }
 
-    private Alumno alumno;
-    private Tutor tutor;
-    private Kiosquero kiosquero;
-
     public void asignarTutor(Tutor tutor) {
         this.tutor = tutor;
         if (tutor != null) {
             tutor.setUsuario(this);
+        }
+    }
+
+    public void validatePurchaseForSelf(UUID studentId) {
+        if (this.alumno == null || !this.alumno.getId().equals(studentId)) {
+            throw new SecurityException(
+                    "No autorizado para comprar a nombre de otro alumno");
+        }
+    }
+
+    public boolean isParent() {
+        return rol == RolUsuario.PADRE;
+    }
+
+    public boolean hasFreePlan() {
+        return getPlan().isFree();
+    }
+
+    public boolean hasPaidPlan() {
+        return getPlan().isPaid();
+    }
+
+    public boolean canHaveIndividualSubscription() {
+        return rol == RolUsuario.PADRE || rol == RolUsuario.VENDEDOR;
+    }
+
+    public void validateCanHaveIndividualSubscription() {
+        if (!canHaveIndividualSubscription()) {
+            throw new UserRoleCannotSubscribeException(rol);
+        }
+    }
+
+    public void activatePaidPlan(TipoPlan paidPlan) {
+        if (paidPlan == null || !paidPlan.isPaid()) {
+            throw new InvalidSubscriptionPlanException(paidPlan);
+        }
+
+        this.plan = paidPlan;
+    }
+
+    public void returnToFreePlan() {
+        this.plan = TipoPlan.GRATUITO;
+    }
+
+    public void validateCanTransferBalanceBetweenChildren() {
+        if (hasFreePlan()) {
+            throw new IllegalArgumentException(
+                    "La transferencia entre hijos no está permitida en cuentas gratuitas");
+        }
+
+        if (!isParent()) {
+            throw new SecurityException("Solo un padre puede transferir saldo");
+        }
+    }
+
+    public void validateCanLoadBalanceToChild() {
+        if (!isParent()) {
+            throw new SecurityException("Solo un padre puede cargar saldo");
         }
     }
 }

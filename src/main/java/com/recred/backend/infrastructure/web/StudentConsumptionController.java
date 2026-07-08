@@ -1,11 +1,11 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetLoggedUserConsumptionDetail;
+import com.recred.backend.application.GetLoggedUserConsumptionDetailRequest;
 import com.recred.backend.application.GetStudentRewardStatus;
-import com.recred.backend.application.StudentConsumptionCommand;
+import com.recred.backend.application.GetStudentRewardStatusRequest;
 import com.recred.backend.application.StudentRewardResponse;
 import java.time.LocalDate;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -40,22 +40,20 @@ public class StudentConsumptionController {
             @RequestParam(name = "hasta", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
     ) {
-        StudentConsumptionCommand command = new StudentConsumptionCommand(
-                Optional.ofNullable(studentId),
-                Optional.ofNullable(from),
-                Optional.ofNullable(to)
-        );
-        return StudentConsumptionResponse.fromDomain(
-                getLoggedUserConsumptionDetail.execute(
+        GetLoggedUserConsumptionDetailRequest request =
+                new GetLoggedUserConsumptionDetailRequest(
                         cognitoSubject(authentication),
-                        command
-                )
-        );
+                        studentId,
+                        from,
+                        to
+                );
+        return StudentConsumptionResponse.fromApplication(
+                getLoggedUserConsumptionDetail.execute(request));
     }
 
     @GetMapping("/alumnos/{alumnoId}/recompensas-saludables")
     public StudentRewardResponse getRewardStatus(@PathVariable UUID alumnoId) {
-        return getStudentRewardStatus.execute(alumnoId);
+        return getStudentRewardStatus.execute(new GetStudentRewardStatusRequest(alumnoId));
     }
 
     private String cognitoSubject(Authentication authentication) {

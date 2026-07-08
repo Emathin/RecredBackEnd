@@ -1,7 +1,5 @@
 package com.recred.backend.application;
 
-import com.recred.backend.infrastructure.web.SeasonInfoDTO;
-
 import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.temporal.ChronoUnit;
@@ -13,7 +11,7 @@ public class SeasonCalculator {
     private static final MonthDay WINTER_START = MonthDay.of(6, 21);
     private static final MonthDay SPRING_START = MonthDay.of(9, 21);
 
-    public static SeasonInfoDTO calculateCurrentSeason(LocalDate date) {
+    public static SeasonInfoResponse calculateCurrentSeason(LocalDate date) {
         MonthDay currentMonthDay = MonthDay.from(date);
         
         String currentSeason;
@@ -36,7 +34,6 @@ public class SeasonCalculator {
         } else {
             currentSeason = "Primavera";
             nextSeason = "Verano";
-            // Si estamos antes de fin de año y todavía es primavera, el verano empieza este año
             if (currentMonthDay.isBefore(SUMMER_START)) {
                 nextSeasonDate = SUMMER_START.atYear(currentYear);
             } else {
@@ -44,19 +41,18 @@ public class SeasonCalculator {
             }
         }
 
-        // Caso especial para Verano cruzando el año nuevo
-        if (currentSeason.equals("Verano") && currentMonthDay.isBefore(AUTUMN_START)) {
-            // El otoño es este año
-            nextSeasonDate = AUTUMN_START.atYear(currentYear);
+        if (currentSeason.equals("Verano")) {
+            int autumnYear = currentMonthDay.isBefore(AUTUMN_START) ? currentYear : currentYear + 1;
+            nextSeasonDate = AUTUMN_START.atYear(autumnYear);
         }
 
         int daysRemaining = (int) ChronoUnit.DAYS.between(date, nextSeasonDate);
 
-        return new SeasonInfoDTO(currentSeason, daysRemaining, nextSeason);
+        return new SeasonInfoResponse(currentSeason, daysRemaining, nextSeason);
     }
 
     private static boolean isBetween(MonthDay target, MonthDay start, MonthDay end) {
-        if (start.isAfter(end)) { // Wrap around the year
+        if (start.isAfter(end)) {
             return !target.isBefore(start) || target.isBefore(end);
         }
         return !target.isBefore(start) && target.isBefore(end);

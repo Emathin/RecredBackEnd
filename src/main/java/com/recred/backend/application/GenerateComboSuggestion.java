@@ -1,43 +1,77 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.ComboSuggestion;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.UsuarioRepository;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import org.springframework.transaction.annotation.Transactional;
 
 public class GenerateComboSuggestion {
 
     private final ProductRepository productRepository;
     private final KiosqueroRepository kiosqueroRepository;
+    private final UsuarioRepository usuarioRepository;
 
     public GenerateComboSuggestion(ProductRepository productRepository,
-                                   KiosqueroRepository kiosqueroRepository) {
+                                   KiosqueroRepository kiosqueroRepository,
+                                   UsuarioRepository usuarioRepository) {
         this.productRepository = productRepository;
         this.kiosqueroRepository = kiosqueroRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @Transactional(readOnly = true)
-    public ComboSuggestion execute(UUID productId, UUID userId) {
-        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(userId);
+    public GenerateComboSuggestionResponse execute(
+            GenerateComboSuggestionRequest comboSuggestionRequest) {
+        UUID buffetId = getBuffetIdForUser(comboSuggestionRequest.cognitoSubject());
+        Producto product = getProduct(comboSuggestionRequest.productId());
+        List<Producto> suggestedProducts = getTopSoldProducts(
+                buffetId,
+                product.getCategoria().getId());
+
+        return buildResponse(product, suggestedProducts);
+    }
+
+    private UUID getBuffetIdForUser(String cognitoSubject) {
+        Usuario user = getUser(cognitoSubject);
+        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(user.getId());
         if (buffetId == null) {
             throw new RuntimeException("Buffet not found for user");
         }
+        return buffetId;
+    }
 
-        var product = productRepository.findById(productId)
+    private Usuario getUser(String cognitoSubject) {
+        return usuarioRepository.findByIdCognito(cognitoSubject)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    private Producto getProduct(UUID productId) {
+        return productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
+    }
 
-        List<Producto> topSoldProducts = productRepository.findBuffetTop3MostSold(
-                buffetId, product.getCategoria().getId());
+    private List<Producto> getTopSoldProducts(UUID buffetId, UUID categoryId) {
+        return productRepository.findBuffetTop3MostSold(buffetId, categoryId);
+    }
 
-        List<ComboSuggestion.SuggestedProduct> suggestions = topSoldProducts.stream()
-                .map(p -> new ComboSuggestion.SuggestedProduct(
-                        p.getId(), p.getNombre(), p.getPrecio()))
-                .collect(Collectors.toList());
+    private GenerateComboSuggestionResponse buildResponse(
+            Producto product, List<Producto> topSold) {
+        List<GenerateComboSuggestionResponse
+                .SuggestedProductResponse> suggestions = topSold.stream()
+                .map(this::mapToSuggestedProductResponse)
+                .toList();
+        return new GenerateComboSuggestionResponse(
+                product.getId(), product.getNombre(), suggestions);
+    }
 
-        return new ComboSuggestion(productId, product.getNombre(), suggestions);
+    private GenerateComboSuggestionResponse.SuggestedProductResponse mapToSuggestedProductResponse(
+            Producto product) {
+        return new GenerateComboSuggestionResponse.SuggestedProductResponse(
+                product.getId(), product.getNombre(), product.getPrecio());
     }
 }

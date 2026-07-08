@@ -4,8 +4,6 @@ import com.recred.backend.domain.exceptions.ProductNotFoundException;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
 
-import java.util.UUID;
-
 public class GetProductById {
 
     private final ProductRepository productRepository;
@@ -14,12 +12,17 @@ public class GetProductById {
         this.productRepository = productRepository;
     }
 
-    public Producto execute(UUID id, UUID buffetId) {
-        if (buffetId != null) {
-            return productRepository.findActiveByIdWithStock(id, buffetId)
-                    .orElseThrow(() -> new ProductNotFoundException(id));
+    public ProductResponse execute(GetProductByIdRequest request) {
+        return ProductResponse.fromDomain(productFor(request));
+    }
+
+    private Producto productFor(GetProductByIdRequest request) {
+        if (request.buffetId() != null) {
+            return productRepository.findActiveByIdWithStock(request.id(), request.buffetId())
+                    .orElseThrow(() -> new ProductNotFoundException(request.id()));
         }
-        return productRepository.findActiveById(id)
-                .orElseThrow(() -> new ProductNotFoundException(id));
+
+        return productRepository.findActiveById(request.id())
+                .orElseThrow(() -> new ProductNotFoundException(request.id()));
     }
 }

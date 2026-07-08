@@ -4,7 +4,6 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.SugerenciaIA;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.domain.services.UsuarioService;
@@ -36,8 +35,8 @@ public class PurchaseSuggestIA {
         this.clock = clock;
     }
 
-    public Optional<SugerenciaIA> execute(String cognitoId) {
-        Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoId);
+    public Optional<PurchaseSuggestionResponse> execute(PurchaseSuggestIARequest request) {
+        Usuario usuario = usuarioService.obtenerUsuarioActual(request.cognitoId());
         LocalDateTime now = LocalDateTime.now(clock);
 
         if (!cumpleReglasVisibilidad(usuario, now)) {
@@ -58,13 +57,13 @@ public class PurchaseSuggestIA {
         return suggestions.stream()
                 .filter(s -> s.getAceptada() == null)
                 .max(Comparator.comparing(SugerenciaIAEntity::getCreadoEn))
-                .map(SugerenciaIAEntity::toDomain);
+                .map(SugerenciaIAEntity::toDomain)
+                .map(PurchaseSuggestionResponse::fromDomain);
     }
 
     private boolean cumpleReglasVisibilidad(Usuario usuario, LocalDateTime now) {
         return switch (usuario.getRol()) {
             case PADRE -> isVisibleParaPadre(now);
-            // TODO: Configurar restricciones horarias reales para ALUMNO antes de producción.
             case ALUMNO -> true;
             default -> false;
         };

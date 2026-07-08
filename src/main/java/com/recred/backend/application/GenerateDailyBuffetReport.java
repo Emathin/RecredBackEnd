@@ -1,18 +1,30 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.models.DailyBuffetReport;
+import com.recred.backend.application.GenerateDailyBuffetReportResponse.DailyInventorySnapshotResponse;
+import com.recred.backend.application.GenerateDailyBuffetReportResponse.DailyMovementReportResponse;
+import com.recred.backend.application.GenerateDailyBuffetReportResponse.DailyPaymentMethodReportResponse;
+import com.recred.backend.application.GenerateDailyBuffetReportResponse.DailyProductReportResponse;
 import com.recred.backend.domain.models.DailyInventorySnapshot;
-import com.recred.backend.domain.models.DailyMovementReport;
-import com.recred.backend.domain.models.DailyPaymentMethodReport;
-import com.recred.backend.domain.models.DailyProductReport;
 import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.MovimientoStock;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.models.TipoMovimientoStock;
+import com.recred.backend.domain.repositories.ProductRepository;
+import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.repositories.DailyBuffetCloseRepository;
+import com.recred.backend.domain.repositories.StockMovementRepository;
+
+import static com.recred.backend.domain.models.EstadoCompra.CANCELADO;
+import static com.recred.backend.domain.models.EstadoCompra.ENTREGADO;
+import static com.recred.backend.domain.models.EstadoCompra.EN_PREPARACION;
+import static com.recred.backend.domain.models.EstadoCompra.LISTO;
+import static com.recred.backend.domain.models.EstadoCompra.PENDIENTE;
+import static com.recred.backend.domain.models.EstadoCompra.RECHAZADO;
+import static com.recred.backend.domain.models.EstadoCompra.VENCIDO;
+import static com.recred.backend.domain.models.EstadoInventario.SIN_STOCK;
+import static com.recred.backend.domain.models.TipoMovimientoStock.LIBERACION;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.DailyBuffetCloseRepository;
@@ -31,23 +43,15 @@ import java.util.stream.Collectors;
 public class GenerateDailyBuffetReport {
 
     private static final List<EstadoCompra> ACTIVE_ADVANCE_STATUSES = List.of(
-            EstadoCompra.PENDIENTE,
-            EstadoCompra.EN_PREPARACION,
-            EstadoCompra.LISTO
+            PENDIENTE,
+            EN_PREPARACION,
+            LISTO
     );
 
     private final PurchaseRepository purchaseRepository;
     private final ProductRepository productRepository;
     private final StockMovementRepository stockMovementRepository;
     private final DailyBuffetCloseRepository dailyBuffetCloseRepository;
-
-    public GenerateDailyBuffetReport(
-            PurchaseRepository purchaseRepository,
-            ProductRepository productRepository,
-            StockMovementRepository stockMovementRepository
-    ) {
-        this(purchaseRepository, productRepository, stockMovementRepository, null);
-    }
 
     public GenerateDailyBuffetReport(
             PurchaseRepository purchaseRepository,
@@ -61,83 +65,82 @@ public class GenerateDailyBuffetReport {
         this.dailyBuffetCloseRepository = dailyBuffetCloseRepository;
     }
 
-    public DailyBuffetReport execute(UUID buffetId, LocalDate date) {
-        LocalDateTime start = date.atStartOfDay();
-        LocalDateTime end = date.plusDays(1).atStartOfDay().minusNanos(1);
-        List<Purchase> purchases = purchaseRepository.findByBuffetAndDateRange(
-                buffetId,
-                start,
-                end
-        );
-        List<DailyInventorySnapshot> inventory = inventory(buffetId, date);
-        List<MovimientoStock> movements = stockMovementRepository.findByBuffetAndDateRange(
-                buffetId,
-                start,
-                end
-        );
+    public GenerateDailyBuffetReportResponse execute(GenerateDailyBuffetReportRequest request) {
+        ReportSource source = reportSource(request);
+        return response(request, source);
+    }
 
-        return new DailyBuffetReport(
-                buffetId,
-                date,
-                purchases.size(),
-                countStatus(purchases, EstadoCompra.ENTREGADO),
-                countStatus(purchases, EstadoCompra.PENDIENTE),
-                countStatus(purchases, EstadoCompra.EN_PREPARACION),
-                countStatus(purchases, EstadoCompra.LISTO),
-                countStatus(purchases, EstadoCompra.VENCIDO),
-                countStatus(purchases, EstadoCompra.CANCELADO),
-                countStatus(purchases, EstadoCompra.RECHAZADO),
-                deliveredTotal(purchases),
-                refundedCredits(purchases),
-                releasedReservations(movements),
-                soldProducts(purchases),
-                inventory,
-                soldOutProducts(inventory),
-                salesByPaymentMethod(purchases),
-                stockMovements(movements)
+    private ReportSource reportSource(GenerateDailyBuffetReportRequest request) {
+        LocalDateTime start = request.date().atStartOfDay();
+        LocalDateTime end = request.date().plusDays(1).atStartOfDay().minusNanos(1);
+        return new ReportSource(
+                purchaseRepository.findByBuffetAndDateRange(request.buffetId(), start, end),
+                inventory(request.buffetId(), request.date()),
+                stockMovementRepository.findByBuffetAndDateRange(request.buffetId(), start, end)
+        );
+    }
+
+    private GenerateDailyBuffetReportResponse response(
+            GenerateDailyBuffetReportRequest request,
+            ReportSource source
+    ) {
+        return new GenerateDailyBuffetReportResponse(
+                request.buffetId(),
+                request.date(),
+                source.purchases().size(),
+                countStatus(source.purchases(), ENTREGADO),
+                countStatus(source.purchases(), PENDIENTE),
+                countStatus(source.purchases(), EN_PREPARACION),
+                countStatus(source.purchases(), LISTO),
+                countStatus(source.purchases(), VENCIDO),
+                countStatus(source.purchases(), CANCELADO),
+                countStatus(source.purchases(), RECHAZADO),
+                deliveredTotal(source.purchases()),
+                refundedCredits(source.purchases()),
+                releasedReservations(source.movements()),
+                soldProducts(source.purchases()),
+                inventoryResponse(source.inventory()),
+                inventoryResponse(soldOutProducts(source.inventory())),
+                salesByPaymentMethod(source.purchases()),
+                stockMovements(source.movements())
         );
     }
 
     private int countStatus(List<Purchase> purchases, EstadoCompra status) {
         return (int) purchases.stream()
-                .filter(purchase -> purchase.getStatus() == status)
+                .filter(purchase -> purchase.hasStatus(status))
                 .count();
     }
 
     private BigDecimal deliveredTotal(List<Purchase> purchases) {
         return purchases.stream()
-                .filter(purchase -> purchase.getStatus() == EstadoCompra.ENTREGADO)
-                .map(Purchase::getTotalAmount)
+                .filter(Purchase::isDelivered)
+                .map(Purchase::totalAmountOrZero)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private List<DailyProductReport> soldProducts(List<Purchase> purchases) {
+    private List<DailyProductReportResponse> soldProducts(List<Purchase> purchases) {
         Map<UUID, ProductAccumulator> products = new LinkedHashMap<>();
         purchases.stream()
-                .filter(purchase -> purchase.getStatus() == EstadoCompra.ENTREGADO)
+                .filter(Purchase::isDelivered)
                 .forEach(purchase -> addProducts(products, purchase));
 
         return products.values().stream()
                 .map(ProductAccumulator::toReport)
-                .sorted(Comparator.comparing(DailyProductReport::productName))
+                .sorted(Comparator.comparing(DailyProductReportResponse::productName))
                 .toList();
     }
 
     private BigDecimal refundedCredits(List<Purchase> purchases) {
         return purchases.stream()
-                .filter(this::refundedPurchase)
-                .map(Purchase::getTotalAmount)
+                .filter(Purchase::refundsCredits)
+                .map(Purchase::totalAmountOrZero)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private boolean refundedPurchase(Purchase purchase) {
-        return purchase.getStatus() == EstadoCompra.CANCELADO
-                || purchase.getStatus() == EstadoCompra.RECHAZADO;
     }
 
     private int releasedReservations(List<MovimientoStock> movements) {
         return movements.stream()
-                .filter(movement -> movement.tipo() == TipoMovimientoStock.LIBERACION)
+                .filter(movement -> movement.tipo() == LIBERACION)
                 .map(MovimientoStock::cantidad)
                 .filter(quantity -> quantity != null)
                 .reduce(0, Integer::sum);
@@ -147,13 +150,23 @@ public class GenerateDailyBuffetReport {
             List<DailyInventorySnapshot> inventory
     ) {
         return inventory.stream()
-                .filter(item -> item.estadoInventario() == EstadoInventario.SIN_STOCK)
+                .filter(item -> item.estadoInventario() == SIN_STOCK)
                 .toList();
     }
 
-    private List<DailyPaymentMethodReport> salesByPaymentMethod(List<Purchase> purchases) {
+    private List<DailyInventorySnapshotResponse> inventoryResponse(
+            List<DailyInventorySnapshot> inventory
+    ) {
+        return inventory.stream()
+                .map(DailyInventorySnapshotResponse::fromDomain)
+                .toList();
+    }
+
+    private List<DailyPaymentMethodReportResponse> salesByPaymentMethod(
+            List<Purchase> purchases
+    ) {
         return purchases.stream()
-                .filter(purchase -> purchase.getStatus() == EstadoCompra.ENTREGADO)
+                .filter(Purchase::isDelivered)
                 .filter(purchase -> purchase.getPaymentMethod() != null)
                 .collect(Collectors.groupingBy(Purchase::getPaymentMethod))
                 .entrySet()
@@ -163,17 +176,17 @@ public class GenerateDailyBuffetReport {
                 .toList();
     }
 
-    private DailyPaymentMethodReport paymentMethodReport(
+    private DailyPaymentMethodReportResponse paymentMethodReport(
             MedioPago paymentMethod,
             List<Purchase> purchases
     ) {
         BigDecimal total = purchases.stream()
-                .map(Purchase::getTotalAmount)
+                .map(Purchase::totalAmountOrZero)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new DailyPaymentMethodReport(paymentMethod, purchases.size(), total);
+        return new DailyPaymentMethodReportResponse(paymentMethod, purchases.size(), total);
     }
 
-    private List<DailyMovementReport> stockMovements(List<MovimientoStock> movements) {
+    private List<DailyMovementReportResponse> stockMovements(List<MovimientoStock> movements) {
         return movements.stream()
                 .filter(movement -> movement.tipo() != null)
                 .collect(Collectors.groupingBy(MovimientoStock::tipo))
@@ -184,7 +197,7 @@ public class GenerateDailyBuffetReport {
                 .toList();
     }
 
-    private DailyMovementReport movementReport(
+    private DailyMovementReportResponse movementReport(
             TipoMovimientoStock movementType,
             List<MovimientoStock> movements
     ) {
@@ -192,7 +205,7 @@ public class GenerateDailyBuffetReport {
                 .map(MovimientoStock::cantidad)
                 .filter(value -> value != null)
                 .reduce(0, Integer::sum);
-        return new DailyMovementReport(movementType, quantity);
+        return new DailyMovementReportResponse(movementType, quantity);
     }
 
     private void addProducts(Map<UUID, ProductAccumulator> products, Purchase purchase) {
@@ -202,13 +215,9 @@ public class GenerateDailyBuffetReport {
     }
 
     private List<DailyInventorySnapshot> inventory(UUID buffetId, LocalDate date) {
-        if (dailyBuffetCloseRepository != null) {
-            List<DailyInventorySnapshot> snapshot = dailyBuffetCloseRepository
-                    .findInventorySnapshotByBuffetAndDate(buffetId, date)
-                    .orElse(List.of());
-            if (!snapshot.isEmpty()) {
-                return snapshot;
-            }
+        List<DailyInventorySnapshot> snapshot = savedInventorySnapshot(buffetId, date);
+        if (hasSavedInventorySnapshot(snapshot)) {
+            return snapshot;
         }
 
         return productRepository.findAllActiveWithStock(buffetId).stream()
@@ -216,6 +225,19 @@ public class GenerateDailyBuffetReport {
                 .map(product -> inventorySnapshot(buffetId, date, product))
                 .sorted(Comparator.comparing(DailyInventorySnapshot::productName))
                 .toList();
+    }
+
+    private List<DailyInventorySnapshot> savedInventorySnapshot(
+            UUID buffetId,
+            LocalDate date
+    ) {
+        return dailyBuffetCloseRepository
+                .findInventorySnapshotByBuffetAndDate(buffetId, date)
+                .orElse(List.of());
+    }
+
+    private boolean hasSavedInventorySnapshot(List<DailyInventorySnapshot> snapshot) {
+        return !snapshot.isEmpty();
     }
 
     private DailyInventorySnapshot inventorySnapshot(
@@ -238,7 +260,7 @@ public class GenerateDailyBuffetReport {
     }
 
     private Integer cupoDisponibleDia(UUID buffetId, LocalDate date, Producto product) {
-        return hasDailyCapacity(product)
+        return product.hasDailyCapacityLimit()
                 ? dailyCapacityAvailable(buffetId, date, product)
                 : product.getCupoDisponibleDia();
     }
@@ -254,18 +276,7 @@ public class GenerateDailyBuffetReport {
     }
 
     private boolean hasInventory(Producto product) {
-        return product.getStockActual() != null
-                || product.getStockReservado() != null
-                || product.getStockMinimo() != null
-                || product.getCupoMaximoDiario() != null
-                || product.getEstadoInventario() != null
-                || product.getTipoManejoInventario() != null;
-    }
-
-    private boolean hasDailyCapacity(Producto product) {
-        return product.getTipoManejoInventario() == TipoManejoInventario.CUPO_DIARIO
-                && product.getCupoMaximoDiario() != null
-                && product.getCupoMaximoDiario() > 0;
+        return product.hasInventoryData();
     }
 
     private static class ProductAccumulator {
@@ -280,16 +291,21 @@ public class GenerateDailyBuffetReport {
             quantity += quantityToAdd;
         }
 
-        DailyProductReport toReport() {
-            BigDecimal price = product.getPrecio() == null
-                    ? BigDecimal.ZERO
-                    : product.getPrecio();
-            return new DailyProductReport(
+        DailyProductReportResponse toReport() {
+            BigDecimal price = product.priceOrZero();
+            return new DailyProductReportResponse(
                     product.getId(),
                     product.getNombre(),
                     quantity,
                     price.multiply(BigDecimal.valueOf(quantity))
             );
         }
+    }
+
+    private record ReportSource(
+            List<Purchase> purchases,
+            List<DailyInventorySnapshot> inventory,
+            List<MovimientoStock> movements
+    ) {
     }
 }

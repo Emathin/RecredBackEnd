@@ -20,4 +20,14 @@ public enum RewardLevel {
     public String getMessage() {
         return message;
     }
+
+    public static RewardLevel forHealthyPurchaseHistory(long last7Days, long last15Days) {
+        if (last15Days > 5) {
+            return GOLD;
+        }
+        if (last7Days >= 3) {
+            return SILVER;
+        }
+        return BRONZE;
+    }
 }

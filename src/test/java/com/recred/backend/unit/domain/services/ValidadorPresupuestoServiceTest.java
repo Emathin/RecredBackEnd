@@ -9,6 +9,7 @@ import com.recred.backend.domain.models.ReglaPresupuestoCategoria;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
+
 import com.recred.backend.domain.services.ValidadorPresupuestoService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,7 @@ class ValidadorPresupuestoServiceTest {
     @Mock
     private CalculadorPeriodoPresupuesto calculadorPeriodo;
 
+
     @InjectMocks
     private ValidadorPresupuestoService validador;
 
@@ -71,7 +73,7 @@ class ValidadorPresupuestoServiceTest {
                 alumnoId, BigDecimal.valueOf(1000), Collections.emptyMap(), momentoCompra
         ));
 
-        verifyNoInteractions(calculadorPeriodo, compraRepository);
+        verifyNoInteractions(compraRepository);
     }
 
     @Test
@@ -86,17 +88,18 @@ class ValidadorPresupuestoServiceTest {
                 alumnoId, BigDecimal.valueOf(1000), Collections.emptyMap(), momentoCompra
         ));
 
-        verifyNoInteractions(calculadorPeriodo, compraRepository);
+        verifyNoInteractions(compraRepository);
     }
 
     @Test
     void validarPresupuesto_SuperaLimiteGeneral_LanzaExcepcion() {
         PresupuestoAlumno presupuesto = crearPresupuestoBase(BigDecimal.valueOf(2000));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.of(presupuesto));
-        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rangoSimulado);
+
 
         when(compraRepository.sumarGastosPorAlumnoEnRango(eq(alumnoId), any(), any()))
                 .thenReturn(BigDecimal.valueOf(1500));
+        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rangoSimulado);
 
         PresupuestoExcedidoException ex = assertThrows(PresupuestoExcedidoException.class, () -> {
             validador.validarPresupuesto(alumnoId, BigDecimal.valueOf(600), Collections.emptyMap(), momentoCompra);
@@ -121,13 +124,14 @@ class ValidadorPresupuestoServiceTest {
         presupuesto.setReglasCategoria(List.of(reglaGolosinas));
 
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.of(presupuesto));
-        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rangoSimulado);
+
 
         when(compraRepository.sumarGastosPorAlumnoEnRango(eq(alumnoId), any(), any()))
                 .thenReturn(BigDecimal.ZERO);
 
         when(compraRepository.sumarGastosPorCategoriaEnRango(eq(alumnoId), eq(golosinasId), any(), any()))
                 .thenReturn(BigDecimal.valueOf(800));
+        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rangoSimulado);
 
         Map<UUID, BigDecimal> gastosPorCategoria = Map.of(golosinasId, BigDecimal.valueOf(300));
 
@@ -142,10 +146,11 @@ class ValidadorPresupuestoServiceTest {
     void validarPresupuesto_TodoDentroDeLosLimites_NoLanzaExcepcion() {
         PresupuestoAlumno presupuesto = crearPresupuestoBase(BigDecimal.valueOf(2000));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.of(presupuesto));
-        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rangoSimulado);
+
 
         when(compraRepository.sumarGastosPorAlumnoEnRango(eq(alumnoId), any(), any()))
                 .thenReturn(BigDecimal.valueOf(1000));
+        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rangoSimulado);
 
         assertDoesNotThrow(() -> {
             validador.validarPresupuesto(alumnoId, BigDecimal.valueOf(500), Collections.emptyMap(), momentoCompra);
@@ -158,9 +163,10 @@ class ValidadorPresupuestoServiceTest {
         PresupuestoAlumno presupuesto = crearPresupuestoBase(BigDecimal.valueOf(2000));
         presupuesto.setReglasCategoria(List.of(reglaCategoria(categoriaId, "Bebidas")));
         when(presupuestoRepository.findActivoByAlumnoId(alumnoId)).thenReturn(Optional.of(presupuesto));
-        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rangoSimulado);
+
         when(compraRepository.sumarGastosPorAlumnoEnRango(eq(alumnoId), any(), any()))
                 .thenReturn(BigDecimal.ZERO);
+        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rangoSimulado);
 
         assertDoesNotThrow(() -> validador.validarPresupuesto(
                 alumnoId,
@@ -191,9 +197,10 @@ class ValidadorPresupuestoServiceTest {
                         Optional.of(biweekly),
                         Optional.of(monthly)
                 );
-        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rangoSimulado);
+
         when(compraRepository.sumarGastosPorAlumnoEnRango(eq(alumnoId), any(), any()))
                 .thenReturn(BigDecimal.valueOf(900));
+        when(calculadorPeriodo.calcularRango(any(), any())).thenReturn(rangoSimulado);
 
         assertEquals("Supera el presupuesto diario: disponible $100.00",
                 motivoBloqueo(BigDecimal.valueOf(200)).orElseThrow());

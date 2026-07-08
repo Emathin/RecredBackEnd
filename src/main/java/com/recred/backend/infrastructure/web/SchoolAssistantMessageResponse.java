@@ -1,7 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.recred.backend.domain.models.ChatMessage;
+import com.recred.backend.application.SchoolAssistantConversationMessageResponse;
 import com.recred.backend.domain.models.RolChatMensaje;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -21,7 +21,9 @@ public record SchoolAssistantMessageResponse(
         @JsonProperty("fechaHora")
         LocalDateTime dateTime
 ) {
-    public static SchoolAssistantMessageResponse fromDomain(ChatMessage message) {
+    public static SchoolAssistantMessageResponse fromApplication(
+            SchoolAssistantConversationMessageResponse message
+    ) {
         return new SchoolAssistantMessageResponse(
                 message.id(),
                 message.sessionId(),

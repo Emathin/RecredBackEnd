@@ -1,5 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.CreatePromotionResponse;
+import com.recred.backend.application.SeasonalCreatedPromotionResponse;
 import com.recred.backend.domain.models.Promotion;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,6 +23,22 @@ public class PromotionResponseDTO {
     private String status;
     private List<UUID> productIds;
     private UUID buffetId;
+    private String imageUrl;
+
+    public static PromotionResponseDTO fromAppResponse(
+            com.recred.backend.application.PromotionResponse res) {
+        PromotionResponseDTO dto = new PromotionResponseDTO();
+        dto.setId(res.id());
+        dto.setName(res.name());
+        dto.setDiscountPercentage(res.discountPercentage());
+        dto.setStartDate(res.startDate());
+        dto.setEndDate(res.endDate());
+        dto.setStatus(res.status());
+        dto.setImageUrl(res.imageUrl());
+        dto.setProductIds(res.productIds());
+        dto.setBuffetId(res.buffetId());
+        return dto;
+    }
 
     public static PromotionResponseDTO fromDomain(Promotion promotion) {
         PromotionResponseDTO dto = new PromotionResponseDTO();
@@ -30,6 +48,7 @@ public class PromotionResponseDTO {
         dto.setStartDate(promotion.getStartDate());
         dto.setEndDate(promotion.getEndDate());
         dto.setStatus(promotion.getStatus().name());
+        dto.setImageUrl(promotion.getImageUrl());
         
         if (promotion.getProducts() != null) {
             dto.setProductIds(promotion.getProducts().stream()
@@ -41,6 +60,38 @@ public class PromotionResponseDTO {
             dto.setBuffetId(promotion.getBuffet().getId());
         }
         
+        return dto;
+    }
+
+    public static PromotionResponseDTO fromApplication(CreatePromotionResponse promotion) {
+        PromotionResponseDTO dto = new PromotionResponseDTO();
+        dto.setId(promotion.id());
+        dto.setName(promotion.name());
+        dto.setDiscountPercentage(promotion.discountPercentage());
+        dto.setStartDate(promotion.startDate());
+        dto.setEndDate(promotion.endDate());
+        dto.setStatus(promotion.status().name());
+        dto.setImageUrl(promotion.imageUrl());
+        dto.setProductIds(promotion.productIds());
+        dto.setBuffetId(promotion.buffetId());
+        return dto;
+    }
+
+    public static PromotionResponseDTO fromApplication(SeasonalCreatedPromotionResponse promotion) {
+        if (promotion == null) {
+            return null;
+        }
+
+        PromotionResponseDTO dto = new PromotionResponseDTO();
+        dto.setId(promotion.id());
+        dto.setName(promotion.name());
+        dto.setDiscountPercentage(promotion.discountPercentage());
+        dto.setStartDate(promotion.startDate());
+        dto.setEndDate(promotion.endDate());
+        dto.setStatus(promotion.status());
+        dto.setImageUrl(promotion.imageUrl());
+        dto.setProductIds(promotion.productIds());
+        dto.setBuffetId(promotion.buffetId());
         return dto;
     }
 }

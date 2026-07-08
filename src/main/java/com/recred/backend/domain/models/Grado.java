@@ -13,6 +13,7 @@ public class Grado {
 
     private UUID id;
     private Colegio colegio;
+    private Nivel nivel;
     private String anio;
     private String division;
     private Boolean activo = true;

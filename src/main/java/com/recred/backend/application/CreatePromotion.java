@@ -7,6 +7,7 @@ import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.domain.repositories.PromotionRepository;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -14,79 +15,101 @@ import java.util.stream.Collectors;
 
 public class CreatePromotion {
 
+    private static final BigDecimal MAXIMUM_DISCOUNT_PERCENTAGE = new BigDecimal("100");
+    private static final int MINIMUM_PRODUCT_COUNT = 2;
+
     private final PromotionRepository promotionRepository;
+    private final Clock clock;
 
     public CreatePromotion(PromotionRepository promotionRepository) {
-        this.promotionRepository = promotionRepository;
+        this(promotionRepository, Clock.systemDefaultZone());
     }
 
-    public Promotion execute(
-            List<UUID> productIds, 
-            BigDecimal discountPercentage, 
-            String name, 
-            LocalDateTime startDate, 
-            LocalDateTime endDate,
-            UUID buffetId,
-            boolean forceDraft) {
+    public CreatePromotion(PromotionRepository promotionRepository, Clock clock) {
+        this.promotionRepository = promotionRepository;
+        this.clock = clock;
+    }
 
-        if (!hasMinimumProducts(productIds)) {
+    public CreatePromotionResponse execute(CreatePromotionRequest promotionRequest) {
+        ensurePromotionCreationRulesAreMet(promotionRequest);
+        Promotion promotion = buildPromotionFrom(promotionRequest);
+        promotion.setStatus(determineInitialStatus(promotionRequest));
+
+        Promotion savedPromotion = promotionRepository.save(promotion);
+        return CreatePromotionResponse.fromDomain(savedPromotion);
+    }
+
+    private void ensurePromotionCreationRulesAreMet(CreatePromotionRequest promotionRequest) {
+        if (!hasMinimumProducts(promotionRequest.productIds())) {
             throw new IllegalArgumentException("A promotion requires at least 2 products.");
         }
-        if (!isDiscountValid(discountPercentage)) {
+        if (!isDiscountValid(promotionRequest.discountPercentage())) {
             throw new IllegalArgumentException("Discount percentage must be between 0 and 100.");
         }
-        if (!isDateRangeValid(startDate, endDate)) {
+        if (!isDateRangeValid(promotionRequest.startDate(), promotionRequest.endDate())) {
             throw new IllegalArgumentException("Invalid date range.");
         }
-
-        Promotion promotion = new Promotion();
-        promotion.setName(name);
-        promotion.setDiscountPercentage(discountPercentage);
-        promotion.setStartDate(startDate);
-        promotion.setEndDate(endDate);
-
-        if (buffetId != null) {
-            Buffet buffet = new Buffet();
-            buffet.setId(buffetId);
-            promotion.setBuffet(buffet);
-        }
-
-        if (forceDraft) {
-            promotion.setStatus(PromotionStatus.DRAFT);
-        } else if (isPromotionCurrentlyActive(startDate, endDate)) {
-            promotion.setStatus(PromotionStatus.ACTIVE);
-        } else {
-            promotion.setStatus(PromotionStatus.DRAFT);
-        }
-
-        List<Producto> products = productIds.stream().map(id -> {
-            Producto p = new Producto();
-            p.setId(id);
-            return p;
-        }).collect(Collectors.toList());
-
-        promotion.setProducts(products);
-
-        return promotionRepository.save(promotion);
     }
-//...
+
+    private Promotion buildPromotionFrom(CreatePromotionRequest promotionRequest) {
+        Promotion promotion = new Promotion();
+        promotion.setName(promotionRequest.name());
+        promotion.setDiscountPercentage(promotionRequest.discountPercentage());
+        promotion.setStartDate(promotionRequest.startDate());
+        promotion.setEndDate(promotionRequest.endDate());
+        promotion.setImageUrl(promotionRequest.imageUrl());
+        promotion.setBuffet(buffetFrom(promotionRequest.buffetId()));
+        promotion.setProducts(productsFrom(promotionRequest.productIds()));
+        return promotion;
+    }
+
+    private Buffet buffetFrom(UUID buffetId) {
+        if (buffetId == null) {
+            return null;
+        }
+
+        Buffet buffet = new Buffet();
+        buffet.setId(buffetId);
+        return buffet;
+    }
+
+    private List<Producto> productsFrom(List<UUID> productIds) {
+        return productIds.stream()
+                .map(this::productFrom)
+                .collect(Collectors.toList());
+    }
+
+    private Producto productFrom(UUID productId) {
+        Producto product = new Producto();
+        product.setId(productId);
+        return product;
+    }
+
+    private PromotionStatus determineInitialStatus(CreatePromotionRequest promotionRequest) {
+        if (promotionRequest.forceDraft()) {
+            return PromotionStatus.DRAFT;
+        }
+        if (isPromotionCurrentlyActive(promotionRequest.startDate(), promotionRequest.endDate())) {
+            return PromotionStatus.ACTIVE;
+        }
+        return PromotionStatus.DRAFT;
+    }
 
     private boolean hasMinimumProducts(List<UUID> productIds) {
-        return productIds != null && productIds.size() >= 2;
+        return productIds.size() >= MINIMUM_PRODUCT_COUNT;
     }
 
     private boolean isDiscountValid(BigDecimal discountPercentage) {
-        return discountPercentage != null 
-                && discountPercentage.compareTo(BigDecimal.ZERO) > 0 
-                && discountPercentage.compareTo(new BigDecimal("100")) <= 0;
+        return discountPercentage.compareTo(BigDecimal.ZERO) > 0
+                && discountPercentage.compareTo(MAXIMUM_DISCOUNT_PERCENTAGE) <= 0;
     }
 
     private boolean isDateRangeValid(LocalDateTime startDate, LocalDateTime endDate) {
-        return startDate != null && endDate != null && startDate.isBefore(endDate);
+        return startDate.isBefore(endDate);
     }
     
     private boolean isPromotionCurrentlyActive(LocalDateTime startDate, LocalDateTime endDate) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         return !now.isBefore(startDate) && !now.isAfter(endDate);
     }
 }

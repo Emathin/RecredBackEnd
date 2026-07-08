@@ -38,4 +38,21 @@ public class Billetera {
     public void credit(BigDecimal amount) {
         this.saldoCreditos = this.saldoCreditos.add(amount);
     }
+
+    public void enableCredit(BigDecimal amount) {
+        if (Boolean.TRUE.equals(this.creditoHabilitado)) {
+            throw new com.recred.backend.domain.exceptions.ActiveCreditExistsException(
+                    "The student already has an active credit.");
+        }
+        this.credit(amount);
+        this.creditoHabilitado = true;
+    }
+
+    public void payCredit(BigDecimal amount) {
+        if (!Boolean.TRUE.equals(this.creditoHabilitado)) {
+            throw new IllegalStateException("No active credit to pay.");
+        }
+        this.debit(amount);
+        this.creditoHabilitado = false;
+    }
 }

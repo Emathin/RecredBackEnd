@@ -1,6 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.ProcessPresentialPurchase;
+import com.recred.backend.application.ProcessPresentialPurchaseRequest;
+import com.recred.backend.application.ProcessPresentialPurchaseResponse;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
@@ -14,6 +16,7 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
+import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
@@ -21,6 +24,7 @@ import com.recred.backend.domain.services.PurchaseValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -28,6 +32,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -55,6 +60,8 @@ class ProcessPresentialPurchaseTest {
     private PurchaseValidator purchaseValidator;
     @Mock
     private InventoryAvailabilityService inventoryAvailabilityService;
+    @Mock
+    private ProductRepository productRepository;
 
     @InjectMocks
     private ProcessPresentialPurchase useCase;
@@ -62,7 +69,7 @@ class ProcessPresentialPurchaseTest {
     private UUID studentId;
     private Alumno student;
     private Billetera wallet;
-    private Map<Producto, Integer> cart;
+    private ProcessPresentialPurchaseRequest request;
     private Producto product;
     private UUID buffetId;
 
@@ -86,54 +93,86 @@ class ProcessPresentialPurchaseTest {
         product.setPrecio(new BigDecimal("10.00"));
         product.setCategoria(category);
 
-        cart = new HashMap<>();
-        cart.put(product, 2);
+        request = new ProcessPresentialPurchaseRequest(
+                studentId,
+                List.of(new ProcessPresentialPurchaseRequest.ItemRequest(product.getId(), 2)),
+                buffetId
+        );
     }
 
     @Test
     void execute_WithValidData_ShouldProcessPurchaseAndCallValidators() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        
+        Purchase saved = new Purchase();
+        saved.setId(UUID.randomUUID());
+        saved.setStatus(EstadoCompra.ENTREGADO);
+        when(purchaseRepository.save(any(Purchase.class))).thenReturn(saved);
 
-        useCase.execute(studentId, cart, buffetId);
+        ProcessPresentialPurchaseResponse response = useCase.execute(request);
 
         verify(purchaseValidator).validate(any(Purchase.class));
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(walletRepository).save(wallet);
         verify(purchaseRepository).save(purchaseCaptor.capture());
-        verify(inventoryAvailabilityService).consumeDirectly(buffetId, cart);
-        assertEquals(EstadoCompra.ENTREGADO, purchaseCaptor.getValue().getStatus());
+        
+        Map<Producto, Integer> expectedCart = new HashMap<>();
+        expectedCart.put(product, 2);
+        verify(inventoryAvailabilityService).consumeDirectly(buffetId, expectedCart);
+        
+        assertEquals(saved.getId(), response.purchaseId());
+        assertEquals(saved.getStatus().name(), response.status());
     }
 
     @Test
     void execute_WhenProductRequiresPreparation_ShouldSavePendingPurchase() {
         product.setRequierePreparacion(true);
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        
+        Purchase saved = new Purchase();
+        saved.setId(UUID.randomUUID());
+        saved.setStatus(EstadoCompra.PENDIENTE);
+        when(purchaseRepository.save(any(Purchase.class))).thenReturn(saved);
 
-        useCase.execute(studentId, cart, buffetId);
+        ProcessPresentialPurchaseResponse response = useCase.execute(request);
 
         ArgumentCaptor<Purchase> purchaseCaptor = ArgumentCaptor.forClass(Purchase.class);
         verify(purchaseRepository).save(purchaseCaptor.capture());
         assertEquals(EstadoCompra.PENDIENTE, purchaseCaptor.getValue().getStatus());
+        assertEquals("PENDIENTE", response.status());
     }
 
     @Test
     void execute_WithBuffetId_ShouldConsumeInventoryDirectly() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        
+        Purchase saved = new Purchase();
+        saved.setId(UUID.randomUUID());
+        saved.setStatus(EstadoCompra.ENTREGADO);
+        when(purchaseRepository.save(any(Purchase.class))).thenReturn(saved);
 
-        useCase.execute(studentId, cart, buffetId);
+        useCase.execute(request);
 
-        verify(inventoryAvailabilityService).consumeDirectly(buffetId, cart);
+        Map<Producto, Integer> expectedCart = new HashMap<>();
+        expectedCart.put(product, 2);
+        verify(inventoryAvailabilityService).consumeDirectly(buffetId, expectedCart);
     }
 
     @Test
     void execute_WhenBuffetIdIsNull_ShouldThrowException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute(studentId, cart, null));
+        ProcessPresentialPurchaseRequest badRequest = new ProcessPresentialPurchaseRequest(
+                studentId, request.cart(), null
+        );
+        Executable execution = () -> useCase.execute(badRequest);
 
+        assertThrows(IllegalArgumentException.class, execution);
         verifyNoInteractions(studentRepository, walletRepository, purchaseRepository);
     }
 
@@ -141,9 +180,9 @@ class ProcessPresentialPurchaseTest {
     void execute_WhenStudentNotFound_ShouldThrowException() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
 
-        assertThrows(AlumnoNoEncontradoException.class,
-                () -> useCase.execute(studentId, cart, buffetId));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(AlumnoNoEncontradoException.class, execution);
         verifyNoInteractions(
                 purchaseValidator,
                 walletRepository,
@@ -155,11 +194,12 @@ class ProcessPresentialPurchaseTest {
     void execute_WhenInsufficientBalance_ShouldThrowException() {
         wallet.setSaldoCreditos(new BigDecimal("10.00"));
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
 
-        assertThrows(InsufficientBalanceException.class,
-                () -> useCase.execute(studentId, cart, buffetId));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(InsufficientBalanceException.class, execution);
         verify(purchaseValidator).validate(any(Purchase.class));
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
@@ -169,11 +209,12 @@ class ProcessPresentialPurchaseTest {
     @Test
     void execute_WhenWalletNotFound_ShouldThrowException() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalStateException.class,
-                () -> useCase.execute(studentId, cart, buffetId));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(IllegalStateException.class, execution);
         verify(walletRepository, never()).save(any());
         verify(purchaseRepository, never()).save(any());
         verifyNoInteractions(inventoryAvailabilityService);
@@ -182,26 +223,28 @@ class ProcessPresentialPurchaseTest {
     @Test
     void execute_WhenHealthRestrictionFails_ShouldThrowException() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         doThrow(new RestriccionSaludException(""))
                 .when(purchaseValidator)
                 .validate(any(Purchase.class));
 
-        assertThrows(RestriccionSaludException.class,
-                () -> useCase.execute(studentId, cart, buffetId));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(RestriccionSaludException.class, execution);
         verifyNoInteractions(walletRepository, purchaseRepository, inventoryAvailabilityService);
     }
 
     @Test
     void execute_WhenTimeRestrictionFails_ShouldThrowException() {
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         doThrow(new RestriccionHorariaException(""))
                 .when(purchaseValidator)
                 .validate(any(Purchase.class));
 
-        assertThrows(RestriccionHorariaException.class,
-                () -> useCase.execute(studentId, cart, buffetId));
+        Executable execution = () -> useCase.execute(request);
 
+        assertThrows(RestriccionHorariaException.class, execution);
         verifyNoInteractions(walletRepository, purchaseRepository, inventoryAvailabilityService);
     }
 
@@ -215,12 +258,18 @@ class ProcessPresentialPurchaseTest {
                 purchaseRepository,
                 purchaseValidator,
                 inventoryAvailabilityService,
-                movementRepository
+                movementRepository,
+                productRepository
         );
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        Purchase saved = new Purchase();
+        saved.setId(UUID.randomUUID());
+        saved.setStatus(EstadoCompra.ENTREGADO);
+        when(purchaseRepository.save(any(Purchase.class))).thenReturn(saved);
 
-        localUseCase.execute(studentId, cart, buffetId);
+        localUseCase.execute(request);
 
         verify(movementRepository).registrarMovimientoSistema(
                 wallet.getId(),
@@ -242,12 +291,18 @@ class ProcessPresentialPurchaseTest {
                 purchaseRepository,
                 purchaseValidator,
                 inventoryAvailabilityService,
-                movementRepository
+                movementRepository,
+                productRepository
         );
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+        Purchase saved = new Purchase();
+        saved.setId(UUID.randomUUID());
+        saved.setStatus(EstadoCompra.ENTREGADO);
+        when(purchaseRepository.save(any(Purchase.class))).thenReturn(saved);
 
-        localUseCase.execute(studentId, cart, buffetId);
+        localUseCase.execute(request);
 
         verify(movementRepository).registrarMovimiento(
                 wallet.getId(),
@@ -265,12 +320,19 @@ class ProcessPresentialPurchaseTest {
                 walletRepository,
                 purchaseRepository,
                 purchaseValidator,
-                inventoryAvailabilityService
+                inventoryAvailabilityService,
+                null,
+                productRepository
         );
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
-
-        localUseCase.execute(studentId, cart, buffetId);
+        Purchase saved = new Purchase();
+        saved.setId(UUID.randomUUID());
+        saved.setStatus(EstadoCompra.ENTREGADO);
+        when(purchaseRepository.save(any(Purchase.class))).thenReturn(saved);
+        
+        localUseCase.execute(request);
 
         verify(purchaseRepository).save(any(Purchase.class));
     }

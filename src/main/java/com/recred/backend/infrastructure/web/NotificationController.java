@@ -1,7 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.GetLoggedUserNotifications;
+import com.recred.backend.application.GetLoggedUserNotificationsRequest;
 import com.recred.backend.application.SetNotificationAsAlreadyRead;
+import com.recred.backend.application.SetNotificationAsAlreadyReadRequest;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,15 +42,23 @@ public class NotificationController {
             @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
     ) {
         return getLoggedUserNotifications
-                .execute(cognitoSubject(authentication), unreadOnly, page, size)
+                .execute(new GetLoggedUserNotificationsRequest(
+                        cognitoSubject(authentication),
+                        unreadOnly,
+                        page,
+                        size
+                ))
+                .notifications()
                 .stream()
-                .map(NotificationResponse::fromDomain)
+                .map(NotificationResponse::fromApplication)
                 .toList();
     }
 
     @PutMapping("/{notificationId}/already-read")
     public void markAsRead(@PathVariable UUID notificationId) {
-        setNotificationAsAlreadyRead.execute(notificationId);
+        setNotificationAsAlreadyRead.execute(new SetNotificationAsAlreadyReadRequest(
+                notificationId
+        ));
     }
 
 

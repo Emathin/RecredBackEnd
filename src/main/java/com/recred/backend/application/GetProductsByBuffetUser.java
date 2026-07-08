@@ -12,17 +12,27 @@ public class GetProductsByBuffetUser {
     private final ProductRepository productRepository;
     private final KiosqueroRepository kiosqueroRepository;
 
-    public GetProductsByBuffetUser(ProductRepository productRepository
-            , KiosqueroRepository kiosqueroRepository) {
+    public GetProductsByBuffetUser(
+            ProductRepository productRepository,
+            KiosqueroRepository kiosqueroRepository
+    ) {
         this.productRepository = productRepository;
         this.kiosqueroRepository = kiosqueroRepository;
     }
 
-    public List<Producto> execute(UUID userId) {
-        if (userId != null) {
-            return productRepository.findAllActiveWithStock(
-                    kiosqueroRepository.findBuffetByUsuarioId(userId));
+    public GetProductsByBuffetUserResponse execute(
+            GetProductsByBuffetUserRequest productsRequest) {
+        return new GetProductsByBuffetUserResponse(productsVisibleFor(productsRequest).stream()
+                .map(ProductResponse::fromDomain)
+                .toList());
+    }
+
+    private List<Producto> productsVisibleFor(GetProductsByBuffetUserRequest productsRequest) {
+        if (productsRequest.userId() == null) {
+            return productRepository.findAllActive();
         }
-        return productRepository.findAllActive();
+
+        UUID buffetId = kiosqueroRepository.findBuffetByUsuarioId(productsRequest.userId());
+        return productRepository.findAllActiveWithStock(buffetId);
     }
 }

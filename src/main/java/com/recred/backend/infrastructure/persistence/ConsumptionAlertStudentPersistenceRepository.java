@@ -60,7 +60,8 @@ public class ConsumptionAlertStudentPersistenceRepository
     private ConsumptionAlertTutor mapTutor(TutorEntity tutor) {
         return new ConsumptionAlertTutor(
                 tutor.getUsuario().getId(),
-                fullName(tutor.getUsuario())
+                fullName(tutor.getUsuario()),
+                tutor.getUsuario().getPlan()
         );
     }
 

@@ -2,21 +2,23 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
-import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.repositories.PurchaseRepository;
 import com.recred.backend.domain.services.InventoryAvailabilityService;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
+
+import static com.recred.backend.domain.models.EstadoCompra.EN_PREPARACION;
+import static com.recred.backend.domain.models.EstadoCompra.LISTO;
+import static com.recred.backend.domain.models.EstadoCompra.PENDIENTE;
+import static com.recred.backend.domain.models.EstadoCompra.VENCIDO;
 
 public class ExpireAdvancePurchases {
 
     private static final List<EstadoCompra> ACTIVE_ADVANCE_STATUSES = List.of(
-            EstadoCompra.PENDIENTE,
-            EstadoCompra.EN_PREPARACION,
-            EstadoCompra.LISTO
+            PENDIENTE,
+            EN_PREPARACION,
+            LISTO
     );
 
     private final PurchaseRepository purchaseRepository;
@@ -31,42 +33,35 @@ public class ExpireAdvancePurchases {
     }
 
     @Transactional
-    public int execute(LocalDateTime now) {
-        return executeDetailed(now).expiredPurchases();
+    public ExpireAdvancePurchasesResponse execute(ExpireAdvancePurchasesRequest request) {
+        return expire(expiredPurchases(request));
     }
 
-    @Transactional
-    public ExpirationResult executeDetailed(LocalDateTime now) {
-        return expire(purchaseRepository.findExpiredAdvancePurchases(
-                now.toLocalDate(),
-                now.toLocalTime(),
-                ACTIVE_ADVANCE_STATUSES));
+    private List<Purchase> expiredPurchases(ExpireAdvancePurchasesRequest request) {
+        if (request.buffetId() == null) {
+            return purchaseRepository.findExpiredAdvancePurchases(
+                    request.targetTime().toLocalDate(),
+                    request.targetTime().toLocalTime(),
+                    ACTIVE_ADVANCE_STATUSES);
+        }
+
+        return purchaseRepository.findExpiredAdvancePurchases(
+                request.buffetId(),
+                request.targetTime().toLocalDate(),
+                request.targetTime().toLocalTime(),
+                ACTIVE_ADVANCE_STATUSES);
     }
 
-    @Transactional
-    public int execute(UUID buffetId, LocalDateTime now) {
-        return executeDetailed(buffetId, now).expiredPurchases();
-    }
-
-    @Transactional
-    public ExpirationResult executeDetailed(UUID buffetId, LocalDateTime now) {
-        return expire(purchaseRepository.findExpiredAdvancePurchases(
-                buffetId,
-                now.toLocalDate(),
-                now.toLocalTime(),
-                ACTIVE_ADVANCE_STATUSES));
-    }
-
-    private ExpirationResult expire(List<Purchase> purchases) {
+    private ExpireAdvancePurchasesResponse expire(List<Purchase> purchases) {
         int releasedReservations = purchases.stream()
                 .mapToInt(this::expire)
                 .sum();
-        return new ExpirationResult(purchases.size(), releasedReservations);
+        return new ExpireAdvancePurchasesResponse(purchases.size(), releasedReservations);
     }
 
     private int expire(Purchase purchase) {
         EstadoCompra previousStatus = purchase.getStatus();
-        purchase.changeStatusTo(EstadoCompra.VENCIDO);
+        purchase.changeStatusTo(VENCIDO);
         int releasedReservations = 0;
 
         if (shouldReleaseReservation(purchase, previousStatus)) {
@@ -85,12 +80,8 @@ public class ExpireAdvancePurchases {
     }
 
     private boolean shouldReleaseReservation(Purchase purchase, EstadoCompra previousStatus) {
-        return purchase.getTipo() == TipoCompra.ANTICIPADA
-                && (previousStatus == EstadoCompra.PENDIENTE
-                || previousStatus == EstadoCompra.EN_PREPARACION
-                || previousStatus == EstadoCompra.LISTO);
-    }
-
-    public record ExpirationResult(int expiredPurchases, int releasedReservations) {
+        return purchase.shouldReleaseReservationWhenChangingFrom(
+                previousStatus,
+                VENCIDO);
     }
 }

@@ -1,6 +1,7 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.ManageRestrictions;
+import com.recred.backend.application.ManageRestrictionsRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -8,7 +9,6 @@ import com.recred.backend.domain.repositories.ClasificacionSaludRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -16,61 +16,115 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ManageRestrictionsTest {
 
     @Mock
-    private AlumnoRepository alumnoRepository;
+    private AlumnoRepository studentRepository;
 
     @Mock
-    private ClasificacionSaludRepository clasificacionRepository;
+    private ClasificacionSaludRepository healthClassificationRepository;
 
-    @InjectMocks
     private ManageRestrictions useCase;
 
-    private UUID alumnoId;
-    private UUID clasificacionId;
-    private Alumno alumno;
+    private UUID studentId;
+    private UUID classificationId;
+    private Alumno student;
+    private ClasificacionSalud classification;
+    private IllegalArgumentException thrownException;
 
     @BeforeEach
     void setUp() {
-        alumnoId = UUID.randomUUID();
-        clasificacionId = UUID.randomUUID();
-        alumno = new Alumno();
-        alumno.setId(alumnoId);
+        useCase = new ManageRestrictions(studentRepository, healthClassificationRepository);
     }
 
     @Test
-    void ejecutar_ConDatosValidos_DeberiaReemplazarYGuardar() {
-        ClasificacionSalud clasificacion = new ClasificacionSalud();
-        clasificacion.setId(clasificacionId);
-        List<UUID> nuevasClasificacionesIds = List.of(clasificacionId);
-        List<ClasificacionSalud> clasificacionesMock = List.of(clasificacion);
+    void givenStudentAndHealthRestriction_whenManagingRestrictions_thenReplacesRestrictions() {
+        givenManageRestrictionsScenario();
+        givenStudentExists();
+        givenHealthClassificationExists();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(clasificacionRepository.findAllById(nuevasClasificacionesIds)).thenReturn(clasificacionesMock);
+        whenManagingRestrictions();
 
-        useCase.execute(alumnoId, nuevasClasificacionesIds);
-
-        assertTrue(alumno.getRestriccionesSalud().contains(clasificacion));
-        assertEquals(1, alumno.getRestriccionesSalud().size());
-        verify(alumnoRepository).save(alumno);
+        thenStudentHasOnlyRequestedRestriction();
+        thenStudentWasSaved();
     }
 
     @Test
-    void ejecutar_CuandoAlumnoNoExiste_DeberiaLanzarExcepcion() {
-        List<UUID> nuevasClasificacionesIds = List.of(clasificacionId);
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+    void givenStudentDoesNotExist_whenManagingRestrictions_thenFailsBeforeSaving() {
+        givenManageRestrictionsScenario();
+        givenStudentDoesNotExist();
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            useCase.execute(alumnoId, nuevasClasificacionesIds);
-        });
+        whenManagingRestrictionsFails();
 
-        assertEquals("El alumno con ID " + alumnoId + " no existe.", exception.getMessage());
-        verify(clasificacionRepository, never()).findAllById(any());
-        verify(alumnoRepository, never()).save(any());
+        thenStudentNotFoundIsReported();
+        thenHealthClassificationsWereNotRequested();
+        thenStudentWasNotSaved();
+    }
+
+    private void givenManageRestrictionsScenario() {
+        studentId = UUID.randomUUID();
+        classificationId = UUID.randomUUID();
+        student = new Alumno();
+        student.setId(studentId);
+        classification = new ClasificacionSalud();
+        classification.setId(classificationId);
+    }
+
+    private void givenStudentExists() {
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+    }
+
+    private void givenStudentDoesNotExist() {
+        when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
+    }
+
+    private void givenHealthClassificationExists() {
+        when(healthClassificationRepository.findAllById(List.of(classificationId)))
+                .thenReturn(List.of(classification));
+    }
+
+    private void whenManagingRestrictions() {
+        useCase.execute(request());
+    }
+
+    private void whenManagingRestrictionsFails() {
+        thrownException = assertThrows(
+                IllegalArgumentException.class,
+                this::whenManagingRestrictions);
+    }
+
+    private void thenStudentHasOnlyRequestedRestriction() {
+        assertTrue(student.getRestriccionesSalud().contains(classification));
+        assertEquals(1, student.getRestriccionesSalud().size());
+    }
+
+    private void thenStudentWasSaved() {
+        verify(studentRepository).save(student);
+    }
+
+    private void thenStudentNotFoundIsReported() {
+        assertEquals("El alumno con ID " + studentId + " no existe.",
+                thrownException.getMessage());
+    }
+
+    private void thenHealthClassificationsWereNotRequested() {
+        verify(healthClassificationRepository, never()).findAllById(any());
+    }
+
+    private void thenStudentWasNotSaved() {
+        verify(studentRepository, never()).save(any());
+    }
+
+    private ManageRestrictionsRequest request() {
+        return new ManageRestrictionsRequest(studentId, List.of(classificationId));
     }
 }

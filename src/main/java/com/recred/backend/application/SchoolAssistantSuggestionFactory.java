@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.SchoolAssistantAction;
 import com.recred.backend.domain.models.SchoolAssistantActionStatus;
 import com.recred.backend.domain.models.SchoolAssistantActionType;
@@ -11,14 +12,14 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
-class SchoolAssistantSuggestionFactory {
+public class SchoolAssistantSuggestionFactory {
 
     private final EnumMap<SchoolAssistantRole, SchoolAssistantRoleSuggestionConfig>
             suggestionsByRole;
     private final EnumMap<SchoolAssistantActionStatus, List<SchoolAssistantSuggestion>>
             advancePurchaseSuggestions;
 
-    SchoolAssistantSuggestionFactory() {
+    public SchoolAssistantSuggestionFactory() {
         this.suggestionsByRole = suggestionsByRole();
         this.advancePurchaseSuggestions = advancePurchaseSuggestions();
     }
@@ -55,6 +56,10 @@ class SchoolAssistantSuggestionFactory {
         );
     }
 
+    List<SchoolAssistantSuggestion> dateSuggestions() {
+        return List.of();
+    }
+
     List<SchoolAssistantSuggestion> confirmationSuggestions() {
         return List.of(
                 suggestion("Confirmar", "confirmar",
@@ -69,6 +74,34 @@ class SchoolAssistantSuggestionFactory {
                 suggestion("Compra habitual", "comprame lo de siempre",
                         SchoolAssistantActionType.COMPRA_ANTICIPADA),
                 suggestion("Repetir ultima", "repeti mi ultima compra",
+                        SchoolAssistantActionType.COMPRA_ANTICIPADA)
+        );
+    }
+
+    private List<SchoolAssistantSuggestion> executedPurchaseSuggestions() {
+        return List.of(
+                suggestion("Cancelar pedido", "cancelar mi pedido",
+                        SchoolAssistantActionType.CANCELACION_COMPRA),
+                suggestion("Codigo retiro", "codigo de retiro",
+                        SchoolAssistantActionType.CONSULTA_CODIGO_RETIRO),
+                suggestion("Compra habitual", "comprame lo de siempre",
+                        SchoolAssistantActionType.COMPRA_ANTICIPADA)
+        );
+    }
+
+    private List<SchoolAssistantSuggestion> executedPurchaseSuggestions(
+            SchoolAssistantAction action
+    ) {
+        return isCancelablePurchaseAction(action)
+                ? executedPurchaseSuggestions()
+                : executedNonCancelablePurchaseSuggestions();
+    }
+
+    private List<SchoolAssistantSuggestion> executedNonCancelablePurchaseSuggestions() {
+        return List.of(
+                suggestion("Codigo retiro", "codigo de retiro",
+                        SchoolAssistantActionType.CONSULTA_CODIGO_RETIRO),
+                suggestion("Compra habitual", "comprame lo de siempre",
                         SchoolAssistantActionType.COMPRA_ANTICIPADA)
         );
     }
@@ -89,16 +122,26 @@ class SchoolAssistantSuggestionFactory {
             SchoolAssistantAction action,
             SchoolAssistantRoleSuggestionConfig config
     ) {
-        return role == SchoolAssistantRole.ALUMNO
-                ? advancePurchaseSuggestions.getOrDefault(
-                        action.status(),
-                        quickPurchaseSuggestions()
-                )
-                : config.defaultSuggestions();
+        if (role != SchoolAssistantRole.ALUMNO) {
+            return config.defaultSuggestions();
+        }
+
+        if (action.status() == SchoolAssistantActionStatus.EJECUTADA) {
+            return executedPurchaseSuggestions(action);
+        }
+
+        return advancePurchaseSuggestions.getOrDefault(
+                action.status(),
+                quickPurchaseSuggestions()
+        );
     }
 
     private boolean isAdvancePurchaseAction(SchoolAssistantAction action) {
         return action != null && action.type() == SchoolAssistantActionType.COMPRA_ANTICIPADA;
+    }
+
+    private boolean isCancelablePurchaseAction(SchoolAssistantAction action) {
+        return action.purchaseStatus() == EstadoCompra.PENDIENTE;
     }
 
     private List<SchoolAssistantSuggestion> defaultSuggestions(SchoolAssistantRole role) {
@@ -150,6 +193,8 @@ class SchoolAssistantSuggestionFactory {
                         SchoolAssistantIntent.ORDER_STATUS,
                         recentPurchasesAndQuickPurchaseSuggestions(),
                         SchoolAssistantIntent.WITHDRAWAL_CODE,
+                        recentPurchasesAndQuickPurchaseSuggestions(),
+                        SchoolAssistantIntent.CANCEL_PURCHASE,
                         recentPurchasesAndQuickPurchaseSuggestions()
                 ));
         return new SchoolAssistantRoleSuggestionConfig(
@@ -160,6 +205,7 @@ class SchoolAssistantSuggestionFactory {
                         SchoolAssistantActionType.CONSULTA_COMPRAS,
                         SchoolAssistantActionType.CONSULTA_COMPRAS_FRECUENTES,
                         SchoolAssistantActionType.COMPRA_ANTICIPADA,
+                        SchoolAssistantActionType.CANCELACION_COMPRA,
                         SchoolAssistantActionType.CONSULTA_EVENTOS,
                         SchoolAssistantActionType.CONSULTA_MENU,
                         SchoolAssistantActionType.CONSULTA_PEDIDOS,
@@ -260,6 +306,7 @@ class SchoolAssistantSuggestionFactory {
     advancePurchaseSuggestions() {
         EnumMap<SchoolAssistantActionStatus, List<SchoolAssistantSuggestion>> suggestions =
                 new EnumMap<>(SchoolAssistantActionStatus.class);
+        suggestions.put(SchoolAssistantActionStatus.ESPERANDO_FECHA, dateSuggestions());
         suggestions.put(SchoolAssistantActionStatus.ESPERANDO_RECREO, recessSuggestions());
         suggestions.put(
                 SchoolAssistantActionStatus.ESPERANDO_CONFIRMACION,

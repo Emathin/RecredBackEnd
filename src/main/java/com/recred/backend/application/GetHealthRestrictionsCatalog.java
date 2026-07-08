@@ -13,7 +13,23 @@ public class GetHealthRestrictionsCatalog {
         this.repository = repository;
     }
 
-    public List<ClasificacionSalud> ejecutar() {
-        return repository.findAll();
+    public GetHealthRestrictionsCatalogResponse execute(
+            GetHealthRestrictionsCatalogRequest request
+    ) {
+        return new GetHealthRestrictionsCatalogResponse(restrictions());
+    }
+
+    private List<GetHealthRestrictionsResponse> restrictions() {
+        return repository.findAll().stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private GetHealthRestrictionsResponse toResponse(ClasificacionSalud clasificacion) {
+        return new GetHealthRestrictionsResponse(
+                clasificacion.getId(),
+                clasificacion.getDescripcion(),
+                clasificacion.getActivo()
+        );
     }
 }

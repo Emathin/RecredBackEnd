@@ -1,9 +1,7 @@
 package com.recred.backend.application;
 
-import com.recred.backend.domain.repositories.NotificationRepository;
 import com.recred.backend.domain.exceptions.NotificationNotFoundException;
-
-import java.util.UUID;
+import com.recred.backend.domain.repositories.NotificationRepository;
 
 public class SetNotificationAsAlreadyRead {
 
@@ -13,15 +11,22 @@ public class SetNotificationAsAlreadyRead {
         this.notificationRepository = notificationRepository;
     }
 
-    public void execute(UUID notificationId) {
+    public SetNotificationAsAlreadyReadResponse execute(
+            SetNotificationAsAlreadyReadRequest readRequest
+    ) {
         try {
-            notificationRepository.markAsRead(notificationId);
+            notificationRepository.markAsRead(readRequest.notificationId());
+            return new SetNotificationAsAlreadyReadResponse(readRequest.notificationId());
         } catch (RuntimeException e) {
-            if ("Notification not found".equals(e.getMessage())) {
+            if (notificationDoesNotExist(e)) {
                 throw new NotificationNotFoundException(
-                        "La notificación no existe: " + notificationId);
+                        "La notificacion no existe: " + readRequest.notificationId());
             }
             throw e;
         }
+    }
+
+    private boolean notificationDoesNotExist(RuntimeException exception) {
+        return "Notification not found".equals(exception.getMessage());
     }
 }

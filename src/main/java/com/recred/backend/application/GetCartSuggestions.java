@@ -26,8 +26,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-public class
-GetCartSuggestions {
+public class GetCartSuggestions {
 
     private static final int DEFAULT_LIMIT = 3;
     private static final int MAX_LIMIT = 3;
@@ -48,114 +47,175 @@ GetCartSuggestions {
         this.sugerenciaIARepository = sugerenciaIARepository;
     }
 
-    public List<CartSuggestion> execute(
-            UUID alumnoId,
-            UUID buffetId,
-            Set<UUID> cartProductIds,
-            Integer requestedLimit) {
-        Alumno alumno = alumnoRepository.findById(alumnoId)
-                .orElseThrow(() -> new AlumnoNoEncontradoException(alumnoId));
+    public GetCartSuggestionsResponse execute(GetCartSuggestionsRequest request) {
+        Alumno alumno = findStudent(request.studentId());
 
-        List<Producto> availableProducts = productRepository.findAllActiveWithStock(buffetId);
+        List<Producto> availableProducts = findAvailableProducts(request.buffetId());
         if (availableProducts.isEmpty()) {
-            return List.of();
+            return new GetCartSuggestionsResponse(List.of());
         }
 
-        int limit = normalizeLimit(requestedLimit);
-        Set<UUID> cartIds = nullableSet(cartProductIds);
-        Set<UUID> blockedIds = productIds(alumno.getProductosBloqueados());
-        Set<UUID> favoriteIds = productIds(alumno.getProductosFavoritos());
-        Map<UUID, Producto> availableById = availableProducts.stream()
-                .filter(product -> product.getId() != null)
-                .collect(Collectors.toMap(Producto::getId, product -> product, (a, b) -> a));
+        SuggestionContext context = buildSuggestionContext(request, alumno, availableProducts);
+        List<CartSuggestion> suggestions = suggestProducts(availableProducts, context);
 
+        return GetCartSuggestionsResponse.fromDomain(suggestions);
+    }
+
+    private Alumno findStudent(UUID alumnoId) {
+        return alumnoRepository.findById(alumnoId)
+                .orElseThrow(() -> new AlumnoNoEncontradoException(alumnoId));
+    }
+
+    private List<Producto> findAvailableProducts(UUID buffetId) {
+        return productRepository.findAllActiveWithStock(buffetId);
+    }
+
+    private SuggestionContext buildSuggestionContext(
+            GetCartSuggestionsRequest request,
+            Alumno alumno,
+            List<Producto> availableProducts
+    ) {
+        UUID alumnoId = request.studentId();
+        UUID buffetId = request.buffetId();
+        Set<UUID> cartIds = nullableSet(request.cartProductIds());
         List<PurchaseResume> purchases = purchaseRepository.findPurchasesByAlumno(alumnoId);
-        Map<UUID, Long> purchaseFrequency = purchaseFrequency(purchases);
-        Set<UUID> todayPatternIds = todayPatternIds(purchases);
-        Set<UUID> detectedPreferenceIds = detectedPreferenceIds(alumnoId);
-        Map<UUID, Long> studentCartAffinities = cartAffinities(
-                purchaseRepository.findStudentCartAffinities(alumnoId, buffetId, cartIds));
-        Map<UUID, Long> buffetCartAffinities = cartAffinities(
-                purchaseRepository.findBuffetCartAffinities(buffetId, cartIds));
 
+        return new SuggestionContext(
+                normalizeLimit(request.limit()),
+                cartIds,
+                productIds(alumno.getProductosBloqueados()),
+                productIds(alumno.getProductosFavoritos()),
+                availableProductsById(availableProducts),
+                purchaseFrequency(purchases),
+                todayPatternIds(purchases),
+                detectedPreferenceIds(alumnoId),
+                studentCartAffinities(alumnoId, buffetId, cartIds),
+                buffetCartAffinities(buffetId, cartIds)
+        );
+    }
+
+    private List<CartSuggestion> suggestProducts(
+            List<Producto> availableProducts,
+            SuggestionContext context
+    ) {
         return availableProducts.stream()
-                .filter(product -> product.getId() != null)
-                .filter(this::hasPositiveStock)
-                .filter(product -> !cartIds.contains(product.getId()))
-                .filter(product -> !blockedIds.contains(product.getId()))
-                .map(product -> score(
-                        product,
-                        favoriteIds,
-                        detectedPreferenceIds,
-                        purchaseFrequency,
-                        todayPatternIds,
-                        studentCartAffinities,
-                        buffetCartAffinities,
-                        availableById))
+                .filter(this::isEligibleProduct)
+                .filter(product -> !context.cartIds().contains(product.getId()))
+                .filter(product -> !context.blockedIds().contains(product.getId()))
+                .map(product -> score(product, context))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .sorted(Comparator.comparingInt(Candidate::score).reversed()
                         .thenComparing(candidate -> candidate.product().getNombre(),
                                 Comparator.nullsLast(String::compareToIgnoreCase)))
-                .limit(limit)
-                .map(candidate -> new CartSuggestion(
-                        candidate.product(),
-                        candidate.reason(),
-                        candidate.source(),
-                        candidate.score()))
+                .limit(context.limit())
+                .map(this::toSuggestion)
                 .toList();
     }
 
-    private Optional<Candidate> score(
-            Producto product,
-            Set<UUID> favoriteIds,
-            Set<UUID> detectedPreferenceIds,
-            Map<UUID, Long> purchaseFrequency,
-            Set<UUID> todayPatternIds,
-            Map<UUID, Long> studentCartAffinities,
-            Map<UUID, Long> buffetCartAffinities,
-            Map<UUID, Producto> availableById) {
+    private boolean isEligibleProduct(Producto product) {
+        return product.getId() != null && hasPositiveStock(product);
+    }
+
+    private CartSuggestion toSuggestion(Candidate candidate) {
+        return new CartSuggestion(
+                candidate.product(),
+                candidate.reason(),
+                candidate.source(),
+                candidate.score()
+        );
+    }
+
+    private Map<UUID, Producto> availableProductsById(List<Producto> availableProducts) {
+        return availableProducts.stream()
+                .filter(product -> product.getId() != null)
+                .collect(Collectors.toMap(Producto::getId, product -> product, (a, b) -> a));
+    }
+
+    private Map<UUID, Long> studentCartAffinities(
+            UUID alumnoId,
+            UUID buffetId,
+            Set<UUID> cartIds
+    ) {
+        return cartAffinities(
+                purchaseRepository.findStudentCartAffinities(alumnoId, buffetId, cartIds));
+    }
+
+    private Map<UUID, Long> buffetCartAffinities(UUID buffetId, Set<UUID> cartIds) {
+        return cartAffinities(purchaseRepository.findBuffetCartAffinities(buffetId, cartIds));
+    }
+
+    private Optional<Candidate> score(Producto product, SuggestionContext context) {
         UUID productId = product.getId();
-        int score = 0;
-        Map<String, Integer> sourceScores = new LinkedHashMap<>();
 
-        Long studentAffinity = studentCartAffinities.get(productId);
-        if (studentAffinity != null && studentAffinity > 0) {
-            int affinityScore = Math.min(80, studentAffinity.intValue() * 20);
-            score += affinityScore;
-            sourceScores.put("STUDENT_CART_AFFINITY", affinityScore);
-        }
-        Long buffetAffinity = buffetCartAffinities.get(productId);
-        if (buffetAffinity != null && buffetAffinity > 0) {
-            int affinityScore = Math.min(60, buffetAffinity.intValue() * 15);
-            score += affinityScore;
-            sourceScores.put("BUFFET_CART_AFFINITY", affinityScore);
-        }
-        if (favoriteIds.contains(productId)) {
-            score += 50;
-            sourceScores.put("FAVORITE", 50);
-        }
-        if (detectedPreferenceIds.contains(productId)) {
-            score += 40;
-            sourceScores.put("DETECTED_PREFERENCE", 40);
-        }
-        Long frequency = purchaseFrequency.get(productId);
-        if (frequency != null && frequency > 0) {
-            int frequencyScore = Math.min(30, frequency.intValue() * 5);
-            score += frequencyScore;
-            sourceScores.put("PURCHASE_HISTORY", frequencyScore);
-        }
-        if (todayPatternIds.contains(productId)) {
-            score += 20;
-            sourceScores.put("DAY_PATTERN", 20);
+        if (!context.availableById().containsKey(productId)) {
+            return Optional.empty();
         }
 
-        if (score == 0 || !availableById.containsKey(productId)) {
+        Map<String, Integer> sourceScores = sourceScores(productId, context);
+        int totalScore = totalScore(sourceScores);
+        if (totalScore == 0) {
             return Optional.empty();
         }
 
         String source = strongestSource(sourceScores);
-        return Optional.of(new Candidate(product, source, reason(source), score));
+        return Optional.of(new Candidate(product, source, reason(source), totalScore));
+    }
+
+    private Map<String, Integer> sourceScores(UUID productId, SuggestionContext context) {
+        Map<String, Integer> sourceScores = new LinkedHashMap<>();
+        addStudentAffinityScore(sourceScores, context.studentCartAffinities().get(productId));
+        addBuffetAffinityScore(sourceScores, context.buffetCartAffinities().get(productId));
+        addFixedScore(sourceScores, "FAVORITE", context.favoriteIds().contains(productId), 50);
+        addFixedScore(
+                sourceScores,
+                "DETECTED_PREFERENCE",
+                context.detectedPreferenceIds().contains(productId),
+                40
+        );
+        addPurchaseHistoryScore(sourceScores, context.purchaseFrequency().get(productId));
+        addFixedScore(
+                sourceScores,
+                "DAY_PATTERN",
+                context.todayPatternIds().contains(productId),
+                20
+        );
+        return sourceScores;
+    }
+
+    private void addStudentAffinityScore(Map<String, Integer> scores, Long affinity) {
+        if (affinity != null && affinity > 0) {
+            scores.put("STUDENT_CART_AFFINITY", Math.min(80, affinity.intValue() * 20));
+        }
+    }
+
+    private void addBuffetAffinityScore(Map<String, Integer> scores, Long affinity) {
+        if (affinity != null && affinity > 0) {
+            scores.put("BUFFET_CART_AFFINITY", Math.min(60, affinity.intValue() * 15));
+        }
+    }
+
+    private void addPurchaseHistoryScore(Map<String, Integer> scores, Long frequency) {
+        if (frequency != null && frequency > 0) {
+            scores.put("PURCHASE_HISTORY", Math.min(30, frequency.intValue() * 5));
+        }
+    }
+
+    private void addFixedScore(
+            Map<String, Integer> scores,
+            String source,
+            boolean applies,
+            int score
+    ) {
+        if (applies) {
+            scores.put(source, score);
+        }
+    }
+
+    private int totalScore(Map<String, Integer> scores) {
+        return scores.values().stream()
+                .mapToInt(Integer::intValue)
+                .sum();
     }
 
     private int normalizeLimit(Integer requestedLimit) {
@@ -255,6 +315,20 @@ GetCartSuggestions {
             String source,
             String reason,
             int score
+    ) {
+    }
+
+    private record SuggestionContext(
+            int limit,
+            Set<UUID> cartIds,
+            Set<UUID> blockedIds,
+            Set<UUID> favoriteIds,
+            Map<UUID, Producto> availableById,
+            Map<UUID, Long> purchaseFrequency,
+            Set<UUID> todayPatternIds,
+            Set<UUID> detectedPreferenceIds,
+            Map<UUID, Long> studentCartAffinities,
+            Map<UUID, Long> buffetCartAffinities
     ) {
     }
 }

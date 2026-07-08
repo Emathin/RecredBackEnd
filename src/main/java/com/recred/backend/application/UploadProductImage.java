@@ -2,9 +2,6 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.UUID;
 
 public class UploadProductImage {
 
@@ -18,9 +15,11 @@ public class UploadProductImage {
         this.inventoryRepository = inventoryRepository;
     }
 
-    public String execute(UUID buffetId, UUID productoId, MultipartFile imagen) {
-        String urlImagen = cloudinaryService.uploadImage(imagen);
-        inventoryRepository.updateUrlImagen(buffetId, productoId, urlImagen);
-        return urlImagen;
+    public UploadProductImageResponse execute(UploadProductImageRequest request) {
+        String urlImagen = cloudinaryService.uploadImage(
+                request.imageBytes(), request.originalFilename());
+        inventoryRepository.updateUrlImagen(
+                request.buffetId(), request.productoId(), urlImagen);
+        return new UploadProductImageResponse(urlImagen);
     }
 }

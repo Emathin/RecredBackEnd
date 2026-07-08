@@ -19,11 +19,25 @@ public class GetGradesBySchool {
         this.gradeRepository = gradeRepository;
     }
 
-    public List<Grado> execute(UUID schoolId) {
+    public GetGradesBySchoolResponse execute(GetGradesBySchoolRequest request) {
+        UUID schoolId = request.schoolId();
+        ensureSchoolExists(schoolId);
+        List<Grado> grades = findActiveGrades(schoolId);
+
+        return toResponse(grades);
+    }
+
+    private void ensureSchoolExists(UUID schoolId) {
         if (!schoolRepository.existsActiveById(schoolId)) {
             throw new SchoolNotFoundException(schoolId);
         }
+    }
 
+    private List<Grado> findActiveGrades(UUID schoolId) {
         return gradeRepository.findAllActiveByColegioId(schoolId);
+    }
+
+    private GetGradesBySchoolResponse toResponse(List<Grado> grades) {
+        return GetGradesBySchoolResponse.fromDomain(grades);
     }
 }

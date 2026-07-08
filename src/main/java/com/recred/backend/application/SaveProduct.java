@@ -10,7 +10,6 @@ import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.domain.repositories.CategoryRepository;
 import com.recred.backend.domain.repositories.InventoryRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 import java.util.UUID;
@@ -30,77 +29,76 @@ public class SaveProduct {
         this.categoryRepository = categoryRepository;
     }
 
-    @Transactional
-    public Producto execute(SaveProductCommand command) {
-        Producto producto = mapToModel(command);
+    public ProductResponse execute(SaveProductRequest request) {
+        Producto producto = mapToModel(request);
         Producto savedProduct = productRepository.save(producto);
 
-        if (hasInventoryData(command)) {
-            saveInventory(command, savedProduct);
-            savedProduct.setStockActual(command.stockActual());
+        if (hasInventoryData(request)) {
+            saveInventory(request, savedProduct);
+            savedProduct.setStockActual(request.stockActual());
             savedProduct.setStockReservado(0);
-            savedProduct.setStockDisponible(command.stockActual() == null
+            savedProduct.setStockDisponible(request.stockActual() == null
                     ? null
-                    : command.stockActual());
-            savedProduct.setTipoManejoInventario(tipoManejo(command));
-            savedProduct.setCupoMaximoDiario(command.cupoMaximoDiario());
+                    : request.stockActual());
+            savedProduct.setTipoManejoInventario(tipoManejo(request));
+            savedProduct.setCupoMaximoDiario(request.cupoMaximoDiario());
         }
 
-        return savedProduct;
+        return ProductResponse.fromDomain(savedProduct);
     }
 
-    private void saveInventory(SaveProductCommand command, Producto savedProduct) {
+    private void saveInventory(SaveProductRequest request, Producto savedProduct) {
         Inventario inventario = inventoryRepository
-                .findByBuffetAndProduct(command.buffetId(), savedProduct.getId())
-                .orElseGet(() -> createNewInventory(command, savedProduct.getId()));
+                .findByBuffetAndProduct(request.buffetId(), savedProduct.getId())
+                .orElseGet(() -> createNewInventory(request, savedProduct.getId()));
 
-        if (command.stockActual() != null) {
-            inventario.setStockActual(command.stockActual());
+        if (request.stockActual() != null) {
+            inventario.setStockActual(request.stockActual());
         }
-        inventario.setTipoManejo(tipoManejo(command));
-        inventario.setCupoMaximoDiario(command.cupoMaximoDiario());
-        inventario.setUrlImagen(command.urlImagen());
+        inventario.setTipoManejo(tipoManejo(request));
+        inventario.setCupoMaximoDiario(request.cupoMaximoDiario());
+        inventario.setUrlImagen(request.urlImagen());
         inventoryRepository.save(inventario);
     }
 
-    private boolean hasInventoryData(SaveProductCommand command) {
-        return command.buffetId() != null
-                && (command.stockActual() != null
-                || command.tipoManejoInventario() != null
-                || command.cupoMaximoDiario() != null);
+    private boolean hasInventoryData(SaveProductRequest request) {
+        return request.buffetId() != null
+                && (request.stockActual() != null
+                || request.tipoManejoInventario() != null
+                || request.cupoMaximoDiario() != null);
     }
 
-    private Inventario createNewInventory(SaveProductCommand command, UUID productoId) {
+    private Inventario createNewInventory(SaveProductRequest request, UUID productoId) {
         Inventario inventario = new Inventario();
-        inventario.setBuffetId(command.buffetId());
+        inventario.setBuffetId(request.buffetId());
         inventario.setProductoId(productoId);
         inventario.setStockMinimo(Inventario.STOCK_MINIMO_PREDETERMINADO);
         inventario.setEstado(EstadoInventario.DISPONIBLE);
         inventario.setStockReservado(0);
-        inventario.setTipoManejo(tipoManejo(command));
+        inventario.setTipoManejo(tipoManejo(request));
         return inventario;
     }
 
-    private TipoManejoInventario tipoManejo(SaveProductCommand command) {
-        return command.tipoManejoInventario() == null
+    private TipoManejoInventario tipoManejo(SaveProductRequest request) {
+        return request.tipoManejoInventario() == null
                 ? TipoManejoInventario.STOCK_EXACTO
-                : command.tipoManejoInventario();
+                : request.tipoManejoInventario();
     }
 
-    private Producto mapToModel(SaveProductCommand command) {
+    private Producto mapToModel(SaveProductRequest request) {
         Producto producto = new Producto();
-        producto.setNombre(command.nombre());
-        producto.setDescripcion(command.descripcion());
-        producto.setPrecio(command.precio());
-        producto.setPeso(command.peso());
-        producto.setRequierePreparacion(command.requierePreparacion());
-        producto.setUrlImagen(command.urlImagen());
+        producto.setNombre(request.nombre());
+        producto.setDescripcion(request.descripcion());
+        producto.setPrecio(request.precio());
+        producto.setPeso(request.peso());
+        producto.setRequierePreparacion(request.requierePreparacion());
+        producto.setUrlImagen(request.urlImagen());
         producto.setActivo(true);
 
-        handleCategory(command, producto);
+        handleCategory(request, producto);
 
-        if (command.clasificacionesSaludIds() != null) {
-            Set<ClasificacionSalud> clasificaciones = command.clasificacionesSaludIds()
+        if (request.clasificacionesSaludIds() != null) {
+            Set<ClasificacionSalud> clasificaciones = request.clasificacionesSaludIds()
                     .stream().map(id -> {
                         ClasificacionSalud cs = new ClasificacionSalud();
                         cs.setId(id);
@@ -109,8 +107,8 @@ public class SaveProduct {
             producto.setClasificacionesSalud(clasificaciones);
         }
 
-        if (command.tiposIds() != null) {
-            Set<ClasificacionTipo> tipos = command.tiposIds().stream().map(id -> {
+        if (request.tiposIds() != null) {
+            Set<ClasificacionTipo> tipos = request.tiposIds().stream().map(id -> {
                 ClasificacionTipo ct = new ClasificacionTipo();
                 ct.setId(id);
                 return ct;
@@ -121,19 +119,19 @@ public class SaveProduct {
         return producto;
     }
 
-    private void handleCategory(SaveProductCommand command, Producto producto) {
-        if (command.nuevaCategoriaNombre() != null
-                && !command.nuevaCategoriaNombre().isBlank()) {
+    private void handleCategory(SaveProductRequest request, Producto producto) {
+        if (request.nuevaCategoriaNombre() != null
+                && !request.nuevaCategoriaNombre().isBlank()) {
             CategoriaProducto category = categoryRepository
-                    .findByDescription(command.nuevaCategoriaNombre())
-                    .orElseGet(() -> createAndSaveCategory(command.nuevaCategoriaNombre()));
+                    .findByDescription(request.nuevaCategoriaNombre())
+                    .orElseGet(() -> createAndSaveCategory(request.nuevaCategoriaNombre()));
             producto.setCategoria(category);
             return;
         }
 
-        if (command.categoriaId() != null) {
+        if (request.categoriaId() != null) {
             CategoriaProducto categoria = new CategoriaProducto();
-            categoria.setId(command.categoriaId());
+            categoria.setId(request.categoriaId());
             producto.setCategoria(categoria);
         }
     }

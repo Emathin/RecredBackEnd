@@ -4,7 +4,6 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.ProductRepository;
 
 import java.util.List;
-import java.util.UUID;
 
 public class GetAllProducts {
 
@@ -14,10 +13,17 @@ public class GetAllProducts {
         this.productRepository = productRepository;
     }
 
-    public List<Producto> execute(UUID buffetId) {
-        if (buffetId != null) {
-            return productRepository.findAllActiveWithStock(buffetId);
+    public GetAllProductsResponse execute(GetAllProductsRequest request) {
+        return new GetAllProductsResponse(productsFor(request).stream()
+                .map(ProductResponse::fromDomain)
+                .toList());
+    }
+
+    private List<Producto> productsFor(GetAllProductsRequest request) {
+        if (request.buffetId() != null) {
+            return productRepository.findAllActiveWithStock(request.buffetId());
         }
+
         return productRepository.findAllActive();
     }
 }

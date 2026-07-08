@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -19,18 +20,90 @@ public class TutorGlobalDashboardController {
 
     private final GetTutorGlobalDashboard getTutorGlobalDashboard;
     private final UpdateTutorDashboardConfig updateTutorDashboardConfig;
+    private final PlanAccessGuard planAccessGuard;
 
     public TutorGlobalDashboardController(GetTutorGlobalDashboard getTutorGlobalDashboard,
-                                          UpdateTutorDashboardConfig updateTutorDashboardConfig) {
+                                          UpdateTutorDashboardConfig updateTutorDashboardConfig,
+                                          PlanAccessGuard planAccessGuard) {
         this.getTutorGlobalDashboard = getTutorGlobalDashboard;
         this.updateTutorDashboardConfig = updateTutorDashboardConfig;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @GetMapping("/me/dashboard-global")
     public ResponseEntity<TutorGlobalDashboardDTO> getGlobalDashboard(
             Authentication authentication) {
-        TutorGlobalDashboardDTO dashboard = getTutorGlobalDashboard
-                .executeByCognitoSubject(cognitoSubject(authentication));
+        planAccessGuard.requireTutorIntermediate(authentication);
+        var request = new com.recred.backend.application.GetTutorGlobalDashboardRequest(
+                cognitoSubject(authentication));
+        var response = getTutorGlobalDashboard.execute(request);
+        
+        List<TutorGlobalDashboardDTO.ChildDashboardDTO> children = response.childrenDashboards()
+                .stream().map(c -> {
+                    
+            TutorGlobalDashboardDTO.BudgetSummaryDTO budget = c.budget() != null 
+                    ? new TutorGlobalDashboardDTO.BudgetSummaryDTO(
+                            c.budget().periodName(), 
+                            c.budget().spent(), 
+                            c.budget().limit()) 
+                    : null;
+            
+            TutorGlobalDashboardDTO.HealthSummaryDTO health = c.health() != null 
+                    ? new TutorGlobalDashboardDTO.HealthSummaryDTO(
+                            c.health().rewardLevel(), 
+                            c.health().rewardPoints(), 
+                            c.health().pointsToNextLevel(), 
+                            c.health().weeklyHealthSummary()) 
+                    : null;
+            
+            List<TutorGlobalDashboardDTO.ScheduledPickupDTO> pickups = c.todayPickups()
+                    .stream()
+                    .map(p -> new TutorGlobalDashboardDTO.ScheduledPickupDTO(
+                            p.purchaseId(), 
+                            p.title(), 
+                            p.slotDescription()))
+                    .toList();
+            
+            List<TutorGlobalDashboardDTO.TransactionSummaryDTO> trans = c.recentTransactions()
+                    .stream()
+                    .map(t -> new TutorGlobalDashboardDTO.TransactionSummaryDTO(
+                            t.id(), 
+                            t.title(), 
+                            t.date(), 
+                            t.amount(), 
+                            t.icon()))
+                    .toList();
+            
+            TutorGlobalDashboardDTO.SmartActionDTO smartAction = c.smartAction() != null 
+                    ? new TutorGlobalDashboardDTO.SmartActionDTO(
+                            c.smartAction().title(), 
+                            c.smartAction().description(), 
+                            c.smartAction().actionType(), 
+                            c.smartAction().actionValue()) 
+                    : null;
+            
+            return new TutorGlobalDashboardDTO.ChildDashboardDTO(
+                    c.id(), 
+                    c.nombre(), 
+                    c.saldoCreditos(), 
+                    c.saldoDeuda(), 
+                    c.urlFotoPerfil(),
+                    c.predictionMessage(), 
+                    budget, 
+                    health, 
+                    pickups, 
+                    trans, 
+                    smartAction);
+        }).toList();
+
+        TutorGlobalDashboardDTO dashboard = new TutorGlobalDashboardDTO(
+                response.tutorId(), 
+                response.totalBalance(), 
+                response.totalDebt(), 
+                response.dashboardConfig(), 
+                children, 
+                response.planStr()
+        );
         return ResponseEntity.ok(dashboard);
     }
 
@@ -38,7 +111,10 @@ public class TutorGlobalDashboardController {
     public ResponseEntity<Void> updateDashboardConfig(
             Authentication authentication,
             @RequestBody String config) {
-        updateTutorDashboardConfig.execute(cognitoSubject(authentication), config);
+        planAccessGuard.requireTutorIntermediate(authentication);
+        var updateRequest = new com.recred.backend.application.UpdateTutorDashboardConfigRequest(
+                cognitoSubject(authentication), config);
+        updateTutorDashboardConfig.execute(updateRequest);
         return ResponseEntity.ok().build();
     }
 

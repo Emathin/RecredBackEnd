@@ -5,6 +5,8 @@ import com.recred.backend.domain.models.*;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
@@ -198,6 +200,14 @@ class PurchaseTest {
     }
 
     @Test
+    void changeTrackingStatusTo_WhenRequestedStatusIsCancelled_ShouldThrowException() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+
+        assertThrows(InvalidPurchaseStatusTransitionException.class,
+                () -> purchase.changeTrackingStatusTo(EstadoCompra.CANCELADO));
+    }
+
+    @Test
     void cancel_WhenPurchaseIsAlreadyCancelled_ShouldThrowException() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.CANCELADO);
 
@@ -208,7 +218,151 @@ class PurchaseTest {
     void cancel_WhenPurchaseIsNotPendingOrInPreparation_ShouldThrowException() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.LISTO);
 
-        assertThrows(IllegalStateException.class, purchase::cancel);
+        assertThrows(InvalidPurchaseStatusTransitionException.class, purchase::cancel);
+    }
+
+    @Test
+    void revertCancellation_WhenPurchaseIsCancelled_ShouldUpdateStatus() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.CANCELADO);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+
+        purchase.revertCancellation();
+
+        assertEquals(EstadoCompra.PENDIENTE, purchase.getStatus());
+        assertEquals(EstadoRetiro.PROGRAMADO, purchase.getWithdrawalStatus());
+    }
+
+    @Test
+    void revertCancellation_WhenPurchaseIsNotCancelled_ShouldThrowException() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+
+        assertThrows(IllegalStateException.class, purchase::revertCancellation);
+    }
+
+    @Test
+    void dashboardStatusQueries_ShouldExposePurchaseBusinessState() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.ENTREGADO);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+
+        assertEquals(true, purchase.hasStatus(EstadoCompra.ENTREGADO));
+        assertEquals(true, purchase.hasType(TipoCompra.ANTICIPADA));
+        assertEquals(true, purchase.isDelivered());
+        assertEquals(true, purchase.isAdvancePurchase());
+    }
+
+    @Test
+    void trackingSideEffectQueries_ShouldExposePurchaseBusinessRules() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+        purchase.setTipo(TipoCompra.ANTICIPADA);
+
+        assertEquals(true, purchase.shouldConsumeReservationWhenChangingTo(
+                EstadoCompra.ENTREGADO));
+        assertEquals(true, purchase.shouldReleaseReservationWhenChangingFrom(
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.RECHAZADO
+        ));
+        assertEquals(true, purchase.shouldRefundWhenChangingTo(EstadoCompra.RECHAZADO));
+        assertEquals(true, purchase.shouldPublishExpirationEventFor(EstadoCompra.VENCIDO));
+    }
+
+    @Test
+    void trackingSideEffectQueries_ShouldRejectPresentialPurchases() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+        purchase.setTipo(TipoCompra.PRESENCIAL);
+
+        assertEquals(false, purchase.shouldConsumeReservationWhenChangingTo(
+                EstadoCompra.ENTREGADO));
+        assertEquals(false, purchase.shouldReleaseReservationWhenChangingFrom(
+                EstadoCompra.PENDIENTE,
+                EstadoCompra.RECHAZADO
+        ));
+        assertEquals(false, purchase.shouldRefundWhenChangingTo(EstadoCompra.RECHAZADO));
+    }
+
+    @Test
+    void studentIdQueries_ShouldExposeAssociatedStudentId() {
+        UUID studentId = UUID.randomUUID();
+        Alumno student = new Alumno();
+        student.setId(studentId);
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+        purchase.setStudent(student);
+
+        assertEquals(true, purchase.hasStudentId());
+        assertEquals(studentId, purchase.studentIdOrNull());
+        assertEquals(studentId, purchase.requireStudentId());
+    }
+
+    @Test
+    void requireStudentId_WhenStudentDoesNotExist_ShouldThrowException() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
+
+        assertEquals(false, purchase.hasStudentId());
+        assertThrows(IllegalStateException.class, purchase::requireStudentId);
+    }
+
+    @Test
+    void refundsCredits_ShouldReturnTrueForCancelledAndRejectedPurchases() {
+        Purchase cancelled = purchaseWithStatus(EstadoCompra.CANCELADO);
+        Purchase rejected = purchaseWithStatus(EstadoCompra.RECHAZADO);
+        Purchase delivered = purchaseWithStatus(EstadoCompra.ENTREGADO);
+
+        assertEquals(true, cancelled.refundsCredits());
+        assertEquals(true, rejected.refundsCredits());
+        assertEquals(false, delivered.refundsCredits());
+    }
+
+    @Test
+    void happenedBetween_ShouldUsePurchaseDateOnlyWhenDateExists() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.ENTREGADO);
+        purchase.setDate(LocalDateTime.of(2026, 6, 10, 9, 0));
+
+        assertEquals(true, purchase.hasDate());
+        assertEquals(LocalDate.of(2026, 6, 10), purchase.purchaseDate());
+        assertEquals(true, purchase.happenedBetween(
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 30)
+        ));
+        assertEquals(false, purchase.happenedBetween(
+                LocalDate.of(2026, 6, 11),
+                LocalDate.of(2026, 6, 30)
+        ));
+    }
+
+    @Test
+    void happenedBetween_ShouldReturnFalseWhenDateDoesNotExist() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.ENTREGADO);
+
+        assertEquals(false, purchase.hasDate());
+        assertEquals(false, purchase.happenedBetween(
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 30)
+        ));
+    }
+
+    @Test
+    void totalAmountOrZero_ShouldReturnZeroWhenTotalIsNull() {
+        Purchase purchase = purchaseWithStatus(EstadoCompra.ENTREGADO);
+
+        assertEquals(BigDecimal.ZERO, purchase.totalAmountOrZero());
+
+        purchase.setTotalAmount(new BigDecimal("25.00"));
+
+        assertEquals(new BigDecimal("25.00"), purchase.totalAmountOrZero());
+    }
+
+    @Test
+    void hasPickupSlotDescription_ShouldRejectNullOrBlankDescriptions() {
+        Purchase purchase = new Purchase();
+
+        assertEquals(false, purchase.hasPickupSlotDescription());
+
+        purchase.setPickupSlotDescription(" ");
+
+        assertEquals(false, purchase.hasPickupSlotDescription());
+
+        purchase.setPickupSlotDescription("Primer recreo");
+
+        assertEquals(true, purchase.hasPickupSlotDescription());
     }
 
     private Purchase purchaseWithStatus(EstadoCompra status) {

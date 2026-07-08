@@ -5,6 +5,7 @@ import com.recred.backend.domain.models.ConsumptionAlert;
 import com.recred.backend.domain.models.ConsumptionAlertAnalysisRequest;
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
 import com.recred.backend.domain.models.ConsumptionAlertPattern;
+import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.ConsumptionAlertType;
 import com.recred.backend.domain.models.ConsumptionCategoryStatistic;
 import com.recred.backend.domain.models.ConsumptionProductStatistic;
@@ -13,8 +14,6 @@ import com.recred.backend.domain.repositories.ConsumptionAlertNotificationReposi
 import com.recred.backend.domain.repositories.ConsumptionAlertPurchaseRepository;
 import com.recred.backend.domain.repositories.ConsumptionAlertStudentRepository;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,20 +21,17 @@ import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import org.springframework.transaction.annotation.Transactional;
 
 public class GenerateStatisticalConsumptionAlerts {
 
     private static final int MINIMUM_LOOKBACK_DAYS = 1;
-    private static final int PERCENTAGE_SCALE = 2;
-    private static final BigDecimal ONE_HUNDRED = new BigDecimal("100.00");
-    private static final Set<EstadoCompra> PURCHASE_STATUSES = Set.of(EstadoCompra.ENTREGADO);
 
     private final ConsumptionAlertStudentRepository studentRepository;
     private final ConsumptionAlertPurchaseRepository purchaseRepository;
     private final ConsumptionAlertNotificationRepository notificationRepository;
     private final ConsumptionAlertAnalyzer analyzer;
+    private final StatisticalConsumptionAlertPatternCalculator patternCalculator;
     private final StatisticalConsumptionAlertProperties properties;
     private final Clock clock;
 
@@ -51,30 +47,89 @@ public class GenerateStatisticalConsumptionAlerts {
         this.purchaseRepository = purchaseRepository;
         this.notificationRepository = notificationRepository;
         this.analyzer = analyzer;
+        this.patternCalculator = new StatisticalConsumptionAlertPatternCalculator();
         this.properties = properties;
         this.clock = clock;
     }
 
     @Transactional
-    public int execute() {
+    public GenerateStatisticalConsumptionAlertsResponse execute(
+            GenerateStatisticalConsumptionAlertsRequest request
+    ) {
+        requireRequest(request);
         LocalDate calculationDate = LocalDate.now(clock);
         DateWindow dateWindow = dateWindow(calculationDate);
+        return new GenerateStatisticalConsumptionAlertsResponse(
+                generateAlerts(calculationDate, dateWindow)
+        );
+    }
 
+    private void requireRequest(GenerateStatisticalConsumptionAlertsRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request is required");
+        }
+    }
+
+    private int generateAlerts(
+            LocalDate calculationDate,
+            DateWindow dateWindow
+    ) {
         int generatedAlerts = 0;
         for (ConsumptionAlertCandidate candidate : studentRepository.findActiveCandidates()) {
-            if (shouldSkipForDailyLimit(candidate, dateWindow)) {
-                continue;
+            Optional<ConsumptionAlertCandidate> advancedCandidate = advancedCandidate(candidate);
+            if (advancedCandidate.isPresent()
+                    && saveAlert(advancedCandidate.get(), calculationDate, dateWindow)) {
+                generatedAlerts++;
             }
-
-            Optional<ConsumptionAlert> alert = buildAlert(candidate, calculationDate, dateWindow);
-            if (alert.isEmpty()) {
-                continue;
-            }
-
-            notificationRepository.save(alert.orElseThrow());
-            generatedAlerts++;
         }
         return generatedAlerts;
+    }
+
+    private Optional<ConsumptionAlertCandidate> advancedCandidate(
+            ConsumptionAlertCandidate candidate
+    ) {
+        List<ConsumptionAlertTutor> advancedTutors = candidate.tutors()
+                .stream()
+                .filter(ConsumptionAlertTutor::hasAdvancedPlan)
+                .toList();
+
+        if (advancedTutors.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new ConsumptionAlertCandidate(
+                candidate.studentId(),
+                candidate.studentUserId(),
+                candidate.studentName(),
+                advancedTutors
+        ));
+    }
+
+    private boolean saveAlert(
+            ConsumptionAlertCandidate candidate,
+            LocalDate calculationDate,
+            DateWindow dateWindow
+    ) {
+        return alertFor(candidate, calculationDate, dateWindow)
+                .map(this::saveAlert)
+                .orElse(false);
+    }
+
+    private boolean saveAlert(ConsumptionAlert alert) {
+        notificationRepository.save(alert);
+        return true;
+    }
+
+    private Optional<ConsumptionAlert> alertFor(
+            ConsumptionAlertCandidate candidate,
+            LocalDate calculationDate,
+            DateWindow dateWindow
+    ) {
+        if (shouldSkipForDailyLimit(candidate, dateWindow)) {
+            return Optional.empty();
+        }
+
+        return buildAlert(candidate, calculationDate, dateWindow);
     }
 
     private Optional<ConsumptionAlert> buildAlert(
@@ -84,11 +139,11 @@ public class GenerateStatisticalConsumptionAlerts {
     ) {
         long purchaseCount = purchaseRepository.countPurchases(
                 candidate.studentId(),
-                PURCHASE_STATUSES,
+                EstadoCompra.statisticalConsumptionAlertStatuses(),
                 dateWindow.startDateTime(),
                 dateWindow.endDateTime()
         );
-        ConsumptionAlertType alertType = resolveAlertType(purchaseCount);
+        ConsumptionAlertType alertType = alertType(purchaseCount);
 
         if (shouldSkipForCooldown(candidate, alertType, calculationDate)) {
             return Optional.empty();
@@ -138,104 +193,56 @@ public class GenerateStatisticalConsumptionAlerts {
             DateWindow dateWindow,
             long purchaseCount
     ) {
-        if (alertType == ConsumptionAlertType.HEALTHY_RECOMMENDATION) {
-            return healthyPattern(candidate, calculationDate, dateWindow, purchaseCount);
-        }
-
-        List<ConsumptionCategoryStatistic> categoryStatistics =
-                purchaseRepository.findCategoryStatistics(
-                        candidate.studentId(),
-                        PURCHASE_STATUSES,
-                        dateWindow.startDateTime(),
-                        dateWindow.endDateTime()
-                );
-        ConsumptionCategoryStatistic mainCategory = categoryStatistics.stream()
-                .max(Comparator.comparing(statistic -> amount(statistic.totalAmount())))
-                .orElse(null);
-        BigDecimal totalAmount = totalAmount(categoryStatistics);
-        ConsumptionProductStatistic suggestedProduct = suggestedProduct(candidate, dateWindow);
-
-        return new ConsumptionAlertPattern(
+        return patternCalculator.calculate(
+                candidate,
                 alertType,
-                candidate.studentId(),
                 calculationDate,
-                dateWindow.startDate(),
-                dateWindow.endDate(),
+                dateWindow.alertDateWindow(),
                 purchaseCount,
-                totalAmount,
-                mainCategory == null ? null : mainCategory.category(),
-                categoryPercentage(mainCategory, totalAmount),
-                suggestedProduct == null ? null : suggestedProduct.productId(),
-                suggestedProduct == null ? null : suggestedProduct.productName()
+                categoryStatistics(candidate, alertType, dateWindow),
+                suggestedProduct(candidate, alertType, dateWindow)
         );
     }
 
-    private ConsumptionAlertPattern healthyPattern(
+    private List<ConsumptionCategoryStatistic> categoryStatistics(
             ConsumptionAlertCandidate candidate,
-            LocalDate calculationDate,
-            DateWindow dateWindow,
-            long purchaseCount
-    ) {
-        return new ConsumptionAlertPattern(
-                ConsumptionAlertType.HEALTHY_RECOMMENDATION,
-                candidate.studentId(),
-                calculationDate,
-                dateWindow.startDate(),
-                dateWindow.endDate(),
-                purchaseCount,
-                BigDecimal.ZERO,
-                null,
-                BigDecimal.ZERO,
-                null,
-                null
-        );
-    }
-
-    private ConsumptionProductStatistic suggestedProduct(
-            ConsumptionAlertCandidate candidate,
+            ConsumptionAlertType alertType,
             DateWindow dateWindow
     ) {
+        if (alertType.isHealthyRecommendation()) {
+            return List.of();
+        }
+
+        return purchaseRepository.findCategoryStatistics(
+                candidate.studentId(),
+                EstadoCompra.statisticalConsumptionAlertStatuses(),
+                dateWindow.startDateTime(),
+                dateWindow.endDateTime()
+        );
+    }
+
+    private Optional<ConsumptionProductStatistic> suggestedProduct(
+            ConsumptionAlertCandidate candidate,
+            ConsumptionAlertType alertType,
+            DateWindow dateWindow
+    ) {
+        if (alertType.isHealthyRecommendation()) {
+            return Optional.empty();
+        }
+
         return purchaseRepository.findProductStatistics(
                         candidate.studentId(),
-                        PURCHASE_STATUSES,
+                        EstadoCompra.statisticalConsumptionAlertStatuses(),
                         dateWindow.startDateTime(),
                         dateWindow.endDateTime()
                 )
                 .stream()
                 .filter(this::isProductSuggestionStrongEnough)
-                .max(Comparator.comparing(ConsumptionProductStatistic::quantity))
-                .orElse(null);
+                .max(Comparator.comparing(ConsumptionProductStatistic::quantity));
     }
 
     private boolean isProductSuggestionStrongEnough(ConsumptionProductStatistic statistic) {
-        return statistic.quantity() != null
-                && statistic.quantity() >= properties.minimumProductQuantityForSuggestion();
-    }
-
-    private BigDecimal totalAmount(List<ConsumptionCategoryStatistic> statistics) {
-        return statistics.stream()
-                .map(ConsumptionCategoryStatistic::totalAmount)
-                .map(this::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private BigDecimal amount(BigDecimal amount) {
-        if (amount == null) {
-            return BigDecimal.ZERO;
-        }
-        return amount;
-    }
-
-    private BigDecimal categoryPercentage(
-            ConsumptionCategoryStatistic mainCategory,
-            BigDecimal totalAmount
-    ) {
-        if (mainCategory == null || totalAmount.compareTo(BigDecimal.ZERO) == 0) {
-            return BigDecimal.ZERO;
-        }
-        return mainCategory.totalAmount()
-                .multiply(ONE_HUNDRED)
-                .divide(totalAmount, PERCENTAGE_SCALE, RoundingMode.HALF_UP);
+        return statistic.hasQuantityAtLeast(properties.minimumProductQuantityForSuggestion());
     }
 
     private ConsumptionAlertAnalysisRequest request(
@@ -256,15 +263,15 @@ public class GenerateStatisticalConsumptionAlerts {
         );
     }
 
-    private ConsumptionAlertType resolveAlertType(long purchaseCount) {
-        if (purchaseCount >= properties.minimumPurchasesForPattern()) {
-            return ConsumptionAlertType.STATISTICAL_PATTERN;
-        }
-        return ConsumptionAlertType.HEALTHY_RECOMMENDATION;
+    private ConsumptionAlertType alertType(long purchaseCount) {
+        return ConsumptionAlertType.fromPurchaseCount(
+                purchaseCount,
+                properties.minimumPurchasesForPattern()
+        );
     }
 
     private int cooldownDays(ConsumptionAlertType alertType) {
-        if (alertType == ConsumptionAlertType.STATISTICAL_PATTERN) {
+        if (alertType.isStatisticalPattern()) {
             return properties.patternCooldownDays();
         }
         return properties.healthyRecommendationCooldownDays();
@@ -289,5 +296,12 @@ public class GenerateStatisticalConsumptionAlerts {
             LocalDateTime endDateTime,
             LocalDateTime todayStartDateTime
     ) {
+
+        private StatisticalConsumptionAlertPatternCalculator.AlertDateWindow alertDateWindow() {
+            return new StatisticalConsumptionAlertPatternCalculator.AlertDateWindow(
+                    startDate,
+                    endDate
+            );
+        }
     }
 }

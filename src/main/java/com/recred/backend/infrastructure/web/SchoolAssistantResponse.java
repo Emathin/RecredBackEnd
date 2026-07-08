@@ -1,10 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.recred.backend.domain.models.SchoolAssistantAnswer;
-import com.recred.backend.domain.models.SchoolAssistantCapability;
-import com.recred.backend.domain.models.SchoolAssistantIntent;
-import com.recred.backend.domain.models.SchoolAssistantRole;
+import com.recred.backend.application.AskSchoolAssistantResponse;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +13,7 @@ public record SchoolAssistantResponse(
         @JsonProperty("respuesta")
         String answer,
         @JsonProperty("capacidades")
-        List<SchoolAssistantCapability> capabilities,
+        List<String> capabilities,
         @JsonProperty("fechaHora")
         LocalDateTime dateTime,
         @JsonProperty("generadoPorIa")
@@ -24,9 +21,9 @@ public record SchoolAssistantResponse(
         @JsonProperty("modelo")
         String model,
         @JsonProperty("rol")
-        SchoolAssistantRole role,
+        String role,
         @JsonProperty("intencion")
-        SchoolAssistantIntent intent,
+        String intent,
         @JsonProperty("accion")
         SchoolAssistantActionResponse action,
         @JsonProperty("sugerencias")
@@ -35,7 +32,7 @@ public record SchoolAssistantResponse(
         Map<String, Object> data
 ) {
 
-    public static SchoolAssistantResponse fromDomain(SchoolAssistantAnswer answer) {
+    public static SchoolAssistantResponse fromApplication(AskSchoolAssistantResponse answer) {
         return new SchoolAssistantResponse(
                 answer.sessionId(),
                 answer.answer(),
@@ -45,9 +42,9 @@ public record SchoolAssistantResponse(
                 answer.model(),
                 answer.role(),
                 answer.intent(),
-                SchoolAssistantActionResponse.fromDomain(answer.action()),
+                SchoolAssistantActionResponse.fromApplication(answer.action()),
                 answer.suggestions().stream()
-                        .map(SchoolAssistantSuggestionResponse::fromDomain)
+                        .map(SchoolAssistantSuggestionResponse::fromApplication)
                         .toList(),
                 answer.data()
         );

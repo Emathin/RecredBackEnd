@@ -8,4 +8,8 @@ public record ConsumptionCategoryStatistic(
         Long quantity,
         BigDecimal totalAmount
 ) {
+
+    public BigDecimal totalAmountOrZero() {
+        return totalAmount == null ? BigDecimal.ZERO : totalAmount;
+    }
 }

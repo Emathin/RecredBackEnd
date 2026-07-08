@@ -1,5 +1,11 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.ListInventoryProductsResponse.InventoryProductResponse;
+import com.recred.backend.application.ListKiosqueroOrdersResponse.BuyerResponse;
+import com.recred.backend.application.ListKiosqueroOrdersResponse.ItemResponse;
+import com.recred.backend.application.ListKiosqueroOrdersResponse.OrderResponse;
+import com.recred.backend.application.ListKiosqueroOrdersResponse.PickupSlotResponse;
+import com.recred.backend.application.ListKiosqueroOrdersResponse.StudentResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.EstadoCompra;
@@ -36,9 +42,35 @@ public record KiosqueroOrderResponse(
         return fromDomain(purchase, Map.of());
     }
 
+    public static KiosqueroOrderResponse fromApplication(OrderResponse order) {
+        return fromApplication(order, Map.of());
+    }
+
+    public static KiosqueroOrderResponse fromApplication(
+            OrderResponse order,
+            Map<UUID, InventoryProductResponse> inventoryProducts
+    ) {
+        return new KiosqueroOrderResponse(
+                order.id(),
+                order.buffetId(),
+                enumValue(TipoCompra.class, order.type()),
+                enumValue(EstadoCompra.class, order.status()),
+                order.statusLabel(),
+                order.totalAmount(),
+                order.paymentMethod(),
+                order.date(),
+                order.withdrawalCode(),
+                order.pickupDate(),
+                pickupSlot(order.pickupSlot()),
+                student(order.student()),
+                buyer(order.buyer()),
+                items(order.items(), inventoryProducts)
+        );
+    }
+
     public static KiosqueroOrderResponse fromDomain(
             Purchase purchase,
-            Map<UUID, Producto> inventoryProducts
+            Map<UUID, InventoryProductResponse> inventoryProducts
     ) {
         return new KiosqueroOrderResponse(
                 purchase.getId(),
@@ -58,6 +90,10 @@ public record KiosqueroOrderResponse(
         );
     }
 
+    private static <T extends Enum<T>> T enumValue(Class<T> enumType, String value) {
+        return value == null ? null : Enum.valueOf(enumType, value);
+    }
+
     private static PickupSlot pickupSlot(Purchase purchase) {
         if (purchase.getPickupSlotId() == null) {
             return null;
@@ -68,6 +104,19 @@ public record KiosqueroOrderResponse(
                 purchase.getPickupSlotDescription(),
                 purchase.getPickupSlotStart(),
                 purchase.getPickupSlotEnd()
+        );
+    }
+
+    private static PickupSlot pickupSlot(PickupSlotResponse pickupSlot) {
+        if (pickupSlot == null) {
+            return null;
+        }
+
+        return new PickupSlot(
+                pickupSlot.id(),
+                pickupSlot.description(),
+                pickupSlot.start(),
+                pickupSlot.end()
         );
     }
 
@@ -86,14 +135,36 @@ public record KiosqueroOrderResponse(
         );
     }
 
+    private static Student student(StudentResponse student) {
+        if (student == null) {
+            return null;
+        }
+
+        return new Student(
+                student.id(),
+                student.firstName(),
+                student.lastName(),
+                student.gradeYear(),
+                student.gradeDivision()
+        );
+    }
+
     private static Buyer buyer(Purchase purchase) {
         BuyerType buyerType = purchase.getBuyerType();
         return new Buyer(purchase.getBuyerId(), buyerType == null ? null : buyerType.name());
     }
 
+    private static Buyer buyer(BuyerResponse buyer) {
+        if (buyer == null) {
+            return null;
+        }
+
+        return new Buyer(buyer.id(), buyer.type());
+    }
+
     private static List<Item> items(
             Map<Producto, Integer> items,
-            Map<UUID, Producto> inventoryProducts
+            Map<UUID, InventoryProductResponse> inventoryProducts
     ) {
         if (items == null) {
             return List.of();
@@ -104,27 +175,98 @@ public record KiosqueroOrderResponse(
                 .toList();
     }
 
-    private static Producto product(Producto product, Map<UUID, Producto> inventoryProducts) {
-        if (product == null || inventoryProducts == null) {
-            return product;
+    private static List<Item> items(
+            List<ItemResponse> items,
+            Map<UUID, InventoryProductResponse> inventoryProducts
+    ) {
+        if (items == null) {
+            return List.of();
         }
 
-        return inventoryProducts.getOrDefault(product.getId(), product);
+        return items.stream()
+                .map(item -> item(product(item, inventoryProducts), item.quantity()))
+                .toList();
     }
 
-    private static Item item(Producto product, Integer quantity) {
-        BigDecimal unitPrice = product.getPrecio() == null
+    private static OrderProduct product(
+            Producto product,
+            Map<UUID, InventoryProductResponse> inventoryProducts
+    ) {
+        if (product == null || inventoryProducts == null) {
+            return OrderProduct.fromDomain(product);
+        }
+
+        InventoryProductResponse inventoryProduct = inventoryProducts.get(product.getId());
+        return inventoryProduct == null
+                ? OrderProduct.fromDomain(product)
+                : OrderProduct.fromResponse(inventoryProduct);
+    }
+
+    private static OrderProduct product(
+            ItemResponse product,
+            Map<UUID, InventoryProductResponse> inventoryProducts
+    ) {
+        if (inventoryProducts == null) {
+            return OrderProduct.fromResponse(product);
+        }
+
+        InventoryProductResponse inventoryProduct = inventoryProducts.get(product.productId());
+        return inventoryProduct == null
+                ? OrderProduct.fromResponse(product)
+                : OrderProduct.fromResponse(inventoryProduct);
+    }
+
+    private static Item item(OrderProduct product, Integer quantity) {
+        BigDecimal unitPrice = product.price() == null
                 ? BigDecimal.ZERO
-                : product.getPrecio();
+                : product.price();
         return new Item(
-                product.getId(),
-                product.getNombre(),
+                product.id(),
+                product.name(),
                 quantity,
                 unitPrice,
                 unitPrice.multiply(BigDecimal.valueOf(quantity)),
-                product.getRequierePreparacion(),
-                product.getCupoMaximoDiario()
+                product.requiresPreparation(),
+                product.dailyCapacity()
         );
+    }
+
+    private record OrderProduct(
+            UUID id,
+            String name,
+            BigDecimal price,
+            Boolean requiresPreparation,
+            Integer dailyCapacity
+    ) {
+        private static OrderProduct fromDomain(Producto product) {
+            return new OrderProduct(
+                    product.getId(),
+                    product.getNombre(),
+                    product.getPrecio(),
+                    product.getRequierePreparacion(),
+                    product.getCupoMaximoDiario()
+            );
+        }
+
+        private static OrderProduct fromResponse(InventoryProductResponse product) {
+            return new OrderProduct(
+                    product.id(),
+                    product.nombre(),
+                    product.precio(),
+                    product.requierePreparacion(),
+                    product.cupoMaximoDiario()
+            );
+        }
+
+        private static OrderProduct fromResponse(ItemResponse product) {
+            return new OrderProduct(
+                    product.productId(),
+                    product.productName(),
+                    product.unitPrice(),
+                    product.requiresPreparation(),
+                    product.dailyCapacity()
+            );
+        }
     }
 
     public record Student(

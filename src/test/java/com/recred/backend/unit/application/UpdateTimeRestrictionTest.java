@@ -1,12 +1,14 @@
 package com.recred.backend.unit.application;
 
-import com.recred.backend.application.TimeRestrictionCommand;
 import com.recred.backend.application.UpdateTimeRestriction;
+import com.recred.backend.application.UpdateTimeRestrictionRequest;
+import com.recred.backend.application.UpdateTimeRestrictionResponse;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.RestriccionHoraria;
 import com.recred.backend.domain.repositories.RestriccionHorariaRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -38,21 +40,22 @@ class UpdateTimeRestrictionTest {
     @Test
     void execute_ActualizaConNuevosFiltros() {
         UUID restrictionId = UUID.randomUUID();
+        UUID alumnoId = UUID.randomUUID();
         UUID nuevoTimeSlotId = UUID.randomUUID();
         UUID nuevaCategoriaId = UUID.randomUUID();
         UUID nuevaClasificacionId = UUID.randomUUID();
 
-        TimeRestrictionCommand command = new TimeRestrictionCommand(
-                UUID.randomUUID(), nuevoTimeSlotId, nuevaCategoriaId, nuevaClasificacionId);
+        UpdateTimeRestrictionRequest request = new UpdateTimeRestrictionRequest(
+                restrictionId, nuevoTimeSlotId, nuevaCategoriaId, nuevaClasificacionId);
 
         RestriccionHoraria restriccionExistente = new RestriccionHoraria();
-        restriccionExistente.setAlumnoId(command.studentId());
+        restriccionExistente.setAlumnoId(alumnoId);
         when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
         when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        when(alumnoRepository.findById(command.studentId())).thenReturn(Optional.of(new Alumno()));
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(new Alumno()));
 
-        updateTimeRestriction.execute(restrictionId, command);
+        UpdateTimeRestrictionResponse response = updateTimeRestriction.execute(request);
 
         ArgumentCaptor<RestriccionHoraria> captor = ArgumentCaptor.forClass(RestriccionHoraria.class);
         verify(repository).save(captor.capture());
@@ -61,25 +64,31 @@ class UpdateTimeRestrictionTest {
         assertEquals(nuevoTimeSlotId, guardada.getFranjaHoraria().getId());
         assertEquals(nuevaCategoriaId, guardada.getCategoria().getId());
         assertEquals(nuevaClasificacionId, guardada.getClasificacionSalud().getId());
+
+        assertNotNull(response);
+        assertEquals(nuevoTimeSlotId, response.franjaHoraria().id());
+        assertEquals(nuevaCategoriaId, response.categoria().id());
+        assertEquals(nuevaClasificacionId, response.clasificacionSalud().id());
     }
 
     @Test
     void execute_LimpiaFiltros_CuandoCommandEnviaNulls() {
         UUID restrictionId = UUID.randomUUID();
+        UUID alumnoId = UUID.randomUUID();
         UUID nuevoTimeSlotId = UUID.randomUUID();
 
-        TimeRestrictionCommand command = new TimeRestrictionCommand(
-                UUID.randomUUID(), nuevoTimeSlotId, null, null);
+        UpdateTimeRestrictionRequest request = new UpdateTimeRestrictionRequest(
+                restrictionId, nuevoTimeSlotId, null, null);
 
         RestriccionHoraria restriccionExistente = new RestriccionHoraria();
-        restriccionExistente.setAlumnoId(command.studentId());
+        restriccionExistente.setAlumnoId(alumnoId);
 
         when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
         when(repository.save(any(RestriccionHoraria.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        when(alumnoRepository.findById(command.studentId())).thenReturn(Optional.of(new Alumno()));
+        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(new Alumno()));
 
-        updateTimeRestriction.execute(restrictionId, command);
+        UpdateTimeRestrictionResponse response = updateTimeRestriction.execute(request);
 
         ArgumentCaptor<RestriccionHoraria> captor = ArgumentCaptor.forClass(RestriccionHoraria.class);
         verify(repository).save(captor.capture());
@@ -88,25 +97,32 @@ class UpdateTimeRestrictionTest {
         assertEquals(nuevoTimeSlotId, guardada.getFranjaHoraria().getId());
         assertNull(guardada.getCategoria());
         assertNull(guardada.getClasificacionSalud());
+
+        assertNotNull(response);
+        assertEquals(nuevoTimeSlotId, response.franjaHoraria().id());
+        assertNull(response.categoria());
+        assertNull(response.clasificacionSalud());
     }
 
     @Test
     void execute_LanzaExcepcion_CuandoNoExiste() {
         UUID restrictionId = UUID.randomUUID();
-        TimeRestrictionCommand command = new TimeRestrictionCommand(UUID.randomUUID(), UUID.randomUUID(), null, null);
+        UpdateTimeRestrictionRequest request = new UpdateTimeRestrictionRequest(restrictionId, UUID.randomUUID(), null, null);
 
         when(repository.findById(restrictionId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class,
-                () -> updateTimeRestriction.execute(restrictionId, command));
+        Executable execution = () -> updateTimeRestriction.execute(request);
+
+        assertThrows(RuntimeException.class, execution);
+        verify(repository, never()).save(any());
     }
 
     @Test
     void execute_LanzaExcepcion_CuandoAlumnoNoExiste() {
         UUID restrictionId = UUID.randomUUID();
         UUID alumnoId = UUID.randomUUID();
-        TimeRestrictionCommand command = new TimeRestrictionCommand(
-                alumnoId,
+        UpdateTimeRestrictionRequest request = new UpdateTimeRestrictionRequest(
+                restrictionId,
                 UUID.randomUUID(),
                 null,
                 null
@@ -117,10 +133,9 @@ class UpdateTimeRestrictionTest {
         when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> updateTimeRestriction.execute(restrictionId, command)
-        );
+        Executable execution = () -> updateTimeRestriction.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
         verify(repository, never()).save(any());
     }
 
@@ -129,8 +144,8 @@ class UpdateTimeRestrictionTest {
         UUID restrictionId = UUID.randomUUID();
         UUID alumnoId = UUID.randomUUID();
         UUID classificationId = UUID.randomUUID();
-        TimeRestrictionCommand command = new TimeRestrictionCommand(
-                alumnoId,
+        UpdateTimeRestrictionRequest request = new UpdateTimeRestrictionRequest(
+                restrictionId,
                 UUID.randomUUID(),
                 null,
                 classificationId
@@ -145,10 +160,9 @@ class UpdateTimeRestrictionTest {
         when(repository.findById(restrictionId)).thenReturn(Optional.of(restriccionExistente));
         when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> updateTimeRestriction.execute(restrictionId, command)
-        );
+        Executable execution = () -> updateTimeRestriction.execute(request);
+
+        assertThrows(IllegalArgumentException.class, execution);
         verify(repository, never()).save(any());
     }
 }

@@ -1,11 +1,15 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.CreateAdvancePurchase;
+import com.recred.backend.application.CreateAdvancePurchaseRequest;
+import com.recred.backend.application.CreateAdvancePurchaseResponse;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
-import com.recred.backend.application.PurchaseSuggestIA;
+import com.recred.backend.application.NotifyPurchaseSuggestionsRequest;
+import com.recred.backend.application.NotifyPurchaseSuggestionsResponse;
+import com.recred.backend.application.PushNotificationResponse;
 import com.recred.backend.application.RespondToAISuggestion;
+import com.recred.backend.application.RespondToAISuggestionRequest;
 import com.recred.backend.domain.models.BuyerType;
-import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.RecessTime;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
@@ -16,8 +20,8 @@ import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,66 +34,74 @@ import java.util.UUID;
 @RequestMapping("/api/v1/sugerencias-consumo")
 public class PurchaseSuggestController {
 
-    private final PurchaseSuggestIA purchaseSuggestIA;
     private final NotifyPurchaseSuggestions notifyPurchaseSuggestions;
     private final RespondToAISuggestion respondToAISuggestion;
     private final CreateAdvancePurchase createAdvancePurchase;
     private final SugerenciaIARepository sugerenciaIARepository;
     private final UsuarioService usuarioService;
     private final TutorRepository tutorRepository;
+    private final PlanAccessGuard planAccessGuard;
+    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
-    public PurchaseSuggestController(PurchaseSuggestIA purchaseSuggestIA,
-                                     NotifyPurchaseSuggestions notifyPurchaseSuggestions,
+    public PurchaseSuggestController(NotifyPurchaseSuggestions notifyPurchaseSuggestions,
                                      RespondToAISuggestion respondToAISuggestion,
                                      CreateAdvancePurchase createAdvancePurchase,
                                      SugerenciaIARepository sugerenciaIARepository,
                                      UsuarioService usuarioService,
-                                     TutorRepository tutorRepository) {
-        this.purchaseSuggestIA = purchaseSuggestIA;
+                                     TutorRepository tutorRepository,
+                                     PlanAccessGuard planAccessGuard,
+                                     SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
         this.notifyPurchaseSuggestions = notifyPurchaseSuggestions;
         this.respondToAISuggestion = respondToAISuggestion;
         this.createAdvancePurchase = createAdvancePurchase;
         this.sugerenciaIARepository = sugerenciaIARepository;
         this.usuarioService = usuarioService;
         this.tutorRepository = tutorRepository;
+        this.planAccessGuard = planAccessGuard;
+        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping("/test-notificacion")
-    public ResponseEntity<PushNotification> testNotificacion(
+    public ResponseEntity<PushNotificationResponse> testNotification(
             Authentication authentication,
             @RequestBody(required = false) TestSuggestionRequest testRequest) {
         String subject = (testRequest != null && testRequest.testCognitoId() != null) 
                 ? testRequest.testCognitoId() 
                 : cognitoSubject(authentication);
+        planAccessGuard.requireTutorOrStudentAdvanced(authentication);
         
-        PushNotification notification = notifyPurchaseSuggestions.execute(subject);
-        return notification != null 
-                ? ResponseEntity.ok(notification) 
+        NotifyPurchaseSuggestionsResponse response = notifyPurchaseSuggestions.execute(
+                new NotifyPurchaseSuggestionsRequest(subject)
+        );
+        return response.notification() != null
+                ? ResponseEntity.ok(response.notification())
                 : ResponseEntity.noContent().build();
     }
 
     @PostMapping("/comprar")
-    public ResponseEntity<AdvancePurchaseResponse> comprarSugerencia(
+    public ResponseEntity<AdvancePurchaseResponse> buySuggestion(
             Authentication authentication,
             @RequestBody TestSuggestionRequest testRequest) {
+        planAccessGuard.requireTutorOrStudentAdvanced(authentication);
         
-        UUID sugerenciaId = testRequest.sugerenciaId();
+        UUID idSuggestion = testRequest.sugerenciaId();
         String subject = (testRequest.testCognitoId() != null) 
                 ? testRequest.testCognitoId() 
                 : cognitoSubject(authentication);
 
-        SugerenciaIAEntity sugerencia = sugerenciaIARepository.findById(sugerenciaId)
+        SugerenciaIAEntity suggestion = sugerenciaIARepository.findById(idSuggestion)
                 .orElseThrow(() -> new RuntimeException("Sugerencia no encontrada"));
 
         Usuario usuario = usuarioService.obtenerUsuarioActual(subject);
 
-        respondToAISuggestion.execute(sugerenciaId, true);
+        respondToAISuggestion.execute(new RespondToAISuggestionRequest(idSuggestion, true));
 
-        UUID alumnoId = sugerencia.getAlumnoEntity().getId();
-        UUID productoId = sugerencia.getProductoEntity().getId();
-        UUID buffetId = sugerencia.getBuffetEntity().getId();
+        UUID idStudent = suggestion.getAlumnoEntity().getId();
+        schoolLicenseAccessGuard.requireActiveSchoolForStudent(idStudent);
+        UUID idProduct = suggestion.getProductoEntity().getId();
+        UUID idBuffet = suggestion.getBuffetEntity().getId();
 
-        UUID tutorId = tutorRepository.findByAlumnoId(alumnoId).stream()
+        UUID idTutor = tutorRepository.findByAlumnoId(idStudent).stream()
                 .findFirst()
                 .map(t -> t.getId())
                 .orElse(null);
@@ -98,26 +110,35 @@ public class PurchaseSuggestController {
                 ? BuyerType.STUDENT
                 : BuyerType.TUTOR;
 
-        AdvancePurchaseRequest.ItemRequest item =
-                new AdvancePurchaseRequest.ItemRequest(productoId, 1);
+        CreateAdvancePurchaseRequest.ItemRequest item =
+                new CreateAdvancePurchaseRequest.ItemRequest(idProduct, 1);
 
-        AdvancePurchaseRequest.OrderRequest order = new AdvancePurchaseRequest.OrderRequest(
-                alumnoId,
-                usuario.getId(),
-                buyerType,
-                buffetId,
-                LocalDate.now().toString(),
-                RecessTime.AFTER_HOURS,
-                List.of(item),
-                sugerenciaId,
-                tutorId
-        );
+        CreateAdvancePurchaseRequest.OrderRequest order =
+                new CreateAdvancePurchaseRequest.OrderRequest(
+                        idStudent,
+                        usuario.getId(),
+                        buyerType,
+                        idBuffet,
+                        LocalDate.now().toString(),
+                        RecessTime.AFTER_HOURS,
+                        List.of(item),
+                        idSuggestion,
+                        idTutor
+                );
 
-        // TODO: Implementar lógica de código de verificación si fuera necesario
 
-        AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of(order));
+        CreateAdvancePurchaseRequest request =
+                new CreateAdvancePurchaseRequest(List.of(order));
 
-        return ResponseEntity.ok(createAdvancePurchase.execute(request, subject));
+        CreateAdvancePurchaseResponse useCaseResponse =
+                createAdvancePurchase.execute(request.withCognitoSub(subject));
+
+        return ResponseEntity.ok(new AdvancePurchaseResponse(
+                useCaseResponse.orderId(),
+                useCaseResponse.status(),
+                useCaseResponse.total(),
+                useCaseResponse.codes()
+        ));
     }
 
     private String cognitoSubject(Authentication authentication) {

@@ -1,9 +1,9 @@
 package com.recred.backend.unit.application;
 
-import com.recred.backend.application.*;
-
+import com.recred.backend.application.GetProductStatistics;
+import com.recred.backend.application.GetProductStatisticsRequest;
+import com.recred.backend.application.ProductSaleStatisticsResponse;
 import com.recred.backend.domain.models.CategoriaProducto;
-import com.recred.backend.domain.models.ProductSaleStatistics;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
@@ -40,11 +40,19 @@ class GetProductStatisticsTest {
     @Mock
     private KiosqueroRepository kiosqueroRepository;
 
-    private GetProductStatistics getProductStatistics;
+    private GetProductStatistics useCase;
+
+    private UUID productId;
+    private UUID kiosqueroId;
+    private UUID buffetId;
+    private UUID categoryId;
+    private Producto product;
+    private ProductSaleStatisticsResponse response;
+    private RuntimeException thrownException;
 
     @BeforeEach
     void setUp() {
-        getProductStatistics = new GetProductStatistics(
+        useCase = new GetProductStatistics(
                 productRepository,
                 productStatisticsJpaRepository,
                 kiosqueroRepository
@@ -52,151 +60,216 @@ class GetProductStatisticsTest {
     }
 
     @Test
-    void executeShouldBuildStatisticsWithSalesAndRankings() {
-        UUID productId = UUID.randomUUID();
-        UUID kiosqueroId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        UUID categoryId = UUID.randomUUID();
-        Producto product = product(productId, categoryId);
-        UUID otherProductId = UUID.randomUUID();
+    void givenProductSalesDuringPeriod_whenGettingProductStatistics_thenReturnsSalesAndRankings() {
+        givenProductStatisticsScenario();
+        givenProductExists();
+        givenKiosqueroHasBuffet();
+        givenProductHasSalesDuringPeriod();
 
+        whenGettingProductStatistics();
+
+        thenProductStatisticsAreReturned();
+        thenSalesStatisticsAreReturned();
+        thenCategoryComparisonsAreReturned();
+    }
+
+    @Test
+    void givenProductWithoutSalesDuringPeriod_whenGettingProductStatistics_thenReturnsDefaults() {
+        givenProductStatisticsScenario();
+        givenProductExists();
+        givenKiosqueroHasBuffet();
+        givenProductHasNoSalesDuringPeriod();
+
+        whenGettingProductStatistics();
+
+        thenDefaultSalesStatisticsAreReturned();
+    }
+
+    @Test
+    void givenMissingProduct_whenGettingProductStatistics_thenFailsBeforeLoadingBuffet() {
+        givenProductStatisticsScenario();
+        givenProductDoesNotExist();
+
+        whenGettingProductStatisticsFails();
+
+        thenProductStatisticsFailWith("Producto no encontrado");
+        thenBuffetWasNotRequested();
+    }
+
+    @Test
+    void givenKiosqueroWithoutBuffet_whenGettingProductStatistics_thenFailsBeforeCountingSales() {
+        givenProductStatisticsScenario();
+        givenProductExists();
+        givenKiosqueroDoesNotHaveBuffet();
+
+        whenGettingProductStatisticsFails();
+
+        thenProductStatisticsFailWith("Kiosquero no encontrado o sin buffet asociado");
+        thenSalesWereNotCounted();
+    }
+
+    private void givenProductStatisticsScenario() {
+        productId = UUID.randomUUID();
+        kiosqueroId = UUID.randomUUID();
+        buffetId = UUID.randomUUID();
+        categoryId = UUID.randomUUID();
+        product = product(productId, categoryId);
+    }
+
+    private void givenProductExists() {
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+    }
+
+    private void givenProductDoesNotExist() {
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+    }
+
+    private void givenKiosqueroHasBuffet() {
         when(kiosqueroRepository.findBuffetByUsuarioId(kiosqueroId)).thenReturn(buffetId);
-        when(productStatisticsJpaRepository.countTotalSalesByProductAndBuffet(
-                eq(productId),
-                eq(buffetId),
-                any()
-        )).thenReturn(12L);
-        when(productStatisticsJpaRepository.countDistinctCustomersByProductAndBuffet(
-                eq(productId),
-                eq(buffetId),
-                any()
-        )).thenReturn(5L);
-        when(productStatisticsJpaRepository.getSalesDatesByProduct(
-                eq(productId),
-                eq(buffetId),
-                any()
-        )).thenReturn(List.of(
+    }
+
+    private void givenKiosqueroDoesNotHaveBuffet() {
+        when(kiosqueroRepository.findBuffetByUsuarioId(kiosqueroId)).thenReturn(null);
+    }
+
+    private void givenProductHasSalesDuringPeriod() {
+        UUID otherProductId = UUID.randomUUID();
+        givenSalesCounters(12L, 5L);
+        givenSalesDates(List.of(
                 LocalDate.of(2026, 6, 1),
                 LocalDate.of(2026, 6, 1),
                 LocalDate.of(2026, 6, 2)
         ));
-        when(productStatisticsJpaRepository.getSalesRankingsGeneral(eq(buffetId), any()))
-                .thenReturn(List.<Object[]>of(
-                        new Object[] {otherProductId, 20L},
-                        new Object[] {productId, 12L}
-                ));
-        when(productStatisticsJpaRepository.getSalesRankingsByCategory(
-                eq(buffetId),
-                eq(categoryId),
-                any()
-        )).thenReturn(List.<Object[]>of(new Object[] {productId, 12L}));
-        when(productStatisticsJpaRepository.getStockActual(productId, buffetId)).thenReturn(8);
-        when(productStatisticsJpaRepository.getAveragePriceByCategory(categoryId))
-                .thenReturn(new BigDecimal("30.00"));
-        when(productStatisticsJpaRepository.getAverageSalesVolumeByCategory(
-                eq(buffetId),
-                eq(categoryId),
-                any()
-        )).thenReturn(new BigDecimal("6.50"));
-        when(productStatisticsJpaRepository.getAverageStockByCategory(categoryId, buffetId))
-                .thenReturn(new BigDecimal("10.00"));
-
-        ProductSaleStatistics result = getProductStatistics.execute(productId, kiosqueroId);
-
-        assertEquals(productId, result.getProductoId());
-        assertEquals("Alfajor", result.getNombre());
-        assertEquals("Golosinas", result.getCategoria());
-        assertEquals(new BigDecimal("45.00"), result.getPrecioActual());
-        assertEquals(12L, result.getVentasPeriodo());
-        assertEquals(13L, result.getDiasSinVenta());
-        assertEquals(new BigDecimal("37.5000"), result.getParticipacionVentas());
-        assertEquals(2, result.getRankingGeneral());
-        assertEquals(1, result.getRankingCategoria());
-        assertEquals(5L, result.getClientesDistintos());
-        assertEquals(8, result.getStockActual());
-        assertEquals(new BigDecimal("30.00"), result.getPromedioPrecioCategoria());
-        assertEquals(new BigDecimal("6.50"), result.getPromedioVentasCategoria());
-        assertEquals(new BigDecimal("10.00"), result.getStockPromedioCategoria());
-        assertEquals(new BigDecimal("15.00"), result.getDiferenciaPrecioCategoria());
+        givenGeneralRankings(List.<Object[]>of(
+                new Object[] {otherProductId, 20L},
+                new Object[] {productId, 12L}
+        ));
+        givenCategoryRankings(List.<Object[]>of(new Object[] {productId, 12L}));
+        givenCurrentStock(8);
+        givenCategoryAverages(
+                new BigDecimal("30.00"),
+                new BigDecimal("6.50"),
+                new BigDecimal("10.00")
+        );
     }
 
-    @Test
-    void executeShouldUseDefaultsWhenSalesAreMissing() {
-        UUID productId = UUID.randomUUID();
-        UUID kiosqueroId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        UUID categoryId = UUID.randomUUID();
-        Producto product = product(productId, categoryId);
+    private void givenProductHasNoSalesDuringPeriod() {
+        givenSalesCounters(null, null);
+        givenSalesDates(List.of());
+        givenGeneralRankings(List.of());
+        givenCategoryRankings(List.of());
+        givenCurrentStock(null);
+        givenCategoryAverages(null, null, null);
+    }
 
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(kiosqueroRepository.findBuffetByUsuarioId(kiosqueroId)).thenReturn(buffetId);
+    private void givenSalesCounters(Long sales, Long customers) {
         when(productStatisticsJpaRepository.countTotalSalesByProductAndBuffet(
                 eq(productId),
                 eq(buffetId),
                 any()
-        )).thenReturn(null);
+        )).thenReturn(sales);
         when(productStatisticsJpaRepository.countDistinctCustomersByProductAndBuffet(
                 eq(productId),
                 eq(buffetId),
                 any()
-        )).thenReturn(null);
+        )).thenReturn(customers);
+    }
+
+    private void givenSalesDates(List<LocalDate> salesDates) {
         when(productStatisticsJpaRepository.getSalesDatesByProduct(
                 eq(productId),
                 eq(buffetId),
                 any()
-        )).thenReturn(List.of());
+        )).thenReturn(salesDates);
+    }
+
+    private void givenGeneralRankings(List<Object[]> rankings) {
         when(productStatisticsJpaRepository.getSalesRankingsGeneral(eq(buffetId), any()))
-                .thenReturn(List.of());
+                .thenReturn(rankings);
+    }
+
+    private void givenCategoryRankings(List<Object[]> rankings) {
         when(productStatisticsJpaRepository.getSalesRankingsByCategory(
                 eq(buffetId),
                 eq(categoryId),
                 any()
-        )).thenReturn(List.of());
-        when(productStatisticsJpaRepository.getStockActual(productId, buffetId)).thenReturn(null);
-        when(productStatisticsJpaRepository.getAveragePriceByCategory(categoryId)).thenReturn(null);
+        )).thenReturn(rankings);
+    }
+
+    private void givenCurrentStock(Integer stock) {
+        when(productStatisticsJpaRepository.getStockActual(productId, buffetId))
+                .thenReturn(stock);
+    }
+
+    private void givenCategoryAverages(
+            BigDecimal averagePrice,
+            BigDecimal averageSales,
+            BigDecimal averageStock
+    ) {
+        when(productStatisticsJpaRepository.getAveragePriceByCategory(categoryId))
+                .thenReturn(averagePrice);
         when(productStatisticsJpaRepository.getAverageSalesVolumeByCategory(
                 eq(buffetId),
                 eq(categoryId),
                 any()
-        )).thenReturn(null);
+        )).thenReturn(averageSales);
         when(productStatisticsJpaRepository.getAverageStockByCategory(categoryId, buffetId))
-                .thenReturn(null);
-
-        ProductSaleStatistics result = getProductStatistics.execute(productId, kiosqueroId);
-
-        assertEquals(0L, result.getVentasPeriodo());
-        assertEquals(15L, result.getDiasSinVenta());
-        assertEquals(BigDecimal.ZERO, result.getParticipacionVentas());
-        assertEquals(0, result.getRankingGeneral());
-        assertEquals(0, result.getRankingCategoria());
-        assertEquals(0L, result.getClientesDistintos());
-        assertEquals(0, result.getStockActual());
-        assertEquals(BigDecimal.ZERO, result.getDiferenciaPrecioCategoria());
+                .thenReturn(averageStock);
     }
 
-    @Test
-    void executeShouldThrowWhenProductDoesNotExist() {
-        UUID productId = UUID.randomUUID();
-        UUID kiosqueroId = UUID.randomUUID();
-        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+    private void whenGettingProductStatistics() {
+        response = useCase.execute(new GetProductStatisticsRequest(productId, kiosqueroId));
+    }
 
-        assertThrows(IllegalArgumentException.class, () ->
-                getProductStatistics.execute(productId, kiosqueroId));
+    private void whenGettingProductStatisticsFails() {
+        thrownException = assertThrows(RuntimeException.class, () ->
+                useCase.execute(new GetProductStatisticsRequest(productId, kiosqueroId)));
+    }
+
+    private void thenProductStatisticsAreReturned() {
+        assertEquals(productId, response.productoId());
+        assertEquals("Alfajor", response.nombre());
+        assertEquals("Golosinas", response.categoria());
+        assertEquals(new BigDecimal("45.00"), response.precioActual());
+    }
+
+    private void thenSalesStatisticsAreReturned() {
+        assertEquals(12L, response.ventasPeriodo());
+        assertEquals(13L, response.diasSinVenta());
+        assertEquals(new BigDecimal("37.5000"), response.participacionVentas());
+        assertEquals(2, response.rankingGeneral());
+        assertEquals(1, response.rankingCategoria());
+        assertEquals(5L, response.clientesDistintos());
+        assertEquals(8, response.stockActual());
+    }
+
+    private void thenCategoryComparisonsAreReturned() {
+        assertEquals(new BigDecimal("30.00"), response.promedioPrecioCategoria());
+        assertEquals(new BigDecimal("6.50"), response.promedioVentasCategoria());
+        assertEquals(new BigDecimal("10.00"), response.stockPromedioCategoria());
+        assertEquals(new BigDecimal("15.00"), response.diferenciaPrecioCategoria());
+    }
+
+    private void thenDefaultSalesStatisticsAreReturned() {
+        assertEquals(0L, response.ventasPeriodo());
+        assertEquals(15L, response.diasSinVenta());
+        assertEquals(BigDecimal.ZERO, response.participacionVentas());
+        assertEquals(0, response.rankingGeneral());
+        assertEquals(0, response.rankingCategoria());
+        assertEquals(0L, response.clientesDistintos());
+        assertEquals(0, response.stockActual());
+        assertEquals(BigDecimal.ZERO, response.diferenciaPrecioCategoria());
+    }
+
+    private void thenProductStatisticsFailWith(String expectedMessage) {
+        assertEquals(expectedMessage, thrownException.getMessage());
+    }
+
+    private void thenBuffetWasNotRequested() {
         verify(kiosqueroRepository, never()).findBuffetByUsuarioId(any());
     }
 
-    @Test
-    void executeShouldThrowWhenKiosqueroHasNoBuffet() {
-        UUID productId = UUID.randomUUID();
-        UUID kiosqueroId = UUID.randomUUID();
-        Producto product = product(productId, UUID.randomUUID());
-
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(kiosqueroRepository.findBuffetByUsuarioId(kiosqueroId)).thenReturn(null);
-
-        assertThrows(IllegalArgumentException.class, () ->
-                getProductStatistics.execute(productId, kiosqueroId));
+    private void thenSalesWereNotCounted() {
         verify(productStatisticsJpaRepository, never()).countTotalSalesByProductAndBuffet(
                 any(),
                 any(),

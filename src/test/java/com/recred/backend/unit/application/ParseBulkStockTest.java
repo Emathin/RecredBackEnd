@@ -2,7 +2,7 @@ package com.recred.backend.unit.application;
 
 import com.recred.backend.application.BulkStockParseResponse;
 import com.recred.backend.application.ParseBulkStock;
-import com.recred.backend.application.ParseBulkStockCommand;
+import com.recred.backend.application.ParseBulkStockRequest;
 import com.recred.backend.application.RawBulkProduct;
 import com.recred.backend.domain.exceptions.FileValidationException;
 import com.recred.backend.domain.models.CategoriaProducto;
@@ -14,6 +14,7 @@ import com.recred.backend.domain.repositories.ClasificacionTipoRepository;
 import com.recred.backend.domain.services.BulkStockAnalyzer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -49,7 +50,7 @@ class ParseBulkStockTest {
     void execute_RetornaProductosResueltos_CuandoArchivoEsValido() {
         byte[] content = "dummy content".getBytes();
         String contentType = "application/pdf";
-        ParseBulkStockCommand command = new ParseBulkStockCommand(content, contentType);
+        ParseBulkStockRequest command = new ParseBulkStockRequest(content, contentType);
 
         RawBulkProduct rawProduct = new RawBulkProduct(
                 "Coca Cola",
@@ -94,23 +95,29 @@ class ParseBulkStockTest {
 
     @Test
     void execute_LanzaExcepcion_CuandoArchivoEstaVacio() {
-        ParseBulkStockCommand command = new ParseBulkStockCommand(new byte[0], "application/pdf");
+        ParseBulkStockRequest command = new ParseBulkStockRequest(new byte[0], "application/pdf");
 
-        assertThrows(FileValidationException.class, () -> parseBulkStock.execute(command));
+        Executable execution = () -> parseBulkStock.execute(command);
+
+        assertThrows(FileValidationException.class, execution);
     }
 
     @Test
     void execute_LanzaExcepcion_CuandoFormatoNoEsPermitido() {
-        ParseBulkStockCommand command = new ParseBulkStockCommand("content".getBytes(), "application/invalid");
+        ParseBulkStockRequest command = new ParseBulkStockRequest(
+                "content".getBytes(),
+                "application/invalid");
 
-        assertThrows(FileValidationException.class, () -> parseBulkStock.execute(command));
+        Executable execution = () -> parseBulkStock.execute(command);
+
+        assertThrows(FileValidationException.class, execution);
     }
 
     @Test
     void execute_RetornaNuevaCategoria_CuandoNoExisteEnRepo() {
         byte[] content = "dummy".getBytes();
         String contentType = "text/csv";
-        ParseBulkStockCommand command = new ParseBulkStockCommand(content, contentType);
+        ParseBulkStockRequest command = new ParseBulkStockRequest(content, contentType);
 
         RawBulkProduct rawProduct = new RawBulkProduct(
                 "Alfajor", null, null, null, false, "Golosinas", null, List.of(), List.of()

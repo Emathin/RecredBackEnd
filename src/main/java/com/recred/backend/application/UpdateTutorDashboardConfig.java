@@ -1,7 +1,6 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Tutor;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,21 +14,31 @@ public class UpdateTutorDashboardConfig {
         this.tutorRepository = tutorRepository;
     }
 
-    public void execute(String cognitoSubject, String dashboardConfig) {
-        Tutor tutor = tutorRepository.findByUsuarioIdCognito(cognitoSubject)
+    public UpdateTutorDashboardConfigResponse execute(UpdateTutorDashboardConfigRequest request) {
+        request.validate();
+
+        Tutor tutor = findTutor(request.cognitoSubject());
+        validatePlanLimits(tutor, request.dashboardConfig());
+
+        tutor.setDashboardConfig(request.dashboardConfig());
+        tutorRepository.save(tutor);
+        return new UpdateTutorDashboardConfigResponse();
+    }
+
+    private Tutor findTutor(String cognitoSubject) {
+        return tutorRepository.findByUsuarioIdCognito(cognitoSubject)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Tutor no encontrado para el usuario actual"));
+    }
 
-        if (tutor.getUsuario() != null && tutor.getUsuario().getPlan() == TipoPlan.GRATUITO) {
+    private void validatePlanLimits(Tutor tutor, String dashboardConfig) {
+        if (tutor.getUsuario() != null && tutor.getUsuario().hasFreePlan()) {
             int cardsCount = countCards(dashboardConfig);
             if (cardsCount > 5) {
                 throw new IllegalArgumentException(
                         "El plan gratuito permite hasta 5 tarjetas en el dashboard");
             }
         }
-
-        tutor.setDashboardConfig(dashboardConfig);
-        tutorRepository.save(tutor);
     }
 
     private int countCards(String configJson) {
@@ -50,7 +59,6 @@ public class UpdateTutorDashboardConfig {
                 return root.size();
             }
         } catch (Exception e) {
-            // If invalid JSON, treat as not exceeding
         }
         return 0;
     }

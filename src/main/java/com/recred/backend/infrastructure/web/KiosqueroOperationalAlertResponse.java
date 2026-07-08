@@ -27,4 +27,18 @@ public record KiosqueroOperationalAlertResponse(
                 alert.message()
         );
     }
+
+    public static KiosqueroOperationalAlertResponse fromApplication(
+            com.recred.backend.application.OperationalAlertResponse alert
+    ) {
+        return new KiosqueroOperationalAlertResponse(
+                alert.buffetId(),
+                alert.type(),
+                alert.severity(),
+                alert.productId(),
+                alert.purchaseId(),
+                alert.occurredAt(),
+                alert.message()
+        );
+    }
 }

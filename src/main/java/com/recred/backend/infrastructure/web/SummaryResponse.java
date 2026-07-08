@@ -1,5 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.GetLastSummaryResponse;
 import com.recred.backend.domain.models.Summary;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,5 +22,12 @@ public class SummaryResponse {
         this.fechaDesde = summary.getFechaDesde().format(FORMATTER);
         this.fechaHasta = summary.getFechaHasta().format(FORMATTER);
         this.resumen = summary.getResumen();
+    }
+
+    public SummaryResponse(GetLastSummaryResponse response) {
+        this.id = response.id().toString();
+        this.fechaDesde = response.fechaDesde().format(FORMATTER);
+        this.fechaHasta = response.fechaHasta().format(FORMATTER);
+        this.resumen = response.resumen();
     }
 }

@@ -2,8 +2,11 @@ package com.recred.backend.domain.services;
 
 import com.recred.backend.domain.exceptions.PickupTimeSlotNotFoundException;
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Buffet;
+import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.domain.models.RecessTime;
+import com.recred.backend.domain.repositories.BuffetRepository;
 import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 
 import java.text.Normalizer;
@@ -18,13 +21,29 @@ public class RecessTimeSlotResolver {
     private static final Pattern DIACRITICS = Pattern.compile("\\p{M}+");
 
     private final FranjaHorariaRepository timeSlotRepository;
+    private final BuffetRepository buffetRepository;
 
     public RecessTimeSlotResolver(FranjaHorariaRepository timeSlotRepository) {
+        this(timeSlotRepository, null);
+    }
+
+    public RecessTimeSlotResolver(
+            FranjaHorariaRepository timeSlotRepository,
+            BuffetRepository buffetRepository
+    ) {
         this.timeSlotRepository = timeSlotRepository;
+        this.buffetRepository = buffetRepository;
     }
 
     public FranjaHoraria resolve(Alumno student, RecessTime recessTime) {
-        UUID schoolId = schoolId(student);
+        return resolveBySchoolId(schoolId(student), recessTime);
+    }
+
+    public FranjaHoraria resolveByBuffet(UUID buffetId, RecessTime recessTime) {
+        return resolveBySchoolId(schoolId(buffetId, recessTime), recessTime);
+    }
+
+    private FranjaHoraria resolveBySchoolId(UUID schoolId, RecessTime recessTime) {
         List<FranjaHoraria> slots = timeSlotRepository.findAllByColegioId(schoolId)
                 .stream()
                 .sorted(Comparator.comparing(FranjaHoraria::getHoraInicio))
@@ -44,6 +63,17 @@ public class RecessTimeSlotResolver {
         }
 
         return student.getGrado().getColegio().getId();
+    }
+
+    private UUID schoolId(UUID buffetId, RecessTime recessTime) {
+        if (buffetRepository == null) {
+            throw new PickupTimeSlotNotFoundException(null, recessTime);
+        }
+
+        return buffetRepository.findById(buffetId)
+                .map(Buffet::getColegio)
+                .map(Colegio::getId)
+                .orElseThrow(() -> new PickupTimeSlotNotFoundException(null, recessTime));
     }
 
     private FranjaHoraria slotByPosition(

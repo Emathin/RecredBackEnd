@@ -2,6 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.RecessTime;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -9,16 +10,14 @@ import java.util.Optional;
 record PurchaseItemRequest(
         java.util.UUID productId,
         int quantity,
-        java.util.UUID buffetId
-) {
+        java.util.UUID buffetId) {
 }
 
 record PurchasePlanItem(
         java.util.UUID productId,
         String productName,
         int quantity,
-        BigDecimal unitPrice
-) {
+        BigDecimal unitPrice) {
     BigDecimal subtotal() {
         return unitPrice.multiply(BigDecimal.valueOf(quantity));
     }
@@ -29,8 +28,7 @@ record PurchasePlan(
         java.util.UUID buffetId,
         List<PurchasePlanItem> items,
         int occurrences,
-        LocalDateTime lastDate
-) {
+        LocalDateTime lastDate) {
     BigDecimal totalAmount() {
         return items.stream()
                 .map(PurchasePlanItem::subtotal)
@@ -41,29 +39,26 @@ record PurchasePlan(
 record PurchasePatternCandidate(
         String key,
         List<PurchaseItemRequest> items,
-        LocalDateTime lastDate
-) {
+        LocalDateTime lastDate) {
 }
 
 record PurchasePattern(
         List<PurchaseItemRequest> items,
         int occurrences,
-        LocalDateTime lastDate
-) {
+        LocalDateTime lastDate) {
 }
 
 record PendingPurchase(
         java.util.UUID studentId,
         java.util.UUID buffetId,
         List<PurchaseItemRequest> items,
-        Optional<RecessTime> recessTime
-) {
+        Optional<LocalDate> pickupDate,
+        Optional<RecessTime> recessTime) {
 }
 
 record PendingActionSearch(
         Optional<PendingPurchase> pendingPurchase,
-        boolean shouldStop
-) {
+        boolean shouldStop) {
     static PendingActionSearch terminal() {
         return new PendingActionSearch(Optional.empty(), true);
     }
@@ -86,8 +81,7 @@ final class PurchasePatternAccumulator {
     private PurchasePatternAccumulator(
             List<PurchaseItemRequest> items,
             int occurrences,
-            LocalDateTime lastDate
-    ) {
+            LocalDateTime lastDate) {
         this.items = items;
         this.occurrences = occurrences;
         this.lastDate = lastDate;
@@ -97,8 +91,7 @@ final class PurchasePatternAccumulator {
         return new PurchasePatternAccumulator(
                 items,
                 occurrences + other.occurrences,
-                latestDate(lastDate, other.lastDate)
-        );
+                latestDate(lastDate, other.lastDate));
     }
 
     PurchasePattern pattern() {

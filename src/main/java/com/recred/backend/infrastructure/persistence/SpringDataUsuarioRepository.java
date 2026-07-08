@@ -1,12 +1,16 @@
 package com.recred.backend.infrastructure.persistence;
 
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +21,31 @@ public interface SpringDataUsuarioRepository extends
     Optional<UsuarioEntity> findByIdCognito(String idCognito);
 
     Optional<UsuarioEntity> findByEmail(String email);
+
+    Optional<UsuarioEntity> findFirstByEmailOrderByActualizadoEnDescCreadoEnDesc(String email);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM UsuarioEntity u WHERE u.id = :id")
+    Optional<UsuarioEntity> findByIdForUpdate(@Param("id") UUID id);
+
+    @Modifying
+    @Query("""
+            UPDATE UsuarioEntity u
+            SET u.nombre = :nombre,
+                u.apellido = :apellido,
+                u.telefono = :telefono,
+                u.dni = :dni,
+                u.actualizadoEn = :actualizadoEn
+            WHERE u.idCognito = :idCognito
+            """)
+    void updateProfile(
+            @Param("idCognito") String idCognito,
+            @Param("nombre") String nombre,
+            @Param("apellido") String apellido,
+            @Param("telefono") String telefono,
+            @Param("dni") String dni,
+            @Param("actualizadoEn") LocalDateTime actualizadoEn
+    );
 
     @Modifying
     @Query("""
@@ -38,6 +67,17 @@ public interface SpringDataUsuarioRepository extends
     void updateFotoPerfilByUsuarioId(
             @Param("usuarioId") java.util.UUID usuarioId,
             @Param("urlFotoPerfil") String urlFotoPerfil
+    );
+
+    @Modifying
+    @Query("""
+            UPDATE UsuarioEntity u
+            SET u.plan = :plan
+            WHERE u.id = :usuarioId
+            """)
+    void updatePlan(
+            @Param("usuarioId") UUID usuarioId,
+            @Param("plan") TipoPlan plan
     );
 
 }

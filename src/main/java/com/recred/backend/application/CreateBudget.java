@@ -18,36 +18,108 @@ public class CreateBudget {
     }
 
     @Transactional
-    public PresupuestoAlumno execute(BudgetCommand command) {
-        List<ReglaPresupuestoCategoria> reglas = null;
+    public CreateBudgetResponse execute(CreateBudgetRequest createBudgetRequest) {
+        PresupuestoAlumno budget = buildBudgetFrom(createBudgetRequest);
+        applyBudgetRules(budget);
+        PresupuestoAlumno savedBudget = repository.save(budget);
 
-        if (command.categoryRules() != null && !command.categoryRules().isEmpty()) {
-            reglas = command.categoryRules().stream().map(rule -> {
-                CategoriaProducto categoria = new CategoriaProducto();
-                categoria.setId(rule.categoryId());
+        return mapToResponse(savedBudget);
+    }
 
-                return new ReglaPresupuestoCategoria(
-                        null,
-                        categoria,
-                        rule.porcentajeLimite(),
-                        null,
-                        true);
-            }).collect(Collectors.toList());
+    private PresupuestoAlumno buildBudgetFrom(CreateBudgetRequest createBudgetRequest) {
+        List<ReglaPresupuestoCategoria> categoryRules =
+                buildCategoryRules(createBudgetRequest.categoryRules());
+        return buildBudget(createBudgetRequest, categoryRules);
+    }
+
+    private void applyBudgetRules(PresupuestoAlumno budget) {
+        budget.validarPorcentajes();
+        budget.recalcularMontosReglas();
+    }
+
+    private List<ReglaPresupuestoCategoria> buildCategoryRules(
+            List<CreateBudgetRequest.CategoryRuleRequest> categoryRules) {
+        if (categoryRules == null || categoryRules.isEmpty()) {
+            return null;
+        }
+        return categoryRules.stream()
+                .map(this::buildCategoryRule)
+                .collect(Collectors.toList());
+    }
+
+    private ReglaPresupuestoCategoria buildCategoryRule(
+            CreateBudgetRequest.CategoryRuleRequest categoryRuleRequest) {
+        CategoriaProducto category = new CategoriaProducto();
+        category.setId(categoryRuleRequest.categoryId());
+
+        return new ReglaPresupuestoCategoria(
+                null,
+                category,
+                categoryRuleRequest.porcentajeLimite(),
+                null,
+                true);
+    }
+
+    private PresupuestoAlumno buildBudget(
+            CreateBudgetRequest createBudgetRequest,
+            List<ReglaPresupuestoCategoria> categoryRules) {
+        return new PresupuestoAlumno(
+                null,
+                createBudgetRequest.studentId(),
+                createBudgetRequest.creadorId(),
+                createBudgetRequest.limitAmount(),
+                createBudgetRequest.period(),
+                createBudgetRequest.startDate(),
+                true,
+                categoryRules);
+    }
+
+    private CreateBudgetResponse mapToResponse(PresupuestoAlumno budget) {
+        return new CreateBudgetResponse(
+                budget.getId(),
+                budget.getAlumnoId(),
+                budget.getCreadoPorUsuarioId(),
+                budget.getMontoLimiteGeneral(),
+                budget.getPeriodo(),
+                budget.getFechaInicio(),
+                budget.isActivo(),
+                mapRuleResponses(budget),
+                budget.getMontoLimite()
+        );
+    }
+
+    private List<CreateBudgetResponse.ReglaPresupuestoCategoriaResponse> mapRuleResponses(
+            PresupuestoAlumno budget) {
+        if (budget.getReglasCategoria() == null) {
+            return null;
         }
 
-        PresupuestoAlumno presupuesto = new PresupuestoAlumno(
-                null,
-                command.studentId(),
-                command.creadorId(),
-                command.limitAmount(),
-                command.period(),
-                command.startDate(),
-                true,
-                reglas);
+        return budget.getReglasCategoria().stream()
+                .map(this::mapRuleResponse)
+                .collect(Collectors.toList());
+    }
 
-        presupuesto.validarPorcentajes();
-        presupuesto.recalcularMontosReglas();
+    private CreateBudgetResponse.ReglaPresupuestoCategoriaResponse mapRuleResponse(
+            ReglaPresupuestoCategoria rule) {
+        return new CreateBudgetResponse.ReglaPresupuestoCategoriaResponse(
+                rule.getId(),
+                mapCategoryResponse(rule.getCategoria()),
+                rule.getPorcentajeLimite(),
+                rule.getMontoLimiteCalculado(),
+                rule.isActivo()
+        );
+    }
 
-        return repository.save(presupuesto);
+    private CreateBudgetResponse.CategoriaProductoResponse mapCategoryResponse(
+            CategoriaProducto category) {
+        if (category == null) {
+            return null;
+        }
+
+        return new CreateBudgetResponse.CategoriaProductoResponse(
+                category.getId(),
+                category.getDescripcion(),
+                category.getActivo()
+        );
     }
 }

@@ -5,7 +5,7 @@ import com.recred.backend.domain.models.SchoolCredit;
 import com.recred.backend.domain.repositories.SchoolCreditRepository;
 
 import java.util.Optional;
-import java.util.UUID;
+
 
 public class GetActiveSchoolCredit {
 
@@ -15,10 +15,18 @@ public class GetActiveSchoolCredit {
         this.schoolCreditRepository = schoolCreditRepository;
     }
 
-    public Optional<SchoolCredit> execute(UUID studentId) {
-        if (studentId == null) {
-            throw new IllegalArgumentException("El ID del alumno no puede ser nulo");
-        }
-        return schoolCreditRepository.findByStudentIdAndStatus(studentId, CreditStatus.ACTIVE);
+    public Optional<GetActiveSchoolCreditResponse> execute(GetActiveSchoolCreditRequest request) {
+        return schoolCreditRepository.findByStudentIdAndStatus(
+                request.studentId(), CreditStatus.ACTIVE)
+                .map(this::mapToResponse);
+    }
+
+    private GetActiveSchoolCreditResponse mapToResponse(SchoolCredit credit) {
+        return new GetActiveSchoolCreditResponse(
+                credit.getId(),
+                credit.getAmount(),
+                credit.getStatus().name(),
+                credit.getInstallments()
+        );
     }
 }

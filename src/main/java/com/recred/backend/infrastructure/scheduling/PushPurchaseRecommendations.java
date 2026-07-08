@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.scheduling;
 
 import com.recred.backend.application.GeneratePurchaseRecommendation;
+import com.recred.backend.application.GeneratePurchaseRecommendationRequest;
 import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.repositories.SuggestionAiRepository;
 import com.recred.backend.infrastructure.entities.NotificacionEntity;
@@ -42,7 +43,7 @@ public class PushPurchaseRecommendations {
                     notification.getMensaje(),
                     pushData(notification)
             )));
-            generatePurchaseRecommendation.execute();
+            generatePurchaseRecommendation.execute(new GeneratePurchaseRecommendationRequest());
         }
     }
 

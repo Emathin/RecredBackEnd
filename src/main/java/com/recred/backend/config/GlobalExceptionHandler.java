@@ -1,28 +1,41 @@
 package com.recred.backend.config;
 
-import com.recred.backend.domain.exceptions.NotificationNotFoundException;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.BuffetNotFoundException;
-import com.recred.backend.domain.exceptions.ImageValidationException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
+import com.recred.backend.domain.exceptions.FileValidationException;
+import com.recred.backend.domain.exceptions.GradeAlreadyExistsException;
+import com.recred.backend.domain.exceptions.GradeNotFoundException;
+import com.recred.backend.domain.exceptions.ImageValidationException;
+import com.recred.backend.domain.exceptions.InsufficientBalanceException;
 import com.recred.backend.domain.exceptions.InsufficientStockException;
 import com.recred.backend.domain.exceptions.InventoryNotFoundException;
 import com.recred.backend.domain.exceptions.InventoryOperationException;
+import com.recred.backend.domain.exceptions.InvalidChatMessageException;
+import com.recred.backend.domain.exceptions.InvalidGradeException;
 import com.recred.backend.domain.exceptions.InvalidPurchaseStatusTransitionException;
+import com.recred.backend.domain.exceptions.InvalidTimeSlotException;
 import com.recred.backend.domain.exceptions.KiosqueroNotFoundException;
+import com.recred.backend.domain.exceptions.KiosqueroPayoutConfigNotFoundException;
+import com.recred.backend.domain.exceptions.LevelNotFoundException;
+import com.recred.backend.domain.exceptions.NotificationNotFoundException;
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 import com.recred.backend.domain.exceptions.PickupCutoffTimeExceededException;
 import com.recred.backend.domain.exceptions.PickupSlotCapacityExceededException;
 import com.recred.backend.domain.exceptions.PickupSlotRulesNotFoundException;
+import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
 import com.recred.backend.domain.exceptions.ProductDailyCapacityExceededException;
 import com.recred.backend.domain.exceptions.ProductNotFoundException;
-import com.recred.backend.domain.exceptions.InsufficientBalanceException;
-import com.recred.backend.domain.exceptions.InvalidChatMessageException;
-import com.recred.backend.domain.exceptions.PresupuestoExcedidoException;
 import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.RestriccionHorariaException;
 import com.recred.backend.domain.exceptions.RestriccionSaludException;
+import com.recred.backend.domain.exceptions.SchoolNotFoundException;
+import com.recred.backend.domain.exceptions.TimeSlotInUseException;
+import com.recred.backend.domain.exceptions.TimeSlotNotFoundException;
+import com.recred.backend.domain.exceptions.TimeSlotOverlapException;
 import com.recred.backend.domain.exceptions.TutorNoEncontradoException;
+import com.recred.backend.domain.exceptions.UsernameExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -33,6 +46,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
@@ -63,6 +77,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handlePresupuestoExcedido(
             PresupuestoExcedidoException ex) {
 
+        LOGGER.warn(
+                "Devolviendo error BUDGET_RESTRICTION (400): {} - RequestId: {}",
+                ex.getMessage(),
+                currentRequestId()
+        );
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.BAD_REQUEST.value());
@@ -86,6 +105,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAlumnoNoEncontrado(AlumnoNoEncontradoException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Alumno no encontrado",
                 ex.getMessage());
+    }
+
+    @ExceptionHandler(UsernameExistsException.class)
+    public ResponseEntity<ErrorResponse> handleUsernameExists(UsernameExistsException ex) {
+        return buildResponse(HttpStatus.CONFLICT, "Usuario duplicado",
+                ex.getMessage(), "USERNAME_EXISTS");
     }
 
     @ExceptionHandler(InsufficientBalanceException.class)
@@ -172,6 +197,62 @@ public class GlobalExceptionHandler {
                 ex.getMessage(), "TIME_SLOT_NOT_FOUND");
     }
 
+    @ExceptionHandler(TimeSlotNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTimeSlotNotFound(TimeSlotNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Franja horaria no encontrada",
+                ex.getMessage(), "TIME_SLOT_NOT_FOUND");
+    }
+
+    @ExceptionHandler(InvalidTimeSlotException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidTimeSlot(InvalidTimeSlotException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Franja horaria invalida",
+                ex.getMessage(), "INVALID_TIME_SLOT");
+    }
+
+    @ExceptionHandler(TimeSlotOverlapException.class)
+    public ResponseEntity<ErrorResponse> handleTimeSlotOverlap(TimeSlotOverlapException ex) {
+        return buildResponse(HttpStatus.CONFLICT, "Franja horaria superpuesta",
+                ex.getMessage(), "TIME_SLOT_OVERLAP");
+    }
+
+    @ExceptionHandler(TimeSlotInUseException.class)
+    public ResponseEntity<ErrorResponse> handleTimeSlotInUse(TimeSlotInUseException ex) {
+        return buildResponse(HttpStatus.CONFLICT, "Franja horaria en uso",
+                ex.getMessage(), "TIME_SLOT_IN_USE");
+    }
+
+    @ExceptionHandler(GradeNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleGradeNotFound(GradeNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Grado no encontrado",
+                ex.getMessage(), "GRADE_NOT_FOUND");
+    }
+
+    @ExceptionHandler(InvalidGradeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidGrade(InvalidGradeException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Grado invalido",
+                ex.getMessage(), "INVALID_GRADE");
+    }
+
+    @ExceptionHandler(GradeAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleGradeAlreadyExists(
+            GradeAlreadyExistsException ex
+    ) {
+        return buildResponse(HttpStatus.CONFLICT, "Grado duplicado",
+                ex.getMessage(), "GRADE_ALREADY_EXISTS");
+    }
+
+    @ExceptionHandler(LevelNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleLevelNotFound(LevelNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Nivel no encontrado",
+                ex.getMessage(), "LEVEL_NOT_FOUND");
+    }
+
+    @ExceptionHandler(SchoolNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleSchoolNotFound(SchoolNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Colegio no encontrado",
+                ex.getMessage(), "SCHOOL_NOT_FOUND");
+    }
+
     @ExceptionHandler(ProductDailyCapacityExceededException.class)
     public ResponseEntity<ErrorResponse> handleProductDailyCapacity(
             ProductDailyCapacityExceededException ex
@@ -221,6 +302,13 @@ public class GlobalExceptionHandler {
                 ex.getMessage());
     }
 
+    @ExceptionHandler(KiosqueroPayoutConfigNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleKiosqueroPayoutConfigNotFound(
+            KiosqueroPayoutConfigNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Configuración no encontrada",
+                ex.getMessage());
+    }
+
     @ExceptionHandler(NotificationNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotificationNotFound(
             NotificationNotFoundException ex) {
@@ -259,6 +347,12 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, "Acceso denegado", ex.getMessage());
     }
 
+    @ExceptionHandler(OperationNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleOperationNotAllowed(
+            OperationNotAllowedException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Acceso denegado", ex.getMessage());
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Recurso no encontrado",
@@ -273,6 +367,24 @@ public class GlobalExceptionHandler {
         String mensaje = "No se pudo guardar la información porque entra en conflicto "
                 + "con los datos existentes.";
         return buildResponse(HttpStatus.CONFLICT, "Conflicto de Datos", mensaje);
+    }
+
+    @ExceptionHandler(FileValidationException.class)
+    public ResponseEntity<ErrorResponse> handleFileValidation(FileValidationException ex) {
+        LOGGER.warn("Validación de archivo fallida: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "Validación de Archivo", ex.getMessage());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException ex
+    ) {
+        LOGGER.warn("Tamaño de archivo excedido: {}", ex.getMessage());
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validación de Archivo",
+                "El archivo supera el límite máximo de peso permitido (5MB)"
+        );
     }
 
     @ExceptionHandler(Exception.class)
@@ -294,6 +406,13 @@ public class GlobalExceptionHandler {
             String message,
             String code
     ) {
+        LOGGER.warn(
+                "Devolviendo error {} ({}): {} - RequestId: {}",
+                status,
+                code,
+                message,
+                currentRequestId()
+        );
         ErrorResponse response = new ErrorResponse(code, error, message,
                 LocalDateTime.now(), status.value(), currentRequestId());
         return ResponseEntity.status(status).body(response);

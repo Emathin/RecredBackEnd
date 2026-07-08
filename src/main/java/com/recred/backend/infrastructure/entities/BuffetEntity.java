@@ -38,7 +38,8 @@ public class BuffetEntity {
     private ColegioEntity colegioEntity;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "vendedor_id", nullable = false)
+
+    @JoinColumn(name = "vendedor_id", nullable = true)
     private KiosqueroEntity vendedor;
 
     @Column(nullable = false)
@@ -57,6 +58,34 @@ public class BuffetEntity {
     @UpdateTimestamp
     @Column(name = "actualizado_en")
     private LocalDateTime actualizadoEn;
+
+    public static BuffetEntity fromDomain(Buffet buffet) {
+        if (buffet == null) {
+            return null;
+        }
+
+        BuffetEntity entity = new BuffetEntity();
+        entity.setId(buffet.getId());
+        entity.setNombre(buffet.getNombre());
+        entity.setFechaVencimientoHabilitacion(buffet.getFechaVencimientoHabilitacion());
+        entity.setActivo(buffet.getActivo());
+        entity.setCreadoEn(buffet.getCreadoEn());
+        entity.setActualizadoEn(buffet.getActualizadoEn());
+
+        if (buffet.getColegio() != null && buffet.getColegio().getId() != null) {
+            ColegioEntity colegioProxy = new ColegioEntity();
+            colegioProxy.setId(buffet.getColegio().getId());
+            entity.setColegioEntity(colegioProxy);
+        }
+
+        if (buffet.getVendedor() != null && buffet.getVendedor().getId() != null) {
+            KiosqueroEntity kiosqueroProxy = new KiosqueroEntity();
+            kiosqueroProxy.setId(buffet.getVendedor().getId());
+            entity.setVendedor(kiosqueroProxy);
+        }
+
+        return entity;
+    }
 
     public Buffet toDomain() {
         Buffet buffet = new Buffet();
@@ -79,6 +108,11 @@ public class BuffetEntity {
             Kiosquero kiosqueroDominio = new Kiosquero();
             kiosqueroDominio.setId(this.vendedor.getId());
             kiosqueroDominio.setCuit(this.vendedor.getCuit());
+
+            if (this.vendedor.getUsuario() != null
+                    && org.hibernate.Hibernate.isInitialized(this.vendedor.getUsuario())) {
+                kiosqueroDominio.setUsuario(this.vendedor.getUsuario().toDomain());
+            }
 
             buffet.setVendedor(kiosqueroDominio);
         }

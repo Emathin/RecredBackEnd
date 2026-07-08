@@ -1,8 +1,9 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.AskSchoolAssistant;
-import com.recred.backend.application.SchoolAssistantCommand;
+import com.recred.backend.application.AskSchoolAssistantRequest;
 import com.recred.backend.application.SchoolAssistantConversations;
+import com.recred.backend.domain.models.SchoolAssistantRole;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,13 +27,16 @@ public class SchoolAssistantController {
 
     private final AskSchoolAssistant askSchoolAssistant;
     private final SchoolAssistantConversations conversations;
+    private final PlanAccessGuard planAccessGuard;
 
     public SchoolAssistantController(
             AskSchoolAssistant askSchoolAssistant,
-            SchoolAssistantConversations conversations
+            SchoolAssistantConversations conversations,
+            PlanAccessGuard planAccessGuard
     ) {
         this.askSchoolAssistant = askSchoolAssistant;
         this.conversations = conversations;
+        this.planAccessGuard = planAccessGuard;
     }
 
     @PostMapping("/api/v1/ia/alumnos/me/asistente/mensajes")
@@ -40,10 +44,9 @@ public class SchoolAssistantController {
             Authentication authentication,
             @RequestBody SchoolAssistantRequest request
     ) {
-        SchoolAssistantCommand command = command(request);
-        return SchoolAssistantResponse.fromDomain(askSchoolAssistant.executeForStudent(
-                cognitoSubject(authentication),
-                command
+        planAccessGuard.requireStudentInheritedTutorIntermediate(authentication);
+        return SchoolAssistantResponse.fromApplication(askSchoolAssistant.execute(
+                assistantRequest(authentication, request, SchoolAssistantRole.ALUMNO)
         ));
     }
 
@@ -53,9 +56,10 @@ public class SchoolAssistantController {
             @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
             @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
     ) {
+        planAccessGuard.requireStudentInheritedTutorIntermediate(authentication);
         return conversations.findStudentSessions(cognitoSubject(authentication), page, size)
                 .stream()
-                .map(SchoolAssistantSessionResponse::fromDomain)
+                .map(SchoolAssistantSessionResponse::fromApplication)
                 .toList();
     }
 
@@ -66,6 +70,7 @@ public class SchoolAssistantController {
             @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
             @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
     ) {
+        planAccessGuard.requireStudentInheritedTutorIntermediate(authentication);
         return conversations.findStudentMessages(
                         cognitoSubject(authentication),
                         sessionId,
@@ -73,7 +78,7 @@ public class SchoolAssistantController {
                         size
                 )
                 .stream()
-                .map(SchoolAssistantMessageResponse::fromDomain)
+                .map(SchoolAssistantMessageResponse::fromApplication)
                 .toList();
     }
 
@@ -82,6 +87,7 @@ public class SchoolAssistantController {
             Authentication authentication,
             @PathVariable("sesionId") UUID sessionId
     ) {
+        planAccessGuard.requireStudentInheritedTutorIntermediate(authentication);
         conversations.closeStudentSession(cognitoSubject(authentication), sessionId);
         return ResponseEntity.noContent().build();
     }
@@ -91,6 +97,7 @@ public class SchoolAssistantController {
             Authentication authentication,
             @PathVariable("sesionId") UUID sessionId
     ) {
+        planAccessGuard.requireStudentInheritedTutorIntermediate(authentication);
         conversations.deleteStudentSession(cognitoSubject(authentication), sessionId);
         return ResponseEntity.noContent().build();
     }
@@ -100,9 +107,9 @@ public class SchoolAssistantController {
             Authentication authentication,
             @RequestBody SchoolAssistantRequest request
     ) {
-        return SchoolAssistantResponse.fromDomain(askSchoolAssistant.executeForTutor(
-                cognitoSubject(authentication),
-                command(request)
+        planAccessGuard.requireTutorIntermediate(authentication);
+        return SchoolAssistantResponse.fromApplication(askSchoolAssistant.execute(
+                assistantRequest(authentication, request, SchoolAssistantRole.TUTOR)
         ));
     }
 
@@ -112,9 +119,10 @@ public class SchoolAssistantController {
             @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
             @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
     ) {
+        planAccessGuard.requireTutorIntermediate(authentication);
         return conversations.findTutorSessions(cognitoSubject(authentication), page, size)
                 .stream()
-                .map(SchoolAssistantSessionResponse::fromDomain)
+                .map(SchoolAssistantSessionResponse::fromApplication)
                 .toList();
     }
 
@@ -125,6 +133,7 @@ public class SchoolAssistantController {
             @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
             @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
     ) {
+        planAccessGuard.requireTutorIntermediate(authentication);
         return conversations.findTutorMessages(
                         cognitoSubject(authentication),
                         sessionId,
@@ -132,7 +141,7 @@ public class SchoolAssistantController {
                         size
                 )
                 .stream()
-                .map(SchoolAssistantMessageResponse::fromDomain)
+                .map(SchoolAssistantMessageResponse::fromApplication)
                 .toList();
     }
 
@@ -141,6 +150,7 @@ public class SchoolAssistantController {
             Authentication authentication,
             @PathVariable("sesionId") UUID sessionId
     ) {
+        planAccessGuard.requireTutorIntermediate(authentication);
         conversations.closeTutorSession(cognitoSubject(authentication), sessionId);
         return ResponseEntity.noContent().build();
     }
@@ -150,6 +160,7 @@ public class SchoolAssistantController {
             Authentication authentication,
             @PathVariable("sesionId") UUID sessionId
     ) {
+        planAccessGuard.requireTutorIntermediate(authentication);
         conversations.deleteTutorSession(cognitoSubject(authentication), sessionId);
         return ResponseEntity.noContent().build();
     }
@@ -159,9 +170,9 @@ public class SchoolAssistantController {
             Authentication authentication,
             @RequestBody SchoolAssistantRequest request
     ) {
-        return SchoolAssistantResponse.fromDomain(askSchoolAssistant.executeForKiosquero(
-                cognitoSubject(authentication),
-                command(request)
+        planAccessGuard.requireVendorIntermediate(authentication);
+        return SchoolAssistantResponse.fromApplication(askSchoolAssistant.execute(
+                assistantRequest(authentication, request, SchoolAssistantRole.KIOSQUERO)
         ));
     }
 
@@ -171,9 +182,10 @@ public class SchoolAssistantController {
             @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
             @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
     ) {
+        planAccessGuard.requireVendorIntermediate(authentication);
         return conversations.findKiosqueroSessions(cognitoSubject(authentication), page, size)
                 .stream()
-                .map(SchoolAssistantSessionResponse::fromDomain)
+                .map(SchoolAssistantSessionResponse::fromApplication)
                 .toList();
     }
 
@@ -184,6 +196,7 @@ public class SchoolAssistantController {
             @RequestParam(name = "page", defaultValue = "" + DEFAULT_PAGE) int page,
             @RequestParam(name = "size", defaultValue = "" + DEFAULT_SIZE) int size
     ) {
+        planAccessGuard.requireVendorIntermediate(authentication);
         return conversations.findKiosqueroMessages(
                         cognitoSubject(authentication),
                         sessionId,
@@ -191,7 +204,7 @@ public class SchoolAssistantController {
                         size
                 )
                 .stream()
-                .map(SchoolAssistantMessageResponse::fromDomain)
+                .map(SchoolAssistantMessageResponse::fromApplication)
                 .toList();
     }
 
@@ -200,6 +213,7 @@ public class SchoolAssistantController {
             Authentication authentication,
             @PathVariable("sesionId") UUID sessionId
     ) {
+        planAccessGuard.requireVendorIntermediate(authentication);
         conversations.closeKiosqueroSession(cognitoSubject(authentication), sessionId);
         return ResponseEntity.noContent().build();
     }
@@ -209,13 +223,20 @@ public class SchoolAssistantController {
             Authentication authentication,
             @PathVariable("sesionId") UUID sessionId
     ) {
+        planAccessGuard.requireVendorIntermediate(authentication);
         conversations.deleteKiosqueroSession(cognitoSubject(authentication), sessionId);
         return ResponseEntity.noContent().build();
     }
 
-    private SchoolAssistantCommand command(SchoolAssistantRequest request) {
-        return new SchoolAssistantCommand(
-                request.optionalSessionId(),
+    private AskSchoolAssistantRequest assistantRequest(
+            Authentication authentication,
+            SchoolAssistantRequest request,
+            SchoolAssistantRole role
+    ) {
+        return new AskSchoolAssistantRequest(
+                cognitoSubject(authentication),
+                role,
+                request.sessionId(),
                 request.message()
         );
     }

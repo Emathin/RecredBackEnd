@@ -3,6 +3,7 @@ package com.recred.backend.application;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.PriceAlertSuggestion;
 import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.PriceAlertAIRepository;
 import com.recred.backend.domain.repositories.StudentAIProfileRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
@@ -10,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,60 +40,118 @@ public class GeneratePriceAlert {
     }
 
     @Transactional
-    public void execute(Producto producto, BigDecimal oldPrice,
-                        BigDecimal newPrice, UUID buffetId) {
-        List<Alumno> affectedStudents = studentAIProfileRepository
-                .findStudentsWithFavoriteProduct(producto.getId());
+    public GeneratePriceAlertResponse execute(GeneratePriceAlertRequest request) {
+        Producto product = request.product();
+        List<Alumno> affectedStudents = findStudentsWithFavoriteProduct(product);
 
-        LOGGER.info(
-                "price_alert_candidates productId={} affectedStudents={}",
-                producto.getId(),
-                affectedStudents.size()
-        );
+        generateAlertsForAffectedStudents(request, affectedStudents);
+        return new GeneratePriceAlertResponse();
+    }
+
+    private void generateAlertsForAffectedStudents(
+            GeneratePriceAlertRequest request,
+            List<Alumno> affectedStudents
+    ) {
+        Producto product = request.product();
 
         for (Alumno alumno : affectedStudents) {
-            if (hasRecentAlert(alumno.getId(), producto.getId())) {
-                LOGGER.info(
-                        "price_alert_skipped_recent studentId={} productId={}",
-                        alumno.getId(),
-                        producto.getId()
-                );
+            if (shouldSkipRecentAlert(alumno, product)) {
                 continue;
             }
-            priceAlertAIRepository.analyzeImpact(alumno, producto, oldPrice, newPrice)
-                    .map(result -> new PriceAlertSuggestion(
-                            alumno.getId(),
-                            alumno.getUsuarioId(),
-                            producto.getId(),
-                            buffetId,
-                            tutorUserIds(alumno),
-                            producto.getNombre(),
-                            result.titulo(),
-                            result.mensaje(),
-                            oldPrice,
-                            newPrice,
-                            result.razonIA()
-                    ))
-                    .ifPresentOrElse(
-                            sugerenciaIARepository::savePriceAlert,
-                            () -> LOGGER.warn(
-                                    "price_alert_ai_empty studentId={} productId={}",
-                                    alumno.getId(),
-                                    producto.getId()
-                            )
-                    );
+
+            generateAndSaveAlert(alumno, request);
         }
     }
 
-    private boolean hasRecentAlert(UUID studentId, UUID productId) {
-        LocalDateTime since = LocalDateTime.now(clock).minusHours(COOLDOWN_HOURS);
-        return sugerenciaIARepository.hasRecentPriceAlert(studentId, productId, since);
+    private List<Alumno> findStudentsWithFavoriteProduct(Producto product) {
+        return studentAIProfileRepository.findStudentsWithFavoriteProduct(product.getId());
     }
 
-    private Set<UUID> tutorUserIds(Alumno alumno) {
+    private boolean shouldSkipRecentAlert(Alumno student, Producto product) {
+        if (!hasRecentAlert(student.getId(), product.getId())) {
+            return false;
+        }
+
+        LOGGER.info(
+                "price_alert_skipped_recent studentId={} productId={}",
+                student.getId(),
+                product.getId()
+        );
+        return true;
+    }
+
+    private void generateAndSaveAlert(Alumno student, GeneratePriceAlertRequest request) {
+        Set<UUID> advancedTutorUserIds = advancedTutorUserIds(student);
+        if (advancedTutorUserIds.isEmpty()) {
+            return;
+        }
+
+        Producto product = request.product();
+        priceAlertAIRepository.analyzeImpact(
+                        student,
+                        product,
+                        request.oldPrice(),
+                        request.newPrice()
+                )
+                .map(result -> buildPriceAlertSuggestion(
+                        student,
+                        request,
+                        result,
+                        advancedTutorUserIds
+                ))
+                .ifPresentOrElse(
+                        sugerenciaIARepository::savePriceAlert,
+                        () -> logEmptyAIResult(student, product)
+                );
+    }
+
+    private PriceAlertSuggestion buildPriceAlertSuggestion(
+            Alumno student,
+            GeneratePriceAlertRequest request,
+            PriceAlertAIRepository.PriceAlertResult result,
+            Set<UUID> tutorUserIds
+    ) {
+        Producto product = request.product();
+        return new PriceAlertSuggestion(
+                student.getId(),
+                student.getUsuarioId(),
+                product.getId(),
+                request.buffetId(),
+                tutorUserIds,
+                product.getNombre(),
+                result.titulo(),
+                result.mensaje(),
+                request.oldPrice(),
+                request.newPrice(),
+                result.razonIA()
+        );
+    }
+
+    private void logEmptyAIResult(Alumno student, Producto product) {
+        LOGGER.warn(
+                "price_alert_ai_empty studentId={} productId={}",
+                student.getId(),
+                product.getId()
+        );
+    }
+
+    private boolean hasRecentAlert(UUID studentId, UUID productId) {
+        return sugerenciaIARepository.hasRecentPriceAlert(
+                studentId,
+                productId,
+                recentAlertLimit()
+        );
+    }
+
+    private LocalDateTime recentAlertLimit() {
+        return LocalDateTime.now(clock).minusHours(COOLDOWN_HOURS);
+    }
+
+    private Set<UUID> advancedTutorUserIds(Alumno alumno) {
         return alumno.getTutores().stream()
                 .filter(tutor -> tutor.getUsuario() != null)
                 .filter(tutor -> tutor.getUsuario().getId() != null)
+                .filter(tutor -> tutor.getUsuario().getPlan().atLeast(TipoPlan.AVANZADO))
                 .map(tutor -> tutor.getUsuario().getId())
                 .collect(Collectors.toSet());
     }

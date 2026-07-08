@@ -1,17 +1,20 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.LoadBalanceToChild;
+import com.recred.backend.application.LoadBalanceToChildRequest;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.TipoMovimientoBilletera;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
+import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -22,7 +25,10 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,121 +40,224 @@ class LoadBalanceToChildTest {
     private UsuarioRepository usuarioRepository;
 
     @Mock
-    private com.recred.backend.domain.repositories.TutorRepository tutorRepository;
+    private TutorRepository tutorRepository;
 
     @Mock
     private WalletRepository walletRepository;
 
     @Mock
-    private com.recred.backend.domain.repositories.MovimientoBilleteraRepository movimientoBilleteraRepository;
+    private MovimientoBilleteraRepository movementRepository;
 
-    @InjectMocks
-    private LoadBalanceToChild loadBalanceToChild;
+    private LoadBalanceToChild useCase;
 
     private String cognitoSub;
     private UUID studentId;
+    private BigDecimal amount;
     private Usuario parentUser;
     private Tutor tutor;
     private Alumno student;
     private Billetera wallet;
+    private RuntimeException thrownException;
 
     @BeforeEach
     void setUp() {
-        cognitoSub = "sub-123";
-        studentId = UUID.randomUUID();
-
-        student = new Alumno();
-        student.setId(studentId);
-        student.setNombre("NombreHijo");
-        student.setApellido("ApellidoHijo");
-
-        tutor = new Tutor();
-        tutor.setId(UUID.randomUUID());
-        tutor.setHijos(Set.of(student));
-
-        parentUser = new Usuario();
-        parentUser.setId(UUID.randomUUID());
-        parentUser.setRol(RolUsuario.PADRE);
-        parentUser.setTutor(tutor);
-
-        wallet = new Billetera();
-        wallet.setId(UUID.randomUUID());
-        wallet.setSaldoCreditos(new BigDecimal("100.00"));
-    }
-
-    @Test
-    void execute_shouldLoadBalanceSuccessfully_whenAllValidationsPass() {
-        BigDecimal amount = new BigDecimal("50.00");
-
-        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
-        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
-        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
-
-        loadBalanceToChild.execute(cognitoSub, studentId, amount);
-
-        assertEquals(new BigDecimal("150.00"), wallet.getSaldoCreditos());
-        verify(walletRepository).save(wallet);
-        verify(movimientoBilleteraRepository).registrarMovimiento(
-                org.mockito.ArgumentMatchers.eq(wallet.getId()),
-                org.mockito.ArgumentMatchers.eq(com.recred.backend.domain.models.TipoMovimientoBilletera.CARGA),
-                org.mockito.ArgumentMatchers.eq(amount),
-                org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.eq(parentUser.getId())
+        useCase = new LoadBalanceToChild(
+                usuarioRepository,
+                tutorRepository,
+                walletRepository,
+                movementRepository
         );
     }
 
     @Test
-    void execute_shouldThrowException_whenAmountIsZeroOrLess() {
-        assertThrows(IllegalArgumentException.class, () ->
-                loadBalanceToChild.execute(cognitoSub, studentId, BigDecimal.ZERO));
-        assertThrows(IllegalArgumentException.class, () ->
-                loadBalanceToChild.execute(cognitoSub, studentId, new BigDecimal("-10")));
+    void givenParentCanLoadBalanceToChild_whenLoadingBalance_thenCreditsWallet() {
+        givenLoadBalanceScenario("50.00");
+        givenParentCanLoadBalanceToChild();
+        givenStudentWalletExists();
 
-        verify(walletRepository, never()).save(any());
+        whenLoadingBalance();
+
+        thenWalletBalanceIs("150.00");
+        thenWalletWasSaved();
+        thenLoadMovementWasRegistered();
     }
 
     @Test
-    void execute_shouldThrowException_whenUserNotFound() {
+    void givenZeroAmount_whenLoadingBalance_thenFailsBeforeSavingWallet() {
+        givenLoadBalanceScenario("0.00");
+
+        whenLoadingBalanceFails();
+
+        thenLoadBalanceRequestIsInvalid();
+        thenWalletWasNotSaved();
+    }
+
+    @Test
+    void givenNegativeAmount_whenLoadingBalance_thenFailsBeforeSavingWallet() {
+        givenLoadBalanceScenario("-10.00");
+
+        whenLoadingBalanceFails();
+
+        thenLoadBalanceRequestIsInvalid();
+        thenWalletWasNotSaved();
+    }
+
+    @Test
+    void givenParentUserDoesNotExist_whenLoadingBalance_thenFailsBeforeSavingWallet() {
+        givenLoadBalanceScenario("50.00");
+        givenParentUserDoesNotExist();
+
+        whenLoadingBalanceFails();
+
+        thenSecurityExceptionWasThrown();
+        thenWalletWasNotSaved();
+    }
+
+    @Test
+    void givenAuthenticatedUserIsNotParent_whenLoadingBalance_thenFailsBeforeSavingWallet() {
+        givenLoadBalanceScenario("50.00");
+        givenAuthenticatedUserIsNotParent();
+
+        whenLoadingBalanceFails();
+
+        thenSecurityExceptionWasThrown();
+        thenWalletWasNotSaved();
+    }
+
+    @Test
+    void givenStudentIsNotTutorChild_whenLoadingBalance_thenFailsBeforeSavingWallet() {
+        givenLoadBalanceScenario("50.00");
+        givenTutorHasNoChildren();
+
+        whenLoadingBalanceFails();
+
+        thenSecurityExceptionWasThrown();
+        thenWalletWasNotSaved();
+    }
+
+    @Test
+    void givenChildWalletDoesNotExist_whenLoadingBalance_thenFailsBeforeSavingWallet() {
+        givenLoadBalanceScenario("50.00");
+        givenParentCanLoadBalanceToChild();
+        givenStudentWalletDoesNotExist();
+
+        whenLoadingBalanceFails();
+
+        thenWalletNotFoundWasThrown();
+        thenWalletWasNotSaved();
+    }
+
+    private void givenLoadBalanceScenario(String amountValue) {
+        cognitoSub = "sub-123";
+        studentId = UUID.randomUUID();
+        amount = new BigDecimal(amountValue);
+        student = student(studentId);
+        tutor = tutorWith(student);
+        parentUser = parentUserWith(tutor);
+        wallet = walletWithBalance("100.00");
+    }
+
+    private void givenParentCanLoadBalanceToChild() {
+        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
+        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
+    }
+
+    private void givenParentUserDoesNotExist() {
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.empty());
-
-        assertThrows(SecurityException.class, () ->
-                loadBalanceToChild.execute(cognitoSub, studentId, new BigDecimal("50.00")));
-
-        verify(walletRepository, never()).save(any());
     }
 
-    @Test
-    void execute_shouldThrowException_whenUserIsNotAParent() {
+    private void givenAuthenticatedUserIsNotParent() {
         parentUser.setRol(RolUsuario.ALUMNO);
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
-
-        assertThrows(SecurityException.class, () ->
-                loadBalanceToChild.execute(cognitoSub, studentId, new BigDecimal("50.00")));
-
-        verify(walletRepository, never()).save(any());
     }
 
-    @Test
-    void execute_shouldThrowException_whenStudentIsNotChildOfTutor() {
+    private void givenTutorHasNoChildren() {
         tutor.setHijos(Set.of());
         when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
         when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
+    }
 
-        assertThrows(SecurityException.class, () ->
-                loadBalanceToChild.execute(cognitoSub, studentId, new BigDecimal("50.00")));
+    private void givenStudentWalletExists() {
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.of(wallet));
+    }
 
+    private void givenStudentWalletDoesNotExist() {
+        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
+    }
+
+    private void whenLoadingBalance() {
+        useCase.execute(request());
+    }
+
+    private void whenLoadingBalanceFails() {
+        thrownException = assertThrows(RuntimeException.class, this::whenLoadingBalance);
+    }
+
+    private void thenWalletBalanceIs(String expectedBalance) {
+        assertEquals(new BigDecimal(expectedBalance), wallet.getSaldoCreditos());
+    }
+
+    private void thenWalletWasSaved() {
+        verify(walletRepository).save(wallet);
+    }
+
+    private void thenLoadMovementWasRegistered() {
+        verify(movementRepository).registrarMovimiento(
+                eq(wallet.getId()),
+                eq(TipoMovimientoBilletera.CARGA),
+                eq(amount),
+                anyString(),
+                eq(parentUser.getId())
+        );
+    }
+
+    private void thenLoadBalanceRequestIsInvalid() {
+        assertTrue(thrownException instanceof IllegalArgumentException);
+    }
+
+    private void thenSecurityExceptionWasThrown() {
+        assertTrue(thrownException instanceof SecurityException);
+    }
+
+    private void thenWalletNotFoundWasThrown() {
+        assertTrue(thrownException instanceof RuntimeException);
+    }
+
+    private void thenWalletWasNotSaved() {
         verify(walletRepository, never()).save(any());
     }
 
-    @Test
-    void execute_shouldThrowException_whenWalletNotFound() {
-        when(usuarioRepository.findByIdCognito(cognitoSub)).thenReturn(Optional.of(parentUser));
-        when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
-        when(walletRepository.findByStudentId(studentId)).thenReturn(Optional.empty());
+    private LoadBalanceToChildRequest request() {
+        return new LoadBalanceToChildRequest(cognitoSub, studentId, amount);
+    }
 
-        assertThrows(RuntimeException.class, () ->
-                loadBalanceToChild.execute(cognitoSub, studentId, new BigDecimal("50.00")));
+    private Alumno student(UUID studentId) {
+        Alumno student = new Alumno();
+        student.setId(studentId);
+        student.setNombre("NombreHijo");
+        student.setApellido("ApellidoHijo");
+        return student;
+    }
 
-        verify(walletRepository, never()).save(any());
+    private Tutor tutorWith(Alumno student) {
+        Tutor tutor = new Tutor();
+        tutor.setId(UUID.randomUUID());
+        tutor.setHijos(Set.of(student));
+        return tutor;
+    }
+
+    private Usuario parentUserWith(Tutor tutor) {
+        Usuario parentUser = new Usuario();
+        parentUser.setId(UUID.randomUUID());
+        parentUser.setRol(RolUsuario.PADRE);
+        parentUser.setTutor(tutor);
+        return parentUser;
+    }
+
+    private Billetera walletWithBalance(String balance) {
+        Billetera wallet = new Billetera();
+        wallet.setId(UUID.randomUUID());
+        wallet.setSaldoCreditos(new BigDecimal(balance));
+        return wallet;
     }
 }

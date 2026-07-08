@@ -13,7 +13,17 @@ public class GetActiveSchools {
         this.schoolRepository = schoolRepository;
     }
 
-    public List<Colegio> execute() {
+    public GetActiveSchoolsResponse execute(GetActiveSchoolsRequest activeSchoolsRequest) {
+        List<Colegio> activeSchools = findActiveSchools();
+
+        return responseFrom(activeSchools);
+    }
+
+    private List<Colegio> findActiveSchools() {
         return schoolRepository.findAllActive();
+    }
+
+    private GetActiveSchoolsResponse responseFrom(List<Colegio> schools) {
+        return GetActiveSchoolsResponse.fromDomain(schools);
     }
 }

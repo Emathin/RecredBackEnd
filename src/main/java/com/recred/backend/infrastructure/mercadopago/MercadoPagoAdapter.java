@@ -10,7 +10,10 @@ import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.preference.Preference;
 import com.recred.backend.config.MercadoPagoProperties;
 import com.recred.backend.domain.models.PaymentDetails;
+import com.recred.backend.domain.models.PaymentReference;
 import com.recred.backend.domain.models.PaymentStatus;
+import com.recred.backend.domain.models.PeriodoSuscripcion;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +38,53 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
 
     @Override
     public String createTopUpPreference(UUID studentId, BigDecimal amount) {
+        return createPreference(
+                studentId.toString(),
+                "Carga de Saldo - RecreoPago",
+                "Acreditacion de saldo para consumo escolar",
+                amount,
+                "ARS",
+                PaymentReference.topUp(studentId).toExternalReference()
+        );
+    }
+
+    @Override
+    public String createUserSubscriptionPreference(
+            UUID usuarioId,
+            TipoPlan plan,
+            PeriodoSuscripcion periodo,
+            BigDecimal amount
+    ) {
+        return createPreference(
+                usuarioId.toString(),
+                "Suscripcion " + plan.name() + " - RecreoPago",
+                "Suscripcion " + periodo.name().toLowerCase() + " para usuario",
+                amount,
+                "ARS",
+                PaymentReference.userSubscription(usuarioId, plan, periodo).toExternalReference()
+        );
+    }
+
+    @Override
+    public String createSchoolSubscriptionPreference(UUID colegioId, BigDecimal amount) {
+        return createPreference(
+                colegioId.toString(),
+                "Suscripcion Colegio - RecreoPago",
+                "Acceso mensual institucional a RecreoPago",
+                amount,
+                "USD",
+                PaymentReference.schoolSubscription(colegioId).toExternalReference()
+        );
+    }
+
+    private String createPreference(
+            String itemId,
+            String title,
+            String description,
+            BigDecimal amount,
+            String currencyId,
+            String externalReference
+    ) {
         try {
             String successUrl = properties.getSuccessUrl().trim();
             String notificationUrl = properties.getNotificationUrl().trim() 
@@ -43,11 +93,11 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
             PreferenceClient client = new PreferenceClient();
 
             PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
-                    .id(studentId.toString())
-                    .title("Carga de Saldo - RecreoPago")
-                    .description("Acreditacion de saldo para consumo escolar")
+                    .id(itemId)
+                    .title(title)
+                    .description(description)
                     .quantity(1)
-                    .currencyId("ARS")
+                    .currencyId(currencyId)
                     .unitPrice(amount)
                     .build();
 
@@ -65,7 +115,7 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
                     .autoReturn("approved")
                     .backUrls(backUrls)
                     .notificationUrl(notificationUrl)
-                    .externalReference(studentId.toString())
+                    .externalReference(externalReference)
                     .build();
 
             Preference preference = client.create(preferenceRequest);
@@ -87,51 +137,58 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
         }
 
         try {
-            String[] parts = signature.split(",");
-            String ts = null;
-            String hash = null;
-
-            for (String part : parts) {
-                String[] keyValue = part.split("=");
-                if (keyValue.length == 2) {
-                    if (keyValue[0].trim().equals("ts")) {
-                        ts = keyValue[1].trim();
-                    } else if (keyValue[0].trim().equals("v1")) {
-                        hash = keyValue[1].trim();
-                    }
-                }
-            }
-
-            if (ts == null || hash == null) {
+            MercadoPagoSignatureData signatureData = parseSignature(signature);
+            if (signatureData == null) {
                 return false;
             }
 
-            StringBuilder manifest = new StringBuilder();
-            manifest.append("id:").append(paymentId).append(";");
-            manifest.append("request-id:").append(requestId).append(";");
-            manifest.append("ts:").append(ts).append(";");
+            String manifest = buildManifest(paymentId, requestId, signatureData.ts());
+            String expectedHash = calculateHmacSha256(
+                    manifest, properties.getWebhookSecret().trim());
 
-            String secret = properties.getWebhookSecret().trim();
-            SecretKeySpec signingKey = new SecretKeySpec(
-                    secret.getBytes(StandardCharsets.UTF_8),
-                    "HmacSHA256");
-
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(signingKey);
-
-            byte[] rawHmac = mac.doFinal(manifest.toString().getBytes(StandardCharsets.UTF_8));
-
-            StringBuilder sb = new StringBuilder(rawHmac.length * 2);
-            Formatter formatter = new Formatter(sb);
-            for (byte b : rawHmac) {
-                formatter.format("%02x", b);
-            }
-            String sha = sb.toString();
-
-            return sha.equals(hash);
+            return expectedHash.equals(signatureData.hash());
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private record MercadoPagoSignatureData(String ts, String hash) {}
+
+    private MercadoPagoSignatureData parseSignature(String signature) {
+        String ts = null;
+        String hash = null;
+        for (String part : signature.split(",")) {
+            String[] keyValue = part.split("=");
+            if (keyValue.length == 2) {
+                if (keyValue[0].trim().equals("ts")) {
+                    ts = keyValue[1].trim();
+                } else if (keyValue[0].trim().equals("v1")) {
+                    hash = keyValue[1].trim();
+                }
+            }
+        }
+        return (ts != null && hash != null) ? new MercadoPagoSignatureData(ts, hash) : null;
+    }
+
+    private String buildManifest(String paymentId, String requestId, String ts) {
+        return "id:" + paymentId + ";request-id:" + requestId + ";ts:" + ts + ";";
+    }
+
+    private String calculateHmacSha256(String data, String secret) throws Exception {
+        SecretKeySpec signingKey = new SecretKeySpec(
+                secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(signingKey);
+        
+        byte[] rawHmac = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+        
+        StringBuilder sb = new StringBuilder(rawHmac.length * 2);
+        try (Formatter formatter = new Formatter(sb)) {
+            for (byte b : rawHmac) {
+                formatter.format("%02x", b);
+            }
+        }
+        return sb.toString();
     }
 
     @Override
@@ -139,8 +196,6 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
         try {
             PaymentClient client = new PaymentClient();
             Payment payment = client.get(Long.parseLong(paymentId));
-
-            UUID studentId = UUID.fromString(payment.getExternalReference());
 
             PaymentStatus status = switch (payment.getStatus()) {
                 case "approved" -> PaymentStatus.APPROVED;
@@ -152,9 +207,9 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
                 default -> PaymentStatus.PENDING;
             };
 
-            return new PaymentDetails(
+            return PaymentDetails.fromReference(
                     paymentId,
-                    studentId,
+                    PaymentReference.fromExternalReference(payment.getExternalReference()),
                     payment.getTransactionAmount(),
                     status
             );
