@@ -6,15 +6,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 record PurchaseItemRequest(
-        java.util.UUID productId,
+        UUID productId,
         int quantity,
-        java.util.UUID buffetId) {
+        UUID buffetId) {
 }
 
 record PurchasePlanItem(
-        java.util.UUID productId,
+        UUID productId,
         String productName,
         int quantity,
         BigDecimal unitPrice) {
@@ -24,8 +25,8 @@ record PurchasePlanItem(
 }
 
 record PurchasePlan(
-        java.util.UUID studentId,
-        java.util.UUID buffetId,
+        UUID studentId,
+        UUID buffetId,
         List<PurchasePlanItem> items,
         int occurrences,
         LocalDateTime lastDate) {
@@ -49,8 +50,8 @@ record PurchasePattern(
 }
 
 record PendingPurchase(
-        java.util.UUID studentId,
-        java.util.UUID buffetId,
+        UUID studentId,
+        UUID buffetId,
         List<PurchaseItemRequest> items,
         Optional<LocalDate> pickupDate,
         Optional<RecessTime> recessTime) {
