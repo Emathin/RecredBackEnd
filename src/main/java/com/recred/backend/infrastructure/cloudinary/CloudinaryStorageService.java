@@ -24,10 +24,15 @@ public class CloudinaryStorageService implements StorageService {
                     ? originalFilename.replaceAll("[^a-zA-Z0-9.-]", "_") 
                     : "file_" + System.currentTimeMillis();
 
+            String resourceType = "auto";
+            if (originalFilename != null && originalFilename.toLowerCase().endsWith(".pdf")) {
+                resourceType = "raw";
+            }
+
             Map<?, ?> result = cloudinary.uploader().upload(
                     fileContent,
                     ObjectUtils.asMap(
-                            "resource_type", "auto",
+                            "resource_type", resourceType,
                             "public_id", cleanName
                     )
             );
