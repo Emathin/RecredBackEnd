@@ -3,11 +3,9 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.SupplierDetailsResponse;
 import com.recred.backend.application.UpdateSupplier;
 import com.recred.backend.application.UpdateSupplierRequest;
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 import com.recred.backend.domain.models.Proveedor;
 import com.recred.backend.domain.repositories.ProveedorRepository;
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,7 +13,10 @@ import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.access.AccessDeniedException;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -28,105 +29,71 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class UpdateSupplierTest {
 
+    private static final UUID SUPPLIER_ID = UUID.randomUUID();
+    private static final UUID KIOSK_OWNER_ID = UUID.randomUUID();
+    private static final UUID OTHER_OWNER_ID = UUID.randomUUID();
+
+    private static final String NEW_NAME = "Nuevo proveedor";
+    private static final String NEW_PHONE = "1155551111";
+    private static final String NEW_EMAIL = "nuevo@supplier.com";
+    private static final String NEW_VISIT_DAYS = "Lunes";
+    private static final String NEW_NOTES = "Notas nuevas";
+
     @Mock
     private ProveedorRepository repository;
 
     private UpdateSupplier useCase;
-    private UUID supplierId;
-    private UUID kioskOwnerId;
 
     @BeforeEach
     void setUp() {
         useCase = new UpdateSupplier(repository);
-        supplierId = UUID.randomUUID();
-        kioskOwnerId = UUID.randomUUID();
     }
 
     @Test
-    void executeShouldUpdateSupplierWhenOwnerMatches() {
-        Proveedor supplier = supplier(kioskOwnerId);
-        UpdateSupplierRequest request = request(
-                "  Nuevo proveedor  ",
-                kioskOwnerId
-        );
+    void shouldUpdateSupplierWhenOwnerMatches() {
+        givenSupplierExistsWithOwner(KIOSK_OWNER_ID);
 
-        when(repository.findById(supplierId)).thenReturn(Optional.of(supplier));
-        when(repository.save(any(Proveedor.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        SupplierDetailsResponse response = whenUpdatingSupplier();
 
-        SupplierDetailsResponse response = useCase.execute(request);
-
-        ArgumentCaptor<Proveedor> captor = ArgumentCaptor.forClass(Proveedor.class);
-        verify(repository).save(captor.capture());
-        assertEquals("Nuevo proveedor", captor.getValue().getNombre());
-        assertEquals("1155551111", response.phone());
-        assertEquals("nuevo@supplier.com", response.email());
-        assertNotNull(response.updatedAt());
+        thenSupplierWasUpdatedAndSaved(response);
     }
 
     @Test
-    void executeShouldRejectMissingSupplierId() {
+    void shouldThrowExceptionWhenSupplierIsNotFound() {
+        givenSupplierNotFound();
+
+        Executable execution = this::whenUpdatingSupplier;
+
+        thenThrowsIllegalArgumentExceptionWithMessage(execution, "Supplier not found");
+        thenNoSupplierIsSaved();
+    }
+
+    @Test
+    void shouldThrowExceptionWhenSupplierBelongsToAnotherOwner() {
+        givenSupplierExistsWithOwner(OTHER_OWNER_ID);
+
+        Executable execution = this::whenUpdatingSupplier;
+
+        thenThrowsOperationNotAllowedException(execution);
+        thenNoSupplierIsSaved();
+    }
+
+    private SupplierDetailsResponse whenUpdatingSupplier() {
         UpdateSupplierRequest request = new UpdateSupplierRequest(
-                null,
-                kioskOwnerId,
-                "Proveedor",
-                null,
-                null,
-                null,
-                null
+                SUPPLIER_ID,
+                KIOSK_OWNER_ID,
+                "  " + NEW_NAME + "  ",
+                NEW_PHONE,
+                NEW_EMAIL,
+                NEW_VISIT_DAYS,
+                NEW_NOTES
         );
-
-        Executable execution = () -> useCase.execute(request);
-
-        assertEquals("supplierId is required",
-                assertThrows(IllegalArgumentException.class,
-                        execution).getMessage());
+        return useCase.execute(request);
     }
 
-    @Test
-    void executeShouldRejectMissingSupplier() {
-        UpdateSupplierRequest request = request(
-                "Proveedor",
-                kioskOwnerId
-        );
-
-        when(repository.findById(supplierId)).thenReturn(Optional.empty());
-
-        Executable execution = () -> useCase.execute(request);
-
-        assertEquals("Supplier not found",
-                assertThrows(IllegalArgumentException.class,
-                        execution).getMessage());
-    }
-
-    @Test
-    void executeShouldRejectSupplierFromAnotherOwner() {
-        UpdateSupplierRequest request = request("Proveedor", kioskOwnerId);
-
-        when(repository.findById(supplierId)).thenReturn(Optional.of(supplier(UUID.randomUUID())));
-
-        Executable execution = () -> useCase.execute(request);
-
-        assertThrows(AccessDeniedException.class, execution);
-
-        verify(repository, never()).save(any(Proveedor.class));
-    }
-
-    private UpdateSupplierRequest request(String name, UUID ownerId) {
-        return new UpdateSupplierRequest(
-                supplierId,
-                ownerId,
-                name,
-                "1155551111",
-                "nuevo@supplier.com",
-                "Lunes",
-                "Notas nuevas"
-        );
-    }
-
-    private Proveedor supplier(UUID ownerId) {
+    private void givenSupplierExistsWithOwner(UUID ownerId) {
         Proveedor supplier = new Proveedor();
-        supplier.setId(supplierId);
+        supplier.setId(SUPPLIER_ID);
         supplier.setKiosqueroId(ownerId);
         supplier.setNombre("Proveedor viejo");
         supplier.setTelefono("1100000000");
@@ -134,6 +101,45 @@ class UpdateSupplierTest {
         supplier.setDiasVisita("Martes");
         supplier.setNotas("Notas viejas");
         supplier.setCreadoEn(LocalDateTime.of(2026, 7, 1, 10, 0));
-        return supplier;
+
+        when(repository.findById(SUPPLIER_ID)).thenReturn(Optional.of(supplier));
+
+        if (ownerId.equals(KIOSK_OWNER_ID)) {
+            when(repository.save(any(Proveedor.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        }
+    }
+
+    private void givenSupplierNotFound() {
+        when(repository.findById(SUPPLIER_ID)).thenReturn(Optional.empty());
+    }
+
+    private void thenSupplierWasUpdatedAndSaved(SupplierDetailsResponse response) {
+        ArgumentCaptor<Proveedor> captor = ArgumentCaptor.forClass(Proveedor.class);
+        verify(repository).save(captor.capture());
+        
+        Proveedor savedSupplier = captor.getValue();
+        assertEquals(NEW_NAME, savedSupplier.getNombre());
+        assertEquals(NEW_PHONE, savedSupplier.getTelefono());
+        assertEquals(NEW_EMAIL, savedSupplier.getEmail());
+        assertEquals(NEW_VISIT_DAYS, savedSupplier.getDiasVisita());
+        assertEquals(NEW_NOTES, savedSupplier.getNotas());
+        assertNotNull(savedSupplier.getActualizadoEn());
+
+        assertEquals(NEW_PHONE, response.phone());
+        assertEquals(NEW_EMAIL, response.email());
+        assertNotNull(response.updatedAt());
+    }
+
+    private void thenThrowsIllegalArgumentExceptionWithMessage(Executable execution, String message) {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
+        assertEquals(message, exception.getMessage());
+    }
+
+    private void thenThrowsOperationNotAllowedException(Executable execution) {
+        assertThrows(OperationNotAllowedException.class, execution);
+    }
+
+    private void thenNoSupplierIsSaved() {
+        verify(repository, never()).save(any(Proveedor.class));
     }
 }
