@@ -20,13 +20,13 @@ public class UpdateBudget {
 
     @Transactional
     public UpdateBudgetResponse execute(UpdateBudgetRequest request) {
-        PresupuestoAlumno presupuesto = this.findPresupuesto(request.budgetId());
+        PresupuestoAlumno presupuesto = findPresupuesto(request.budgetId());
 
-        this.updateBasicFields(presupuesto, request);
-        this.applyCategoryRules(presupuesto, request.categoryRules());
-        this.validateAndRecalculateBudget(presupuesto);
+        updateBasicFields(presupuesto, request);
+        applyCategoryRules(presupuesto, request.categoryRules());
+        validateAndRecalculateBudget(presupuesto);
 
-        PresupuestoAlumno saved = this.savePresupuesto(presupuesto);
+        PresupuestoAlumno saved = savePresupuesto(presupuesto);
         return mapToResponse(saved);
     }
 
