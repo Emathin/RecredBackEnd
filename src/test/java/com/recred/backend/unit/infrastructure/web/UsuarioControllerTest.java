@@ -11,6 +11,8 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
+import com.recred.backend.domain.models.EstadoLicenciaColegio;
+import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import com.recred.backend.infrastructure.web.SyncUserRequest;
 import com.recred.backend.infrastructure.web.UsuarioController;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,12 +30,16 @@ import static org.mockito.Mockito.when;
 class UsuarioControllerTest {
 
     private UsuarioService usuarioService;
+    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
     private UsuarioController controller;
 
     @BeforeEach
     void setUp() {
         usuarioService = mock(UsuarioService.class);
-        controller = new UsuarioController(usuarioService);
+        schoolLicenseAccessGuard = mock(SchoolLicenseAccessGuard.class);
+        when(schoolLicenseAccessGuard.getLicenseStatusForUser(any(Usuario.class)))
+                .thenReturn(EstadoLicenciaColegio.ACTIVA);
+        controller = new UsuarioController(usuarioService, schoolLicenseAccessGuard);
     }
 
     @Test

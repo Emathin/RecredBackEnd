@@ -3,6 +3,7 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.EstadoLicenciaColegio;
 import com.recred.backend.domain.models.SuscripcionColegio;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.AlumnoRepository;
@@ -77,6 +78,28 @@ public class SchoolLicenseAccessGuard {
 
     public boolean isAuthenticatedParent(Authentication authentication) {
         return authenticatedUser(authentication).getRol() == RolUsuario.PADRE;
+    }
+
+    public EstadoLicenciaColegio getLicenseStatusForUser(Usuario usuario) {
+        if (shouldSkipInstitutionalCheck(usuario)) {
+            return EstadoLicenciaColegio.ACTIVA;
+        }
+
+        return schoolIdFor(usuario)
+                .flatMap(suscripcionColegioRepository::findActiveByColegioId)
+                .map(sub -> sub.estadoLicenciaAt(now()))
+                .orElse(EstadoLicenciaColegio.SIN_LICENCIA);
+    }
+
+    public LocalDateTime getLicenseExpirationForUser(Usuario usuario) {
+        if (shouldSkipInstitutionalCheck(usuario)) {
+            return null;
+        }
+
+        return schoolIdFor(usuario)
+                .flatMap(suscripcionColegioRepository::findActiveByColegioId)
+                .map(SuscripcionColegio::getFechaVencimiento)
+                .orElse(null);
     }
 
     private boolean shouldSkipInstitutionalCheck(Usuario usuario) {
