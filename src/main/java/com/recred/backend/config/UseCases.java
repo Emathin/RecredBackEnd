@@ -1547,7 +1547,8 @@ public class UseCases {
             NotificationRepository notificationRepository
     ) {
         return new NotifyPurchaseSuggestions(
-                purchaseSuggestIA, pushNotificationSender, usuarioService, objectMapper, notificationRepository);
+                purchaseSuggestIA, pushNotificationSender,
+                usuarioService, objectMapper, notificationRepository);
     }
 
     @Bean

@@ -14,7 +14,12 @@ public interface SugerenciaIAJpaRepository extends JpaRepository<SugerenciaIAEnt
 
     List<SugerenciaIAEntity> findAllByAlumnoEntityIdOrderByCreadoEnDesc(UUID alumnoId);
 
-    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"productoEntity", "productoEntity.categoria", "productoEntity.clasificacionesSalud", "productoEntity.tipos"})
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {
+            "productoEntity",
+            "productoEntity.categoria",
+            "productoEntity.clasificacionesSalud",
+            "productoEntity.tipos"
+    })
     List<SugerenciaIAEntity> findAllByAlumnoEntityIdAndTipoOrderByCreadoEnDesc(
             UUID alumnoId, TipoSugerenciaIA tipo);
 

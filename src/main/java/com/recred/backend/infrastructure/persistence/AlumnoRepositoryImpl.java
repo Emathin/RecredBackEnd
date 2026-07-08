@@ -149,7 +149,8 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
             }
         }
 
-        entity.setPuntosRecompensa(modelo.getPuntosRecompensa() != null ? modelo.getPuntosRecompensa() : 0);
+        entity.setPuntosRecompensa(modelo.getPuntosRecompensa() != null ?
+                modelo.getPuntosRecompensa() : 0);
 
         return entity;
     }

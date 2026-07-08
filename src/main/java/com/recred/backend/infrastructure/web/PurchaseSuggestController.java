@@ -19,6 +19,7 @@ import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import com.recred.backend.application.PrizeHealthyPurchase;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -47,7 +48,7 @@ public class PurchaseSuggestController {
     public PurchaseSuggestController(NotifyPurchaseSuggestions notifyPurchaseSuggestions,
                                      RespondToAISuggestion respondToAISuggestion,
                                      CreateAdvancePurchase createAdvancePurchase,
-                                     com.recred.backend.application.PrizeHealthyPurchase prizeHealthyPurchase,
+                                        PrizeHealthyPurchase prizeHealthyPurchase,
                                      SugerenciaIARepository sugerenciaIARepository,
                                      UsuarioService usuarioService,
                                      TutorRepository tutorRepository,

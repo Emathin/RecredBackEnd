@@ -14,7 +14,8 @@ import com.recred.backend.infrastructure.entities.NotificacionEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
-import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
+import com.recred.backend.
+        infrastructure.push.PushNotificationRequestedEvent;
 import jakarta.persistence.EntityManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;

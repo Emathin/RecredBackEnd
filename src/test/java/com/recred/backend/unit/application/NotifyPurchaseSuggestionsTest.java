@@ -50,6 +50,8 @@ class NotifyPurchaseSuggestionsTest {
     private UsuarioService usuarioService;
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
+    @Mock
+    private com.recred.backend.domain.repositories.NotificationRepository notificationRepository;
 
     @InjectMocks
     private NotifyPurchaseSuggestions useCase;
@@ -178,7 +180,8 @@ class NotifyPurchaseSuggestionsTest {
                 purchaseSuggestIA,
                 pushNotificationSender,
                 usuarioService,
-                failingMapper
+                failingMapper,
+                notificationRepository
         );
         SugerenciaIA sugerencia = SugerenciaIA.builder()
                 .id(UUID.randomUUID())

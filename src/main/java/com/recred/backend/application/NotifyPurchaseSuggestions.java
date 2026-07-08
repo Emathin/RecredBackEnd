@@ -6,6 +6,7 @@ import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.PushNotificationSender;
 import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.repositories.NotificationRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,14 +30,14 @@ public class NotifyPurchaseSuggestions {
     private final PushNotificationSender pushNotificationSender;
     private final UsuarioService usuarioService;
     private final ObjectMapper objectMapper;
-    private final com.recred.backend.domain.repositories.NotificationRepository notificationRepository;
+    private final NotificationRepository notificationRepository;
 
     public NotifyPurchaseSuggestions(
             PurchaseSuggestIA purchaseSuggestIA,
             PushNotificationSender pushNotificationSender,
             UsuarioService usuarioService,
             ObjectMapper objectMapper,
-            com.recred.backend.domain.repositories.NotificationRepository notificationRepository
+           NotificationRepository notificationRepository
     ) {
         this.purchaseSuggestIA = purchaseSuggestIA;
         this.pushNotificationSender = pushNotificationSender;
@@ -89,7 +90,7 @@ public class NotifyPurchaseSuggestions {
                         java.time.LocalDateTime.now(),
                         null,
                         suggestion.alumnoId(),
-                        suggestion.producto().id(),
+                        suggestion.producto() != null ? suggestion.producto().id() : null,
                         null,
                         suggestion.id()
                 );
