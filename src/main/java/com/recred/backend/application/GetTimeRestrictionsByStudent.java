@@ -10,80 +10,82 @@ import java.util.List;
 
 public class GetTimeRestrictionsByStudent {
 
-    private final RestriccionHorariaRepository repository;
+    private final RestriccionHorariaRepository restrictionRepository;
 
-    public GetTimeRestrictionsByStudent(RestriccionHorariaRepository repository) {
-        this.repository = repository;
+    public GetTimeRestrictionsByStudent(RestriccionHorariaRepository restrictionRepository) {
+        this.restrictionRepository = restrictionRepository;
     }
 
     public List<GetTimeRestrictionsByStudentResponse> execute(
-            GetTimeRestrictionsByStudentRequest request) {
-        List<RestriccionHoraria> restrictions = this.fetchRestrictions(request);
-        return this.mapToResponses(restrictions);
+            GetTimeRestrictionsByStudentRequest restrictionsRequest) {
+        List<RestriccionHoraria> restrictions = findRestrictionsForStudent(restrictionsRequest);
+        return responsesFrom(restrictions);
     }
 
-    private List<RestriccionHoraria> fetchRestrictions(
-            GetTimeRestrictionsByStudentRequest request) {
-        return repository.findAllByAlumnoEntityId(request.studentId());
+    private List<RestriccionHoraria> findRestrictionsForStudent(
+            GetTimeRestrictionsByStudentRequest restrictionsRequest) {
+        return restrictionRepository.findAllByAlumnoEntityId(restrictionsRequest.studentId());
     }
 
-    private List<GetTimeRestrictionsByStudentResponse> mapToResponses(
+    private List<GetTimeRestrictionsByStudentResponse> responsesFrom(
             List<RestriccionHoraria> restrictions) {
         return restrictions.stream()
-                .map(this::mapToResponse)
+                .map(this::responseFrom)
                 .toList();
     }
 
-    private GetTimeRestrictionsByStudentResponse mapToResponse(RestriccionHoraria r) {
+    private GetTimeRestrictionsByStudentResponse responseFrom(
+            RestriccionHoraria restriction) {
         return new GetTimeRestrictionsByStudentResponse(
-                r.getId(),
-                r.getAlumnoId(),
-                mapFranja(r.getFranjaHoraria()),
-                mapCategoria(r.getCategoria()),
-                mapClasificacion(r.getClasificacionSalud()),
-                r.isActiva(),
-                r.getCreadoPorUsuarioId()
+                restriction.getId(),
+                restriction.getAlumnoId(),
+                timeSlotResponseFrom(restriction.getFranjaHoraria()),
+                categoryResponseFrom(restriction.getCategoria()),
+                healthClassificationResponseFrom(restriction.getClasificacionSalud()),
+                restriction.isActiva(),
+                restriction.getCreadoPorUsuarioId()
         );
     }
 
-    private GetTimeRestrictionsByStudentResponse.FranjaHorariaResponse mapFranja(
-            FranjaHoraria fh) {
-        if (fh == null) {
+    private GetTimeRestrictionsByStudentResponse.FranjaHorariaResponse timeSlotResponseFrom(
+            FranjaHoraria timeSlot) {
+        if (timeSlot == null) {
             return null;
         }
         return new GetTimeRestrictionsByStudentResponse.FranjaHorariaResponse(
-                fh.getId(),
-                fh.getColegioId(),
-                fh.getDescripcion(),
-                fh.getHoraInicio(),
-                fh.getHoraFin(),
-                fh.isActivo(),
-                fh.getCupoMaximo(),
-                fh.getMinutosCorte()
+                timeSlot.getId(),
+                timeSlot.getColegioId(),
+                timeSlot.getDescripcion(),
+                timeSlot.getHoraInicio(),
+                timeSlot.getHoraFin(),
+                timeSlot.isActivo(),
+                timeSlot.getCupoMaximo(),
+                timeSlot.getMinutosCorte()
         );
     }
 
-    private GetTimeRestrictionsByStudentResponse.CategoriaProductoResponse mapCategoria(
-            CategoriaProducto cp) {
-        if (cp == null) {
+    private GetTimeRestrictionsByStudentResponse.CategoriaProductoResponse categoryResponseFrom(
+            CategoriaProducto category) {
+        if (category == null) {
             return null;
         }
         return new GetTimeRestrictionsByStudentResponse.CategoriaProductoResponse(
-                cp.getId(),
-                cp.getDescripcion(),
-                cp.getActivo()
+                category.getId(),
+                category.getDescripcion(),
+                category.getActivo()
         );
     }
 
-    private GetTimeRestrictionsByStudentResponse.ClasificacionSaludResponse mapClasificacion(
-            ClasificacionSalud cs) {
-        if (cs == null) {
+    private GetTimeRestrictionsByStudentResponse.ClasificacionSaludResponse
+            healthClassificationResponseFrom(
+            ClasificacionSalud healthClassification) {
+        if (healthClassification == null) {
             return null;
         }
         return new GetTimeRestrictionsByStudentResponse.ClasificacionSaludResponse(
-                cs.getId(),
-                cs.getDescripcion(),
-                cs.getActivo()
+                healthClassification.getId(),
+                healthClassification.getDescripcion(),
+                healthClassification.getActivo()
         );
     }
 }

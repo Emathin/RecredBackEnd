@@ -13,23 +13,23 @@ public class AdjustInventoryStock {
     }
 
     @Transactional
-    public AdjustInventoryStockResponse execute(AdjustInventoryStockRequest request) {
-        Inventario inventory = adjustInventory(request);
+    public AdjustInventoryStockResponse execute(AdjustInventoryStockRequest stockAdjustment) {
+        Inventario inventory = adjustInventoryFrom(stockAdjustment);
         return AdjustInventoryStockResponse.fromDomain(inventory);
     }
 
-    private Inventario adjustInventory(AdjustInventoryStockRequest request) {
+    private Inventario adjustInventoryFrom(AdjustInventoryStockRequest stockAdjustment) {
         return inventoryAvailabilityService.adjustInventory(
-                request.buffetId(),
-                request.productId(),
-                request.stockActual(),
-                request.stockMinimo(),
-                request.estadoInventario(),
-                request.tipoManejoInventario(),
-                request.disponible(),
-                request.cupoMaximoDiario(),
-                request.motivo(),
-                request.usuarioId()
+                stockAdjustment.buffetId(),
+                stockAdjustment.productId(),
+                stockAdjustment.stockActual(),
+                stockAdjustment.stockMinimo(),
+                stockAdjustment.estadoInventario(),
+                stockAdjustment.tipoManejoInventario(),
+                stockAdjustment.disponible(),
+                stockAdjustment.cupoMaximoDiario(),
+                stockAdjustment.motivo(),
+                stockAdjustment.usuarioId()
         );
     }
 }

@@ -27,55 +27,62 @@ public class ActivateSchoolSubscription {
     }
 
     @Transactional
-    public ActivateSchoolSubscriptionResponse execute(ActivateSchoolSubscriptionRequest request) {
-        requireActiveSchool(request.colegioId());
-        SuscripcionColegio subscription = activeSubscriptionOrNew(request);
-        renew(subscription, request);
-        return ActivateSchoolSubscriptionResponse.fromDomain(save(subscription));
+    public ActivateSchoolSubscriptionResponse execute(
+            ActivateSchoolSubscriptionRequest activationRequest
+    ) {
+        ensureSchoolExistsAndIsActive(activationRequest.colegioId());
+        SuscripcionColegio subscription = activeSubscriptionOrNew(activationRequest);
+        renewExistingSubscriptionIfPresent(subscription, activationRequest);
+        return ActivateSchoolSubscriptionResponse.fromDomain(saveSubscription(subscription));
     }
 
-    private void requireActiveSchool(UUID colegioId) {
-        if (!colegioRepository.existsActiveById(colegioId)) {
-            throw new SchoolNotFoundException(colegioId);
+    private void ensureSchoolExistsAndIsActive(UUID schoolId) {
+        if (!colegioRepository.existsActiveById(schoolId)) {
+            throw new SchoolNotFoundException(schoolId);
         }
     }
 
     private SuscripcionColegio activeSubscriptionOrNew(
-            ActivateSchoolSubscriptionRequest request
+            ActivateSchoolSubscriptionRequest activationRequest
     ) {
-        return subscriptionRepository.findActiveByColegioId(request.colegioId())
-                .orElseGet(() -> newSubscription(request));
+        return subscriptionRepository.findActiveByColegioId(activationRequest.colegioId())
+                .orElseGet(() -> newSubscriptionFrom(activationRequest));
     }
 
-    private SuscripcionColegio newSubscription(ActivateSchoolSubscriptionRequest request) {
+    private SuscripcionColegio newSubscriptionFrom(
+            ActivateSchoolSubscriptionRequest activationRequest
+    ) {
         return SuscripcionColegio.activate(
-                request.colegioId(),
-                request.precio(),
-                request.moneda(),
-                startDate(request)
+                activationRequest.colegioId(),
+                activationRequest.precio(),
+                activationRequest.moneda(),
+                startDateFrom(activationRequest)
         );
     }
 
-    private LocalDateTime startDate(ActivateSchoolSubscriptionRequest request) {
-        if (request.fechaInicio() != null) {
-            return request.fechaInicio();
+    private LocalDateTime startDateFrom(ActivateSchoolSubscriptionRequest activationRequest) {
+        if (activationRequest.fechaInicio() != null) {
+            return activationRequest.fechaInicio();
         }
 
         return LocalDateTime.now(clock);
     }
 
-    private void renew(
+    private void renewExistingSubscriptionIfPresent(
             SuscripcionColegio subscription,
-            ActivateSchoolSubscriptionRequest request
+            ActivateSchoolSubscriptionRequest activationRequest
     ) {
         if (subscription.getId() == null) {
             return;
         }
 
-        subscription.renew(request.precio(), request.moneda(), startDate(request));
+        subscription.renew(
+                activationRequest.precio(),
+                activationRequest.moneda(),
+                startDateFrom(activationRequest));
     }
 
-    private SuscripcionColegio save(SuscripcionColegio subscription) {
+    private SuscripcionColegio saveSubscription(SuscripcionColegio subscription) {
         return subscriptionRepository.save(subscription);
     }
 }

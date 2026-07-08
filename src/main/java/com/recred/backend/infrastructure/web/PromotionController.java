@@ -6,13 +6,14 @@ import com.recred.backend.application.CreatePromotionResponse;
 import com.recred.backend.application.DeletePromotion;
 import com.recred.backend.application.DeletePromotionRequest;
 import com.recred.backend.application.GetActivePromotions;
-import com.recred.backend.application.GetActivePromotionsRequest;
 import com.recred.backend.application.GetActivePromotionsByBuffet;
 import com.recred.backend.application.GetActivePromotionsByBuffetRequest;
+import com.recred.backend.application.GetActivePromotionsRequest;
 import com.recred.backend.application.GetPromotionById;
 import com.recred.backend.application.GetPromotionByIdRequest;
 import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePromotionRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -90,7 +91,7 @@ public class PromotionController {
     @PostMapping
     public ResponseEntity<PromotionResponseDTO> createPromotion(
             Authentication authentication,
-            @RequestBody PromotionRequestDTO request) {
+            @Valid @RequestBody PromotionRequestDTO request) {
         planAccessGuard.requireVendorAdvanced(authentication);
         CreatePromotionResponse response = createPromotion.execute(
                 new CreatePromotionRequest(
@@ -111,7 +112,7 @@ public class PromotionController {
     public ResponseEntity<PromotionResponseDTO> updatePromotion(
             @PathVariable UUID id,
             Authentication authentication,
-            @RequestBody PromotionRequestDTO request) {
+            @Valid @RequestBody PromotionRequestDTO request) {
         planAccessGuard.requireVendorAdvanced(authentication);
         CreatePromotionResponse response = updatePromotion.execute(new UpdatePromotionRequest(
                 id,

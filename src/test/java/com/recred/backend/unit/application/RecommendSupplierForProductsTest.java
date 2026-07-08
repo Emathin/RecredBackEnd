@@ -10,26 +10,28 @@ import com.recred.backend.domain.models.Proveedor;
 import com.recred.backend.domain.repositories.ItemListaPrecioProveedorRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.ProveedorRepository;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RecommendSupplierForProductsTest {
+
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 7, 10, 0);
 
     @Mock
     private ItemListaPrecioProveedorRepository itemRepository;
@@ -40,240 +42,254 @@ class RecommendSupplierForProductsTest {
     @Mock
     private ProductRepository productRepository;
 
-    @InjectMocks
-    private RecommendSupplierForProducts recommendSupplierForProducts;
+    private RecommendSupplierForProducts useCase;
 
     private UUID kioskOwnerId;
     private UUID productId;
+    private UUID firstSupplierId;
+    private UUID secondSupplierId;
+    private ListaPrecioProveedor firstPriceList;
+    private ListaPrecioProveedor secondPriceList;
+    private List<Proveedor> suppliers;
+    private RecommendSupplierForProductsResponse response;
+    private RecommendSupplierForProductsResponse.Recommendation recommendation;
 
     @BeforeEach
     void setUp() {
+        useCase = new RecommendSupplierForProducts(
+                itemRepository,
+                proveedorRepository,
+                productRepository
+        );
+    }
+
+    @Test
+    void givenMultipleSuppliers_whenRecommendingSupplier_thenCheapestSupplierIsRecommended() {
+        givenSupplierRecommendationScenario();
+        givenTwoSuppliers(
+                "Proveedor A (Caro)",
+                "Proveedor B (Barato)"
+        );
+        givenSupplierItems(
+                item(firstPriceList.getId(), "600.00", "unidad"),
+                item(secondPriceList.getId(), "450.00", "unidad")
+        );
+
+        whenRecommendingSupplier();
+
+        thenOneRecommendationIsReturned();
+        thenSupplierIsRecommended(secondSupplierId, "Proveedor B (Barato)");
+        thenBestPriceIs("450.00");
+        thenBestUnitPriceIs("450.00");
+        thenAlternativeSupplierIs(firstSupplierId, "Proveedor A (Caro)");
+        thenAlternativePriceIs("600.00");
+        thenSuppliersAndItemsWereRequested();
+    }
+
+    @Test
+    void givenPackHasLowerUnitPrice_whenRecommendingSupplier_thenPackSupplierIsRecommended() {
+        givenSupplierRecommendationScenario();
+        givenTwoSuppliers(
+                "Proveedor A (Pack x6)",
+                "Proveedor B (Unitario)"
+        );
+        givenSupplierItems(
+                item(secondPriceList.getId(), "600.00", "unidad"),
+                item(firstPriceList.getId(), "3000.00", "Pack de 6")
+        );
+
+        whenRecommendingSupplier();
+
+        thenOneRecommendationIsReturned();
+        thenSupplierIsRecommended(firstSupplierId, "Proveedor A (Pack x6)");
+        thenBestPriceIs("3000.00");
+        thenBestUnitPriceIs("500.00");
+        thenAlternativeSupplierIs(secondSupplierId, "Proveedor B (Unitario)");
+        thenAlternativePriceIs("600.00");
+    }
+
+    @Test
+    void givenProductHasNoQuotes_whenRecommendingSupplier_thenReturnsEmptyRecommendation() {
+        givenSupplierRecommendationScenario();
+        givenNoSuppliers();
+        givenSupplierItems();
+        givenProductExists("Alfajor Triple");
+
+        whenRecommendingSupplier();
+
+        thenOneRecommendationIsReturned();
+        thenRecommendationHasNoSupplier();
+        thenRecommendationProductNameIs("Alfajor Triple");
+        thenProductWasRequested();
+    }
+
+    @Test
+    void givenRepeatedSupplierQuotes_whenRecommending_thenKeepsOneAlternativePerSupplier() {
+        givenSupplierRecommendationScenario();
+        givenTwoSuppliers(
+                "Proveedor A (Barato)",
+                "Proveedor B (Alternativa)"
+        );
+        ListaPrecioProveedor firstOldPriceList = olderPriceList(firstSupplierId);
+        ListaPrecioProveedor secondOldPriceList = olderPriceList(secondSupplierId);
+        givenSupplierHasPriceLists(
+                firstSupplierId,
+                "Proveedor A (Barato)",
+                firstPriceList,
+                firstOldPriceList
+        );
+        givenSupplierHasPriceLists(
+                secondSupplierId,
+                "Proveedor B (Alternativa)",
+                secondPriceList,
+                secondOldPriceList
+        );
+        givenSupplierItems(
+                item(firstPriceList.getId(), "100.00", "unidad"),
+                item(firstOldPriceList.getId(), "120.00", "unidad"),
+                item(secondPriceList.getId(), "200.00", "unidad"),
+                item(secondOldPriceList.getId(), "250.00", "unidad")
+        );
+
+        whenRecommendingSupplier();
+
+        thenSupplierIsRecommended(firstSupplierId, "Proveedor A (Barato)");
+        thenBestPriceIs("100.00");
+        thenAlternativeSupplierIs(secondSupplierId, "Proveedor B (Alternativa)");
+        thenAlternativePriceIs("200.00");
+    }
+
+    @Test
+    void givenSupplierHasOldAndNewPriceList_whenRecommending_thenUsesLatestPriceList() {
+        givenSupplierRecommendationScenario();
+        firstSupplierId = UUID.randomUUID();
+        firstPriceList = latestPriceList(firstSupplierId);
+        ListaPrecioProveedor oldPriceList = olderPriceList(firstSupplierId);
+        givenSupplierHasPriceLists(firstSupplierId, oldPriceList, firstPriceList);
+        givenSupplierItems(
+                item(oldPriceList.getId(), "100.00", "unidad"),
+                item(firstPriceList.getId(), "150.00", "unidad")
+        );
+
+        whenRecommendingSupplier();
+
+        thenSupplierIsRecommended(firstSupplierId, "Proveedor A");
+        thenBestPriceIs("150.00");
+        thenNoAlternativeSuppliersAreReturned();
+    }
+
+    private void givenSupplierRecommendationScenario() {
         kioskOwnerId = UUID.randomUUID();
         productId = UUID.randomUUID();
+        suppliers = new ArrayList<>();
     }
 
-    @Test
-    void executeWhenMultipleSuppliersExistRecommendsCheapestAndGroupsAlternatives() {
-        UUID expensiveSupplierId = UUID.randomUUID();
-        Proveedor expensiveSupplier = supplier(expensiveSupplierId, "Proveedor A (Caro)");
-        ListaPrecioProveedor expensivePriceList = priceList(expensiveSupplierId);
-        expensiveSupplier.setListasPrecios(List.of(expensivePriceList));
+    private void givenTwoSuppliers(String firstSupplierName, String secondSupplierName) {
+        firstSupplierId = UUID.randomUUID();
+        secondSupplierId = UUID.randomUUID();
+        firstPriceList = latestPriceList(firstSupplierId);
+        secondPriceList = latestPriceList(secondSupplierId);
+        givenSupplierHasPriceLists(firstSupplierId, firstSupplierName, firstPriceList);
+        givenSupplierHasPriceLists(secondSupplierId, secondSupplierName, secondPriceList);
+    }
 
-        UUID cheapSupplierId = UUID.randomUUID();
-        Proveedor cheapSupplier = supplier(cheapSupplierId, "Proveedor B (Barato)");
-        ListaPrecioProveedor cheapPriceList = priceList(cheapSupplierId);
-        cheapSupplier.setListasPrecios(List.of(cheapPriceList));
+    private void givenSupplierHasPriceLists(
+            UUID supplierId,
+            ListaPrecioProveedor... priceLists
+    ) {
+        givenSupplierHasPriceLists(supplierId, "Proveedor A", priceLists);
+    }
 
-        when(proveedorRepository.findByKiosqueroId(kioskOwnerId))
-                .thenReturn(List.of(expensiveSupplier, cheapSupplier));
+    private void givenSupplierHasPriceLists(
+            UUID supplierId,
+            String supplierName,
+            ListaPrecioProveedor... priceLists
+    ) {
+        Proveedor supplier = supplier(supplierId, supplierName);
+        supplier.setListasPrecios(List.of(priceLists));
+        suppliers.removeIf(existingSupplier -> existingSupplier.getId().equals(supplierId));
+        suppliers.add(supplier);
+    }
+
+    private void givenNoSuppliers() {
+        suppliers = List.of();
+    }
+
+    private void givenSupplierItems(ItemListaPrecioProveedor... items) {
+        when(proveedorRepository.findByKiosqueroId(kioskOwnerId)).thenReturn(suppliers);
         when(itemRepository.findItemsActivosByKiosqueroIdAndProductoIds(
                 kioskOwnerId,
                 List.of(productId)
-        )).thenReturn(List.of(
-                item(expensivePriceList.getId(), new BigDecimal("600.00"), "unidad"),
-                item(cheapPriceList.getId(), new BigDecimal("450.00"), "unidad")
-        ));
-
-        RecommendSupplierForProductsResponse result =
-                recommendSupplierForProducts.execute(request(productId));
-
-        assertNotNull(result);
-        assertEquals(1, result.recommendations().size());
-
-        RecommendSupplierForProductsResponse.Recommendation recommendation =
-                result.recommendations().get(0);
-        assertEquals(productId, recommendation.inventoryProductId());
-        assertEquals(cheapSupplierId, recommendation.recommendedSupplierId());
-        assertEquals("Proveedor B (Barato)", recommendation.recommendedSupplierName());
-        assertEquals(new BigDecimal("450.00"), recommendation.bestPrice());
-        assertEquals(new BigDecimal("450.00"), recommendation.bestUnitPrice());
-        assertEquals(1, recommendation.alternatives().size());
-        assertEquals(expensiveSupplierId, recommendation.alternatives().get(0).supplierId());
-        assertEquals(
-                "Proveedor A (Caro)",
-                recommendation.alternatives().get(0).supplierName()
-        );
-        assertEquals(new BigDecimal("600.00"), recommendation.alternatives().get(0).price());
-        assertEquals(
-                new BigDecimal("600.00"),
-                recommendation.alternatives().get(0).unitPrice()
-        );
-
-        verify(proveedorRepository).findByKiosqueroId(kioskOwnerId);
-        verify(itemRepository).findItemsActivosByKiosqueroIdAndProductoIds(
-                kioskOwnerId,
-                List.of(productId)
-        );
+        )).thenReturn(List.of(items));
     }
 
-    @Test
-    void executeWhenPackHasLowerUnitPriceRecommendsPackSupplier() {
-        UUID packSupplierId = UUID.randomUUID();
-        Proveedor packSupplier = supplier(packSupplierId, "Proveedor A (Pack x6)");
-        ListaPrecioProveedor packPriceList = priceList(packSupplierId);
-        packSupplier.setListasPrecios(List.of(packPriceList));
-
-        UUID unitSupplierId = UUID.randomUUID();
-        Proveedor unitSupplier = supplier(unitSupplierId, "Proveedor B (Unitario)");
-        ListaPrecioProveedor unitPriceList = priceList(unitSupplierId);
-        unitSupplier.setListasPrecios(List.of(unitPriceList));
-
-        when(proveedorRepository.findByKiosqueroId(kioskOwnerId))
-                .thenReturn(List.of(packSupplier, unitSupplier));
-        when(itemRepository.findItemsActivosByKiosqueroIdAndProductoIds(
-                kioskOwnerId,
-                List.of(productId)
-        )).thenReturn(List.of(
-                item(unitPriceList.getId(), new BigDecimal("600.00"), "unidad"),
-                item(packPriceList.getId(), new BigDecimal("3000.00"), "Pack de 6")
-        ));
-
-        RecommendSupplierForProductsResponse result =
-                recommendSupplierForProducts.execute(request(productId));
-
-        assertNotNull(result);
-        assertEquals(1, result.recommendations().size());
-
-        RecommendSupplierForProductsResponse.Recommendation recommendation =
-                result.recommendations().get(0);
-        assertEquals(productId, recommendation.inventoryProductId());
-        assertEquals(packSupplierId, recommendation.recommendedSupplierId());
-        assertEquals("Proveedor A (Pack x6)", recommendation.recommendedSupplierName());
-        assertEquals(new BigDecimal("3000.00"), recommendation.bestPrice());
-        assertEquals(new BigDecimal("500.00"), recommendation.bestUnitPrice());
-        assertEquals(1, recommendation.alternatives().size());
-        assertEquals(unitSupplierId, recommendation.alternatives().get(0).supplierId());
-        assertEquals(new BigDecimal("600.00"), recommendation.alternatives().get(0).price());
-        assertEquals(
-                new BigDecimal("600.00"),
-                recommendation.alternatives().get(0).unitPrice()
-        );
-    }
-
-    @Test
-    void executeWhenProductHasNoQuotesReturnsEmptyRecommendationWithProductName() {
-        when(proveedorRepository.findByKiosqueroId(kioskOwnerId)).thenReturn(List.of());
-        when(itemRepository.findItemsActivosByKiosqueroIdAndProductoIds(
-                kioskOwnerId,
-                List.of(productId)
-        )).thenReturn(List.of());
-
+    private void givenProductExists(String productName) {
         Producto product = new Producto();
         product.setId(productId);
-        product.setNombre("Alfajor Triple");
+        product.setNombre(productName);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+    }
 
-        RecommendSupplierForProductsResponse result =
-                recommendSupplierForProducts.execute(request(productId));
+    private void whenRecommendingSupplier() {
+        response = useCase.execute(request());
+        recommendation = response.recommendations().get(0);
+    }
 
-        assertNotNull(result);
-        assertEquals(1, result.recommendations().size());
-
-        RecommendSupplierForProductsResponse.Recommendation recommendation =
-                result.recommendations().get(0);
+    private void thenOneRecommendationIsReturned() {
+        assertEquals(1, response.recommendations().size());
         assertEquals(productId, recommendation.inventoryProductId());
-        assertEquals("Alfajor Triple", recommendation.productName());
+    }
+
+    private void thenSupplierIsRecommended(UUID supplierId, String supplierName) {
+        assertEquals(supplierId, recommendation.recommendedSupplierId());
+        assertEquals(supplierName, recommendation.recommendedSupplierName());
+    }
+
+    private void thenBestPriceIs(String price) {
+        assertEquals(new BigDecimal(price), recommendation.bestPrice());
+    }
+
+    private void thenBestUnitPriceIs(String price) {
+        assertEquals(new BigDecimal(price), recommendation.bestUnitPrice());
+    }
+
+    private void thenAlternativeSupplierIs(UUID supplierId, String supplierName) {
+        assertEquals(1, recommendation.alternatives().size());
+        assertEquals(supplierId, recommendation.alternatives().get(0).supplierId());
+        assertEquals(supplierName, recommendation.alternatives().get(0).supplierName());
+    }
+
+    private void thenAlternativePriceIs(String price) {
+        assertEquals(new BigDecimal(price), recommendation.alternatives().get(0).price());
+        assertEquals(new BigDecimal(price), recommendation.alternatives().get(0).unitPrice());
+    }
+
+    private void thenRecommendationHasNoSupplier() {
         assertNull(recommendation.recommendedSupplierId());
         assertEquals(0, recommendation.alternatives().size());
+    }
 
+    private void thenRecommendationProductNameIs(String productName) {
+        assertEquals(productName, recommendation.productName());
+    }
+
+    private void thenNoAlternativeSuppliersAreReturned() {
+        assertEquals(0, recommendation.alternatives().size());
+    }
+
+    private void thenSuppliersAndItemsWereRequested() {
         verify(proveedorRepository).findByKiosqueroId(kioskOwnerId);
         verify(itemRepository).findItemsActivosByKiosqueroIdAndProductoIds(
                 kioskOwnerId,
                 List.of(productId)
         );
+    }
+
+    private void thenProductWasRequested() {
         verify(productRepository).findById(productId);
     }
 
-    @Test
-    void executeFiltersOutRecommendedSupplierAndDeduplicatesAlternativesBySupplier() {
-        UUID recommendedSupplierId = UUID.randomUUID();
-        Proveedor recommendedSupplier = supplier(recommendedSupplierId, "Proveedor A (Barato)");
-        ListaPrecioProveedor recPriceList1 = priceList(recommendedSupplierId);
-        recPriceList1.setCreadoEn(LocalDateTime.now());
-        ListaPrecioProveedor recPriceList2 = priceList(recommendedSupplierId);
-        recPriceList2.setCreadoEn(LocalDateTime.now().minusDays(1));
-        recommendedSupplier.setListasPrecios(List.of(recPriceList1, recPriceList2));
-
-        UUID alternativeSupplierId = UUID.randomUUID();
-        Proveedor alternativeSupplier = supplier(alternativeSupplierId, "Proveedor B (Alternativa)");
-        ListaPrecioProveedor altPriceList1 = priceList(alternativeSupplierId);
-        altPriceList1.setCreadoEn(LocalDateTime.now());
-        ListaPrecioProveedor altPriceList2 = priceList(alternativeSupplierId);
-        altPriceList2.setCreadoEn(LocalDateTime.now().minusDays(1));
-        alternativeSupplier.setListasPrecios(List.of(altPriceList1, altPriceList2));
-
-        when(proveedorRepository.findByKiosqueroId(kioskOwnerId))
-                .thenReturn(List.of(recommendedSupplier, alternativeSupplier));
-        when(itemRepository.findItemsActivosByKiosqueroIdAndProductoIds(
-                kioskOwnerId,
-                List.of(productId)
-        )).thenReturn(List.of(
-                // Recommended supplier (best price)
-                item(recPriceList1.getId(), new BigDecimal("100.00"), "unidad"),
-                // Another price from the same recommended supplier (should be filtered out)
-                item(recPriceList2.getId(), new BigDecimal("120.00"), "unidad"),
-                // Alternative supplier - best price (should be kept)
-                item(altPriceList1.getId(), new BigDecimal("200.00"), "unidad"),
-                // Alternative supplier - more expensive price (should be deduplicated/filtered out)
-                item(altPriceList2.getId(), new BigDecimal("250.00"), "unidad")
-        ));
-
-        RecommendSupplierForProductsResponse result =
-                recommendSupplierForProducts.execute(request(productId));
-
-        assertNotNull(result);
-        assertEquals(1, result.recommendations().size());
-
-        RecommendSupplierForProductsResponse.Recommendation recommendation =
-                result.recommendations().get(0);
-        assertEquals(recommendedSupplierId, recommendation.recommendedSupplierId());
-        assertEquals(new BigDecimal("100.00"), recommendation.bestPrice());
-        
-        // Alternatives should only contain Supplier B once with its best price (200.00)
-        assertEquals(1, recommendation.alternatives().size());
-        assertEquals(alternativeSupplierId, recommendation.alternatives().get(0).supplierId());
-        assertEquals(new BigDecimal("200.00"), recommendation.alternatives().get(0).price());
-    }
-
-    @Test
-    void executeWhenMultiplePriceListsExistForSameSupplierKeepsOnlyItemFromLatestPriceList() {
-        UUID supplierId = UUID.randomUUID();
-        Proveedor supplier = supplier(supplierId, "Proveedor A");
-        
-        ListaPrecioProveedor oldPriceList = priceList(supplierId);
-        oldPriceList.setCreadoEn(LocalDateTime.now().minusDays(5));
-        
-        ListaPrecioProveedor newPriceList = priceList(supplierId);
-        newPriceList.setCreadoEn(LocalDateTime.now());
-        
-        supplier.setListasPrecios(List.of(oldPriceList, newPriceList));
-
-        when(proveedorRepository.findByKiosqueroId(kioskOwnerId)).thenReturn(List.of(supplier));
-        when(itemRepository.findItemsActivosByKiosqueroIdAndProductoIds(
-                kioskOwnerId,
-                List.of(productId)
-        )).thenReturn(List.of(
-                // Old price list item (should be ignored since a newer active list exists)
-                item(oldPriceList.getId(), new BigDecimal("100.00"), "unidad"),
-                // New price list item (should be kept)
-                item(newPriceList.getId(), new BigDecimal("150.00"), "unidad")
-        ));
-
-        RecommendSupplierForProductsResponse result =
-                recommendSupplierForProducts.execute(request(productId));
-
-        assertNotNull(result);
-        assertEquals(1, result.recommendations().size());
-
-        RecommendSupplierForProductsResponse.Recommendation recommendation =
-                result.recommendations().get(0);
-        assertEquals(supplierId, recommendation.recommendedSupplierId());
-        // Best price should be 150.00 (from the latest price list), NOT 100.00
-        assertEquals(new BigDecimal("150.00"), recommendation.bestPrice());
-        assertEquals(0, recommendation.alternatives().size());
-    }
-
-    private RecommendSupplierForProductsRequest request(UUID productId) {
+    private RecommendSupplierForProductsRequest request() {
         return new RecommendSupplierForProductsRequest(kioskOwnerId, List.of(productId));
     }
 
@@ -284,26 +300,31 @@ class RecommendSupplierForProductsTest {
         return supplier;
     }
 
-    private ListaPrecioProveedor priceList(UUID supplierId) {
+    private ListaPrecioProveedor latestPriceList(UUID supplierId) {
+        return priceList(supplierId, NOW);
+    }
+
+    private ListaPrecioProveedor olderPriceList(UUID supplierId) {
+        return priceList(supplierId, NOW.minusDays(1));
+    }
+
+    private ListaPrecioProveedor priceList(UUID supplierId, LocalDateTime createdAt) {
         ListaPrecioProveedor priceList = new ListaPrecioProveedor();
         priceList.setId(UUID.randomUUID());
         priceList.setProveedorId(supplierId);
-        priceList.setCreadoEn(LocalDateTime.now());
+        priceList.setCreadoEn(createdAt);
         return priceList;
     }
 
-    private ItemListaPrecioProveedor item(
-            UUID priceListId,
-            BigDecimal price,
-            String unit
-    ) {
+    private ItemListaPrecioProveedor item(UUID priceListId, String price, String unit) {
         ItemListaPrecioProveedor item = new ItemListaPrecioProveedor();
         item.setId(UUID.randomUUID());
         item.setListaPrecioId(priceListId);
         item.setProductoInventarioId(productId);
         item.setNombreProductoInventario("Alfajor Triple");
-        item.setPrecio(price);
+        item.setPrecio(new BigDecimal(price));
         item.setUnidad(unit);
         return item;
     }
+
 }

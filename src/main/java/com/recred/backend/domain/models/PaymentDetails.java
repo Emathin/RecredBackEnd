@@ -72,6 +72,14 @@ public record PaymentDetails(
         );
     }
 
+    public boolean wasApproved() {
+        return status == PaymentStatus.APPROVED;
+    }
+
+    public boolean isApprovedTopUp() {
+        return isTopUp() && wasApproved();
+    }
+
     public boolean isTopUp() {
         return purpose == PaymentPurpose.TOP_UP;
     }

@@ -1,5 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
+import com.recred.backend.application.AcceptTutorInvitationResponse;
 import com.recred.backend.domain.models.TutorInvitation;
 
 import java.time.LocalDateTime;
@@ -47,6 +48,38 @@ public record TutorInvitationResponse(
                 invitation.getPhone(),
                 invitation.getStatus() != null ? invitation.getStatus().name() : null,
                 invitation.getExpiresAt(),
+                invitationLink,
+                result);
+    }
+
+    public static TutorInvitationResponse fromApplication(
+            AcceptTutorInvitationResponse invitation,
+            String invitationLink,
+            String result) {
+        if (invitation == null) {
+            return new TutorInvitationResponse(
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    invitationLink,
+                    result);
+        }
+        return new TutorInvitationResponse(
+                invitation.id(),
+                invitation.schoolId(),
+                invitation.schoolName(),
+                invitation.email(),
+                invitation.firstName(),
+                invitation.lastName(),
+                invitation.phone(),
+                invitation.status() != null ? invitation.status().name() : null,
+                invitation.expiresAt(),
                 invitationLink,
                 result);
     }

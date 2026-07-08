@@ -16,38 +16,38 @@ public class UpdatePromotion {
         this.promotionRepository = promotionRepository;
     }
 
-    public CreatePromotionResponse execute(UpdatePromotionRequest request) {
-        Promotion promotion = findPromotion(request.id());
-        updatePromotion(promotion, request);
+    public CreatePromotionResponse execute(UpdatePromotionRequest updateRequest) {
+        Promotion promotion = findPromotionToUpdate(updateRequest.id());
+        applyPromotionUpdate(promotion, updateRequest);
         return CreatePromotionResponse.fromDomain(promotionRepository.save(promotion));
     }
 
-    private void updatePromotion(Promotion promotion, UpdatePromotionRequest request) {
+    private void applyPromotionUpdate(Promotion promotion, UpdatePromotionRequest updateRequest) {
         promotion.updateDetails(
-                productsFrom(request.productIds()),
-                request.discountPercentage(),
-                request.name(),
-                request.startDate(),
-                request.endDate(),
+                productReferencesFrom(updateRequest.productIds()),
+                updateRequest.discountPercentage(),
+                updateRequest.name(),
+                updateRequest.startDate(),
+                updateRequest.endDate(),
                 LocalDateTime.now());
     }
 
-    private Promotion findPromotion(UUID id) {
-        return promotionRepository.findById(id)
+    private Promotion findPromotionToUpdate(UUID promotionId) {
+        return promotionRepository.findById(promotionId)
                 .orElseThrow(() -> new IllegalArgumentException("Promotion not found."));
     }
 
-    private List<Producto> productsFrom(List<UUID> productIds) {
+    private List<Producto> productReferencesFrom(List<UUID> productIds) {
         if (productIds == null || productIds.isEmpty()) {
             return List.of();
         }
 
         return productIds.stream()
-                .map(this::productWithId)
+                .map(this::productReference)
                 .toList();
     }
 
-    private Producto productWithId(UUID productId) {
+    private Producto productReference(UUID productId) {
         Producto product = new Producto();
         product.setId(productId);
         return product;

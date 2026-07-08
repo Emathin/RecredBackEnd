@@ -19,8 +19,11 @@ import com.recred.backend.domain.repositories.PagoSuscripcionUsuarioRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -36,104 +39,117 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class ConfirmUserSubscriptionPaymentTest {
 
-    private final PagoSuscripcionUsuarioRepository paymentRepository =
-            mock(PagoSuscripcionUsuarioRepository.class);
-    private final UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
-    private final ActivateUserSubscription activateUserSubscription =
-            mock(ActivateUserSubscription.class);
-    private final Clock clock = Clock.fixed(
+    private static final Clock CLOCK = Clock.fixed(
             Instant.parse("2026-07-05T13:00:00Z"),
             ZoneOffset.UTC
     );
-    private final ConfirmUserSubscriptionPayment useCase = new ConfirmUserSubscriptionPayment(
-            paymentRepository,
-            usuarioRepository,
-            activateUserSubscription,
-            clock
-    );
+
+    @Mock
+    private PagoSuscripcionUsuarioRepository paymentRepository;
+
+    @Mock
+    private UsuarioRepository userRepository;
+
+    @Mock
+    private ActivateUserSubscription activateUserSubscription;
+
+    private ConfirmUserSubscriptionPayment useCase;
+
+    private UUID userId;
+    private UUID subscriptionId;
+    private PaymentDetails paymentDetails;
+    private ConfirmUserSubscriptionPaymentResponse response;
 
     @BeforeEach
     void setUp() {
+        useCase = new ConfirmUserSubscriptionPayment(
+                paymentRepository,
+                userRepository,
+                activateUserSubscription,
+                CLOCK
+        );
+    }
+
+    @Test
+    void givenApprovedPayment_whenConfirmingPayment_thenActivatesSubscriptionAndSavesPayment() {
+        givenUserPaymentScenario(PaymentStatus.APPROVED);
+        givenSubscriptionOwnerExists();
+        givenPaymentDoesNotExist();
         givenPaymentCanBeSaved();
+        givenUserSubscriptionIsActivated();
+
+        whenConfirmingUserSubscriptionPayment();
+
+        thenSubscriptionWasActivated();
+        thenPaymentWasApproved();
+        thenPaymentWasLinkedToSubscription();
+        thenPaymentWasSavedBeforeActivatingSubscription();
     }
 
     @Test
-    void execute_WhenPaymentIsApproved_ShouldActivateSubscriptionAndSavePayment() {
-        UUID userId = UUID.randomUUID();
-        UUID subscriptionId = UUID.randomUUID();
-        PaymentDetails details = subscriptionPayment(userId, PaymentStatus.APPROVED);
-        givenSubscriptionOwner(userId);
-        givenMissingPayment(details.paymentId());
-        givenActivatedSubscription(subscriptionId);
+    void givenPendingPayment_whenConfirmingPayment_thenSavesPaymentWithoutActivatingSubscription() {
+        givenUserPaymentScenario(PaymentStatus.PENDING);
+        givenSubscriptionOwnerExists();
+        givenPaymentDoesNotExist();
+        givenPaymentCanBeSaved();
 
-        ConfirmUserSubscriptionPaymentResponse result = whenExecuting(details);
+        whenConfirmingUserSubscriptionPayment();
 
-        PagoSuscripcionUsuario savedPayment = lastSavedPayment();
-        assertTrue(result.subscriptionActivated());
-        assertEquals(EstadoPagoExterno.APROBADO, savedPayment.getEstado());
-        assertEquals(subscriptionId, savedPayment.getSuscripcionId());
-        assertEquals(fixedNow(), savedPayment.getAprobadoEn());
-        verifyPaymentWasSavedBeforeActivatingSubscription();
-        verify(activateUserSubscription).execute(any(ActivateUserSubscriptionRequest.class));
+        thenSubscriptionWasNotActivated();
+        thenPaymentIsPending();
+        thenActivationUseCaseWasNotCalled();
     }
 
     @Test
-    void execute_WhenPaymentIsPending_ShouldSavePaymentWithoutActivatingSubscription() {
-        UUID userId = UUID.randomUUID();
-        PaymentDetails details = subscriptionPayment(userId, PaymentStatus.PENDING);
-        givenSubscriptionOwner(userId);
-        givenMissingPayment(details.paymentId());
+    void givenProcessedApprovedPayment_whenConfirmingPayment_thenDoesNotActivateAgain() {
+        givenUserPaymentScenario(PaymentStatus.APPROVED);
+        givenSubscriptionOwnerExists();
+        givenPaymentWasAlreadyProcessed();
 
-        ConfirmUserSubscriptionPaymentResponse result = whenExecuting(details);
+        whenConfirmingUserSubscriptionPayment();
 
-        PagoSuscripcionUsuario savedPayment = lastSavedPayment();
-        assertFalse(result.subscriptionActivated());
-        assertEquals(EstadoPagoExterno.PENDIENTE, savedPayment.getEstado());
-        verify(activateUserSubscription, never()).execute(
-                any(ActivateUserSubscriptionRequest.class));
+        thenSubscriptionWasNotActivated();
+        thenActivationUseCaseWasNotCalled();
+        thenPaymentWasNotSaved();
     }
 
-    @Test
-    void execute_WhenApprovedPaymentWasAlreadyProcessed_ShouldNotActivateAgain() {
-        UUID userId = UUID.randomUUID();
-        PaymentDetails details = subscriptionPayment(userId, PaymentStatus.APPROVED);
-        PagoSuscripcionUsuario payment = processedPayment(details);
-        givenSubscriptionOwner(userId);
-        givenExistingPayment(details.paymentId(), payment);
-
-        ConfirmUserSubscriptionPaymentResponse result = whenExecuting(details);
-
-        assertFalse(result.subscriptionActivated());
-        verify(activateUserSubscription, never()).execute(
-                any(ActivateUserSubscriptionRequest.class));
-        verify(paymentRepository, never()).save(any(PagoSuscripcionUsuario.class));
+    private void givenUserPaymentScenario(PaymentStatus status) {
+        userId = UUID.randomUUID();
+        subscriptionId = UUID.randomUUID();
+        paymentDetails = subscriptionPayment(userId, status);
     }
 
-    private void givenSubscriptionOwner(UUID userId) {
-        when(usuarioRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user(userId)));
+    private void givenSubscriptionOwnerExists() {
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user(userId)));
     }
 
-    private void givenMissingPayment(String paymentId) {
-        when(paymentRepository.findByMercadoPagoPaymentId(paymentId)).thenReturn(Optional.empty());
+    private void givenPaymentDoesNotExist() {
+        when(paymentRepository.findByMercadoPagoPaymentId(paymentDetails.paymentId()))
+                .thenReturn(Optional.empty());
     }
 
-    private void givenExistingPayment(String paymentId, PagoSuscripcionUsuario payment) {
-        when(paymentRepository.findByMercadoPagoPaymentId(paymentId))
-                .thenReturn(Optional.of(payment));
+    private void givenPaymentWasAlreadyProcessed() {
+        when(paymentRepository.findByMercadoPagoPaymentId(paymentDetails.paymentId()))
+                .thenReturn(Optional.of(processedPayment()));
     }
 
-    private void givenActivatedSubscription(UUID subscriptionId) {
+    private void givenPaymentCanBeSaved() {
+        when(paymentRepository.save(any(PagoSuscripcionUsuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    private void givenUserSubscriptionIsActivated() {
         when(activateUserSubscription.execute(any(ActivateUserSubscriptionRequest.class)))
                 .thenReturn(new ActivateUserSubscriptionResponse(
                         subscriptionId,
-                        UUID.randomUUID(),
+                        userId,
                         TipoPlan.INTERMEDIO,
                         PeriodoSuscripcion.MENSUAL,
                         new BigDecimal("5500.00"),
@@ -143,13 +159,47 @@ class ConfirmUserSubscriptionPaymentTest {
                 ));
     }
 
-    private void givenPaymentCanBeSaved() {
-        when(paymentRepository.save(any(PagoSuscripcionUsuario.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+    private void whenConfirmingUserSubscriptionPayment() {
+        response = useCase.execute(new ConfirmUserSubscriptionPaymentRequest(paymentDetails));
     }
 
-    private ConfirmUserSubscriptionPaymentResponse whenExecuting(PaymentDetails details) {
-        return useCase.execute(new ConfirmUserSubscriptionPaymentRequest(details));
+    private void thenSubscriptionWasActivated() {
+        assertTrue(response.subscriptionActivated());
+        verify(activateUserSubscription).execute(any(ActivateUserSubscriptionRequest.class));
+    }
+
+    private void thenSubscriptionWasNotActivated() {
+        assertFalse(response.subscriptionActivated());
+    }
+
+    private void thenPaymentWasApproved() {
+        assertEquals(EstadoPagoExterno.APROBADO, lastSavedPayment().getEstado());
+        assertEquals(fixedNow(), lastSavedPayment().getAprobadoEn());
+    }
+
+    private void thenPaymentWasLinkedToSubscription() {
+        assertEquals(subscriptionId, lastSavedPayment().getSuscripcionId());
+    }
+
+    private void thenPaymentIsPending() {
+        assertEquals(EstadoPagoExterno.PENDIENTE, lastSavedPayment().getEstado());
+    }
+
+    private void thenActivationUseCaseWasNotCalled() {
+        verify(activateUserSubscription, never()).execute(
+                any(ActivateUserSubscriptionRequest.class));
+    }
+
+    private void thenPaymentWasNotSaved() {
+        verify(paymentRepository, never()).save(any(PagoSuscripcionUsuario.class));
+    }
+
+    private void thenPaymentWasSavedBeforeActivatingSubscription() {
+        InOrder inOrder = inOrder(paymentRepository, activateUserSubscription);
+        inOrder.verify(paymentRepository).save(any(PagoSuscripcionUsuario.class));
+        inOrder.verify(activateUserSubscription).execute(
+                any(ActivateUserSubscriptionRequest.class));
+        inOrder.verify(paymentRepository).save(any(PagoSuscripcionUsuario.class));
     }
 
     private PagoSuscripcionUsuario lastSavedPayment() {
@@ -159,16 +209,8 @@ class ConfirmUserSubscriptionPaymentTest {
         return captor.getAllValues().get(captor.getAllValues().size() - 1);
     }
 
-    private void verifyPaymentWasSavedBeforeActivatingSubscription() {
-        InOrder inOrder = inOrder(paymentRepository, activateUserSubscription);
-        inOrder.verify(paymentRepository).save(any(PagoSuscripcionUsuario.class));
-        inOrder.verify(activateUserSubscription).execute(
-                any(ActivateUserSubscriptionRequest.class));
-        inOrder.verify(paymentRepository).save(any(PagoSuscripcionUsuario.class));
-    }
-
-    private PagoSuscripcionUsuario processedPayment(PaymentDetails details) {
-        PagoSuscripcionUsuario payment = PagoSuscripcionUsuario.fromPaymentDetails(details);
+    private PagoSuscripcionUsuario processedPayment() {
+        PagoSuscripcionUsuario payment = PagoSuscripcionUsuario.fromPaymentDetails(paymentDetails);
         payment.markSubscriptionActivated(UUID.randomUUID(), fixedNow());
         return payment;
     }
@@ -193,6 +235,6 @@ class ConfirmUserSubscriptionPaymentTest {
     }
 
     private LocalDateTime fixedNow() {
-        return LocalDateTime.now(clock);
+        return LocalDateTime.now(CLOCK);
     }
 }

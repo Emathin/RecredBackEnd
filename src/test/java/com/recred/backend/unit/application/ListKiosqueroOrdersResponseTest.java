@@ -10,6 +10,8 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.TipoCompra;
 import com.recred.backend.domain.models.Usuario;
+import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -17,7 +19,6 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -25,58 +26,112 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ListKiosqueroOrdersResponseTest {
 
+    private UUID studentId;
+    private UUID buyerId;
+    private UUID pickupSlotId;
+    private Producto product;
+    private Purchase purchase;
+    private ListKiosqueroOrdersResponse.OrderResponse response;
+
     @Test
-    void fromShouldMapFullOrder() {
-        UUID studentId = UUID.randomUUID();
-        UUID buyerId = UUID.randomUUID();
-        UUID pickupSlotId = UUID.randomUUID();
-        Producto product = product(new BigDecimal("500.00"));
-        Purchase purchase = purchase(student(studentId), product);
+    void givenCompleteOrder_whenMappingKiosqueroOrdersResponse_thenReturnsCompleteOrder() {
+        givenCompleteOrder();
+
+        whenMappingOrderResponse();
+
+        thenOrderHeaderIsMapped();
+        thenPickupSlotIsMapped();
+        thenStudentIsMapped();
+        thenBuyerIsMapped();
+        thenItemIsMapped();
+    }
+
+    @Test
+    void givenOrderWithoutOptionalValues_whenMappingResponse_thenReturnsEmptyOptionalFields() {
+        givenOrderWithoutOptionalValues();
+
+        whenMappingOrderResponse();
+
+        thenMissingOptionalFieldsAreEmpty();
+    }
+
+    @Test
+    void givenProductWithoutPrice_whenMappingResponse_thenUsesZeroAmounts() {
+        givenOrderWithProductWithoutPrice();
+
+        whenMappingOrderResponse();
+
+        thenProductAmountsAreZero();
+    }
+
+    private void givenCompleteOrder() {
+        studentId = UUID.randomUUID();
+        buyerId = UUID.randomUUID();
+        pickupSlotId = UUID.randomUUID();
+        product = product(new BigDecimal("500.00"));
+        purchase = purchase(student(studentId), product);
         purchase.setBuyerId(buyerId);
         purchase.setBuyerType(BuyerType.TUTOR);
         purchase.setPickupSlotId(pickupSlotId);
         purchase.setPickupSlotDescription("Primer recreo");
         purchase.setPickupSlotStart(LocalTime.of(10, 0));
         purchase.setPickupSlotEnd(LocalTime.of(10, 30));
+    }
 
-        ListKiosqueroOrdersResponse.OrderResponse response =
-                ListKiosqueroOrdersResponse.from(List.of(purchase)).orders().get(0);
+    private void givenOrderWithoutOptionalValues() {
+        product = product(null);
+        purchase = purchase(null, product);
+        purchase.setBuyerType(null);
+        purchase.setItems(null);
+    }
 
+    private void givenOrderWithProductWithoutPrice() {
+        product = product(null);
+        purchase = purchase(null, product);
+    }
+
+    private void whenMappingOrderResponse() {
+        response = ListKiosqueroOrdersResponse.from(List.of(purchase)).orders().get(0);
+    }
+
+    private void thenOrderHeaderIsMapped() {
         assertEquals(purchase.getId(), response.id());
         assertEquals("ANTICIPADA", response.type());
         assertEquals("PENDIENTE", response.status());
         assertEquals("A preparar", response.statusLabel());
         assertEquals("CREDITOS", response.paymentMethod());
+    }
+
+    private void thenPickupSlotIsMapped() {
         assertEquals(pickupSlotId, response.pickupSlot().id());
+    }
+
+    private void thenStudentIsMapped() {
         assertEquals(studentId, response.student().id());
         assertEquals("Ana", response.student().firstName());
         assertEquals("Perez", response.student().lastName());
         assertEquals("4", response.student().gradeYear());
         assertEquals("B", response.student().gradeDivision());
+    }
+
+    private void thenBuyerIsMapped() {
         assertEquals(buyerId, response.buyer().id());
         assertEquals("TUTOR", response.buyer().type());
+    }
+
+    private void thenItemIsMapped() {
         assertEquals(product.getId(), response.items().get(0).productId());
         assertEquals(new BigDecimal("1000.00"), response.items().get(0).subtotal());
     }
 
-    @Test
-    void fromShouldHandleMissingOptionalValues() {
-        Producto product = product(null);
-        Purchase purchase = purchase(null, product);
-        purchase.setBuyerType(null);
-        purchase.setItems(null);
-
-        ListKiosqueroOrdersResponse.OrderResponse response =
-                ListKiosqueroOrdersResponse.from(List.of(purchase)).orders().get(0);
-
+    private void thenMissingOptionalFieldsAreEmpty() {
         assertNull(response.pickupSlot());
         assertNull(response.student());
         assertNull(response.buyer().type());
         assertTrue(response.items().isEmpty());
+    }
 
-        purchase.setItems(Map.of(product, 2));
-        response = ListKiosqueroOrdersResponse.from(List.of(purchase)).orders().get(0);
-
+    private void thenProductAmountsAreZero() {
         assertEquals(BigDecimal.ZERO, response.items().get(0).unitPrice());
         assertEquals(BigDecimal.ZERO, response.items().get(0).subtotal());
     }

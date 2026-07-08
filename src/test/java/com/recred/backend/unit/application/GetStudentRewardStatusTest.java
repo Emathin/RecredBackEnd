@@ -5,10 +5,11 @@ import com.recred.backend.application.GetStudentRewardStatusRequest;
 import com.recred.backend.application.StudentRewardResponse;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.RewardLevel;
 import com.recred.backend.domain.repositories.AlumnoRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -17,6 +18,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,70 +27,102 @@ class GetStudentRewardStatusTest {
     @Mock
     private AlumnoRepository alumnoRepository;
 
-    @InjectMocks
-    private GetStudentRewardStatus getStudentRewardStatus;
+    private GetStudentRewardStatus useCase;
 
-    @Test
-    void execute_DebeRetornarEstadoBronce_CuandoTienePocosPuntos() {
-        UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        alumno.setPuntosRecompensa(50);
+    private UUID studentId;
+    private Alumno student;
+    private StudentRewardResponse response;
+    private RuntimeException thrownException;
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-
-        StudentRewardResponse response = getStudentRewardStatus.execute(
-                new GetStudentRewardStatusRequest(alumnoId));
-
-        assertEquals(50, response.totalPoints());
-        assertEquals("BRONZE", response.currentLevel());
-        assertEquals(50, response.pointsToNextLevel());
-        assertEquals("SILVER", response.nextLevelName());
+    @BeforeEach
+    void setUp() {
+        useCase = new GetStudentRewardStatus(alumnoRepository);
     }
 
     @Test
-    void execute_DebeRetornarEstadoOro_CuandoSuperaElUmbral() {
-        UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        alumno.setPuntosRecompensa(300);
+    void givenStudentWithBronzePoints_whenGettingRewardStatus_thenReturnsBronzeStatus() {
+        givenRewardStatusScenario();
+        givenStudentHasRewardPoints(50);
+        givenStudentExists();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        whenGettingRewardStatus();
 
-        StudentRewardResponse response = getStudentRewardStatus.execute(
-                new GetStudentRewardStatusRequest(alumnoId));
-
-        assertEquals(300, response.totalPoints());
-        assertEquals("GOLD", response.currentLevel());
-        assertEquals(0, response.pointsToNextLevel());
-        assertEquals("MAX", response.nextLevelName());
+        thenRewardStatusIs(50, RewardLevel.BRONZE, 50, RewardLevel.SILVER.name());
     }
 
     @Test
-    void execute_DebeRetornarEstadoPlata_CuandoSuperaPrimerUmbral() {
-        UUID alumnoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        alumno.setId(alumnoId);
-        alumno.setPuntosRecompensa(150);
+    void givenStudentWithSilverPoints_whenGettingRewardStatus_thenReturnsSilverStatus() {
+        givenRewardStatusScenario();
+        givenStudentHasRewardPoints(150);
+        givenStudentExists();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
+        whenGettingRewardStatus();
 
-        StudentRewardResponse response = getStudentRewardStatus.execute(
-                new GetStudentRewardStatusRequest(alumnoId));
-
-        assertEquals("SILVER", response.currentLevel());
-        assertEquals(100, response.pointsToNextLevel());
-        assertEquals("GOLD", response.nextLevelName());
+        thenRewardStatusIs(150, RewardLevel.SILVER, 100, RewardLevel.GOLD.name());
     }
 
     @Test
-    void execute_CuandoAlumnoNoExiste_DebeLanzarExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
+    void givenStudentWithGoldPoints_whenGettingRewardStatus_thenReturnsGoldStatus() {
+        givenRewardStatusScenario();
+        givenStudentHasRewardPoints(300);
+        givenStudentExists();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        whenGettingRewardStatus();
 
-        assertThrows(AlumnoNoEncontradoException.class,
-                () -> getStudentRewardStatus.execute(new GetStudentRewardStatusRequest(
-                        alumnoId)));
+        thenRewardStatusIs(300, RewardLevel.GOLD, 0, "MAX");
+    }
+
+    @Test
+    void givenMissingStudent_whenGettingRewardStatus_thenFails() {
+        givenRewardStatusScenario();
+        givenStudentDoesNotExist();
+
+        whenGettingRewardStatusFails();
+
+        thenStudentNotFoundIsThrown();
+    }
+
+    private void givenRewardStatusScenario() {
+        studentId = UUID.randomUUID();
+        student = new Alumno();
+        student.setId(studentId);
+    }
+
+    private void givenStudentHasRewardPoints(int points) {
+        student.setPuntosRecompensa(points);
+    }
+
+    private void givenStudentExists() {
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+    }
+
+    private void givenStudentDoesNotExist() {
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
+    }
+
+    private void whenGettingRewardStatus() {
+        response = useCase.execute(new GetStudentRewardStatusRequest(studentId));
+    }
+
+    private void whenGettingRewardStatusFails() {
+        thrownException = assertThrows(RuntimeException.class, () ->
+                useCase.execute(new GetStudentRewardStatusRequest(studentId)));
+    }
+
+    private void thenRewardStatusIs(
+            int totalPoints,
+            RewardLevel currentLevel,
+            int pointsToNextLevel,
+            String nextLevelName
+    ) {
+        assertEquals(totalPoints, response.totalPoints());
+        assertEquals(currentLevel.name(), response.currentLevel());
+        assertEquals(currentLevel.getMessage(), response.levelMessage());
+        assertEquals(pointsToNextLevel, response.pointsToNextLevel());
+        assertEquals(nextLevelName, response.nextLevelName());
+    }
+
+    private void thenStudentNotFoundIsThrown() {
+        assertTrue(thrownException instanceof AlumnoNoEncontradoException);
     }
 }

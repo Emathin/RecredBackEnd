@@ -23,31 +23,25 @@ public class GetPurchaseStatus {
         this.accessRepository = accessRepository;
     }
 
-    public GetPurchaseStatusResponse execute(GetPurchaseStatusRequest request) {
-        requireRequest(request);
-        Purchase purchase = purchase(request.purchaseId());
-        ConsumptionRequester requester = requester(request.cognitoSubject());
-        requireAccess(requester, purchase, request.purchaseId());
+    public GetPurchaseStatusResponse execute(GetPurchaseStatusRequest statusRequest) {
+        Purchase purchase = findPurchase(statusRequest.purchaseId());
+        ConsumptionRequester requester = findAuthenticatedRequester(
+                statusRequest.cognitoSubject());
+        ensureRequesterCanReadPurchaseStatus(requester, purchase, statusRequest.purchaseId());
         return GetPurchaseStatusResponse.from(purchase);
     }
 
-    private void requireRequest(GetPurchaseStatusRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException("request is required");
-        }
-    }
-
-    private Purchase purchase(UUID purchaseId) {
+    private Purchase findPurchase(UUID purchaseId) {
         return purchaseRepository.findById(purchaseId)
                 .orElseThrow(() -> new PurchaseNotFoundException(purchaseId));
     }
 
-    private ConsumptionRequester requester(String cognitoSubject) {
+    private ConsumptionRequester findAuthenticatedRequester(String cognitoSubject) {
         return accessRepository.findRequesterByCognitoSubject(cognitoSubject)
                 .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(cognitoSubject));
     }
 
-    private void requireAccess(
+    private void ensureRequesterCanReadPurchaseStatus(
             ConsumptionRequester requester,
             Purchase purchase,
             UUID purchaseId
@@ -59,10 +53,10 @@ public class GetPurchaseStatus {
     }
 
     private boolean requesterCanAccessStudent(ConsumptionRequester requester, UUID studentId) {
-        return requester.isStudentFor(studentId) || tutorUserCanAccessStudent(requester, studentId);
+        return requester.isStudentFor(studentId) || tutorCanAccessStudent(requester, studentId);
     }
 
-    private boolean tutorUserCanAccessStudent(
+    private boolean tutorCanAccessStudent(
             ConsumptionRequester requester,
             UUID studentId
     ) {

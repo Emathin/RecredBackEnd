@@ -12,7 +12,11 @@ import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.services.ExternalPaymentService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -20,38 +24,112 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class CreateUserSubscriptionPaymentTest {
 
-    private final UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
-    private final ExternalPaymentService externalPaymentService =
-            mock(ExternalPaymentService.class);
-    private final CreateUserSubscriptionPayment useCase = new CreateUserSubscriptionPayment(
-            usuarioRepository,
-            externalPaymentService,
-            new SubscriptionPriceCatalog()
-    );
+    @Mock
+    private UsuarioRepository userRepository;
+
+    @Mock
+    private ExternalPaymentService externalPaymentService;
+
+    private CreateUserSubscriptionPayment useCase;
+
+    private UUID userId;
+    private CreateUserSubscriptionPaymentResponse response;
+    private RuntimeException thrownException;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new CreateUserSubscriptionPayment(
+                userRepository,
+                externalPaymentService,
+                new SubscriptionPriceCatalog()
+        );
+    }
 
     @Test
-    void execute_WhenUserCanSubscribe_ShouldCreatePreferenceWithCatalogPrice() {
-        UUID userId = UUID.randomUUID();
-        givenUser(user(userId, RolUsuario.PADRE));
-        givenPaymentUrl(userId, TipoPlan.INTERMEDIO, PeriodoSuscripcion.MENSUAL);
-        CreateUserSubscriptionPaymentRequest request = request(
+    void givenUserCanSubscribe_whenCreatingSubscriptionPayment_thenCreatesPaymentPreference() {
+        givenUserPaymentScenario();
+        givenUserExistsWithRole(RolUsuario.PADRE);
+        givenPaymentPreferenceUrl();
+
+        whenCreatingUserSubscriptionPayment();
+
+        thenPaymentPreferenceIsReturned();
+        thenCatalogPriceIsReturned();
+        thenPaymentPreferenceWasCreated();
+    }
+
+    @Test
+    void givenUserDoesNotExist_whenCreatingSubscriptionPayment_thenFailsBeforeCreatingPayment() {
+        givenUserPaymentScenario();
+        givenUserDoesNotExist();
+
+        whenCreatingUserSubscriptionPaymentFails();
+
+        thenUserWasNotFound();
+        thenPaymentPreferenceWasNotCreated();
+    }
+
+    @Test
+    void givenUserRoleCannotSubscribe_whenCreatingSubscriptionPayment_thenFails() {
+        givenUserPaymentScenario();
+        givenUserExistsWithRole(RolUsuario.ALUMNO);
+
+        whenCreatingUserSubscriptionPaymentFails();
+
+        thenUserRoleCannotSubscribe();
+        thenPaymentPreferenceWasNotCreated();
+    }
+
+    private void givenUserPaymentScenario() {
+        userId = UUID.randomUUID();
+    }
+
+    private void givenUserExistsWithRole(RolUsuario role) {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user(role)));
+    }
+
+    private void givenUserDoesNotExist() {
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+    }
+
+    private void givenPaymentPreferenceUrl() {
+        when(externalPaymentService.createUserSubscriptionPreference(
                 userId,
                 TipoPlan.INTERMEDIO,
-                PeriodoSuscripcion.MENSUAL
-        );
+                PeriodoSuscripcion.MENSUAL,
+                new BigDecimal("5500.00")
+        )).thenReturn("https://pay.test/subscription");
+    }
 
-        CreateUserSubscriptionPaymentResponse result = whenExecuting(request);
+    private void whenCreatingUserSubscriptionPayment() {
+        response = useCase.execute(request());
+    }
 
-        assertEquals("https://pay.test/subscription", result.paymentUrl());
-        assertEquals(new BigDecimal("5500.00"), result.price());
-        assertEquals("ARS", result.currency());
+    private void whenCreatingUserSubscriptionPaymentFails() {
+        thrownException = assertThrows(
+                RuntimeException.class,
+                this::whenCreatingUserSubscriptionPayment);
+    }
+
+    private void thenPaymentPreferenceIsReturned() {
+        assertEquals("https://pay.test/subscription", response.paymentUrl());
+    }
+
+    private void thenCatalogPriceIsReturned() {
+        assertEquals(new BigDecimal("5500.00"), response.price());
+        assertEquals("ARS", response.currency());
+    }
+
+    private void thenPaymentPreferenceWasCreated() {
         verify(externalPaymentService).createUserSubscriptionPreference(
                 userId,
                 TipoPlan.INTERMEDIO,
@@ -60,80 +138,32 @@ class CreateUserSubscriptionPaymentTest {
         );
     }
 
-    @Test
-    void execute_WhenUserDoesNotExist_ShouldThrowException() {
-        UUID userId = UUID.randomUUID();
-        givenMissingUser(userId);
-        CreateUserSubscriptionPaymentRequest request = request(
+    private void thenUserWasNotFound() {
+        assertTrue(thrownException instanceof UsuarioNoEncontradoException);
+    }
+
+    private void thenUserRoleCannotSubscribe() {
+        assertTrue(thrownException instanceof UserRoleCannotSubscribeException);
+    }
+
+    private void thenPaymentPreferenceWasNotCreated() {
+        verify(externalPaymentService, never()).createUserSubscriptionPreference(
+                any(),
+                any(),
+                any(),
+                any()
+        );
+    }
+
+    private CreateUserSubscriptionPaymentRequest request() {
+        return new CreateUserSubscriptionPaymentRequest(
                 userId,
                 TipoPlan.INTERMEDIO,
                 PeriodoSuscripcion.MENSUAL
         );
-
-        assertThrows(UsuarioNoEncontradoException.class, () -> whenExecuting(request));
-        verify(externalPaymentService, never()).createUserSubscriptionPreference(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any()
-        );
     }
 
-    @Test
-    void execute_WhenUserRoleCannotSubscribe_ShouldThrowException() {
-        UUID userId = UUID.randomUUID();
-        givenUser(user(userId, RolUsuario.ALUMNO));
-        CreateUserSubscriptionPaymentRequest request = request(
-                userId,
-                TipoPlan.INTERMEDIO,
-                PeriodoSuscripcion.MENSUAL
-        );
-
-        assertThrows(UserRoleCannotSubscribeException.class, () -> whenExecuting(request));
-        verify(externalPaymentService, never()).createUserSubscriptionPreference(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any()
-        );
-    }
-
-    private void givenUser(Usuario user) {
-        when(usuarioRepository.findById(user.getId())).thenReturn(Optional.of(user));
-    }
-
-    private void givenMissingUser(UUID userId) {
-        when(usuarioRepository.findById(userId)).thenReturn(Optional.empty());
-    }
-
-    private void givenPaymentUrl(
-            UUID userId,
-            TipoPlan plan,
-            PeriodoSuscripcion period
-    ) {
-        when(externalPaymentService.createUserSubscriptionPreference(
-                userId,
-                plan,
-                period,
-                new BigDecimal("5500.00")
-        )).thenReturn("https://pay.test/subscription");
-    }
-
-    private CreateUserSubscriptionPaymentResponse whenExecuting(
-            CreateUserSubscriptionPaymentRequest request
-    ) {
-        return useCase.execute(request);
-    }
-
-    private CreateUserSubscriptionPaymentRequest request(
-            UUID userId,
-            TipoPlan plan,
-            PeriodoSuscripcion period
-    ) {
-        return new CreateUserSubscriptionPaymentRequest(userId, plan, period);
-    }
-
-    private Usuario user(UUID userId, RolUsuario role) {
+    private Usuario user(RolUsuario role) {
         Usuario user = new Usuario();
         user.setId(userId);
         user.setRol(role);

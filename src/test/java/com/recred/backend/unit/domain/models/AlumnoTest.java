@@ -156,6 +156,43 @@ class AlumnoTest {
     }
 
     @Test
+    void givenKnownHealthRestrictions_whenProductConflicts_thenReturnsUserFriendlyReason() {
+        ClasificacionSalud sinSodio = healthRestriction("Sin Sodio");
+        ClasificacionSalud sinAzucar = healthRestriction("Sin Azucar");
+        ClasificacionSalud vegano = healthRestriction("Apto Vegano");
+        alumno.setRestriccionesSalud(new java.util.LinkedHashSet<>(
+                java.util.List.of(sinSodio, sinAzucar, vegano)
+        ));
+        Producto product = productWithHealthClassifications();
+
+        String reason = alumno.healthConflictReasonFor(product).orElseThrow();
+
+        assertEquals("Alto sodio, Azucar, Ingredientes de origen animal", reason);
+    }
+
+    @Test
+    void givenUnknownHealthRestriction_whenProductConflicts_thenReturnsOriginalDescription() {
+        ClasificacionSalud colorante = healthRestriction("Colorante");
+        alumno.setRestriccionesSalud(Set.of(colorante));
+        Producto product = productWithHealthClassifications(
+                healthRestriction(colorante.getId(), "Colorante"));
+
+        String reason = alumno.healthConflictReasonFor(product).orElseThrow();
+
+        assertEquals("Colorante", reason);
+    }
+
+    @Test
+    void givenNullHealthRestrictionDescription_whenProductConflicts_thenReturnsEmptyReason() {
+        ClasificacionSalud restriction = healthRestriction(null);
+        alumno.setRestriccionesSalud(Set.of(restriction));
+        Producto product = productWithHealthClassifications(
+                healthRestriction(restriction.getId(), null));
+
+        assertTrue(alumno.healthConflictReasonFor(product).isEmpty());
+    }
+
+    @Test
     void dadoRestriccionHoraria_cuandoAgregarYRemover_entoncesActualizaColeccion() {
         RestriccionHoraria restriccion = new RestriccionHoraria();
 
@@ -287,5 +324,23 @@ class AlumnoTest {
 
     private void thenPointsToNextLevelAre(int expected, int actual) {
         assertEquals(expected, actual);
+    }
+
+    private Producto productWithHealthClassifications(ClasificacionSalud... classifications) {
+        Producto product = new Producto();
+        product.setId(UUID.randomUUID());
+        product.setClasificacionesSalud(Set.of(classifications));
+        return product;
+    }
+
+    private ClasificacionSalud healthRestriction(String description) {
+        return healthRestriction(UUID.randomUUID(), description);
+    }
+
+    private ClasificacionSalud healthRestriction(UUID id, String description) {
+        ClasificacionSalud restriction = new ClasificacionSalud();
+        restriction.setId(id);
+        restriction.setDescripcion(description);
+        return restriction;
     }
 }

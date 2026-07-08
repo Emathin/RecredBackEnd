@@ -45,6 +45,16 @@ class RestriccionHorariaTest {
     }
 
     @Test
+    void dadoRestriccionActiva_cuandoDisable_entoncesQuedaInactiva() {
+        RestriccionHoraria restriccion = new RestriccionHoraria();
+        restriccion.setActiva(true);
+
+        restriccion.disable();
+
+        assertFalse(restriccion.isActiva());
+    }
+
+    @Test
     void noBloquea_SiEstaFueraDeLaFranjaHoraria() {
         RestriccionHoraria restriccion = new RestriccionHoraria(UUID.randomUUID(), UUID.randomUUID(), franjaRecreo,
                 null, null);

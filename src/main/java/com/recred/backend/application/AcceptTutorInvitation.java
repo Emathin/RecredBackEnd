@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Tutor;
@@ -12,7 +13,6 @@ import com.recred.backend.domain.repositories.TutorInvitationRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.TutorSchoolRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -44,69 +44,95 @@ public class AcceptTutorInvitation {
     }
 
     @Transactional
-    public TutorInvitation execute(AcceptTutorInvitationRequest request) {
-        TutorInvitation invitation = invitationRepository
-                .findByTokenHash(tokenService.hash(request.token()))
-                .orElseThrow(() -> new IllegalArgumentException("No se encontro la invitacion"));
-        validateInvitation(invitation);
-        validateEmail(invitation, request.authenticatedEmail());
+    public AcceptTutorInvitationResponse execute(AcceptTutorInvitationRequest acceptRequest) {
+        TutorInvitation invitation = findInvitationByToken(acceptRequest.token());
+        ensureInvitationCanBeAccepted(invitation);
+        ensureAuthenticatedEmailMatchesInvitation(invitation, acceptRequest.authenticatedEmail());
 
-        Usuario user = findOrCreateUser(request);
-        Tutor tutor = tutorRepository.findByUsuarioId(user.getId())
-                .orElseGet(() -> createTutor(user));
+        Usuario parentUser = findOrCreateParentUser(acceptRequest);
+        Tutor tutor = findOrCreateTutor(parentUser);
 
-        activateTutorSchool(tutor, invitation.getSchool());
-        invitation.setStatus(TutorInvitationStatus.ACCEPTED);
-        invitation.setUsedAt(LocalDateTime.now(clock));
-        return invitationRepository.save(invitation);
+        activateTutorSchoolAccess(tutor, invitation.getSchool());
+        TutorInvitation acceptedInvitation = acceptInvitation(invitation);
+        return AcceptTutorInvitationResponse.fromDomain(acceptedInvitation);
     }
 
-    private void validateInvitation(TutorInvitation invitation) {
+    private TutorInvitation findInvitationByToken(String token) {
+        return invitationRepository.findByTokenHash(tokenService.hash(token))
+                .orElseThrow(() -> new IllegalArgumentException("No se encontro la invitacion"));
+    }
+
+    private void ensureInvitationCanBeAccepted(TutorInvitation invitation) {
         if (invitation.getStatus() != TutorInvitationStatus.PENDING) {
             throw new IllegalArgumentException("La invitacion no esta pendiente");
         }
-        if (invitation.getExpiresAt().isBefore(LocalDateTime.now(clock))) {
-            invitation.setStatus(TutorInvitationStatus.EXPIRED);
-            invitationRepository.save(invitation);
-            throw new IllegalArgumentException("La invitacion esta vencida");
+
+        if (invitationIsExpired(invitation)) {
+            expireInvitation(invitation);
         }
     }
 
-    private void validateEmail(TutorInvitation invitation, String authenticatedEmail) {
+    private boolean invitationIsExpired(TutorInvitation invitation) {
+        return invitation.getExpiresAt().isBefore(now());
+    }
+
+    private void expireInvitation(TutorInvitation invitation) {
+        invitation.setStatus(TutorInvitationStatus.EXPIRED);
+        invitationRepository.save(invitation);
+        throw new IllegalArgumentException("La invitacion esta vencida");
+    }
+
+    private void ensureAuthenticatedEmailMatchesInvitation(
+            TutorInvitation invitation,
+            String authenticatedEmail) {
         String invitedEmail = normalizeEmail(invitation.getEmail());
         String actualEmail = normalizeEmail(authenticatedEmail);
         if (!invitedEmail.equals(actualEmail)) {
-            throw new AccessDeniedException(
+            throw new OperationNotAllowedException(
                     "El email autenticado no coincide con la invitacion");
         }
     }
 
-    private Usuario findOrCreateUser(AcceptTutorInvitationRequest request) {
-        Optional<Usuario> existing = userRepository.findByIdCognito(request.cognitoSubject());
-        if (existing.isPresent()) {
-            Usuario user = existing.get();
-            if (user.getRol() != RolUsuario.PADRE) {
-                user.setRol(RolUsuario.PADRE);
-                user.setActualizadoEn(LocalDateTime.now(clock));
-                return userRepository.save(user);
-            }
+    private Usuario findOrCreateParentUser(AcceptTutorInvitationRequest acceptRequest) {
+        Optional<Usuario> existingUser = userRepository.findByIdCognito(
+                acceptRequest.cognitoSubject());
+        if (existingUser.isPresent()) {
+            return ensureUserHasParentRole(existingUser.get());
+        }
+
+        return createParentUser(acceptRequest);
+    }
+
+    private Usuario ensureUserHasParentRole(Usuario user) {
+        if (user.getRol() == RolUsuario.PADRE) {
             return user;
         }
 
-        LocalDateTime now = LocalDateTime.now(clock);
+        user.setRol(RolUsuario.PADRE);
+        user.setActualizadoEn(now());
+        return userRepository.save(user);
+    }
+
+    private Usuario createParentUser(AcceptTutorInvitationRequest acceptRequest) {
+        LocalDateTime createdAt = now();
         Usuario user = new Usuario();
-        user.setIdCognito(request.cognitoSubject());
-        user.setEmail(normalizeEmail(request.authenticatedEmail()));
-        user.setNombre(firstNonBlank(request.firstName(), "Sin Nombre"));
-        user.setApellido(firstNonBlank(request.lastName(), "Sin Apellido"));
-        user.setTelefono(normalizeOptional(request.phone()));
-        user.setDni(normalizeOptional(request.documentNumber()));
+        user.setIdCognito(acceptRequest.cognitoSubject());
+        user.setEmail(normalizeEmail(acceptRequest.authenticatedEmail()));
+        user.setNombre(firstNonBlank(acceptRequest.firstName(), "Sin Nombre"));
+        user.setApellido(firstNonBlank(acceptRequest.lastName(), "Sin Apellido"));
+        user.setTelefono(normalizeOptional(acceptRequest.phone()));
+        user.setDni(normalizeOptional(acceptRequest.documentNumber()));
         user.setRol(RolUsuario.PADRE);
         user.setAutenticadoConCognito(true);
         user.setActivo(true);
-        user.setCreadoEn(now);
-        user.setActualizadoEn(now);
+        user.setCreadoEn(createdAt);
+        user.setActualizadoEn(createdAt);
         return userRepository.save(user);
+    }
+
+    private Tutor findOrCreateTutor(Usuario user) {
+        return tutorRepository.findByUsuarioId(user.getId())
+                .orElseGet(() -> createTutor(user));
     }
 
     private Tutor createTutor(Usuario user) {
@@ -119,7 +145,7 @@ public class AcceptTutorInvitation {
                         "No se pudo crear el tutor para el usuario autenticado"));
     }
 
-    private void activateTutorSchool(Tutor tutor, Colegio school) {
+    private void activateTutorSchoolAccess(Tutor tutor, Colegio school) {
         TutorSchool tutorSchool = tutorSchoolRepository
                 .findByTutorIdAndSchoolId(tutor.getId(), school.getId())
                 .orElseGet(TutorSchool::new);
@@ -127,6 +153,12 @@ public class AcceptTutorInvitation {
         tutorSchool.setSchool(school);
         tutorSchool.setStatus(TutorSchoolStatus.ACTIVE);
         tutorSchoolRepository.save(tutorSchool);
+    }
+
+    private TutorInvitation acceptInvitation(TutorInvitation invitation) {
+        invitation.setStatus(TutorInvitationStatus.ACCEPTED);
+        invitation.setUsedAt(now());
+        return invitationRepository.save(invitation);
     }
 
     private String normalizeEmail(String value) {
@@ -142,5 +174,9 @@ public class AcceptTutorInvitation {
 
     private String firstNonBlank(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.now(clock);
     }
 }
