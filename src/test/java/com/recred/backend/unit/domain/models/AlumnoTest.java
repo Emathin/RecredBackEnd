@@ -244,43 +244,43 @@ class AlumnoTest {
     }
 
     @Test
-    void dadoPuntosNulos_cuandoCalculateCurrentLevel_entoncesRetornaBronze() {
+    void dadoPuntosNulos_cuandoCalculateCurrentLevel_entoncesRetornaPrincipiante() {
         givenPuntosRecompensa(null);
 
         RewardLevel level = whenCalculatingCurrentLevel();
 
-        thenCurrentLevelIs(RewardLevel.BRONZE, level);
+        thenCurrentLevelIs(RewardLevel.PRINCIPIANTE, level);
     }
 
     @Test
-    void dadoPuntosMenoresASilver_cuandoCalculateCurrentLevel_entoncesRetornaBronze() {
+    void dadoPuntosMenoresACrack_cuandoCalculateCurrentLevel_entoncesRetornaPrincipiante() {
         givenPuntosRecompensa(99);
 
         RewardLevel level = whenCalculatingCurrentLevel();
 
-        thenCurrentLevelIs(RewardLevel.BRONZE, level);
+        thenCurrentLevelIs(RewardLevel.PRINCIPIANTE, level);
     }
 
     @Test
-    void dadoPuntosSilver_cuandoCalculateCurrentLevel_entoncesRetornaSilver() {
+    void dadoPuntosCrack_cuandoCalculateCurrentLevel_entoncesRetornaCrack() {
         givenPuntosRecompensa(100);
 
         RewardLevel level = whenCalculatingCurrentLevel();
 
-        thenCurrentLevelIs(RewardLevel.SILVER, level);
+        thenCurrentLevelIs(RewardLevel.CRACK, level);
     }
 
     @Test
-    void dadoPuntosGold_cuandoCalculateCurrentLevel_entoncesRetornaGold() {
+    void dadoPuntosGoat_cuandoCalculateCurrentLevel_entoncesRetornaGoat() {
         givenPuntosRecompensa(250);
 
         RewardLevel level = whenCalculatingCurrentLevel();
 
-        thenCurrentLevelIs(RewardLevel.GOLD, level);
+        thenCurrentLevelIs(RewardLevel.GOAT, level);
     }
 
     @Test
-    void dadoPuntosNulos_cuandoGetPointsToNextLevel_entoncesRetornaPuntosParaSilver() {
+    void dadoPuntosNulos_cuandoGetPointsToNextLevel_entoncesRetornaPuntosParaCrack() {
         givenPuntosRecompensa(null);
 
         int pointsToNextLevel = whenGettingPointsToNextLevel();
@@ -289,7 +289,7 @@ class AlumnoTest {
     }
 
     @Test
-    void dadoPuntosSilver_cuandoGetPointsToNextLevel_entoncesRetornaPuntosParaGold() {
+    void dadoPuntosCrack_cuandoGetPointsToNextLevel_entoncesRetornaPuntosParaGoat() {
         givenPuntosRecompensa(120);
 
         int pointsToNextLevel = whenGettingPointsToNextLevel();
@@ -298,7 +298,7 @@ class AlumnoTest {
     }
 
     @Test
-    void dadoPuntosGold_cuandoGetPointsToNextLevel_entoncesRetornaCero() {
+    void dadoPuntosGoat_cuandoGetPointsToNextLevel_entoncesRetornaCero() {
         givenPuntosRecompensa(260);
 
         int pointsToNextLevel = whenGettingPointsToNextLevel();

@@ -1543,9 +1543,11 @@ public class UseCases {
             PurchaseSuggestIA purchaseSuggestIA,
             PushNotificationSender pushNotificationSender,
             UsuarioService usuarioService,
-            ObjectMapper objectMapper) {
-        return new NotifyPurchaseSuggestions(purchaseSuggestIA,
-                pushNotificationSender, usuarioService, objectMapper);
+            ObjectMapper objectMapper,
+            NotificationRepository notificationRepository
+    ) {
+        return new NotifyPurchaseSuggestions(
+                purchaseSuggestIA, pushNotificationSender, usuarioService, objectMapper, notificationRepository);
     }
 
     @Bean
