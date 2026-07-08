@@ -7,7 +7,7 @@ import com.recred.backend.domain.models.SchoolAssistantSuggestion;
 import java.util.EnumMap;
 import java.util.List;
 
-class SchoolAssistantRoleCatalog {
+public class SchoolAssistantRoleCatalog {
 
     private static final String STUDENT_FALLBACK =
             "No pude responder ahora. Puedo ayudarte con saldos, pagos, compras "
@@ -23,7 +23,7 @@ class SchoolAssistantRoleCatalog {
     private final EnumMap<SchoolAssistantRole, List<SchoolAssistantSuggestion>>
             defaultSuggestions;
 
-    SchoolAssistantRoleCatalog() {
+    public SchoolAssistantRoleCatalog() {
         this.capabilities = capabilities();
         this.fallbackAnswers = fallbackAnswers();
         this.defaultSuggestions = defaultSuggestions();

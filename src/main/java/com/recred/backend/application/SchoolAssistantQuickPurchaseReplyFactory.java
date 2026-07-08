@@ -12,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-class SchoolAssistantQuickPurchaseReplyFactory {
+public class SchoolAssistantQuickPurchaseReplyFactory {
 
     private static final String ACTION_STATUS_KEY = "estadoAccionChatbot";
     private static final String PENDING_ACTION_KEY = "accionPendienteChatbot";
@@ -33,7 +33,7 @@ class SchoolAssistantQuickPurchaseReplyFactory {
     private final SchoolAssistantSuggestionFactory suggestionFactory;
     private final SchoolAssistantReplyBuilder replyBuilder;
 
-    SchoolAssistantQuickPurchaseReplyFactory(
+    public SchoolAssistantQuickPurchaseReplyFactory(
             SchoolAssistantReplyFormatter replyFormatter,
             SchoolAssistantContentFormatter contentFormatter,
             SchoolAssistantSuggestionFactory suggestionFactory,

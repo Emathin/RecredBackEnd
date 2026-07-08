@@ -3,8 +3,24 @@ package com.recred.backend.unit.application;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.AskSchoolAssistantRequest;
 import com.recred.backend.application.AskSchoolAssistantResponse;
+import com.recred.backend.application.KiosqueroAssistantContextBuilder;
+import com.recred.backend.application.KiosqueroAssistantContextProvider;
+import com.recred.backend.application.SchoolAssistantAnswerFormatter;
+import com.recred.backend.application.SchoolAssistantConversationService;
+import com.recred.backend.application.SchoolAssistantContextProvider;
+import com.recred.backend.application.SchoolAssistantContextResolver;
 import com.recred.backend.application.SchoolAssistantFixedReply;
 import com.recred.backend.application.SchoolAssistantFixedTopics;
+import com.recred.backend.application.SchoolAssistantIntentDetector;
+import com.recred.backend.application.SchoolAssistantMessageClassifier;
+import com.recred.backend.application.SchoolAssistantPurchaseCancellationResponder;
+import com.recred.backend.application.SchoolAssistantPurchaseResponder;
+import com.recred.backend.application.SchoolAssistantQuestionResponder;
+import com.recred.backend.application.SchoolAssistantRoleCatalog;
+import com.recred.backend.application.StudentAssistantContextBuilder;
+import com.recred.backend.application.StudentAssistantContextProvider;
+import com.recred.backend.application.TutorAssistantContextBuilder;
+import com.recred.backend.application.TutorAssistantContextProvider;
 import com.recred.backend.domain.exceptions.AlumnoNoEncontradoException;
 import com.recred.backend.domain.exceptions.ChatSessionNotFoundException;
 import com.recred.backend.domain.exceptions.InvalidChatMessageException;
@@ -129,37 +145,98 @@ class AskSchoolAssistantTest {
     private SchoolAssistantResponder schoolAssistantResponder;
     @Mock
     private SchoolAssistantFixedTopics fixedTopics;
+    @Mock
+    private SchoolAssistantPurchaseResponder purchaseResponder;
+    @Mock
+    private SchoolAssistantPurchaseCancellationResponder purchaseCancellationResponder;
 
     private AskSchoolAssistant askSchoolAssistant;
     private UUID studentId;
     private UUID sessionId;
     private ChatSession session;
+    private UUID actionPurchaseId;
+    private AskSchoolAssistantResponse response;
 
     @BeforeEach
     void setUp() {
-        askSchoolAssistant = new AskSchoolAssistant(
-                alumnoRepository,
-                walletRepository,
-                paymentRepository,
-                purchaseRepository,
-                schoolCalendarRepository,
-                chatSessionRepository,
-                chatMessageRepository,
-                schoolAssistantResponder,
+        SchoolAssistantConversationService conversationService =
+                new SchoolAssistantConversationService(
+                        chatSessionRepository,
+                        chatMessageRepository
+                );
+        SchoolAssistantRoleCatalog roleCatalog = new SchoolAssistantRoleCatalog();
+        SchoolAssistantContextResolver contextResolver = new SchoolAssistantContextResolver(
                 usuarioRepository,
-                tutorRepository,
-                kiosqueroRepository,
-                productRepository,
-                purchaseHistoryRepository,
-                presupuestoRepository,
-                fixedTopics,
+                List.of(
+                        studentContextProvider(roleCatalog),
+                        tutorContextProvider(roleCatalog),
+                        kiosqueroContextProvider(roleCatalog)
+                )
+        );
+        SchoolAssistantQuestionResponder questionResponder =
+                new SchoolAssistantQuestionResponder(
+                        fixedTopics,
+                        schoolAssistantResponder,
+                        new SchoolAssistantAnswerFormatter(),
+                        roleCatalog
+                );
+        askSchoolAssistant = new AskSchoolAssistant(
+                conversationService,
+                contextResolver,
+                questionResponder,
+                new SchoolAssistantMessageClassifier(new SchoolAssistantIntentDetector()),
+                purchaseResponder,
+                purchaseCancellationResponder,
                 CLOCK
         );
         lenient().when(fixedTopics.respond(any(), any(), any()))
                 .thenReturn(Optional.empty());
+        lenient().when(purchaseResponder.respond(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        lenient().when(purchaseCancellationResponder.respond(any(), any(), any()))
+                .thenReturn(Optional.empty());
         studentId = UUID.randomUUID();
         sessionId = UUID.randomUUID();
         session = new ChatSession(sessionId, EstadoChatSesion.ABIERTA, NOW, NOW);
+    }
+
+    private StudentAssistantContextProvider studentContextProvider(
+            SchoolAssistantRoleCatalog roleCatalog
+    ) {
+        StudentAssistantContextBuilder contextBuilder = new StudentAssistantContextBuilder(
+                walletRepository,
+                paymentRepository,
+                purchaseRepository,
+                schoolCalendarRepository,
+                roleCatalog,
+                CLOCK
+        );
+        return new StudentAssistantContextProvider(alumnoRepository, contextBuilder);
+    }
+
+    private TutorAssistantContextProvider tutorContextProvider(
+            SchoolAssistantRoleCatalog roleCatalog
+    ) {
+        TutorAssistantContextBuilder contextBuilder = new TutorAssistantContextBuilder(
+                paymentRepository,
+                schoolCalendarRepository,
+                purchaseHistoryRepository,
+                presupuestoRepository,
+                roleCatalog,
+                CLOCK
+        );
+        return new TutorAssistantContextProvider(tutorRepository, contextBuilder);
+    }
+
+    private KiosqueroAssistantContextProvider kiosqueroContextProvider(
+            SchoolAssistantRoleCatalog roleCatalog
+    ) {
+        KiosqueroAssistantContextBuilder contextBuilder = new KiosqueroAssistantContextBuilder(
+                productRepository,
+                purchaseHistoryRepository,
+                roleCatalog
+        );
+        return new KiosqueroAssistantContextProvider(kiosqueroRepository, contextBuilder);
     }
 
     @Test
@@ -553,52 +630,39 @@ class AskSchoolAssistantTest {
     }
 
     @Test
-    void execute_WhenFixedReplyHasAction_ShouldStoreActionMetadata() {
-        UUID purchaseId = UUID.randomUUID();
-        SchoolAssistantAction action = new SchoolAssistantAction(
-                SchoolAssistantActionType.COMPRA_ANTICIPADA,
-                SchoolAssistantActionStatus.EJECUTADA,
-                false,
-                List.of(SchoolAssistantRequiredInput.RECREO),
-                purchaseId,
-                EstadoCompra.PENDIENTE,
-                "ABC123",
-                new BigDecimal("900.00"),
-                RecessTime.FIRST_RECESS,
-                Map.of("producto", "Yogur")
-        );
-        SchoolAssistantSuggestion suggestion = new SchoolAssistantSuggestion(
-                "Saldo",
-                "cuanto saldo tengo",
-                SchoolAssistantActionType.CONSULTA_SALDO
-        );
-        SchoolAssistantFixedReply fixedReply = new SchoolAssistantFixedReply(
-                "Compra creada.",
-                Map.of("intencionChatbot", "CONFIRM_PURCHASE"),
-                SchoolAssistantIntent.CONFIRM_PURCHASE,
-                action,
-                List.of(suggestion),
-                Map.of("compraId", purchaseId.toString())
-        );
+    void execute_WhenPurchaseReplyHasAction_ShouldStoreActionMetadata() {
+        givenStudentConversationReady();
+        givenExecutedPurchaseReply();
 
-        givenAuthenticatedStudent(studentId);
-        givenNewStudentSession();
-        givenRecentMessages(List.of());
-        givenEmptyStudentContext();
-        givenFixedReply("confirmar", fixedReply);
+        whenStudentConfirmsPurchase();
 
-        AskSchoolAssistantResponse response = whenStudentAsks("confirmar");
+        thenPurchaseActionWasReturned();
+        thenPurchaseActionMetadataWasStored();
+        thenQuestionFlowWasNotUsed();
+    }
 
-        assertEquals("COMPRA_ANTICIPADA", response.action().type());
-        assertEquals("primer recreo", response.action().recessTime());
-        Map<?, ?> metadata = storedAssistantMetadata();
-        Map<?, ?> actionMetadata = (Map<?, ?>) metadata.get("accion");
-        assertEquals("COMPRA_ANTICIPADA", actionMetadata.get("tipo"));
-        assertEquals("EJECUTADA", actionMetadata.get("estado"));
-        assertEquals(purchaseId.toString(), actionMetadata.get("compraId"));
-        assertEquals("ABC123", actionMetadata.get("codigoRetiro"));
-        assertEquals("FIRST_RECESS", actionMetadata.get("recreo"));
-        assertEquals("CONFIRM_PURCHASE", metadata.get("intencionChatbot"));
+    @Test
+    void execute_WhenPurchaseCancellationHasDraft_ShouldUsePurchaseResponderFirst() {
+        givenStudentConversationReady();
+        givenDraftCancellationReply();
+
+        whenStudentCancelsPurchase();
+
+        thenDraftCancellationWasReturned();
+        thenCancellationResponderWasNotUsed();
+        thenQuestionFlowWasNotUsed();
+    }
+
+    @Test
+    void execute_WhenPurchaseCancellationHasNoDraft_ShouldUseCancellationResponder() {
+        givenStudentConversationReady();
+        givenRealCancellationReply();
+
+        whenStudentCancelsPurchase();
+
+        thenRealCancellationWasReturned();
+        thenCancellationResponderWasUsed();
+        thenQuestionFlowWasNotUsed();
     }
 
     @Test
@@ -701,6 +765,99 @@ class AskSchoolAssistantTest {
         when(fixedTopics.respond(eq(message), any(), any())).thenReturn(Optional.of(fixedReply));
     }
 
+    private void givenStudentConversationReady() {
+        givenAuthenticatedStudent(studentId);
+        givenNewStudentSession();
+        givenRecentMessages(List.of());
+        givenEmptyStudentContext();
+    }
+
+    private void givenExecutedPurchaseReply() {
+        actionPurchaseId = UUID.randomUUID();
+        SchoolAssistantAction action = new SchoolAssistantAction(
+                SchoolAssistantActionType.COMPRA_ANTICIPADA,
+                SchoolAssistantActionStatus.EJECUTADA,
+                false,
+                List.of(SchoolAssistantRequiredInput.RECREO),
+                actionPurchaseId,
+                EstadoCompra.PENDIENTE,
+                "ABC123",
+                new BigDecimal("900.00"),
+                RecessTime.FIRST_RECESS,
+                Map.of("producto", "Yogur")
+        );
+        SchoolAssistantSuggestion suggestion = new SchoolAssistantSuggestion(
+                "Saldo",
+                "cuanto saldo tengo",
+                SchoolAssistantActionType.CONSULTA_SALDO
+        );
+        givenPurchaseReply("confirmar", new SchoolAssistantFixedReply(
+                "Compra creada.",
+                Map.of("intencionChatbot", "CONFIRM_PURCHASE"),
+                SchoolAssistantIntent.CONFIRM_PURCHASE,
+                action,
+                List.of(suggestion),
+                Map.of("compraId", actionPurchaseId.toString())
+        ));
+    }
+
+    private void givenDraftCancellationReply() {
+        givenPurchaseReply("cancelar mi compra", new SchoolAssistantFixedReply(
+                "Listo, descarte esa compra pendiente.",
+                Map.of("intencionChatbot", "CANCEL_ACTION"),
+                SchoolAssistantIntent.CANCEL_ACTION,
+                new SchoolAssistantAction(
+                        SchoolAssistantActionType.COMPRA_ANTICIPADA,
+                        SchoolAssistantActionStatus.CANCELADA,
+                        false,
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        Map.of()
+                ),
+                List.of(),
+                Map.of()
+        ));
+    }
+
+    private void givenRealCancellationReply() {
+        givenPurchaseCancellationReply("cancelar mi compra", new SchoolAssistantFixedReply(
+                "Listo, cancele tu compra y te devolvi $900.00 en creditos.",
+                Map.of("intencionChatbot", "CANCEL_PURCHASE"),
+                SchoolAssistantIntent.CANCEL_PURCHASE,
+                new SchoolAssistantAction(
+                        SchoolAssistantActionType.CANCELACION_COMPRA,
+                        SchoolAssistantActionStatus.EJECUTADA,
+                        false,
+                        List.of(),
+                        UUID.randomUUID(),
+                        EstadoCompra.CANCELADO,
+                        "ABC123",
+                        new BigDecimal("900.00"),
+                        null,
+                        Map.of()
+                ),
+                List.of(),
+                Map.of()
+        ));
+    }
+
+    private void givenPurchaseReply(String message, SchoolAssistantFixedReply fixedReply) {
+        when(purchaseResponder.respond(eq(message), any(), any()))
+                .thenReturn(Optional.of(fixedReply));
+    }
+
+    private void givenPurchaseCancellationReply(
+            String message,
+            SchoolAssistantFixedReply fixedReply
+    ) {
+        when(purchaseCancellationResponder.respond(eq(message), any(), any()))
+                .thenReturn(Optional.of(fixedReply));
+    }
+
     private AskSchoolAssistantResponse whenStudentAsks(String message) {
         return whenStudentAsks(null, message);
     }
@@ -712,6 +869,14 @@ class AskSchoolAssistantTest {
                 sessionId,
                 message
         ));
+    }
+
+    private void whenStudentConfirmsPurchase() {
+        response = whenStudentAsks("confirmar");
+    }
+
+    private void whenStudentCancelsPurchase() {
+        response = whenStudentAsks("cancelar mi compra");
     }
 
     private AskSchoolAssistantResponse whenTutorAsks(String message) {
@@ -759,6 +924,48 @@ class AskSchoolAssistantTest {
         ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
         verify(chatMessageRepository, times(2)).save(messageCaptor.capture());
         return messageCaptor.getAllValues().get(1).metadata();
+    }
+
+    private void thenPurchaseActionWasReturned() {
+        assertEquals("COMPRA_ANTICIPADA", response.action().type());
+        assertEquals("primer recreo", response.action().recessTime());
+    }
+
+    private void thenPurchaseActionMetadataWasStored() {
+        Map<?, ?> metadata = storedAssistantMetadata();
+        Map<?, ?> actionMetadata = (Map<?, ?>) metadata.get("accion");
+        assertEquals("COMPRA_ANTICIPADA", actionMetadata.get("tipo"));
+        assertEquals("EJECUTADA", actionMetadata.get("estado"));
+        assertEquals(actionPurchaseId.toString(), actionMetadata.get("compraId"));
+        assertEquals("ABC123", actionMetadata.get("codigoRetiro"));
+        assertEquals("FIRST_RECESS", actionMetadata.get("recreo"));
+        assertEquals("CONFIRM_PURCHASE", metadata.get("intencionChatbot"));
+    }
+
+    private void thenDraftCancellationWasReturned() {
+        assertEquals("Listo, descarte esa compra pendiente.", response.answer());
+        assertEquals("CANCEL_ACTION", response.intent());
+    }
+
+    private void thenRealCancellationWasReturned() {
+        assertEquals("Listo, cancele tu compra y te devolvi $900.00 en creditos.",
+                response.answer());
+        assertEquals("CANCEL_PURCHASE", response.intent());
+        assertEquals("CANCELACION_COMPRA", response.action().type());
+    }
+
+    private void thenCancellationResponderWasNotUsed() {
+        verify(purchaseCancellationResponder, never()).respond(any(), any(), any());
+    }
+
+    private void thenCancellationResponderWasUsed() {
+        verify(purchaseResponder).respond(eq("cancelar mi compra"), any(), any());
+        verify(purchaseCancellationResponder).respond(eq("cancelar mi compra"), any(), any());
+    }
+
+    private void thenQuestionFlowWasNotUsed() {
+        verify(fixedTopics, never()).respond(any(), any(), any());
+        verify(schoolAssistantResponder, never()).respond(any());
     }
 
     private Billetera wallet(BigDecimal balance) {

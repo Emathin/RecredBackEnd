@@ -143,11 +143,42 @@ import com.recred.backend.application.SaveBulkProducts;
 import com.recred.backend.application.SaveFavoriteCart;
 import com.recred.backend.application.SaveKiosqueroPayoutConfig;
 import com.recred.backend.application.SaveProduct;
+import com.recred.backend.application.SchoolAssistantAnswerFormatter;
+import com.recred.backend.application.SchoolAssistantContentFormatter;
 import com.recred.backend.application.SchoolAssistantConversations;
+import com.recred.backend.application.SchoolAssistantConversationService;
+import com.recred.backend.application.SchoolAssistantContextProvider;
+import com.recred.backend.application.SchoolAssistantContextResolver;
+import com.recred.backend.application.SchoolAssistantFixedTopicResponses;
 import com.recred.backend.application.SchoolAssistantFixedTopics;
+import com.recred.backend.application.SchoolAssistantIntentDetector;
+import com.recred.backend.application.SchoolAssistantMessageClassifier;
+import com.recred.backend.application.SchoolAssistantPendingPurchaseParser;
+import com.recred.backend.application.SchoolAssistantPendingPurchaseResponder;
+import com.recred.backend.application.SchoolAssistantPurchaseCancellationHandler;
+import com.recred.backend.application.SchoolAssistantPurchaseCancellationResponder;
+import com.recred.backend.application.SchoolAssistantPurchaseFailureMessages;
+import com.recred.backend.application.SchoolAssistantPurchasePatternService;
+import com.recred.backend.application.SchoolAssistantPurchaseRequestParser;
+import com.recred.backend.application.SchoolAssistantPurchaseResponder;
+import com.recred.backend.application.SchoolAssistantQuickPurchaseHandler;
+import com.recred.backend.application.SchoolAssistantQuickPurchaseReplyFactory;
+import com.recred.backend.application.SchoolAssistantQuestionResponder;
+import com.recred.backend.application.SchoolAssistantReplyBuilder;
+import com.recred.backend.application.SchoolAssistantReplyFormatter;
+import com.recred.backend.application.SchoolAssistantRoleCatalog;
+import com.recred.backend.application.SchoolAssistantSuggestionFactory;
+import com.recred.backend.application.SchoolAssistantTutorFactsFormatter;
 import com.recred.backend.application.SchoolSubscriptionPriceCatalog;
 import com.recred.backend.application.SetNotificationAsAlreadyRead;
+import com.recred.backend.application.StudentAssistantContextBuilder;
+import com.recred.backend.application.StudentAssistantContextProvider;
 import com.recred.backend.application.SubmitSchoolRegistration;
+import com.recred.backend.application.TutorAssistantContextBuilder;
+import com.recred.backend.application.TutorAssistantContextProvider;
+import com.recred.backend.application.TutorChildrenPlanPropagator;
+import com.recred.backend.application.KiosqueroAssistantContextBuilder;
+import com.recred.backend.application.KiosqueroAssistantContextProvider;
 import com.recred.backend.application.SubscriptionPriceCatalog;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
 import com.recred.backend.application.UpdateBudget;
@@ -274,6 +305,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
+import java.util.List;
 
 @Configuration
 public class UseCases {
@@ -1675,19 +1707,36 @@ public class UseCases {
     }
 
     @Bean
+    public TutorChildrenPlanPropagator tutorChildrenPlanPropagator(
+            TutorRepository tutorRepository,
+            UsuarioRepository usuarioRepository) {
+        return new TutorChildrenPlanPropagator(tutorRepository, usuarioRepository);
+    }
+
+    @Bean
     public ActivateUserSubscription activateUserSubscription(
             UsuarioRepository usuarioRepository,
             SuscripcionUsuarioRepository subscriptionRepository,
+            TutorChildrenPlanPropagator tutorChildrenPlanPropagator,
             Clock clock) {
-        return new ActivateUserSubscription(usuarioRepository, subscriptionRepository, clock);
+        return new ActivateUserSubscription(
+                usuarioRepository,
+                subscriptionRepository,
+                tutorChildrenPlanPropagator,
+                clock);
     }
 
     @Bean
     public ExpireUserSubscriptions expireUserSubscriptions(
             SuscripcionUsuarioRepository subscriptionRepository,
             UsuarioRepository usuarioRepository,
+            TutorChildrenPlanPropagator tutorChildrenPlanPropagator,
             Clock clock) {
-        return new ExpireUserSubscriptions(subscriptionRepository, usuarioRepository, clock);
+        return new ExpireUserSubscriptions(
+                subscriptionRepository,
+                usuarioRepository,
+                tutorChildrenPlanPropagator,
+                clock);
     }
 
     @Bean
@@ -1809,56 +1858,306 @@ public class UseCases {
     }
 
     @Bean
-    public SchoolAssistantFixedTopics schoolAssistantFixedTopics(
-            PurchaseRepository purchaseRepository,
-            ProductRepository productRepository,
-            TutorRepository tutorRepository,
-            CreateAssistantAdvancePurchase createAssistantAdvancePurchase,
-            CancelPresentialPurchase cancelPresentialPurchase,
-            Clock clock) {
-        return new SchoolAssistantFixedTopics(
-                purchaseRepository,
-                productRepository,
-                tutorRepository,
-                createAssistantAdvancePurchase,
-                cancelPresentialPurchase,
-                clock);
+    public SchoolAssistantRoleCatalog schoolAssistantRoleCatalog() {
+        return new SchoolAssistantRoleCatalog();
     }
 
     @Bean
-    public AskSchoolAssistant askSchoolAssistant(
-            AlumnoRepository alumnoRepository,
+    public StudentAssistantContextBuilder studentAssistantContextBuilder(
             WalletRepository walletRepository,
             SchoolAssistantPaymentRepository paymentRepository,
             SchoolAssistantPurchaseRepository schoolAssistantPurchaseRepository,
             SchoolCalendarRepository schoolCalendarRepository,
-            ChatSessionRepository chatSessionRepository,
-            ChatMessageRepository chatMessageRepository,
-            SchoolAssistantResponder schoolAssistantResponder,
-            UsuarioRepository usuarioRepository,
-            TutorRepository tutorRepository,
-            KiosqueroRepository kiosqueroRepository,
-            ProductRepository productRepository,
-            PurchaseRepository purchaseRepository,
-            PresupuestoRepository presupuestoRepository,
-            SchoolAssistantFixedTopics fixedTopics,
+            SchoolAssistantRoleCatalog roleCatalog,
             Clock clock) {
-        return new AskSchoolAssistant(
-                alumnoRepository,
+        return new StudentAssistantContextBuilder(
                 walletRepository,
                 paymentRepository,
                 schoolAssistantPurchaseRepository,
                 schoolCalendarRepository,
-                chatSessionRepository,
-                chatMessageRepository,
-                schoolAssistantResponder,
-                usuarioRepository,
-                tutorRepository,
-                kiosqueroRepository,
-                productRepository,
+                roleCatalog,
+                clock);
+    }
+
+    @Bean
+    public StudentAssistantContextProvider studentAssistantContextProvider(
+            AlumnoRepository alumnoRepository,
+            StudentAssistantContextBuilder contextBuilder) {
+        return new StudentAssistantContextProvider(alumnoRepository, contextBuilder);
+    }
+
+    @Bean
+    public TutorAssistantContextBuilder tutorAssistantContextBuilder(
+            SchoolAssistantPaymentRepository paymentRepository,
+            SchoolCalendarRepository schoolCalendarRepository,
+            PurchaseRepository purchaseRepository,
+            PresupuestoRepository presupuestoRepository,
+            SchoolAssistantRoleCatalog roleCatalog,
+            Clock clock) {
+        return new TutorAssistantContextBuilder(
+                paymentRepository,
+                schoolCalendarRepository,
                 purchaseRepository,
                 presupuestoRepository,
+                roleCatalog,
+                clock);
+    }
+
+    @Bean
+    public TutorAssistantContextProvider tutorAssistantContextProvider(
+            TutorRepository tutorRepository,
+            TutorAssistantContextBuilder contextBuilder) {
+        return new TutorAssistantContextProvider(tutorRepository, contextBuilder);
+    }
+
+    @Bean
+    public KiosqueroAssistantContextBuilder kiosqueroAssistantContextBuilder(
+            ProductRepository productRepository,
+            PurchaseRepository purchaseRepository,
+            SchoolAssistantRoleCatalog roleCatalog) {
+        return new KiosqueroAssistantContextBuilder(
+                productRepository,
+                purchaseRepository,
+                roleCatalog);
+    }
+
+    @Bean
+    public KiosqueroAssistantContextProvider kiosqueroAssistantContextProvider(
+            KiosqueroRepository kiosqueroRepository,
+            KiosqueroAssistantContextBuilder contextBuilder) {
+        return new KiosqueroAssistantContextProvider(kiosqueroRepository, contextBuilder);
+    }
+
+    @Bean
+    public SchoolAssistantContextResolver schoolAssistantContextResolver(
+            UsuarioRepository usuarioRepository,
+            StudentAssistantContextProvider studentProvider,
+            TutorAssistantContextProvider tutorProvider,
+            KiosqueroAssistantContextProvider kiosqueroProvider) {
+        List<SchoolAssistantContextProvider> providers = List.of(
+                studentProvider,
+                tutorProvider,
+                kiosqueroProvider
+        );
+        return new SchoolAssistantContextResolver(usuarioRepository, providers);
+    }
+
+    @Bean
+    public SchoolAssistantIntentDetector schoolAssistantIntentDetector() {
+        return new SchoolAssistantIntentDetector();
+    }
+
+    @Bean
+    public SchoolAssistantReplyFormatter schoolAssistantReplyFormatter() {
+        return new SchoolAssistantReplyFormatter();
+    }
+
+    @Bean
+    public SchoolAssistantSuggestionFactory schoolAssistantSuggestionFactory() {
+        return new SchoolAssistantSuggestionFactory();
+    }
+
+    @Bean
+    public SchoolAssistantReplyBuilder schoolAssistantReplyBuilder(
+            SchoolAssistantSuggestionFactory suggestionFactory) {
+        return new SchoolAssistantReplyBuilder(suggestionFactory);
+    }
+
+    @Bean
+    public SchoolAssistantAnswerFormatter schoolAssistantAnswerFormatter() {
+        return new SchoolAssistantAnswerFormatter();
+    }
+
+    @Bean
+    public SchoolAssistantTutorFactsFormatter schoolAssistantTutorFactsFormatter() {
+        return new SchoolAssistantTutorFactsFormatter();
+    }
+
+    @Bean
+    public SchoolAssistantContentFormatter schoolAssistantContentFormatter(
+            ProductRepository productRepository,
+            SchoolAssistantReplyFormatter replyFormatter) {
+        return new SchoolAssistantContentFormatter(productRepository, replyFormatter);
+    }
+
+    @Bean
+    public SchoolAssistantQuickPurchaseReplyFactory schoolAssistantQuickPurchaseReplyFactory(
+            SchoolAssistantReplyFormatter replyFormatter,
+            SchoolAssistantContentFormatter contentFormatter,
+            SchoolAssistantSuggestionFactory suggestionFactory,
+            SchoolAssistantReplyBuilder replyBuilder) {
+        return new SchoolAssistantQuickPurchaseReplyFactory(
+                replyFormatter,
+                contentFormatter,
+                suggestionFactory,
+                replyBuilder);
+    }
+
+    @Bean
+    public SchoolAssistantPendingPurchaseParser schoolAssistantPendingPurchaseParser(
+            SchoolAssistantIntentDetector intentDetector) {
+        return new SchoolAssistantPendingPurchaseParser(intentDetector);
+    }
+
+    @Bean
+    public SchoolAssistantPurchaseFailureMessages schoolAssistantPurchaseFailureMessages() {
+        return new SchoolAssistantPurchaseFailureMessages();
+    }
+
+    @Bean
+    public SchoolAssistantPurchasePatternService schoolAssistantPurchasePatternService(
+            PurchaseRepository purchaseRepository,
+            ProductRepository productRepository,
+            SchoolAssistantContentFormatter contentFormatter) {
+        return new SchoolAssistantPurchasePatternService(
+                purchaseRepository,
+                productRepository,
+                contentFormatter);
+    }
+
+    @Bean
+    public SchoolAssistantPendingPurchaseResponder schoolAssistantPendingPurchaseResponder(
+            ProductRepository productRepository,
+            CreateAssistantAdvancePurchase createAssistantAdvancePurchase,
+            Clock clock,
+            SchoolAssistantPurchaseFailureMessages purchaseFailureMessages,
+            SchoolAssistantPendingPurchaseParser pendingPurchaseParser,
+            SchoolAssistantQuickPurchaseReplyFactory replyFactory) {
+        return new SchoolAssistantPendingPurchaseResponder(
+                productRepository,
+                createAssistantAdvancePurchase,
+                clock,
+                purchaseFailureMessages,
+                pendingPurchaseParser,
+                replyFactory);
+    }
+
+    @Bean
+    public SchoolAssistantQuickPurchaseHandler schoolAssistantQuickPurchaseHandler(
+            SchoolAssistantPurchasePatternService purchasePatternService,
+            TutorRepository tutorRepository,
+            Clock clock,
+            SchoolAssistantQuickPurchaseReplyFactory replyFactory,
+            SchoolAssistantPendingPurchaseResponder pendingPurchaseResponder) {
+        return new SchoolAssistantQuickPurchaseHandler(
+                purchasePatternService,
+                tutorRepository,
+                clock,
+                replyFactory,
+                pendingPurchaseResponder);
+    }
+
+    @Bean
+    public SchoolAssistantPurchaseRequestParser schoolAssistantPurchaseRequestParser(
+            SchoolAssistantIntentDetector intentDetector,
+            Clock clock) {
+        return new SchoolAssistantPurchaseRequestParser(intentDetector, clock);
+    }
+
+    @Bean
+    public SchoolAssistantPurchaseResponder schoolAssistantPurchaseResponder(
+            SchoolAssistantPurchaseRequestParser requestParser,
+            SchoolAssistantQuickPurchaseHandler quickPurchaseHandler,
+            SchoolAssistantReplyBuilder replyBuilder) {
+        return new SchoolAssistantPurchaseResponder(
+                requestParser,
+                quickPurchaseHandler,
+                replyBuilder);
+    }
+
+    @Bean
+    public SchoolAssistantPurchaseCancellationHandler schoolAssistantPurchaseCancellationHandler(
+            PurchaseRepository purchaseRepository,
+            CancelPresentialPurchase cancelPresentialPurchase,
+            SchoolAssistantContentFormatter contentFormatter,
+            SchoolAssistantReplyBuilder replyBuilder) {
+        return new SchoolAssistantPurchaseCancellationHandler(
+                purchaseRepository,
+                cancelPresentialPurchase,
+                contentFormatter,
+                replyBuilder);
+    }
+
+    @Bean
+    public SchoolAssistantPurchaseCancellationResponder
+            schoolAssistantPurchaseCancellationResponder(
+                    SchoolAssistantIntentDetector intentDetector,
+                    SchoolAssistantPurchaseCancellationHandler purchaseCancellationHandler) {
+        return new SchoolAssistantPurchaseCancellationResponder(
+                intentDetector,
+                purchaseCancellationHandler);
+    }
+
+    @Bean
+    public SchoolAssistantFixedTopicResponses schoolAssistantFixedTopicResponses(
+            PurchaseRepository purchaseRepository,
+            ProductRepository productRepository,
+            SchoolAssistantPurchasePatternService purchasePatternService,
+            SchoolAssistantReplyFormatter replyFormatter,
+            SchoolAssistantContentFormatter contentFormatter,
+            SchoolAssistantTutorFactsFormatter tutorFactsFormatter,
+            SchoolAssistantReplyBuilder replyBuilder) {
+        return new SchoolAssistantFixedTopicResponses(
+                purchaseRepository,
+                productRepository,
+                purchasePatternService,
+                replyFormatter,
+                contentFormatter,
+                tutorFactsFormatter,
+                replyBuilder);
+    }
+
+    @Bean
+    public SchoolAssistantFixedTopics schoolAssistantFixedTopics(
+            SchoolAssistantIntentDetector intentDetector,
+            SchoolAssistantFixedTopicResponses responses) {
+        return new SchoolAssistantFixedTopics(intentDetector, responses);
+    }
+
+    @Bean
+    public SchoolAssistantConversationService schoolAssistantConversationService(
+            ChatSessionRepository chatSessionRepository,
+            ChatMessageRepository chatMessageRepository) {
+        return new SchoolAssistantConversationService(
+                chatSessionRepository,
+                chatMessageRepository);
+    }
+
+    @Bean
+    public SchoolAssistantQuestionResponder schoolAssistantQuestionResponder(
+            SchoolAssistantFixedTopics fixedTopics,
+            SchoolAssistantResponder schoolAssistantResponder,
+            SchoolAssistantAnswerFormatter answerFormatter,
+            SchoolAssistantRoleCatalog roleCatalog) {
+        return new SchoolAssistantQuestionResponder(
                 fixedTopics,
+                schoolAssistantResponder,
+                answerFormatter,
+                roleCatalog);
+    }
+
+    @Bean
+    public SchoolAssistantMessageClassifier schoolAssistantMessageClassifier(
+            SchoolAssistantIntentDetector intentDetector) {
+        return new SchoolAssistantMessageClassifier(intentDetector);
+    }
+
+    @Bean
+    public AskSchoolAssistant askSchoolAssistant(
+            SchoolAssistantConversationService conversationService,
+            SchoolAssistantContextResolver contextResolver,
+            SchoolAssistantQuestionResponder questionResponder,
+            SchoolAssistantMessageClassifier messageClassifier,
+            SchoolAssistantPurchaseResponder purchaseResponder,
+            SchoolAssistantPurchaseCancellationResponder purchaseCancellationResponder,
+            Clock clock) {
+        return new AskSchoolAssistant(
+                conversationService,
+                contextResolver,
+                questionResponder,
+                messageClassifier,
+                purchaseResponder,
+                purchaseCancellationResponder,
                 clock);
     }
 
