@@ -5,63 +5,92 @@ import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
+import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.Test;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class PromotionResponseTest {
 
+    private UUID promotionId;
+    private UUID firstProductId;
+    private UUID secondProductId;
+    private UUID buffetId;
+    private LocalDateTime startDate;
+    private LocalDateTime endDate;
+    private Promotion promotion;
+    private PromotionResponse response;
+
     @Test
-    void fromDomainShouldMapPromotionWithProductsAndBuffet() {
-        UUID promotionId = UUID.randomUUID();
-        UUID firstProductId = UUID.randomUUID();
-        UUID secondProductId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        LocalDateTime startDate = LocalDateTime.of(2026, 7, 1, 8, 0);
-        LocalDateTime endDate = LocalDateTime.of(2026, 7, 31, 18, 0);
-        Promotion promotion = promotion(promotionId, startDate, endDate);
+    void fromDomain_WhenPromotionHasProductsAndBuffet_MapsPromotionData() {
+        givenPromotionWithProductsAndBuffet();
+
+        whenMappingPromotionResponse();
+
+        thenPromotionDataWasMapped();
+        thenPromotionRelationsWereMapped();
+    }
+
+    @Test
+    void fromDomain_WhenPromotionHasNoOptionalRelations_KeepsRelationsAsNull() {
+        givenPromotionWithoutOptionalRelations();
+
+        whenMappingPromotionResponse();
+
+        thenOptionalRelationsWereKeptAsNull();
+    }
+
+    private void givenPromotionWithProductsAndBuffet() {
+        givenPromotionWithoutOptionalRelations();
         promotion.setStatus(PromotionStatus.ACTIVE);
+
+        firstProductId = randomUUID();
+        secondProductId = randomUUID();
+        buffetId = randomUUID();
+
         promotion.setProducts(List.of(product(firstProductId), product(secondProductId)));
         promotion.setBuffet(buffet(buffetId));
+    }
 
-        PromotionResponse response = PromotionResponse.fromDomain(promotion);
+    private void givenPromotionWithoutOptionalRelations() {
+        promotionId = randomUUID();
+        startDate = LocalDateTime.of(2026, 7, 1, 8, 0);
+        endDate = LocalDateTime.of(2026, 7, 31, 18, 0);
+        promotion = promotion();
+    }
 
+    private void whenMappingPromotionResponse() {
+        response = PromotionResponse.fromDomain(promotion);
+    }
+
+    private void thenPromotionDataWasMapped() {
         assertEquals(promotionId, response.id());
         assertEquals("Combo desayuno", response.name());
         assertEquals(new BigDecimal("15.00"), response.discountPercentage());
         assertEquals(startDate, response.startDate());
         assertEquals(endDate, response.endDate());
         assertEquals("ACTIVE", response.status());
-        assertEquals(List.of(firstProductId, secondProductId), response.productIds());
-        assertEquals(buffetId, response.buffetId());
         assertEquals("https://img.test/promo.png", response.imageUrl());
     }
 
-    @Test
-    void fromDomainShouldKeepNullableAssociationsAsNull() {
-        Promotion promotion = promotion(
-                UUID.randomUUID(),
-                LocalDateTime.of(2026, 7, 1, 8, 0),
-                LocalDateTime.of(2026, 7, 31, 18, 0)
-        );
+    private void thenPromotionRelationsWereMapped() {
+        assertEquals(List.of(firstProductId, secondProductId), response.productIds());
+        assertEquals(buffetId, response.buffetId());
+    }
 
-        PromotionResponse response = PromotionResponse.fromDomain(promotion);
-
+    private void thenOptionalRelationsWereKeptAsNull() {
         assertNull(response.status());
         assertNull(response.productIds());
         assertNull(response.buffetId());
     }
 
-    private Promotion promotion(
-            UUID promotionId,
-            LocalDateTime startDate,
-            LocalDateTime endDate
-    ) {
+    private Promotion promotion() {
         Promotion promotion = new Promotion();
         promotion.setId(promotionId);
         promotion.setName("Combo desayuno");
