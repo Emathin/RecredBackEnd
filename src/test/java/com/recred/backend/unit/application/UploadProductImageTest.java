@@ -4,11 +4,11 @@ import com.recred.backend.application.UploadProductImage;
 import com.recred.backend.application.UploadProductImageRequest;
 import com.recred.backend.application.UploadProductImageResponse;
 import com.recred.backend.domain.repositories.InventoryRepository;
-import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
+import com.recred.backend.domain.services.StorageService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -16,51 +16,75 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class UploadProductImageTest {
 
+    private static final UUID BUFFET_ID = UUID.randomUUID();
+    private static final UUID PRODUCT_ID = UUID.randomUUID();
+    private static final byte[] FILE_BYTES = "content".getBytes();
+    private static final String FILE_NAME = "image.jpg";
+    private static final String EXPECTED_URL = "http://cloudinary.com/image.jpg";
+
     @Mock
-    private CloudinaryService cloudinaryService;
+    private StorageService storageService;
 
     @Mock
     private InventoryRepository inventoryRepository;
 
-    @InjectMocks
     private UploadProductImage uploadProductImage;
 
-    @Test
-    void execute_SubeImagenYActualizaRepositorio() {
-        UUID buffetId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        byte[] imagen = "content".getBytes();
-        String fileName = "image.jpg";
-        String expectedUrl = "http://cloudinary.com/image.jpg";
-        UploadProductImageRequest request = new UploadProductImageRequest(buffetId, productoId, imagen, fileName);
-
-        when(cloudinaryService.uploadImage(imagen, fileName)).thenReturn(expectedUrl);
-
-        UploadProductImageResponse response = uploadProductImage.execute(request);
-
-        assertEquals(expectedUrl, response.urlImagen());
-        verify(cloudinaryService).uploadImage(imagen, fileName);
-        verify(inventoryRepository).updateUrlImagen(buffetId, productoId, expectedUrl);
+    @BeforeEach
+    void setUp() {
+        uploadProductImage = new UploadProductImage(storageService, inventoryRepository);
     }
 
     @Test
-    void execute_CuandoFallaSubeImagen_LanzaExcepcion() {
-        UUID buffetId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        byte[] imagen = "content".getBytes();
-        String fileName = "image.jpg";
-        UploadProductImageRequest request = new UploadProductImageRequest(buffetId, productoId, imagen, fileName);
+    void execute_UploadsImageAndUpdatesRepository() {
+        givenImageUploadWillSucceed();
 
-        when(cloudinaryService.uploadImage(imagen, fileName)).thenThrow(new RuntimeException("Cloudinary error"));
+        UploadProductImageResponse response = whenExecutingUseCase();
 
-        Executable execution = () -> uploadProductImage.execute(request);
+        thenImageWasUploadedAndInventoryUpdated(response);
+    }
 
+    @Test
+    void execute_WhenUploadFails_ThrowsException() {
+        givenImageUploadWillFail();
+
+        Executable execution = this::whenExecutingUseCase;
+
+        thenThrowsException(execution);
+    }
+
+    private void givenImageUploadWillSucceed() {
+        when(storageService.uploadFile(FILE_BYTES, FILE_NAME, null)).thenReturn(EXPECTED_URL);
+    }
+
+    private void givenImageUploadWillFail() {
+        when(storageService.uploadFile(FILE_BYTES, FILE_NAME, null))
+                .thenThrow(new RuntimeException("Storage error"));
+    }
+
+    private UploadProductImageResponse whenExecutingUseCase() {
+        UploadProductImageRequest request = new UploadProductImageRequest(
+                BUFFET_ID, PRODUCT_ID, FILE_BYTES, FILE_NAME);
+        return uploadProductImage.execute(request);
+    }
+
+    private void thenImageWasUploadedAndInventoryUpdated(UploadProductImageResponse response) {
+        assertEquals(EXPECTED_URL, response.urlImagen());
+        verify(storageService).uploadFile(FILE_BYTES, FILE_NAME, null);
+        verify(inventoryRepository).updateUrlImagen(BUFFET_ID, PRODUCT_ID, EXPECTED_URL);
+    }
+
+    private void thenThrowsException(Executable execution) {
         assertThrows(RuntimeException.class, execution);
-        verify(inventoryRepository, never()).updateUrlImagen(any(), any(), any());
+        verify(inventoryRepository, never()).updateUrlImagen(any(), any(), anyString());
     }
 }

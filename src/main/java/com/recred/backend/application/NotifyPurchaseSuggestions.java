@@ -6,6 +6,7 @@ import com.recred.backend.domain.models.PushNotification;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.services.PushNotificationSender;
 import com.recred.backend.domain.services.UsuarioService;
+import com.recred.backend.domain.repositories.NotificationRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,17 +30,20 @@ public class NotifyPurchaseSuggestions {
     private final PushNotificationSender pushNotificationSender;
     private final UsuarioService usuarioService;
     private final ObjectMapper objectMapper;
+    private final NotificationRepository notificationRepository;
 
     public NotifyPurchaseSuggestions(
             PurchaseSuggestIA purchaseSuggestIA,
             PushNotificationSender pushNotificationSender,
             UsuarioService usuarioService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+           NotificationRepository notificationRepository
     ) {
         this.purchaseSuggestIA = purchaseSuggestIA;
         this.pushNotificationSender = pushNotificationSender;
         this.usuarioService = usuarioService;
         this.objectMapper = objectMapper;
+        this.notificationRepository = notificationRepository;
     }
 
     public NotifyPurchaseSuggestionsResponse execute(NotifyPurchaseSuggestionsRequest request) {
@@ -66,19 +70,40 @@ public class NotifyPurchaseSuggestions {
         Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoId);
         LOGGER.info("Enviando notificación de sugerencia al usuario id: {}", usuario.getId());
 
+        String message = randomMessage();
+
         PushNotification notification = createNotification(
                 usuario.getId(),
                 suggestion,
-                rolName(usuario)
+                rolName(usuario),
+                message
         );
         pushNotificationSender.send(notification);
+
+        com.recred.backend.domain.models.Notification dbNotification =
+                new com.recred.backend.domain.models.Notification(
+                        null,
+                        com.recred.backend.domain.models.TipoNotificacion.SUGERENCIA_IA,
+                        "Recomendación para tu recreo",
+                        message,
+                        false,
+                        java.time.LocalDateTime.now(),
+                        null,
+                        suggestion.alumnoId(),
+                        suggestion.producto() != null ? suggestion.producto().id() : null,
+                        null,
+                        suggestion.id()
+                );
+        notificationRepository.save(dbNotification, usuario.getId());
+
         return PushNotificationResponse.fromDomain(notification);
     }
 
     private PushNotification createNotification(
             UUID userId,
             PurchaseSuggestionResponse suggestion,
-            String rol
+            String rol,
+            String message
     ) {
         String productoJson = productJson(suggestion);
 
@@ -89,7 +114,7 @@ public class NotifyPurchaseSuggestions {
                         "rol", rol,
                         "sugerenciaId", suggestion.id().toString(),
                         "titulo", "Recomendación para tu recreo",
-                        "mensaje", randomMessage(),
+                        "mensaje", message,
                         "producto", productoJson,
                         "alumnoId", suggestion.alumnoId().toString()
                 )
@@ -129,7 +154,8 @@ public class NotifyPurchaseSuggestions {
                 "descripcion", product.descripcion() != null ? product.descripcion() : "",
                 "categoria", category(product),
                 "estadoStock", "DISPONIBLE",
-                "clasificacionesSalud", healthClassifications(product)
+                "clasificacionesSalud", healthClassifications(product),
+                "imagen", product.urlImagen() != null ? product.urlImagen() : ""
         );
     }
 

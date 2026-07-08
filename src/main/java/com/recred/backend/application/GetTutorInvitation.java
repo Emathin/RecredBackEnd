@@ -1,7 +1,6 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.models.TutorInvitation;
-import com.recred.backend.domain.models.TutorInvitationStatus;
 import com.recred.backend.domain.repositories.TutorInvitationRepository;
 
 import java.time.Clock;
@@ -19,14 +18,23 @@ public class GetTutorInvitation {
         this.clock = clock;
     }
 
-    public TutorInvitation execute(String token) {
-        TutorInvitation invitation = invitationRepository.findByTokenHash(tokenService.hash(token))
+    public GetTutorInvitationResponse execute(String token) {
+        TutorInvitation invitation = findInvitationOrThrow(token);
+
+        expireIfApplicable(invitation);
+
+        return GetTutorInvitationResponse.fromDomain(invitation);
+    }
+
+    private TutorInvitation findInvitationOrThrow(String token) {
+        return invitationRepository.findByTokenHash(tokenService.hash(token))
                 .orElseThrow(() -> new IllegalArgumentException("No se encontro la invitacion"));
-        if (invitation.getStatus() == TutorInvitationStatus.PENDING
-                && invitation.getExpiresAt().isBefore(LocalDateTime.now(clock))) {
-            invitation.setStatus(TutorInvitationStatus.EXPIRED);
-            return invitationRepository.save(invitation);
+    }
+
+    private void expireIfApplicable(TutorInvitation invitation) {
+        if (invitation.isPendingAndExpired(LocalDateTime.now(clock))) {
+            invitation.markAsExpired();
+            invitationRepository.save(invitation);
         }
-        return invitation;
     }
 }

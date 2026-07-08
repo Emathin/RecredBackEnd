@@ -19,6 +19,7 @@ import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import com.recred.backend.application.PrizeHealthyPurchase;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -37,6 +38,7 @@ public class PurchaseSuggestController {
     private final NotifyPurchaseSuggestions notifyPurchaseSuggestions;
     private final RespondToAISuggestion respondToAISuggestion;
     private final CreateAdvancePurchase createAdvancePurchase;
+    private final com.recred.backend.application.PrizeHealthyPurchase prizeHealthyPurchase;
     private final SugerenciaIARepository sugerenciaIARepository;
     private final UsuarioService usuarioService;
     private final TutorRepository tutorRepository;
@@ -46,6 +48,7 @@ public class PurchaseSuggestController {
     public PurchaseSuggestController(NotifyPurchaseSuggestions notifyPurchaseSuggestions,
                                      RespondToAISuggestion respondToAISuggestion,
                                      CreateAdvancePurchase createAdvancePurchase,
+                                        PrizeHealthyPurchase prizeHealthyPurchase,
                                      SugerenciaIARepository sugerenciaIARepository,
                                      UsuarioService usuarioService,
                                      TutorRepository tutorRepository,
@@ -54,6 +57,7 @@ public class PurchaseSuggestController {
         this.notifyPurchaseSuggestions = notifyPurchaseSuggestions;
         this.respondToAISuggestion = respondToAISuggestion;
         this.createAdvancePurchase = createAdvancePurchase;
+        this.prizeHealthyPurchase = prizeHealthyPurchase;
         this.sugerenciaIARepository = sugerenciaIARepository;
         this.usuarioService = usuarioService;
         this.tutorRepository = tutorRepository;
@@ -132,6 +136,11 @@ public class PurchaseSuggestController {
 
         CreateAdvancePurchaseResponse useCaseResponse =
                 createAdvancePurchase.execute(request.withCognitoSub(subject));
+
+        prizeHealthyPurchase.execute(new com.recred.backend.application.PrizeHealthyPurchaseRequest(
+                idStudent,
+                UUID.fromString(useCaseResponse.orderId())
+        ));
 
         return ResponseEntity.ok(new AdvancePurchaseResponse(
                 useCaseResponse.orderId(),

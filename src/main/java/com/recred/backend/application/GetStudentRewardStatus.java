@@ -37,9 +37,9 @@ public class GetStudentRewardStatus {
 
     private String nextLevelNameAfter(RewardLevel currentLevel) {
         return switch (currentLevel) {
-            case BRONZE -> RewardLevel.SILVER.name();
-            case SILVER -> RewardLevel.GOLD.name();
-            case GOLD -> "MAX";
+            case PRINCIPIANTE -> RewardLevel.CRACK.name();
+            case CRACK -> RewardLevel.GOAT.name();
+            case GOAT -> "MAX";
         };
     }
 }

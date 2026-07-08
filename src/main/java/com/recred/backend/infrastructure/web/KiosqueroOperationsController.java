@@ -211,6 +211,9 @@ public class KiosqueroOperationsController {
             LocalDate to,
             Authentication authentication
     ) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new IllegalArgumentException("startDate must be before or equal to endDate");
+        }
         kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
         return ResponseEntity.ok(listDailyBuffetCloses.execute(
                 new ListDailyBuffetClosesRequest(buffetId, from, to)).closes());

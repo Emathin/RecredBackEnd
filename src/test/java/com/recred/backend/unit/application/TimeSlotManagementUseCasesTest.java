@@ -42,6 +42,12 @@ import static org.mockito.Mockito.when;
 
 class TimeSlotManagementUseCasesTest {
 
+    private static final UUID COLEGIO_ID = UUID.randomUUID();
+    private static final UUID SLOT_ID = UUID.randomUUID();
+    private static final String DESCRIPCION = "Primer recreo";
+    private static final LocalTime INICIO = LocalTime.of(9, 0);
+    private static final LocalTime FIN = LocalTime.of(9, 15);
+
     private final FranjaHorariaRepository franjaHorariaRepository =
             mock(FranjaHorariaRepository.class);
     private final ColegioRepository colegioRepository = mock(ColegioRepository.class);
@@ -52,211 +58,226 @@ class TimeSlotManagementUseCasesTest {
 
     @Test
     void create_ShouldSaveActiveTimeSlotForActiveSchool() {
-        UUID colegioId = UUID.randomUUID();
-        UUID slotId = UUID.randomUUID();
-        CreateTimeSlot useCase = new CreateTimeSlot(
-                franjaHorariaRepository,
-                colegioRepository);
-        CreateTimeSlotRequest request = new CreateTimeSlotRequest(
-                colegioId,
-                " Primer recreo ",
-                LocalTime.of(9, 0),
-                LocalTime.of(9, 15),
-                30,
-                null
-        );
+        givenActiveSchool();
+        givenNoActiveOverlapForCreation();
+        givenSavedSlotReturnsWithId();
 
-        when(colegioRepository.existsActiveById(colegioId)).thenReturn(true);
-        when(franjaHorariaRepository.existsActiveOverlap(
-                eq(colegioId),
-                eq(null),
-                eq(LocalTime.of(9, 0)),
-                eq(LocalTime.of(9, 15)))).thenReturn(false);
-        when(franjaHorariaRepository.save(any(FranjaHoraria.class))).thenAnswer(invocation -> {
-            FranjaHoraria slot = invocation.getArgument(0);
-            slot.setId(slotId);
-            return slot;
-        });
+        TimeSlotDetailsResponse response = whenCreatingTimeSlot(DESCRIPCION);
 
-        TimeSlotDetailsResponse response = useCase.execute(request);
-
-        assertEquals(slotId, response.id());
-        assertEquals("Primer recreo", response.descripcion());
-        assertEquals(0, response.minutosCorte());
-        assertTrue(response.activo());
+        thenResponseHasDetails(response, "Primer recreo", 0, true);
     }
 
     @Test
     void create_WhenOverlapsActiveSlot_ShouldThrowException() {
-        UUID colegioId = UUID.randomUUID();
-        CreateTimeSlot useCase = new CreateTimeSlot(
-                franjaHorariaRepository,
-                colegioRepository);
-        CreateTimeSlotRequest request = new CreateTimeSlotRequest(
-                colegioId,
-                "Primer recreo",
-                LocalTime.of(9, 0),
-                LocalTime.of(9, 15),
-                null,
-                0
-        );
+        givenActiveSchool();
+        givenActiveOverlapForCreation();
 
-        when(colegioRepository.existsActiveById(colegioId)).thenReturn(true);
-        when(franjaHorariaRepository.existsActiveOverlap(
-                eq(colegioId),
-                eq(null),
-                eq(LocalTime.of(9, 0)),
-                eq(LocalTime.of(9, 15)))).thenReturn(true);
+        Executable execution = () -> whenCreatingTimeSlot(DESCRIPCION);
 
-        Executable execution = () -> useCase.execute(request);
-
-        assertThrows(TimeSlotOverlapException.class, execution);
-        verify(franjaHorariaRepository, never()).save(any(FranjaHoraria.class));
+        thenThrowsOverlapException(execution);
+        thenSlotWasNotSaved();
     }
 
     @Test
     void update_WhenStructuralDataChangesAndHasFuturePurchases_ShouldThrowException() {
-        UUID colegioId = UUID.randomUUID();
-        UUID slotId = UUID.randomUUID();
-        UpdateTimeSlot useCase = updateUseCase();
-        FranjaHoraria existing = slot(slotId, colegioId, "Primer recreo",
-                LocalTime.of(9, 0), LocalTime.of(9, 15), true);
-        UpdateTimeSlotRequest request = new UpdateTimeSlotRequest(
-                colegioId,
-                slotId,
-                "Segundo recreo",
-                LocalTime.of(10, 0),
-                LocalTime.of(10, 15),
-                40,
-                5
-        );
+        givenActiveSchool();
+        givenExistingSlot(true);
+        givenFuturePurchasesExist();
 
-        when(colegioRepository.existsActiveById(colegioId)).thenReturn(true);
-        when(franjaHorariaRepository.findByIdAndColegioId(slotId, colegioId))
-                .thenReturn(Optional.of(existing));
-        when(purchaseRepository.existsActiveFutureScheduledByPickupSlotId(
-                eq(slotId),
-                eq(LocalDate.of(2026, 7, 2)),
-                any())).thenReturn(true);
+        Executable execution = () -> whenUpdatingTimeSlot("Segundo recreo", LocalTime.of(10, 0), LocalTime.of(10, 15));
 
-        Executable execution = () -> useCase.execute(request);
-
-        assertThrows(TimeSlotInUseException.class, execution);
-        verify(franjaHorariaRepository, never()).save(any(FranjaHoraria.class));
+        thenThrowsInUseException(execution);
+        thenSlotWasNotSaved();
     }
 
     @Test
     void update_WhenOnlyRulesChange_ShouldSaveWithoutCheckingFuturePurchases() {
-        UUID colegioId = UUID.randomUUID();
-        UUID slotId = UUID.randomUUID();
-        UpdateTimeSlot useCase = updateUseCase();
-        FranjaHoraria existing = slot(slotId, colegioId, "Primer recreo",
-                LocalTime.of(9, 0), LocalTime.of(9, 15), true);
-        UpdateTimeSlotRequest request = new UpdateTimeSlotRequest(
-                colegioId,
-                slotId,
-                "Primer recreo",
-                LocalTime.of(9, 0),
-                LocalTime.of(9, 15),
-                40,
-                5
-        );
+        givenActiveSchool();
+        givenExistingSlot(true);
+        givenNoActiveOverlapForUpdate();
+        givenSavedSlotReturnsItself();
 
-        when(colegioRepository.existsActiveById(colegioId)).thenReturn(true);
-        when(franjaHorariaRepository.findByIdAndColegioId(slotId, colegioId))
-                .thenReturn(Optional.of(existing));
-        when(franjaHorariaRepository.existsActiveOverlap(
-                colegioId,
-                slotId,
-                LocalTime.of(9, 0),
-                LocalTime.of(9, 15))).thenReturn(false);
-        when(franjaHorariaRepository.save(existing)).thenReturn(existing);
+        TimeSlotDetailsResponse response = whenUpdatingTimeSlot(DESCRIPCION, INICIO, FIN);
 
-        TimeSlotDetailsResponse response = useCase.execute(request);
-
-        assertEquals(40, response.cupoMaximo());
-        assertEquals(5, response.minutosCorte());
-        verify(purchaseRepository, never())
-                .existsActiveFutureScheduledByPickupSlotId(any(), any(), any());
+        thenResponseHasRulesUpdated(response, 40, 5);
+        thenFuturePurchasesWereNotChecked();
     }
 
     @Test
     void deactivate_ShouldSaveInactiveSlot() {
-        UUID colegioId = UUID.randomUUID();
-        UUID slotId = UUID.randomUUID();
-        DeactivateTimeSlot useCase = new DeactivateTimeSlot(franjaHorariaRepository);
-        FranjaHoraria existing = slot(slotId, colegioId, "Primer recreo",
-                LocalTime.of(9, 0), LocalTime.of(9, 15), true);
-        DeactivateTimeSlotRequest request = new DeactivateTimeSlotRequest(colegioId, slotId);
+        givenExistingSlot(true);
+        givenSavedSlotReturnsItself();
 
-        when(franjaHorariaRepository.findByIdAndColegioId(slotId, colegioId))
-                .thenReturn(Optional.of(existing));
-        when(franjaHorariaRepository.save(existing)).thenReturn(existing);
+        TimeSlotDetailsResponse response = whenDeactivatingTimeSlot();
 
-        TimeSlotDetailsResponse response = useCase.execute(request);
-
-        assertFalse(response.activo());
-        verify(franjaHorariaRepository).save(existing);
+        thenResponseIsInactive(response);
+        thenSlotWasSaved();
     }
 
     @Test
     void reactivate_WhenOverlapsActiveSlot_ShouldThrowException() {
-        UUID colegioId = UUID.randomUUID();
-        UUID slotId = UUID.randomUUID();
-        ReactivateTimeSlot useCase = new ReactivateTimeSlot(franjaHorariaRepository);
-        FranjaHoraria existing = slot(slotId, colegioId, "Primer recreo",
-                LocalTime.of(9, 0), LocalTime.of(9, 15), false);
-        ReactivateTimeSlotRequest request = new ReactivateTimeSlotRequest(colegioId, slotId);
+        givenExistingSlot(false);
+        givenActiveOverlapForUpdate();
 
-        when(franjaHorariaRepository.findByIdAndColegioId(slotId, colegioId))
-                .thenReturn(Optional.of(existing));
-        when(franjaHorariaRepository.existsActiveOverlap(
-                colegioId,
-                slotId,
-                LocalTime.of(9, 0),
-                LocalTime.of(9, 15))).thenReturn(true);
+        Executable execution = () -> whenReactivatingTimeSlot();
 
-        Executable execution = () -> useCase.execute(request);
-
-        assertThrows(TimeSlotOverlapException.class, execution);
-        verify(franjaHorariaRepository, never()).save(any(FranjaHoraria.class));
+        thenThrowsOverlapException(execution);
+        thenSlotWasNotSaved();
     }
 
     @Test
     void list_WhenIncludesInactive_ShouldUseAdministrativeQuery() {
-        UUID colegioId = UUID.randomUUID();
-        ListSchoolTimeSlots useCase = new ListSchoolTimeSlots(franjaHorariaRepository);
-        FranjaHoraria inactive = slot(UUID.randomUUID(), colegioId, "Salida",
-                LocalTime.of(12, 0), LocalTime.of(12, 15), false);
-        ListSchoolTimeSlotsRequest request = new ListSchoolTimeSlotsRequest(colegioId, true);
+        givenAdministrativeSlotsFound();
 
-        when(franjaHorariaRepository.findAllByColegioIdIncludingInactive(colegioId))
-                .thenReturn(List.of(inactive));
+        List<TimeSlotDetailsResponse> response = whenListingAdministrativeTimeSlots();
 
-        List<TimeSlotDetailsResponse> response = useCase.execute(request);
-
-        assertEquals(1, response.size());
-        assertFalse(response.get(0).activo());
-        verify(franjaHorariaRepository).findAllByColegioIdIncludingInactive(colegioId);
+        thenResponseContainsOneInactiveSlot(response);
+        thenAdministrativeQueryWasUsed();
     }
 
-    private UpdateTimeSlot updateUseCase() {
-        return new UpdateTimeSlot(
-                franjaHorariaRepository,
-                colegioRepository,
-                purchaseRepository,
-                clock);
+    private void givenActiveSchool() {
+        when(colegioRepository.existsActiveById(COLEGIO_ID)).thenReturn(true);
     }
 
-    private FranjaHoraria slot(UUID slotId, UUID colegioId, String descripcion,
-                               LocalTime horaInicio, LocalTime horaFin, boolean activo) {
+    private void givenNoActiveOverlapForCreation() {
+        when(franjaHorariaRepository.existsActiveOverlap(
+                eq(COLEGIO_ID), eq(null), eq(INICIO), eq(FIN))).thenReturn(false);
+    }
+
+    private void givenActiveOverlapForCreation() {
+        when(franjaHorariaRepository.existsActiveOverlap(
+                eq(COLEGIO_ID), eq(null), eq(INICIO), eq(FIN))).thenReturn(true);
+    }
+
+    private void givenNoActiveOverlapForUpdate() {
+        when(franjaHorariaRepository.existsActiveOverlap(
+                COLEGIO_ID, SLOT_ID, INICIO, FIN)).thenReturn(false);
+    }
+
+    private void givenActiveOverlapForUpdate() {
+        when(franjaHorariaRepository.existsActiveOverlap(
+                COLEGIO_ID, SLOT_ID, INICIO, FIN)).thenReturn(true);
+    }
+
+    private void givenExistingSlot(boolean isActivo) {
+        when(franjaHorariaRepository.findByIdAndColegioId(SLOT_ID, COLEGIO_ID))
+                .thenReturn(Optional.of(slotEntity(isActivo)));
+    }
+
+    private void givenFuturePurchasesExist() {
+        when(purchaseRepository.existsActiveFutureScheduledByPickupSlotId(
+                eq(SLOT_ID), eq(LocalDate.of(2026, 7, 2)), any())).thenReturn(true);
+    }
+
+    private void givenSavedSlotReturnsWithId() {
+        when(franjaHorariaRepository.save(any(FranjaHoraria.class))).thenAnswer(invocation -> {
+            FranjaHoraria slot = invocation.getArgument(0);
+            slot.setId(SLOT_ID);
+            return slot;
+        });
+    }
+
+    private void givenSavedSlotReturnsItself() {
+        when(franjaHorariaRepository.save(any(FranjaHoraria.class))).thenAnswer(i -> i.getArgument(0));
+    }
+
+    private void givenAdministrativeSlotsFound() {
+        when(franjaHorariaRepository.findAllByColegioIdIncludingInactive(COLEGIO_ID))
+                .thenReturn(List.of(slotEntity(false)));
+    }
+
+    private FranjaHoraria slotEntity(boolean activo) {
         FranjaHoraria slot = new FranjaHoraria();
-        slot.setId(slotId);
-        slot.setColegioId(colegioId);
-        slot.setDescripcion(descripcion);
-        slot.setHoraInicio(horaInicio);
-        slot.setHoraFin(horaFin);
+        slot.setId(SLOT_ID);
+        slot.setColegioId(COLEGIO_ID);
+        slot.setDescripcion(DESCRIPCION);
+        slot.setHoraInicio(INICIO);
+        slot.setHoraFin(FIN);
         slot.setActivo(activo);
         return slot;
+    }
+
+
+    private TimeSlotDetailsResponse whenCreatingTimeSlot(String descripcion) {
+        CreateTimeSlot useCase = new CreateTimeSlot(franjaHorariaRepository, colegioRepository);
+        return useCase.execute(new CreateTimeSlotRequest(
+                COLEGIO_ID, descripcion, INICIO, FIN, 30, null));
+    }
+
+    private TimeSlotDetailsResponse whenUpdatingTimeSlot(String descripcion, LocalTime start, LocalTime end) {
+        UpdateTimeSlot useCase = new UpdateTimeSlot(
+                franjaHorariaRepository, colegioRepository, purchaseRepository, clock);
+        return useCase.execute(new UpdateTimeSlotRequest(
+                COLEGIO_ID, SLOT_ID, descripcion, start, end, 40, 5));
+    }
+
+    private TimeSlotDetailsResponse whenDeactivatingTimeSlot() {
+        DeactivateTimeSlot useCase = new DeactivateTimeSlot(franjaHorariaRepository);
+        return useCase.execute(new DeactivateTimeSlotRequest(COLEGIO_ID, SLOT_ID));
+    }
+
+    private TimeSlotDetailsResponse whenReactivatingTimeSlot() {
+        ReactivateTimeSlot useCase = new ReactivateTimeSlot(franjaHorariaRepository);
+        return useCase.execute(new ReactivateTimeSlotRequest(COLEGIO_ID, SLOT_ID));
+    }
+
+    private List<TimeSlotDetailsResponse> whenListingAdministrativeTimeSlots() {
+        ListSchoolTimeSlots useCase = new ListSchoolTimeSlots(franjaHorariaRepository);
+        return useCase.execute(new ListSchoolTimeSlotsRequest(COLEGIO_ID, true));
+    }
+
+    // --- Helpers Privados: Then ---
+
+    private void thenResponseHasDetails(
+            TimeSlotDetailsResponse response,
+            String expectedDesc,
+            int expectedCutoff,
+            boolean expectedActive) {
+        assertEquals(SLOT_ID, response.id());
+        assertEquals(expectedDesc, response.descripcion());
+        assertEquals(expectedCutoff, response.minutosCorte());
+        assertEquals(expectedActive, response.activo());
+    }
+
+    private void thenResponseHasRulesUpdated(
+            TimeSlotDetailsResponse response,
+            int expectedMax,
+            int expectedCutoff) {
+        assertEquals(expectedMax, response.cupoMaximo());
+        assertEquals(expectedCutoff, response.minutosCorte());
+    }
+
+    private void thenResponseIsInactive(TimeSlotDetailsResponse response) {
+        assertFalse(response.activo());
+    }
+
+    private void thenResponseContainsOneInactiveSlot(List<TimeSlotDetailsResponse> response) {
+        assertEquals(1, response.size());
+        assertFalse(response.get(0).activo());
+    }
+
+    private void thenThrowsOverlapException(Executable execution) {
+        assertThrows(TimeSlotOverlapException.class, execution);
+    }
+
+    private void thenThrowsInUseException(Executable execution) {
+        assertThrows(TimeSlotInUseException.class, execution);
+    }
+
+    private void thenSlotWasNotSaved() {
+        verify(franjaHorariaRepository, never()).save(any(FranjaHoraria.class));
+    }
+
+    private void thenSlotWasSaved() {
+        verify(franjaHorariaRepository).save(any(FranjaHoraria.class));
+    }
+
+    private void thenFuturePurchasesWereNotChecked() {
+        verify(purchaseRepository, never())
+                .existsActiveFutureScheduledByPickupSlotId(any(), any(), any());
+    }
+
+    private void thenAdministrativeQueryWasUsed() {
+        verify(franjaHorariaRepository).findAllByColegioIdIncludingInactive(COLEGIO_ID);
     }
 }

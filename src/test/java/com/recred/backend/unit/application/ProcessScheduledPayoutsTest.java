@@ -46,6 +46,13 @@ class ProcessScheduledPayoutsTest {
             ZoneOffset.UTC
     );
 
+    private static final UUID KIOSQUERO_ID = UUID.randomUUID();
+    private static final UUID BUFFET_ID = UUID.randomUUID();
+    private static final String CVU = "0000003100010000000001";
+    private static final String CUIT = "20123456789";
+    private static final String HOLDER = "Cuenta Test";
+    private static final String PAYMENT_ID = "payment-id";
+
     @Mock
     private KiosqueroPayoutConfigRepository repository;
     @Mock
@@ -69,154 +76,147 @@ class ProcessScheduledPayoutsTest {
     }
 
     @Test
-    void executeWhenKiosqueroHasNoBuffetShouldSkipConfig() {
-        UUID kiosqueroId = UUID.randomUUID();
-        KiosqueroPayoutConfig config = activeConfig(kiosqueroId);
-        when(repository.findActiveConfigsDueOnOrBefore(TODAY)).thenReturn(List.of(config));
-        when(kiosqueroRepository.findBuffetById(kiosqueroId)).thenReturn(null);
+    void execute_WhenKiosqueroHasNoBuffet_ShouldSkipConfig() {
+        KiosqueroPayoutConfig config = givenActiveConfig();
+        givenDueConfigsFound(config);
+        givenKiosqueroHasNoBuffet();
 
-        useCase.execute();
+        whenExecute();
 
-        verify(repository).findActiveConfigsDueOnOrBefore(TODAY);
-        verify(kiosqueroRepository).findBuffetById(kiosqueroId);
-        verify(repository, never()).save(config);
-        verifyNoInteractions(purchaseRepository, paymentService);
+        thenConfigIsSkippedAndNotSaved(config);
+        thenNoInteractionsWithPurchaseAndPayment();
     }
 
     @Test
-    void executeWhenConfigHasNoDeliveredSalesShouldMarkExecuted() {
-        UUID kiosqueroId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        KiosqueroPayoutConfig config = activeConfig(kiosqueroId);
-        config.setUltimaEjecucion(TODAY.minusDays(5));
-        when(repository.findActiveConfigsDueOnOrBefore(TODAY)).thenReturn(List.of(config));
-        when(kiosqueroRepository.findBuffetById(kiosqueroId)).thenReturn(buffetId);
-        when(purchaseRepository.findByBuffetAndDateRange(
-                buffetId,
-                TODAY.minusDays(5).atStartOfDay(),
-                TODAY.atTime(LocalTime.MAX)
-        )).thenReturn(List.of(purchase(EstadoCompra.PENDIENTE, "120.00")));
+    void execute_WhenConfigHasNoDeliveredSales_ShouldMarkExecuted() {
+        KiosqueroPayoutConfig config = givenActiveConfigWithLastExecution(TODAY.minusDays(5));
+        givenDueConfigsFound(config);
+        givenKiosqueroHasBuffet();
+        givenNoDeliveredSalesFound(TODAY.minusDays(5).atStartOfDay());
 
-        useCase.execute();
+        whenExecute();
 
-        assertEquals(TODAY, config.getUltimaEjecucion());
-        assertEquals(TODAY.plusDays(1), config.getProximaEjecucion());
-        verify(repository).save(config);
-        verifyNoInteractions(paymentService);
+        thenConfigIsMarkedAsExecutedAndSaved(config);
+        thenPaymentServiceIsNotCalled();
     }
 
     @Test
-    void executeWhenTransferIsApprovedShouldMarkExecutedAndSave() {
-        UUID kiosqueroId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        LocalDate nextExecution = TODAY;
+    void execute_WhenTransferIsApproved_ShouldMarkExecutedAndSave() {
         LocalDateTime createdAt = TODAY.minusDays(2).atTime(8, 30);
-        KiosqueroPayoutConfig config = activeConfig(kiosqueroId);
-        config.setCreadoEn(createdAt);
-        when(repository.findActiveConfigsDueOnOrBefore(TODAY)).thenReturn(List.of(config));
-        when(kiosqueroRepository.findBuffetById(kiosqueroId)).thenReturn(buffetId);
-        when(purchaseRepository.findByBuffetAndDateRange(
-                buffetId,
-                createdAt,
-                TODAY.atTime(LocalTime.MAX)
-        )).thenReturn(List.of(
-                purchase(EstadoCompra.ENTREGADO, "100.00"),
-                purchase(EstadoCompra.PENDIENTE, "30.00"),
-                purchase(EstadoCompra.ENTREGADO, "50.50")
-        ));
-        when(paymentService.transferToThirdParty(
-                eq("0000003100010000000001"),
-                eq("20123456789"),
-                eq("Cuenta Test"),
-                eq(new BigDecimal("150.50")),
-                eq(idempotencyKey(kiosqueroId, nextExecution))
-        )).thenReturn(new PaymentDetails(
-                "payment-id",
-                null,
-                new BigDecimal("150.50"),
-                PaymentStatus.APPROVED
-        ));
+        KiosqueroPayoutConfig config = givenActiveConfigWithCreatedAt(createdAt);
+        givenDueConfigsFound(config);
+        givenKiosqueroHasBuffet();
+        givenDeliveredSalesFound(createdAt, "150.50");
+        givenPaymentTransferIsApproved(config, "150.50");
 
-        useCase.execute();
+        whenExecute();
 
-        assertEquals(TODAY, config.getUltimaEjecucion());
-        assertEquals(TODAY.plusDays(1), config.getProximaEjecucion());
-        verify(repository).save(config);
+        thenConfigIsMarkedAsExecutedAndSaved(config);
     }
 
     @Test
-    void executeWhenTransferIsRejectedShouldPauseConfig() {
-        UUID kiosqueroId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        KiosqueroPayoutConfig config = activeConfig(kiosqueroId);
-        when(repository.findActiveConfigsDueOnOrBefore(TODAY)).thenReturn(List.of(config));
-        when(kiosqueroRepository.findBuffetById(kiosqueroId)).thenReturn(buffetId);
-        when(purchaseRepository.findByBuffetAndDateRange(
-                buffetId,
-                CLOCK.instant().atZone(CLOCK.getZone()).toLocalDateTime().minusDays(30),
-                TODAY.atTime(LocalTime.MAX)
-        )).thenReturn(List.of(purchase(EstadoCompra.ENTREGADO, "15.00")));
-        when(paymentService.transferToThirdParty(
-                eq("0000003100010000000001"),
-                eq("20123456789"),
-                eq("Cuenta Test"),
-                eq(new BigDecimal("15.00")),
-                eq(idempotencyKey(kiosqueroId, TODAY))
-        )).thenReturn(new PaymentDetails(
-                "payment-id",
-                null,
-                new BigDecimal("15.00"),
-                PaymentStatus.REJECTED
-        ));
+    void execute_WhenTransferIsRejected_ShouldPauseConfig() {
+        KiosqueroPayoutConfig config = givenActiveConfig();
+        givenDueConfigsFound(config);
+        givenKiosqueroHasBuffet();
+        LocalDateTime lookbackStart = CLOCK.instant().atZone(CLOCK.getZone())
+                .toLocalDateTime().minusDays(30);
+        givenDeliveredSalesFound(lookbackStart, "15.00");
+        givenPaymentTransferIsRejected(config, "15.00");
 
-        useCase.execute();
+        whenExecute();
 
-        assertEquals(PayoutScheduleStatus.PAUSED, config.getEstado());
-        assertNull(config.getUltimaEjecucion());
-        assertEquals(TODAY, config.getProximaEjecucion());
-        verify(repository).save(config);
+        thenConfigIsPausedAndSaved(config);
     }
 
     @Test
-    void executeWhenTransferFailsShouldKeepConfigActiveAndSave() {
-        UUID kiosqueroId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        KiosqueroPayoutConfig config = activeConfig(kiosqueroId);
-        config.setUltimaEjecucion(TODAY.minusDays(1));
-        when(repository.findActiveConfigsDueOnOrBefore(TODAY)).thenReturn(List.of(config));
-        when(kiosqueroRepository.findBuffetById(kiosqueroId)).thenReturn(buffetId);
-        when(purchaseRepository.findByBuffetAndDateRange(
-                buffetId,
-                TODAY.minusDays(1).atStartOfDay(),
-                TODAY.atTime(LocalTime.MAX)
-        )).thenReturn(List.of(purchase(EstadoCompra.ENTREGADO, "40.00")));
-        when(paymentService.transferToThirdParty(
-                eq("0000003100010000000001"),
-                eq("20123456789"),
-                eq("Cuenta Test"),
-                eq(new BigDecimal("40.00")),
-                eq(idempotencyKey(kiosqueroId, TODAY))
-        )).thenThrow(new RuntimeException("provider unavailable"));
+    void execute_WhenTransferFails_ShouldKeepConfigActiveAndSave() {
+        KiosqueroPayoutConfig config = givenActiveConfigWithLastExecution(TODAY.minusDays(1));
+        givenDueConfigsFound(config);
+        givenKiosqueroHasBuffet();
+        givenDeliveredSalesFound(TODAY.minusDays(1).atStartOfDay(), "40.00");
+        givenPaymentTransferFails(config, "40.00");
 
-        useCase.execute();
+        whenExecute();
 
-        assertEquals(PayoutScheduleStatus.ACTIVE, config.getEstado());
-        assertEquals(TODAY.minusDays(1), config.getUltimaEjecucion());
-        assertEquals(TODAY, config.getProximaEjecucion());
-        verify(repository).save(config);
+        thenConfigIsKeptActiveAndSaved(config, TODAY.minusDays(1));
     }
 
-    private KiosqueroPayoutConfig activeConfig(UUID kiosqueroId) {
+    private KiosqueroPayoutConfig givenActiveConfig() {
         KiosqueroPayoutConfig config = new KiosqueroPayoutConfig();
-        config.setKiosqueroId(kiosqueroId);
-        config.setDestinationCvu("0000003100010000000001");
-        config.setDestinationCuit("20123456789");
-        config.setAccountHolderName("Cuenta Test");
+        config.setKiosqueroId(KIOSQUERO_ID);
+        config.setDestinationCvu(CVU);
+        config.setDestinationCuit(CUIT);
+        config.setAccountHolderName(HOLDER);
         config.setCantidadIntervalo(1);
         config.setUnidadIntervalo(IntervalUnit.DAYS);
         config.setEstado(PayoutScheduleStatus.ACTIVE);
         config.setProximaEjecucion(TODAY);
         return config;
+    }
+
+    private KiosqueroPayoutConfig givenActiveConfigWithLastExecution(LocalDate lastExecution) {
+        KiosqueroPayoutConfig config = givenActiveConfig();
+        config.setUltimaEjecucion(lastExecution);
+        return config;
+    }
+
+    private KiosqueroPayoutConfig givenActiveConfigWithCreatedAt(LocalDateTime createdAt) {
+        KiosqueroPayoutConfig config = givenActiveConfig();
+        config.setCreadoEn(createdAt);
+        return config;
+    }
+
+    private void givenDueConfigsFound(KiosqueroPayoutConfig config) {
+        when(repository.findActiveConfigsDueOnOrBefore(TODAY)).thenReturn(List.of(config));
+    }
+
+    private void givenKiosqueroHasNoBuffet() {
+        when(kiosqueroRepository.findBuffetById(KIOSQUERO_ID)).thenReturn(null);
+    }
+
+    private void givenKiosqueroHasBuffet() {
+        when(kiosqueroRepository.findBuffetById(KIOSQUERO_ID)).thenReturn(BUFFET_ID);
+    }
+
+    private void givenNoDeliveredSalesFound(LocalDateTime startDate) {
+        when(purchaseRepository.findByBuffetAndDateRange(
+                BUFFET_ID, startDate, TODAY.atTime(LocalTime.MAX)
+        )).thenReturn(List.of(purchase(EstadoCompra.PENDIENTE, "120.00")));
+    }
+
+    private void givenDeliveredSalesFound(LocalDateTime startDate, String deliveredAmount) {
+        when(purchaseRepository.findByBuffetAndDateRange(
+                BUFFET_ID, startDate, TODAY.atTime(LocalTime.MAX)
+        )).thenReturn(List.of(
+                purchase(EstadoCompra.ENTREGADO, deliveredAmount),
+                purchase(EstadoCompra.PENDIENTE, "30.00")
+        ));
+    }
+
+    private void givenPaymentTransferIsApproved(KiosqueroPayoutConfig config, String amount) {
+        when(paymentService.transferToThirdParty(
+                eq(CVU), eq(CUIT), eq(HOLDER), eq(new BigDecimal(amount)),
+                eq(idempotencyKey(config.getKiosqueroId(), config.getProximaEjecucion()))
+        )).thenReturn(new PaymentDetails(
+                PAYMENT_ID, null, new BigDecimal(amount), PaymentStatus.APPROVED
+        ));
+    }
+
+    private void givenPaymentTransferIsRejected(KiosqueroPayoutConfig config, String amount) {
+        when(paymentService.transferToThirdParty(
+                eq(CVU), eq(CUIT), eq(HOLDER), eq(new BigDecimal(amount)),
+                eq(idempotencyKey(config.getKiosqueroId(), config.getProximaEjecucion()))
+        )).thenReturn(new PaymentDetails(
+                PAYMENT_ID, null, new BigDecimal(amount), PaymentStatus.REJECTED
+        ));
+    }
+
+    private void givenPaymentTransferFails(KiosqueroPayoutConfig config, String amount) {
+        when(paymentService.transferToThirdParty(
+                eq(CVU), eq(CUIT), eq(HOLDER), eq(new BigDecimal(amount)),
+                eq(idempotencyKey(config.getKiosqueroId(), config.getProximaEjecucion()))
+        )).thenThrow(new RuntimeException("provider unavailable"));
     }
 
     private Purchase purchase(EstadoCompra status, String amount) {
@@ -229,5 +229,44 @@ class ProcessScheduledPayoutsTest {
     private String idempotencyKey(UUID kiosqueroId, LocalDate proximaEjecucion) {
         String combinedKey = kiosqueroId + "_" + proximaEjecucion;
         return UUID.nameUUIDFromBytes(combinedKey.getBytes(StandardCharsets.UTF_8)).toString();
+    }
+
+    private void whenExecute() {
+        useCase.execute();
+    }
+
+    private void thenConfigIsSkippedAndNotSaved(KiosqueroPayoutConfig config) {
+        verify(repository).findActiveConfigsDueOnOrBefore(TODAY);
+        verify(kiosqueroRepository).findBuffetById(KIOSQUERO_ID);
+        verify(repository, never()).save(config);
+    }
+
+    private void thenNoInteractionsWithPurchaseAndPayment() {
+        verifyNoInteractions(purchaseRepository, paymentService);
+    }
+
+    private void thenConfigIsMarkedAsExecutedAndSaved(KiosqueroPayoutConfig config) {
+        assertEquals(TODAY, config.getUltimaEjecucion());
+        assertEquals(TODAY.plusDays(1), config.getProximaEjecucion());
+        verify(repository).save(config);
+    }
+
+    private void thenPaymentServiceIsNotCalled() {
+        verifyNoInteractions(paymentService);
+    }
+
+    private void thenConfigIsPausedAndSaved(KiosqueroPayoutConfig config) {
+        assertEquals(PayoutScheduleStatus.PAUSED, config.getEstado());
+        assertNull(config.getUltimaEjecucion());
+        assertEquals(TODAY, config.getProximaEjecucion());
+        verify(repository).save(config);
+    }
+
+    private void thenConfigIsKeptActiveAndSaved(
+            KiosqueroPayoutConfig config, LocalDate expectedLastExecution) {
+        assertEquals(PayoutScheduleStatus.ACTIVE, config.getEstado());
+        assertEquals(expectedLastExecution, config.getUltimaEjecucion());
+        assertEquals(TODAY, config.getProximaEjecucion());
+        verify(repository).save(config);
     }
 }

@@ -55,12 +55,12 @@ public class ProcessScheduledPayouts {
 
     public void execute() {
         LocalDate today = LocalDate.now(clock);
-        List<KiosqueroPayoutConfig> dueConfigs = repository.findActiveConfigsDueOnOrBefore(today);
+        List<KiosqueroPayoutConfig> dueConfigs = findDueConfigs(today);
         dueConfigs.forEach(config -> processConfig(config, today));
     }
 
     private void processConfig(KiosqueroPayoutConfig config, LocalDate today) {
-        UUID buffetId = kiosqueroRepository.findBuffetById(config.getKiosqueroId());
+        UUID buffetId = findBuffetIdForKiosquero(config.getKiosqueroId());
         if (buffetId == null) {
             return;
         }
@@ -68,23 +68,19 @@ public class ProcessScheduledPayouts {
         BigDecimal totalSales = totalDeliveredSales(config, buffetId, today);
         if (hasNoSales(totalSales)) {
             markExecuted(config, today);
-            repository.save(config);
+            saveConfig(config);
             return;
         }
 
         transferSales(config, totalSales, today);
-        repository.save(config);
+        saveConfig(config);
     }
 
     private BigDecimal totalDeliveredSales(
             KiosqueroPayoutConfig config,
             UUID buffetId,
             LocalDate today) {
-        return purchaseRepository.findByBuffetAndDateRange(
-                        buffetId,
-                        startDate(config),
-                        today.atTime(LocalTime.MAX)
-                )
+        return findPurchasesInDateRange(buffetId, startDate(config), today.atTime(LocalTime.MAX))
                 .stream()
                 .filter(purchase -> purchase.getStatus() == EstadoCompra.ENTREGADO)
                 .map(Purchase::getTotalAmount)
@@ -144,5 +140,22 @@ public class ProcessScheduledPayouts {
     private void markExecuted(KiosqueroPayoutConfig config, LocalDate today) {
         config.setUltimaEjecucion(today);
         config.calculateNextPayout(today);
+    }
+
+    private List<KiosqueroPayoutConfig> findDueConfigs(LocalDate today) {
+        return repository.findActiveConfigsDueOnOrBefore(today);
+    }
+
+    private UUID findBuffetIdForKiosquero(UUID kiosqueroId) {
+        return kiosqueroRepository.findBuffetById(kiosqueroId);
+    }
+
+    private void saveConfig(KiosqueroPayoutConfig config) {
+        repository.save(config);
+    }
+
+    private List<Purchase> findPurchasesInDateRange(
+            UUID buffetId, LocalDateTime start, LocalDateTime end) {
+        return purchaseRepository.findByBuffetAndDateRange(buffetId, start, end);
     }
 }
