@@ -14,9 +14,14 @@ import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Properties;
 
 public class SmtpTutorInvitationEmailSender implements TutorInvitationEmailSender {
+
+    private static final DateTimeFormatter EXPIRATION_FORMAT =
+            DateTimeFormatter.ofPattern("d/M/yyyy HH:mm");
 
     private final SmtpMailProperties properties;
 
@@ -96,6 +101,7 @@ public class SmtpTutorInvitationEmailSender implements TutorInvitationEmailSende
         String greeting = invitation.getFirstName() == null || invitation.getFirstName().isBlank()
                 ? "Hola"
                 : "Hola " + invitation.getFirstName().trim();
+        String expiresAt = formattedExpiresAt(invitation.getExpiresAt());
 
         return """
                 %s,
@@ -108,7 +114,7 @@ public class SmtpTutorInvitationEmailSender implements TutorInvitationEmailSende
                 El link vence el %s.
 
                 Si no esperabas esta invitacion, podes ignorar este mensaje.
-                """.formatted(greeting, school, invitationLink, invitation.getExpiresAt());
+                """.formatted(greeting, school, invitationLink, expiresAt);
     }
 
     private String htmlBody(TutorInvitation invitation, String invitationLink) {
@@ -118,6 +124,7 @@ public class SmtpTutorInvitationEmailSender implements TutorInvitationEmailSende
         String greeting = invitation.getFirstName() == null || invitation.getFirstName().isBlank()
                 ? "Hola"
                 : "Hola " + invitation.getFirstName().trim();
+        String expiresAt = formattedExpiresAt(invitation.getExpiresAt());
 
         return """
                 <!doctype html>
@@ -146,9 +153,16 @@ public class SmtpTutorInvitationEmailSender implements TutorInvitationEmailSende
                 escapeHtml(greeting),
                 escapeHtml(school),
                 escapeHtml(invitationLink),
-                escapeHtml(String.valueOf(invitation.getExpiresAt())),
+                escapeHtml(expiresAt),
                 escapeHtml(invitationLink),
                 escapeHtml(invitationLink));
+    }
+
+    private String formattedExpiresAt(LocalDateTime expiresAt) {
+        if (expiresAt == null) {
+            return "fecha no disponible";
+        }
+        return EXPIRATION_FORMAT.format(expiresAt);
     }
 
     private String escapeHtml(String value) {
