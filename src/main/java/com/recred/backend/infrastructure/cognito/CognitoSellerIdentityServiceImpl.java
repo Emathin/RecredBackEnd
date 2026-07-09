@@ -45,4 +45,18 @@ public class CognitoSellerIdentityServiceImpl extends BaseCognitoIdentityService
 
         return new CreatedCognitoUser(sub, createdUsername);
     }
+
+    @Override
+    public void resendTemporaryPassword(String sub) {
+        String userPoolId = required(properties.getUserPoolId(), "userPoolId");
+        String region = required(properties.getRegion(), "region");
+        
+        String realUsername = findUsernameBySub(sub);
+
+        invoke(region, CREATE_USER_TARGET, Map.of(
+                "UserPoolId", userPoolId,
+                "Username", realUsername,
+                "MessageAction", "RESEND"
+        ));
+    }
 }

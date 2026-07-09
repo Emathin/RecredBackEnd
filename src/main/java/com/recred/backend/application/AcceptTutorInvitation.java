@@ -47,14 +47,40 @@ public class AcceptTutorInvitation {
     public AcceptTutorInvitationResponse execute(AcceptTutorInvitationRequest acceptRequest) {
         TutorInvitation invitation = findInvitationByToken(acceptRequest.token());
         ensureInvitationCanBeAccepted(invitation);
-        ensureAuthenticatedEmailMatchesInvitation(invitation, acceptRequest.authenticatedEmail());
 
-        Usuario parentUser = findOrCreateParentUser(acceptRequest);
-        Tutor tutor = findOrCreateTutor(parentUser);
-
+        Tutor tutor = resolveTutor(invitation, acceptRequest);
         activateTutorSchoolAccess(tutor, invitation.getSchool());
         TutorInvitation acceptedInvitation = acceptInvitation(invitation);
+
         return AcceptTutorInvitationResponse.fromDomain(acceptedInvitation);
+    }
+
+    private Tutor resolveTutor(
+            TutorInvitation invitation,
+            AcceptTutorInvitationRequest acceptRequest) {
+        validateAuthenticatedEmail(invitation, acceptRequest);
+        Usuario parentUser = findOrCreateParentUser(acceptRequest, invitation);
+        validateCreatedUserEmail(invitation, acceptRequest, parentUser);
+        return findOrCreateTutor(parentUser);
+    }
+
+    private void validateAuthenticatedEmail(
+            TutorInvitation invitation,
+            AcceptTutorInvitationRequest acceptRequest) {
+        if (hasAuthenticatedEmail(acceptRequest)) {
+            ensureAuthenticatedEmailMatchesInvitation(
+                    invitation,
+                    acceptRequest.authenticatedEmail());
+        }
+    }
+
+    private void validateCreatedUserEmail(
+            TutorInvitation invitation,
+            AcceptTutorInvitationRequest acceptRequest,
+            Usuario parentUser) {
+        if (!hasAuthenticatedEmail(acceptRequest)) {
+            ensureAuthenticatedEmailMatchesInvitation(invitation, parentUser.getEmail());
+        }
     }
 
     private TutorInvitation findInvitationByToken(String token) {
@@ -93,14 +119,24 @@ public class AcceptTutorInvitation {
         }
     }
 
-    private Usuario findOrCreateParentUser(AcceptTutorInvitationRequest acceptRequest) {
+    private boolean hasAuthenticatedEmail(AcceptTutorInvitationRequest acceptRequest) {
+        if (acceptRequest.authenticatedEmail() != null
+                && !acceptRequest.authenticatedEmail().isBlank()) {
+            return true;
+        }
+        return false;
+    }
+
+    private Usuario findOrCreateParentUser(
+            AcceptTutorInvitationRequest acceptRequest,
+            TutorInvitation invitation) {
         Optional<Usuario> existingUser = userRepository.findByIdCognito(
                 acceptRequest.cognitoSubject());
         if (existingUser.isPresent()) {
             return ensureUserHasParentRole(existingUser.get());
         }
 
-        return createParentUser(acceptRequest);
+        return createParentUser(acceptRequest, invitation);
     }
 
     private Usuario ensureUserHasParentRole(Usuario user) {
@@ -113,11 +149,15 @@ public class AcceptTutorInvitation {
         return userRepository.save(user);
     }
 
-    private Usuario createParentUser(AcceptTutorInvitationRequest acceptRequest) {
+    private Usuario createParentUser(
+            AcceptTutorInvitationRequest acceptRequest,
+            TutorInvitation invitation) {
         LocalDateTime createdAt = now();
         Usuario user = new Usuario();
         user.setIdCognito(acceptRequest.cognitoSubject());
-        user.setEmail(normalizeEmail(acceptRequest.authenticatedEmail()));
+        user.setEmail(normalizeEmail(firstNonBlank(
+                acceptRequest.authenticatedEmail(),
+                invitation.getEmail())));
         user.setNombre(firstNonBlank(acceptRequest.firstName(), "Sin Nombre"));
         user.setApellido(firstNonBlank(acceptRequest.lastName(), "Sin Apellido"));
         user.setTelefono(normalizeOptional(acceptRequest.phone()));

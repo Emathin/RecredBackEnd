@@ -62,6 +62,7 @@ import com.recred.backend.application.GetActiveSchoolCredit;
 import com.recred.backend.application.GetActiveSchools;
 import com.recred.backend.application.GetAllCategories;
 import com.recred.backend.application.GetAllProducts;
+import com.recred.backend.application.GetAllPromotionsByBuffet;
 import com.recred.backend.application.GetBuffetByStudent;
 import com.recred.backend.application.GetBuffetTimeSlots;
 import com.recred.backend.application.GetCartSuggestions;
@@ -107,6 +108,8 @@ import com.recred.backend.application.GetTutorInvitation;
 import com.recred.backend.application.GetTutorSchools;
 import com.recred.backend.application.ImportTutorInvitationsFromCsv;
 import com.recred.backend.application.InviteTutorToSchool;
+import com.recred.backend.application.KiosqueroAssistantContextBuilder;
+import com.recred.backend.application.KiosqueroAssistantContextProvider;
 import com.recred.backend.application.ListDailyBuffetCloses;
 import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
@@ -115,7 +118,6 @@ import com.recred.backend.application.ListSchoolGrades;
 import com.recred.backend.application.ListSchoolTimeSlots;
 import com.recred.backend.application.ListSuppliers;
 import com.recred.backend.application.LoadBalanceToChild;
-import com.recred.backend.application.GetAllPromotionsByBuffet;
 import com.recred.backend.application.LoadStockIA;
 import com.recred.backend.application.ManagePromotionStatus;
 import com.recred.backend.application.ManageRestrictions;
@@ -125,19 +127,18 @@ import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.ParseBulkStock;
 import com.recred.backend.application.PaySchoolCredit;
 import com.recred.backend.application.PredictStudentSpending;
+import com.recred.backend.application.PrepareTutorInvitationAccount;
 import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.ProcessScheduledPayouts;
 import com.recred.backend.application.PurchaseSuggestIA;
-import com.recred.backend.application.TogglePromotionStatus;
-import com.recred.backend.application.GetTimeSlot;
-import com.recred.backend.application.ListSchoolTimeSlots;
-import com.recred.backend.application.RecommendSupplierForProducts;
 import com.recred.backend.application.ReactivateGrade;
 import com.recred.backend.application.ReactivateTimeSlot;
 import com.recred.backend.application.RecommendSupplierForProducts;
 import com.recred.backend.application.RegisterBuffet;
 import com.recred.backend.application.RegisterSeller;
+import com.recred.backend.application.ReplaceSeller;
+import com.recred.backend.application.ResendSellerCredentials;
 import com.recred.backend.application.RejectSchoolRegistration;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
@@ -147,10 +148,10 @@ import com.recred.backend.application.SaveKiosqueroPayoutConfig;
 import com.recred.backend.application.SaveProduct;
 import com.recred.backend.application.SchoolAssistantAnswerFormatter;
 import com.recred.backend.application.SchoolAssistantContentFormatter;
-import com.recred.backend.application.SchoolAssistantConversations;
-import com.recred.backend.application.SchoolAssistantConversationService;
 import com.recred.backend.application.SchoolAssistantContextProvider;
 import com.recred.backend.application.SchoolAssistantContextResolver;
+import com.recred.backend.application.SchoolAssistantConversationService;
+import com.recred.backend.application.SchoolAssistantConversations;
 import com.recred.backend.application.SchoolAssistantFixedTopicResponses;
 import com.recred.backend.application.SchoolAssistantFixedTopics;
 import com.recred.backend.application.SchoolAssistantIntentDetector;
@@ -163,9 +164,9 @@ import com.recred.backend.application.SchoolAssistantPurchaseFailureMessages;
 import com.recred.backend.application.SchoolAssistantPurchasePatternService;
 import com.recred.backend.application.SchoolAssistantPurchaseRequestParser;
 import com.recred.backend.application.SchoolAssistantPurchaseResponder;
+import com.recred.backend.application.SchoolAssistantQuestionResponder;
 import com.recred.backend.application.SchoolAssistantQuickPurchaseHandler;
 import com.recred.backend.application.SchoolAssistantQuickPurchaseReplyFactory;
-import com.recred.backend.application.SchoolAssistantQuestionResponder;
 import com.recred.backend.application.SchoolAssistantReplyBuilder;
 import com.recred.backend.application.SchoolAssistantReplyFormatter;
 import com.recred.backend.application.SchoolAssistantRoleCatalog;
@@ -175,13 +176,12 @@ import com.recred.backend.application.SetNotificationAsAlreadyRead;
 import com.recred.backend.application.StudentAssistantContextBuilder;
 import com.recred.backend.application.StudentAssistantContextProvider;
 import com.recred.backend.application.SubmitSchoolRegistration;
+import com.recred.backend.application.SubscriptionPriceCatalog;
+import com.recred.backend.application.TogglePromotionStatus;
+import com.recred.backend.application.TransferBalanceBetweenChildren;
 import com.recred.backend.application.TutorAssistantContextBuilder;
 import com.recred.backend.application.TutorAssistantContextProvider;
 import com.recred.backend.application.TutorChildrenPlanPropagator;
-import com.recred.backend.application.KiosqueroAssistantContextBuilder;
-import com.recred.backend.application.KiosqueroAssistantContextProvider;
-import com.recred.backend.application.SubscriptionPriceCatalog;
-import com.recred.backend.application.TransferBalanceBetweenChildren;
 import com.recred.backend.application.UpdateBudget;
 import com.recred.backend.application.UpdateBudgetRules;
 import com.recred.backend.application.UpdateGrade;
@@ -263,6 +263,8 @@ import com.recred.backend.domain.services.BulkStockAnalyzer;
 import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.CognitoDirectorIdentityService;
 import com.recred.backend.domain.services.CognitoStudentIdentityService;
+import com.recred.backend.domain.services.CognitoTutorIdentityService;
+import com.recred.backend.domain.services.CognitoSellerIdentityService;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
@@ -346,6 +348,14 @@ public class UseCases {
             com.recred.backend.domain.services.CognitoSellerIdentityService cognito) {
         return new RegisterSeller(buffetRepository, usuarioRepository,
                 kiosqueroRepository, cognito);
+    }
+
+    @Bean
+    public ResendSellerCredentials resendSellerCredentials(
+            KiosqueroRepository kiosqueroRepository,
+            UsuarioRepository usuarioRepository,
+            com.recred.backend.domain.services.CognitoSellerIdentityService cognito) {
+        return new ResendSellerCredentials(kiosqueroRepository, usuarioRepository, cognito);
     }
 
 
@@ -635,6 +645,21 @@ public class UseCases {
             TutorInvitationRepository tutorInvitationRepository,
             Clock clock) {
         return new GetTutorInvitation(tutorInvitationRepository, clock);
+    }
+
+    @Bean
+    public PrepareTutorInvitationAccount prepareTutorInvitationAccount(
+            UsuarioRepository usuarioRepository,
+            TutorRepository tutorRepository,
+            TutorInvitationRepository tutorInvitationRepository,
+            CognitoTutorIdentityService cognitoTutorIdentityService,
+            Clock clock) {
+        return new PrepareTutorInvitationAccount(
+                usuarioRepository,
+                tutorRepository,
+                tutorInvitationRepository,
+                cognitoTutorIdentityService,
+                clock);
     }
 
     @Bean
@@ -2206,5 +2231,15 @@ public class UseCases {
             Clock clock) {
         return new ProcessScheduledPayouts(repository, paymentService,
                 kiosqueroRepository, purchaseRepository, clock);
+    }
+
+    @Bean
+    public ReplaceSeller replaceSeller(
+            BuffetRepository buffetRepository,
+            UsuarioRepository usuarioRepository,
+            KiosqueroRepository kiosqueroRepository,
+            CognitoSellerIdentityService cognitoSellerIdentityService) {
+        return new ReplaceSeller(buffetRepository, usuarioRepository,
+                kiosqueroRepository, cognitoSellerIdentityService);
     }
 }
