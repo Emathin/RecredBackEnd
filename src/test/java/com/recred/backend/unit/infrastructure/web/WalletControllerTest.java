@@ -9,7 +9,6 @@ import com.recred.backend.application.TransferBalanceBetweenChildren;
 import com.recred.backend.application.TransferBalanceBetweenChildrenRequest;
 import com.recred.backend.config.GlobalExceptionHandler;
 import com.recred.backend.infrastructure.web.PlanAccessGuard;
-import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import com.recred.backend.infrastructure.web.WalletController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,14 +51,11 @@ class WalletControllerTest {
     private final GetStudentWalletSummary getStudentWalletSummary =
             mock(GetStudentWalletSummary.class);
     private final PlanAccessGuard planAccessGuard = mock(PlanAccessGuard.class);
-    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard =
-            mock(SchoolLicenseAccessGuard.class);
     private final WalletController walletController = new WalletController(
             loadBalanceToChild,
             transferBalanceBetweenChildren,
             getStudentWalletSummary,
-            planAccessGuard,
-            schoolLicenseAccessGuard
+            planAccessGuard
     );
 
     private MockMvc mockMvc;
@@ -256,15 +252,12 @@ class WalletControllerTest {
     }
 
     private void thenLoadBalanceWasDelegated() {
-        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
         verify(loadBalanceToChild).execute(
                 new LoadBalanceToChildRequest(COGNITO_SUBJECT, studentId, amount));
     }
 
     private void thenTransferBalanceWasDelegated() {
         verify(planAccessGuard).requireTutorAdvanced(any());
-        verify(schoolLicenseAccessGuard)
-                .requireActiveSchoolForStudents(List.of(fromStudentId, toStudentId));
         verify(transferBalanceBetweenChildren).execute(
                 new TransferBalanceBetweenChildrenRequest(
                         COGNITO_SUBJECT,
@@ -278,8 +271,7 @@ class WalletControllerTest {
     private void thenTransferBalanceWasNotDelegated() {
         verifyNoInteractions(
                 transferBalanceBetweenChildren,
-                planAccessGuard,
-                schoolLicenseAccessGuard
+                planAccessGuard
         );
     }
 
@@ -293,7 +285,6 @@ class WalletControllerTest {
     }
 
     private void thenWalletSummaryWasDelegated() {
-        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
         verify(getStudentWalletSummary).execute(summaryRequest());
     }
 
