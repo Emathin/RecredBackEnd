@@ -7,24 +7,20 @@ import com.recred.backend.domain.exceptions.SchoolNotFoundException;
 import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
 import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.Colegio;
-import com.recred.backend.domain.models.EstadoLicenciaColegio;
 import com.recred.backend.domain.models.Kiosquero;
-import com.recred.backend.domain.models.SuscripcionColegio;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.BuffetRepository;
 import com.recred.backend.domain.repositories.ColegioRepository;
-import com.recred.backend.domain.repositories.SuscripcionColegioRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -51,11 +47,12 @@ class GetSchoolOverviewTest {
     private ColegioRepository colegioRepository;
     @Mock
     private BuffetRepository buffetRepository;
-    @Mock
-    private SuscripcionColegioRepository subscriptionRepository;
 
     private GetSchoolOverview useCase;
+
     private UUID schoolId;
+    private UUID buffetId;
+    private UUID vendedorId;
 
     @BeforeEach
     void setUp() {
@@ -63,172 +60,145 @@ class GetSchoolOverviewTest {
                 usuarioRepository,
                 colegioRepository,
                 buffetRepository,
-                subscriptionRepository,
                 CLOCK);
         schoolId = UUID.randomUUID();
+        buffetId = UUID.randomUUID();
+        vendedorId = UUID.randomUUID();
     }
 
     @Test
     void givenValidUserAndSchool_whenExecute_thenReturnsOverview() {
-        Usuario usuario = new Usuario();
-        Colegio colegio = new Colegio();
-        colegio.setId(schoolId);
-        colegio.setNombre("Colegio Test");
-        colegio.setCue("12345");
-        usuario.setColegio(colegio);
+        givenValidUserAndSchool();
 
-        Buffet buffet = new Buffet();
-        buffet.setId(UUID.randomUUID());
-        buffet.setNombre("Buffet Test");
-        buffet.setActivo(true);
+        GetSchoolOverviewResponse response = whenGetSchoolOverview();
 
-        Kiosquero vendedor = new Kiosquero();
-        vendedor.setId(UUID.randomUUID());
-        vendedor.setCuit("20-12345678-9");
-        
-        Usuario vendedorUsuario = new Usuario();
-        vendedorUsuario.setNombre("Juan");
-        vendedorUsuario.setApellido("Perez");
-        vendedorUsuario.setEmail("juan@test.com");
-        vendedor.setUsuario(vendedorUsuario);
-        buffet.setVendedor(vendedor);
+        thenReturnsOverviewWithBuffetData(response);
+    }
+
+    @Test
+    void givenUserNotFound_whenExecute_thenThrowsException() {
+        givenUserNotFound();
+
+        Executable execution = this::whenGetSchoolOverview;
+
+        thenThrowsUserNotFoundException(execution);
+    }
+
+    @Test
+    void givenUserWithoutSchool_whenExecute_thenThrowsException() {
+        givenUserWithoutSchool();
+
+        Executable execution = this::whenGetSchoolOverview;
+
+        thenThrowsExceptionForUserWithoutSchool(execution);
+    }
+
+    @Test
+    void givenSchoolNotFound_whenExecute_thenThrowsException() {
+        givenSchoolNotFound();
+
+        Executable execution = this::whenGetSchoolOverview;
+
+        thenThrowsSchoolNotFoundException(execution);
+    }
+
+    @Test
+    void givenBuffetWithoutVendedor_whenExecute_thenMapsVendedorToNull() {
+        givenBuffetWithoutVendedor();
+
+        GetSchoolOverviewResponse response = whenGetSchoolOverview();
+
+        thenReturnsOverviewWithNullVendedor(response);
+    }
+
+    private void givenValidUserAndSchool() {
+        Usuario usuario = buildUserWithSchool();
+        Colegio colegio = buildSchool();
+        Buffet buffet = buildBuffetWithVendedor();
 
         when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
         when(colegioRepository.findById(schoolId)).thenReturn(Optional.of(colegio));
         when(buffetRepository.findByColegioId(schoolId)).thenReturn(List.of(buffet));
-        givenNoActiveSubscription(schoolId);
+    }
 
-        GetSchoolOverviewRequest request = new GetSchoolOverviewRequest(COGNITO_SUBJECT);
+    private void givenUserNotFound() {
+        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.empty());
+    }
 
-        GetSchoolOverviewResponse response = useCase.execute(request);
+    private void givenUserWithoutSchool() {
+        Usuario usuario = new Usuario();
+        usuario.setColegio(null);
+        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
+    }
 
+    private void givenSchoolNotFound() {
+        Usuario usuario = buildUserWithSchool();
+        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
+        when(colegioRepository.findById(schoolId)).thenReturn(Optional.empty());
+    }
+
+    private void givenBuffetWithoutVendedor() {
+        Usuario usuario = buildUserWithSchool();
+        Colegio colegio = buildSchool();
+        Buffet buffet = buildBuffetWithoutVendedor();
+
+        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
+        when(colegioRepository.findById(schoolId)).thenReturn(Optional.of(colegio));
+        when(buffetRepository.findByColegioId(schoolId)).thenReturn(List.of(buffet));
+    }
+
+    private GetSchoolOverviewResponse whenGetSchoolOverview() {
+        return useCase.execute(new GetSchoolOverviewRequest(COGNITO_SUBJECT));
+    }
+
+    private void thenReturnsOverviewWithBuffetData(GetSchoolOverviewResponse response) {
         assertEquals(schoolId, response.id());
         assertEquals("Colegio Test", response.nombre());
         assertEquals("12345", response.cue());
-        assertEquals(EstadoLicenciaColegio.SIN_LICENCIA, response.licencia().estado());
         assertEquals(1, response.buffets().size());
-        
+
         GetSchoolOverviewResponse.BuffetDto buffetDto = response.buffets().get(0);
-        assertEquals(buffet.getId(), buffetDto.id());
+        assertEquals(buffetId, buffetDto.id());
         assertEquals("Buffet Test", buffetDto.nombre());
         assertEquals(true, buffetDto.activo());
-        
+
         GetSchoolOverviewResponse.VendedorDto vendedorDto = buffetDto.vendedor();
-        assertEquals(vendedor.getId(), vendedorDto.id());
+        assertEquals(vendedorId, vendedorDto.id());
         assertEquals("Juan", vendedorDto.nombre());
         assertEquals("Perez", vendedorDto.apellido());
         assertEquals("juan@test.com", vendedorDto.email());
         assertEquals("20-12345678-9", vendedorDto.cuit());
     }
 
-    @Test
-    void execute_WhenSchoolHasActiveSubscription_ShouldReturnLicense() {
-        Usuario usuario = userWithSchool();
-        Colegio colegio = school();
-        SuscripcionColegio subscription = subscriptionStartedAt(now().minusDays(10));
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(colegioRepository.findById(schoolId)).thenReturn(Optional.of(colegio));
-        when(buffetRepository.findByColegioId(schoolId)).thenReturn(List.of());
-        givenActiveSubscription(schoolId, subscription);
-
-        GetSchoolOverviewResponse response = useCase.execute(
-                new GetSchoolOverviewRequest(COGNITO_SUBJECT));
-
-        assertEquals(EstadoLicenciaColegio.ACTIVA, response.licencia().estado());
-        assertEquals(subscription.getFechaInicio(), response.licencia().fechaInicio());
-        assertEquals(subscription.getFechaVencimiento(), response.licencia().fechaVencimiento());
-        assertEquals(subscription.getFechaGraciaHasta(), response.licencia().fechaGraciaHasta());
-        assertEquals(new BigDecimal("20.00"), response.licencia().monto());
-        assertEquals("USD", response.licencia().moneda());
-    }
-
-    @Test
-    void givenUserNotFound_whenExecute_thenThrowsException() {
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.empty());
-
-        GetSchoolOverviewRequest request = new GetSchoolOverviewRequest(COGNITO_SUBJECT);
-
-        assertThrows(UsuarioAutenticadoNoEncontradoException.class, 
-                () -> useCase.execute(request));
-        
+    private void thenThrowsUserNotFoundException(Executable execution) {
+        assertThrows(UsuarioAutenticadoNoEncontradoException.class, execution);
         verifyNoInteractions(colegioRepository, buffetRepository);
     }
 
-    @Test
-    void givenUserWithoutSchool_whenExecute_thenThrowsException() {
-        Usuario usuario = new Usuario();
-        usuario.setColegio(null);
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-
-        GetSchoolOverviewRequest request = new GetSchoolOverviewRequest(COGNITO_SUBJECT);
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, 
-                () -> useCase.execute(request));
-        
+    private void thenThrowsExceptionForUserWithoutSchool(Executable execution) {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
         assertEquals("El usuario no tiene un colegio asociado.", exception.getMessage());
         verifyNoInteractions(colegioRepository, buffetRepository);
     }
 
-    @Test
-    void givenSchoolNotFound_whenExecute_thenThrowsException() {
-        Usuario usuario = new Usuario();
-        Colegio colegio = new Colegio();
-        colegio.setId(schoolId);
-        usuario.setColegio(colegio);
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(colegioRepository.findById(schoolId)).thenReturn(Optional.empty());
-
-        GetSchoolOverviewRequest request = new GetSchoolOverviewRequest(COGNITO_SUBJECT);
-
-        assertThrows(SchoolNotFoundException.class, () -> useCase.execute(request));
-        
+    private void thenThrowsSchoolNotFoundException(Executable execution) {
+        assertThrows(SchoolNotFoundException.class, execution);
         verifyNoInteractions(buffetRepository);
     }
 
-    @Test
-    void givenBuffetWithoutVendedor_whenExecute_thenMapsVendedorToNull() {
-        Usuario usuario = new Usuario();
-        Colegio colegio = new Colegio();
-        colegio.setId(schoolId);
-        usuario.setColegio(colegio);
-
-        Buffet buffet = new Buffet();
-        buffet.setId(UUID.randomUUID());
-        buffet.setVendedor(null);
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(colegioRepository.findById(schoolId)).thenReturn(Optional.of(colegio));
-        when(buffetRepository.findByColegioId(schoolId)).thenReturn(List.of(buffet));
-        givenNoActiveSubscription(schoolId);
-
-        GetSchoolOverviewRequest request = new GetSchoolOverviewRequest(COGNITO_SUBJECT);
-
-        GetSchoolOverviewResponse response = useCase.execute(request);
-
+    private void thenReturnsOverviewWithNullVendedor(GetSchoolOverviewResponse response) {
         assertEquals(1, response.buffets().size());
         assertNull(response.buffets().get(0).vendedor());
     }
 
-    private void givenNoActiveSubscription(UUID schoolId) {
-        when(subscriptionRepository.findActiveByColegioId(schoolId)).thenReturn(Optional.empty());
-    }
-
-    private void givenActiveSubscription(UUID schoolId, SuscripcionColegio subscription) {
-        when(subscriptionRepository.findActiveByColegioId(schoolId))
-                .thenReturn(Optional.of(subscription));
-    }
-
-    private Usuario userWithSchool() {
+    private Usuario buildUserWithSchool() {
         Usuario usuario = new Usuario();
-        Colegio colegio = new Colegio();
-        colegio.setId(schoolId);
+        Colegio colegio = buildSchool();
         usuario.setColegio(colegio);
         return usuario;
     }
 
-    private Colegio school() {
+    private Colegio buildSchool() {
         Colegio colegio = new Colegio();
         colegio.setId(schoolId);
         colegio.setNombre("Colegio Test");
@@ -236,16 +206,25 @@ class GetSchoolOverviewTest {
         return colegio;
     }
 
-    private SuscripcionColegio subscriptionStartedAt(LocalDateTime startDate) {
-        return SuscripcionColegio.activate(
-                schoolId,
-                new BigDecimal("20.00"),
-                "USD",
-                startDate
-        );
+    private Buffet buildBuffetWithVendedor() {
+        Buffet buffet = buildBuffetWithoutVendedor();
+        Kiosquero vendedor = new Kiosquero();
+        vendedor.setId(vendedorId);
+        vendedor.setCuit("20-12345678-9");
+        Usuario vendedorUsuario = new Usuario();
+        vendedorUsuario.setNombre("Juan");
+        vendedorUsuario.setApellido("Perez");
+        vendedorUsuario.setEmail("juan@test.com");
+        vendedor.setUsuario(vendedorUsuario);
+        buffet.setVendedor(vendedor);
+        return buffet;
     }
 
-    private LocalDateTime now() {
-        return LocalDateTime.now(CLOCK);
+    private Buffet buildBuffetWithoutVendedor() {
+        Buffet buffet = new Buffet();
+        buffet.setId(buffetId);
+        buffet.setNombre("Buffet Test");
+        buffet.setActivo(true);
+        return buffet;
     }
 }

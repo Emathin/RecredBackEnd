@@ -1,7 +1,6 @@
 package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.services.UsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,14 +20,11 @@ import java.util.Optional;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
-    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public UsuarioController(
-            UsuarioService usuarioService,
-            SchoolLicenseAccessGuard schoolLicenseAccessGuard
+            UsuarioService usuarioService
     ) {
         this.usuarioService = usuarioService;
-        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping("/sync")
@@ -78,18 +74,6 @@ public class UsuarioController {
                     .ifPresent(buffetId -> response.put("buffetId", buffetId));
         }
 
-        if (usuario.getRol() == RolUsuario.DIRECTIVO_COLEGIO
-                || usuario.getRol() == RolUsuario.ALUMNO
-                || usuario.getRol() == RolUsuario.VENDEDOR) {
-            response.put(
-                    "estadoLicenciaColegio",
-                    schoolLicenseAccessGuard.getLicenseStatusForUser(usuario).name()
-            );
-            response.put(
-                    "fechaVencimientoLicenciaColegio",
-                    schoolLicenseAccessGuard.getLicenseExpirationForUser(usuario)
-            );
-        }
 
         return response;
     }

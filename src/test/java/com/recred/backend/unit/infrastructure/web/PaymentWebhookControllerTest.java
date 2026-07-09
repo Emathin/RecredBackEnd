@@ -2,8 +2,6 @@ package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.application.ConfirmPaymentAndCredit;
 import com.recred.backend.application.ConfirmPaymentAndCreditRequest;
-import com.recred.backend.application.ConfirmSchoolSubscriptionPayment;
-import com.recred.backend.application.ConfirmSchoolSubscriptionPaymentRequest;
 import com.recred.backend.application.ConfirmUserSubscriptionPayment;
 import com.recred.backend.application.ConfirmUserSubscriptionPaymentRequest;
 import com.recred.backend.domain.models.PaymentDetails;
@@ -46,9 +44,6 @@ class PaymentWebhookControllerTest {
     private ConfirmUserSubscriptionPayment confirmUserSubscriptionPayment;
 
     @Mock
-    private ConfirmSchoolSubscriptionPayment confirmSchoolSubscriptionPayment;
-
-    @Mock
     private ExternalPaymentService externalPaymentService;
 
     @Spy
@@ -71,13 +66,9 @@ class PaymentWebhookControllerTest {
                 new HashMap<>()
         );
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmPaymentAndCredit)
-                .execute(new ConfirmPaymentAndCreditRequest(paymentId, details));
-        verify(confirmUserSubscriptionPayment, never()).execute(
-                any(ConfirmUserSubscriptionPaymentRequest.class));
-        verify(confirmSchoolSubscriptionPayment, never()).execute(
-                any(ConfirmSchoolSubscriptionPaymentRequest.class));
+        thenReturnsOk(response);
+        thenCreditsWallet(paymentId, details);
+        thenDoesNotConfirmUserSubscription();
     }
 
     @Test
@@ -93,33 +84,9 @@ class PaymentWebhookControllerTest {
                 new HashMap<>()
         );
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmUserSubscriptionPayment)
-                .execute(new ConfirmUserSubscriptionPaymentRequest(details));
-        verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
-        verify(confirmSchoolSubscriptionPayment, never()).execute(
-                any(ConfirmSchoolSubscriptionPaymentRequest.class));
-    }
-
-    @Test
-    void handleWebhook_WhenPaymentIsSchoolSubscription_ShouldConfirmSchoolSubscription() {
-        String paymentId = "999";
-        PaymentDetails details = schoolSubscriptionPayment(paymentId);
-        givenPaymentDetails(paymentId, details);
-
-        ResponseEntity<Void> response = whenHandlingWebhook(
-                null,
-                null,
-                paymentBody(paymentId),
-                new HashMap<>()
-        );
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmSchoolSubscriptionPayment)
-                .execute(new ConfirmSchoolSubscriptionPaymentRequest(details));
-        verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
-        verify(confirmUserSubscriptionPayment, never()).execute(
-                any(ConfirmUserSubscriptionPaymentRequest.class));
+        thenReturnsOk(response);
+        thenConfirmsUserSubscription(details);
+        thenDoesNotCreditWallet();
     }
 
     @Test
@@ -134,12 +101,9 @@ class PaymentWebhookControllerTest {
                 new HashMap<>()
         );
 
-        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
-        verify(confirmUserSubscriptionPayment, never()).execute(
-                any(ConfirmUserSubscriptionPaymentRequest.class));
-        verify(confirmSchoolSubscriptionPayment, never()).execute(
-                any(ConfirmSchoolSubscriptionPaymentRequest.class));
+        thenReturnsForbidden(response);
+        thenDoesNotCreditWallet();
+        thenDoesNotConfirmUserSubscription();
     }
 
     @Test
@@ -151,12 +115,9 @@ class PaymentWebhookControllerTest {
                 new HashMap<>()
         );
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
-        verify(confirmUserSubscriptionPayment, never()).execute(
-                any(ConfirmUserSubscriptionPaymentRequest.class));
-        verify(confirmSchoolSubscriptionPayment, never()).execute(
-                any(ConfirmSchoolSubscriptionPaymentRequest.class));
+        thenReturnsOk(response);
+        thenDoesNotCreditWallet();
+        thenDoesNotConfirmUserSubscription();
     }
 
     @Test
@@ -170,9 +131,8 @@ class PaymentWebhookControllerTest {
 
         ResponseEntity<Void> response = whenHandlingWebhook(null, null, body, new HashMap<>());
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmPaymentAndCredit)
-                .execute(new ConfirmPaymentAndCreditRequest(paymentId, details));
+        thenReturnsOk(response);
+        thenCreditsWallet(paymentId, details);
     }
 
     @Test
@@ -186,9 +146,8 @@ class PaymentWebhookControllerTest {
 
         ResponseEntity<Void> response = whenHandlingWebhook(null, null, null, params);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmPaymentAndCredit)
-                .execute(new ConfirmPaymentAndCreditRequest(paymentId, details));
+        thenReturnsOk(response);
+        thenCreditsWallet(paymentId, details);
     }
 
     @Test
@@ -201,9 +160,9 @@ class PaymentWebhookControllerTest {
 
         ResponseEntity<Void> response = whenHandlingWebhook("sig", "req", null, params);
 
-        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        verify(externalPaymentService).isValidSignature("sig", "req", "666");
-        verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
+        thenReturnsForbidden(response);
+        thenValidatesPaymentIdSignatureOnly("sig", "req", "666");
+        thenDoesNotCreditWallet();
     }
 
     @Test
@@ -219,9 +178,8 @@ class PaymentWebhookControllerTest {
 
         ResponseEntity<Void> response = whenHandlingWebhook(null, null, body, params);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmPaymentAndCredit)
-                .execute(new ConfirmPaymentAndCreditRequest(paymentId, details));
+        thenReturnsOk(response);
+        thenCreditsWallet(paymentId, details);
     }
 
     @Test
@@ -240,7 +198,7 @@ class PaymentWebhookControllerTest {
                 new HashMap<>()
         );
 
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        thenReturnsInternalServerError(response);
     }
 
     private void givenValidSignature() {
@@ -264,6 +222,41 @@ class PaymentWebhookControllerTest {
             Map<String, String> params
     ) {
         return paymentWebhookController.handleWebhook(signature, requestId, body, params);
+    }
+
+    private void thenReturnsOk(ResponseEntity<Void> response) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    private void thenReturnsForbidden(ResponseEntity<Void> response) {
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+    }
+
+    private void thenReturnsInternalServerError(ResponseEntity<Void> response) {
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+    }
+
+    private void thenCreditsWallet(String paymentId, PaymentDetails details) {
+        verify(confirmPaymentAndCredit)
+                .execute(new ConfirmPaymentAndCreditRequest(paymentId, details));
+    }
+
+    private void thenConfirmsUserSubscription(PaymentDetails details) {
+        verify(confirmUserSubscriptionPayment)
+                .execute(new ConfirmUserSubscriptionPaymentRequest(details));
+    }
+
+    private void thenDoesNotCreditWallet() {
+        verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
+    }
+
+    private void thenDoesNotConfirmUserSubscription() {
+        verify(confirmUserSubscriptionPayment, never()).execute(
+                any(ConfirmUserSubscriptionPaymentRequest.class));
+    }
+
+    private void thenValidatesPaymentIdSignatureOnly(String sig, String req, String id) {
+        verify(externalPaymentService).isValidSignature(sig, req, id);
     }
 
     private Map<String, Object> paymentBody(String paymentId) {
@@ -300,20 +293,6 @@ class PaymentWebhookControllerTest {
                 UUID.randomUUID(),
                 TipoPlan.INTERMEDIO,
                 PeriodoSuscripcion.MENSUAL
-        );
-    }
-
-    private PaymentDetails schoolSubscriptionPayment(String paymentId) {
-        return new PaymentDetails(
-                paymentId,
-                null,
-                new BigDecimal("20.00"),
-                PaymentStatus.APPROVED,
-                PaymentPurpose.SCHOOL_SUBSCRIPTION,
-                null,
-                null,
-                null,
-                UUID.randomUUID()
         );
     }
 }
