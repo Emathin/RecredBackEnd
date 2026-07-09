@@ -40,7 +40,7 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
     public String createTopUpPreference(UUID studentId, BigDecimal amount) {
         return createPreference(
                 studentId.toString(),
-                "Carga de Saldo - RecreoPago",
+                "Carga de Saldo - Recred",
                 "Acreditacion de saldo para consumo escolar",
                 amount,
                 "ARS",
@@ -57,7 +57,7 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
     ) {
         return createPreference(
                 usuarioId.toString(),
-                "Suscripcion " + plan.name() + " - RecreoPago",
+                "Suscripcion " + plan.name() + " - Recred",
                 "Suscripcion " + periodo.name().toLowerCase() + " para usuario",
                 amount,
                 "ARS",
@@ -69,8 +69,8 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
     public String createSchoolSubscriptionPreference(UUID colegioId, BigDecimal amount) {
         return createPreference(
                 colegioId.toString(),
-                "Suscripcion Colegio - RecreoPago",
-                "Acceso mensual institucional a RecreoPago",
+                "Suscripcion Colegio - Recred",
+                "Acceso mensual institucional a Recred",
                 amount,
                 "USD",
                 PaymentReference.schoolSubscription(colegioId).toExternalReference()

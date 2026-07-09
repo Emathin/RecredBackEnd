@@ -31,4 +31,4 @@ Para levantar este proyecto y contribuir en tu entorno local, asegurate de tener
 
 1. **Clonar el repositorio:**
    ```bash
-   git clone [https://github.com/tu-usuario/recreopago-backend.git](https://github.com/tu-usuario/recreopago-backend.git)
+   git clone [https://github.com/tu-usuario/recred-backend.git](https://github.com/tu-usuario/recred-backend.git)
