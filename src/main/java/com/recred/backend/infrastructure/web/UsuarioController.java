@@ -21,7 +21,9 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
 
-    public UsuarioController(UsuarioService usuarioService) {
+    public UsuarioController(
+            UsuarioService usuarioService
+    ) {
         this.usuarioService = usuarioService;
     }
 
@@ -71,6 +73,7 @@ public class UsuarioController {
                     .map(buffet -> buffet.getId())
                     .ifPresent(buffetId -> response.put("buffetId", buffetId));
         }
+
 
         return response;
     }

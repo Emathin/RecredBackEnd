@@ -125,6 +125,14 @@ public class Promotion {
         }
     }
 
+    public void toggleStatus(LocalDateTime now) {
+        if (this.status == PromotionStatus.INACTIVE) {
+            this.status = PromotionStatus.ACTIVE;
+        } else {
+            this.status = PromotionStatus.INACTIVE;
+        }
+    }
+
     private void refreshStatus(LocalDateTime now) {
         LocalDateTime reference = now == null ? LocalDateTime.now() : now;
         if (!reference.isBefore(startDate) && !reference.isAfter(endDate)) {
@@ -132,6 +140,6 @@ public class Promotion {
             return;
         }
 
-        this.status = PromotionStatus.DRAFT;
+        this.status = PromotionStatus.INACTIVE;
     }
 }

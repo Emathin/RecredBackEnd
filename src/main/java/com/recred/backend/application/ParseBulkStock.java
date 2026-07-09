@@ -28,71 +28,99 @@ public class ParseBulkStock {
     private final ClasificacionSaludRepository saludRepository;
     private final ClasificacionTipoRepository tipoRepository;
 
-    public ParseBulkStock(BulkStockAnalyzer bulkStockAnalyzer,
-                          CategoryRepository categoryRepository,
-                          ClasificacionSaludRepository saludRepository,
-                          ClasificacionTipoRepository tipoRepository) {
+    public ParseBulkStock(
+            BulkStockAnalyzer bulkStockAnalyzer,
+            CategoryRepository categoryRepository,
+            ClasificacionSaludRepository saludRepository,
+            ClasificacionTipoRepository tipoRepository
+    ) {
         this.bulkStockAnalyzer = bulkStockAnalyzer;
         this.categoryRepository = categoryRepository;
         this.saludRepository = saludRepository;
         this.tipoRepository = tipoRepository;
     }
 
-    public BulkStockParseResponse execute(ParseBulkStockRequest request) {
-        validateFile(request.fileContent(), request.contentType());
+    public BulkStockParseResponse execute(ParseBulkStockRequest parseRequest) {
+        validateFile(parseRequest.fileContent(), parseRequest.contentType());
+        List<String> availableCategories = findAvailableCategoryNames();
+        List<RawBulkProduct> rawProducts = analyzeBulkStock(parseRequest, availableCategories);
 
-        List<String> availableCategories = categoryRepository.getAllCategories().stream()
-                .map(CategoriaProducto::getDescripcion)
-                .collect(Collectors.toList());
-        
-        List<RawBulkProduct> rawProducts = bulkStockAnalyzer
-                .analyze(request.fileContent(), request.contentType(), availableCategories);
-        
-        List<BulkProductData> resolvedProducts = rawProducts.stream()
-                .map(this::resolveEntity)
-                .collect(Collectors.toList());
-        
-        return new BulkStockParseResponse(resolvedProducts);
+        return new BulkStockParseResponse(resolveProducts(rawProducts));
     }
 
-    private BulkProductData resolveEntity(RawBulkProduct raw) {
-        UUID categoriaId = null;
-        String nuevaCategoriaNombre = null;
+    private List<String> findAvailableCategoryNames() {
+        return categoryRepository.getAllCategories().stream()
+                .map(CategoriaProducto::getDescripcion)
+                .toList();
+    }
 
-        if (raw.categoriaNombre() != null && !raw.categoriaNombre().isBlank()) {
+    private List<RawBulkProduct> analyzeBulkStock(
+            ParseBulkStockRequest parseRequest,
+            List<String> availableCategories
+    ) {
+        return bulkStockAnalyzer.analyze(
+                parseRequest.fileContent(),
+                parseRequest.contentType(),
+                availableCategories
+        );
+    }
+
+    private List<BulkProductData> resolveProducts(List<RawBulkProduct> rawProducts) {
+        return rawProducts.stream()
+                .map(this::resolveProduct)
+                .toList();
+    }
+
+    private BulkProductData resolveProduct(RawBulkProduct rawProduct) {
+        ResolvedCategory resolvedCategory = resolveCategory(rawProduct.categoriaNombre());
+        Set<UUID> healthClassificationIds = resolveHealthClassifications(rawProduct);
+        Set<UUID> typeClassificationIds = resolveTypeClassifications(rawProduct);
+
+        return new BulkProductData(
+                rawProduct.nombre(),
+                rawProduct.descripcion(),
+                rawProduct.precio(),
+                rawProduct.peso(),
+                rawProduct.requierePreparacion(),
+                resolvedCategory.categoryId(),
+                resolvedCategory.newCategoryName(),
+                rawProduct.stockActual(),
+                healthClassificationIds,
+                typeClassificationIds
+        );
+    }
+
+    private ResolvedCategory resolveCategory(String categoryName) {
+        UUID categoryId = null;
+        String newCategoryName = null;
+
+        if (categoryName != null && !categoryName.isBlank()) {
             Optional<CategoriaProducto> category = categoryRepository
-                    .findByDescription(raw.categoriaNombre());
+                    .findByDescription(categoryName);
             if (category.isPresent()) {
-                categoriaId = category.get().getId();
+                categoryId = category.get().getId();
             } else {
-                nuevaCategoriaNombre = raw.categoriaNombre();
+                newCategoryName = categoryName;
             }
         }
 
-        Set<UUID> saludIds = raw.saludEtiquetas().stream()
+        return new ResolvedCategory(categoryId, newCategoryName);
+    }
+
+    private Set<UUID> resolveHealthClassifications(RawBulkProduct rawProduct) {
+        return rawProduct.saludEtiquetas().stream()
                 .map(saludRepository::findByDescripcion)
                 .filter(Optional::isPresent)
                 .map(opt -> opt.get().getId())
                 .collect(Collectors.toSet());
+    }
 
-        Set<UUID> tipoIds = raw.tipoEtiquetas().stream()
+    private Set<UUID> resolveTypeClassifications(RawBulkProduct rawProduct) {
+        return rawProduct.tipoEtiquetas().stream()
                 .map(tipoRepository::findByDescripcion)
                 .filter(Optional::isPresent)
                 .map(opt -> opt.get().getId())
                 .collect(Collectors.toSet());
-
-        return new BulkProductData(
-                raw.nombre(),
-                raw.descripcion(),
-                raw.precio(),
-                raw.peso(),
-                raw.requierePreparacion(),
-                categoriaId,
-                nuevaCategoriaNombre,
-                raw.stockActual(),
-                saludIds,
-                tipoIds
-        );
     }
 
     private void validateFile(byte[] content, String contentType) {
@@ -106,5 +134,8 @@ public class ParseBulkStock {
                     "Formato de archivo no permitido. " + 
                     "Se aceptan PDF, CSV e imágenes.");
         }
+    }
+
+    private record ResolvedCategory(UUID categoryId, String newCategoryName) {
     }
 }

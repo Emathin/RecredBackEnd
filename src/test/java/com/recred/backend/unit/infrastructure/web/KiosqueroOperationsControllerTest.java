@@ -71,6 +71,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -165,7 +166,7 @@ class KiosqueroOperationsControllerTest {
         GetKiosqueroDashboardRequest request = givenDashboardRequestWithDate();
         GetKiosqueroDashboardResponse expected = givenDashboardResponse(request);
 
-        ResponseEntity<GetKiosqueroDashboardResponse> response = whenGetDashboard(request);
+        ResponseEntity<?> response = whenGetDashboard(request);
 
         thenDashboardResponseMatchesAndGuarded(response, expected, request);
     }
@@ -175,9 +176,19 @@ class KiosqueroOperationsControllerTest {
         GetKiosqueroDashboardRequest request = givenDashboardRequestWithPeriod();
         GetKiosqueroDashboardResponse expected = givenDashboardResponse(request);
 
-        ResponseEntity<GetKiosqueroDashboardResponse> response = whenGetDashboard(request);
+        ResponseEntity<?> response = whenGetDashboard(request);
 
         thenDashboardResponseMatchesAndGuarded(response, expected, request);
+    }
+
+    @Test
+    void dashboard_WhenHomeView_ShouldNotRequirePlanAndReturnHomeResponse() {
+        GetKiosqueroDashboardRequest request = givenDashboardRequestWithDate();
+        GetKiosqueroDashboardResponse expected = givenDashboardResponse(request);
+
+        ResponseEntity<?> response = whenGetHomeDashboard(request);
+
+        thenHomeDashboardResponseMatchesAndIsNotPlanGuarded(response, expected, request);
     }
 
     @Test
@@ -350,19 +361,31 @@ class KiosqueroOperationsControllerTest {
     }
 
     private GetKiosqueroDashboardResponse buildDashboard(UUID buffetId, LocalDate date) {
+        GetKiosqueroDashboardResponse.DashboardProductMetric productMetric =
+                new GetKiosqueroDashboardResponse.DashboardProductMetric(
+                        PRODUCT_ID, "Alfajor", 3, new BigDecimal("150.00"), "alfajor.png"
+                );
+        GetKiosqueroDashboardResponse.DashboardInventoryAttention inventoryAttention =
+                new GetKiosqueroDashboardResponse.DashboardInventoryAttention(
+                        PRODUCT_ID, "Alfajor", 1, 5, "BAJO", "alfajor.png"
+                );
+
         return new GetKiosqueroDashboardResponse(
                 buffetId, date,
                 new GetKiosqueroDashboardResponse.DashboardSummary(
-                        BigDecimal.ZERO, 0, 0, BigDecimal.ZERO, 0, 0
+                        new BigDecimal("250.00"), 7, 4, new BigDecimal("62.50"), 2, 1
                 ),
                 new GetKiosqueroDashboardResponse.DashboardActivity(
                         List.of(), List.of(), List.of(), List.of()
                 ),
                 new GetKiosqueroDashboardResponse.DashboardProducts(
-                        List.of(), List.of(), List.of(), List.of()
+                        List.of(productMetric),
+                        List.of(productMetric),
+                        List.of(inventoryAttention),
+                        List.of(inventoryAttention)
                 ),
                 new GetKiosqueroDashboardResponse.DashboardAlerts(
-                        0, 0, BigDecimal.ZERO, 0, 0, 0, List.of()
+                        3, 4, new BigDecimal("75.00"), 5, 2, 1, List.of()
                 ),
                 new GetKiosqueroDashboardResponse.DashboardTrends(List.of())
         );
@@ -425,10 +448,17 @@ class KiosqueroOperationsControllerTest {
         return controller.dailyReportCsv(BUFFET_ID, null, null);
     }
 
-    private ResponseEntity<GetKiosqueroDashboardResponse> whenGetDashboard(
+    private ResponseEntity<?> whenGetDashboard(
             GetKiosqueroDashboardRequest request) {
         return controller.dashboard(
-                request.buffetId(), request.date(), request.from(), request.to(), null
+                request.buffetId(), request.date(), request.from(), request.to(), null, null
+        );
+    }
+
+    private ResponseEntity<?> whenGetHomeDashboard(
+            GetKiosqueroDashboardRequest request) {
+        return controller.dashboard(
+                request.buffetId(), request.date(), request.from(), request.to(), "home", null
         );
     }
 
@@ -506,11 +536,39 @@ class KiosqueroOperationsControllerTest {
     }
 
     private void thenDashboardResponseMatchesAndGuarded(
-            ResponseEntity<GetKiosqueroDashboardResponse> response,
+            ResponseEntity<?> response,
             GetKiosqueroDashboardResponse expected,
             GetKiosqueroDashboardRequest request) {
         assertEquals(expected, response.getBody());
         verify(planAccessGuard).requireVendorIntermediate(null);
+        verify(getKiosqueroDashboard).execute(request);
+    }
+
+    private void thenHomeDashboardResponseMatchesAndIsNotPlanGuarded(
+            ResponseEntity<?> response,
+            GetKiosqueroDashboardResponse expected,
+            GetKiosqueroDashboardRequest request) {
+        assertTrue(response.getBody()
+                instanceof KiosqueroOperationsController.KiosqueroDashboardHomeResponse);
+        KiosqueroOperationsController.KiosqueroDashboardHomeResponse body =
+                (KiosqueroOperationsController.KiosqueroDashboardHomeResponse) response.getBody();
+
+        assertEquals(expected.buffetId(), body.buffetId());
+        assertEquals(expected.date(), body.date());
+        assertEquals(expected.summary().totalSold(), body.summary().totalSold());
+        assertEquals(expected.summary().totalOrders(), body.summary().totalOrders());
+        assertEquals(expected.summary().deliveredOrders(), body.summary().deliveredOrders());
+        assertEquals(expected.summary().pendingOrders(), body.summary().pendingOrders());
+        assertEquals(expected.summary().soldOutProducts(), body.summary().soldOutProducts());
+        assertEquals(expected.alerts().pendingOrders(), body.alerts().pendingOrders());
+        assertEquals(expected.alerts().readyOrders(), body.alerts().readyOrders());
+        assertEquals(expected.alerts().expiredOrders(), body.alerts().expiredOrders());
+        assertEquals(
+                expected.products().productsNeedingRestock(),
+                body.products().productsNeedingRestock()
+        );
+        assertEquals(expected.products().soldOutProducts(), body.products().soldOutProducts());
+        verify(planAccessGuard, never()).requireVendorIntermediate(null);
         verify(getKiosqueroDashboard).execute(request);
     }
 

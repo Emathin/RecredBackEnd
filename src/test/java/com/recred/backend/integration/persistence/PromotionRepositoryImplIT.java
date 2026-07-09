@@ -43,7 +43,7 @@ class PromotionRepositoryImplIT extends AbstractIntegrationTest {
     void findAllActiveShouldMapEntities() {
         ProductoEntity product = generateProductEntity("Alfajor");
         PromotionEntity entity = generatePromotionEntity("Active Promo", PromotionStatus.ACTIVE, product);
-        generatePromotionEntity("Inactive Promo", PromotionStatus.EXPIRED, product);
+        generatePromotionEntity("Inactive Promo", PromotionStatus.INACTIVE, product);
 
         List<Promotion> result = repository.findAllActive();
 

@@ -4,13 +4,10 @@ import com.recred.backend.domain.exceptions.SchoolNotFoundException;
 import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
 import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.Colegio;
-import com.recred.backend.domain.models.EstadoLicenciaColegio;
-import com.recred.backend.domain.models.Kiosquero;
-import com.recred.backend.domain.models.SuscripcionColegio;
 import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.repositories.BuffetRepository;
 import com.recred.backend.domain.repositories.ColegioRepository;
-import com.recred.backend.domain.repositories.SuscripcionColegioRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 
 import java.time.Clock;
@@ -23,24 +20,21 @@ public class GetSchoolOverview {
     private final UsuarioRepository usuarioRepository;
     private final ColegioRepository colegioRepository;
     private final BuffetRepository buffetRepository;
-    private final SuscripcionColegioRepository subscriptionRepository;
     private final Clock clock;
 
     public GetSchoolOverview(UsuarioRepository usuarioRepository, 
                              ColegioRepository colegioRepository, 
                              BuffetRepository buffetRepository,
-                             SuscripcionColegioRepository subscriptionRepository,
                              Clock clock) {
         this.usuarioRepository = usuarioRepository;
         this.colegioRepository = colegioRepository;
         this.buffetRepository = buffetRepository;
-        this.subscriptionRepository = subscriptionRepository;
         this.clock = clock;
     }
 
     public GetSchoolOverviewResponse execute(GetSchoolOverviewRequest request) {
         UUID schoolId = schoolId(authenticatedUser(request.cognitoSubject()));
-        return response(school(schoolId), buffets(schoolId), licencia(schoolId));
+        return response(school(schoolId), buffets(schoolId));
     }
 
     private Usuario authenticatedUser(String cognitoSubject) {
@@ -70,43 +64,13 @@ public class GetSchoolOverview {
 
     private GetSchoolOverviewResponse response(
             Colegio colegio,
-            List<GetSchoolOverviewResponse.BuffetDto> buffets,
-            GetSchoolOverviewResponse.LicenciaDto licencia
+            List<GetSchoolOverviewResponse.BuffetDto> buffets
     ) {
         return new GetSchoolOverviewResponse(
                 colegio.getId(),
                 colegio.getNombre(),
                 colegio.getCue(),
-                licencia,
                 buffets
-        );
-    }
-
-    private GetSchoolOverviewResponse.LicenciaDto licencia(UUID schoolId) {
-        return subscriptionRepository.findActiveByColegioId(schoolId)
-                .map(this::licencia)
-                .orElseGet(this::sinLicencia);
-    }
-
-    private GetSchoolOverviewResponse.LicenciaDto licencia(SuscripcionColegio subscription) {
-        return new GetSchoolOverviewResponse.LicenciaDto(
-                subscription.estadoLicenciaAt(now()),
-                subscription.getFechaInicio(),
-                subscription.getFechaVencimiento(),
-                subscription.getFechaGraciaHasta(),
-                subscription.getPrecio(),
-                subscription.getMoneda()
-        );
-    }
-
-    private GetSchoolOverviewResponse.LicenciaDto sinLicencia() {
-        return new GetSchoolOverviewResponse.LicenciaDto(
-                EstadoLicenciaColegio.SIN_LICENCIA,
-                null,
-                null,
-                null,
-                null,
-                "USD"
         );
     }
 

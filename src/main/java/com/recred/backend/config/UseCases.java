@@ -3,59 +3,29 @@ package com.recred.backend.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AcceptTutorInvitation;
 import com.recred.backend.application.ActivateUserSubscription;
-import com.recred.backend.application.ActivateSchoolSubscription;
 import com.recred.backend.application.AddFavoriteProduct;
 import com.recred.backend.application.AddHealthRestriction;
 import com.recred.backend.application.AddProductRecommendation;
 import com.recred.backend.application.AdjustInventoryStock;
 import com.recred.backend.application.ApplyInventoryQuickAction;
-import com.recred.backend.application.GenerateComboSuggestion;
-import com.recred.backend.application.GetActivePromotionsByBuffet;
-import com.recred.backend.application.GetActiveSchools;
-import com.recred.backend.application.GetTutorGlobalDashboard;
-import com.recred.backend.application.UpdateTutorDashboardConfig;
-import com.recred.backend.application.GetSuggestionByNotificationId;
-import com.recred.backend.application.GetSuggestionByType;
-import com.recred.backend.application.EnableSchoolCredit;
-import com.recred.backend.application.PaySchoolCredit;
-import com.recred.backend.application.GetActiveSchoolCredit;
-import com.recred.backend.application.GetSchoolCreditHistory;
-import com.recred.backend.application.GetLastRecharge;
-import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
-import com.recred.backend.domain.repositories.ProveedorRepository;
-import com.recred.backend.domain.repositories.ListaPrecioProveedorRepository;
-import com.recred.backend.domain.repositories.ItemListaPrecioProveedorRepository;
-import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepository;
-import com.recred.backend.domain.services.CognitoDirectorIdentityService;
-import com.recred.backend.domain.services.StorageService;
-import com.recred.backend.domain.services.SupplierPriceListAnalyzer;
-import com.recred.backend.application.CreateSupplier;
-import com.recred.backend.application.ListSuppliers;
-import com.recred.backend.application.GetSupplier;
-import com.recred.backend.application.UpdateSupplier;
-import com.recred.backend.application.DeleteSupplier;
-import com.recred.backend.application.SubmitSchoolRegistration;
 import com.recred.backend.application.ApproveSchoolRegistration;
 import com.recred.backend.application.AskSchoolAssistant;
 import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.application.CloseDailyBuffet;
 import com.recred.backend.application.ConfirmPaymentAndCredit;
-import com.recred.backend.application.ConfirmSchoolSubscriptionPayment;
 import com.recred.backend.application.ConfirmUserSubscriptionPayment;
 import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateGrade;
 import com.recred.backend.application.CreatePromotion;
-import com.recred.backend.application.CreateSchoolSubscriptionPayment;
-import com.recred.backend.application.CreateUserSubscriptionPayment;
-import com.recred.backend.application.CreateTimeSlot;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateSupplier;
 import com.recred.backend.application.CreateTimeRestriction;
-import com.recred.backend.application.DeactivateGrade;
 import com.recred.backend.application.CreateTimeSlot;
+import com.recred.backend.application.CreateUserSubscriptionPayment;
+import com.recred.backend.application.DeactivateGrade;
 import com.recred.backend.application.DeactivateTimeSlot;
 import com.recred.backend.application.DeleteFavoriteCart;
 import com.recred.backend.application.DeleteFavoriteProduct;
@@ -66,8 +36,8 @@ import com.recred.backend.application.DetectStudentPreferences;
 import com.recred.backend.application.DisableBudget;
 import com.recred.backend.application.DisableTimeRestriction;
 import com.recred.backend.application.EnableSchoolCredit;
-import com.recred.backend.application.ExpireUserSubscriptions;
 import com.recred.backend.application.ExpireAdvancePurchases;
+import com.recred.backend.application.ExpireUserSubscriptions;
 import com.recred.backend.application.FindPurchaseSuggestionForToday;
 import com.recred.backend.application.FindPurchaseSuggestionForTomorrow;
 import com.recred.backend.application.GenerateBuffetMenu;
@@ -82,12 +52,12 @@ import com.recred.backend.application.GeneratePurchaseRecommendation;
 import com.recred.backend.application.GenerateSeasonalRecommendation;
 import com.recred.backend.application.GenerateStatisticalConsumptionAlerts;
 import com.recred.backend.application.GenerateSummaryNotification;
-import com.recred.backend.application.GenerateUserSubscriptionExpirationWarnings;
 import com.recred.backend.application.GenerateTopUpLink;
+import com.recred.backend.application.GenerateUserSubscriptionExpirationWarnings;
 import com.recred.backend.application.GetActiveBudgetByStudent;
+import com.recred.backend.application.GetActiveLevels;
 import com.recred.backend.application.GetActivePromotions;
 import com.recred.backend.application.GetActivePromotionsByBuffet;
-import com.recred.backend.application.GetActiveLevels;
 import com.recred.backend.application.GetActiveSchoolCredit;
 import com.recred.backend.application.GetActiveSchools;
 import com.recred.backend.application.GetAllCategories;
@@ -119,6 +89,7 @@ import com.recred.backend.application.GetProductsByBuffetUser;
 import com.recred.backend.application.GetPromotionById;
 import com.recred.backend.application.GetPurchaseStatus;
 import com.recred.backend.application.GetScheduledPickups;
+import com.recred.backend.application.GetSchoolCreditHistory;
 import com.recred.backend.application.GetSchoolOverview;
 import com.recred.backend.application.GetStockMovements;
 import com.recred.backend.application.GetStudentPreferences;
@@ -140,10 +111,11 @@ import com.recred.backend.application.ListDailyBuffetCloses;
 import com.recred.backend.application.ListInventoryProducts;
 import com.recred.backend.application.ListKiosqueroOperationalAlerts;
 import com.recred.backend.application.ListKiosqueroOrders;
-import com.recred.backend.application.ListSchoolTimeSlots;
 import com.recred.backend.application.ListSchoolGrades;
+import com.recred.backend.application.ListSchoolTimeSlots;
 import com.recred.backend.application.ListSuppliers;
 import com.recred.backend.application.LoadBalanceToChild;
+import com.recred.backend.application.GetAllPromotionsByBuffet;
 import com.recred.backend.application.LoadStockIA;
 import com.recred.backend.application.ManagePromotionStatus;
 import com.recred.backend.application.ManageRestrictions;
@@ -151,11 +123,13 @@ import com.recred.backend.application.ManualProductLock;
 import com.recred.backend.application.ManualProductUnlock;
 import com.recred.backend.application.NotifyPurchaseSuggestions;
 import com.recred.backend.application.ParseBulkStock;
+import com.recred.backend.application.PaySchoolCredit;
 import com.recred.backend.application.PredictStudentSpending;
 import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.ProcessScheduledPayouts;
 import com.recred.backend.application.PurchaseSuggestIA;
+import com.recred.backend.application.TogglePromotionStatus;
 import com.recred.backend.application.GetTimeSlot;
 import com.recred.backend.application.ListSchoolTimeSlots;
 import com.recred.backend.application.RecommendSupplierForProducts;
@@ -165,8 +139,6 @@ import com.recred.backend.application.RecommendSupplierForProducts;
 import com.recred.backend.application.RegisterBuffet;
 import com.recred.backend.application.RegisterSeller;
 import com.recred.backend.application.RejectSchoolRegistration;
-import com.recred.backend.application.GetSchoolOverview;
-
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
 import com.recred.backend.application.SaveBulkProducts;
@@ -199,7 +171,6 @@ import com.recred.backend.application.SchoolAssistantReplyFormatter;
 import com.recred.backend.application.SchoolAssistantRoleCatalog;
 import com.recred.backend.application.SchoolAssistantSuggestionFactory;
 import com.recred.backend.application.SchoolAssistantTutorFactsFormatter;
-import com.recred.backend.application.SchoolSubscriptionPriceCatalog;
 import com.recred.backend.application.SetNotificationAsAlreadyRead;
 import com.recred.backend.application.StudentAssistantContextBuilder;
 import com.recred.backend.application.StudentAssistantContextProvider;
@@ -222,7 +193,6 @@ import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePurchaseStatus;
 import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.application.UpdateSupplier;
-import com.recred.backend.application.UpdateTimeSlot;
 import com.recred.backend.application.UpdateTimeRestriction;
 import com.recred.backend.application.UpdateTimeSlot;
 import com.recred.backend.application.UpdateTutorDashboardConfig;
@@ -257,7 +227,6 @@ import com.recred.backend.domain.repositories.ListaPrecioProveedorRepository;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.NivelRepository;
 import com.recred.backend.domain.repositories.NotificationRepository;
-import com.recred.backend.domain.repositories.PagoSuscripcionColegioRepository;
 import com.recred.backend.domain.repositories.PagoSuscripcionUsuarioRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
@@ -281,10 +250,9 @@ import com.recred.backend.domain.repositories.StockMovementRepository;
 import com.recred.backend.domain.repositories.StudentAIProfileRepository;
 import com.recred.backend.domain.repositories.StudentConsumptionRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
-import com.recred.backend.domain.repositories.SuscripcionColegioRepository;
-import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import com.recred.backend.domain.repositories.SuggestionAiRepository;
 import com.recred.backend.domain.repositories.SummaryRepository;
+import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import com.recred.backend.domain.repositories.TutorInvitationRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.TutorSchoolRepository;
@@ -362,13 +330,11 @@ public class UseCases {
             UsuarioRepository usuarioRepository,
             ColegioRepository colegioRepository,
             BuffetRepository buffetRepository,
-            SuscripcionColegioRepository suscripcionColegioRepository,
             Clock clock) {
         return new GetSchoolOverview(
                 usuarioRepository,
                 colegioRepository,
                 buffetRepository,
-                suscripcionColegioRepository,
                 clock);
     }
 
@@ -1490,43 +1456,6 @@ public class UseCases {
                 clock);
     }
 
-    @Bean
-    public SchoolSubscriptionPriceCatalog schoolSubscriptionPriceCatalog() {
-        return new SchoolSubscriptionPriceCatalog();
-    }
-
-    @Bean
-    public CreateSchoolSubscriptionPayment createSchoolSubscriptionPayment(
-            ColegioRepository colegioRepository,
-            ExternalPaymentService externalPaymentService,
-            SchoolSubscriptionPriceCatalog priceCatalog) {
-        return new CreateSchoolSubscriptionPayment(
-                colegioRepository,
-                externalPaymentService,
-                priceCatalog);
-    }
-
-    @Bean
-    public ActivateSchoolSubscription activateSchoolSubscription(
-            ColegioRepository colegioRepository,
-            SuscripcionColegioRepository subscriptionRepository,
-            Clock clock) {
-        return new ActivateSchoolSubscription(
-                colegioRepository,
-                subscriptionRepository,
-                clock);
-    }
-
-    @Bean
-    public ConfirmSchoolSubscriptionPayment confirmSchoolSubscriptionPayment(
-            PagoSuscripcionColegioRepository paymentRepository,
-            ActivateSchoolSubscription activateSchoolSubscription,
-            Clock clock) {
-        return new ConfirmSchoolSubscriptionPayment(
-                paymentRepository,
-                activateSchoolSubscription,
-                clock);
-    }
 
     @Bean
     public GenerateUserSubscriptionExpirationWarnings
@@ -1564,10 +1493,8 @@ public class UseCases {
     public PurchaseSuggestIA purchaseSuggestIA(
             UsuarioService usuarioService,
             SugerenciaIARepository sugerenciaIARepository,
-            FranjaHorariaRepository franjaHorariaRepository,
             Clock clock) {
-        return new PurchaseSuggestIA(usuarioService, sugerenciaIARepository,
-                franjaHorariaRepository, clock);
+        return new PurchaseSuggestIA(usuarioService, sugerenciaIARepository, clock);
     }
 
     @Bean
@@ -1632,6 +1559,18 @@ public class UseCases {
     public GetActivePromotionsByBuffet getActivePromotionsByBuffet(
             PromotionRepository promotionRepository) {
         return new GetActivePromotionsByBuffet(promotionRepository);
+    }
+
+    @Bean
+    public GetAllPromotionsByBuffet getAllPromotionsByBuffet(
+            PromotionRepository promotionRepository) {
+        return new GetAllPromotionsByBuffet(promotionRepository);
+    }
+
+    @Bean
+    public TogglePromotionStatus togglePromotionStatus(
+            PromotionRepository promotionRepository) {
+        return new TogglePromotionStatus(promotionRepository);
     }
 
     @Bean

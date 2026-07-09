@@ -91,7 +91,7 @@ class UpdatePromotionTest {
 
         whenUpdatingPromotion();
 
-        thenPromotionStatusIs(PromotionStatus.DRAFT);
+        thenPromotionStatusIs(PromotionStatus.INACTIVE);
     }
 
     @Test

@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public record PromotionResponse(
         UUID id,
@@ -20,28 +19,34 @@ public record PromotionResponse(
         String imageUrl
 ) {
     public static PromotionResponse fromDomain(Promotion promotion) {
-        List<UUID> productIds = null;
-        if (promotion.getProducts() != null) {
-            productIds = promotion.getProducts().stream()
-                    .map(p -> p.getId())
-                    .collect(Collectors.toList());
-        }
-
-        UUID buffetId = null;
-        if (promotion.getBuffet() != null) {
-            buffetId = promotion.getBuffet().getId();
-        }
-
         return new PromotionResponse(
                 promotion.getId(),
                 promotion.getName(),
                 promotion.getDiscountPercentage(),
                 promotion.getStartDate(),
                 promotion.getEndDate(),
-                promotion.getStatus() != null ? promotion.getStatus().name() : null,
-                productIds,
-                buffetId,
+                statusName(promotion),
+                productIds(promotion),
+                buffetId(promotion),
                 promotion.getImageUrl()
         );
+    }
+
+    private static String statusName(Promotion promotion) {
+        return promotion.getStatus() == null ? null : promotion.getStatus().name();
+    }
+
+    private static List<UUID> productIds(Promotion promotion) {
+        if (promotion.getProducts() == null) {
+            return null;
+        }
+
+        return promotion.getProducts().stream()
+                .map(product -> product.getId())
+                .toList();
+    }
+
+    private static UUID buffetId(Promotion promotion) {
+        return promotion.getBuffet() == null ? null : promotion.getBuffet().getId();
     }
 }

@@ -13,8 +13,10 @@ import com.recred.backend.application.GetActivePromotionsResponse;
 import com.recred.backend.application.GetActivePromotionsByBuffet;
 import com.recred.backend.application.GetActivePromotionsByBuffetRequest;
 import com.recred.backend.application.GetActivePromotionsByBuffetResponse;
+import com.recred.backend.application.GetAllPromotionsByBuffet;
 import com.recred.backend.application.GetPromotionById;
 import com.recred.backend.application.GetPromotionByIdRequest;
+import com.recred.backend.application.TogglePromotionStatus;
 import com.recred.backend.application.UpdatePromotion;
 import com.recred.backend.application.UpdatePromotionRequest;
 import com.recred.backend.domain.models.Producto;
@@ -41,8 +43,9 @@ class PromotionControllerTest {
     private UpdatePromotion updatePromotion;
     private DeletePromotion deletePromotion;
     private GetActivePromotions getActivePromotions;
-    private GetActivePromotionsByBuffet getActivePromotionsByBuffet;
+    private GetAllPromotionsByBuffet getAllPromotionsByBuffet;
     private GetPromotionById getPromotionById;
+    private TogglePromotionStatus togglePromotionStatus;
     private PlanAccessGuard planAccessGuard;
     private PromotionController controller;
 
@@ -52,16 +55,18 @@ class PromotionControllerTest {
         updatePromotion = mock(UpdatePromotion.class);
         deletePromotion = mock(DeletePromotion.class);
         getActivePromotions = mock(GetActivePromotions.class);
-        getActivePromotionsByBuffet = mock(GetActivePromotionsByBuffet.class);
+        getAllPromotionsByBuffet = mock(GetAllPromotionsByBuffet.class);
         getPromotionById = mock(GetPromotionById.class);
+        togglePromotionStatus = mock(TogglePromotionStatus.class);
         planAccessGuard = mock(PlanAccessGuard.class);
         controller = new PromotionController(
                 createPromotion,
                 updatePromotion,
                 deletePromotion,
                 getActivePromotions,
-                getActivePromotionsByBuffet,
+                getAllPromotionsByBuffet,
                 getPromotionById,
+                togglePromotionStatus,
                 planAccessGuard
         );
     }
@@ -90,7 +95,7 @@ class PromotionControllerTest {
         UUID promotionId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         Promotion promotion = promotion(promotionId, productId);
-        when(getActivePromotionsByBuffet.execute(
+        when(getAllPromotionsByBuffet.execute(
                 new GetActivePromotionsByBuffetRequest(buffetId)))
                 .thenReturn(new GetActivePromotionsByBuffetResponse(
                         List.of(CreatePromotionResponse.fromDomain(promotion))));
@@ -101,7 +106,7 @@ class PromotionControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
         assertEquals(promotionId, response.getBody().get(0).getId());
-        verify(getActivePromotionsByBuffet)
+        verify(getAllPromotionsByBuffet)
                 .execute(new GetActivePromotionsByBuffetRequest(buffetId));
     }
 

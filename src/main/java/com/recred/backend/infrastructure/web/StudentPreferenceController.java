@@ -39,7 +39,6 @@ public class StudentPreferenceController {
     private final DeleteFavoriteProduct deleteFavoriteProduct;
     private final GetFavoritesByStudent getFavoritesByStudent;
     private final PlanAccessGuard planAccessGuard;
-    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public StudentPreferenceController(
             DetectStudentPreferences detectStudentPreferences,
@@ -49,8 +48,7 @@ public class StudentPreferenceController {
             AddFavoriteProduct addFavoriteProduct,
             DeleteFavoriteProduct deleteFavoriteProduct,
             GetFavoritesByStudent getFavoritesByStudent,
-            PlanAccessGuard planAccessGuard,
-            SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
+            PlanAccessGuard planAccessGuard) {
         this.detectStudentPreferences = detectStudentPreferences;
         this.getStudentPreferences = getStudentPreferences;
         this.respondToAISuggestion = respondToAISuggestion;
@@ -59,7 +57,6 @@ public class StudentPreferenceController {
         this.deleteFavoriteProduct = deleteFavoriteProduct;
         this.getFavoritesByStudent = getFavoritesByStudent;
         this.planAccessGuard = planAccessGuard;
-        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping("/usuarios/{userId}/preferencias/detectar")
@@ -69,7 +66,6 @@ public class StudentPreferenceController {
     ) {
         planAccessGuard.requireUserOrInheritedTutorIntermediate(userId);
         UUID resolvedAlumnoId = resolveAlumnoId(userId);
-        schoolLicenseAccessGuard.requireActiveSchoolForStudent(resolvedAlumnoId);
         return detectStudentPreferences
                 .execute(new DetectStudentPreferencesRequest(resolvedAlumnoId, buffetId))
                 .map(StudentPreferenceResponseDTO::fromUseCaseResponse)
@@ -84,7 +80,7 @@ public class StudentPreferenceController {
             @RequestParam(name = "tipo", required = false) TipoSugerenciaIA tipo
     ) {
         planAccessGuard.requireUserOrInheritedTutorIntermediate(userId);
-        requireSchoolLicenseIfStudentUser(userId);
+
         List<StudentPreferenceResponseDTO> preferences =
                 getStudentPreferences.execute(
                         GetStudentPreferencesRequest.byUser(userId, ultima, tipo))
@@ -124,7 +120,7 @@ public class StudentPreferenceController {
             @RequestParam("aceptada") boolean aceptada
     ) {
         planAccessGuard.requireUserOrInheritedTutorIntermediate(userId);
-        requireSchoolLicenseIfStudentUser(userId);
+
         respondToAISuggestion.execute(new RespondToAISuggestionRequest(sugerenciaId, aceptada));
         return ResponseEntity.ok().build();
     }
@@ -165,8 +161,5 @@ public class StudentPreferenceController {
                         "No existe un alumno asociado al usuario: " + userId));
     }
 
-    private void requireSchoolLicenseIfStudentUser(UUID userId) {
-        alumnoRepository.findStudentIdByUserId(userId)
-                .ifPresent(schoolLicenseAccessGuard::requireActiveSchoolForStudent);
-    }
+
 }

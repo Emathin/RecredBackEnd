@@ -1,11 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.domain.models.EstadoLicenciaColegio;
-import com.recred.backend.domain.models.RolUsuario;
-import com.recred.backend.domain.models.SuscripcionColegio;
 import com.recred.backend.domain.models.SuscripcionUsuario;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.repositories.SuscripcionColegioRepository;
 import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
@@ -35,18 +31,15 @@ public class UserProfileController {
     private final UsuarioService usuarioService;
     private final CloudinaryService cloudinaryService;
     private final SuscripcionUsuarioRepository suscripcionUsuarioRepository;
-    private final SuscripcionColegioRepository suscripcionColegioRepository;
     private final Clock clock;
 
     public UserProfileController(UsuarioService usuarioService,
             CloudinaryService cloudinaryService,
             SuscripcionUsuarioRepository suscripcionUsuarioRepository,
-            SuscripcionColegioRepository suscripcionColegioRepository,
             Clock clock) {
         this.usuarioService = usuarioService;
         this.cloudinaryService = cloudinaryService;
         this.suscripcionUsuarioRepository = suscripcionUsuarioRepository;
-        this.suscripcionColegioRepository = suscripcionColegioRepository;
         this.clock = clock;
     }
 
@@ -122,9 +115,16 @@ public class UserProfileController {
         response.put("urlFotoPerfil", usuario.getUrlFotoPerfil());
         response.put("plan", usuario.getPlan().name());
         response.put("fechaVencimientoPlan", planExpiration(usuario));
-        addSchoolLicenseData(response, usuario);
+        response.put("hasUsedTrial", hasUsedTrial(usuario));
 
         return response;
+    }
+
+    private boolean hasUsedTrial(Usuario usuario) {
+        if (usuario.getId() == null) {
+            return false;
+        }
+        return suscripcionUsuarioRepository.hasUsedTrial(usuario.getId());
     }
 
     private LocalDateTime planExpiration(Usuario usuario) {
@@ -137,46 +137,5 @@ public class UserProfileController {
                 .orElse(null);
     }
 
-    private void addSchoolLicenseData(Map<String, Object> response, Usuario usuario) {
-        if (!isSchoolUser(usuario)) {
-            return;
-        }
 
-        Optional<SuscripcionColegio> subscription = activeSchoolSubscription(usuario);
-        response.put("estadoLicenciaColegio", schoolLicenseStatus(subscription));
-        response.put("fechaVencimientoLicenciaColegio", schoolLicenseExpiration(subscription));
-    }
-
-    private boolean isSchoolUser(Usuario usuario) {
-        return usuario.getRol() == RolUsuario.DIRECTIVO_COLEGIO;
-    }
-
-    private Optional<SuscripcionColegio> activeSchoolSubscription(Usuario usuario) {
-        return schoolId(usuario).flatMap(suscripcionColegioRepository::findActiveByColegioId);
-    }
-
-    private Optional<java.util.UUID> schoolId(Usuario usuario) {
-        return Optional.ofNullable(usuario.getColegio())
-                .map(school -> school.getId());
-    }
-
-    private EstadoLicenciaColegio schoolLicenseStatus(
-            Optional<SuscripcionColegio> subscription
-    ) {
-        return subscription
-                .map(activeSubscription -> activeSubscription.estadoLicenciaAt(now()))
-                .orElse(EstadoLicenciaColegio.SIN_LICENCIA);
-    }
-
-    private LocalDateTime schoolLicenseExpiration(
-            Optional<SuscripcionColegio> subscription
-    ) {
-        return subscription
-                .map(SuscripcionColegio::getFechaVencimiento)
-                .orElse(null);
-    }
-
-    private LocalDateTime now() {
-        return LocalDateTime.now(clock);
-    }
 }

@@ -87,12 +87,12 @@ public class CreatePromotion {
 
     private PromotionStatus determineInitialStatus(CreatePromotionRequest promotionRequest) {
         if (promotionRequest.forceDraft()) {
-            return PromotionStatus.DRAFT;
+            return PromotionStatus.INACTIVE;
         }
         if (isPromotionCurrentlyActive(promotionRequest.startDate(), promotionRequest.endDate())) {
             return PromotionStatus.ACTIVE;
         }
-        return PromotionStatus.DRAFT;
+        return PromotionStatus.INACTIVE;
     }
 
     private boolean hasMinimumProducts(List<UUID> productIds) {
@@ -107,7 +107,7 @@ public class CreatePromotion {
     private boolean isDateRangeValid(LocalDateTime startDate, LocalDateTime endDate) {
         return startDate.isBefore(endDate);
     }
-    
+
     private boolean isPromotionCurrentlyActive(LocalDateTime startDate, LocalDateTime endDate) {
         LocalDateTime now = LocalDateTime.now(clock);
         return !now.isBefore(startDate) && !now.isAfter(endDate);

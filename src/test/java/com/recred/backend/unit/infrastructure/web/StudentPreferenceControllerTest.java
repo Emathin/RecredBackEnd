@@ -19,7 +19,6 @@ import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.ProductResponseDTO;
-import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import com.recred.backend.infrastructure.web.StudentPreferenceController;
 import com.recred.backend.infrastructure.web.StudentPreferenceResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,7 +50,6 @@ class StudentPreferenceControllerTest {
     private DeleteFavoriteProduct deleteFavoriteProduct;
     private GetFavoritesByStudent getFavoritesByStudent;
     private PlanAccessGuard planAccessGuard;
-    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
     private StudentPreferenceController controller;
 
     private UUID userId;
@@ -77,7 +75,7 @@ class StudentPreferenceControllerTest {
         deleteFavoriteProduct = mock(DeleteFavoriteProduct.class);
         getFavoritesByStudent = mock(GetFavoritesByStudent.class);
         planAccessGuard = mock(PlanAccessGuard.class);
-        schoolLicenseAccessGuard = mock(SchoolLicenseAccessGuard.class);
+
 
         controller = new StudentPreferenceController(
                 detectStudentPreferences,
@@ -87,8 +85,7 @@ class StudentPreferenceControllerTest {
                 addFavoriteProduct,
                 deleteFavoriteProduct,
                 getFavoritesByStudent,
-                planAccessGuard,
-                schoolLicenseAccessGuard
+                planAccessGuard
         );
     }
 
@@ -102,7 +99,6 @@ class StudentPreferenceControllerTest {
 
         thenPreferenceResponseIsReturned();
         thenIntermediatePlanWasRequired();
-        thenStudentSchoolLicenseWasRequired();
     }
 
     @Test
@@ -161,7 +157,7 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void givenStudentUser_whenGettingPreferences_thenRequiresSchoolLicense() {
+    void givenStudentUser_whenGettingPreferences_thenReturnsPreferencesAndNoCrash() {
         givenUserId();
         givenStudentId();
         givenStudentIdForUser();
@@ -169,7 +165,7 @@ class StudentPreferenceControllerTest {
 
         whenGettingPreferences();
 
-        thenStudentSchoolLicenseWasRequired();
+        thenPreferencesResponseIsNoContent();
     }
 
     @Test
@@ -201,7 +197,6 @@ class StudentPreferenceControllerTest {
 
         thenSuggestionResponseIsOk();
         thenIntermediatePlanWasRequired();
-        thenStudentSchoolLicenseWasRequired();
         thenAISuggestionWasAnswered();
     }
 
@@ -284,11 +279,11 @@ class StudentPreferenceControllerTest {
     }
 
     private void givenStudentIdForUser() {
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
+        org.mockito.Mockito.lenient().when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.of(studentId));
     }
 
     private void givenUserHasNoStudent() {
-        when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.empty());
+        org.mockito.Mockito.lenient().when(alumnoRepository.findStudentIdByUserId(userId)).thenReturn(Optional.empty());
     }
 
     private void givenPreferenceDetected() {
@@ -400,10 +395,6 @@ class StudentPreferenceControllerTest {
 
     private void thenIntermediatePlanWasRequired() {
         verify(planAccessGuard).requireUserOrInheritedTutorIntermediate(userId);
-    }
-
-    private void thenStudentSchoolLicenseWasRequired() {
-        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
     }
 
     private DetectStudentPreferencesRequest detectRequest() {

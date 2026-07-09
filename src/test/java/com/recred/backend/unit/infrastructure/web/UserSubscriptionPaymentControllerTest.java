@@ -1,5 +1,6 @@
 package com.recred.backend.unit.infrastructure.web;
 
+import com.recred.backend.application.ActivateUserSubscription;
 import com.recred.backend.application.CreateUserSubscriptionPayment;
 import com.recred.backend.application.CreateUserSubscriptionPaymentRequest;
 import com.recred.backend.application.CreateUserSubscriptionPaymentResponse;
@@ -24,8 +25,9 @@ class UserSubscriptionPaymentControllerTest {
     @Test
     void createPayment_ShouldDelegateAndReturnPaymentData() {
         CreateUserSubscriptionPayment useCase = mock(CreateUserSubscriptionPayment.class);
+        ActivateUserSubscription activateUserSubscription = mock(ActivateUserSubscription.class);
         UserSubscriptionPaymentController controller =
-                new UserSubscriptionPaymentController(useCase);
+                new UserSubscriptionPaymentController(useCase, activateUserSubscription);
         UUID userId = UUID.randomUUID();
         CreateUserSubscriptionPaymentResponse useCaseResponse = response();
         givenUseCaseResponse(useCase, useCaseResponse);
