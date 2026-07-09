@@ -42,7 +42,7 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                             i.urlImagen
                         )
                         FROM ProductoEntity p
-                        LEFT JOIN InventarioBuffetEntity i
+                        JOIN InventarioBuffetEntity i
                             ON i.productoEntity = p
                             AND i.buffetEntity.id = :buffetId
                         WHERE p.activo = true
@@ -72,7 +72,7 @@ public interface SpringDataProductRepository extends JpaRepository<ProductoEntit
                             i.urlImagen
                         )
                         FROM ProductoEntity p
-                        LEFT JOIN InventarioBuffetEntity i
+                        JOIN InventarioBuffetEntity i
                             ON i.productoEntity = p
                             AND i.buffetEntity.id = :buffetId
                         WHERE p.id = :id
