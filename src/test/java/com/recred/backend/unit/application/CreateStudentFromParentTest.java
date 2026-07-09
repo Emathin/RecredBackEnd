@@ -27,6 +27,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -106,6 +107,7 @@ class CreateStudentFromParentTest {
 
         thenStudentUserWasCreated();
         thenStudentWasCreatedWithGrade();
+        thenStudentWasCreatedWithInitialWallet();
         thenStudentWasLinkedToTutor();
         thenResponseHasStudentId();
     }
@@ -480,6 +482,16 @@ class CreateStudentFromParentTest {
                 usuarioCaptor.getValue(),
                 savedUserId,
                 grade);
+    }
+
+    private void thenStudentWasCreatedWithInitialWallet() {
+        Alumno savedAlumno = alumnoCaptor.getValue();
+        assertNotNull(savedAlumno.getBilletera());
+        assertSame(savedAlumno, savedAlumno.getBilletera().getAlumno());
+        assertEquals(BigDecimal.ZERO, savedAlumno.getBilletera().getSaldoCreditos());
+        assertEquals(BigDecimal.ZERO, savedAlumno.getBilletera().getLimiteCredito());
+        assertEquals(BigDecimal.ZERO, savedAlumno.getBilletera().getSaldoDeudaInterno());
+        assertEquals(Boolean.FALSE, savedAlumno.getBilletera().getCreditoHabilitado());
     }
 
     private void thenStudentWasLinkedToTutor() {
