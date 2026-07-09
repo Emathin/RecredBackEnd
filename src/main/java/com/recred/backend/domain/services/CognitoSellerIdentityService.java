@@ -5,4 +5,6 @@ public interface CognitoSellerIdentityService {
                                         String firstName, String lastName);
 
     void resendTemporaryPassword(String username);
+
+    void disableUser(String username);
 }

@@ -124,6 +124,17 @@ public abstract class BaseCognitoIdentityService {
         return stringValue(user.get("Username"));
     }
 
+    public void disableUser(String sub) {
+        String userPoolId = required(properties.getUserPoolId(), "userPoolId");
+        String region = required(properties.getRegion(), "region");
+        String realUsername = findUsernameBySub(sub);
+
+        invoke(region, "AWSCognitoIdentityProviderService.AdminDisableUser", Map.of(
+                "UserPoolId", userPoolId,
+                "Username", realUsername
+        ));
+    }
+
     private String authorizationHeader(AwsCredentials credentials, String region, String target,
                                        String payload, String host, String amzDate,
                                        String dateStamp) throws Exception {
