@@ -399,9 +399,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex) {
         LOGGER.error("Error no controlado: ", ex);
+        
+        String errorMessage = "Ocurrió un error inesperado. Por favor, intente más tarde.";
+        if (ex.getMessage() != null && ex.getMessage().contains("Cognito")) {
+            errorMessage = "Error inesperado: " + ex.getMessage();
+            if (ex.getCause() != null) {
+                errorMessage += " - Causa: " + ex.getCause().getMessage();
+            }
+        }
 
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno",
-                "Ocurrió un error inesperado. Por favor, intente más tarde.");
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno", errorMessage);
     }
 
     private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status,

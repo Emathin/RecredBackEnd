@@ -137,6 +137,8 @@ import com.recred.backend.application.ReactivateTimeSlot;
 import com.recred.backend.application.RecommendSupplierForProducts;
 import com.recred.backend.application.RegisterBuffet;
 import com.recred.backend.application.RegisterSeller;
+import com.recred.backend.application.ReplaceSeller;
+import com.recred.backend.application.ResendSellerCredentials;
 import com.recred.backend.application.RejectSchoolRegistration;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
@@ -262,6 +264,7 @@ import com.recred.backend.domain.services.CalculadorPeriodoPresupuesto;
 import com.recred.backend.domain.services.CognitoDirectorIdentityService;
 import com.recred.backend.domain.services.CognitoStudentIdentityService;
 import com.recred.backend.domain.services.CognitoTutorIdentityService;
+import com.recred.backend.domain.services.CognitoSellerIdentityService;
 import com.recred.backend.domain.services.ConsumptionAlertAnalyzer;
 import com.recred.backend.domain.services.ExternalPaymentService;
 import com.recred.backend.domain.services.HealthyRecommendationAnalyzer;
@@ -345,6 +348,14 @@ public class UseCases {
             com.recred.backend.domain.services.CognitoSellerIdentityService cognito) {
         return new RegisterSeller(buffetRepository, usuarioRepository,
                 kiosqueroRepository, cognito);
+    }
+
+    @Bean
+    public ResendSellerCredentials resendSellerCredentials(
+            KiosqueroRepository kiosqueroRepository,
+            UsuarioRepository usuarioRepository,
+            com.recred.backend.domain.services.CognitoSellerIdentityService cognito) {
+        return new ResendSellerCredentials(kiosqueroRepository, usuarioRepository, cognito);
     }
 
 
@@ -2220,5 +2231,15 @@ public class UseCases {
             Clock clock) {
         return new ProcessScheduledPayouts(repository, paymentService,
                 kiosqueroRepository, purchaseRepository, clock);
+    }
+
+    @Bean
+    public ReplaceSeller replaceSeller(
+            BuffetRepository buffetRepository,
+            UsuarioRepository usuarioRepository,
+            KiosqueroRepository kiosqueroRepository,
+            CognitoSellerIdentityService cognitoSellerIdentityService) {
+        return new ReplaceSeller(buffetRepository, usuarioRepository,
+                kiosqueroRepository, cognitoSellerIdentityService);
     }
 }

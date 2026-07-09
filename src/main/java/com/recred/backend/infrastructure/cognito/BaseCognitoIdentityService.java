@@ -105,6 +105,36 @@ public abstract class BaseCognitoIdentityService {
         }
     }
 
+    protected String findUsernameBySub(String sub) {
+        String userPoolId = required(properties.getUserPoolId(), "userPoolId");
+        String region = required(properties.getRegion(), "region");
+
+        Map<String, Object> response = invoke(region,
+                "AWSCognitoIdentityProviderService.ListUsers", Map.of(
+                "UserPoolId", userPoolId,
+                "Filter", "sub=\"" + sub + "\""
+        ));
+
+        Object usersRaw = response.get("Users");
+        if (!(usersRaw instanceof List<?> users) || users.isEmpty()) {
+            throw new IllegalStateException("No se encontro usuario en Cognito con sub " + sub);
+        }
+
+        Map<String, Object> user = castMap(users.get(0));
+        return stringValue(user.get("Username"));
+    }
+
+    public void disableUser(String sub) {
+        String userPoolId = required(properties.getUserPoolId(), "userPoolId");
+        String region = required(properties.getRegion(), "region");
+        String realUsername = findUsernameBySub(sub);
+
+        invoke(region, "AWSCognitoIdentityProviderService.AdminDisableUser", Map.of(
+                "UserPoolId", userPoolId,
+                "Username", realUsername
+        ));
+    }
+
     private String authorizationHeader(AwsCredentials credentials, String region, String target,
                                        String payload, String host, String amzDate,
                                        String dateStamp) throws Exception {

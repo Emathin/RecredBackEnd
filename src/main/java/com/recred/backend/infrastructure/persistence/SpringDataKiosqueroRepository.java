@@ -16,6 +16,7 @@ public interface SpringDataKiosqueroRepository extends
                 from KiosqueroEntity k 
                     inner join k.buffetEntity b 
                         where k.id = CAST(:kiosqueroId AS java.util.UUID)
+                        and b.vendedor = k
     """)
     UUID findBuffet(UUID kiosqueroId);
 
@@ -24,6 +25,7 @@ public interface SpringDataKiosqueroRepository extends
                 from KiosqueroEntity k 
                     inner join k.buffetEntity b 
                         where k.usuario.id = CAST(:usuarioId AS java.util.UUID)
+                        and b.vendedor = k
     """)
     UUID findBuffetByUsuarioId(UUID usuarioId);
 
@@ -40,6 +42,7 @@ public interface SpringDataKiosqueroRepository extends
                     inner join k.buffetEntity b
                     inner join b.colegioEntity c
                         where k.usuario.id = CAST(:usuarioId AS java.util.UUID)
+                        and b.vendedor = k
     """)
     Optional<UUID> findSchoolIdByUsuarioId(UUID usuarioId);
 
