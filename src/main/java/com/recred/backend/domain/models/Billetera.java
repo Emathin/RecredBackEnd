@@ -23,6 +23,16 @@ public class Billetera {
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
 
+    public static Billetera initialFor(Alumno alumno) {
+        Billetera billetera = new Billetera();
+        billetera.setAlumno(alumno);
+        billetera.setSaldoCreditos(BigDecimal.ZERO);
+        billetera.setLimiteCredito(BigDecimal.ZERO);
+        billetera.setSaldoDeudaInterno(BigDecimal.ZERO);
+        billetera.setCreditoHabilitado(false);
+        return billetera;
+    }
+
     public boolean hasSufficientBalance(BigDecimal amount) {
         return this.saldoCreditos.compareTo(amount) >= 0;
     }

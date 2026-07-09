@@ -1,6 +1,7 @@
 package com.recred.backend.integration.persistence;
 
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.ClasificacionSalud;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.RolUsuario;
@@ -80,6 +81,9 @@ class AlumnoRepositoryImplIT extends AbstractIntegrationTest {
         AlumnoEntity realEntity = studentInDb.get();
 
         assertEquals(cachedUser.getId(), realEntity.getUsuario().getId(), "Foreign key to User must match");
+        assertNotNull(realEntity.getBilleteraEntity(), "Student wallet should have been persisted");
+        assertEquals(0, BigDecimal.ZERO.compareTo(
+                realEntity.getBilleteraEntity().getSaldoCreditos()));
         assertEquals(1, realEntity.getRestriccionesSalud().size(), "Should have inserted the ManyToMany relationship for health classifications");
         assertEquals(1, realEntity.getProductosFavoritos().size(), "Should have inserted the ManyToMany relationship for favorite products");
         assertEquals(1, realEntity.getProductosBloqueados().size(), "Should have inserted the ManyToMany relationship for blocked products");
@@ -192,6 +196,7 @@ class AlumnoRepositoryImplIT extends AbstractIntegrationTest {
         domainUser.setId(cachedUser.getId());
         domainStudent.setUsuario(domainUser);
         domainStudent.setActivo(true);
+        domainStudent.setBilletera(Billetera.initialFor(domainStudent));
 
         ClasificacionSalud domainClassification = new ClasificacionSalud();
         domainClassification.setId(cachedHealthClassification.getId());
