@@ -91,7 +91,7 @@ class PromotionResponseDTOTest {
         PromotionResponseDTO dto = PromotionResponseDTO.fromApplication(response);
 
         assertEquals(response.id(), dto.getId());
-        assertEquals("DRAFT", dto.getStatus());
+        assertEquals("INACTIVE", dto.getStatus());
         assertEquals(List.of(productId), dto.getProductIds());
         assertEquals(buffetId, dto.getBuffetId());
         assertEquals(response.imageUrl(), dto.getImageUrl());
