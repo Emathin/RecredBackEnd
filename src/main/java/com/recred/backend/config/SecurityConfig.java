@@ -1,7 +1,6 @@
 package com.recred.backend.config;
 
-import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
-import com.recred.backend.infrastructure.web.SchoolLicenseFilter;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -18,7 +17,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -54,8 +53,7 @@ public class SecurityConfig {
         @Bean
         public SecurityFilterChain filterChain(
                 HttpSecurity http,
-                JwtDecoder jwtDecoder,
-                SchoolLicenseAccessGuard schoolLicenseAccessGuard
+                JwtDecoder jwtDecoder
         )
                 throws Exception {
                 http
@@ -92,11 +90,6 @@ public class SecurityConfig {
                                                 (customJwtAuthenticationConverter)
                                 )
                         );
-                http.addFilterAfter(
-                        new SchoolLicenseFilter(schoolLicenseAccessGuard),
-                        BearerTokenAuthenticationFilter.class
-                );
-
                 return http.build();
         }
 

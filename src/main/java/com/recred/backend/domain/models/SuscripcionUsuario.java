@@ -35,7 +35,7 @@ public class SuscripcionUsuario {
     ) {
         requirePaidPlan(plan);
         requirePeriod(periodo);
-        requirePositivePrice(precio);
+        requirePositivePrice(precio, periodo);
         requireStartDate(fechaInicio);
 
         SuscripcionUsuario subscription = new SuscripcionUsuario();
@@ -113,7 +113,13 @@ public class SuscripcionUsuario {
         }
     }
 
-    private static void requirePositivePrice(BigDecimal precio) {
+    private static void requirePositivePrice(BigDecimal precio, PeriodoSuscripcion periodo) {
+        if (periodo == PeriodoSuscripcion.PRUEBA) {
+            if (precio == null || precio.compareTo(BigDecimal.ZERO) != 0) {
+                throw new IllegalArgumentException("Subscription trial price must be zero");
+            }
+            return;
+        }
         if (precio == null || precio.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Subscription price must be positive");
         }

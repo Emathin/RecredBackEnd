@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -57,8 +58,21 @@ public class PromotionRepositoryImpl implements PromotionRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Promotion> findDraftPromotionsByStartDateBefore(java.time.LocalDateTime date) {
-        return repository.findByStatusAndStartDateBefore(PromotionStatus.DRAFT, date).stream()
+    public List<Promotion> findAllByBuffet(UUID buffetId) {
+        return repository.findByBuffetEntityId(buffetId).stream()
+                .peek(entity -> {
+                    if (entity.getProducts() != null) {
+                        entity.getProducts().size();
+                    }
+                })
+                .map(PromotionEntity::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Promotion> findInactivePromotionsByStartDateBefore(java.time.LocalDateTime date) {
+        return repository.findByStatusAndStartDateBefore(PromotionStatus.INACTIVE, date).stream()
                 .peek(entity -> {
                     if (entity.getProducts() != null) {
                         entity.getProducts().size();
@@ -99,11 +113,18 @@ public class PromotionRepositoryImpl implements PromotionRepository {
         entity.setImageUrl(promotion.getImageUrl());
         
         if (promotion.getProducts() != null) {
-            entity.setProducts(promotion.getProducts().stream().map(p -> {
+            Set<ProductoEntity> newProducts = promotion.getProducts().stream().map(p -> {
                 ProductoEntity productoEntity = new ProductoEntity();
                 productoEntity.setId(p.getId());
                 return productoEntity;
-            }).collect(Collectors.toSet()));
+            }).collect(Collectors.toSet());
+            
+            if (entity.getProducts() == null) {
+                entity.setProducts(newProducts);
+            } else {
+                entity.getProducts().clear();
+                entity.getProducts().addAll(newProducts);
+            }
         }
         
         if (promotion.getBuffet() != null) {
@@ -112,5 +133,11 @@ public class PromotionRepositoryImpl implements PromotionRepository {
         }
         
         return repository.save(entity).toDomain();
+    }
+
+    @Override
+    @Transactional
+    public void deleteById(UUID id) {
+        repository.deleteById(id);
     }
 }

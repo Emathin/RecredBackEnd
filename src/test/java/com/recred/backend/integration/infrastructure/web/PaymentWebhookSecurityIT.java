@@ -1,7 +1,6 @@
-package com.recred.backend.unit.infrastructure.web;
+package com.recred.backend.integration.infrastructure.web;
 
 import com.recred.backend.application.ConfirmPaymentAndCredit;
-import com.recred.backend.application.ConfirmSchoolSubscriptionPayment;
 import com.recred.backend.application.ConfirmUserSubscriptionPayment;
 import com.recred.backend.config.CustomAuthenticationEntryPoint;
 import com.recred.backend.config.CustomJwtAuthenticationConverter;
@@ -10,7 +9,6 @@ import com.recred.backend.domain.services.ExternalPaymentService;
 import com.recred.backend.infrastructure.mercadopago.MercadoPagoWebhookParser;
 import com.recred.backend.infrastructure.mercadopago.WebhookEvent;
 import com.recred.backend.infrastructure.web.PaymentWebhookController;
-import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -28,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = PaymentWebhookController.class)
 @Import(SecurityConfig.class)
-class PaymentWebhookSecurityTest {
+class PaymentWebhookSecurityIT {
 
     @Autowired
     private MockMvc mockMvc;
@@ -38,10 +36,6 @@ class PaymentWebhookSecurityTest {
 
     @MockitoBean
     private ConfirmUserSubscriptionPayment confirmUserSubscriptionPayment;
-
-    @MockitoBean
-    private ConfirmSchoolSubscriptionPayment confirmSchoolSubscriptionPayment;
-
     @MockitoBean
     private ExternalPaymentService externalPaymentService;
 
@@ -56,10 +50,6 @@ class PaymentWebhookSecurityTest {
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
-
-    @MockitoBean
-    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
-
     @Test
     void handleWebhook_WhenCalledWithoutAuthentication_ShouldReturnOk() throws Exception {
         givenNonPaymentWebhookEvent();

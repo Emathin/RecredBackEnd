@@ -1,6 +1,7 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.EstadoSuscripcion;
+import com.recred.backend.domain.models.PeriodoSuscripcion;
 import com.recred.backend.domain.models.SuscripcionUsuario;
 import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import com.recred.backend.infrastructure.entities.SuscripcionUsuarioEntity;
@@ -114,5 +115,12 @@ public class SuscripcionUsuarioRepositoryImpl implements SuscripcionUsuarioRepos
         UsuarioEntity entity = new UsuarioEntity();
         entity.setId(usuarioId);
         return entity;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasUsedTrial(UUID userId) {
+        return findByUsuarioId(userId).stream()
+                .anyMatch(sub -> sub.getPeriodo() == PeriodoSuscripcion.PRUEBA);
     }
 }

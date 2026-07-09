@@ -52,6 +52,7 @@ public class Alumno {
         alumno.setUsuarioId(usuario.getId());
         alumno.setActivo(true);
         alumno.setGrado(grado);
+        alumno.setBilletera(Billetera.initialFor(alumno));
         return alumno;
     }
 
