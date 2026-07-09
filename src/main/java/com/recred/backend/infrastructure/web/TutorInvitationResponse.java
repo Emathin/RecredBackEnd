@@ -83,4 +83,36 @@ public record TutorInvitationResponse(
                 invitationLink,
                 result);
     }
+
+    public static TutorInvitationResponse fromApplication(
+            com.recred.backend.application.GetTutorInvitationResponse invitation,
+            String invitationLink,
+            String result) {
+        if (invitation == null) {
+            return new TutorInvitationResponse(
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    invitationLink,
+                    result);
+        }
+        return new TutorInvitationResponse(
+                invitation.id(),
+                invitation.schoolId(),
+                invitation.schoolName(),
+                invitation.email(),
+                invitation.firstName(),
+                invitation.lastName(),
+                invitation.phone(),
+                invitation.status() != null ? invitation.status().name() : null,
+                invitation.expiresAt(),
+                invitationLink,
+                result);
+    }
 }
