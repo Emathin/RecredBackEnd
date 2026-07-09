@@ -138,6 +138,7 @@ import com.recred.backend.application.ReactivateTimeSlot;
 import com.recred.backend.application.RecommendSupplierForProducts;
 import com.recred.backend.application.RegisterBuffet;
 import com.recred.backend.application.RegisterSeller;
+import com.recred.backend.application.ResendSellerCredentials;
 import com.recred.backend.application.RejectSchoolRegistration;
 import com.recred.backend.application.RemoveHealthRestrictions;
 import com.recred.backend.application.RespondToAISuggestion;
@@ -346,6 +347,14 @@ public class UseCases {
             com.recred.backend.domain.services.CognitoSellerIdentityService cognito) {
         return new RegisterSeller(buffetRepository, usuarioRepository,
                 kiosqueroRepository, cognito);
+    }
+
+    @Bean
+    public ResendSellerCredentials resendSellerCredentials(
+            KiosqueroRepository kiosqueroRepository,
+            UsuarioRepository usuarioRepository,
+            com.recred.backend.domain.services.CognitoSellerIdentityService cognito) {
+        return new ResendSellerCredentials(kiosqueroRepository, usuarioRepository, cognito);
     }
 
 
