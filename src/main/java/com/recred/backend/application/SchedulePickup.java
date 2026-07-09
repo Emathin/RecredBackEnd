@@ -21,27 +21,32 @@ public class SchedulePickup {
     private final ValidacionRestriccionesService validacionRestriccionesService;
     private final ValidadorPresupuestoService budgetValidator;
 
-    public SchedulePickup(ValidadorHorarioService timeValidator,
-                          ValidacionRestriccionesService validacionRestriccionesService,
-                          ValidadorPresupuestoService budgetValidator) {
+    public SchedulePickup(
+            ValidadorHorarioService timeValidator,
+            ValidacionRestriccionesService validacionRestriccionesService,
+            ValidadorPresupuestoService budgetValidator
+    ) {
         this.timeValidator = timeValidator;
         this.validacionRestriccionesService = validacionRestriccionesService;
         this.budgetValidator = budgetValidator;
     }
 
     public SchedulePickupResponse execute(SchedulePickupRequest request) {
-        Alumno student = this.createAlumno(request.studentId());
-        LocalDateTime projectedPickupTime = this.calculateProjectedPickupTime(
-                request.pickupDate(), request.pickupSlot());
-
-        this.validatePurchaseConstraints(student, request.cart(), projectedPickupTime);
-
-        BigDecimal montoTotalCarrito = this.calculateTotalCartAmount(request.cart());
-        Map<UUID, BigDecimal> montosPorCategoria = this.calculateAmountsByCategory(request.cart());
-
-        this.validateBudget(request.studentId(), montoTotalCarrito,
-                montosPorCategoria, projectedPickupTime);
+        PickupValidationContext context = validationContextFor(request);
+        validatePurchaseConstraints(context);
+        validateBudget(context);
         return new SchedulePickupResponse();
+    }
+
+    private PickupValidationContext validationContextFor(SchedulePickupRequest request) {
+        return new PickupValidationContext(
+                request.studentId(),
+                createAlumno(request.studentId()),
+                request.cart(),
+                calculateProjectedPickupTime(request.pickupDate(), request.pickupSlot()),
+                calculateTotalCartAmount(request.cart()),
+                calculateAmountsByCategory(request.cart())
+        );
     }
 
     private Alumno createAlumno(UUID studentId) {
@@ -51,14 +56,19 @@ public class SchedulePickup {
     }
 
     private LocalDateTime calculateProjectedPickupTime(
-            LocalDate pickupDate, FranjaHoraria pickupSlot) {
+            LocalDate pickupDate,
+            FranjaHoraria pickupSlot
+    ) {
         return LocalDateTime.of(pickupDate, pickupSlot.getHoraInicio());
     }
 
-    private void validatePurchaseConstraints(
-            Alumno student, Set<Producto> cart, LocalDateTime projectedPickupTime) {
-        timeValidator.validarCompra(student, cart, projectedPickupTime);
-        validacionRestriccionesService.validarCompra(student, cart);
+    private void validatePurchaseConstraints(PickupValidationContext context) {
+        timeValidator.validarCompra(
+                context.student(),
+                context.cart(),
+                context.projectedPickupTime()
+        );
+        validacionRestriccionesService.validarCompra(context.student(), context.cart());
     }
 
     private BigDecimal calculateTotalCartAmount(Set<Producto> cart) {
@@ -80,16 +90,22 @@ public class SchedulePickup {
                 ));
     }
 
-    private void validateBudget(
-            UUID studentId,
-            BigDecimal totalCartAmount,
-            Map<UUID, BigDecimal> amountsByCategory,
-            LocalDateTime projectedPickupTime) {
+    private void validateBudget(PickupValidationContext context) {
         budgetValidator.validarPresupuesto(
-                studentId,
-                totalCartAmount,
-                amountsByCategory,
-                projectedPickupTime
+                context.studentId(),
+                context.totalCartAmount(),
+                context.amountsByCategory(),
+                context.projectedPickupTime()
         );
+    }
+
+    private record PickupValidationContext(
+            UUID studentId,
+            Alumno student,
+            Set<Producto> cart,
+            LocalDateTime projectedPickupTime,
+            BigDecimal totalCartAmount,
+            Map<UUID, BigDecimal> amountsByCategory
+    ) {
     }
 }

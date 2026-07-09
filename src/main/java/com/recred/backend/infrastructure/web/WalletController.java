@@ -4,6 +4,9 @@ import com.recred.backend.application.GetStudentWalletSummary;
 import com.recred.backend.application.GetStudentWalletSummaryRequest;
 import com.recred.backend.application.LoadBalanceToChild;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -47,9 +50,16 @@ public class WalletController {
             throw new AuthenticationCredentialsNotFoundException("Usuario no autenticado");
         }
         if (authentication.getPrincipal() instanceof Jwt jwt) {
-            return jwt.getSubject();
+            return validCognitoSubject(jwt.getSubject());
         }
         throw new SecurityException("Autenticación inválida o no es JWT");
+    }
+
+    private String validCognitoSubject(String cognitoSubject) {
+        if (cognitoSubject == null || cognitoSubject.isBlank()) {
+            throw new IllegalArgumentException("Cognito subject cannot be null or blank");
+        }
+        return cognitoSubject;
     }
 
     @PostMapping("/load")
@@ -68,18 +78,26 @@ public class WalletController {
 
     @PostMapping("/transfer")
     public ResponseEntity<Void> transferBalance(
-            @RequestBody TransferBalanceRequest request, 
+            @Valid @RequestBody TransferBalanceRequest request,
             Authentication authentication) {
+        ensureDifferentStudents(request);
+        String cognitoSubject = cognitoSubject(authentication);
         planAccessGuard.requireTutorAdvanced(authentication);
         transferBalanceBetweenChildren.execute(
                 new com.recred.backend.application.TransferBalanceBetweenChildrenRequest(
-                        cognitoSubject(authentication), 
+                        cognitoSubject,
                         request.fromStudentId(), 
                         request.toStudentId(), 
                         request.amount()
                 )
         );
         return ResponseEntity.ok().build();
+    }
+
+    private void ensureDifferentStudents(TransferBalanceRequest request) {
+        if (request.fromStudentId().equals(request.toStudentId())) {
+            throw new IllegalArgumentException("Cannot transfer to the same student");
+        }
     }
 
     @GetMapping("/students/{studentId}/summary")
@@ -102,7 +120,12 @@ public class WalletController {
 
     public record LoadBalanceRequest(UUID studentId, BigDecimal amount) {}
     public record TransferBalanceRequest(
-            UUID fromStudentId, 
-            UUID toStudentId, 
+            @NotNull(message = "fromStudentId cannot be null")
+            UUID fromStudentId,
+            @NotNull(message = "toStudentId cannot be null")
+            UUID toStudentId,
+            @NotNull(message = "amount cannot be null")
+            @DecimalMin(value = "0.00", inclusive = false,
+                    message = "Amount must be greater than zero")
             BigDecimal amount) {}
 }

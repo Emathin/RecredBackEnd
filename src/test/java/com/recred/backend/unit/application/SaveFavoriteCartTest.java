@@ -1,7 +1,8 @@
 package com.recred.backend.unit.application;
 
-import com.recred.backend.application.*;
-
+import com.recred.backend.application.SaveFavoriteCart;
+import com.recred.backend.application.SaveFavoriteCartRequest;
+import com.recred.backend.application.SaveFavoriteCartResponse;
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.CarritoFavorito;
 import com.recred.backend.domain.models.Producto;
@@ -12,389 +13,404 @@ import com.recred.backend.domain.repositories.CarritoFavoritoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class SaveFavoriteCartTest {
 
     private static final String COGNITO_SUBJECT = "cognito-subject";
+    private static final String CART_NAME = "Merienda";
 
-    @Mock
-    private CarritoFavoritoRepository carritoFavoritoRepository;
+    private final CarritoFavoritoRepository carritoFavoritoRepository =
+            mock(CarritoFavoritoRepository.class);
+    private final UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
+    private final TutorRepository tutorRepository = mock(TutorRepository.class);
+    private final AlumnoRepository alumnoRepository = mock(AlumnoRepository.class);
+    private final ProductRepository productRepository = mock(ProductRepository.class);
+    private final SaveFavoriteCart useCase = new SaveFavoriteCart(
+            carritoFavoritoRepository,
+            usuarioRepository,
+            tutorRepository,
+            alumnoRepository,
+            productRepository
+    );
 
-    @Mock
-    private UsuarioRepository usuarioRepository;
+    private SaveFavoriteCartRequest request;
+    private SaveFavoriteCartResponse response;
+    private Throwable exception;
+    private Usuario user;
+    private Tutor tutor;
+    private Tutor anotherTutor;
+    private Alumno student;
+    private Producto product;
+    private CarritoFavorito existingCart;
+    private UUID productId;
 
-    @Mock
-    private TutorRepository tutorRepository;
+    @Test
+    void execute_WhenTutorCreatesCartForChild_SavesFavoriteCart() {
+        givenTutorWithChild();
+        givenActiveProduct();
+        givenNewCartRequestWithProductQuantity(2);
+        givenCartCanBeSaved();
 
-    @Mock
-    private AlumnoRepository alumnoRepository;
+        whenSavingFavoriteCart();
 
-    @Mock
-    private ProductRepository productRepository;
-
-    private SaveFavoriteCart saveFavoriteCart;
-
-    @BeforeEach
-    void setUp() {
-        saveFavoriteCart = new SaveFavoriteCart(
-                carritoFavoritoRepository,
-                usuarioRepository,
-                tutorRepository,
-                alumnoRepository,
-                productRepository
-        );
+        thenCreatedCartIsReturned(2);
+        thenNewCartWasSaved();
     }
 
     @Test
-    void executeShouldCreateCartForTutorChild() {
-        Usuario usuario = usuario();
-        Tutor tutor = tutor(usuario.getId());
-        Alumno alumno = alumno();
-        Producto producto = product(true);
-        tutor.addHijo(alumno);
-        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
+    void execute_WhenExistingCartBelongsToTutor_UpdatesFavoriteCart() {
+        givenTutorWithChild();
+        givenExistingCartOwnedByTutor();
+        givenExistingCartRequest();
+        givenExistingCartCanBeSaved();
+
+        whenSavingFavoriteCart();
+
+        thenUpdatedCartIsReturned();
+        thenExistingCartWasSaved();
+    }
+
+    @Test
+    void execute_WhenStudentDoesNotBelongToTutor_RejectsRequest() {
+        givenTutorWithoutChild();
+        givenNewCartRequestWithoutProducts();
+
+        whenSavingFavoriteCartFails(SecurityException.class);
+
+        thenCartWasNotSaved();
+    }
+
+    @Test
+    void execute_WhenCartBelongsToAnotherTutor_RejectsRequest() {
+        givenTutorWithChild();
+        givenExistingCartOwnedByAnotherTutor();
+        givenExistingCartRequest();
+
+        whenSavingFavoriteCartFails(SecurityException.class);
+
+        thenCartWasNotSaved();
+    }
+
+    @Test
+    void execute_WhenQuantityIsZero_RejectsRequestBeforeReadingProduct() {
+        givenTutorWithChild();
+        givenNewCartRequestWithProductQuantity(0);
+
+        whenSavingFavoriteCartFails(IllegalArgumentException.class);
+
+        thenProductWasNotRead();
+        thenCartWasNotSaved();
+    }
+
+    @Test
+    void execute_WhenFreePlanHasFiveCarts_RejectsNewCart() {
+        givenTutorWithChild();
+        givenNewCartRequestWithoutProducts();
+        givenTutorAlreadyHasFavoriteCarts(5);
+
+        whenSavingFavoriteCartFails(IllegalArgumentException.class);
+
+        thenErrorMessageIs(
+                "Límite de carritos favoritos alcanzado para cuenta gratuita (máximo 5)"
+        );
+        thenCartWasNotSaved();
+    }
+
+    @Test
+    void execute_WhenQuantityIsNull_RejectsRequestBeforeReadingProduct() {
+        givenTutorWithChild();
+        givenNewCartRequestWithNullProductQuantity();
+
+        whenSavingFavoriteCartFails(IllegalArgumentException.class);
+
+        thenProductWasNotRead();
+        thenCartWasNotSaved();
+    }
+
+    @Test
+    void execute_WhenProductIsInactive_RejectsRequest() {
+        givenTutorWithChild();
+        givenInactiveProduct();
+        givenNewCartRequestWithProductQuantity(1);
+
+        whenSavingFavoriteCartFails(IllegalArgumentException.class);
+
+        thenCartWasNotSaved();
+    }
+
+    @Test
+    void execute_WhenProductDoesNotExist_RejectsRequest() {
+        givenTutorWithChild();
+        givenMissingProduct();
+        givenNewCartRequestWithProductQuantity(1);
+
+        whenSavingFavoriteCartFails(IllegalArgumentException.class);
+
+        thenCartWasNotSaved();
+    }
+
+    @Test
+    void execute_WhenAuthenticatedUserDoesNotExist_RejectsRequestBeforeReadingTutor() {
+        givenMissingAuthenticatedUser();
+        givenNewCartRequestWithoutProducts();
+
+        whenSavingFavoriteCartFails(SecurityException.class);
+
+        thenTutorWasNotRead();
+    }
+
+    @Test
+    void execute_WhenSavingCartWithProduct_SavesResolvedProductQuantity() {
+        givenTutorWithChild();
+        givenActiveProduct();
+        givenNewCartRequestWithProductQuantity(3);
+        givenCartCanBeSaved();
+
+        whenSavingFavoriteCart();
+
+        thenCartWasSavedWithResolvedProductQuantity(3);
+    }
+
+    private void givenTutorWithChild() {
+        givenAuthenticatedUser();
+        givenTutor();
+        givenStudent();
+        tutor.addHijo(student);
+        givenAuthenticatedTutorAndStudentCanBeRead();
+    }
+
+    private void givenTutorWithoutChild() {
+        givenAuthenticatedUser();
+        givenTutor();
+        givenStudent();
+        givenAuthenticatedTutorAndStudentCanBeRead();
+    }
+
+    private void givenAuthenticatedUser() {
+        user = user();
+        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(user));
+    }
+
+    private void givenMissingAuthenticatedUser() {
+        student = student();
+        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.empty());
+    }
+
+    private void givenTutor() {
+        tutor = tutor(user.getId());
+    }
+
+    private void givenStudent() {
+        student = student();
+    }
+
+    private void givenAuthenticatedTutorAndStudentCanBeRead() {
+        when(tutorRepository.findByUsuarioId(user.getId())).thenReturn(Optional.of(tutor));
+        when(alumnoRepository.findById(student.getId())).thenReturn(Optional.of(student));
+    }
+
+    private void givenActiveProduct() {
+        product = product(true);
+        productId = product.getId();
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+    }
+
+    private void givenInactiveProduct() {
+        product = product(false);
+        productId = product.getId();
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+    }
+
+    private void givenMissingProduct() {
+        productId = randomUUID();
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+    }
+
+    private void givenExistingCartOwnedByTutor() {
+        existingCart = existingCart(tutor);
+        when(carritoFavoritoRepository.findById(existingCart.getId()))
+                .thenReturn(Optional.of(existingCart));
+    }
+
+    private void givenExistingCartOwnedByAnotherTutor() {
+        anotherTutor = tutor(randomUUID());
+        existingCart = existingCart(anotherTutor);
+        when(carritoFavoritoRepository.findById(existingCart.getId()))
+                .thenReturn(Optional.of(existingCart));
+    }
+
+    private void givenNewCartRequestWithoutProducts() {
+        request = new SaveFavoriteCartRequest(
                 COGNITO_SUBJECT,
                 null,
-                "Merienda",
-                alumno.getId(),
-                Map.of(producto.getId(), 2)
-        );
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
-        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
-        when(productRepository.findById(producto.getId())).thenReturn(Optional.of(producto));
-        when(carritoFavoritoRepository.save(any(CarritoFavorito.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        SaveFavoriteCartResponse result = saveFavoriteCart.execute(request);
-
-        assertEquals("Merienda", result.nombre());
-        assertEquals(tutor.getId(), result.tutorId());
-        assertEquals(alumno.getId(), result.alumnoId());
-        assertEquals(2, result.items().get(0).quantity());
-        verify(carritoFavoritoRepository, never()).findById(any());
-    }
-
-    @Test
-    void executeShouldUpdateExistingCartWhenItBelongsToTutor() {
-        Usuario usuario = usuario();
-        Tutor tutor = tutor(usuario.getId());
-        Alumno alumno = alumno();
-        UUID cartId = UUID.randomUUID();
-        CarritoFavorito existing = new CarritoFavorito();
-        existing.setId(cartId);
-        existing.setTutor(tutor);
-        tutor.addHijo(alumno);
-        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
-                COGNITO_SUBJECT,
-                cartId,
-                "Almuerzo",
-                alumno.getId(),
-                null
-        );
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
-        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
-        when(carritoFavoritoRepository.findById(cartId)).thenReturn(Optional.of(existing));
-        when(carritoFavoritoRepository.save(existing)).thenReturn(existing);
-
-        SaveFavoriteCartResponse result = saveFavoriteCart.execute(request);
-
-        assertEquals("Almuerzo", result.nombre());
-        assertEquals(alumno.getId(), result.alumnoId());
-        assertEquals(0, result.items().size());
-        verify(carritoFavoritoRepository).save(existing);
-    }
-
-    @Test
-    void executeShouldRejectStudentThatDoesNotBelongToTutor() {
-        Usuario usuario = usuario();
-        Tutor tutor = tutor(usuario.getId());
-        Alumno alumno = alumno();
-        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
-                COGNITO_SUBJECT,
-                null,
-                "Merienda",
-                alumno.getId(),
+                CART_NAME,
+                student.getId(),
                 Map.of()
         );
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
-        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
-
-        Executable execution = () -> saveFavoriteCart.execute(request);
-
-        assertThrows(SecurityException.class, execution);
-        verify(carritoFavoritoRepository, never()).save(any());
     }
 
-    @Test
-    void executeShouldRejectCartOwnedByAnotherTutor() {
-        Usuario usuario = usuario();
-        Tutor tutor = tutor(usuario.getId());
-        Tutor anotherTutor = tutor(UUID.randomUUID());
-        Alumno alumno = alumno();
-        CarritoFavorito existing = new CarritoFavorito();
-        existing.setId(UUID.randomUUID());
-        existing.setTutor(anotherTutor);
-        tutor.addHijo(alumno);
-        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
-                COGNITO_SUBJECT,
-                existing.getId(),
-                "Merienda",
-                alumno.getId(),
-                Map.of()
-        );
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
-        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
-        when(carritoFavoritoRepository.findById(existing.getId())).thenReturn(Optional.of(existing));
-
-        Executable execution = () -> saveFavoriteCart.execute(request);
-
-        assertThrows(SecurityException.class, execution);
-        verify(carritoFavoritoRepository, never()).save(any());
-    }
-
-    @Test
-    void executeShouldRejectInvalidQuantity() {
-        Usuario usuario = usuario();
-        Tutor tutor = tutor(usuario.getId());
-        Alumno alumno = alumno();
-        UUID productId = UUID.randomUUID();
-        tutor.addHijo(alumno);
-        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
+    private void givenNewCartRequestWithProductQuantity(Integer quantity) {
+        if (productId == null) {
+            productId = randomUUID();
+        }
+        request = new SaveFavoriteCartRequest(
                 COGNITO_SUBJECT,
                 null,
-                "Merienda",
-                alumno.getId(),
-                Map.of(productId, 0)
+                CART_NAME,
+                student.getId(),
+                Map.of(productId, quantity)
         );
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
-        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
-
-        Executable execution = () -> saveFavoriteCart.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-        verify(productRepository, never()).findById(any());
-        verify(carritoFavoritoRepository, never()).save(any());
     }
 
-    @Test
-    void executeShouldRejectNewCartWhenFreePlanAlreadyHasFiveCarts() {
-        Usuario usuario = usuario();
-        Tutor tutor = tutor(usuario.getId());
-        Alumno alumno = alumno();
-        tutor.addHijo(alumno);
-        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
-                COGNITO_SUBJECT,
-                null,
-                "Merienda",
-                alumno.getId(),
-                Map.of()
-        );
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
-        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
-        when(carritoFavoritoRepository.findByTutorIdAndFilters(tutor.getId(), null, null))
-                .thenReturn(existingCarts(5));
-
-        Executable execution = () -> saveFavoriteCart.execute(request);
-
-        IllegalArgumentException exception =
-                assertThrows(IllegalArgumentException.class, execution);
-        assertEquals("Límite de carritos favoritos alcanzado "
-                        + "para cuenta gratuita (máximo 5)",
-                exception.getMessage());
-        verify(carritoFavoritoRepository, never()).save(any());
-    }
-
-    @Test
-    void executeShouldRejectNullQuantity() {
-        Usuario usuario = usuario();
-        Tutor tutor = tutor(usuario.getId());
-        Alumno alumno = alumno();
-        UUID productId = UUID.randomUUID();
+    private void givenNewCartRequestWithNullProductQuantity() {
+        productId = randomUUID();
         Map<UUID, Integer> products = new HashMap<>();
         products.put(productId, null);
-        tutor.addHijo(alumno);
-        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
+        request = new SaveFavoriteCartRequest(
                 COGNITO_SUBJECT,
                 null,
-                "Merienda",
-                alumno.getId(),
+                CART_NAME,
+                student.getId(),
                 products
         );
+    }
 
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
-        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
+    private void givenExistingCartRequest() {
+        request = new SaveFavoriteCartRequest(
+                COGNITO_SUBJECT,
+                existingCart.getId(),
+                "Almuerzo",
+                student.getId(),
+                null
+        );
+    }
 
-        Executable execution = () -> saveFavoriteCart.execute(request);
+    private void givenCartCanBeSaved() {
+        when(carritoFavoritoRepository.save(any(CarritoFavorito.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
 
-        assertThrows(IllegalArgumentException.class, execution);
+    private void givenExistingCartCanBeSaved() {
+        when(carritoFavoritoRepository.save(existingCart)).thenReturn(existingCart);
+    }
+
+    private void givenTutorAlreadyHasFavoriteCarts(int count) {
+        when(carritoFavoritoRepository.findByTutorIdAndFilters(tutor.getId(), null, null))
+                .thenReturn(existingCarts(count));
+    }
+
+    private void whenSavingFavoriteCart() {
+        response = useCase.execute(request);
+    }
+
+    private <T extends Throwable> void whenSavingFavoriteCartFails(
+            Class<T> expectedException
+    ) {
+        Executable execution = () -> useCase.execute(request);
+        exception = assertThrows(expectedException, execution);
+    }
+
+    private void thenCreatedCartIsReturned(int expectedQuantity) {
+        assertEquals(CART_NAME, response.nombre());
+        assertEquals(tutor.getId(), response.tutorId());
+        assertEquals(student.getId(), response.alumnoId());
+        assertEquals(expectedQuantity, response.items().get(0).quantity());
+    }
+
+    private void thenUpdatedCartIsReturned() {
+        assertEquals("Almuerzo", response.nombre());
+        assertEquals(student.getId(), response.alumnoId());
+        assertEquals(0, response.items().size());
+    }
+
+    private void thenNewCartWasSaved() {
+        verify(carritoFavoritoRepository, never()).findById(any());
+        verify(carritoFavoritoRepository).save(any(CarritoFavorito.class));
+    }
+
+    private void thenExistingCartWasSaved() {
+        verify(carritoFavoritoRepository).save(existingCart);
+    }
+
+    private void thenCartWasNotSaved() {
+        verify(carritoFavoritoRepository, never()).save(any());
+    }
+
+    private void thenProductWasNotRead() {
         verify(productRepository, never()).findById(any());
     }
 
-    @Test
-    void executeShouldRejectInactiveProduct() {
-        Usuario usuario = usuario();
-        Tutor tutor = tutor(usuario.getId());
-        Alumno alumno = alumno();
-        Producto product = product(false);
-        tutor.addHijo(alumno);
-        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
-                COGNITO_SUBJECT,
-                null,
-                "Merienda",
-                alumno.getId(),
-                Map.of(product.getId(), 1)
-        );
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
-        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
-        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
-
-        Executable execution = () -> saveFavoriteCart.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-        verify(carritoFavoritoRepository, never()).save(any());
-    }
-
-    @Test
-    void executeShouldRejectMissingProduct() {
-        Usuario usuario = usuario();
-        Tutor tutor = tutor(usuario.getId());
-        Alumno alumno = alumno();
-        UUID productId = UUID.randomUUID();
-        tutor.addHijo(alumno);
-        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
-                COGNITO_SUBJECT,
-                null,
-                "Merienda",
-                alumno.getId(),
-                Map.of(productId, 1)
-        );
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
-        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
-        when(productRepository.findById(productId)).thenReturn(Optional.empty());
-
-        Executable execution = () -> saveFavoriteCart.execute(request);
-
-        assertThrows(IllegalArgumentException.class, execution);
-        verify(carritoFavoritoRepository, never()).save(any());
-    }
-
-    @Test
-    void executeShouldRejectMissingAuthenticatedUser() {
-        UUID alumnoId = UUID.randomUUID();
-        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
-                COGNITO_SUBJECT,
-                null,
-                "Merienda",
-                alumnoId,
-                Map.of()
-        );
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.empty());
-
-        Executable execution = () -> saveFavoriteCart.execute(request);
-
-        assertThrows(SecurityException.class, execution);
+    private void thenTutorWasNotRead() {
         verify(tutorRepository, never()).findByUsuarioId(any());
     }
 
-    @Test
-    void executeShouldSaveCartWithResolvedProducts() {
-        Usuario usuario = usuario();
-        Tutor tutor = tutor(usuario.getId());
-        Alumno alumno = alumno();
-        Producto producto = product(true);
-        tutor.addHijo(alumno);
-        SaveFavoriteCartRequest request = new SaveFavoriteCartRequest(
-                COGNITO_SUBJECT,
-                null,
-                "Merienda",
-                alumno.getId(),
-                Map.of(producto.getId(), 3)
-        );
-
-        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(usuario));
-        when(tutorRepository.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(tutor));
-        when(alumnoRepository.findById(alumno.getId())).thenReturn(Optional.of(alumno));
-        when(productRepository.findById(producto.getId())).thenReturn(Optional.of(producto));
-        when(carritoFavoritoRepository.save(any(CarritoFavorito.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        saveFavoriteCart.execute(request);
-
+    private void thenCartWasSavedWithResolvedProductQuantity(int expectedQuantity) {
         ArgumentCaptor<CarritoFavorito> captor = ArgumentCaptor.forClass(CarritoFavorito.class);
         verify(carritoFavoritoRepository).save(captor.capture());
-        assertEquals(3, captor.getValue().getItems().get(producto));
+        assertEquals(expectedQuantity, captor.getValue().getItems().get(product));
     }
 
-    private Usuario usuario() {
-        Usuario usuario = new Usuario();
-        usuario.setId(UUID.randomUUID());
-        return usuario;
+    private void thenErrorMessageIs(String expectedMessage) {
+        assertEquals(expectedMessage, exception.getMessage());
     }
 
-    private Tutor tutor(UUID usuarioId) {
-        Usuario usuario = new Usuario();
-        usuario.setId(usuarioId);
+    private Usuario user() {
+        Usuario user = new Usuario();
+        user.setId(randomUUID());
+        return user;
+    }
+
+    private Tutor tutor(UUID userId) {
+        Usuario user = new Usuario();
+        user.setId(userId);
         Tutor tutor = new Tutor();
-        tutor.setId(UUID.randomUUID());
-        tutor.setUsuario(usuario);
+        tutor.setId(randomUUID());
+        tutor.setUsuario(user);
         return tutor;
     }
 
-    private Alumno alumno() {
-        Alumno alumno = new Alumno();
-        alumno.setId(UUID.randomUUID());
-        return alumno;
+    private Alumno student() {
+        Alumno student = new Alumno();
+        student.setId(randomUUID());
+        return student;
     }
 
     private Producto product(boolean active) {
         Producto product = new Producto();
-        product.setId(UUID.randomUUID());
+        product.setId(randomUUID());
         product.setNombre("Alfajor");
         product.setActivo(active);
         return product;
     }
 
+    private CarritoFavorito existingCart(Tutor owner) {
+        CarritoFavorito cart = new CarritoFavorito();
+        cart.setId(randomUUID());
+        cart.setTutor(owner);
+        return cart;
+    }
+
     private List<CarritoFavorito> existingCarts(int count) {
-        return java.util.stream.IntStream.range(0, count)
+        return IntStream.range(0, count)
                 .mapToObj(index -> new CarritoFavorito())
                 .toList();
     }
