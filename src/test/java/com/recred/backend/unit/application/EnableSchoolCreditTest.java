@@ -9,10 +9,13 @@ import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.CreditStatus;
 import com.recred.backend.domain.models.SchoolCredit;
 import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -146,6 +149,28 @@ class EnableSchoolCreditTest {
         thenCreditWasNotCreated();
     }
 
+    @Test
+    void givenTutorWithFreePlan_whenEnablingCredit_thenThrowsAccessDeniedException() {
+        givenValidCreditRequest(1);
+        givenTutorWithFreePlanExists();
+
+        whenEnableSchoolCreditFails(AccessDeniedException.class);
+
+        thenErrorMessageIs("La funcionalidad de Microcréditos está disponible solo para el plan AVANZADO");
+        thenCreditWasNotCreated();
+    }
+
+    @Test
+    void givenTutorWithNullUser_whenEnablingCredit_thenThrowsAccessDeniedException() {
+        givenValidCreditRequest(1);
+        givenTutorWithNullUserExists();
+
+        whenEnableSchoolCreditFails(AccessDeniedException.class);
+
+        thenErrorMessageIs("La funcionalidad de Microcréditos está disponible solo para el plan AVANZADO");
+        thenCreditWasNotCreated();
+    }
+
     private void givenValidCreditRequest(Integer installments) {
         givenCreditRequest(CREDIT_AMOUNT, installments);
     }
@@ -162,7 +187,25 @@ class EnableSchoolCreditTest {
     }
 
     private void givenTutorExists() {
-        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(new Tutor()));
+        Tutor tutor = new Tutor();
+        Usuario usuario = new Usuario();
+        usuario.setPlan(TipoPlan.AVANZADO);
+        tutor.setUsuario(usuario);
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(tutor));
+    }
+
+    private void givenTutorWithFreePlanExists() {
+        Tutor tutor = new Tutor();
+        Usuario usuario = new Usuario();
+        usuario.setPlan(TipoPlan.GRATUITO);
+        tutor.setUsuario(usuario);
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(tutor));
+    }
+
+    private void givenTutorWithNullUserExists() {
+        Tutor tutor = new Tutor();
+        tutor.setUsuario(null);
+        when(tutorRepository.findById(tutorId)).thenReturn(Optional.of(tutor));
     }
 
     private void givenTutorDoesNotExist() {

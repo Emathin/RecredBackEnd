@@ -42,6 +42,12 @@ public class BuffetRepositoryImpl implements BuffetRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public boolean existsByColegioId(UUID colegioId) {
+        return springDataBuffetRepository.existsByColegioEntityId(colegioId);
+    }
+
+    @Override
     @Transactional
     public Buffet save(Buffet buffet) {
         BuffetEntity entity = BuffetEntity.fromDomain(buffet);
@@ -49,4 +55,3 @@ public class BuffetRepositoryImpl implements BuffetRepository {
         return savedEntity.toDomain();
     }
 }
-

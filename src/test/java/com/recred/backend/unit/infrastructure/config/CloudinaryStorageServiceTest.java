@@ -33,7 +33,7 @@ class CloudinaryStorageServiceTest {
         ArgumentCaptor<Map> optionsCaptor = ArgumentCaptor.forClass(Map.class);
         verify(uploader).upload(same(content), optionsCaptor.capture());
         assertEquals("https://cdn.test/lista.pdf", url);
-        assertEquals("auto", optionsCaptor.getValue().get("resource_type"));
+        assertEquals("raw", optionsCaptor.getValue().get("resource_type"));
         assertEquals("lista_precios__julio_.pdf", optionsCaptor.getValue().get("public_id"));
     }
 

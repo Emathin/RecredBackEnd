@@ -12,6 +12,8 @@ import java.util.UUID;
 public interface SpringDataBuffetRepository extends JpaRepository<BuffetEntity, UUID> {
     Optional<BuffetEntity> findFirstByColegioEntityIdAndActivoTrue(UUID colegioId);
 
+    boolean existsByColegioEntityId(UUID colegioId);
+
     @Query("""
         SELECT b FROM BuffetEntity b
         JOIN FETCH b.colegioEntity
