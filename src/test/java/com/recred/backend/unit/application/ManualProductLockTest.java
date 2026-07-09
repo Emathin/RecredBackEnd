@@ -7,80 +7,124 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class ManualProductLockTest {
 
-    @Mock
-    private AlumnoRepository alumnoRepository;
-
-    @Mock
-    private ProductRepository productRepository;
-
-    @InjectMocks
-    private ManualProductLock manualProductLock;
+    private final AlumnoRepository alumnoRepository = mock(AlumnoRepository.class);
+    private final ProductRepository productRepository = mock(ProductRepository.class);
+    private final ManualProductLock useCase =
+            new ManualProductLock(alumnoRepository, productRepository);
+    private UUID studentId;
+    private UUID productId;
+    private Alumno student;
+    private Producto product;
+    private RuntimeException exception;
 
     @Test
-    void dadoDatosValidos_cuandoExecute_entoncesBloqueaYGuarda() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        Producto producto = new Producto();
-        producto.setId(productoId);
-        ManualProductLockRequest request = new ManualProductLockRequest(alumnoId, productoId);
+    void execute_WhenStudentAndProductExist_BlocksProductAndSavesStudent() {
+        givenStudentCanBlockProduct();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(productRepository.findById(productoId)).thenReturn(Optional.of(producto));
+        whenLockingProduct();
 
-        manualProductLock.execute(request);
-
-        verify(alumnoRepository).save(alumno);
+        thenProductIsBlocked();
+        thenStudentWasSaved();
     }
 
     @Test
-    void dadoAlumnoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        ManualProductLockRequest request = new ManualProductLockRequest(alumnoId, productoId);
+    void execute_WhenStudentDoesNotExist_ThrowsException() {
+        givenMissingStudent();
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.empty());
+        whenLockingProductFails();
 
-        Executable execution = () -> manualProductLock.execute(request);
+        thenExceptionMessageIs("Alumno no encontrado");
+        thenProductWasNotSearched();
+        thenStudentWasNotSaved();
+    }
 
-        RuntimeException exception = assertThrows(RuntimeException.class, execution);
-        assertEquals("Alumno no encontrado", exception.getMessage());
+    @Test
+    void execute_WhenProductDoesNotExist_ThrowsException() {
+        givenMissingProduct();
 
+        whenLockingProductFails();
+
+        thenExceptionMessageIs("Producto no encontrado");
+        thenStudentWasNotSaved();
+    }
+
+    private void givenStudentCanBlockProduct() {
+        studentId = randomUUID();
+        productId = randomUUID();
+        student = new Alumno();
+        product = product(productId);
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+    }
+
+    private void givenMissingStudent() {
+        studentId = randomUUID();
+        productId = randomUUID();
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.empty());
+    }
+
+    private void givenMissingProduct() {
+        studentId = randomUUID();
+        productId = randomUUID();
+        student = new Alumno();
+        when(alumnoRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+    }
+
+    private void whenLockingProduct() {
+        useCase.execute(defaultRequest());
+    }
+
+    private void whenLockingProductFails() {
+        Executable execution = () -> useCase.execute(defaultRequest());
+
+        exception = assertThrows(RuntimeException.class, execution);
+    }
+
+    private void thenProductIsBlocked() {
+        assertTrue(student.hasBlockedProduct(product));
+    }
+
+    private void thenStudentWasSaved() {
+        verify(alumnoRepository).save(student);
+    }
+
+    private void thenExceptionMessageIs(String expectedMessage) {
+        assertEquals(expectedMessage, exception.getMessage());
+    }
+
+    private void thenProductWasNotSearched() {
         verify(productRepository, never()).findById(any());
+    }
+
+    private void thenStudentWasNotSaved() {
         verify(alumnoRepository, never()).save(any());
     }
 
-    @Test
-    void dadoProductoInexistente_cuandoExecute_entoncesLanzaExcepcion() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID productoId = UUID.randomUUID();
-        Alumno alumno = new Alumno();
-        ManualProductLockRequest request = new ManualProductLockRequest(alumnoId, productoId);
+    private ManualProductLockRequest defaultRequest() {
+        return new ManualProductLockRequest(studentId, productId);
+    }
 
-        when(alumnoRepository.findById(alumnoId)).thenReturn(Optional.of(alumno));
-        when(productRepository.findById(productoId)).thenReturn(Optional.empty());
-
-        Executable execution = () -> manualProductLock.execute(request);
-
-        RuntimeException exception = assertThrows(RuntimeException.class, execution);
-        assertEquals("Producto no encontrado", exception.getMessage());
-
-        verify(alumnoRepository, never()).save(any());
+    private Producto product(UUID productId) {
+        Producto product = new Producto();
+        product.setId(productId);
+        return product;
     }
 }

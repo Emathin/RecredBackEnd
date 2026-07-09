@@ -4,8 +4,6 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.ProductRepository;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.UUID;
 
 public class ManualProductLock {
@@ -13,32 +11,37 @@ public class ManualProductLock {
     private final AlumnoRepository alumnoRepository;
     private final ProductRepository productRepository;
 
-    public ManualProductLock(AlumnoRepository alumnoRepository,
-                             ProductRepository productRepository) {
+    public ManualProductLock(
+            AlumnoRepository alumnoRepository,
+            ProductRepository productRepository
+    ) {
         this.alumnoRepository = alumnoRepository;
         this.productRepository = productRepository;
     }
 
-    @Transactional
-    public ManualProductLockResponse execute(ManualProductLockRequest request) {
-        UUID alumnoId = request.alumnoId();
-        UUID productoId = request.productoId();
+    public ManualProductLockResponse execute(ManualProductLockRequest lockProductRequest) {
+        UUID studentId = lockProductRequest.alumnoId();
+        UUID productId = lockProductRequest.productoId();
+        Alumno student = findStudentById(studentId);
+        Producto product = findProductById(productId);
 
-        Alumno alumno = this.findAlumnoById(alumnoId);
-        Producto producto = this.findProductoById(productoId);
+        lockProductForStudent(student, product);
 
-        alumno.bloquearProducto(producto);
-        alumnoRepository.save(alumno);
         return new ManualProductLockResponse();
     }
 
-    private Alumno findAlumnoById(UUID alumnoId) {
-        return alumnoRepository.findById(alumnoId)
+    private Alumno findStudentById(UUID studentId) {
+        return alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
     }
 
-    private Producto findProductoById(UUID productoId) {
-        return productRepository.findById(productoId)
+    private Producto findProductById(UUID productId) {
+        return productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+    }
+
+    private void lockProductForStudent(Alumno student, Producto product) {
+        student.bloquearProducto(product);
+        alumnoRepository.save(student);
     }
 }

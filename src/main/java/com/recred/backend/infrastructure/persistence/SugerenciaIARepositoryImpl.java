@@ -24,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -174,6 +175,16 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
     }
 
     @Override
+    public Optional<SugerenciaIA> findLatestPendingByAlumnoIdsAndTipo(
+            List<UUID> alumnoIds,
+            TipoSugerenciaIA tipo
+    ) {
+        return springDataRepository.findLatestPendingByAlumnoIdsAndTipo(alumnoIds, tipo).stream()
+                .findFirst()
+                .map(SugerenciaIAEntity::toDomain);
+    }
+
+    @Override
     public List<SugerenciaIAEntity> findPendingParentNotificationsByAlumnoId(
             UUID alumnoId,
             TipoSugerenciaIA tipo
@@ -198,7 +209,7 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
     }
 
     @Override
-    public java.util.Optional<SugerenciaIAEntity> findById(UUID id) {
+    public Optional<SugerenciaIAEntity> findById(UUID id) {
         return springDataRepository.findById(id);
     }
 
@@ -207,22 +218,23 @@ public class SugerenciaIARepositoryImpl implements SugerenciaIARepository {
         return springDataRepository.findById(id).map(SugerenciaIAEntity::toDomain);
     }
 
-    private java.util.Optional<UUID> suggestedProductId(SugerenciaIAEntity suggestion) {
+
+    private Optional<UUID> suggestedProductId(SugerenciaIAEntity suggestion) {
         if (suggestion.getProductoEntity() != null
                 && suggestion.getProductoEntity().getId() != null) {
-            return java.util.Optional.of(suggestion.getProductoEntity().getId());
+            return Optional.of(suggestion.getProductoEntity().getId());
         }
         if (suggestion.getMetadata() == null) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         Object value = suggestion.getMetadata().get("productoId");
         if (!(value instanceof String text) || text.isBlank()) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         try {
-            return java.util.Optional.of(UUID.fromString(text));
+            return Optional.of(UUID.fromString(text));
         } catch (IllegalArgumentException ignored) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
     }
 

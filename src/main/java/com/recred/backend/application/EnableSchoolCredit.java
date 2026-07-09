@@ -4,11 +4,13 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.models.CreditStatus;
 import com.recred.backend.domain.models.SchoolCredit;
+import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.domain.repositories.SchoolCreditRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
 import com.recred.backend.domain.repositories.WalletRepository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -38,7 +40,13 @@ public class EnableSchoolCredit {
 
     @Transactional
     public EnableSchoolCreditResponse execute(EnableSchoolCreditRequest enableCreditRequest) {
-        validateTutorExists(enableCreditRequest.tutorId());
+        Tutor tutor = tutorRepository.findById(enableCreditRequest.tutorId())
+                .orElseThrow(() -> new IllegalArgumentException("Tutor not found"));
+        if (tutor.getUsuario() == null || tutor.getUsuario().hasFreePlan()) {
+            throw new AccessDeniedException(
+                    "La funcionalidad de Microcréditos está disponible solo para el plan AVANZADO");
+        }
+
         Alumno student = findStudent(enableCreditRequest.studentId());
         Billetera wallet = getOrCreateWallet(student);
 
