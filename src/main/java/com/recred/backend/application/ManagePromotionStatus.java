@@ -19,32 +19,21 @@ public class ManagePromotionStatus {
 
     @Transactional
     public ManagePromotionStatusResponse execute(ManagePromotionStatusRequest request) {
-        activateDraftPromotions();
-        expireActivePromotions();
+        activateInactivePromotions();
         return new ManagePromotionStatusResponse();
     }
 
-    private void activateDraftPromotions() {
+    private void activateInactivePromotions() {
         LocalDateTime tomorrow = LocalDateTime.now().with(LocalTime.MIN).plusDays(1);
         List<Promotion> promotionsToActivate =
-                promotionRepository.findDraftPromotionsByStartDateBefore(tomorrow);
+                promotionRepository.findInactivePromotionsByStartDateBefore(tomorrow);
 
         for (Promotion promotion : promotionsToActivate) {
-            if (promotion.getStatus() == PromotionStatus.DRAFT) {
+            if (promotion.getStatus() == PromotionStatus.INACTIVE) {
                 promotion.setStatus(PromotionStatus.ACTIVE);
                 promotionRepository.save(promotion);
             }
         }
     }
-
-    private void expireActivePromotions() {
-        List<Promotion> activePromotions = promotionRepository.findAllActive();
-        LocalDateTime now = LocalDateTime.now();
-        for (Promotion promotion : activePromotions) {
-            if (promotion.getEndDate() != null && now.isAfter(promotion.getEndDate())) {
-                promotion.setStatus(PromotionStatus.EXPIRED);
-                promotionRepository.save(promotion);
-            }
-        }
-    }
 }
+

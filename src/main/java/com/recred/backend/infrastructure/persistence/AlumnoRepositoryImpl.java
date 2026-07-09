@@ -1,8 +1,10 @@
 package com.recred.backend.infrastructure.persistence;
 
 import com.recred.backend.domain.models.Alumno;
+import com.recred.backend.domain.models.Billetera;
 import com.recred.backend.domain.repositories.AlumnoRepository;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.BilleteraEntity;
 import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
 import com.recred.backend.infrastructure.entities.GradoEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
@@ -10,6 +12,7 @@ import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -97,6 +100,8 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
             entity.setGradoEntity(gradoEntity);
         }
 
+        updateWallet(modelo, entity);
+
         if (modelo.getRestriccionesSalud() != null && !modelo.getRestriccionesSalud().isEmpty()) {
             Set<ClasificacionSaludEntity> restriccionesEntities = modelo
                     .getRestriccionesSalud().stream()
@@ -153,5 +158,31 @@ public class AlumnoRepositoryImpl implements AlumnoRepository {
                 modelo.getPuntosRecompensa() : 0);
 
         return entity;
+    }
+
+    private void updateWallet(Alumno modelo, AlumnoEntity entity) {
+        if (modelo.getBilletera() == null) {
+            return;
+        }
+
+        Billetera wallet = modelo.getBilletera();
+        BilleteraEntity walletEntity = entity.getBilleteraEntity() != null
+                ? entity.getBilleteraEntity()
+                : new BilleteraEntity();
+
+        if (walletEntity.getId() == null) {
+            walletEntity.setId(wallet.getId());
+        }
+
+        walletEntity.setSaldoCreditos(valueOrZero(wallet.getSaldoCreditos()));
+        walletEntity.setLimiteCredito(valueOrZero(wallet.getLimiteCredito()));
+        walletEntity.setSaldoDeudaInterno(valueOrZero(wallet.getSaldoDeudaInterno()));
+        walletEntity.setCreditoHabilitado(Boolean.TRUE.equals(wallet.getCreditoHabilitado()));
+        walletEntity.setAlumnoEntity(entity);
+        entity.setBilleteraEntity(walletEntity);
+    }
+
+    private BigDecimal valueOrZero(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 }

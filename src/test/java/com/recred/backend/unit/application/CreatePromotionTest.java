@@ -67,8 +67,8 @@ class CreatePromotionTest {
 
         whenCreatingPromotion(activePromotionRequest(true));
 
-        thenResponseHasStatus(PromotionStatus.DRAFT);
-        thenPromotionWasPersistedWithStatus(PromotionStatus.DRAFT);
+        thenResponseHasStatus(PromotionStatus.INACTIVE);
+        thenPromotionWasPersistedWithStatus(PromotionStatus.INACTIVE);
         thenResponseContainsPromotionData();
     }
 
@@ -88,8 +88,8 @@ class CreatePromotionTest {
 
         whenCreatingPromotion(futurePromotionRequest());
 
-        thenResponseHasStatus(PromotionStatus.DRAFT);
-        thenPromotionWasPersistedWithStatus(PromotionStatus.DRAFT);
+        thenResponseHasStatus(PromotionStatus.INACTIVE);
+        thenPromotionWasPersistedWithStatus(PromotionStatus.INACTIVE);
     }
 
     @Test

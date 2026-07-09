@@ -42,12 +42,12 @@ class PromotionAndFavoriteCartResponseTest {
     @Test
     void promotionResponseFromDomain_WhenProductsAreNull_ShouldLeaveProductIdsNull() {
         Promotion promotion = new Promotion();
-        promotion.setStatus(PromotionStatus.DRAFT);
+        promotion.setStatus(PromotionStatus.INACTIVE);
 
         PromotionResponseDTO response = PromotionResponseDTO.fromDomain(promotion);
 
         assertNull(response.getProductIds());
-        assertEquals("DRAFT", response.getStatus());
+        assertEquals("INACTIVE", response.getStatus());
     }
 
     @Test

@@ -118,6 +118,7 @@ import com.recred.backend.application.ListSchoolGrades;
 import com.recred.backend.application.ListSchoolTimeSlots;
 import com.recred.backend.application.ListSuppliers;
 import com.recred.backend.application.LoadBalanceToChild;
+import com.recred.backend.application.GetAllPromotionsByBuffet;
 import com.recred.backend.application.LoadStockIA;
 import com.recred.backend.application.ManagePromotionStatus;
 import com.recred.backend.application.ManageRestrictions;
@@ -131,6 +132,10 @@ import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.ProcessScheduledPayouts;
 import com.recred.backend.application.PurchaseSuggestIA;
+import com.recred.backend.application.TogglePromotionStatus;
+import com.recred.backend.application.GetTimeSlot;
+import com.recred.backend.application.ListSchoolTimeSlots;
+import com.recred.backend.application.RecommendSupplierForProducts;
 import com.recred.backend.application.ReactivateGrade;
 import com.recred.backend.application.ReactivateTimeSlot;
 import com.recred.backend.application.RecommendSupplierForProducts;
@@ -1599,6 +1604,18 @@ public class UseCases {
     public GetActivePromotionsByBuffet getActivePromotionsByBuffet(
             PromotionRepository promotionRepository) {
         return new GetActivePromotionsByBuffet(promotionRepository);
+    }
+
+    @Bean
+    public GetAllPromotionsByBuffet getAllPromotionsByBuffet(
+            PromotionRepository promotionRepository) {
+        return new GetAllPromotionsByBuffet(promotionRepository);
+    }
+
+    @Bean
+    public TogglePromotionStatus togglePromotionStatus(
+            PromotionRepository promotionRepository) {
+        return new TogglePromotionStatus(promotionRepository);
     }
 
     @Bean

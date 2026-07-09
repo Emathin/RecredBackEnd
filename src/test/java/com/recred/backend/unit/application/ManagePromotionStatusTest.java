@@ -35,8 +35,7 @@ class ManagePromotionStatusTest {
     @Test
     void execute_ShouldActivateDraftPromotions() {
         ManagePromotionStatusRequest request = givenRequest();
-        givenDraftPromotion(PromotionStatus.DRAFT);
-        givenNoActivePromotions();
+        givenDraftPromotion(PromotionStatus.INACTIVE);
 
         whenExecute(request);
 
@@ -47,23 +46,13 @@ class ManagePromotionStatusTest {
     void execute_ShouldNotActivateAlreadyActivePromotions() {
         ManagePromotionStatusRequest request = givenRequest();
         givenDraftPromotion(PromotionStatus.ACTIVE);
-        givenNoActivePromotions();
 
         whenExecute(request);
 
         thenNoPromotionIsSaved();
     }
 
-    @Test
-    void execute_ShouldExpireActivePromotionsWhenEndDateHasPassed() {
-        ManagePromotionStatusRequest request = givenRequest();
-        givenNoDraftPromotions();
-        givenActivePromotionWithPassedEndDate();
 
-        whenExecute(request);
-
-        thenPromotionIsSavedWithStatus(PromotionStatus.EXPIRED);
-    }
 
     private ManagePromotionStatusRequest givenRequest() {
         return new ManagePromotionStatusRequest();
@@ -75,27 +64,16 @@ class ManagePromotionStatusTest {
         draftPromotion.setStatus(status);
         draftPromotion.setStartDate(LocalDateTime.now().minusDays(1));
 
-        when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
+        when(promotionRepository.findInactivePromotionsByStartDateBefore(any(LocalDateTime.class)))
                 .thenReturn(List.of(draftPromotion));
     }
 
     private void givenNoDraftPromotions() {
-        when(promotionRepository.findDraftPromotionsByStartDateBefore(any(LocalDateTime.class)))
+        when(promotionRepository.findInactivePromotionsByStartDateBefore(any(LocalDateTime.class)))
                 .thenReturn(List.of());
     }
 
-    private void givenActivePromotionWithPassedEndDate() {
-        Promotion endedPromotion = new Promotion();
-        endedPromotion.setId(PROMOTION_ID);
-        endedPromotion.setStatus(PromotionStatus.ACTIVE);
-        endedPromotion.setEndDate(LocalDateTime.now().minusDays(1));
 
-        when(promotionRepository.findAllActive()).thenReturn(List.of(endedPromotion));
-    }
-
-    private void givenNoActivePromotions() {
-        when(promotionRepository.findAllActive()).thenReturn(List.of());
-    }
 
     private void whenExecute(ManagePromotionStatusRequest request) {
         managePromotionStatus.execute(request);

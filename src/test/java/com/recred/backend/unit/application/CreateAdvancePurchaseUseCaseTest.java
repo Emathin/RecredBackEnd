@@ -358,7 +358,7 @@ class CreateAdvancePurchaseUseCaseTest {
                 .thenReturn(Optional.empty());
         givenPromotionExists(
                 PROMOTION_ID, 
-                PromotionStatus.DRAFT, 
+                PromotionStatus.INACTIVE, 
                 BUFFET_ID, 
                 PICKUP_DATE.atStartOfDay().minusDays(1), 
                 PICKUP_DATE.atStartOfDay().plusDays(1)
