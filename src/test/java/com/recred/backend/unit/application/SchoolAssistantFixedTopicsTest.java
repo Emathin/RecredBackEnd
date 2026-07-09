@@ -1,8 +1,8 @@
 package com.recred.backend.unit.application;
 
 import com.recred.backend.application.SchoolAssistantContentFormatter;
-import com.recred.backend.application.SchoolAssistantFixedTopicResponses;
 import com.recred.backend.application.SchoolAssistantFixedReply;
+import com.recred.backend.application.SchoolAssistantFixedTopicResponses;
 import com.recred.backend.application.SchoolAssistantFixedTopics;
 import com.recred.backend.application.SchoolAssistantIntentDetector;
 import com.recred.backend.application.SchoolAssistantPurchasePatternService;
@@ -23,6 +23,8 @@ import com.recred.backend.domain.models.SchoolCalendarEvent;
 import com.recred.backend.domain.models.TipoDiaEscolar;
 import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,44 +32,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class SchoolAssistantFixedTopicsTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 5, 27, 12, 0);
 
-    @Mock
-    private PurchaseRepository purchaseRepository;
-
-    @Mock
-    private ProductRepository productRepository;
-
-    private SchoolAssistantFixedTopics fixedTopics;
-    private UUID studentId;
-    private UUID buffetId;
+    private final PurchaseRepository purchaseRepository = mock(PurchaseRepository.class);
+    private final ProductRepository productRepository = mock(ProductRepository.class);
+    private final SchoolAssistantFixedTopics fixedTopics = fixedTopics();
+    private final UUID studentId = randomUUID();
+    private final UUID buffetId = randomUUID();
     private Optional<SchoolAssistantFixedReply> reply;
     private SchoolAssistantContext studentContext;
     private SchoolAssistantContext tutorContext;
-
-    @BeforeEach
-    void setUp() {
-        fixedTopics = fixedTopics();
-        studentId = UUID.randomUUID();
-        buffetId = UUID.randomUUID();
-    }
 
     private SchoolAssistantFixedTopics fixedTopics() {
         SchoolAssistantReplyFormatter replyFormatter = new SchoolAssistantReplyFormatter();
@@ -281,7 +268,7 @@ class SchoolAssistantFixedTopicsTest {
 
     private Producto givenProduct(String name, BigDecimal price) {
         Producto product = new Producto();
-        product.setId(UUID.randomUUID());
+        product.setId(randomUUID());
         product.setNombre(name);
         product.setPrecio(price);
         product.setRequierePreparacion(false);
@@ -311,7 +298,7 @@ class SchoolAssistantFixedTopicsTest {
                 List.of(),
                 List.of(),
                 SchoolAssistantRole.TUTOR,
-                UUID.randomUUID(),
+                randomUUID(),
                 null,
                 facts,
                 List.of()
@@ -386,7 +373,7 @@ class SchoolAssistantFixedTopicsTest {
                 List.of(),
                 List.of(),
                 SchoolAssistantRole.KIOSQUERO,
-                UUID.randomUUID(),
+                randomUUID(),
                 buffetId,
                 List.of(),
                 List.of()
@@ -412,7 +399,7 @@ class SchoolAssistantFixedTopicsTest {
             LocalDateTime dateTime
     ) {
         Purchase purchase = new Purchase();
-        purchase.setId(UUID.randomUUID());
+        purchase.setId(randomUUID());
         purchase.setTotalAmount(product.getPrecio().multiply(BigDecimal.valueOf(quantity)));
         purchase.setStatus(status);
         purchase.setPaymentMethod(MedioPago.CREDITOS);

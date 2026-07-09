@@ -7,70 +7,97 @@ import com.recred.backend.domain.models.IntervalUnit;
 import com.recred.backend.domain.models.KiosqueroPayoutConfig;
 import com.recred.backend.domain.models.PayoutScheduleStatus;
 import com.recred.backend.domain.repositories.KiosqueroPayoutConfigRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class SaveKiosqueroPayoutConfigTest {
 
-    @Mock
-    private KiosqueroPayoutConfigRepository repository;
+    private static final Clock FIXED_CLOCK =
+            Clock.fixed(Instant.parse("2026-07-02T00:00:00Z"), ZoneOffset.UTC);
+    private static final String DESTINATION_CVU = "1234567890123456789012";
+    private static final String DESTINATION_CUIT = "20123456789";
+    private static final String ACCOUNT_HOLDER_NAME = "John Doe";
 
-    private SaveKiosqueroPayoutConfig useCase;
+    private final KiosqueroPayoutConfigRepository repository =
+            mock(KiosqueroPayoutConfigRepository.class);
+    private final SaveKiosqueroPayoutConfig useCase =
+            new SaveKiosqueroPayoutConfig(repository, FIXED_CLOCK);
 
-    @BeforeEach
-    void setUp() {
-        useCase = new SaveKiosqueroPayoutConfig(
-                repository,
-                Clock.fixed(Instant.parse("2026-07-02T00:00:00Z"), ZoneOffset.UTC)
+    private SaveKiosqueroPayoutConfigRequest request;
+    private SaveKiosqueroPayoutConfigResponse response;
+    private UUID kiosqueroId;
+
+    @Test
+    void execute_WhenConfigDoesNotExist_SavesNewPayoutConfig() {
+        givenValidPayoutConfigRequest();
+        givenConfigDoesNotExist();
+        givenSavedConfigIsReturned();
+
+        whenSavingPayoutConfig();
+
+        thenResponseContainsSavedConfig();
+        thenConfigWasSavedWithRequestData();
+    }
+
+    private void givenValidPayoutConfigRequest() {
+        kiosqueroId = randomUUID();
+        request = new SaveKiosqueroPayoutConfigRequest(
+                kiosqueroId,
+                DESTINATION_CVU,
+                DESTINATION_CUIT,
+                ACCOUNT_HOLDER_NAME,
+                1,
+                IntervalUnit.MONTHS,
+                PayoutScheduleStatus.ACTIVE
         );
     }
 
-    @Test
-    void execute_WithValidRequest_ShouldSaveConfig() {
-        UUID kiosqueroId = UUID.randomUUID();
-        SaveKiosqueroPayoutConfigRequest request = new SaveKiosqueroPayoutConfigRequest(
-                kiosqueroId, "1234567890123456789012", "20123456789", "John Doe",
-                1, IntervalUnit.MONTHS, PayoutScheduleStatus.ACTIVE);
+    private void givenConfigDoesNotExist() {
+        when(repository.findByKiosqueroId(kiosqueroId)).thenReturn(Optional.empty());
+    }
 
-        KiosqueroPayoutConfig savedConfig = new KiosqueroPayoutConfig();
-        savedConfig.setKiosqueroId(kiosqueroId);
-        savedConfig.setDestinationCvu("1234567890123456789012");
-        savedConfig.setDestinationCuit("20123456789");
-        savedConfig.setAccountHolderName("John Doe");
-        savedConfig.setCantidadIntervalo(1);
-        savedConfig.setUnidadIntervalo(IntervalUnit.MONTHS);
-        savedConfig.setEstado(PayoutScheduleStatus.ACTIVE);
+    private void givenSavedConfigIsReturned() {
+        when(repository.save(any(KiosqueroPayoutConfig.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
 
-        when(repository.save(any(KiosqueroPayoutConfig.class))).thenReturn(savedConfig);
+    private void whenSavingPayoutConfig() {
+        response = useCase.execute(request);
+    }
 
-        SaveKiosqueroPayoutConfigResponse response = useCase.execute(request);
-
-        assertNotNull(response);
+    private void thenResponseContainsSavedConfig() {
         assertEquals(kiosqueroId, response.kiosqueroId());
+        assertEquals(DESTINATION_CVU, response.destinationCvu());
+        assertEquals(LocalDate.of(2026, 8, 2), response.proximaEjecucion());
+    }
 
+    private void thenConfigWasSavedWithRequestData() {
         ArgumentCaptor<KiosqueroPayoutConfig> captor =
                 ArgumentCaptor.forClass(KiosqueroPayoutConfig.class);
         verify(repository).save(captor.capture());
 
-        KiosqueroPayoutConfig captured = captor.getValue();
-        assertEquals(kiosqueroId, captured.getKiosqueroId());
-        assertEquals("1234567890123456789012", captured.getDestinationCvu());
-        assertNotNull(captured.getProximaEjecucion());
+        KiosqueroPayoutConfig savedConfig = captor.getValue();
+        assertEquals(kiosqueroId, savedConfig.getKiosqueroId());
+        assertEquals(DESTINATION_CVU, savedConfig.getDestinationCvu());
+        assertEquals(DESTINATION_CUIT, savedConfig.getDestinationCuit());
+        assertEquals(ACCOUNT_HOLDER_NAME, savedConfig.getAccountHolderName());
+        assertEquals(1, savedConfig.getCantidadIntervalo());
+        assertEquals(IntervalUnit.MONTHS, savedConfig.getUnidadIntervalo());
+        assertEquals(PayoutScheduleStatus.ACTIVE, savedConfig.getEstado());
+        assertEquals(LocalDate.of(2026, 8, 2), savedConfig.getProximaEjecucion());
     }
 }
