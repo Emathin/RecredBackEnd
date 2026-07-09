@@ -8,9 +8,10 @@ import com.recred.backend.domain.models.SchoolAssistantActionType;
 import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolAssistantRole;
 import com.recred.backend.domain.models.SchoolAssistantSuggestion;
+import org.junit.jupiter.api.Test;
+
 import java.lang.reflect.Method;
 import java.util.List;
-import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

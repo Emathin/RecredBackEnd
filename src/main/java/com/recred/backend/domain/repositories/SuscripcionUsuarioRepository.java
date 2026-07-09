@@ -20,4 +20,6 @@ public interface SuscripcionUsuarioRepository {
     );
 
     SuscripcionUsuario save(SuscripcionUsuario subscription);
+
+    boolean hasUsedTrial(UUID usuarioId);
 }
