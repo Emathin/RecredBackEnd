@@ -552,6 +552,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Purchase> findPendientesByAlumno(UUID alumnoId) {
         List<EstadoCompra> estadosPendientes = List.of(
                 EstadoCompra.PENDIENTE,
