@@ -42,7 +42,7 @@ class DeletePromotionTest {
 
         whenExecuteUseCase();
 
-        thenPromotionShouldBeRejectedAndSaved(promotion);
+        thenPromotionShouldBeDeleted(promotion);
     }
 
     @Test
@@ -51,7 +51,7 @@ class DeletePromotionTest {
 
         assertThrows(IllegalArgumentException.class, this::whenExecuteUseCase);
         
-        thenPromotionShouldNotBeSaved();
+        thenPromotionShouldNotBeDeleted();
     }
 
     private void givenAnExistingPromotion(Promotion promotion) {
@@ -66,12 +66,12 @@ class DeletePromotionTest {
         useCase.execute(new DeletePromotionRequest(PROMOTION_ID));
     }
 
-    private void thenPromotionShouldBeRejectedAndSaved(Promotion promotion) {
-        assertEquals(PromotionStatus.REJECTED, promotion.getStatus());
-        verify(promotionRepository).save(promotion);
+    private void thenPromotionShouldBeDeleted(Promotion promotion) {
+        verify(promotionRepository).deleteById(promotion.getId());
+        verify(promotionRepository, never()).save(any());
     }
 
-    private void thenPromotionShouldNotBeSaved() {
-        verify(promotionRepository, never()).save(any());
+    private void thenPromotionShouldNotBeDeleted() {
+        verify(promotionRepository, never()).deleteById(any());
     }
 }

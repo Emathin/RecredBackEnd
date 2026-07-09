@@ -82,7 +82,7 @@ class PromotionResponseDTOTest {
                 new BigDecimal("20.00"),
                 LocalDateTime.of(2026, 7, 1, 8, 0),
                 LocalDateTime.of(2026, 7, 10, 18, 0),
-                PromotionStatus.DRAFT,
+                PromotionStatus.INACTIVE,
                 "https://example.com/merienda.png",
                 buffetId,
                 List.of(productId)

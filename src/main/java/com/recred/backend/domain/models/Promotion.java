@@ -73,7 +73,6 @@ public class Promotion {
         updateStartDateIfPresent(startDate);
         updateEndDateIfPresent(endDate);
         validateDateRange();
-        refreshStatus(now);
     }
 
     private void updateProductsIfPresent(List<Producto> products) {
@@ -125,13 +124,11 @@ public class Promotion {
         }
     }
 
-    private void refreshStatus(LocalDateTime now) {
-        LocalDateTime reference = now == null ? LocalDateTime.now() : now;
-        if (!reference.isBefore(startDate) && !reference.isAfter(endDate)) {
+    public void toggleStatus(LocalDateTime now) {
+        if (this.status == PromotionStatus.INACTIVE) {
             this.status = PromotionStatus.ACTIVE;
-            return;
+        } else {
+            this.status = PromotionStatus.INACTIVE;
         }
-
-        this.status = PromotionStatus.DRAFT;
     }
 }
