@@ -225,7 +225,7 @@ class PurchaseRepositoryImplTest {
                 .thenReturn(List.of(purchase));
         when(springDataRepository.findAllByTutorIdOrderByFechaHoraDesc(tutorId))
                 .thenReturn(List.of(purchase));
-        when(springDataRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        when(springDataRepository.findByIdWithDetails(purchaseId)).thenReturn(Optional.of(purchase));
         when(springDataRepository.findRecentByBuffetId(buffetId, PageRequest.of(0, 5)))
                 .thenReturn(List.of(purchase));
         when(springDataRepository.findByBuffetIdAndStatuses(

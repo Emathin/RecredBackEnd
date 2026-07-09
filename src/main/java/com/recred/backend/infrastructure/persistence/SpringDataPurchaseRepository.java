@@ -30,11 +30,23 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
                 return findRecentByStudentId(studentId, PageRequest.of(0, limit));
         }
 
-        @Query("SELECT c FROM CompraEntity c WHERE c.alumnoEntity.id = :alumnoId " +
+        @Query("SELECT c FROM CompraEntity c " +
+                        "LEFT JOIN FETCH c.alumnoEntity a " +
+                        "LEFT JOIN FETCH a.usuario u " +
+                        "LEFT JOIN FETCH TREAT(c AS CompraAnticipadaEntity)" +
+                        ".retiroProgramadoEntity r " +
+                        "LEFT JOIN FETCH r.franja f " +
+                        "WHERE c.alumnoEntity.id = :alumnoId " +
                         "ORDER BY c.fechaHora DESC")
         List<CompraEntity> findAllByAlumnoIdOrderByFechaHoraDesc(@Param("alumnoId") UUID alumnoId);
 
-        @Query("SELECT c FROM CompraEntity c WHERE c.alumnoEntity.id = :alumnoId " +
+        @Query("SELECT c FROM CompraEntity c " +
+                        "LEFT JOIN FETCH c.alumnoEntity a " +
+                        "LEFT JOIN FETCH a.usuario u " +
+                        "LEFT JOIN FETCH TREAT(c AS CompraAnticipadaEntity)" +
+                        ".retiroProgramadoEntity r " +
+                        "LEFT JOIN FETCH r.franja f " +
+                        "WHERE c.alumnoEntity.id = :alumnoId " +
                         "AND c.fechaHora BETWEEN :inicio AND :fin " +
                         "ORDER BY c.fechaHora DESC")
         List<CompraEntity> findAllByAlumnoIdAndFechaHoraBetween(
@@ -42,8 +54,14 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
                         @Param("inicio") LocalDateTime inicio,
                         @Param("fin") LocalDateTime fin);
 
-        @Query("SELECT c FROM CompraEntity c JOIN c.alumnoEntity a " +
-                        "JOIN a.tutores t WHERE t.id = :tutorId ORDER BY c.fechaHora DESC")
+        @Query("SELECT c FROM CompraEntity c " +
+                        "LEFT JOIN FETCH c.alumnoEntity a " +
+                        "LEFT JOIN FETCH a.usuario u " +
+                        "LEFT JOIN FETCH TREAT(c AS CompraAnticipadaEntity)" +
+                        ".retiroProgramadoEntity r " +
+                        "LEFT JOIN FETCH r.franja f " +
+                        "JOIN a.tutores t WHERE t.id = :tutorId " +
+                        "ORDER BY c.fechaHora DESC")
         List<CompraEntity> findAllByTutorIdOrderByFechaHoraDesc(@Param("tutorId") UUID tutorId);
 
         @Query("""
@@ -70,6 +88,11 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
         @Query("""
                         select purchase
                         from CompraEntity purchase
+                        left join fetch purchase.alumnoEntity alumno
+                        left join fetch alumno.usuario
+                        left join fetch TREAT(purchase AS CompraAnticipadaEntity)
+                        .retiroProgramadoEntity r
+                        left join fetch r.franja f
                         where purchase.buffetEntity.id = :buffetId
                         order by purchase.fechaHora desc
                         """)
@@ -80,6 +103,11 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
         @Query("""
                         select purchase
                         from CompraEntity purchase
+                        left join fetch purchase.alumnoEntity alumno
+                        left join fetch alumno.usuario
+                        left join fetch TREAT(purchase AS CompraAnticipadaEntity)
+                        .retiroProgramadoEntity r
+                        left join fetch r.franja f
                         where purchase.buffetEntity.id = :buffetId
                         and purchase.estado in :statuses
                         order by purchase.fechaHora desc
@@ -92,7 +120,11 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
         @Query("""
                         select purchase
                         from CompraEntity purchase
-                        left join RetiroProgramadoEntity pickup on pickup.compraEntity = purchase
+                        left join fetch purchase.alumnoEntity alumno
+                        left join fetch alumno.usuario
+                        left join fetch TREAT(purchase AS CompraAnticipadaEntity)
+                        .retiroProgramadoEntity pickup
+                        left join fetch pickup.franja
                         where purchase.buffetEntity.id = :buffetId
                         and purchase.estado in :statuses
                         and (
@@ -115,6 +147,11 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
         @Query("""
                         select purchase
                         from CompraEntity purchase
+                        left join fetch purchase.alumnoEntity alumno
+                        left join fetch alumno.usuario
+                        left join fetch TREAT(purchase AS CompraAnticipadaEntity)
+                        .retiroProgramadoEntity r
+                        left join fetch r.franja f
                         where purchase.buffetEntity.id = :buffetId
                         and purchase.fechaHora between :start and :end
                         order by purchase.fechaHora asc
@@ -127,8 +164,11 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
         @Query("""
                         select purchase
                         from CompraEntity purchase
-                        left join RetiroProgramadoEntity pickup
-                        on pickup.compraEntity = purchase
+                        left join fetch purchase.alumnoEntity alumno
+                        left join fetch alumno.usuario
+                        left join fetch TREAT(purchase AS CompraAnticipadaEntity)
+                        .retiroProgramadoEntity pickup
+                        left join fetch pickup.franja
                         where purchase.buffetEntity.id = :buffetId
                         and (
                             (pickup.id is not null and pickup.fechaProgramada
@@ -148,7 +188,10 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
         @Query("""
                         select purchase
                         from CompraAnticipadaEntity purchase
-                        join purchase.retiroProgramadoEntity pickup
+                        join fetch purchase.retiroProgramadoEntity pickup
+                        join fetch pickup.franja
+                        left join fetch purchase.alumnoEntity alumno
+                        left join fetch alumno.usuario
                         where purchase.estado in :statuses
                         and (
                             pickup.fechaProgramada < :date
@@ -163,7 +206,10 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
         @Query("""
                         select purchase
                         from CompraAnticipadaEntity purchase
-                        join purchase.retiroProgramadoEntity pickup
+                        join fetch purchase.retiroProgramadoEntity pickup
+                        join fetch pickup.franja
+                        left join fetch purchase.alumnoEntity alumno
+                        left join fetch alumno.usuario
                         where purchase.buffetEntity.id = :buffetId
                         and purchase.estado in :statuses
                         and (
@@ -348,12 +394,27 @@ public interface SpringDataPurchaseRepository extends JpaRepository<CompraEntity
                         @Param("status") EstadoCompra status,
                         @Param("cartProductIds") List<UUID> cartProductIds);
 
-        @Query("SELECT c FROM CompraEntity c WHERE c.alumnoEntity.id = :alumnoId " +
+        @Query("SELECT c FROM CompraEntity c " +
+                        "LEFT JOIN FETCH c.alumnoEntity a " +
+                        "LEFT JOIN FETCH a.usuario u " +
+                        "LEFT JOIN FETCH TREAT(c AS CompraAnticipadaEntity)" +
+                        ".retiroProgramadoEntity r " +
+                        "LEFT JOIN FETCH r.franja f " +
+                        "WHERE c.alumnoEntity.id = :alumnoId " +
                         "AND c.estado IN :estados " +
                         "ORDER BY c.fechaHora DESC")
         List<CompraEntity> findAllByAlumnoIdAndEstadoInOrderByFechaHoraDesc(
                         @Param("alumnoId") UUID alumnoId,
                         @Param("estados") List<EstadoCompra> estados);
+
+        @Query("SELECT c FROM CompraEntity c " +
+                        "LEFT JOIN FETCH c.alumnoEntity a " +
+                        "LEFT JOIN FETCH a.usuario u " +
+                        "LEFT JOIN FETCH TREAT(c AS CompraAnticipadaEntity)" +
+                        ".retiroProgramadoEntity r " +
+                        "LEFT JOIN FETCH r.franja f " +
+                        "WHERE c.id = :id")
+        java.util.Optional<CompraEntity> findByIdWithDetails(@Param("id") UUID id);
 
         @Query("SELECT COUNT(c) > 0 FROM CompraAnticipadaEntity c " +
                         "WHERE c.codigoVerificacion = :codigoVerificacion " +
