@@ -169,10 +169,8 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponseDTO> findById(
-            Authentication authentication,
             @PathVariable UUID id,
             @RequestParam(required = false) UUID buffetId) {
-        planAccessGuard.requireVendorAdvanced(authentication);
         return ResponseEntity.ok(ProductResponseDTO.fromApplication(
                 getProductById.execute(new GetProductByIdRequest(id, buffetId))));
     }
