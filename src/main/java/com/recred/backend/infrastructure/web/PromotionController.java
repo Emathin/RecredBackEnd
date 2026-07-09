@@ -6,8 +6,6 @@ import com.recred.backend.application.CreatePromotionResponse;
 import com.recred.backend.application.DeletePromotion;
 import com.recred.backend.application.DeletePromotionRequest;
 import com.recred.backend.application.GetActivePromotions;
-import com.recred.backend.application.GetActivePromotionsByBuffet;
-import com.recred.backend.application.GetActivePromotionsByBuffetRequest;
 import com.recred.backend.application.GetActivePromotionsRequest;
 import com.recred.backend.application.GetPromotionById;
 import com.recred.backend.application.GetPromotionByIdRequest;
@@ -37,8 +35,9 @@ public class PromotionController {
     private final UpdatePromotion updatePromotion;
     private final DeletePromotion deletePromotion;
     private final GetActivePromotions getActivePromotions;
-    private final GetActivePromotionsByBuffet getActivePromotionsByBuffet;
+    private final com.recred.backend.application.GetAllPromotionsByBuffet getAllPromotionsByBuffet;
     private final GetPromotionById getPromotionById;
+    private final com.recred.backend.application.TogglePromotionStatus togglePromotionStatus;
     private final PlanAccessGuard planAccessGuard;
 
     public PromotionController(
@@ -46,15 +45,17 @@ public class PromotionController {
             UpdatePromotion updatePromotion,
             DeletePromotion deletePromotion,
             GetActivePromotions getActivePromotions,
-            GetActivePromotionsByBuffet getActivePromotionsByBuffet,
+            com.recred.backend.application.GetAllPromotionsByBuffet getAllPromotionsByBuffet,
             GetPromotionById getPromotionById,
+            com.recred.backend.application.TogglePromotionStatus togglePromotionStatus,
             PlanAccessGuard planAccessGuard) {
         this.createPromotion = createPromotion;
         this.updatePromotion = updatePromotion;
         this.deletePromotion = deletePromotion;
         this.getActivePromotions = getActivePromotions;
-        this.getActivePromotionsByBuffet = getActivePromotionsByBuffet;
+        this.getAllPromotionsByBuffet = getAllPromotionsByBuffet;
         this.getPromotionById = getPromotionById;
+        this.togglePromotionStatus = togglePromotionStatus;
         this.planAccessGuard = planAccessGuard;
     }
 
@@ -72,8 +73,9 @@ public class PromotionController {
     @GetMapping("/buffet/{buffetId}")
     public ResponseEntity<List<PromotionResponseDTO>> listActivePromotionsByBuffet(
             @PathVariable UUID buffetId) {
-        List<PromotionResponseDTO> response = getActivePromotionsByBuffet
-                .execute(new GetActivePromotionsByBuffetRequest(buffetId))
+        List<PromotionResponseDTO> response = getAllPromotionsByBuffet
+                .execute(new com.recred.backend.application
+                        .GetActivePromotionsByBuffetRequest(buffetId))
                 .promotions()
                 .stream()
                 .map(PromotionResponseDTO::fromApplication)
@@ -122,6 +124,16 @@ public class PromotionController {
                 request.getStartDate(),
                 request.getEndDate()
         ));
+        return ResponseEntity.ok(PromotionResponseDTO.fromApplication(response));
+    }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/{id}/toggle-status")
+    public ResponseEntity<PromotionResponseDTO> togglePromotionStatus(
+            @PathVariable UUID id,
+            Authentication authentication) {
+        planAccessGuard.requireVendorAdvanced(authentication);
+        CreatePromotionResponse response = togglePromotionStatus.execute(
+                new com.recred.backend.application.TogglePromotionStatusRequest(id));
         return ResponseEntity.ok(PromotionResponseDTO.fromApplication(response));
     }
 
