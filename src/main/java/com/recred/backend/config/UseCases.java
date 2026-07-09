@@ -2,7 +2,6 @@ package com.recred.backend.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.AcceptTutorInvitation;
-import com.recred.backend.application.ActivateSchoolSubscription;
 import com.recred.backend.application.ActivateUserSubscription;
 import com.recred.backend.application.AddFavoriteProduct;
 import com.recred.backend.application.AddHealthRestriction;
@@ -15,14 +14,12 @@ import com.recred.backend.application.CancelPresentialPurchase;
 import com.recred.backend.application.CheckBudgetDates;
 import com.recred.backend.application.CloseDailyBuffet;
 import com.recred.backend.application.ConfirmPaymentAndCredit;
-import com.recred.backend.application.ConfirmSchoolSubscriptionPayment;
 import com.recred.backend.application.ConfirmUserSubscriptionPayment;
 import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAssistantAdvancePurchase;
 import com.recred.backend.application.CreateBudget;
 import com.recred.backend.application.CreateGrade;
 import com.recred.backend.application.CreatePromotion;
-import com.recred.backend.application.CreateSchoolSubscriptionPayment;
 import com.recred.backend.application.CreateStudentFromParent;
 import com.recred.backend.application.CreateSupplier;
 import com.recred.backend.application.CreateTimeRestriction;
@@ -118,6 +115,7 @@ import com.recred.backend.application.ListSchoolGrades;
 import com.recred.backend.application.ListSchoolTimeSlots;
 import com.recred.backend.application.ListSuppliers;
 import com.recred.backend.application.LoadBalanceToChild;
+import com.recred.backend.application.GetAllPromotionsByBuffet;
 import com.recred.backend.application.LoadStockIA;
 import com.recred.backend.application.ManagePromotionStatus;
 import com.recred.backend.application.ManageRestrictions;
@@ -131,6 +129,10 @@ import com.recred.backend.application.PrizeHealthyPurchase;
 import com.recred.backend.application.ProcessPresentialPurchase;
 import com.recred.backend.application.ProcessScheduledPayouts;
 import com.recred.backend.application.PurchaseSuggestIA;
+import com.recred.backend.application.TogglePromotionStatus;
+import com.recred.backend.application.GetTimeSlot;
+import com.recred.backend.application.ListSchoolTimeSlots;
+import com.recred.backend.application.RecommendSupplierForProducts;
 import com.recred.backend.application.ReactivateGrade;
 import com.recred.backend.application.ReactivateTimeSlot;
 import com.recred.backend.application.RecommendSupplierForProducts;
@@ -169,7 +171,6 @@ import com.recred.backend.application.SchoolAssistantReplyFormatter;
 import com.recred.backend.application.SchoolAssistantRoleCatalog;
 import com.recred.backend.application.SchoolAssistantSuggestionFactory;
 import com.recred.backend.application.SchoolAssistantTutorFactsFormatter;
-import com.recred.backend.application.SchoolSubscriptionPriceCatalog;
 import com.recred.backend.application.SetNotificationAsAlreadyRead;
 import com.recred.backend.application.StudentAssistantContextBuilder;
 import com.recred.backend.application.StudentAssistantContextProvider;
@@ -226,7 +227,6 @@ import com.recred.backend.domain.repositories.ListaPrecioProveedorRepository;
 import com.recred.backend.domain.repositories.MovimientoBilleteraRepository;
 import com.recred.backend.domain.repositories.NivelRepository;
 import com.recred.backend.domain.repositories.NotificationRepository;
-import com.recred.backend.domain.repositories.PagoSuscripcionColegioRepository;
 import com.recred.backend.domain.repositories.PagoSuscripcionUsuarioRepository;
 import com.recred.backend.domain.repositories.PreferenceAIRepository;
 import com.recred.backend.domain.repositories.PresupuestoRepository;
@@ -252,7 +252,6 @@ import com.recred.backend.domain.repositories.StudentConsumptionRepository;
 import com.recred.backend.domain.repositories.SugerenciaIARepository;
 import com.recred.backend.domain.repositories.SuggestionAiRepository;
 import com.recred.backend.domain.repositories.SummaryRepository;
-import com.recred.backend.domain.repositories.SuscripcionColegioRepository;
 import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import com.recred.backend.domain.repositories.TutorInvitationRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
@@ -331,13 +330,11 @@ public class UseCases {
             UsuarioRepository usuarioRepository,
             ColegioRepository colegioRepository,
             BuffetRepository buffetRepository,
-            SuscripcionColegioRepository suscripcionColegioRepository,
             Clock clock) {
         return new GetSchoolOverview(
                 usuarioRepository,
                 colegioRepository,
                 buffetRepository,
-                suscripcionColegioRepository,
                 clock);
     }
 
@@ -1459,43 +1456,6 @@ public class UseCases {
                 clock);
     }
 
-    @Bean
-    public SchoolSubscriptionPriceCatalog schoolSubscriptionPriceCatalog() {
-        return new SchoolSubscriptionPriceCatalog();
-    }
-
-    @Bean
-    public CreateSchoolSubscriptionPayment createSchoolSubscriptionPayment(
-            ColegioRepository colegioRepository,
-            ExternalPaymentService externalPaymentService,
-            SchoolSubscriptionPriceCatalog priceCatalog) {
-        return new CreateSchoolSubscriptionPayment(
-                colegioRepository,
-                externalPaymentService,
-                priceCatalog);
-    }
-
-    @Bean
-    public ActivateSchoolSubscription activateSchoolSubscription(
-            ColegioRepository colegioRepository,
-            SuscripcionColegioRepository subscriptionRepository,
-            Clock clock) {
-        return new ActivateSchoolSubscription(
-                colegioRepository,
-                subscriptionRepository,
-                clock);
-    }
-
-    @Bean
-    public ConfirmSchoolSubscriptionPayment confirmSchoolSubscriptionPayment(
-            PagoSuscripcionColegioRepository paymentRepository,
-            ActivateSchoolSubscription activateSchoolSubscription,
-            Clock clock) {
-        return new ConfirmSchoolSubscriptionPayment(
-                paymentRepository,
-                activateSchoolSubscription,
-                clock);
-    }
 
     @Bean
     public GenerateUserSubscriptionExpirationWarnings
@@ -1599,6 +1559,18 @@ public class UseCases {
     public GetActivePromotionsByBuffet getActivePromotionsByBuffet(
             PromotionRepository promotionRepository) {
         return new GetActivePromotionsByBuffet(promotionRepository);
+    }
+
+    @Bean
+    public GetAllPromotionsByBuffet getAllPromotionsByBuffet(
+            PromotionRepository promotionRepository) {
+        return new GetAllPromotionsByBuffet(promotionRepository);
+    }
+
+    @Bean
+    public TogglePromotionStatus togglePromotionStatus(
+            PromotionRepository promotionRepository) {
+        return new TogglePromotionStatus(promotionRepository);
     }
 
     @Bean

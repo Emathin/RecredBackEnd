@@ -5,7 +5,8 @@ import java.time.temporal.ChronoUnit;
 
 public enum PeriodoSuscripcion {
     MENSUAL(1, ChronoUnit.MONTHS, 7),
-    ANUAL(1, ChronoUnit.YEARS, 30);
+    ANUAL(1, ChronoUnit.YEARS, 30),
+    PRUEBA(1, ChronoUnit.MONTHS, 0);
 
     private final long amount;
     private final ChronoUnit unit;

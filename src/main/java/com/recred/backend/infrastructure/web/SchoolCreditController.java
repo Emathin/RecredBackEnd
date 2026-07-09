@@ -40,29 +40,25 @@ public class SchoolCreditController {
     private final GetLastRecharge getLastRecharge;
     private final GetActiveSchoolCredit getActiveSchoolCredit;
     private final UsuarioService usuarioService;
-    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public SchoolCreditController(EnableSchoolCredit enableSchoolCredit,
                                   PaySchoolCredit paySchoolCredit,
                                   GetSchoolCreditHistory getSchoolCreditHistory,
                                   GetLastRecharge getLastRecharge,
                                   GetActiveSchoolCredit getActiveSchoolCredit,
-                                  UsuarioService usuarioService,
-                                  SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
+                                  UsuarioService usuarioService) {
         this.enableSchoolCredit = enableSchoolCredit;
         this.paySchoolCredit = paySchoolCredit;
         this.getSchoolCreditHistory = getSchoolCreditHistory;
         this.getLastRecharge = getLastRecharge;
         this.getActiveSchoolCredit = getActiveSchoolCredit;
         this.usuarioService = usuarioService;
-        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping
     public ResponseEntity<?> enableCredit(Authentication authentication,
                                           @Valid @RequestBody
                                           EnableSchoolCreditRequestDTO request) {
-        schoolLicenseAccessGuard.requireActiveSchoolForStudent(request.getStudentId());
         try {
             String cognitoSub = authentication.getName();
             Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoSub);
@@ -106,7 +102,6 @@ public class SchoolCreditController {
 
     @GetMapping("/alumno/{studentId}/last-recharge")
     public ResponseEntity<BigDecimal> getLastRechargeAmount(@PathVariable UUID studentId) {
-        schoolLicenseAccessGuard.requireActiveSchoolForStudent(studentId);
         try {
             GetLastRechargeResponse response = getLastRecharge.execute(
                     new GetLastRechargeRequest(studentId));
@@ -120,7 +115,6 @@ public class SchoolCreditController {
 
     @GetMapping("/alumno/{studentId}")
     public ResponseEntity<List<SchoolCredit>> getHistory(@PathVariable UUID studentId) {
-        schoolLicenseAccessGuard.requireActiveSchoolForStudent(studentId);
         try {
             List<SchoolCredit> history = getSchoolCreditHistory.execute(studentId);
             return ResponseEntity.ok(history);
@@ -134,7 +128,6 @@ public class SchoolCreditController {
     @GetMapping("/alumno/{studentId}/active")
     public ResponseEntity<GetActiveSchoolCreditResponse> getActiveCredit(
             @PathVariable UUID studentId) {
-        schoolLicenseAccessGuard.requireActiveSchoolForStudent(studentId);
         try {
             GetActiveSchoolCreditResponse response = getActiveSchoolCredit.execute(
                             new GetActiveSchoolCreditRequest(studentId))

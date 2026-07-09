@@ -50,11 +50,11 @@ class PromotionRepositoryImplTest {
         PromotionEntity entity = entity(promotionId);
         when(repository.findByStatusAndBuffetEntityId(PromotionStatus.ACTIVE, buffetId))
                 .thenReturn(List.of(entity));
-        when(repository.findByStatusAndStartDateBefore(PromotionStatus.DRAFT, startDate))
+        when(repository.findByStatusAndStartDateBefore(PromotionStatus.INACTIVE, startDate))
                 .thenReturn(List.of(entity));
 
         List<Promotion> activeByBuffet = adapter.findAllActiveByBuffet(buffetId);
-        List<Promotion> drafts = adapter.findDraftPromotionsByStartDateBefore(startDate);
+        List<Promotion> drafts = adapter.findInactivePromotionsByStartDateBefore(startDate);
 
         assertEquals(promotionId, activeByBuffet.get(0).getId());
         assertEquals(promotionId, drafts.get(0).getId());

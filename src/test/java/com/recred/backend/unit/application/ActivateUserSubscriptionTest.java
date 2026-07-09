@@ -130,6 +130,40 @@ class ActivateUserSubscriptionTest {
         thenPlanChangeWasNotPropagated();
     }
 
+    @Test
+    void givenUserCanSubscribe_whenActivatingTrialSubscription_thenActivatesTrialSubscription() {
+        givenUserSubscriptionScenario(RolUsuario.PADRE, TipoPlan.INTERMEDIO);
+        givenUserExists();
+        givenUserHasNotUsedTrial();
+        givenNoActiveSubscription();
+        givenSavedSubscriptionWithId();
+
+        response = useCase.execute(trialRequest(TipoPlan.INTERMEDIO));
+
+        thenTrialSubscriptionWasActivated(TipoPlan.INTERMEDIO);
+        thenUserPlanWasUpdated(TipoPlan.INTERMEDIO);
+        thenPlanChangeWasPropagated();
+        verify(subscriptionRepository).hasUsedTrial(userId);
+    }
+
+    @Test
+    void givenUserHasUsedTrial_whenActivatingTrialSubscription_thenThrowsIllegalArgumentException() {
+        givenUserSubscriptionScenario(RolUsuario.PADRE, TipoPlan.INTERMEDIO);
+        givenUserExists();
+        givenUserHasUsedTrial();
+
+        thrownException = assertThrows(
+                IllegalArgumentException.class,
+                () -> useCase.execute(trialRequest(TipoPlan.INTERMEDIO))
+        );
+
+        thenExceptionMessageIs("El usuario ya ha disfrutado de un periodo de prueba");
+        thenSubscriptionWasNotSaved();
+        thenUserPlanWasNotUpdated();
+        thenPlanChangeWasNotPropagated();
+        verify(subscriptionRepository).hasUsedTrial(userId);
+    }
+
     private void givenUserSubscriptionScenario(RolUsuario role, TipoPlan plan) {
         userId = UUID.randomUUID();
         subscriptionId = UUID.randomUUID();
@@ -235,6 +269,34 @@ class ActivateUserSubscriptionTest {
                 ArgumentCaptor.forClass(SuscripcionUsuario.class);
         verify(subscriptionRepository, org.mockito.Mockito.times(2)).save(captor.capture());
         return captor.getAllValues();
+    }
+
+    private void givenUserHasNotUsedTrial() {
+        when(subscriptionRepository.hasUsedTrial(userId)).thenReturn(false);
+    }
+
+    private void givenUserHasUsedTrial() {
+        when(subscriptionRepository.hasUsedTrial(userId)).thenReturn(true);
+    }
+
+    private void thenTrialSubscriptionWasActivated(TipoPlan plan) {
+        assertEquals(plan, response.plan());
+        assertEquals(EstadoSuscripcion.ACTIVA, response.estado());
+        assertEquals(fixedNow().plusMonths(1), response.fechaVencimiento());
+    }
+
+    private void thenExceptionMessageIs(String expectedMessage) {
+        assertEquals(expectedMessage, thrownException.getMessage());
+    }
+
+    private ActivateUserSubscriptionRequest trialRequest(TipoPlan plan) {
+        return new ActivateUserSubscriptionRequest(
+                userId,
+                plan,
+                PeriodoSuscripcion.PRUEBA,
+                BigDecimal.ZERO,
+                null
+        );
     }
 
     private ActivateUserSubscriptionRequest request(TipoPlan plan) {
