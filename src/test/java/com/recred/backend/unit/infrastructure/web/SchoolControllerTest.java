@@ -24,7 +24,6 @@ import com.recred.backend.application.UpdateGrade;
 import com.recred.backend.application.UpdateGradeRequest;
 import com.recred.backend.domain.exceptions.SchoolNotFoundException;
 import com.recred.backend.domain.models.Colegio;
-import com.recred.backend.domain.models.EstadoLicenciaColegio;
 import com.recred.backend.domain.models.Grado;
 import com.recred.backend.domain.models.Nivel;
 import com.recred.backend.infrastructure.web.GradeRequestDTO;
@@ -239,13 +238,6 @@ class SchoolControllerTest {
                 schoolId,
                 "Colegio Test",
                 "12345",
-                new GetSchoolOverviewResponse.LicenciaDto(
-                        EstadoLicenciaColegio.SIN_LICENCIA,
-                        null,
-                        null,
-                        null,
-                        null,
-                        "USD"),
                 List.of());
         givenSchoolOverview(sub, responseObj);
 

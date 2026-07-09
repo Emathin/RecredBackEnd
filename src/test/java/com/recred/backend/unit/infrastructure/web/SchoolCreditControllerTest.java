@@ -21,7 +21,6 @@ import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.web.EnableSchoolCreditRequestDTO;
 import com.recred.backend.infrastructure.web.SchoolCreditController;
-import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -93,10 +92,6 @@ class SchoolCreditControllerTest {
     private UUID tutorId;
     private UUID studentId;
     private UUID creditId;
-
-    @MockitoBean
-    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
-
     @Test
     void givenValidCreditRequest_whenEnablingCredit_thenReturnsCreatedCredit() throws Exception {
         givenAuthenticatedTutor();

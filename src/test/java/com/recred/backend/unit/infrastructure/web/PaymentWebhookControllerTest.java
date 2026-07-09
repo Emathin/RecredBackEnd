@@ -2,8 +2,6 @@ package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.application.ConfirmPaymentAndCredit;
 import com.recred.backend.application.ConfirmPaymentAndCreditRequest;
-import com.recred.backend.application.ConfirmSchoolSubscriptionPayment;
-import com.recred.backend.application.ConfirmSchoolSubscriptionPaymentRequest;
 import com.recred.backend.application.ConfirmUserSubscriptionPayment;
 import com.recred.backend.application.ConfirmUserSubscriptionPaymentRequest;
 import com.recred.backend.domain.models.PaymentDetails;
@@ -46,9 +44,6 @@ class PaymentWebhookControllerTest {
     private ConfirmUserSubscriptionPayment confirmUserSubscriptionPayment;
 
     @Mock
-    private ConfirmSchoolSubscriptionPayment confirmSchoolSubscriptionPayment;
-
-    @Mock
     private ExternalPaymentService externalPaymentService;
 
     @Spy
@@ -76,8 +71,6 @@ class PaymentWebhookControllerTest {
                 .execute(new ConfirmPaymentAndCreditRequest(paymentId, details));
         verify(confirmUserSubscriptionPayment, never()).execute(
                 any(ConfirmUserSubscriptionPaymentRequest.class));
-        verify(confirmSchoolSubscriptionPayment, never()).execute(
-                any(ConfirmSchoolSubscriptionPaymentRequest.class));
     }
 
     @Test
@@ -97,31 +90,7 @@ class PaymentWebhookControllerTest {
         verify(confirmUserSubscriptionPayment)
                 .execute(new ConfirmUserSubscriptionPaymentRequest(details));
         verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
-        verify(confirmSchoolSubscriptionPayment, never()).execute(
-                any(ConfirmSchoolSubscriptionPaymentRequest.class));
     }
-
-    @Test
-    void handleWebhook_WhenPaymentIsSchoolSubscription_ShouldConfirmSchoolSubscription() {
-        String paymentId = "999";
-        PaymentDetails details = schoolSubscriptionPayment(paymentId);
-        givenPaymentDetails(paymentId, details);
-
-        ResponseEntity<Void> response = whenHandlingWebhook(
-                null,
-                null,
-                paymentBody(paymentId),
-                new HashMap<>()
-        );
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(confirmSchoolSubscriptionPayment)
-                .execute(new ConfirmSchoolSubscriptionPaymentRequest(details));
-        verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
-        verify(confirmUserSubscriptionPayment, never()).execute(
-                any(ConfirmUserSubscriptionPaymentRequest.class));
-    }
-
     @Test
     void handleWebhook_WhenSignatureIsInvalid_ShouldReturnForbidden() {
         String paymentId = "999";
@@ -138,8 +107,6 @@ class PaymentWebhookControllerTest {
         verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
         verify(confirmUserSubscriptionPayment, never()).execute(
                 any(ConfirmUserSubscriptionPaymentRequest.class));
-        verify(confirmSchoolSubscriptionPayment, never()).execute(
-                any(ConfirmSchoolSubscriptionPaymentRequest.class));
     }
 
     @Test
@@ -155,8 +122,6 @@ class PaymentWebhookControllerTest {
         verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
         verify(confirmUserSubscriptionPayment, never()).execute(
                 any(ConfirmUserSubscriptionPaymentRequest.class));
-        verify(confirmSchoolSubscriptionPayment, never()).execute(
-                any(ConfirmSchoolSubscriptionPaymentRequest.class));
     }
 
     @Test

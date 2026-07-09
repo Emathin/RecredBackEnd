@@ -34,17 +34,14 @@ public class CarritoFavoritoController {
     private final SaveFavoriteCart saveFavoriteCart;
     private final GetFavoriteCartsByTutor getFavoriteCartsByTutor;
     private final DeleteFavoriteCart deleteFavoriteCart;
-    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public CarritoFavoritoController(
             SaveFavoriteCart saveFavoriteCart,
             GetFavoriteCartsByTutor getFavoriteCartsByTutor,
-            DeleteFavoriteCart deleteFavoriteCart,
-            SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
+            DeleteFavoriteCart deleteFavoriteCart) {
         this.saveFavoriteCart = saveFavoriteCart;
         this.getFavoriteCartsByTutor = getFavoriteCartsByTutor;
         this.deleteFavoriteCart = deleteFavoriteCart;
-        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping
@@ -52,7 +49,6 @@ public class CarritoFavoritoController {
             Authentication authentication,
             @RequestBody SaveCarritoFavoritoRequest request) {
 
-        schoolLicenseAccessGuard.requireActiveSchoolForStudent(request.alumnoId());
         Map<UUID, Integer> productQuantities = request.items().stream()
                 .collect(Collectors.toMap(
                         SaveCarritoFavoritoRequest.ItemRequest::productId,
@@ -78,10 +74,6 @@ public class CarritoFavoritoController {
             Authentication authentication,
             @RequestParam(required = false) UUID alumnoId,
             @RequestParam(required = false) UUID productoId) {
-
-        if (alumnoId != null) {
-            schoolLicenseAccessGuard.requireActiveSchoolForStudent(alumnoId);
-        }
 
         List<GetFavoriteCartsByTutorResponse> carts = getFavoriteCartsByTutor.execute(
                 new GetFavoriteCartsByTutorRequest(

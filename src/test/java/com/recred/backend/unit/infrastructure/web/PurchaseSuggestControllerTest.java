@@ -27,7 +27,6 @@ import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
 import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.PurchaseSuggestController;
-import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import com.recred.backend.infrastructure.web.TestSuggestionRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -116,10 +115,6 @@ class PurchaseSuggestControllerTest {
 
     @MockitoBean
     private PlanAccessGuard planAccessGuard;
-
-    @MockitoBean
-    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
-
     @MockitoBean
     private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
 
@@ -160,7 +155,6 @@ class PurchaseSuggestControllerTest {
         result.andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").exists());
         verify(planAccessGuard).requireTutorOrStudentAdvanced(auth);
-        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(alumnoId);
         verify(respondToAISuggestion).execute(
                 new RespondToAISuggestionRequest(sugerenciaId, true));
     }

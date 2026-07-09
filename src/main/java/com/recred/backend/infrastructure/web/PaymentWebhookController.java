@@ -2,8 +2,7 @@ package com.recred.backend.infrastructure.web;
 
 import com.recred.backend.application.ConfirmPaymentAndCredit;
 import com.recred.backend.application.ConfirmPaymentAndCreditRequest;
-import com.recred.backend.application.ConfirmSchoolSubscriptionPayment;
-import com.recred.backend.application.ConfirmSchoolSubscriptionPaymentRequest;
+
 import com.recred.backend.application.ConfirmUserSubscriptionPayment;
 import com.recred.backend.application.ConfirmUserSubscriptionPaymentRequest;
 import com.recred.backend.domain.models.PaymentDetails;
@@ -27,19 +26,17 @@ public class PaymentWebhookController {
 
     private final ConfirmPaymentAndCredit confirmPaymentAndCredit;
     private final ConfirmUserSubscriptionPayment confirmUserSubscriptionPayment;
-    private final ConfirmSchoolSubscriptionPayment confirmSchoolSubscriptionPayment;
+
     private final ExternalPaymentService externalPaymentService;
     private final MercadoPagoWebhookParser webhookParser;
 
     public PaymentWebhookController(
             ConfirmPaymentAndCredit confirmPaymentAndCredit,
             ConfirmUserSubscriptionPayment confirmUserSubscriptionPayment,
-            ConfirmSchoolSubscriptionPayment confirmSchoolSubscriptionPayment,
             ExternalPaymentService externalPaymentService,
             MercadoPagoWebhookParser webhookParser) {
         this.confirmPaymentAndCredit = confirmPaymentAndCredit;
         this.confirmUserSubscriptionPayment = confirmUserSubscriptionPayment;
-        this.confirmSchoolSubscriptionPayment = confirmSchoolSubscriptionPayment;
         this.externalPaymentService = externalPaymentService;
         this.webhookParser = webhookParser;
     }
@@ -80,11 +77,7 @@ public class PaymentWebhookController {
                     new ConfirmUserSubscriptionPaymentRequest(details));
             return;
         }
-        if (details.isSchoolSubscription()) {
-            confirmSchoolSubscriptionPayment.execute(
-                    new ConfirmSchoolSubscriptionPaymentRequest(details));
-            return;
-        }
+
 
         confirmPaymentAndCredit.execute(new ConfirmPaymentAndCreditRequest(paymentId, details));
     }

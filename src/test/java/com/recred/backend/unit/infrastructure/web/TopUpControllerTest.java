@@ -23,10 +23,8 @@ class TopUpControllerTest {
     @Test
     void requestTopUpLink_ShouldDelegateAndReturnPaymentUrl() {
         GenerateTopUpLink generateTopUpLink = mock(GenerateTopUpLink.class);
-        SchoolLicenseAccessGuard schoolLicenseAccessGuard = mock(SchoolLicenseAccessGuard.class);
         TopUpController controller = new TopUpController(
-                generateTopUpLink,
-                schoolLicenseAccessGuard);
+                generateTopUpLink);
         UUID studentId = UUID.randomUUID();
         BigDecimal amount = new BigDecimal("100.00");
         when(generateTopUpLink.execute(new GenerateTopUpLinkRequest(studentId, amount)))
@@ -39,7 +37,6 @@ class TopUpControllerTest {
         ArgumentCaptor<GenerateTopUpLinkRequest> captor =
                 ArgumentCaptor.forClass(GenerateTopUpLinkRequest.class);
         verify(generateTopUpLink).execute(captor.capture());
-        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
         assertEquals(studentId, captor.getValue().studentId());
         assertEquals(amount, captor.getValue().amount());
         assertEquals("https://pay.test/link", response.getBody().get("paymentUrl"));

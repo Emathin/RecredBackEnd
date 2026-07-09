@@ -43,7 +43,6 @@ public class PurchaseSuggestController {
     private final UsuarioService usuarioService;
     private final TutorRepository tutorRepository;
     private final PlanAccessGuard planAccessGuard;
-    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public PurchaseSuggestController(NotifyPurchaseSuggestions notifyPurchaseSuggestions,
                                      RespondToAISuggestion respondToAISuggestion,
@@ -52,8 +51,7 @@ public class PurchaseSuggestController {
                                      SugerenciaIARepository sugerenciaIARepository,
                                      UsuarioService usuarioService,
                                      TutorRepository tutorRepository,
-                                     PlanAccessGuard planAccessGuard,
-                                     SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
+                                     PlanAccessGuard planAccessGuard) {
         this.notifyPurchaseSuggestions = notifyPurchaseSuggestions;
         this.respondToAISuggestion = respondToAISuggestion;
         this.createAdvancePurchase = createAdvancePurchase;
@@ -62,7 +60,6 @@ public class PurchaseSuggestController {
         this.usuarioService = usuarioService;
         this.tutorRepository = tutorRepository;
         this.planAccessGuard = planAccessGuard;
-        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @PostMapping("/test-notificacion")
@@ -101,7 +98,6 @@ public class PurchaseSuggestController {
         respondToAISuggestion.execute(new RespondToAISuggestionRequest(idSuggestion, true));
 
         UUID idStudent = suggestion.getAlumnoEntity().getId();
-        schoolLicenseAccessGuard.requireActiveSchoolForStudent(idStudent);
         UUID idProduct = suggestion.getProductoEntity().getId();
         UUID idBuffet = suggestion.getBuffetEntity().getId();
 

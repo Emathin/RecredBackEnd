@@ -1,9 +1,7 @@
 package com.recred.backend.infrastructure.web;
 
-import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.SuscripcionUsuario;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.repositories.SuscripcionColegioRepository;
 import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
@@ -33,22 +31,16 @@ public class UserProfileController {
     private final UsuarioService usuarioService;
     private final CloudinaryService cloudinaryService;
     private final SuscripcionUsuarioRepository suscripcionUsuarioRepository;
-    private final SuscripcionColegioRepository suscripcionColegioRepository;
     private final Clock clock;
-    private final SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     public UserProfileController(UsuarioService usuarioService,
             CloudinaryService cloudinaryService,
             SuscripcionUsuarioRepository suscripcionUsuarioRepository,
-            SuscripcionColegioRepository suscripcionColegioRepository,
-            Clock clock,
-            SchoolLicenseAccessGuard schoolLicenseAccessGuard) {
+            Clock clock) {
         this.usuarioService = usuarioService;
         this.cloudinaryService = cloudinaryService;
         this.suscripcionUsuarioRepository = suscripcionUsuarioRepository;
-        this.suscripcionColegioRepository = suscripcionColegioRepository;
         this.clock = clock;
-        this.schoolLicenseAccessGuard = schoolLicenseAccessGuard;
     }
 
     @GetMapping("/me")
@@ -123,7 +115,6 @@ public class UserProfileController {
         response.put("urlFotoPerfil", usuario.getUrlFotoPerfil());
         response.put("plan", usuario.getPlan().name());
         response.put("fechaVencimientoPlan", planExpiration(usuario));
-        addSchoolLicenseData(response, usuario);
 
         return response;
     }
@@ -138,24 +129,5 @@ public class UserProfileController {
                 .orElse(null);
     }
 
-    private void addSchoolLicenseData(Map<String, Object> response, Usuario usuario) {
-        if (!isSchoolUser(usuario)) {
-            return;
-        }
 
-        response.put(
-                "estadoLicenciaColegio",
-                schoolLicenseAccessGuard.getLicenseStatusForUser(usuario)
-        );
-        response.put(
-                "fechaVencimientoLicenciaColegio",
-                schoolLicenseAccessGuard.getLicenseExpirationForUser(usuario)
-        );
-    }
-
-    private boolean isSchoolUser(Usuario usuario) {
-        return usuario.getRol() == RolUsuario.DIRECTIVO_COLEGIO
-                || usuario.getRol() == RolUsuario.ALUMNO
-                || usuario.getRol() == RolUsuario.VENDEDOR;
-    }
 }

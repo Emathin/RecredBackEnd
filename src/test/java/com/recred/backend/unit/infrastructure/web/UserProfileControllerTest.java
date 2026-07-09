@@ -2,16 +2,12 @@ package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Colegio;
-import com.recred.backend.domain.models.SuscripcionColegio;
 import com.recred.backend.domain.models.SuscripcionUsuario;
 import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.repositories.SuscripcionColegioRepository;
 import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
-import com.recred.backend.domain.models.EstadoLicenciaColegio;
-import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import com.recred.backend.infrastructure.web.UserProfileController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,8 +50,6 @@ class UserProfileControllerTest {
     private UsuarioService usuarioService;
     private CloudinaryService cloudinaryService;
     private SuscripcionUsuarioRepository suscripcionUsuarioRepository;
-    private SuscripcionColegioRepository suscripcionColegioRepository;
-    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -63,16 +57,12 @@ class UserProfileControllerTest {
         usuarioService = mock(UsuarioService.class);
         cloudinaryService = mock(CloudinaryService.class);
         suscripcionUsuarioRepository = mock(SuscripcionUsuarioRepository.class);
-        suscripcionColegioRepository = mock(SuscripcionColegioRepository.class);
-        schoolLicenseAccessGuard = mock(SchoolLicenseAccessGuard.class);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new UserProfileController(
                         usuarioService,
                         cloudinaryService,
                         suscripcionUsuarioRepository,
-                        suscripcionColegioRepository,
-                        CLOCK,
-                        schoolLicenseAccessGuard
+                        CLOCK
                 ))
                 .build();
     }
@@ -102,6 +92,7 @@ class UserProfileControllerTest {
         UUID userId = UUID.randomUUID();
         Usuario usuario = usuario(userId);
         givenCurrentUser(usuario);
+        when(suscripcionUsuarioRepository.findActiveByUsuarioId(userId)).thenReturn(Optional.empty());
 
         ResultActions response = whenGetMyProfile();
 
@@ -127,41 +118,6 @@ class UserProfileControllerTest {
 
         verify(usuarioService).obtenerUsuarioActual("cognito-sub");
         verify(suscripcionUsuarioRepository).findActiveByUsuarioId(userId);
-    }
-
-    @Test
-    void getMyProfileReturnsSchoolLicenseWhenUserIsSchoolDirector() throws Exception {
-        UUID userId = UUID.randomUUID();
-        UUID schoolId = UUID.randomUUID();
-        LocalDateTime startDate = LocalDateTime.of(2026, 7, 1, 10, 0);
-        Usuario usuario = schoolUser(userId, schoolId);
-        givenCurrentUser(usuario);
-        givenActiveSchoolSubscription(schoolId, schoolSubscription(schoolId, startDate));
-
-        ResultActions response = whenGetMyProfile();
-
-        response
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estadoLicenciaColegio").value("ACTIVA"))
-                .andExpect(jsonPath("$.fechaVencimientoLicenciaColegio")
-                        .value("2026-08-01T10:00:00"));
-    }
-
-    @Test
-    void getMyProfileReturnsNoLicenseWhenSchoolDirectorHasNoActiveSubscription()
-            throws Exception {
-        UUID userId = UUID.randomUUID();
-        UUID schoolId = UUID.randomUUID();
-        Usuario usuario = schoolUser(userId, schoolId);
-        givenCurrentUser(usuario);
-        givenNoActiveSchoolSubscription(schoolId);
-
-        ResultActions response = whenGetMyProfile();
-
-        response
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estadoLicenciaColegio").value("SIN_LICENCIA"))
-                .andExpect(jsonPath("$.fechaVencimientoLicenciaColegio").value(nullValue()));
     }
 
     @Test
@@ -212,23 +168,6 @@ class UserProfileControllerTest {
     private void givenActiveSubscription(UUID userId, SuscripcionUsuario suscripcion) {
         when(suscripcionUsuarioRepository.findActiveByUsuarioId(userId))
                 .thenReturn(Optional.of(suscripcion));
-    }
-
-    private void givenActiveSchoolSubscription(
-            UUID schoolId,
-            SuscripcionColegio suscripcion
-    ) {
-        when(schoolLicenseAccessGuard.getLicenseStatusForUser(any(Usuario.class)))
-                .thenReturn(EstadoLicenciaColegio.ACTIVA);
-        when(schoolLicenseAccessGuard.getLicenseExpirationForUser(any(Usuario.class)))
-                .thenReturn(suscripcion.getFechaVencimiento());
-    }
-
-    private void givenNoActiveSchoolSubscription(UUID schoolId) {
-        when(schoolLicenseAccessGuard.getLicenseStatusForUser(any(Usuario.class)))
-                .thenReturn(EstadoLicenciaColegio.SIN_LICENCIA);
-        when(schoolLicenseAccessGuard.getLicenseExpirationForUser(any(Usuario.class)))
-                .thenReturn(null);
     }
 
     private ResultActions whenGetMyProfile() throws Exception {
@@ -287,15 +226,6 @@ class UserProfileControllerTest {
         SuscripcionUsuario suscripcion = new SuscripcionUsuario();
         suscripcion.setFechaVencimiento(fechaVencimiento);
         return suscripcion;
-    }
-
-    private SuscripcionColegio schoolSubscription(UUID schoolId, LocalDateTime startDate) {
-        return SuscripcionColegio.activate(
-                schoolId,
-                new BigDecimal("20.00"),
-                "USD",
-                startDate
-        );
     }
 
     private Authentication authentication() {

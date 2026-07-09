@@ -29,7 +29,6 @@ import com.recred.backend.infrastructure.web.PurchaseAccessGuard;
 import com.recred.backend.infrastructure.web.PurchaseController;
 import com.recred.backend.infrastructure.web.PurchaseItemDTO;
 import com.recred.backend.infrastructure.web.PurchaseResponseDTO;
-import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import com.recred.backend.infrastructure.web.PurchaseStatusResponseDTO;
 import com.recred.backend.infrastructure.web.UpdatePurchaseStatusRequestDTO;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,8 +77,6 @@ class PurchaseControllerTest {
     private KiosqueroAccessGuard kiosqueroAccessGuard;
     @Mock
     private PurchaseAccessGuard purchaseAccessGuard;
-    @Mock
-    private SchoolLicenseAccessGuard schoolLicenseAccessGuard;
 
     private PurchaseController controller;
 
@@ -94,8 +91,7 @@ class PurchaseControllerTest {
                 revertPurchaseCancellation,
                 createAdvancePurchase,
                 kiosqueroAccessGuard,
-                purchaseAccessGuard,
-                schoolLicenseAccessGuard
+                purchaseAccessGuard
         );
     }
 
@@ -130,7 +126,6 @@ class PurchaseControllerTest {
         assertEquals(purchaseId, response.getBody().purchaseId());
         assertEquals(new BigDecimal("20.00"), response.getBody().totalAmount());
         verify(kiosqueroAccessGuard).requireBuffetAccess(authentication, buffetId);
-        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudent(studentId);
         verify(processPresentialPurchase).execute(useCaseRequest);
     }
 
@@ -193,7 +188,6 @@ class PurchaseControllerTest {
         assertEquals(status, response.getBody().status());
         assertEquals(1500.0, response.getBody().total());
         assertEquals("ABC123", response.getBody().codes().get(studentId));
-        verify(schoolLicenseAccessGuard).requireActiveSchoolForStudents(List.of(studentId));
         verify(createAdvancePurchase).execute(useCaseRequest);
     }
 
