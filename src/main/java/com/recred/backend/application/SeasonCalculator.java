@@ -13,42 +13,36 @@ public class SeasonCalculator {
 
     public static SeasonInfoResponse calculateCurrentSeason(LocalDate date) {
         MonthDay currentMonthDay = MonthDay.from(date);
-        
-        String currentSeason;
-        String nextSeason;
-        LocalDate nextSeasonDate;
-        int currentYear = date.getYear();
-
-        if (isBetween(currentMonthDay, SUMMER_START, AUTUMN_START)) {
-            currentSeason = "Verano";
-            nextSeason = "Otoño";
-            nextSeasonDate = AUTUMN_START.atYear(currentYear);
-        } else if (isBetween(currentMonthDay, AUTUMN_START, WINTER_START)) {
-            currentSeason = "Otoño";
-            nextSeason = "Invierno";
-            nextSeasonDate = WINTER_START.atYear(currentYear);
-        } else if (isBetween(currentMonthDay, WINTER_START, SPRING_START)) {
-            currentSeason = "Invierno";
-            nextSeason = "Primavera";
-            nextSeasonDate = SPRING_START.atYear(currentYear);
-        } else {
-            currentSeason = "Primavera";
-            nextSeason = "Verano";
-            if (currentMonthDay.isBefore(SUMMER_START)) {
-                nextSeasonDate = SUMMER_START.atYear(currentYear);
-            } else {
-                nextSeasonDate = SUMMER_START.atYear(currentYear + 1);
-            }
-        }
-
-        if (currentSeason.equals("Verano")) {
-            int autumnYear = currentMonthDay.isBefore(AUTUMN_START) ? currentYear : currentYear + 1;
-            nextSeasonDate = AUTUMN_START.atYear(autumnYear);
-        }
-
+        SeasonPeriod season = seasonFor(currentMonthDay);
+        LocalDate nextSeasonDate = nextSeasonDate(date, season.nextStart());
         int daysRemaining = (int) ChronoUnit.DAYS.between(date, nextSeasonDate);
 
-        return new SeasonInfoResponse(currentSeason, daysRemaining, nextSeason);
+        return new SeasonInfoResponse(
+                season.currentSeason(),
+                daysRemaining,
+                season.nextSeason()
+        );
+    }
+
+    private static SeasonPeriod seasonFor(MonthDay currentMonthDay) {
+        if (isBetween(currentMonthDay, SUMMER_START, AUTUMN_START)) {
+            return new SeasonPeriod("Verano", "Otoño", AUTUMN_START);
+        }
+        if (isBetween(currentMonthDay, AUTUMN_START, WINTER_START)) {
+            return new SeasonPeriod("Otoño", "Invierno", WINTER_START);
+        }
+        if (isBetween(currentMonthDay, WINTER_START, SPRING_START)) {
+            return new SeasonPeriod("Invierno", "Primavera", SPRING_START);
+        }
+        return new SeasonPeriod("Primavera", "Verano", SUMMER_START);
+    }
+
+    private static LocalDate nextSeasonDate(LocalDate date, MonthDay nextStart) {
+        LocalDate nextDate = nextStart.atYear(date.getYear());
+        if (nextDate.isBefore(date) || nextDate.equals(date)) {
+            return nextStart.atYear(date.getYear() + 1);
+        }
+        return nextDate;
     }
 
     private static boolean isBetween(MonthDay target, MonthDay start, MonthDay end) {
@@ -56,5 +50,12 @@ public class SeasonCalculator {
             return !target.isBefore(start) || target.isBefore(end);
         }
         return !target.isBefore(start) && target.isBefore(end);
+    }
+
+    private record SeasonPeriod(
+            String currentSeason,
+            String nextSeason,
+            MonthDay nextStart
+    ) {
     }
 }

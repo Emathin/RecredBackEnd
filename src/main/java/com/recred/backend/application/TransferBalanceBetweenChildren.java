@@ -41,7 +41,6 @@ public class TransferBalanceBetweenChildren {
     public TransferBalanceBetweenChildrenResponse execute(
             TransferBalanceBetweenChildrenRequest request
     ) {
-        request.validate();
         TransferContext context = transferContext(request);
         applyTransfer(request, context);
         return new TransferBalanceBetweenChildrenResponse();

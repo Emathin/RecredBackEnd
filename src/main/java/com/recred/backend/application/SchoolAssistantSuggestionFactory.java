@@ -24,7 +24,7 @@ public class SchoolAssistantSuggestionFactory {
         this.advancePurchaseSuggestions = advancePurchaseSuggestions();
     }
 
-    List<SchoolAssistantSuggestion> suggestions(
+    public List<SchoolAssistantSuggestion> suggestions(
             SchoolAssistantRole role,
             SchoolAssistantIntent intent,
             SchoolAssistantAction action
