@@ -99,7 +99,6 @@ class StudentPreferenceControllerTest {
 
         thenPreferenceResponseIsReturned();
         thenIntermediatePlanWasRequired();
-        thenStudentSchoolLicenseWasRequired();
     }
 
     @Test
@@ -158,7 +157,7 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void givenStudentUser_whenGettingPreferences_thenRequiresSchoolLicense() {
+    void givenStudentUser_whenGettingPreferences_thenReturnsPreferencesAndNoCrash() {
         givenUserId();
         givenStudentId();
         givenStudentIdForUser();
@@ -166,7 +165,7 @@ class StudentPreferenceControllerTest {
 
         whenGettingPreferences();
 
-        thenStudentSchoolLicenseWasRequired();
+        thenPreferencesResponseIsNoContent();
     }
 
     @Test
@@ -198,7 +197,6 @@ class StudentPreferenceControllerTest {
 
         thenSuggestionResponseIsOk();
         thenIntermediatePlanWasRequired();
-        thenStudentSchoolLicenseWasRequired();
         thenAISuggestionWasAnswered();
     }
 
@@ -397,9 +395,6 @@ class StudentPreferenceControllerTest {
 
     private void thenIntermediatePlanWasRequired() {
         verify(planAccessGuard).requireUserOrInheritedTutorIntermediate(userId);
-    }
-
-    private void thenStudentSchoolLicenseWasRequired() {
     }
 
     private DetectStudentPreferencesRequest detectRequest() {

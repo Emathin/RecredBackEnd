@@ -1,6 +1,7 @@
 package com.recred.backend.application;
 
 import com.recred.backend.domain.exceptions.UsuarioNoEncontradoException;
+import com.recred.backend.domain.models.PeriodoSuscripcion;
 import com.recred.backend.domain.models.SuscripcionUsuario;
 import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Usuario;
@@ -36,10 +37,20 @@ public class ActivateUserSubscription {
             ActivateUserSubscriptionRequest activationRequest
     ) {
         Usuario user = findUserAllowedToSubscribe(activationRequest.usuarioId());
+        validateTrialEligibility(user, activationRequest.periodo());
+
         SuscripcionUsuario subscription = subscriptionFrom(activationRequest);
         cancelCurrentSubscription(user.getId());
         activateUserPlan(user, subscription.getPlan());
         return ActivateUserSubscriptionResponse.fromDomain(saveSubscription(subscription));
+    }
+
+    private void validateTrialEligibility(Usuario user, PeriodoSuscripcion period) {
+        if (period == PeriodoSuscripcion.PRUEBA 
+                && subscriptionRepository.hasUsedTrial(user.getId())) {
+            throw new IllegalArgumentException(
+                    "El usuario ya ha disfrutado de un periodo de prueba");
+        }
     }
 
     private Usuario findUserAllowedToSubscribe(UUID userId) {

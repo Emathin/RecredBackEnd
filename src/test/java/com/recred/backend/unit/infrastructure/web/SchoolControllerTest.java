@@ -54,28 +54,24 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class SchoolControllerTest {
 
-    @Mock
-    private GetActiveSchools getActiveSchools;
-    @Mock
-    private GetGradesBySchool getGradesBySchool;
-    @Mock
-    private GetSchoolOverview getSchoolOverview;
-    @Mock
-    private ListSchoolGrades listSchoolGrades;
-    @Mock
-    private GetGrade getGrade;
-    @Mock
-    private CreateGrade createGrade;
-    @Mock
-    private UpdateGrade updateGrade;
-    @Mock
-    private DeactivateGrade deactivateGrade;
-    @Mock
-    private ReactivateGrade reactivateGrade;
-    @Mock
-    private SchoolAccessGuard schoolAccessGuard;
+    private static final UUID SCHOOL_ID = randomUUID();
+    private static final UUID GRADE_ID = randomUUID();
+    private static final UUID LEVEL_ID = randomUUID();
+    private static final String COGNITO_SUBJECT = "test-subject";
+
+    @Mock private GetActiveSchools getActiveSchools;
+    @Mock private GetGradesBySchool getGradesBySchool;
+    @Mock private GetSchoolOverview getSchoolOverview;
+    @Mock private ListSchoolGrades listSchoolGrades;
+    @Mock private GetGrade getGrade;
+    @Mock private CreateGrade createGrade;
+    @Mock private UpdateGrade updateGrade;
+    @Mock private DeactivateGrade deactivateGrade;
+    @Mock private ReactivateGrade reactivateGrade;
+    @Mock private SchoolAccessGuard schoolAccessGuard;
 
     private SchoolController schoolController;
+    private Authentication authentication;
 
     @BeforeEach
     void setUp() {
@@ -90,275 +86,288 @@ class SchoolControllerTest {
                 deactivateGrade,
                 reactivateGrade,
                 schoolAccessGuard);
+        authentication = new TestingAuthenticationToken(COGNITO_SUBJECT, null);
     }
 
     @Test
     void getSchools_ReturnsActiveSchools() {
-        UUID schoolId = randomUUID();
-        givenActiveSchools(school(schoolId));
+        givenActiveSchools();
 
         ResponseEntity<List<SchoolResponseDTO>> response = whenGettingSchools();
 
-        SchoolResponseDTO school = firstOkBody(response);
-        assertEquals(schoolId, school.id());
-        assertEquals("North School", school.nombre());
-        verify(getActiveSchools).execute(new GetActiveSchoolsRequest());
+        thenSchoolResponseContainsActiveSchools(response);
+        thenDelegatesToGetActiveSchools();
     }
 
     @Test
     void getGrades_ReturnsActiveGradesForSchool() {
-        UUID schoolId = randomUUID();
-        UUID gradeId = randomUUID();
-        UUID levelId = randomUUID();
+        givenActiveGradesForSchool();
 
-        givenActiveGradesForSchool(schoolId, grade(gradeId, levelId));
+        ResponseEntity<List<GradeResponseDTO>> response = whenGettingActiveGrades();
 
-        ResponseEntity<List<GradeResponseDTO>> response = whenGettingGrades(schoolId);
-
-        GradeResponseDTO grade = firstOkBody(response);
-        assertEquals(gradeId, grade.id());
-        assertEquals(levelId, grade.nivelId());
-        assertEquals("1 A", grade.nombre());
-        verify(getGradesBySchool).execute(new GetGradesBySchoolRequest(schoolId));
+        thenGradeResponseContainsActiveGrades(response);
+        thenDelegatesToGetGradesBySchool();
     }
 
     @Test
     void getGrades_WhenIncludesInactive_ShouldRequireManagementAndUseAdminList() {
-        UUID schoolId = randomUUID();
-        UUID levelId = randomUUID();
-        UUID gradeId = randomUUID();
-        givenGradesIncludingInactive(schoolId,
-                gradeResponse(schoolId, levelId, gradeId, false));
+        givenGradesIncludingInactive();
 
         ResponseEntity<List<GradeResponseDTO>> response =
-                whenGettingGradesIncludingInactive(schoolId);
+                whenGettingGradesIncludingInactive();
 
-        GradeResponseDTO grade = firstOkBody(response);
-        assertEquals(gradeId, grade.id());
-        assertEquals(false, grade.activo());
-        verify(schoolAccessGuard).requireSchoolManagementAccess(null, schoolId);
-        verify(listSchoolGrades).execute(new ListSchoolGradesRequest(schoolId, true));
+        thenGradeResponseContainsInactiveGrades(response);
+        thenSchoolManagementAccessIsRequired();
+        thenDelegatesToListSchoolGradesIncludingInactive();
     }
 
     @Test
     void getGrade_ShouldRequireManagementAndReturnGrade() {
-        UUID schoolId = randomUUID();
-        UUID levelId = randomUUID();
-        UUID gradeId = randomUUID();
-        GetGradeRequest request = new GetGradeRequest(schoolId, gradeId);
-        givenGradeDetails(request, gradeResponse(schoolId, levelId, gradeId, true));
+        givenGradeDetails();
 
-        ResponseEntity<GradeResponseDTO> response = whenGettingGrade(schoolId, gradeId);
+        ResponseEntity<GradeResponseDTO> response = whenGettingGrade();
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(gradeId, response.getBody().id());
-        verify(schoolAccessGuard).requireSchoolManagementAccess(null, schoolId);
-        verify(getGrade).execute(request);
+        thenGradeResponseIsOk(response);
+        thenSchoolManagementAccessIsRequired();
+        thenDelegatesToGetGrade();
     }
 
     @Test
     void createGrade_ShouldRequireManagementAndReturnCreatedGrade() {
-        UUID schoolId = randomUUID();
-        UUID levelId = randomUUID();
-        UUID gradeId = randomUUID();
-        GradeRequestDTO request = new GradeRequestDTO(levelId, "1", "A");
-        CreateGradeRequest useCaseRequest = new CreateGradeRequest(
-                schoolId,
-                levelId,
-                "1",
-                "A");
-        givenCreatedGrade(useCaseRequest, gradeResponse(schoolId, levelId, gradeId, true));
+        givenCreatedGrade();
 
-        ResponseEntity<GradeResponseDTO> response = whenCreatingGrade(schoolId, request);
+        ResponseEntity<GradeResponseDTO> response = whenCreatingGrade();
 
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(gradeId, response.getBody().id());
-        verify(schoolAccessGuard).requireSchoolManagementAccess(null, schoolId);
-        verify(createGrade).execute(useCaseRequest);
+        thenGradeResponseIsCreated(response);
+        thenSchoolManagementAccessIsRequired();
+        thenDelegatesToCreateGrade();
     }
 
     @Test
     void updateGrade_ShouldRequireManagementAndReturnUpdatedGrade() {
-        UUID schoolId = randomUUID();
-        UUID levelId = randomUUID();
-        UUID gradeId = randomUUID();
-        GradeRequestDTO request = new GradeRequestDTO(levelId, "2", "B");
-        UpdateGradeRequest useCaseRequest = new UpdateGradeRequest(
-                schoolId,
-                gradeId,
-                levelId,
-                "2",
-                "B");
-        givenUpdatedGrade(useCaseRequest, gradeResponse(schoolId, levelId, gradeId, true));
+        givenUpdatedGrade();
 
-        ResponseEntity<GradeResponseDTO> response =
-                whenUpdatingGrade(schoolId, gradeId, request);
+        ResponseEntity<GradeResponseDTO> response = whenUpdatingGrade();
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(gradeId, response.getBody().id());
-        verify(schoolAccessGuard).requireSchoolManagementAccess(null, schoolId);
-        verify(updateGrade).execute(useCaseRequest);
+        thenGradeResponseIsOk(response);
+        thenSchoolManagementAccessIsRequired();
+        thenDelegatesToUpdateGrade();
     }
 
     @Test
     void deactivateGrade_ShouldRequireManagementAndReturnNoContent() {
-        UUID schoolId = randomUUID();
-        UUID gradeId = randomUUID();
-        DeactivateGradeRequest request = new DeactivateGradeRequest(schoolId, gradeId);
+        ResponseEntity<Void> response = whenDeactivatingGrade();
 
-        ResponseEntity<Void> response = whenDeactivatingGrade(schoolId, gradeId);
-
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        verify(schoolAccessGuard).requireSchoolManagementAccess(null, schoolId);
-        verify(deactivateGrade).execute(request);
+        thenResponseIsNoContent(response);
+        thenSchoolManagementAccessIsRequired();
+        thenDelegatesToDeactivateGrade();
     }
 
     @Test
     void reactivateGrade_ShouldRequireManagementAndReturnGrade() {
-        UUID schoolId = randomUUID();
-        UUID levelId = randomUUID();
-        UUID gradeId = randomUUID();
-        ReactivateGradeRequest request = new ReactivateGradeRequest(schoolId, gradeId);
-        givenReactivatedGrade(request, gradeResponse(schoolId, levelId, gradeId, true));
+        givenReactivatedGrade();
 
-        ResponseEntity<GradeResponseDTO> response = whenReactivatingGrade(schoolId, gradeId);
+        ResponseEntity<GradeResponseDTO> response = whenReactivatingGrade();
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(true, response.getBody().activo());
-        verify(schoolAccessGuard).requireSchoolManagementAccess(null, schoolId);
-        verify(reactivateGrade).execute(request);
+        thenReactivatedGradeResponseIsOk(response);
+        thenSchoolManagementAccessIsRequired();
+        thenDelegatesToReactivateGrade();
     }
 
     @Test
     void getMySchoolOverview_ReturnsOverview() {
-        UUID schoolId = randomUUID();
-        String sub = "test-subject";
-        Authentication auth = new TestingAuthenticationToken(sub, null);
-        GetSchoolOverviewResponse responseObj = new GetSchoolOverviewResponse(
-                schoolId,
-                "Colegio Test",
-                "12345",
-                List.of());
-        givenSchoolOverview(sub, responseObj);
+        givenSchoolOverview();
 
         ResponseEntity<GetSchoolOverviewResponse> response =
-                whenGettingMySchoolOverview(auth);
+                whenGettingMySchoolOverview();
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        GetSchoolOverviewResponse body = response.getBody();
-        assertNotNull(body);
-        assertEquals(schoolId, body.id());
-        assertEquals("Colegio Test", body.nombre());
+        thenSchoolOverviewIsReturned(response);
     }
 
     @Test
     void handleSchoolNotFound_ReturnsErrorMessage() {
-        UUID schoolId = randomUUID();
-        SchoolNotFoundException exception = new SchoolNotFoundException(schoolId);
+        SchoolNotFoundException exception = new SchoolNotFoundException(SCHOOL_ID);
 
         Map<String, String> response = whenHandlingSchoolNotFound(exception);
 
-        assertEquals("School not found: " + schoolId, response.get("error"));
+        thenErrorMessageIsReturned(response);
     }
 
-    private void givenActiveSchools(Colegio... schools) {
+    private void givenActiveSchools() {
         when(getActiveSchools.execute(new GetActiveSchoolsRequest()))
-                .thenReturn(GetActiveSchoolsResponse.fromDomain(List.of(schools)));
+                .thenReturn(GetActiveSchoolsResponse.fromDomain(List.of(school(SCHOOL_ID))));
     }
 
-    private void givenActiveGradesForSchool(UUID schoolId, Grado... grades) {
-        when(getGradesBySchool.execute(new GetGradesBySchoolRequest(schoolId)))
-                .thenReturn(GetGradesBySchoolResponse.fromDomain(List.of(grades)));
+    private void givenActiveGradesForSchool() {
+        when(getGradesBySchool.execute(new GetGradesBySchoolRequest(SCHOOL_ID)))
+                .thenReturn(GetGradesBySchoolResponse.fromDomain(List.of(grade(GRADE_ID, LEVEL_ID))));
     }
 
-    private void givenSchoolOverview(String sub, GetSchoolOverviewResponse response) {
-        when(getSchoolOverview.execute(new GetSchoolOverviewRequest(sub)))
-                .thenReturn(response);
+    private void givenSchoolOverview() {
+        when(getSchoolOverview.execute(new GetSchoolOverviewRequest(COGNITO_SUBJECT)))
+                .thenReturn(new GetSchoolOverviewResponse(
+                        SCHOOL_ID,
+                        "Colegio Test",
+                        "12345",
+                        List.of()
+                ));
     }
 
-    private void givenGradesIncludingInactive(
-            UUID schoolId,
-            GradeDetailsResponse... grades
-    ) {
-        when(listSchoolGrades.execute(new ListSchoolGradesRequest(schoolId, true)))
-                .thenReturn(List.of(grades));
+    private void givenGradesIncludingInactive() {
+        when(listSchoolGrades.execute(new ListSchoolGradesRequest(SCHOOL_ID, true)))
+                .thenReturn(List.of(gradeResponse(SCHOOL_ID, LEVEL_ID, GRADE_ID, false)));
     }
 
-    private void givenGradeDetails(GetGradeRequest request, GradeDetailsResponse response) {
-        when(getGrade.execute(request)).thenReturn(response);
+    private void givenGradeDetails() {
+        when(getGrade.execute(new GetGradeRequest(SCHOOL_ID, GRADE_ID)))
+                .thenReturn(gradeResponse(SCHOOL_ID, LEVEL_ID, GRADE_ID, true));
     }
 
-    private void givenCreatedGrade(CreateGradeRequest request, GradeDetailsResponse response) {
-        when(createGrade.execute(request)).thenReturn(response);
+    private void givenCreatedGrade() {
+        when(createGrade.execute(new CreateGradeRequest(SCHOOL_ID, LEVEL_ID, "1", "A")))
+                .thenReturn(gradeResponse(SCHOOL_ID, LEVEL_ID, GRADE_ID, true));
     }
 
-    private void givenUpdatedGrade(UpdateGradeRequest request, GradeDetailsResponse response) {
-        when(updateGrade.execute(request)).thenReturn(response);
+    private void givenUpdatedGrade() {
+        when(updateGrade.execute(new UpdateGradeRequest(SCHOOL_ID, GRADE_ID, LEVEL_ID, "2", "B")))
+                .thenReturn(gradeResponse(SCHOOL_ID, LEVEL_ID, GRADE_ID, true));
     }
 
-    private void givenReactivatedGrade(
-            ReactivateGradeRequest request,
-            GradeDetailsResponse response
-    ) {
-        when(reactivateGrade.execute(request)).thenReturn(response);
+    private void givenReactivatedGrade() {
+        when(reactivateGrade.execute(new ReactivateGradeRequest(SCHOOL_ID, GRADE_ID)))
+                .thenReturn(gradeResponse(SCHOOL_ID, LEVEL_ID, GRADE_ID, true));
     }
 
     private ResponseEntity<List<SchoolResponseDTO>> whenGettingSchools() {
         return schoolController.getSchools();
     }
 
-    private ResponseEntity<List<GradeResponseDTO>> whenGettingGrades(UUID schoolId) {
-        return schoolController.getGrades(schoolId, false, null);
+    private ResponseEntity<List<GradeResponseDTO>> whenGettingActiveGrades() {
+        return schoolController.getGrades(SCHOOL_ID, false, null);
     }
 
-    private ResponseEntity<List<GradeResponseDTO>> whenGettingGradesIncludingInactive(
-            UUID schoolId
-    ) {
-        return schoolController.getGrades(schoolId, true, null);
+    private ResponseEntity<List<GradeResponseDTO>> whenGettingGradesIncludingInactive() {
+        return schoolController.getGrades(SCHOOL_ID, true, null);
     }
 
-    private ResponseEntity<GradeResponseDTO> whenGettingGrade(
-            UUID schoolId,
-            UUID gradeId
-    ) {
-        return schoolController.getGrade(schoolId, gradeId, null);
+    private ResponseEntity<GradeResponseDTO> whenGettingGrade() {
+        return schoolController.getGrade(SCHOOL_ID, GRADE_ID, null);
     }
 
-    private ResponseEntity<GradeResponseDTO> whenCreatingGrade(
-            UUID schoolId,
-            GradeRequestDTO request
-    ) {
-        return schoolController.createGrade(schoolId, request, null);
+    private ResponseEntity<GradeResponseDTO> whenCreatingGrade() {
+        GradeRequestDTO request = new GradeRequestDTO(LEVEL_ID, "1", "A");
+        return schoolController.createGrade(SCHOOL_ID, request, null);
     }
 
-    private ResponseEntity<GradeResponseDTO> whenUpdatingGrade(
-            UUID schoolId,
-            UUID gradeId,
-            GradeRequestDTO request
-    ) {
-        return schoolController.updateGrade(schoolId, gradeId, request, null);
+    private ResponseEntity<GradeResponseDTO> whenUpdatingGrade() {
+        GradeRequestDTO request = new GradeRequestDTO(LEVEL_ID, "2", "B");
+        return schoolController.updateGrade(SCHOOL_ID, GRADE_ID, request, null);
     }
 
-    private ResponseEntity<Void> whenDeactivatingGrade(UUID schoolId, UUID gradeId) {
-        return schoolController.deactivateGrade(schoolId, gradeId, null);
+    private ResponseEntity<Void> whenDeactivatingGrade() {
+        return schoolController.deactivateGrade(SCHOOL_ID, GRADE_ID, null);
     }
 
-    private ResponseEntity<GradeResponseDTO> whenReactivatingGrade(
-            UUID schoolId,
-            UUID gradeId
-    ) {
-        return schoolController.reactivateGrade(schoolId, gradeId, null);
+    private ResponseEntity<GradeResponseDTO> whenReactivatingGrade() {
+        return schoolController.reactivateGrade(SCHOOL_ID, GRADE_ID, null);
     }
 
-    private ResponseEntity<GetSchoolOverviewResponse> whenGettingMySchoolOverview(
-            Authentication authentication
-    ) {
+    private ResponseEntity<GetSchoolOverviewResponse> whenGettingMySchoolOverview() {
         return schoolController.getMySchoolOverview(authentication);
     }
 
-    private Map<String, String> whenHandlingSchoolNotFound(
-            SchoolNotFoundException exception) {
+    private Map<String, String> whenHandlingSchoolNotFound(SchoolNotFoundException exception) {
         return schoolController.handleSchoolNotFound(exception);
+    }
+
+    private void thenSchoolResponseContainsActiveSchools(
+            ResponseEntity<List<SchoolResponseDTO>> response
+    ) {
+        SchoolResponseDTO school = firstOkBody(response);
+        assertEquals(SCHOOL_ID, school.id());
+        assertEquals("North School", school.nombre());
+    }
+
+    private void thenGradeResponseContainsActiveGrades(
+            ResponseEntity<List<GradeResponseDTO>> response
+    ) {
+        GradeResponseDTO grade = firstOkBody(response);
+        assertEquals(GRADE_ID, grade.id());
+        assertEquals(LEVEL_ID, grade.nivelId());
+        assertEquals("1 A", grade.nombre());
+    }
+
+    private void thenGradeResponseContainsInactiveGrades(
+            ResponseEntity<List<GradeResponseDTO>> response
+    ) {
+        GradeResponseDTO grade = firstOkBody(response);
+        assertEquals(GRADE_ID, grade.id());
+        assertEquals(false, grade.activo());
+    }
+
+    private void thenGradeResponseIsOk(ResponseEntity<GradeResponseDTO> response) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(GRADE_ID, response.getBody().id());
+    }
+
+    private void thenGradeResponseIsCreated(ResponseEntity<GradeResponseDTO> response) {
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(GRADE_ID, response.getBody().id());
+    }
+
+    private void thenReactivatedGradeResponseIsOk(ResponseEntity<GradeResponseDTO> response) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(true, response.getBody().activo());
+    }
+
+    private void thenResponseIsNoContent(ResponseEntity<Void> response) {
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    }
+
+    private void thenSchoolOverviewIsReturned(ResponseEntity<GetSchoolOverviewResponse> response) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(SCHOOL_ID, response.getBody().id());
+        assertEquals("Colegio Test", response.getBody().nombre());
+    }
+
+    private void thenErrorMessageIsReturned(Map<String, String> response) {
+        assertEquals("School not found: " + SCHOOL_ID, response.get("error"));
+    }
+
+    private void thenDelegatesToGetActiveSchools() {
+        verify(getActiveSchools).execute(new GetActiveSchoolsRequest());
+    }
+
+    private void thenDelegatesToGetGradesBySchool() {
+        verify(getGradesBySchool).execute(new GetGradesBySchoolRequest(SCHOOL_ID));
+    }
+
+    private void thenDelegatesToListSchoolGradesIncludingInactive() {
+        verify(listSchoolGrades).execute(new ListSchoolGradesRequest(SCHOOL_ID, true));
+    }
+
+    private void thenDelegatesToGetGrade() {
+        verify(getGrade).execute(new GetGradeRequest(SCHOOL_ID, GRADE_ID));
+    }
+
+    private void thenDelegatesToCreateGrade() {
+        verify(createGrade).execute(new CreateGradeRequest(SCHOOL_ID, LEVEL_ID, "1", "A"));
+    }
+
+    private void thenDelegatesToUpdateGrade() {
+        verify(updateGrade).execute(new UpdateGradeRequest(SCHOOL_ID, GRADE_ID, LEVEL_ID, "2", "B"));
+    }
+
+    private void thenDelegatesToDeactivateGrade() {
+        verify(deactivateGrade).execute(new DeactivateGradeRequest(SCHOOL_ID, GRADE_ID));
+    }
+
+    private void thenDelegatesToReactivateGrade() {
+        verify(reactivateGrade).execute(new ReactivateGradeRequest(SCHOOL_ID, GRADE_ID));
+    }
+
+    private void thenSchoolManagementAccessIsRequired() {
+        verify(schoolAccessGuard).requireSchoolManagementAccess(null, SCHOOL_ID);
     }
 
     private Colegio school(UUID schoolId) {

@@ -1,16 +1,22 @@
 package com.recred.backend.unit.infrastructure.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.GetCartSuggestions;
 import com.recred.backend.application.GetCartSuggestionsRequest;
 import com.recred.backend.application.GetCartSuggestionsResponse;
 import com.recred.backend.infrastructure.web.CartSuggestionController;
 import com.recred.backend.infrastructure.web.CartSuggestionRequestDTO;
-import com.recred.backend.infrastructure.web.CartSuggestionResponseDTO;
 import com.recred.backend.infrastructure.web.PurchaseItemDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.springframework.http.ResponseEntity;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -19,85 +25,59 @@ import java.util.UUID;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(MockitoExtension.class)
 class CartSuggestionControllerTest {
 
+    private static final String CART_SUGGESTIONS_URL = "/api/v1/cart-suggestions";
+    private static final UUID STUDENT_ID = randomUUID();
+    private static final UUID BUFFET_ID = randomUUID();
+    private static final UUID CART_PRODUCT_ID = randomUUID();
+    private static final UUID SUGGESTED_PRODUCT_ID = randomUUID();
+
+    @Mock
     private GetCartSuggestions getCartSuggestions;
-    private CartSuggestionController controller;
+
+    private MockMvc mockMvc;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
-        getCartSuggestions = mock(GetCartSuggestions.class);
-
-        controller = new CartSuggestionController(
-                getCartSuggestions);
+        CartSuggestionController controller = new CartSuggestionController(getCartSuggestions);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
     @Test
-    void suggestMapsRequestItemsToUseCaseRequest() {
-        UUID studentId = randomUUID();
-        UUID buffetId = randomUUID();
-        UUID cartProductId = randomUUID();
-        PurchaseItemDTO item = item(cartProductId);
+    void suggestMapsRequestItemsToUseCaseRequest() throws Exception {
         givenNoSuggestions();
 
-        whenRequestingSuggestions(new CartSuggestionRequestDTO(
-                studentId,
-                buffetId,
-                List.of(item),
-                2
-        ));
+        whenRequestingSuggestionsWithItems();
 
-        GetCartSuggestionsRequest useCaseRequest = capturedRequest();
-        assertEquals(studentId, useCaseRequest.studentId());
-        assertEquals(buffetId, useCaseRequest.buffetId());
-        assertEquals(java.util.Set.of(cartProductId), useCaseRequest.cartProductIds());
-        assertEquals(2, useCaseRequest.limit());
+        thenRequestIsMappedToUseCaseWithItems();
     }
 
     @Test
-    void suggestMapsApplicationResponseToWebResponse() {
-        UUID suggestedProductId = randomUUID();
-        givenSuggestions(suggestion(suggestedProductId));
+    void suggestMapsApplicationResponseToWebResponse() throws Exception {
+        givenSuggestions(suggestion(SUGGESTED_PRODUCT_ID));
 
-        ResponseEntity<List<CartSuggestionResponseDTO>> response =
-                whenRequestingSuggestions(new CartSuggestionRequestDTO(
-                        randomUUID(),
-                        randomUUID(),
-                        List.of(),
-                        2
-                ));
+        ResultActions result = whenRequestingSuggestions();
 
-        assertEquals(200, response.getStatusCode().value());
-        assertEquals(suggestedProductId, response.getBody().get(0).productId());
-        assertEquals("Yogur", response.getBody().get(0).productName());
-        assertEquals("FAVORITE", response.getBody().get(0).source());
+        thenSuggestionsAreReturned(result);
     }
 
     @Test
-    void suggestUsesEmptySetWhenRequestItemsAreNull() {
-        UUID studentId = randomUUID();
-        UUID buffetId = randomUUID();
+    void suggestUsesEmptySetWhenRequestItemsAreNull() throws Exception {
         givenNoSuggestions();
 
-        ResponseEntity<List<CartSuggestionResponseDTO>> response =
-                whenRequestingSuggestions(new CartSuggestionRequestDTO(
-                        studentId,
-                        buffetId,
-                        null,
-                        null
-                ));
+        ResultActions result = whenRequestingSuggestionsWithoutItems();
 
-        assertEquals(List.of(), response.getBody());
-
-        GetCartSuggestionsRequest useCaseRequest = capturedRequest();
-        assertEquals(studentId, useCaseRequest.studentId());
-        assertEquals(buffetId, useCaseRequest.buffetId());
-        assertEquals(java.util.Set.of(), useCaseRequest.cartProductIds());
-        assertEquals(null, useCaseRequest.limit());
+        thenEmptySuggestionsResponseIsReturned(result);
+        thenRequestIsMappedToUseCaseWithoutItems();
     }
 
     private void givenNoSuggestions() {
@@ -105,13 +85,72 @@ class CartSuggestionControllerTest {
     }
 
     private void givenSuggestions(GetCartSuggestionsResponse.Suggestion... suggestions) {
-        when(getCartSuggestions.execute(any()))
+        when(getCartSuggestions.execute(any(GetCartSuggestionsRequest.class)))
                 .thenReturn(new GetCartSuggestionsResponse(List.of(suggestions)));
     }
 
-    private ResponseEntity<List<CartSuggestionResponseDTO>> whenRequestingSuggestions(
-            CartSuggestionRequestDTO request) {
-        return controller.suggest(request);
+    private ResultActions whenRequestingSuggestionsWithItems() throws Exception {
+        CartSuggestionRequestDTO request = new CartSuggestionRequestDTO(
+                STUDENT_ID,
+                BUFFET_ID,
+                List.of(item(CART_PRODUCT_ID)),
+                2
+        );
+        return mockMvc.perform(post(CART_SUGGESTIONS_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+    }
+
+    private ResultActions whenRequestingSuggestions() throws Exception {
+        CartSuggestionRequestDTO request = new CartSuggestionRequestDTO(
+                STUDENT_ID,
+                BUFFET_ID,
+                List.of(),
+                2
+        );
+        return mockMvc.perform(post(CART_SUGGESTIONS_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+    }
+
+    private ResultActions whenRequestingSuggestionsWithoutItems() throws Exception {
+        CartSuggestionRequestDTO request = new CartSuggestionRequestDTO(
+                STUDENT_ID,
+                BUFFET_ID,
+                null,
+                null
+        );
+        return mockMvc.perform(post(CART_SUGGESTIONS_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+    }
+
+    private void thenRequestIsMappedToUseCaseWithItems() {
+        GetCartSuggestionsRequest useCaseRequest = capturedRequest();
+        assertEquals(STUDENT_ID, useCaseRequest.studentId());
+        assertEquals(BUFFET_ID, useCaseRequest.buffetId());
+        assertEquals(java.util.Set.of(CART_PRODUCT_ID), useCaseRequest.cartProductIds());
+        assertEquals(2, useCaseRequest.limit());
+    }
+
+    private void thenRequestIsMappedToUseCaseWithoutItems() {
+        GetCartSuggestionsRequest useCaseRequest = capturedRequest();
+        assertEquals(STUDENT_ID, useCaseRequest.studentId());
+        assertEquals(BUFFET_ID, useCaseRequest.buffetId());
+        assertEquals(java.util.Set.of(), useCaseRequest.cartProductIds());
+        assertEquals(null, useCaseRequest.limit());
+    }
+
+    private void thenSuggestionsAreReturned(ResultActions result) throws Exception {
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].productId").value(SUGGESTED_PRODUCT_ID.toString()))
+                .andExpect(jsonPath("$[0].productName").value("Yogur"))
+                .andExpect(jsonPath("$[0].source").value("FAVORITE"));
+    }
+
+    private void thenEmptySuggestionsResponseIsReturned(ResultActions result) throws Exception {
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
     }
 
     private GetCartSuggestionsRequest capturedRequest() {

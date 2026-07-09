@@ -1,168 +1,215 @@
 package com.recred.backend.unit.infrastructure.web;
 
-import com.recred.backend.application.SaveFavoriteCartRequest;
-import com.recred.backend.infrastructure.web.*;
-
 import com.recred.backend.application.DeleteFavoriteCart;
 import com.recred.backend.application.DeleteFavoriteCartRequest;
 import com.recred.backend.application.GetFavoriteCartsByTutor;
 import com.recred.backend.application.GetFavoriteCartsByTutorRequest;
 import com.recred.backend.application.GetFavoriteCartsByTutorResponse;
 import com.recred.backend.application.SaveFavoriteCart;
+import com.recred.backend.application.SaveFavoriteCartRequest;
 import com.recred.backend.application.SaveFavoriteCartResponse;
+import com.recred.backend.infrastructure.web.CarritoFavoritoController;
+import com.recred.backend.infrastructure.web.CarritoFavoritoResponse;
+import com.recred.backend.infrastructure.web.SaveCarritoFavoritoRequest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
-import org.springframework.security.authentication.TestingAuthenticationToken;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class CarritoFavoritoControllerTest {
 
-    private SaveFavoriteCart saveFavoriteCart;
-    private GetFavoriteCartsByTutor getFavoriteCartsByTutor;
-    private DeleteFavoriteCart deleteFavoriteCart;
+    private static final String TUTOR_SUB = "tutor-sub";
+    private static final UUID CART_ID = UUID.randomUUID();
+    private static final UUID ALUMNO_ID = UUID.randomUUID();
+    private static final UUID PRODUCT_ID = UUID.randomUUID();
+    private static final String CART_NAME = "Merienda";
+    private static final String PRODUCT_NAME = "Yogur";
+    private static final String ALUMNO_LAST_NAME = "Alvarez";
+    private static final String ALUMNO_NAME = "Lucia";
+    private static final BigDecimal PRODUCT_PRICE = new BigDecimal("120.00");
+    private static final int QUANTITY = 2;
+
+    @Mock private SaveFavoriteCart saveFavoriteCart;
+    @Mock private GetFavoriteCartsByTutor getFavoriteCartsByTutor;
+    @Mock private DeleteFavoriteCart deleteFavoriteCart;
+
     private CarritoFavoritoController controller;
+    private Authentication authentication;
 
     @BeforeEach
     void setUp() {
-        saveFavoriteCart = mock(SaveFavoriteCart.class);
-        getFavoriteCartsByTutor = mock(GetFavoriteCartsByTutor.class);
-        deleteFavoriteCart = mock(DeleteFavoriteCart.class);
-
         controller = new CarritoFavoritoController(
                 saveFavoriteCart,
                 getFavoriteCartsByTutor,
                 deleteFavoriteCart
         );
+        authentication = new TestingAuthenticationToken(TUTOR_SUB, "");
     }
 
     @Test
     void saveCartDelegatesWithProductQuantitiesAndReturnsCreatedCart() {
-        UUID cartId = UUID.randomUUID();
-        UUID alumnoId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        SaveCarritoFavoritoRequest request = new SaveCarritoFavoritoRequest(
-                cartId,
-                "Merienda",
-                alumnoId,
-                List.of(new SaveCarritoFavoritoRequest.ItemRequest(productId, 2))
-        );
+        givenCartIsSaved();
 
+        ResponseEntity<CarritoFavoritoResponse> response = whenSavingCart();
+
+        thenCartResponseIsCreated(response);
+        thenDelegatesToSaveFavoriteCart();
+    }
+
+    @Test
+    void getCartsDelegatesFiltersAndMapsResponse() {
+        givenCartsRetrieved();
+
+        ResponseEntity<List<CarritoFavoritoResponse>> response = whenGettingCarts();
+
+        thenCartListResponseIsOk(response);
+        thenDelegatesToGetFavoriteCartsByTutor();
+    }
+
+    @Test
+    void deleteCartDelegatesAndReturnsNoContent() {
+        ResponseEntity<Void> response = whenDeletingCart();
+
+        thenResponseIsNoContent(response);
+        thenDelegatesToDeleteFavoriteCart();
+    }
+
+    @Test
+    void saveCartWithoutAuthenticationThrowsCredentialsException() {
+        Executable execution = this::whenSavingCartWithoutAuthentication;
+
+        thenThrowsAuthenticationCredentialsNotFoundException(execution);
+    }
+
+    private void givenCartIsSaved() {
         SaveFavoriteCartResponse cartResponse = new SaveFavoriteCartResponse(
-                cartId,
-                "Merienda",
+                CART_ID,
+                CART_NAME,
                 UUID.randomUUID(),
-                alumnoId,
-                "Lucia",
-                "Alvarez",
+                ALUMNO_ID,
+                ALUMNO_NAME,
+                ALUMNO_LAST_NAME,
                 List.of(new SaveFavoriteCartResponse.CarritoFavoritoItemResponse(
-                        productId,
-                        "Yogur",
-                        new BigDecimal("120.00"),
-                        2
+                        PRODUCT_ID,
+                        PRODUCT_NAME,
+                        PRODUCT_PRICE,
+                        QUANTITY
                 ))
         );
 
-        when(saveFavoriteCart.execute(
-                org.mockito.ArgumentMatchers.any(SaveFavoriteCartRequest.class)
-        )).thenReturn(cartResponse);
+        when(saveFavoriteCart.execute(any(SaveFavoriteCartRequest.class)))
+                .thenReturn(cartResponse);
+    }
 
-        ResponseEntity<CarritoFavoritoResponse> response = controller.saveCart(
-                new TestingAuthenticationToken("tutor-sub", ""),
-                request
+    private void givenCartsRetrieved() {
+        GetFavoriteCartsByTutorResponse responseDto = new GetFavoriteCartsByTutorResponse(
+                CART_ID,
+                CART_NAME,
+                null,
+                ALUMNO_ID,
+                ALUMNO_NAME,
+                ALUMNO_LAST_NAME,
+                List.of(new GetFavoriteCartsByTutorResponse.CarritoFavoritoItemResponse(
+                        PRODUCT_ID,
+                        PRODUCT_NAME,
+                        PRODUCT_PRICE,
+                        QUANTITY
+                ))
         );
 
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(cartId, response.getBody().id());
-        assertEquals("Merienda", response.getBody().nombre());
-        assertEquals(alumnoId, response.getBody().alumnoId());
-        assertEquals("Lucia", response.getBody().alumnoNombre());
-        assertEquals(productId, response.getBody().items().get(0).productId());
-        assertEquals(2, response.getBody().items().get(0).quantity());
+        when(getFavoriteCartsByTutor.execute(new GetFavoriteCartsByTutorRequest(TUTOR_SUB, ALUMNO_ID, PRODUCT_ID)))
+                .thenReturn(List.of(responseDto));
+    }
 
+    private ResponseEntity<CarritoFavoritoResponse> whenSavingCart() {
+        return controller.saveCart(authentication, saveCartRequest());
+    }
+
+    private void whenSavingCartWithoutAuthentication() {
+        controller.saveCart(null, saveCartRequest());
+    }
+
+    private ResponseEntity<List<CarritoFavoritoResponse>> whenGettingCarts() {
+        return controller.getCarts(authentication, ALUMNO_ID, PRODUCT_ID);
+    }
+
+    private ResponseEntity<Void> whenDeletingCart() {
+        return controller.deleteCart(authentication, CART_ID);
+    }
+
+    private void thenCartResponseIsCreated(ResponseEntity<CarritoFavoritoResponse> response) {
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        CarritoFavoritoResponse body = response.getBody();
+        assertEquals(CART_ID, body.id());
+        assertEquals(CART_NAME, body.nombre());
+        assertEquals(ALUMNO_ID, body.alumnoId());
+        assertEquals(ALUMNO_NAME, body.alumnoNombre());
+        assertEquals(PRODUCT_ID, body.items().get(0).productId());
+        assertEquals(QUANTITY, body.items().get(0).quantity());
+    }
+
+    private void thenDelegatesToSaveFavoriteCart() {
         ArgumentCaptor<SaveFavoriteCartRequest> requestCaptor =
                 ArgumentCaptor.forClass(SaveFavoriteCartRequest.class);
         verify(saveFavoriteCart).execute(requestCaptor.capture());
 
         SaveFavoriteCartRequest capturedRequest = requestCaptor.getValue();
-        assertEquals("tutor-sub", capturedRequest.cognitoSub());
-        assertEquals(cartId, capturedRequest.cartId());
-        assertEquals("Merienda", capturedRequest.nombre());
-        assertEquals(alumnoId, capturedRequest.alumnoId());
-        assertEquals(Map.of(productId, 2), capturedRequest.productQuantities());
+        assertEquals(TUTOR_SUB, capturedRequest.cognitoSub());
+        assertEquals(CART_ID, capturedRequest.cartId());
+        assertEquals(CART_NAME, capturedRequest.nombre());
+        assertEquals(ALUMNO_ID, capturedRequest.alumnoId());
+        assertEquals(Map.of(PRODUCT_ID, QUANTITY), capturedRequest.productQuantities());
     }
 
-    @Test
-    void getCartsDelegatesFiltersAndMapsResponse() {
-        UUID cartId = UUID.randomUUID();
-        UUID alumnoId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        GetFavoriteCartsByTutorResponse responseDto = new GetFavoriteCartsByTutorResponse(
-                cartId,
-                "Merienda",
-                null,
-                alumnoId,
-                "Lucia",
-                "Alvarez",
-                List.of(new GetFavoriteCartsByTutorResponse.CarritoFavoritoItemResponse(
-                        productId,
-                        "Yogur",
-                        new BigDecimal("120.00"),
-                        2
-                ))
-        );
-
-        when(getFavoriteCartsByTutor.execute(new GetFavoriteCartsByTutorRequest("tutor-sub", alumnoId, productId)))
-                .thenReturn(List.of(responseDto));
-
-        ResponseEntity<List<CarritoFavoritoResponse>> response = controller.getCarts(
-                new TestingAuthenticationToken("tutor-sub", ""),
-                alumnoId,
-                productId
-        );
-
+    private void thenCartListResponseIsOk(ResponseEntity<List<CarritoFavoritoResponse>> response) {
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(cartId, response.getBody().get(0).id());
-        assertEquals("Alvarez", response.getBody().get(0).alumnoApellido());
-        verify(getFavoriteCartsByTutor).execute(new GetFavoriteCartsByTutorRequest("tutor-sub", alumnoId, productId));
+        assertEquals(CART_ID, response.getBody().get(0).id());
+        assertEquals(ALUMNO_LAST_NAME, response.getBody().get(0).alumnoApellido());
     }
 
-    @Test
-    void deleteCartDelegatesAndReturnsNoContent() {
-        UUID cartId = UUID.randomUUID();
+    private void thenDelegatesToGetFavoriteCartsByTutor() {
+        verify(getFavoriteCartsByTutor).execute(
+                new GetFavoriteCartsByTutorRequest(TUTOR_SUB, ALUMNO_ID, PRODUCT_ID));
+    }
 
-        ResponseEntity<Void> response = controller.deleteCart(
-                new TestingAuthenticationToken("tutor-sub", ""),
-                cartId
-        );
-
+    private void thenResponseIsNoContent(ResponseEntity<Void> response) {
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        verify(deleteFavoriteCart).execute(new DeleteFavoriteCartRequest("tutor-sub", cartId));
     }
 
-    @Test
-    void saveCartWithoutAuthenticationThrowsCredentialsException() {
-        SaveCarritoFavoritoRequest request = new SaveCarritoFavoritoRequest(
-                UUID.randomUUID(),
-                "Merienda",
-                UUID.randomUUID(),
-                List.of(new SaveCarritoFavoritoRequest.ItemRequest(UUID.randomUUID(), 1))
-        );
+    private void thenDelegatesToDeleteFavoriteCart() {
+        verify(deleteFavoriteCart).execute(new DeleteFavoriteCartRequest(TUTOR_SUB, CART_ID));
+    }
 
-        assertThrows(AuthenticationCredentialsNotFoundException.class,
-                () -> controller.saveCart(null, request));
+    private void thenThrowsAuthenticationCredentialsNotFoundException(Executable execution) {
+        assertThrows(AuthenticationCredentialsNotFoundException.class, execution);
+    }
+
+    private SaveCarritoFavoritoRequest saveCartRequest() {
+        return new SaveCarritoFavoritoRequest(
+                CART_ID,
+                CART_NAME,
+                ALUMNO_ID,
+                List.of(new SaveCarritoFavoritoRequest.ItemRequest(PRODUCT_ID, QUANTITY))
+        );
     }
 }

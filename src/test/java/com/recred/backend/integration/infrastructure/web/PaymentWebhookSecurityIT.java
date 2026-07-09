@@ -1,4 +1,4 @@
-package com.recred.backend.unit.infrastructure.web;
+package com.recred.backend.integration.infrastructure.web;
 
 import com.recred.backend.application.ConfirmPaymentAndCredit;
 import com.recred.backend.application.ConfirmUserSubscriptionPayment;
@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = PaymentWebhookController.class)
 @Import(SecurityConfig.class)
-class PaymentWebhookSecurityTest {
+class PaymentWebhookSecurityIT {
 
     @Autowired
     private MockMvc mockMvc;

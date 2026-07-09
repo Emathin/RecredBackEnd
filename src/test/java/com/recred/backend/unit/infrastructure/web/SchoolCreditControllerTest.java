@@ -12,6 +12,7 @@ import com.recred.backend.application.GetLastRechargeRequest;
 import com.recred.backend.application.GetLastRechargeResponse;
 import com.recred.backend.application.GetSchoolCreditHistory;
 import com.recred.backend.application.PaySchoolCredit;
+import com.recred.backend.config.GlobalExceptionHandler;
 import com.recred.backend.domain.exceptions.ActiveCreditExistsException;
 import com.recred.backend.domain.models.CreditStatus;
 import com.recred.backend.domain.models.SchoolCredit;
@@ -21,18 +22,18 @@ import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.web.EnableSchoolCreditRequestDTO;
 import com.recred.backend.infrastructure.web.SchoolCreditController;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
-import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -52,38 +53,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = SchoolCreditController.class, excludeAutoConfiguration = {
-        SecurityAutoConfiguration.class,
-        OAuth2ResourceServerAutoConfiguration.class
-})
+@ExtendWith(MockitoExtension.class)
 class SchoolCreditControllerTest {
 
     private static final String AUTHENTICATED_USER = "test-user";
     private static final String SCHOOL_CREDITS_URL = "/api/v1/school-credits";
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @MockitoBean
-    private EnableSchoolCredit enableSchoolCredit;
-
-    @MockitoBean
-    private GetLastRecharge getLastRecharge;
-
-    @MockitoBean
-    private GetActiveSchoolCredit getActiveSchoolCredit;
-
-    @MockitoBean
-    private PaySchoolCredit paySchoolCredit;
-
-    @MockitoBean
-    private GetSchoolCreditHistory getSchoolCreditHistory;
-
-    @MockitoBean
-    private UsuarioService usuarioService;
-
-    @MockitoBean
-    private UsuarioRepository usuarioRepository;
+    @Mock private EnableSchoolCredit enableSchoolCredit;
+    @Mock private GetLastRecharge getLastRecharge;
+    @Mock private GetActiveSchoolCredit getActiveSchoolCredit;
+    @Mock private PaySchoolCredit paySchoolCredit;
+    @Mock private GetSchoolCreditHistory getSchoolCreditHistory;
+    @Mock private UsuarioService usuarioService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -92,6 +75,22 @@ class SchoolCreditControllerTest {
     private UUID tutorId;
     private UUID studentId;
     private UUID creditId;
+
+    @BeforeEach
+    void setUp() {
+        SchoolCreditController controller = new SchoolCreditController(
+                enableSchoolCredit,
+                paySchoolCredit,
+                getSchoolCreditHistory,
+                getLastRecharge,
+                getActiveSchoolCredit,
+                usuarioService
+        );
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+    }
+
     @Test
     void givenValidCreditRequest_whenEnablingCredit_thenReturnsCreatedCredit() throws Exception {
         givenAuthenticatedTutor();

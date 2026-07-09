@@ -1,7 +1,5 @@
 package com.recred.backend.unit.infrastructure.web;
 
-import com.recred.backend.infrastructure.web.*;
-
 import com.recred.backend.domain.exceptions.PurchaseAccessDeniedException;
 import com.recred.backend.domain.exceptions.PurchaseNotFoundException;
 import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
@@ -11,15 +9,19 @@ import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
 import com.recred.backend.domain.repositories.PurchaseRepository;
-import java.util.Optional;
-import java.util.UUID;
+import com.recred.backend.infrastructure.web.KiosqueroAccessGuard;
+import com.recred.backend.infrastructure.web.PurchaseAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
+
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -30,6 +32,12 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PurchaseAccessGuardTest {
+
+    private static final String COGNITO_SUBJECT = "subject";
+    private static final UUID PURCHASE_ID = UUID.randomUUID();
+    private static final UUID STUDENT_ID = UUID.randomUUID();
+    private static final UUID USER_ID = UUID.randomUUID();
+    private static final UUID BUFFET_ID = UUID.randomUUID();
 
     @Mock
     private PurchaseRepository purchaseRepository;
@@ -44,11 +52,7 @@ class PurchaseAccessGuardTest {
     private Authentication authentication;
 
     private PurchaseAccessGuard guard;
-    private UUID purchaseId;
-    private UUID studentId;
-    private UUID userId;
-    private UUID buffetId;
-    private Purchase purchase;
+    private Purchase defaultPurchase;
 
     @BeforeEach
     void setUp() {
@@ -57,132 +61,198 @@ class PurchaseAccessGuardTest {
                 consumptionAccessRepository,
                 kiosqueroAccessGuard
         );
-        purchaseId = UUID.randomUUID();
-        studentId = UUID.randomUUID();
-        userId = UUID.randomUUID();
-        buffetId = UUID.randomUUID();
-        purchase = purchase();
+        defaultPurchase = buildDefaultPurchase();
     }
 
     @Test
     void requirePurchaseAccess_WhenPurchaseDoesNotExist_ShouldFail() {
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.empty());
+        givenPurchaseDoesNotExist();
 
-        assertThrows(PurchaseNotFoundException.class,
-                () -> guard.requirePurchaseAccess(authentication, purchaseId));
+        Executable execution = this::whenRequiringPurchaseAccess;
+
+        thenThrowsPurchaseNotFoundException(execution);
     }
 
     @Test
     void requirePurchaseAccess_WhenAuthenticationIsMissing_ShouldFail() {
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+        givenPurchaseExists();
 
-        assertThrows(AuthenticationCredentialsNotFoundException.class,
-                () -> guard.requirePurchaseAccess(null, purchaseId));
+        Executable execution = this::whenRequiringPurchaseAccessWithNullAuthentication;
+
+        thenThrowsAuthenticationCredentialsNotFoundException(execution);
     }
 
     @Test
     void requirePurchaseAccess_WhenRequesterDoesNotExist_ShouldFail() {
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(authentication.getName()).thenReturn("subject");
-        when(consumptionAccessRepository.findRequesterByCognitoSubject("subject"))
-                .thenReturn(Optional.empty());
+        givenPurchaseExists();
+        givenAuthenticationSubject();
+        givenRequesterDoesNotExist();
 
-        assertThrows(UsuarioAutenticadoNoEncontradoException.class,
-                () -> guard.requirePurchaseAccess(authentication, purchaseId));
+        Executable execution = this::whenRequiringPurchaseAccess;
+
+        thenThrowsUsuarioAutenticadoNoEncontradoException(execution);
     }
 
     @Test
     void requirePurchaseAccess_WhenRequesterIsSameStudent_ShouldReturnPurchase() {
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(authentication.getName()).thenReturn("subject");
-        when(consumptionAccessRepository.findRequesterByCognitoSubject("subject"))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.ALUMNO,
-                        studentId
-                )));
+        givenPurchaseExists();
+        givenAuthenticationSubject();
+        givenRequesterIsStudent(STUDENT_ID);
 
-        Purchase result = guard.requirePurchaseAccess(authentication, purchaseId);
+        Purchase result = guard.requirePurchaseAccess(authentication, PURCHASE_ID);
 
-        assertSame(purchase, result);
-        verify(kiosqueroAccessGuard, never()).requireBuffetAccess(authentication, buffetId);
+        thenPurchaseIsReturned(result);
+        thenBuffetAccessIsNotValidated();
     }
 
     @Test
     void requirePurchaseAccess_WhenRequesterIsTutorWithAccess_ShouldReturnPurchase() {
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(authentication.getName()).thenReturn("subject");
-        when(consumptionAccessRepository.findRequesterByCognitoSubject("subject"))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.PADRE,
-                        null
-                )));
-        when(consumptionAccessRepository.tutorCanAccessStudent(userId, studentId))
-                .thenReturn(true);
+        givenPurchaseExists();
+        givenAuthenticationSubject();
+        givenRequesterIsTutor();
+        givenTutorCanAccessStudent(true);
 
-        Purchase result = guard.requirePurchaseAccess(authentication, purchaseId);
+        Purchase result = guard.requirePurchaseAccess(authentication, PURCHASE_ID);
 
-        assertSame(purchase, result);
+        thenPurchaseIsReturned(result);
     }
 
     @Test
     void requirePurchaseAccess_WhenRequesterIsTutorWithoutAccess_ShouldFail() {
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(authentication.getName()).thenReturn("subject");
-        when(consumptionAccessRepository.findRequesterByCognitoSubject("subject"))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.PADRE,
-                        null
-                )));
-        when(consumptionAccessRepository.tutorCanAccessStudent(userId, studentId))
-                .thenReturn(false);
+        givenPurchaseExists();
+        givenAuthenticationSubject();
+        givenRequesterIsTutor();
+        givenTutorCanAccessStudent(false);
 
-        assertThrows(PurchaseAccessDeniedException.class,
-                () -> guard.requirePurchaseAccess(authentication, purchaseId));
+        Executable execution = this::whenRequiringPurchaseAccess;
+
+        thenThrowsPurchaseAccessDeniedException(execution);
     }
 
     @Test
     void requirePurchaseAccess_WhenRequesterIsAdmin_ShouldRequireBuffetAccess() {
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(authentication.getName()).thenReturn("subject");
-        when(consumptionAccessRepository.findRequesterByCognitoSubject("subject"))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.ADMIN,
-                        null
-                )));
+        givenPurchaseExists();
+        givenAuthenticationSubject();
+        givenRequesterIsAdmin();
 
-        Purchase result = guard.requirePurchaseAccess(authentication, purchaseId);
+        Purchase result = guard.requirePurchaseAccess(authentication, PURCHASE_ID);
 
-        assertEquals(purchase, result);
-        verify(kiosqueroAccessGuard).requireBuffetAccess(authentication, buffetId);
+        thenPurchaseIsReturnedViaEquals(result);
+        thenBuffetAccessIsValidated();
     }
 
     @Test
     void requirePurchaseAccess_WhenPurchaseHasNoStudent_ShouldDenyStudentRequester() {
-        purchase.setStudent(null);
-        when(purchaseRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
-        when(authentication.getName()).thenReturn("subject");
-        when(consumptionAccessRepository.findRequesterByCognitoSubject("subject"))
-                .thenReturn(Optional.of(new ConsumptionRequester(
-                        userId,
-                        RolUsuario.ALUMNO,
-                        studentId
-                )));
+        givenPurchaseWithoutStudentExists();
+        givenAuthenticationSubject();
+        givenRequesterIsStudent(STUDENT_ID);
 
-        assertThrows(PurchaseAccessDeniedException.class,
-                () -> guard.requirePurchaseAccess(authentication, purchaseId));
+        Executable execution = this::whenRequiringPurchaseAccess;
+
+        thenThrowsPurchaseAccessDeniedException(execution);
     }
 
-    private Purchase purchase() {
+    private void givenPurchaseDoesNotExist() {
+        when(purchaseRepository.findById(PURCHASE_ID)).thenReturn(Optional.empty());
+    }
+
+    private void givenPurchaseExists() {
+        when(purchaseRepository.findById(PURCHASE_ID)).thenReturn(Optional.of(defaultPurchase));
+    }
+
+    private void givenPurchaseWithoutStudentExists() {
+        defaultPurchase.setStudent(null);
+        when(purchaseRepository.findById(PURCHASE_ID)).thenReturn(Optional.of(defaultPurchase));
+    }
+
+    private void givenAuthenticationSubject() {
+        when(authentication.getName()).thenReturn(COGNITO_SUBJECT);
+    }
+
+    private void givenRequesterDoesNotExist() {
+        when(consumptionAccessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.empty());
+    }
+
+    private void givenRequesterIsStudent(UUID associatedStudentId) {
+        when(consumptionAccessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.of(new ConsumptionRequester(
+                        USER_ID,
+                        RolUsuario.ALUMNO,
+                        associatedStudentId
+                )));
+    }
+
+    private void givenRequesterIsTutor() {
+        when(consumptionAccessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.of(new ConsumptionRequester(
+                        USER_ID,
+                        RolUsuario.PADRE,
+                        null
+                )));
+    }
+
+    private void givenTutorCanAccessStudent(boolean canAccess) {
+        when(consumptionAccessRepository.tutorCanAccessStudent(USER_ID, STUDENT_ID))
+                .thenReturn(canAccess);
+    }
+
+    private void givenRequesterIsAdmin() {
+        when(consumptionAccessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.of(new ConsumptionRequester(
+                        USER_ID,
+                        RolUsuario.ADMIN,
+                        null
+                )));
+    }
+
+    private void whenRequiringPurchaseAccess() {
+        guard.requirePurchaseAccess(authentication, PURCHASE_ID);
+    }
+
+    private void whenRequiringPurchaseAccessWithNullAuthentication() {
+        guard.requirePurchaseAccess(null, PURCHASE_ID);
+    }
+
+    private void thenThrowsPurchaseNotFoundException(Executable execution) {
+        assertThrows(PurchaseNotFoundException.class, execution);
+    }
+
+    private void thenThrowsAuthenticationCredentialsNotFoundException(Executable execution) {
+        assertThrows(AuthenticationCredentialsNotFoundException.class, execution);
+    }
+
+    private void thenThrowsUsuarioAutenticadoNoEncontradoException(Executable execution) {
+        assertThrows(UsuarioAutenticadoNoEncontradoException.class, execution);
+    }
+
+    private void thenThrowsPurchaseAccessDeniedException(Executable execution) {
+        assertThrows(PurchaseAccessDeniedException.class, execution);
+    }
+
+    private void thenPurchaseIsReturned(Purchase result) {
+        assertSame(defaultPurchase, result);
+    }
+
+    private void thenPurchaseIsReturnedViaEquals(Purchase result) {
+        assertEquals(defaultPurchase, result);
+    }
+
+    private void thenBuffetAccessIsNotValidated() {
+        verify(kiosqueroAccessGuard, never()).requireBuffetAccess(authentication, BUFFET_ID);
+    }
+
+    private void thenBuffetAccessIsValidated() {
+        verify(kiosqueroAccessGuard).requireBuffetAccess(authentication, BUFFET_ID);
+    }
+
+    private Purchase buildDefaultPurchase() {
         Alumno student = new Alumno();
-        student.setId(studentId);
+        student.setId(STUDENT_ID);
         Purchase newPurchase = new Purchase();
-        newPurchase.setId(purchaseId);
+        newPurchase.setId(PURCHASE_ID);
         newPurchase.setStudent(student);
-        newPurchase.setBuffetId(buffetId);
+        newPurchase.setBuffetId(BUFFET_ID);
         return newPurchase;
     }
 }
