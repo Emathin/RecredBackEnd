@@ -1,8 +1,27 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.domain.exceptions.InventoryOperationException;
-import com.recred.backend.domain.models.*;
-import com.recred.backend.infrastructure.entities.*;
+import com.recred.backend.domain.models.CategoriaProducto;
+import com.recred.backend.domain.models.ClasificacionSalud;
+import com.recred.backend.domain.models.ClasificacionTipo;
+import com.recred.backend.domain.models.EstadoInventario;
+import com.recred.backend.domain.models.ProductChangeRecommendation;
+import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.ProductoMedida;
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.TipoManejoInventario;
+import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.BuffetEntity;
+import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
+import com.recred.backend.infrastructure.entities.ClasificacionSaludEntity;
+import com.recred.backend.infrastructure.entities.ClasificacionTipoEntity;
+import com.recred.backend.infrastructure.entities.ColegioEntity;
+import com.recred.backend.infrastructure.entities.CompraDetalleEntity;
+import com.recred.backend.infrastructure.entities.CompraEntity;
+import com.recred.backend.infrastructure.entities.InventarioBuffetEntity;
+import com.recred.backend.infrastructure.entities.KiosqueroEntity;
+import com.recred.backend.infrastructure.entities.ProductoEntity;
+import com.recred.backend.infrastructure.entities.ProductoMedidaEntity;
+import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.persistence.ProductRepositoryImpl;
 import com.recred.backend.infrastructure.persistence.SpringDataProductRepository;
 import com.recred.backend.integration.AbstractIntegrationTest;
@@ -19,7 +38,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Transactional
 public class ProductRepositoryImplIT extends AbstractIntegrationTest {
@@ -213,16 +235,13 @@ public class ProductRepositoryImplIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void findActiveByIdWithStockWhenThereIsNoInventoryDataShouldReturnProductWithoutStock() {
+    void findActiveByIdWithStockWhenThereIsNoInventoryDataShouldReturnEmpty() {
         BuffetEntity buffet = generateBuffet();
         ProductoEntity product = generateProduct("No Inventory", true);
         
         Optional<Producto> result = productRepository.findActiveByIdWithStock(product.getId(), buffet.getId());
         
-        assertTrue(result.isPresent());
-        assertEquals(product.getId(), result.get().getId());
-        assertNull(result.get().getStockActual());
-        assertNull(result.get().getEstadoInventario());
+        assertTrue(result.isEmpty());
     }
 
     @Test
