@@ -1,4 +1,4 @@
-# Guía de Testing y Automatización - RecreoPago Backend
+# Guía de Testing y Automatización - Recred Backend
 
 Esta guía detalla la nueva estructura jerárquica de tests, el uso de perfiles de Maven y la estrategia de Pipeline optimizada para el proyecto.
 
