@@ -165,6 +165,51 @@ class AcceptTutorInvitationTest {
     }
 
     @Test
+    void givenAccountCreatedInvitation_whenAcceptingAfterLogin_thenActivatesSchoolAccess() {
+        givenPendingInvitation();
+        givenExistingParentUser();
+        givenTutorExistsForUser();
+        givenTutorHasNoSchoolAccess();
+        givenInvitationCanBeSaved();
+
+        whenAcceptingInvitation();
+
+        thenTutorSchoolAccessWasActivated();
+        thenInvitationWasAccepted();
+        thenResponseRepresentsAcceptedInvitation();
+    }
+
+    @Test
+    void givenAccountCreatedInvitationAndJwtWithoutEmail_whenAcceptingAfterLogin_thenUsesLocalUserEmail() {
+        givenPendingInvitation();
+        givenExistingParentUserWithEmail();
+        givenTutorExistsForUser();
+        givenTutorHasNoSchoolAccess();
+        givenInvitationCanBeSaved();
+
+        whenAcceptingInvitation(requestWithoutAuthenticatedEmail());
+
+        thenTutorSchoolAccessWasActivated();
+        thenInvitationWasAccepted();
+    }
+
+    @Test
+    void givenPendingInvitationAndJwtWithoutEmail_whenAcceptingAfterTemporaryLogin_thenUsesInvitationEmail() {
+        givenPendingInvitation();
+        givenAuthenticatedUserDoesNotExist();
+        givenParentUserIsSaved();
+        givenTutorIsCreatedForSavedUser();
+        givenTutorHasNoSchoolAccess();
+        givenInvitationCanBeSaved();
+
+        whenAcceptingInvitation(requestWithoutAuthenticatedEmail());
+
+        thenParentUserWasCreated();
+        thenTutorSchoolAccessWasActivated();
+        thenInvitationWasAccepted();
+    }
+
+    @Test
     void newParentWithoutProfileDataUsesFallbackValues() {
         givenPendingInvitation();
         givenAuthenticatedUserDoesNotExist();
@@ -182,6 +227,7 @@ class AcceptTutorInvitationTest {
         invitation = invitation(TutorInvitationStatus.PENDING);
         when(invitationRepository.findByTokenHash(any())).thenReturn(Optional.of(invitation));
     }
+
 
     private void givenInvitationDoesNotExist() {
         when(invitationRepository.findByTokenHash(any())).thenReturn(Optional.empty());
@@ -206,6 +252,17 @@ class AcceptTutorInvitationTest {
         Usuario user = user(role);
         when(userRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
+    }
+
+    private void givenExistingParentUser() {
+        when(userRepository.findByIdCognito(COGNITO_SUBJECT))
+                .thenReturn(Optional.of(user(RolUsuario.PADRE)));
+    }
+
+    private void givenExistingParentUserWithEmail() {
+        Usuario user = user(RolUsuario.PADRE);
+        user.setEmail(EMAIL);
+        when(userRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(user));
     }
 
     private void givenParentUserIsSaved() {
@@ -352,6 +409,17 @@ class AcceptTutorInvitationTest {
                 " ",
                 ""
         );
+    }
+
+    private AcceptTutorInvitationRequest requestWithoutAuthenticatedEmail() {
+        return new AcceptTutorInvitationRequest(
+                TOKEN,
+                COGNITO_SUBJECT,
+                null,
+                "Ana",
+                "Gomez",
+                "1111",
+                "123");
     }
 
     private TutorInvitation invitation(TutorInvitationStatus status) {
