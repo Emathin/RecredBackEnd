@@ -1,16 +1,14 @@
 package com.recred.backend.unit.infrastructure.web;
 
-import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Colegio;
+import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.SuscripcionColegio;
 import com.recred.backend.domain.models.SuscripcionUsuario;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.SuscripcionColegioRepository;
 import com.recred.backend.domain.repositories.SuscripcionUsuarioRepository;
 import com.recred.backend.domain.services.UsuarioService;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
-import com.recred.backend.domain.models.EstadoLicenciaColegio;
 import com.recred.backend.infrastructure.web.SchoolLicenseAccessGuard;
 import com.recred.backend.infrastructure.web.UserProfileController;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +30,10 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.recred.backend.domain.models.EstadoLicenciaColegio.ACTIVA;
+import static com.recred.backend.domain.models.EstadoLicenciaColegio.SIN_LICENCIA;
+import static com.recred.backend.domain.models.TipoPlan.AVANZADO;
+import static java.util.UUID.randomUUID;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -79,7 +81,7 @@ class UserProfileControllerTest {
 
     @Test
     void getMyUserReturnsMinimalSessionData() throws Exception {
-        UUID userId = UUID.randomUUID();
+        UUID userId = randomUUID();
         Usuario usuario = usuario(userId);
         when(usuarioService.obtenerUsuarioActual("cognito-sub")).thenReturn(usuario);
 
@@ -99,7 +101,7 @@ class UserProfileControllerTest {
 
     @Test
     void getMyProfileReturnsFullProfileData() throws Exception {
-        UUID userId = UUID.randomUUID();
+        UUID userId = randomUUID();
         Usuario usuario = usuario(userId);
         givenCurrentUser(usuario);
 
@@ -112,11 +114,25 @@ class UserProfileControllerTest {
     }
 
     @Test
+    void getMyProfileReturnsHasUsedTrialTrueWhenUserAlreadyUsedTrial() throws Exception {
+        UUID userId = randomUUID();
+        Usuario usuario = usuario(userId);
+        givenCurrentUser(usuario);
+        when(suscripcionUsuarioRepository.hasUsedTrial(userId)).thenReturn(true);
+
+        ResultActions response = whenGetMyProfile();
+
+        response
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasUsedTrial").value(true));
+    }
+
+    @Test
     void getMyProfileReturnsPlanExpirationWhenUserHasActiveSubscription() throws Exception {
-        UUID userId = UUID.randomUUID();
+        UUID userId = randomUUID();
         LocalDateTime fechaVencimiento = LocalDateTime.of(2026, 8, 6, 10, 30);
         Usuario usuario = usuario(userId);
-        usuario.setPlan(TipoPlan.AVANZADO);
+        usuario.setPlan(AVANZADO);
         SuscripcionUsuario suscripcion = suscripcion(fechaVencimiento);
         givenCurrentUser(usuario);
         givenActiveSubscription(userId, suscripcion);
@@ -131,8 +147,8 @@ class UserProfileControllerTest {
 
     @Test
     void getMyProfileReturnsSchoolLicenseWhenUserIsSchoolDirector() throws Exception {
-        UUID userId = UUID.randomUUID();
-        UUID schoolId = UUID.randomUUID();
+        UUID userId = randomUUID();
+        UUID schoolId = randomUUID();
         LocalDateTime startDate = LocalDateTime.of(2026, 7, 1, 10, 0);
         Usuario usuario = schoolUser(userId, schoolId);
         givenCurrentUser(usuario);
@@ -150,8 +166,8 @@ class UserProfileControllerTest {
     @Test
     void getMyProfileReturnsNoLicenseWhenSchoolDirectorHasNoActiveSubscription()
             throws Exception {
-        UUID userId = UUID.randomUUID();
-        UUID schoolId = UUID.randomUUID();
+        UUID userId = randomUUID();
+        UUID schoolId = randomUUID();
         Usuario usuario = schoolUser(userId, schoolId);
         givenCurrentUser(usuario);
         givenNoActiveSchoolSubscription(schoolId);
@@ -166,7 +182,7 @@ class UserProfileControllerTest {
 
     @Test
     void updateMyProfileDelegatesToServiceAndReturnsUpdatedUser() throws Exception {
-        UUID userId = UUID.randomUUID();
+        UUID userId = randomUUID();
         Usuario usuario = usuario(userId);
         when(usuarioService.updateProfile(
                 eq("cognito-sub"),
@@ -219,14 +235,14 @@ class UserProfileControllerTest {
             SuscripcionColegio suscripcion
     ) {
         when(schoolLicenseAccessGuard.getLicenseStatusForUser(any(Usuario.class)))
-                .thenReturn(EstadoLicenciaColegio.ACTIVA);
+                .thenReturn(ACTIVA);
         when(schoolLicenseAccessGuard.getLicenseExpirationForUser(any(Usuario.class)))
                 .thenReturn(suscripcion.getFechaVencimiento());
     }
 
     private void givenNoActiveSchoolSubscription(UUID schoolId) {
         when(schoolLicenseAccessGuard.getLicenseStatusForUser(any(Usuario.class)))
-                .thenReturn(EstadoLicenciaColegio.SIN_LICENCIA);
+                .thenReturn(SIN_LICENCIA);
         when(schoolLicenseAccessGuard.getLicenseExpirationForUser(any(Usuario.class)))
                 .thenReturn(null);
     }
@@ -246,7 +262,8 @@ class UserProfileControllerTest {
                 .andExpect(jsonPath("$.lastName").value("Fortuna"))
                 .andExpect(jsonPath("$.phone").value("112233"))
                 .andExpect(jsonPath("$.documentNumber").value("45238796"))
-                .andExpect(jsonPath("$.role").value("PADRE"));
+                .andExpect(jsonPath("$.role").value("PADRE"))
+                .andExpect(jsonPath("$.hasUsedTrial").value(false));
     }
 
     private void thenFreePlanIsReturned(ResultActions response) throws Exception {

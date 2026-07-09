@@ -123,9 +123,17 @@ public class UserProfileController {
         response.put("urlFotoPerfil", usuario.getUrlFotoPerfil());
         response.put("plan", usuario.getPlan().name());
         response.put("fechaVencimientoPlan", planExpiration(usuario));
+        response.put("hasUsedTrial", hasUsedTrial(usuario));
         addSchoolLicenseData(response, usuario);
 
         return response;
+    }
+
+    private boolean hasUsedTrial(Usuario usuario) {
+        if (usuario.getId() == null) {
+            return false;
+        }
+        return suscripcionUsuarioRepository.hasUsedTrial(usuario.getId());
     }
 
     private LocalDateTime planExpiration(Usuario usuario) {
