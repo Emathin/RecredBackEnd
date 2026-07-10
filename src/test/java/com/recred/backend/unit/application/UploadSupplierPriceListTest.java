@@ -5,6 +5,7 @@ import com.recred.backend.application.UploadSupplierPriceList;
 import com.recred.backend.application.UploadSupplierPriceListRequest;
 import com.recred.backend.application.UploadSupplierPriceListResponse;
 import com.recred.backend.domain.exceptions.FileValidationException;
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 import com.recred.backend.domain.models.ListaPrecioProveedor;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Proveedor;
@@ -14,11 +15,6 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.ProveedorRepository;
 import com.recred.backend.domain.services.StorageService;
 import com.recred.backend.domain.services.SupplierPriceListAnalyzer;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,8 +22,15 @@ import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.access.AccessDeniedException;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -43,12 +46,16 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class UploadSupplierPriceListTest {
 
+    private static final String PDF_FILENAME = "precios.pdf";
+    private static final String PDF_CONTENT_TYPE = "application/pdf";
+    private static final String PRICE_LIST_URL = "https://cloudinary.com/precios.pdf";
+
     @Mock
-    private ProveedorRepository proveedorRepository;
+    private ProveedorRepository supplierRepository;
     @Mock
-    private ListaPrecioProveedorRepository listaPrecioProveedorRepository;
+    private ListaPrecioProveedorRepository priceListRepository;
     @Mock
-    private ItemListaPrecioProveedorRepository itemListaPrecioProveedorRepository;
+    private ItemListaPrecioProveedorRepository priceListItemRepository;
     @Mock
     private ProductRepository productRepository;
     @Mock
@@ -63,145 +70,192 @@ class UploadSupplierPriceListTest {
     private UUID supplierId;
     private Proveedor supplier;
     private byte[] fileContent;
+    private List<Producto> activeProducts;
+    private ListaPrecioProveedor savedPriceList;
+    private UploadSupplierPriceListRequest uploadRequest;
+    private UploadSupplierPriceListResponse uploadResponse;
+    private Throwable thrownException;
 
     @BeforeEach
     void setUp() {
-        kioskOwnerId = UUID.randomUUID();
-        supplierId = UUID.randomUUID();
-        supplier = new Proveedor();
-        supplier.setId(supplierId);
-        supplier.setKiosqueroId(kioskOwnerId);
-        supplier.setNombre("Distribuidora Kiosco");
-        fileContent = "nombre,precio,unidad,notas\nAlfajor,500,unidad,sin tacc".getBytes();
+        kioskOwnerId = randomUUID();
+        supplierId = randomUUID();
+        supplier = supplier(supplierId, kioskOwnerId);
+        fileContent = "nombre,precio,unidad,notas\nAlfajor,500,unidad,sin tacc"
+                .getBytes(StandardCharsets.UTF_8);
     }
 
     @Test
-    void executeWhenRequestIsValidUploadsFileAnalyzesItemsAndAutoMatchesProducts() {
-        String originalFilename = "precios.pdf";
-        String contentType = "application/pdf";
-        String mockUrl = "https://cloudinary.com/precios.pdf";
-        List<RawSupplierPriceItem> rawItems = rawItems();
-        List<Producto> activeProducts = activeProducts();
-        ListaPrecioProveedor savedPriceList = savedPriceList();
-        UploadSupplierPriceListRequest request = request(
-                kioskOwnerId,
+    void givenValidPriceList_whenUploadingSupplierPriceList_thenUploadsAndAutoMatchesItems() {
+        givenDefaultUploadRequest();
+        givenSupplierExists();
+        givenFileIsUploaded();
+        givenAnalyzerReturnsItems();
+        givenActiveProducts();
+        givenPriceListCanBeSaved();
+        givenItemsCanBeSaved();
+
+        whenUploadingSupplierPriceList();
+
+        thenPriceListWasReturned();
+        thenMatchedProductWasIncluded();
+        thenUnmatchedProductWasIncluded();
+        thenUploadFlowWasExecuted();
+    }
+
+    @Test
+    void givenSupplierFromAnotherKioskOwner_whenUploadingPriceList_thenThrowsOperationNotAllowed() {
+        givenUploadRequestForKioskOwner(randomUUID());
+        givenSupplierExists();
+
+        whenUploadSupplierPriceListFails(OperationNotAllowedException.class);
+
+        thenSupplierWasRead();
+        thenUploadDependenciesWereNotCalled();
+    }
+
+    @Test
+    void givenOversizedFile_whenUploadingPriceList_thenThrowsFileValidationException() {
+        givenUploadRequestWithFile(new byte[6 * 1024 * 1024], PDF_FILENAME, PDF_CONTENT_TYPE);
+
+        whenUploadSupplierPriceListFails(FileValidationException.class);
+
+        thenErrorMessageIs("File exceeds the maximum allowed size (5MB)");
+        thenNoDependencyWasCalled();
+    }
+
+    @Test
+    void givenInvalidMimeType_whenUploadingPriceList_thenThrowsFileValidationException() {
+        givenUploadRequestWithFile(fileContent, "precios.png", "image/png");
+
+        whenUploadSupplierPriceListFails(FileValidationException.class);
+
+        thenErrorMessageIs("Unsupported file format. Only PDF and CSV files are allowed");
+        thenNoDependencyWasCalled();
+    }
+
+    private void givenDefaultUploadRequest() {
+        givenUploadRequestWithFile(fileContent, PDF_FILENAME, PDF_CONTENT_TYPE);
+    }
+
+    private void givenUploadRequestForKioskOwner(UUID requestKioskOwnerId) {
+        uploadRequest = request(
+                requestKioskOwnerId,
                 supplierId,
                 fileContent,
-                originalFilename,
-                contentType
-        );
+                PDF_FILENAME,
+                PDF_CONTENT_TYPE);
+    }
 
-        when(proveedorRepository.findById(supplierId)).thenReturn(Optional.of(supplier));
+    private void givenUploadRequestWithFile(
+            byte[] content,
+            String filename,
+            String contentType) {
+        uploadRequest = request(kioskOwnerId, supplierId, content, filename, contentType);
+    }
+
+    private void givenSupplierExists() {
+        when(supplierRepository.findById(supplierId)).thenReturn(Optional.of(supplier));
+    }
+
+    private void givenFileIsUploaded() {
         when(storageService.uploadFile(
                 eq(fileContent),
-                eq(originalFilename),
-                eq("application/pdf")
-        )).thenReturn(mockUrl);
-        when(supplierPriceListAnalyzer.analyze(
-                eq(fileContent),
-                eq("application/pdf")
-        )).thenReturn(rawItems);
+                eq(PDF_FILENAME),
+                eq(PDF_CONTENT_TYPE)))
+                .thenReturn(PRICE_LIST_URL);
+    }
+
+    private void givenAnalyzerReturnsItems() {
+        when(supplierPriceListAnalyzer.analyze(eq(fileContent), eq(PDF_CONTENT_TYPE)))
+                .thenReturn(rawItems());
+    }
+
+    private void givenActiveProducts() {
+        activeProducts = activeProducts();
         when(productRepository.findAllActive()).thenReturn(activeProducts);
-        when(listaPrecioProveedorRepository.save(any(ListaPrecioProveedor.class)))
+    }
+
+    private void givenPriceListCanBeSaved() {
+        savedPriceList = savedPriceList();
+        when(priceListRepository.save(any(ListaPrecioProveedor.class)))
                 .thenReturn(savedPriceList);
-        when(itemListaPrecioProveedorRepository.saveAll(anyList()))
+    }
+
+    private void givenItemsCanBeSaved() {
+        when(priceListItemRepository.saveAll(anyList()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-
-        UploadSupplierPriceListResponse result = uploadSupplierPriceList.execute(request);
-
-        assertNotNull(result);
-        assertEquals(savedPriceList.getId(), result.id());
-        assertEquals(3, result.items().size());
-        assertAutoMatchedProduct(result, activeProducts.get(0));
-        assertUnmatchedProduct(result);
-
-        verify(proveedorRepository).findById(supplierId);
-        verify(storageService).uploadFile(any(), any(), any());
-        verify(supplierPriceListAnalyzer).analyze(any(), any());
-        verify(listaPrecioProveedorRepository).save(any(ListaPrecioProveedor.class));
-        verify(itemListaPrecioProveedorRepository).saveAll(anyList());
     }
 
-    @Test
-    void executeWhenSupplierDoesNotBelongToKioskOwnerThrowsAccessDeniedException() {
-        UUID anotherKioskOwnerId = UUID.randomUUID();
-        UploadSupplierPriceListRequest request = request(
-                anotherKioskOwnerId,
-                supplierId,
-                fileContent,
-                "precios.pdf",
-                "application/pdf"
-        );
+    private void whenUploadingSupplierPriceList() {
+        uploadResponse = uploadSupplierPriceList.execute(uploadRequest);
+    }
 
-        when(proveedorRepository.findById(supplierId)).thenReturn(Optional.of(supplier));
+    private <T extends Throwable> void whenUploadSupplierPriceListFails(
+            Class<T> exceptionType) {
+        Executable execution = () -> uploadSupplierPriceList.execute(uploadRequest);
+        thrownException = assertThrows(exceptionType, execution);
+    }
 
-        Executable execution = () -> uploadSupplierPriceList.execute(request);
+    private void thenPriceListWasReturned() {
+        assertNotNull(uploadResponse);
+        assertEquals(savedPriceList.getId(), uploadResponse.id());
+        assertEquals(3, uploadResponse.items().size());
+    }
 
-        assertThrows(AccessDeniedException.class, execution);
+    private void thenMatchedProductWasIncluded() {
+        UploadSupplierPriceListResponse.Item item = responseItem(
+                "Alfajor Jorgito Chocolate");
+        assertEquals(activeProducts.get(0).getId(), item.inventoryProductId());
+        assertFalse(item.mappingConfirmed());
+    }
 
-        verify(proveedorRepository).findById(supplierId);
+    private void thenUnmatchedProductWasIncluded() {
+        UploadSupplierPriceListResponse.Item item = responseItem("Producto Inexistente");
+        assertNull(item.inventoryProductId());
+    }
+
+    private void thenUploadFlowWasExecuted() {
+        verify(supplierRepository).findById(supplierId);
+        verify(storageService).uploadFile(fileContent, PDF_FILENAME, PDF_CONTENT_TYPE);
+        verify(supplierPriceListAnalyzer).analyze(fileContent, PDF_CONTENT_TYPE);
+        verify(productRepository).findAllActive();
+        verify(priceListRepository).save(any(ListaPrecioProveedor.class));
+        verify(priceListItemRepository).saveAll(anyList());
+    }
+
+    private void thenSupplierWasRead() {
+        verify(supplierRepository).findById(supplierId);
+    }
+
+    private void thenUploadDependenciesWereNotCalled() {
         verifyNoInteractions(
                 storageService,
                 supplierPriceListAnalyzer,
-                listaPrecioProveedorRepository,
-                itemListaPrecioProveedorRepository
-        );
+                productRepository,
+                priceListRepository,
+                priceListItemRepository);
     }
 
-    @Test
-    void executeWhenFileSizeExceedsLimitThrowsFileValidationException() {
-        byte[] largeFileContent = new byte[6 * 1024 * 1024];
-        UploadSupplierPriceListRequest request = request(
-                kioskOwnerId,
-                supplierId,
-                largeFileContent,
-                "precios.pdf",
-                "application/pdf"
-        );
-
-        Executable execution = () -> uploadSupplierPriceList.execute(request);
-
-        FileValidationException exception = assertThrows(
-                FileValidationException.class,
-                execution
-        );
-
-        assertEquals("File exceeds the maximum allowed size (5MB)", exception.getMessage());
+    private void thenNoDependencyWasCalled() {
         verifyNoInteractions(
+                supplierRepository,
                 storageService,
                 supplierPriceListAnalyzer,
-                listaPrecioProveedorRepository,
-                itemListaPrecioProveedorRepository
-        );
+                productRepository,
+                priceListRepository,
+                priceListItemRepository);
     }
 
-    @Test
-    void executeWhenMimeTypeIsInvalidThrowsFileValidationException() {
-        UploadSupplierPriceListRequest request = request(
-                kioskOwnerId,
-                supplierId,
-                fileContent,
-                "precios.png",
-                "image/png"
-        );
+    private void thenErrorMessageIs(String expectedMessage) {
+        assertEquals(expectedMessage, thrownException.getMessage());
+    }
 
-        Executable execution = () -> uploadSupplierPriceList.execute(request);
-
-        FileValidationException exception = assertThrows(
-                FileValidationException.class,
-                execution
-        );
-
-        assertEquals(
-                "Unsupported file format. Only PDF and CSV files are allowed",
-                exception.getMessage()
-        );
-        verifyNoInteractions(
-                storageService,
-                supplierPriceListAnalyzer,
-                listaPrecioProveedorRepository,
-                itemListaPrecioProveedorRepository
-        );
+    private UploadSupplierPriceListResponse.Item responseItem(String supplierProductName) {
+        return uploadResponse.items().stream()
+                .filter(item -> item.supplierProductName().equals(supplierProductName))
+                .findFirst()
+                .orElseThrow();
     }
 
     private List<RawSupplierPriceItem> rawItems() {
@@ -210,64 +264,46 @@ class UploadSupplierPriceListTest {
                         "Alfajor Jorgito Chocolate",
                         new BigDecimal("550.00"),
                         "unidad",
-                        null
-                ),
+                        null),
                 new RawSupplierPriceItem(
                         "Gaseosa Coca-Cola 500ml",
                         new BigDecimal("1200.00"),
                         "unidad",
-                        null
-                ),
+                        null),
                 new RawSupplierPriceItem(
                         "Producto Inexistente",
                         new BigDecimal("100.00"),
                         "unidad",
-                        null
-                )
-        );
+                        null));
     }
 
     private List<Producto> activeProducts() {
-        List<Producto> activeProducts = new ArrayList<>();
-        Producto alfajor = new Producto();
-        alfajor.setId(UUID.randomUUID());
-        alfajor.setNombre("Jorgito Chocolate");
-        activeProducts.add(alfajor);
+        List<Producto> products = new ArrayList<>();
+        products.add(product("Jorgito Chocolate"));
+        products.add(product("Coca Cola 500ml"));
+        return products;
+    }
 
-        Producto soda = new Producto();
-        soda.setId(UUID.randomUUID());
-        soda.setNombre("Coca Cola 500ml");
-        activeProducts.add(soda);
+    private Proveedor supplier(UUID id, UUID ownerId) {
+        Proveedor supplier = new Proveedor();
+        supplier.setId(id);
+        supplier.setKiosqueroId(ownerId);
+        supplier.setNombre("Distribuidora Kiosco");
+        return supplier;
+    }
 
-        return activeProducts;
+    private Producto product(String name) {
+        Producto product = new Producto();
+        product.setId(randomUUID());
+        product.setNombre(name);
+        return product;
     }
 
     private ListaPrecioProveedor savedPriceList() {
-        ListaPrecioProveedor savedPriceList = new ListaPrecioProveedor();
-        savedPriceList.setId(UUID.randomUUID());
-        savedPriceList.setProveedorId(supplierId);
-        return savedPriceList;
-    }
-
-    private void assertAutoMatchedProduct(
-            UploadSupplierPriceListResponse result,
-            Producto product
-    ) {
-        UploadSupplierPriceListResponse.Item item = result.items().stream()
-                .filter(value -> value.supplierProductName()
-                        .equals("Alfajor Jorgito Chocolate"))
-                .findFirst()
-                .orElseThrow();
-        assertEquals(product.getId(), item.inventoryProductId());
-        assertFalse(item.mappingConfirmed());
-    }
-
-    private void assertUnmatchedProduct(UploadSupplierPriceListResponse result) {
-        UploadSupplierPriceListResponse.Item item = result.items().stream()
-                .filter(value -> value.supplierProductName().equals("Producto Inexistente"))
-                .findFirst()
-                .orElseThrow();
-        assertNull(item.inventoryProductId());
+        ListaPrecioProveedor priceList = new ListaPrecioProveedor();
+        priceList.setId(randomUUID());
+        priceList.setProveedorId(supplierId);
+        return priceList;
     }
 
     private UploadSupplierPriceListRequest request(
@@ -275,14 +311,12 @@ class UploadSupplierPriceListTest {
             UUID supplierId,
             byte[] content,
             String filename,
-            String contentType
-    ) {
+            String contentType) {
         return new UploadSupplierPriceListRequest(
                 kioskOwnerId,
                 supplierId,
                 content,
                 filename,
-                contentType
-        );
+                contentType);
     }
 }

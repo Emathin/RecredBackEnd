@@ -17,6 +17,8 @@ public interface SpringDataBuffetRepository extends JpaRepository<BuffetEntity, 
     @Query("""
         SELECT b FROM BuffetEntity b
         JOIN FETCH b.colegioEntity
+        LEFT JOIN FETCH b.vendedor v
+        LEFT JOIN FETCH v.usuario
         WHERE b.id = :id
     """)
     Optional<BuffetEntity> findByIdWithSchool(@Param("id") UUID id);

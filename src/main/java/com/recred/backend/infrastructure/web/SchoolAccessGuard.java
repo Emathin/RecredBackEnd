@@ -103,6 +103,14 @@ public class SchoolAccessGuard {
         requireSchoolDirectorAccess(authentication, schoolId);
     }
 
+    public void requireSellerDirectorAccess(Authentication authentication, UUID sellerId) {
+        UUID buffetId = kiosqueroRepository.findBuffetById(sellerId);
+        if (buffetId == null) {
+            throw new IllegalArgumentException("Vendedor sin buffet asociado o inexistente");
+        }
+        requireBuffetDirectorAccess(authentication, buffetId);
+    }
+
     private Usuario authenticatedUser(Authentication authentication) {
 
         String subject = Optional.ofNullable(authentication)

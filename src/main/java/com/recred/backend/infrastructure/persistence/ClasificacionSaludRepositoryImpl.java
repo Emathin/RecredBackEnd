@@ -48,6 +48,12 @@ public class ClasificacionSaludRepositoryImpl implements ClasificacionSaludRepos
                 .map(ClasificacionSaludEntity::toDomain);
     }
 
+    @Override
+    public ClasificacionSalud save(ClasificacionSalud clasificacion) {
+        ClasificacionSaludEntity entity = toEntity(clasificacion);
+        return springDataRepository.save(entity).toDomain();
+    }
+
     private ClasificacionSaludEntity toEntity(ClasificacionSalud modelo) {
         ClasificacionSaludEntity entity = new ClasificacionSaludEntity();
 

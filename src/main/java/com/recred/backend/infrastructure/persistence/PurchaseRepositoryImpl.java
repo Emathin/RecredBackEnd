@@ -78,7 +78,6 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
             UUID alumnoId, LocalDateTime start, LocalDateTime end) {
         return springDataRepository.findAllByAlumnoIdAndFechaHoraBetween(alumnoId, start, end)
                 .stream()
-                .peek(compra -> org.hibernate.Hibernate.initialize(compra.getAlumnoEntity()))
                 .map(CompraEntity::toDomain)
                 .toList();
     }
@@ -234,7 +233,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     @Override
     @Transactional(readOnly = true)
     public Optional<Purchase> findById(UUID id) {
-        return springDataRepository.findById(id).map(CompraEntity::toDomain);
+        return springDataRepository.findByIdWithDetails(id).map(CompraEntity::toDomain);
     }
 
     @Override
@@ -552,6 +551,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Purchase> findPendientesByAlumno(UUID alumnoId) {
         List<EstadoCompra> estadosPendientes = List.of(
                 EstadoCompra.PENDIENTE,

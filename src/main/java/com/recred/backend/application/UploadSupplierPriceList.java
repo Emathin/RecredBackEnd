@@ -1,5 +1,6 @@
 package com.recred.backend.application;
 
+import com.recred.backend.domain.exceptions.OperationNotAllowedException;
 import com.recred.backend.domain.models.ItemListaPrecioProveedor;
 import com.recred.backend.domain.models.ListaPrecioProveedor;
 import com.recred.backend.domain.models.Producto;
@@ -10,32 +11,32 @@ import com.recred.backend.domain.repositories.ProductRepository;
 import com.recred.backend.domain.repositories.ProveedorRepository;
 import com.recred.backend.domain.services.StorageService;
 import com.recred.backend.domain.services.SupplierPriceListAnalyzer;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.security.access.AccessDeniedException;
 
 public class UploadSupplierPriceList {
 
-    private final ProveedorRepository proveedorRepository;
-    private final ListaPrecioProveedorRepository listaPrecioProveedorRepository;
-    private final ItemListaPrecioProveedorRepository itemListaPrecioProveedorRepository;
+    private final ProveedorRepository supplierRepository;
+    private final ListaPrecioProveedorRepository priceListRepository;
+    private final ItemListaPrecioProveedorRepository priceListItemRepository;
     private final ProductRepository productRepository;
     private final StorageService storageService;
     private final SupplierPriceListAnalyzer supplierPriceListAnalyzer;
     private final SupplierProductAutoMatcher autoMatcher;
 
     public UploadSupplierPriceList(
-            ProveedorRepository proveedorRepository,
-            ListaPrecioProveedorRepository listaPrecioProveedorRepository,
-            ItemListaPrecioProveedorRepository itemListaPrecioProveedorRepository,
+            ProveedorRepository supplierRepository,
+            ListaPrecioProveedorRepository priceListRepository,
+            ItemListaPrecioProveedorRepository priceListItemRepository,
             ProductRepository productRepository,
             StorageService storageService,
             SupplierPriceListAnalyzer supplierPriceListAnalyzer
     ) {
-        this.proveedorRepository = proveedorRepository;
-        this.listaPrecioProveedorRepository = listaPrecioProveedorRepository;
-        this.itemListaPrecioProveedorRepository = itemListaPrecioProveedorRepository;
+        this.supplierRepository = supplierRepository;
+        this.priceListRepository = priceListRepository;
+        this.priceListItemRepository = priceListItemRepository;
         this.productRepository = productRepository;
         this.storageService = storageService;
         this.supplierPriceListAnalyzer = supplierPriceListAnalyzer;
@@ -43,33 +44,36 @@ public class UploadSupplierPriceList {
     }
 
     public UploadSupplierPriceListResponse execute(UploadSupplierPriceListRequest request) {
-        request.validate();
-        Proveedor supplier = supplier(request.supplierId());
-        requireSupplierOwnership(supplier, request.kioskOwnerId());
-
-        String fileUrl = uploadFile(request);
-        List<RawSupplierPriceItem> rawItems = analyzedItems(request);
-        List<Producto> activeProducts = productRepository.findAllActive();
-        ListaPrecioProveedor priceList = savePriceList(request, fileUrl);
-        List<ItemListaPrecioProveedor> savedItems = saveItems(
-                priceList.getId(),
-                rawItems,
-                activeProducts
-        );
-        priceList.setItems(savedItems);
+        validateRequestAccess(request);
+        ListaPrecioProveedor priceList = createPriceListWithItems(request);
 
         return UploadSupplierPriceListResponse.fromDomain(priceList);
     }
 
-    private Proveedor supplier(UUID supplierId) {
-        return proveedorRepository.findById(supplierId)
+    private Proveedor findSupplier(UUID supplierId) {
+        return supplierRepository.findById(supplierId)
                 .orElseThrow(() -> new IllegalArgumentException("Supplier not found"));
     }
 
     private void requireSupplierOwnership(Proveedor supplier, UUID kioskOwnerId) {
         if (!supplier.belongsToKiosquero(kioskOwnerId)) {
-            throw new AccessDeniedException("You do not have access to this supplier");
+            throw new OperationNotAllowedException("You do not have access to this supplier");
         }
+    }
+
+    private void validateRequestAccess(UploadSupplierPriceListRequest request) {
+        request.validate();
+        Proveedor supplier = findSupplier(request.supplierId());
+        requireSupplierOwnership(supplier, request.kioskOwnerId());
+    }
+
+    private ListaPrecioProveedor createPriceListWithItems(UploadSupplierPriceListRequest request) {
+        String fileUrl = uploadFile(request);
+        List<RawSupplierPriceItem> rawItems = analyzePriceList(request);
+        List<Producto> activeProducts = findActiveProducts();
+        ListaPrecioProveedor priceList = savePriceList(request, fileUrl);
+        priceList.setItems(saveItems(priceList.getId(), rawItems, activeProducts));
+        return priceList;
     }
 
     private String uploadFile(UploadSupplierPriceListRequest request) {
@@ -80,11 +84,15 @@ public class UploadSupplierPriceList {
         );
     }
 
-    private List<RawSupplierPriceItem> analyzedItems(UploadSupplierPriceListRequest request) {
+    private List<RawSupplierPriceItem> analyzePriceList(UploadSupplierPriceListRequest request) {
         return supplierPriceListAnalyzer.analyze(
                 request.fileContent(),
                 request.resolvedMimeType()
         );
+    }
+
+    private List<Producto> findActiveProducts() {
+        return productRepository.findAllActive();
     }
 
     private ListaPrecioProveedor savePriceList(
@@ -97,7 +105,7 @@ public class UploadSupplierPriceList {
         priceList.setNombreOriginal(request.originalFilename());
         priceList.setActiva(true);
         priceList.setCreadoEn(LocalDateTime.now());
-        return listaPrecioProveedorRepository.save(priceList);
+        return priceListRepository.save(priceList);
     }
 
     private List<ItemListaPrecioProveedor> saveItems(
@@ -105,7 +113,7 @@ public class UploadSupplierPriceList {
             List<RawSupplierPriceItem> rawItems,
             List<Producto> activeProducts
     ) {
-        return itemListaPrecioProveedorRepository.saveAll(
+        return priceListItemRepository.saveAll(
                 rawItems.stream()
                         .map(rawItem -> priceItem(priceListId, rawItem, activeProducts))
                         .toList()
