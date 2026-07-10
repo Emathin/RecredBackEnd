@@ -18,6 +18,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,6 +38,7 @@ class SubmitSchoolRegistrationTest {
 
     private SubmitSchoolRegistrationRequest request;
     private SchoolRegistrationRequest savedRegistration;
+    private Throwable thrownException;
 
     @BeforeEach
     void setUp() {
@@ -60,6 +62,46 @@ class SubmitSchoolRegistrationTest {
         thenSubmissionTimestampsWereSaved();
     }
 
+    @Test
+    void givenSchoolEmailExists_whenSubmittingRegistration_thenThrowsException() {
+        givenSchoolRegistrationRequest();
+        givenSchoolEmailAlreadyExists();
+
+        whenSubmittingSchoolRegistrationAndCatchingException();
+
+        thenExceptionIsThrownWithMessage("Email registrado");
+    }
+
+    @Test
+    void givenDirectorEmailExists_whenSubmittingRegistration_thenThrowsException() {
+        givenSchoolRegistrationRequest();
+        givenDirectorEmailAlreadyExists();
+
+        whenSubmittingSchoolRegistrationAndCatchingException();
+
+        thenExceptionIsThrownWithMessage("Email registrado");
+    }
+
+    @Test
+    void givenSchoolCueExists_whenSubmittingRegistration_thenThrowsException() {
+        givenSchoolRegistrationRequest();
+        givenSchoolCueAlreadyExists();
+
+        whenSubmittingSchoolRegistrationAndCatchingException();
+
+        thenExceptionIsThrownWithMessage("CUE registrado");
+    }
+
+    @Test
+    void givenPendingRegistrationForEmail_whenSubmittingRegistration_thenThrowsException() {
+        givenSchoolRegistrationRequest();
+        givenPendingRegistrationForSchoolEmail();
+
+        whenSubmittingSchoolRegistrationAndCatchingException();
+
+        thenExceptionIsThrownWithMessage("Solicitud pendiente");
+    }
+
     private void givenSchoolRegistrationRequest() {
         request = new SubmitSchoolRegistrationRequest(
                 "School Name",
@@ -79,12 +121,35 @@ class SubmitSchoolRegistrationTest {
         when(userRepository.findByEmail("director@test.com")).thenReturn(Optional.empty());
     }
 
+    private void givenSchoolEmailAlreadyExists() {
+        when(schoolRepository.existsByEmail("school@test.com")).thenReturn(true);
+    }
+
+    private void givenDirectorEmailAlreadyExists() {
+        when(userRepository.findByEmail("director@test.com"))
+                .thenReturn(Optional.of(new com.recred.backend.domain.models.Usuario()));
+    }
+
+    private void givenSchoolCueAlreadyExists() {
+        when(schoolRepository.existsByCue("CUE-123")).thenReturn(true);
+    }
+
+    private void givenPendingRegistrationForSchoolEmail() {
+        when(registrationRepository.existsBySchoolEmailAndStatus("school@test.com", 
+                SchoolRegistrationStatus.PENDING)).thenReturn(true);
+    }
+
     private void whenSubmittingSchoolRegistration() {
         useCase.execute(request);
         ArgumentCaptor<SchoolRegistrationRequest> captor =
                 ArgumentCaptor.forClass(SchoolRegistrationRequest.class);
         verify(registrationRepository).save(captor.capture());
         savedRegistration = captor.getValue();
+    }
+
+    private void whenSubmittingSchoolRegistrationAndCatchingException() {
+        thrownException = assertThrows(IllegalArgumentException.class, 
+                () -> useCase.execute(request));
     }
 
     private void thenSchoolDataWasSaved() {
@@ -110,5 +175,10 @@ class SubmitSchoolRegistrationTest {
     private void thenSubmissionTimestampsWereSaved() {
         assertNotNull(savedRegistration.getCreatedAt());
         assertNotNull(savedRegistration.getUpdatedAt());
+    }
+
+    private void thenExceptionIsThrownWithMessage(String expectedMessage) {
+        assertNotNull(thrownException);
+        assertEquals(expectedMessage, thrownException.getMessage());
     }
 }

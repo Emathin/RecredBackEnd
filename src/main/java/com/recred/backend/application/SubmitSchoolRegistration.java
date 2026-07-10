@@ -5,6 +5,7 @@ import com.recred.backend.domain.models.SchoolRegistrationStatus;
 import com.recred.backend.domain.repositories.ColegioRepository;
 import com.recred.backend.domain.repositories.SchoolRegistrationRequestRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -24,13 +25,18 @@ public class SubmitSchoolRegistration {
         this.usuarioRepository = usuarioRepository;
     }
 
+    @Transactional
     public SubmitSchoolRegistrationResponse execute(
             SubmitSchoolRegistrationRequest registrationRequest
     ) {
         ensureSchoolRegistrationCanBeSubmitted(registrationRequest);
         SchoolRegistrationRequest registration = registrationFrom(registrationRequest);
-        registrationRepository.save(registration);
+        saveRegistrationRequest(registration);
         return new SubmitSchoolRegistrationResponse();
+    }
+
+    private void saveRegistrationRequest(SchoolRegistrationRequest registration) {
+        registrationRepository.save(registration);
     }
 
     private void ensureSchoolRegistrationCanBeSubmitted(
@@ -46,40 +52,40 @@ public class SubmitSchoolRegistration {
 
     private void ensureSchoolEmailIsAvailable(String schoolEmail) {
         if (colegioRepository.existsByEmail(schoolEmail)) {
-            throw new IllegalArgumentException("Ya existe un colegio con ese email");
+            throw new IllegalArgumentException("Email registrado");
         }
     }
 
     private void ensureSchoolCueIsAvailable(String schoolCue) {
         if (colegioRepository.existsByCue(schoolCue)) {
-            throw new IllegalArgumentException("Ya existe un colegio con ese CUE");
+            throw new IllegalArgumentException("CUE registrado");
         }
     }
 
     private void ensureDirectorEmailIsAvailable(String directorEmail) {
         if (usuarioRepository.findByEmail(directorEmail).isPresent()) {
-            throw new IllegalArgumentException("El email del directivo ya esta en uso");
+            throw new IllegalArgumentException("Email registrado");
         }
     }
 
     private void ensureNoPendingRegistrationForSchoolEmail(String schoolEmail) {
         if (registrationRepository.existsBySchoolEmailAndStatus(schoolEmail,
                 SchoolRegistrationStatus.PENDING)) {
-            throw new IllegalArgumentException("Ya hay una solicitud pendiente para ese colegio");
+            throw new IllegalArgumentException("Solicitud pendiente");
         }
     }
 
     private void ensureNoPendingRegistrationForSchoolCue(String schoolCue) {
         if (registrationRepository.existsBySchoolCueAndStatus(schoolCue,
                 SchoolRegistrationStatus.PENDING)) {
-            throw new IllegalArgumentException("Ya hay una solicitud pendiente con ese CUE");
+            throw new IllegalArgumentException("Solicitud pendiente");
         }
     }
 
     private void ensureNoPendingRegistrationForDirector(String directorEmail) {
         if (registrationRepository.existsByDirectorEmailAndStatus(directorEmail,
                 SchoolRegistrationStatus.PENDING)) {
-            throw new IllegalArgumentException("Ya hay una solicitud pendiente para ese directivo");
+            throw new IllegalArgumentException("Solicitud pendiente");
         }
     }
 

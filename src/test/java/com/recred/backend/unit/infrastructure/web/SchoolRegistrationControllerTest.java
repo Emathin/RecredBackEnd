@@ -51,7 +51,7 @@ class SchoolRegistrationControllerTest {
     private static final String SCHOOL_NAME = "Test School";
     private static final String SCHOOL_EMAIL = "school@test.com";
     private static final String SCHOOL_PHONE = "123456789";
-    private static final String SCHOOL_CUE = "12345";
+    private static final String SCHOOL_CUE = "123456789";
     private static final String DIRECTOR_FIRST_NAME = "John";
     private static final String DIRECTOR_LAST_NAME = "Doe";
     private static final String DIRECTOR_EMAIL = "john@test.com";
@@ -103,6 +103,16 @@ class SchoolRegistrationControllerTest {
 
         thenResponseIsOk();
         thenSubmitRegistrationWasRequested();
+    }
+
+    @Test
+    void givenInvalidSchoolRegistrationSubmission_whenSubmittingRegistration_thenReturnsBadRequest()
+            throws Exception {
+        givenInvalidSchoolRegistrationSubmission();
+
+        whenSubmitSchoolRegistration();
+
+        thenResponseIsBadRequest();
     }
 
     @Test
@@ -167,6 +177,23 @@ class SchoolRegistrationControllerTest {
                 DIRECTOR_USERNAME);
     }
 
+    private void givenInvalidSchoolRegistrationSubmission() {
+        submissionJson = """
+                {
+                    "schoolName": "",
+                    "schoolEmail": "not-an-email",
+                    "schoolPhone": "",
+                    "schoolCue": "123",
+                    "directorFirstName": "",
+                    "directorLastName": "",
+                    "directorEmail": "",
+                    "directorPhone": "",
+                    "directorDni": "123",
+                    "directorUsername": ""
+                }
+                """;
+    }
+
     private void givenRegistrationId() {
         registrationId = randomUUID();
     }
@@ -214,6 +241,10 @@ class SchoolRegistrationControllerTest {
 
     private void thenResponseIsOk() throws Exception {
         response.andExpect(status().isOk());
+    }
+
+    private void thenResponseIsBadRequest() throws Exception {
+        response.andExpect(status().isBadRequest());
     }
 
     private void thenSubmitRegistrationWasRequested() {
