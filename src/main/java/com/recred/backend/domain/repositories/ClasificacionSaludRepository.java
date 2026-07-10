@@ -11,4 +11,5 @@ public interface ClasificacionSaludRepository {
     Optional<ClasificacionSalud> findById(UUID id);
     List<ClasificacionSalud> findAll();
     Optional<ClasificacionSalud> findByDescripcion(String descripcion);
+    ClasificacionSalud save(ClasificacionSalud clasificacion);
 }

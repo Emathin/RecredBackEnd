@@ -32,7 +32,7 @@ final class GradeValidation {
 
     static String validatedYear(String anio) {
         if (anio == null || anio.isBlank()) {
-            throw new InvalidGradeException("El anio del grado es requerido");
+            throw new InvalidGradeException("El año del grado es requerido");
         }
 
         return anio.trim();
@@ -61,7 +61,7 @@ final class GradeValidation {
                 anio,
                 division);
         if (exists) {
-            throw new GradeAlreadyExistsException(colegioId, anio, division);
+            throw new GradeAlreadyExistsException(anio, division);
         }
     }
 }

@@ -1,11 +1,9 @@
 package com.recred.backend.domain.exceptions;
 
-import java.util.UUID;
-
 public class GradeAlreadyExistsException extends RuntimeException {
 
-    public GradeAlreadyExistsException(UUID colegioId, String anio, String division) {
-        super("Ya existe un grado activo " + anio + " " + division
-                + " para el colegio " + colegioId);
+    public GradeAlreadyExistsException(String anio, String division) {
+        super("Ya existe un grado activo para el año " + anio
+                + " y la división " + division);
     }
 }

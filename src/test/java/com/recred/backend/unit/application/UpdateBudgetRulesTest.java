@@ -10,21 +10,24 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateBudgetRulesTest {
@@ -32,89 +35,153 @@ class UpdateBudgetRulesTest {
     @Mock
     private PresupuestoRepository repository;
 
+    @Captor
+    private ArgumentCaptor<PresupuestoAlumno> budgetCaptor;
+
     @InjectMocks
     private UpdateBudgetRules updateBudgetRules;
 
     private UUID budgetId;
-    private PresupuestoAlumno presupuestoExistente;
+    private PresupuestoAlumno existingBudget;
+    private UpdateBudgetRulesRequest updateRequest;
+    private UpdateBudgetRulesResponse updateResponse;
+    private Throwable thrownException;
 
     @BeforeEach
     void setUp() {
-        budgetId = UUID.randomUUID();
-        presupuestoExistente = new PresupuestoAlumno();
-        presupuestoExistente.setId(budgetId);
-        presupuestoExistente.setMontoLimiteGeneral(new BigDecimal("5000.00"));
+        budgetId = randomUUID();
+        existingBudget = budget(budgetId, "5000.00");
     }
 
     @Test
-    void execute_PresupuestoNoExiste_LanzaExcepcion() {
-        UpdateBudgetRulesRequest request = new UpdateBudgetRulesRequest(budgetId, Collections.emptyList());
+    void givenMissingBudget_whenUpdatingRules_thenThrowsException() {
+        givenBudgetDoesNotExist();
+        givenEmptyRulesRequest();
 
+        whenUpdateBudgetRulesFails(RuntimeException.class);
+
+        thenBudgetWasNotSaved();
+    }
+
+    @Test
+    void givenValidCategoryRules_whenUpdatingRules_thenSavesCalculatedRules() {
+        givenBudgetExists();
+        givenBudgetCanBeSaved();
+        givenRulesRequest(rule("10.00"));
+
+        whenUpdatingBudgetRules();
+
+        thenBudgetWasSavedWithCalculatedRule("10.00", "500.00");
+        thenResponseIncludesCalculatedRule("10.00", "500.00");
+    }
+
+    @Test
+    void givenEmptyRules_whenUpdatingRules_thenClearsBudgetRules() {
+        givenBudgetExists();
+        givenBudgetCanBeSaved();
+        givenEmptyRulesRequest();
+
+        whenUpdatingBudgetRules();
+
+        thenBudgetRulesWereCleared();
+        thenResponseRulesWereCleared();
+    }
+
+    @Test
+    void givenCategoryRulesOverOneHundredPercent_whenUpdatingRules_thenThrowsException() {
+        givenBudgetExists();
+        givenRulesRequest(rule("60.00"), rule("50.00"));
+
+        whenUpdateBudgetRulesFails(IllegalArgumentException.class);
+
+        thenErrorMessageContains("La suma de los porcentajes no puede superar el 100%");
+        thenBudgetWasNotSaved();
+    }
+
+    private void givenBudgetExists() {
+        when(repository.findById(budgetId)).thenReturn(Optional.of(existingBudget));
+    }
+
+    private void givenBudgetDoesNotExist() {
         when(repository.findById(budgetId)).thenReturn(Optional.empty());
- 
-        Executable execution = () -> updateBudgetRules.execute(request);
+    }
 
-        assertThrows(RuntimeException.class, execution);
+    private void givenBudgetCanBeSaved() {
+        when(repository.save(any(PresupuestoAlumno.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    private void givenEmptyRulesRequest() {
+        updateRequest = new UpdateBudgetRulesRequest(budgetId, List.of());
+    }
+
+    private void givenRulesRequest(UpdateBudgetRulesRequest.CategoryRuleRequest... rules) {
+        updateRequest = new UpdateBudgetRulesRequest(budgetId, List.of(rules));
+    }
+
+    private void whenUpdatingBudgetRules() {
+        updateResponse = updateBudgetRules.execute(updateRequest);
+    }
+
+    private <T extends Throwable> void whenUpdateBudgetRulesFails(Class<T> exceptionType) {
+        Executable execution = () -> updateBudgetRules.execute(updateRequest);
+        thrownException = assertThrows(exceptionType, execution);
+    }
+
+    private void thenBudgetWasSavedWithCalculatedRule(
+            String expectedPercentage,
+            String expectedAmount) {
+        verify(repository).save(budgetCaptor.capture());
+        PresupuestoAlumno savedBudget = budgetCaptor.getValue();
+        assertEquals(1, savedBudget.getReglasCategoria().size());
+        assertEquals(
+                new BigDecimal(expectedPercentage),
+                savedBudget.getReglasCategoria().get(0).getPorcentajeLimite());
+        assertEquals(
+                new BigDecimal(expectedAmount),
+                savedBudget.getReglasCategoria().get(0).getMontoLimiteCalculado());
+    }
+
+    private void thenResponseIncludesCalculatedRule(
+            String expectedPercentage,
+            String expectedAmount) {
+        assertEquals(budgetId, updateResponse.id());
+        assertEquals(1, updateResponse.reglasCategoria().size());
+        assertEquals(
+                new BigDecimal(expectedPercentage),
+                updateResponse.reglasCategoria().get(0).porcentajeLimite());
+        assertEquals(
+                new BigDecimal(expectedAmount),
+                updateResponse.reglasCategoria().get(0).montoLimiteCalculado());
+    }
+
+    private void thenBudgetRulesWereCleared() {
+        verify(repository).save(budgetCaptor.capture());
+        assertTrue(budgetCaptor.getValue().getReglasCategoria().isEmpty());
+    }
+
+    private void thenResponseRulesWereCleared() {
+        assertTrue(updateResponse.reglasCategoria().isEmpty());
+    }
+
+    private void thenBudgetWasNotSaved() {
         verify(repository, never()).save(any());
     }
- 
-    @Test
-    void execute_ActualizaReglasYGuarda() {
-        when(repository.findById(budgetId)).thenReturn(Optional.of(presupuestoExistente));
-        when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> i.getArguments()[0]);
- 
-        UUID categoryId = UUID.randomUUID();
-        UpdateBudgetRulesRequest.CategoryRuleRequest rule =
-                new UpdateBudgetRulesRequest.CategoryRuleRequest(categoryId, new BigDecimal("10.00"));
-        UpdateBudgetRulesRequest request = new UpdateBudgetRulesRequest(budgetId, List.of(rule));
- 
-        UpdateBudgetRulesResponse response = updateBudgetRules.execute(request);
- 
-        ArgumentCaptor<PresupuestoAlumno> captor = ArgumentCaptor.forClass(PresupuestoAlumno.class);
-        verify(repository).save(captor.capture());
-        PresupuestoAlumno guardado = captor.getValue();
- 
-        assertEquals(1, guardado.getReglasCategoria().size());
-        assertEquals(new BigDecimal("10.00"), guardado.getReglasCategoria().get(0).getPorcentajeLimite());
- 
-        assertEquals(new BigDecimal("500.00"),
-                guardado.getReglasCategoria().get(0).getMontoLimiteCalculado());
-        assertEquals(budgetId, response.id());
-        assertEquals(1, response.reglasCategoria().size());
-        assertEquals(new BigDecimal("10.00"), response.reglasCategoria().get(0).porcentajeLimite());
-        assertEquals(new BigDecimal("500.00"), response.reglasCategoria().get(0).montoLimiteCalculado());
-    }
- 
-    @Test
-    void execute_ListaVacia_LimpiaLasReglas() {
-        when(repository.findById(budgetId)).thenReturn(Optional.of(presupuestoExistente));
-        when(repository.save(any(PresupuestoAlumno.class))).thenAnswer(i -> i.getArguments()[0]);
- 
-        UpdateBudgetRulesRequest request = new UpdateBudgetRulesRequest(budgetId, Collections.emptyList());
- 
-        UpdateBudgetRulesResponse response = updateBudgetRules.execute(request);
- 
-        ArgumentCaptor<PresupuestoAlumno> captor = ArgumentCaptor.forClass(PresupuestoAlumno.class);
-        verify(repository).save(captor.capture());
- 
-        assertTrue(captor.getValue().getReglasCategoria().isEmpty(), "La lista de reglas debería quedar vacía");
-        assertTrue(response.reglasCategoria().isEmpty());
+
+    private void thenErrorMessageContains(String expectedMessage) {
+        assertTrue(thrownException.getMessage().contains(expectedMessage));
     }
 
-    @Test
-    void execute_CuandoSumaPorcentajesSupera100_LanzaIllegalArgumentException() {
-        when(repository.findById(budgetId)).thenReturn(Optional.of(presupuestoExistente));
+    private PresupuestoAlumno budget(UUID id, String generalLimit) {
+        PresupuestoAlumno budget = new PresupuestoAlumno();
+        budget.setId(id);
+        budget.setMontoLimiteGeneral(new BigDecimal(generalLimit));
+        return budget;
+    }
 
-        UpdateBudgetRulesRequest.CategoryRuleRequest rule1 =
-                new UpdateBudgetRulesRequest.CategoryRuleRequest(UUID.randomUUID(), new BigDecimal("60.00"));
-        UpdateBudgetRulesRequest.CategoryRuleRequest rule2 =
-                new UpdateBudgetRulesRequest.CategoryRuleRequest(UUID.randomUUID(), new BigDecimal("50.00"));
-        UpdateBudgetRulesRequest request = new UpdateBudgetRulesRequest(budgetId, List.of(rule1, rule2));
-
-        Executable execution = () -> updateBudgetRules.execute(request);
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
-        assertTrue(exception.getMessage().contains("La suma de los porcentajes no puede superar el 100%"));
-        verify(repository, never()).save(any());
+    private UpdateBudgetRulesRequest.CategoryRuleRequest rule(String percentageLimit) {
+        return new UpdateBudgetRulesRequest.CategoryRuleRequest(
+                randomUUID(),
+                new BigDecimal(percentageLimit));
     }
 }

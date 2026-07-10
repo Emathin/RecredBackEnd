@@ -65,7 +65,8 @@ public class SaveProduct {
         return request.buffetId() != null
                 && (request.stockActual() != null
                 || request.tipoManejoInventario() != null
-                || request.cupoMaximoDiario() != null);
+                || request.cupoMaximoDiario() != null
+                || (request.urlImagen() != null && !request.urlImagen().isBlank()));
     }
 
     private Inventario createNewInventory(SaveProductRequest request, UUID productoId) {

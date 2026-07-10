@@ -6,6 +6,10 @@ import com.recred.backend.application.RegisterBuffetResponse;
 import com.recred.backend.application.RegisterSeller;
 import com.recred.backend.application.RegisterSellerRequest;
 import com.recred.backend.application.RegisterSellerResponse;
+import com.recred.backend.application.ReplaceSeller;
+import com.recred.backend.application.ReplaceSellerRequest;
+import com.recred.backend.application.ResendSellerCredentials;
+import com.recred.backend.application.ResendSellerCredentialsRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -24,6 +28,8 @@ public class SchoolBuffetController {
 
     private final RegisterBuffet registerBuffetUseCase;
     private final RegisterSeller registerSellerUseCase;
+    private final ReplaceSeller replaceSellerUseCase;
+    private final ResendSellerCredentials resendSellerCredentialsUseCase;
     private final SchoolAccessGuard accessGuard;
 
     @PostMapping("/colegios/{schoolId}/buffets")
@@ -64,6 +70,40 @@ public class SchoolBuffetController {
         );
 
         RegisterSellerResponse response = registerSellerUseCase.execute(reqWithBuffetId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/sellers/{sellerId}/resend-credentials")
+    public ResponseEntity<Void> resendSellerCredentials(
+            Authentication authentication,
+            @PathVariable UUID sellerId) {
+        
+        accessGuard.requireSellerDirectorAccess(authentication, sellerId);
+        resendSellerCredentialsUseCase.execute(new ResendSellerCredentialsRequest(sellerId));
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/buffets/{buffetId}/sellers/replace")
+    public ResponseEntity<RegisterSellerResponse> replaceSeller(
+            Authentication authentication,
+            @PathVariable UUID buffetId,
+            @RequestBody ReplaceSellerRequest request) {
+        
+        accessGuard.requireBuffetDirectorAccess(authentication, buffetId);
+
+        ReplaceSellerRequest reqWithBuffetId = new ReplaceSellerRequest(
+                buffetId,
+                request.username(),
+                request.email(),
+                request.firstName(),
+                request.lastName(),
+                request.dni(),
+                request.phone(),
+                request.cuit()
+        );
+
+        RegisterSellerResponse response = replaceSellerUseCase.execute(reqWithBuffetId);
         return ResponseEntity.ok(response);
     }
 }

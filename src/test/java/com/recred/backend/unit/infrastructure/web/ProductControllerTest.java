@@ -229,7 +229,6 @@ class ProductControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(productId, response.getBody().id());
-        verify(planAccessGuard).requireVendorAdvanced(null);
         verify(getProductById).execute(new GetProductByIdRequest(productId, buffetId));
     }
 
@@ -340,7 +339,7 @@ class ProductControllerTest {
     private ResponseEntity<ProductResponseDTO> whenFindingProductById(
             UUID productId,
             UUID buffetId) {
-        return controller.findById(null, productId, buffetId);
+        return controller.findById(productId, buffetId);
     }
 
     private ResponseEntity<ProductResponseDTO> whenCreatingProduct(ProductRequestDTO request) {

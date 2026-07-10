@@ -11,6 +11,7 @@ import com.recred.backend.application.GetSchoolRegistrationsResponse;
 import org.springframework.security.core.Authentication;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,7 +36,7 @@ public class SchoolRegistrationController {
 
     @PostMapping
     public ResponseEntity<Void> submitRegistration(
-            @RequestBody SubmitSchoolRegistrationRequest request) {
+            @Valid @RequestBody SubmitSchoolRegistrationRequest request) {
         submitUseCase.execute(request);
         return ResponseEntity.ok().build();
     }

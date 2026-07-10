@@ -171,7 +171,13 @@ class KiosqueroRepositoryImplIT extends AbstractIntegrationTest {
         KiosqueroEntity entity = new KiosqueroEntity();
         entity.setUsuario(generateUserEntity(email));
         entity.setCuit(cuit);
-        entity.setBuffetEntity(generateBuffetEntity());
-        return springDataKiosqueroRepository.save(entity);
+        BuffetEntity buffet = generateBuffetEntity();
+        entity.setBuffetEntity(buffet);
+        KiosqueroEntity savedKiosquero = springDataKiosqueroRepository.save(entity);
+        
+        buffet.setVendedor(savedKiosquero);
+        entityManager.merge(buffet);
+        
+        return savedKiosquero;
     }
 }
