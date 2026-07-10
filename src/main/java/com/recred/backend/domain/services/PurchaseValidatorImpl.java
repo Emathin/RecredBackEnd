@@ -26,10 +26,19 @@ public class PurchaseValidatorImpl implements PurchaseValidator {
 
     @Override
     public void validate(Purchase purchase) {
+        LocalDateTime momentoEvaluacion = LocalDateTime.now();
+        if (purchase.getTipo() == com.recred.backend.domain.models.TipoCompra.ANTICIPADA 
+                && purchase.getPickupDate() != null) {
+            java.time.LocalTime horaEvaluacion = purchase.getPickupSlotStart() != null 
+                    ? purchase.getPickupSlotStart() 
+                    : java.time.LocalTime.NOON;
+            momentoEvaluacion = LocalDateTime.of(purchase.getPickupDate(), horaEvaluacion);
+        }
+
         validadorHorarioService.validarCompra(
                 purchase.getStudent(),
                 purchase.getItems().keySet(),
-                LocalDateTime.now()
+                momentoEvaluacion
         );
 
         validacionRestriccionesService.validarCompra(
@@ -51,7 +60,7 @@ public class PurchaseValidatorImpl implements PurchaseValidator {
                 purchase.getStudent().getId(),
                 purchase.getTotalAmount(),
                 amountsByCategory,
-                LocalDateTime.now()
+                momentoEvaluacion
         );
     }
 }

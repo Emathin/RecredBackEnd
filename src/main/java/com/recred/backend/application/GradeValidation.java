@@ -61,7 +61,7 @@ final class GradeValidation {
                 anio,
                 division);
         if (exists) {
-            throw new GradeAlreadyExistsException(colegioId, anio, division);
+            throw new GradeAlreadyExistsException(anio, division);
         }
     }
 }

@@ -137,7 +137,8 @@ public class UpdateProduct {
         return productRequest.buffetId() != null
                 && (productRequest.stockActual() != null
                 || productRequest.tipoManejoInventario() != null
-                || productRequest.cupoMaximoDiario() != null);
+                || productRequest.cupoMaximoDiario() != null
+                || (productRequest.urlImagen() != null && !productRequest.urlImagen().isBlank()));
     }
 
     private void updateInventoryFor(UpdateProductRequest productRequest, UUID productId) {
