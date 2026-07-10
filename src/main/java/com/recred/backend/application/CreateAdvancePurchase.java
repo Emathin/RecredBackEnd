@@ -199,6 +199,9 @@ public class CreateAdvancePurchase {
                 pickupSlot.getId(),
                 pickupDate
         );
+        purchase.setPickupSlotDescription(pickupSlot.getDescripcion());
+        purchase.setPickupSlotStart(pickupSlot.getHoraInicio());
+        purchase.setPickupSlotEnd(pickupSlot.getHoraFin());
         purchase.setSuggestionId(orderRequest.suggestionId());
         purchase.setTutorId(buyer.tutorId());
         return purchase;
