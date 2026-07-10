@@ -24,7 +24,7 @@ class BackendApplicationMainTest {
             assertEquals("UTC", TimeZone.getDefault().getID());
             springApplication.verify(() -> SpringApplication.run(BackendApplication.class, args));
         } finally {
-            TimeZone.setDefault(original);
+             TimeZone.setDefault(original);
         }
     }
 }
