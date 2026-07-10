@@ -54,6 +54,7 @@ public class UsuarioRepositoryImpl implements UsuarioRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Usuario> findByEmail(String email) {
         return springDataUsuarioRepository.findFirstByEmailOrderByActualizadoEnDescCreadoEnDesc(
                         email)
