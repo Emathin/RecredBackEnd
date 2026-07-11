@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Transactional
@@ -42,17 +43,74 @@ class ChatMessagePersistenceRepositoryIT extends AbstractIntegrationTest {
 
     @Test
     void save_ShouldMapMessageToEntity() {
-        ChatSesionEntity session = generateSessionEntity();
-        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
+        ChatSesionEntity session = givenSessionEntity();
+        LocalDateTime now = LocalDateTime.now().truncatedTo(MILLIS);
 
+        whenSavingMessage(session, now);
+
+        thenMessageIsPersisted(session, now);
+    }
+
+    @Test
+    void findRecentBySessionId_ShouldMapMessagesToDomain() {
+        ChatMensajeEntity messageEntity = givenMessageEntity();
+
+        List<ChatMessage> messages = whenFindingRecentMessages(messageEntity.getSesion(), 2);
+
+        thenMessagesAreMappedProperly(messages, messageEntity);
+    }
+
+    @Test
+    void findBySessionId_ShouldMapPagedMessagesToDomain() {
+        ChatMensajeEntity messageEntity = givenMessageEntity();
+
+        List<ChatMessage> messages = whenFindingMessagesBySessionPaged(messageEntity.getSesion(), 0, 5);
+
+        thenPagedMessagesAreMappedProperly(messages, messageEntity);
+    }
+
+    @Test
+    void deleteBySessionId_ShouldRemoveEntities() {
+        ChatMensajeEntity messageEntity = givenMessageEntity();
+
+        whenDeletingMessagesBySession(messageEntity.getSesion());
+
+        thenMessagesAreDeleted(messageEntity);
+    }
+
+    private ChatSesionEntity givenSessionEntity() {
+        return generateSessionEntity();
+    }
+
+    private ChatMensajeEntity givenMessageEntity() {
+        return generateMessageEntity();
+    }
+
+    private void whenSavingMessage(ChatSesionEntity session, LocalDateTime timestamp) {
         repository.save(new ChatMessage(
                 session.getId(),
                 RolChatMensaje.USUARIO,
                 "balance request",
                 Map.of("capabilities", List.of("BALANCE")),
-                now
+                timestamp
         ));
+    }
 
+    private List<ChatMessage> whenFindingRecentMessages(ChatSesionEntity session, int limit) {
+        return repository.findRecentBySessionId(session.getId(), limit);
+    }
+
+    private List<ChatMessage> whenFindingMessagesBySessionPaged(ChatSesionEntity session, int offset, int limit) {
+        return repository.findBySessionId(session.getId(), offset, limit);
+    }
+
+    private void whenDeletingMessagesBySession(ChatSesionEntity session) {
+        repository.deleteBySessionId(session.getId());
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private void thenMessageIsPersisted(ChatSesionEntity session, LocalDateTime timestamp) {
         List<ChatMensajeEntity> messages = chatMessageRepository.findAll();
         assertFalse(messages.isEmpty());
         
@@ -64,41 +122,24 @@ class ChatMessagePersistenceRepositoryIT extends AbstractIntegrationTest {
         ChatMensajeEntity saved = savedOpt.get();
         assertEquals(session.getId(), saved.getSesion().getId());
         assertEquals(RolChatMensaje.USUARIO, saved.getRol());
-        assertEquals(now, saved.getFechaHora());
+        assertEquals(timestamp, saved.getFechaHora());
     }
 
-    @Test
-    void findRecentBySessionId_ShouldMapMessagesToDomain() {
-        ChatMensajeEntity messageEntity = generateMessageEntity();
-
-        List<ChatMessage> messages = repository.findRecentBySessionId(messageEntity.getSesion().getId(), 2);
-
+    private void thenMessagesAreMappedProperly(List<ChatMessage> messages, ChatMensajeEntity messageEntity) {
         assertFalse(messages.isEmpty());
         assertEquals(messageEntity.getSesion().getId(), messages.get(0).sessionId());
         assertEquals(messageEntity.getContenido(), messages.get(0).content());
         assertEquals(messageEntity.getRol(), messages.get(0).role());
     }
 
-    @Test
-    void findBySessionId_ShouldMapPagedMessagesToDomain() {
-        ChatMensajeEntity messageEntity = generateMessageEntity();
-
-        List<ChatMessage> messages = repository.findBySessionId(messageEntity.getSesion().getId(), 0, 5);
-
+    private void thenPagedMessagesAreMappedProperly(List<ChatMessage> messages, ChatMensajeEntity messageEntity) {
         assertFalse(messages.isEmpty());
         assertEquals(messageEntity.getId(), messages.get(0).id());
         assertEquals(messageEntity.getSesion().getId(), messages.get(0).sessionId());
         assertEquals(messageEntity.getRol(), messages.get(0).role());
     }
 
-    @Test
-    void deleteBySessionId_ShouldRemoveEntities() {
-        ChatMensajeEntity messageEntity = generateMessageEntity();
-
-        repository.deleteBySessionId(messageEntity.getSesion().getId());
-        entityManager.flush();
-        entityManager.clear();
-
+    private void thenMessagesAreDeleted(ChatMensajeEntity messageEntity) {
         assertTrue(chatMessageRepository.findById(messageEntity.getId()).isEmpty());
     }
 

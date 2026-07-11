@@ -13,12 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import java.util.List;
 
 @Transactional
 class BuffetRepositoryImplIT extends AbstractIntegrationTest {
@@ -55,28 +55,68 @@ class BuffetRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void findById_WhenBuffetExists_ShouldMapToDomain() {
-        Optional<Buffet> result = repository.findById(buffetId);
+        Optional<Buffet> result = whenFindingBuffetById(buffetId);
 
-        assertTrue(result.isPresent());
-        assertEquals(buffetId, result.get().getId());
-        assertEquals("Buffet central", result.get().getNombre());
-        assertEquals(schoolId, result.get().getColegio().getId());
+        thenBuffetIsMappedCorrectly(result);
     }
 
     @Test
     void findByAlumnoId_WhenBuffetExists_ShouldMapToDomain() {
-        Optional<Buffet> result = repository.findByAlumnoId(studentId);
+        Optional<Buffet> result = whenFindingBuffetByAlumnoId(studentId);
 
+        thenBuffetIsMappedCorrectly(result);
+    }
+
+    @Test
+    void findByColegioId_WhenBuffetsExist_ShouldMapToDomain() {
+        List<Buffet> result = whenFindingBuffetsByColegioId(schoolId);
+
+        thenBuffetListIsMappedCorrectly(result);
+    }
+
+    @Test
+    void save_ShouldSaveInRealDatabaseAndGenerateId() {
+        Buffet domainBuffet = givenDomainBuffet();
+
+        Buffet savedBuffet = whenSavingBuffet(domainBuffet);
+
+        thenBuffetIsPersistedCorrectly(savedBuffet);
+    }
+
+    private Optional<Buffet> whenFindingBuffetById(UUID id) {
+        return repository.findById(id);
+    }
+
+    private Optional<Buffet> whenFindingBuffetByAlumnoId(UUID id) {
+        return repository.findByAlumnoId(id);
+    }
+
+    private List<Buffet> whenFindingBuffetsByColegioId(UUID id) {
+        return repository.findByColegioId(id);
+    }
+
+    private Buffet givenDomainBuffet() {
+        Buffet domainBuffet = new Buffet();
+        domainBuffet.setNombre("Nuevo Buffet IT");
+        domainBuffet.setActivo(true);
+        Colegio colegio = new Colegio();
+        colegio.setId(schoolId);
+        domainBuffet.setColegio(colegio);
+        return domainBuffet;
+    }
+
+    private Buffet whenSavingBuffet(Buffet buffet) {
+        return repository.save(buffet);
+    }
+
+    private void thenBuffetIsMappedCorrectly(Optional<Buffet> result) {
         assertTrue(result.isPresent());
         assertEquals(buffetId, result.get().getId());
         assertEquals("Buffet central", result.get().getNombre());
         assertEquals(schoolId, result.get().getColegio().getId());
     }
 
-    @Test
-    void findByColegioId_WhenBuffetsExist_ShouldMapToDomain() {
-        List<Buffet> result = repository.findByColegioId(schoolId);
-
+    private void thenBuffetListIsMappedCorrectly(List<Buffet> result) {
         assertFalse(result.isEmpty());
         assertEquals(1, result.size());
         assertEquals(buffetId, result.get(0).getId());
@@ -85,25 +125,13 @@ class BuffetRepositoryImplIT extends AbstractIntegrationTest {
         assertNotNull(result.get(0).getVendedor());
     }
 
-    @Test
-    void save_ShouldSaveInRealDatabaseAndGenerateId() {
-        Buffet domainBuffet = new Buffet();
-        domainBuffet.setNombre("Nuevo Buffet IT");
-        domainBuffet.setActivo(true);
-        Colegio colegio = new Colegio();
-        colegio.setId(schoolId);
-        domainBuffet.setColegio(colegio);
-
-        Buffet savedBuffet = repository.save(domainBuffet);
-
+    private void thenBuffetIsPersistedCorrectly(Buffet savedBuffet) {
         assertNotNull(savedBuffet.getId());
-        
         Optional<BuffetEntity> dbBuffet = springDataBuffetRepository.findById(savedBuffet.getId());
         assertTrue(dbBuffet.isPresent());
         assertEquals("Nuevo Buffet IT", dbBuffet.get().getNombre());
         assertEquals(schoolId, dbBuffet.get().getColegioEntity().getId());
     }
-
 
     private ColegioEntity generateSchool() {
         ColegioEntity school = new ColegioEntity();
@@ -117,7 +145,6 @@ class BuffetRepositoryImplIT extends AbstractIntegrationTest {
         this.schoolId = school.getId();
         BuffetEntity buffet = generateBuffet(school);
         KiosqueroEntity vendor = generateVendor(buffet);
-
 
         this.buffetId = buffet.getId();
 

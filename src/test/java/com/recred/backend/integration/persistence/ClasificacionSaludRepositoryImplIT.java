@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -30,74 +31,129 @@ class ClasificacionSaludRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void findAllById_ShouldMapEntitiesToDomainAndReturn() {
-        ClasificacionSaludEntity entity1 = generateCeliac();
-        ClasificacionSaludEntity entity2 = generateDiabetic();
+        ClasificacionSaludEntity entity1 = givenCeliacEntity();
+        ClasificacionSaludEntity entity2 = givenDiabeticEntity();
+        List<UUID> searchIds = List.of(entity1.getId(), entity2.getId());
 
-        List<java.util.UUID> searchIds = List.of(entity1.getId(), entity2.getId());
+        List<ClasificacionSalud> result = whenFindingAllById(searchIds);
 
-        List<ClasificacionSalud> result = repositoryImpl.findAllById(searchIds);
-
-        assertNotNull(result);
-        assertEquals(2, result.size());
-
-        assertTrue(result.stream().anyMatch(c -> c.getId().equals(entity1.getId()) && "Celiac".equals(c.getDescripcion())));
-        assertTrue(result.stream().anyMatch(c -> c.getId().equals(entity2.getId()) && "Diabetic".equals(c.getDescripcion())));
+        thenEntitiesAreMappedAndReturned(result, entity1, entity2);
     }
 
     @Test
     void findById_ShouldMapAndReturn_WhenExists() {
-        ClasificacionSaludEntity entity = generateLactoseIntolerant();
+        ClasificacionSaludEntity entity = givenLactoseIntolerantEntity();
 
-        Optional<ClasificacionSalud> result = repositoryImpl.findById(entity.getId());
+        Optional<ClasificacionSalud> result = whenFindingById(entity.getId());
 
+        thenEntityIsMappedAndReturned(result, entity);
+    }
+
+    @Test
+    void findById_ShouldReturnEmpty_WhenDoesNotExist() {
+        Optional<ClasificacionSalud> result = whenFindingById(UUID.randomUUID());
+
+        thenResultIsEmpty(result);
+    }
+
+    @Test
+    void findAll_ShouldMapAllEntitiesToDomain() {
+        givenCeliacEntity();
+
+        List<ClasificacionSalud> result = whenFindingAll();
+
+        thenAllEntitiesAreMapped(result);
+    }
+
+    @Test
+    void findAll_ShouldReturnEmptyList_WhenNoDataExists() {
+        givenNoDataExists();
+
+        List<ClasificacionSalud> result = whenFindingAll();
+
+        thenResultListIsEmpty(result);
+    }
+
+    @Test
+    void toEntity_ShouldMapModelToEntity() {
+        ClasificacionSalud model = givenHealthClassificationModel("Sugar Free");
+
+        ClasificacionSaludEntity entity = whenMappingToEntity(model);
+
+        thenModelIsMappedCorrectly(entity, model);
+    }
+
+    private ClasificacionSaludEntity givenCeliacEntity() {
+        return generateCeliac();
+    }
+
+    private ClasificacionSaludEntity givenDiabeticEntity() {
+        return generateDiabetic();
+    }
+
+    private ClasificacionSaludEntity givenLactoseIntolerantEntity() {
+        return generateLactoseIntolerant();
+    }
+
+    private void givenNoDataExists() {
+        springDataRepository.deleteAll();
+    }
+
+    private ClasificacionSalud givenHealthClassificationModel(String description) {
+        ClasificacionSalud model = new ClasificacionSalud();
+        model.setId(UUID.randomUUID());
+        model.setDescripcion(description);
+        model.setActivo(true);
+        return model;
+    }
+
+    private List<ClasificacionSalud> whenFindingAllById(List<UUID> searchIds) {
+        return repositoryImpl.findAllById(searchIds);
+    }
+
+    private Optional<ClasificacionSalud> whenFindingById(UUID id) {
+        return repositoryImpl.findById(id);
+    }
+
+    private List<ClasificacionSalud> whenFindingAll() {
+        return repositoryImpl.findAll();
+    }
+
+    private ClasificacionSaludEntity whenMappingToEntity(ClasificacionSalud model) {
+        return ReflectionTestUtils.invokeMethod(repositoryImpl, "toEntity", model);
+    }
+
+    private void thenEntitiesAreMappedAndReturned(List<ClasificacionSalud> result, ClasificacionSaludEntity entity1, ClasificacionSaludEntity entity2) {
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertTrue(result.stream().anyMatch(c -> c.getId().equals(entity1.getId()) && "Celiac".equals(c.getDescripcion())));
+        assertTrue(result.stream().anyMatch(c -> c.getId().equals(entity2.getId()) && "Diabetic".equals(c.getDescripcion())));
+    }
+
+    private void thenEntityIsMappedAndReturned(Optional<ClasificacionSalud> result, ClasificacionSaludEntity entity) {
         assertTrue(result.isPresent());
         assertEquals(entity.getId(), result.get().getId());
         assertEquals("Lactose Intolerant", result.get().getDescripcion());
     }
 
-    @Test
-    void findById_ShouldReturnEmpty_WhenDoesNotExist() {
-        Optional<ClasificacionSalud> result = repositoryImpl.findById(java.util.UUID.randomUUID());
-
+    private void thenResultIsEmpty(Optional<ClasificacionSalud> result) {
         assertTrue(result.isEmpty());
     }
 
-    @Test
-    void findAll_ShouldMapAllEntitiesToDomain() {
-        generateCeliac();
-
-        List<ClasificacionSalud> result = repositoryImpl.findAll();
-
+    private void thenAllEntitiesAreMapped(List<ClasificacionSalud> result) {
         assertFalse(result.isEmpty());
         assertTrue(result.stream().anyMatch(c -> "Celiac".equals(c.getDescripcion())));
     }
 
-    @Test
-    void findAll_ShouldReturnEmptyList_WhenNoDataExists() {
-        springDataRepository.deleteAll();
-
-        List<ClasificacionSalud> result = repositoryImpl.findAll();
-
+    private void thenResultListIsEmpty(List<ClasificacionSalud> result) {
         assertNotNull(result);
         assertTrue(result.isEmpty());
     }
 
-    @Test
-    void toEntity_ShouldMapModelToEntity() {
-        ClasificacionSalud model = new ClasificacionSalud();
-        model.setId(java.util.UUID.randomUUID());
-        model.setDescripcion("Sugar Free");
-        model.setActivo(true);
-
-        ClasificacionSaludEntity entity = ReflectionTestUtils.invokeMethod(
-                repositoryImpl,
-                "toEntity",
-                model
-        );
-
+    private void thenModelIsMappedCorrectly(ClasificacionSaludEntity entity, ClasificacionSalud model) {
         assertNotNull(entity);
         assertEquals(model.getId(), entity.getId());
-        assertEquals("Sugar Free", entity.getDescripcion());
+        assertEquals(model.getDescripcion(), entity.getDescripcion());
         assertTrue(entity.getActivo());
     }
 

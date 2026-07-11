@@ -44,12 +44,72 @@ class UsuarioRepositoryImplIT extends AbstractIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    private UsuarioEntity cachedUser;
+    private ColegioEntity cachedColegio;
+    private AlumnoEntity cachedAlumno;
+    private TutorEntity cachedTutor;
+    private KiosqueroEntity cachedKiosquero;
+    private Usuario cachedUsuarioCommand;
+
     @Test
     void saveShouldMapDomainUserWithRelationsToEntityAndBack() {
-        ColegioEntity colegioEntity = generateColegioEntity();
-        AlumnoEntity alumnoEntity = generateStudentEntity();
-        TutorEntity tutorEntity = generateTutorEntity();
-        KiosqueroEntity kiosqueroEntity = generateKiosqueroEntityWithBuffet(colegioEntity);
+        givenContextForMappingDomainUser();
+        
+        Usuario result = whenSavingUsuario();
+
+        thenUsuarioRelationsWereSaved(result);
+    }
+
+    @Test
+    void findByIdShouldMapEntityWhenPresent() {
+        givenSavedUserEntity();
+
+        Optional<Usuario> result = whenFindingUsuarioById();
+
+        thenUsuarioMatchesEntity(result);
+    }
+
+    @Test
+    void findByIdCognitoShouldMapEntityWhenPresent() {
+        givenSavedUserEntity();
+
+        Optional<Usuario> result = whenFindingUsuarioByIdCognito();
+
+        thenUsuarioMatchesEntity(result);
+    }
+
+    @Test
+    void findByEmailShouldMapEntityWhenPresent() {
+        givenSavedUserEntity();
+
+        Optional<Usuario> result = whenFindingUsuarioByEmail();
+
+        thenUsuarioMatchesEntity(result);
+    }
+
+    @Test
+    void updateProfileShouldNotPersistKiosqueroWithoutCuit() {
+        givenKiosqueroUserContext();
+
+        whenUpdatingProfile();
+
+        thenProfileWasUpdatedAndKiosqueroPreserved();
+    }
+
+    @Test
+    void updatePlanShouldPreserveTutorStudents() {
+        givenTutorUserWithStudent();
+
+        whenUpdatingPlan();
+
+        thenPlanWasUpdatedAndStudentPreserved();
+    }
+
+    private void givenContextForMappingDomainUser() {
+        this.cachedColegio = generateColegioEntity();
+        this.cachedAlumno = generateStudentEntity();
+        this.cachedTutor = generateTutorEntity();
+        this.cachedKiosquero = generateKiosqueroEntityWithBuffet(this.cachedColegio);
         
         UsuarioEntity baseUser = userEntity();
         springDataUsuarioRepository.save(baseUser);
@@ -57,95 +117,89 @@ class UsuarioRepositoryImplIT extends AbstractIntegrationTest {
         entityManager.flush();
         entityManager.clear();
 
-        Usuario usuarioCommand = createUsuarioDomainWithRelations(baseUser.getId(), colegioEntity, alumnoEntity, tutorEntity, kiosqueroEntity);
-
-        Usuario result = repository.save(usuarioCommand);
-        entityManager.flush();
-        entityManager.clear();
-
-        assertUsuarioRelationsWereSaved(usuarioCommand, result, colegioEntity, alumnoEntity, tutorEntity, kiosqueroEntity);
+        this.cachedUsuarioCommand = createUsuarioDomainWithRelations(baseUser.getId(), this.cachedColegio, this.cachedAlumno, this.cachedTutor, this.cachedKiosquero);
     }
 
-    @Test
-    void findByIdShouldMapEntityWhenPresent() {
-        UsuarioEntity entity = userEntity();
-        springDataUsuarioRepository.save(entity);
+    private void givenSavedUserEntity() {
+        this.cachedUser = userEntity();
+        springDataUsuarioRepository.save(this.cachedUser);
         entityManager.flush();
         entityManager.clear();
-
-        Optional<Usuario> result = repository.findById(entity.getId());
-
-        assertTrue(result.isPresent());
-        assertEquals(entity.getId(), result.get().getId());
     }
 
-    @Test
-    void findByIdCognitoShouldMapEntityWhenPresent() {
-        UsuarioEntity entity = userEntity();
-        springDataUsuarioRepository.save(entity);
-        entityManager.flush();
-        entityManager.clear();
-
-        Optional<Usuario> result = repository.findByIdCognito(entity.getIdCognito());
-
-        assertTrue(result.isPresent());
-        assertEquals(entity.getId(), result.get().getId());
-    }
-
-    @Test
-    void findByEmailShouldMapEntityWhenPresent() {
-        UsuarioEntity entity = userEntity();
-        springDataUsuarioRepository.save(entity);
-        entityManager.flush();
-        entityManager.clear();
-
-        Optional<Usuario> result = repository.findByEmail(entity.getEmail());
-
-        assertTrue(result.isPresent());
-        assertEquals(entity.getId(), result.get().getId());
-    }
-
-    @Test
-    void updateProfileShouldNotPersistKiosqueroWithoutCuit() {
+    private void givenKiosqueroUserContext() {
         ColegioEntity colegioEntity = generateColegioEntity();
-        KiosqueroEntity kiosqueroEntity = generateKiosqueroEntityWithBuffet(colegioEntity);
-        UUID usuarioId = kiosqueroEntity.getUsuario().getId();
-        String cuit = kiosqueroEntity.getCuit();
-        String cognitoId = kiosqueroEntity.getUsuario().getIdCognito();
-
-        repository.updateProfile(
-                cognitoId,
-                "Nombre",
-                "Actualizado",
-                "5491161718479",
-                "45238796",
-                java.time.LocalDateTime.now());
+        this.cachedKiosquero = generateKiosqueroEntityWithBuffet(colegioEntity);
         entityManager.flush();
         entityManager.clear();
+    }
 
-        UsuarioEntity saved = springDataUsuarioRepository.findById(usuarioId).orElseThrow();
+    private void givenTutorUserWithStudent() {
+        this.cachedTutor = generateTutorEntityWithStudent();
+        entityManager.flush();
+        entityManager.clear();
+    }
 
+    private Usuario whenSavingUsuario() {
+        Usuario result = repository.save(this.cachedUsuarioCommand);
+        entityManager.flush();
+        entityManager.clear();
+        return result;
+    }
+
+    private Optional<Usuario> whenFindingUsuarioById() {
+        return repository.findById(this.cachedUser.getId());
+    }
+
+    private Optional<Usuario> whenFindingUsuarioByIdCognito() {
+        return repository.findByIdCognito(this.cachedUser.getIdCognito());
+    }
+
+    private Optional<Usuario> whenFindingUsuarioByEmail() {
+        return repository.findByEmail(this.cachedUser.getEmail());
+    }
+
+    private void whenUpdatingProfile() {
+        repository.updateProfile(this.cachedKiosquero.getUsuario().getIdCognito(), "Nombre", "Actualizado", "5491161718479", "45238796", java.time.LocalDateTime.now());
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private void whenUpdatingPlan() {
+        repository.updatePlan(this.cachedTutor.getUsuario().getId(), TipoPlan.INTERMEDIO);
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private void thenUsuarioMatchesEntity(Optional<Usuario> result) {
+        assertTrue(result.isPresent());
+        assertEquals(this.cachedUser.getId(), result.get().getId());
+    }
+
+    private void thenUsuarioRelationsWereSaved(Usuario result) {
+        UsuarioEntity saved = springDataUsuarioRepository.findById(result.getId()).orElseThrow();
+        assertEquals(result.getId(), saved.getId());
+        assertEquals(this.cachedUsuarioCommand.getIdCognito(), saved.getIdCognito());
+        assertEquals(this.cachedColegio.getId(), saved.getColegioEntity().getId());
+        assertEquals(this.cachedAlumno.getId(), saved.getAlumnoEntity().getId());
+        assertEquals(this.cachedTutor.getId(), saved.getTutor().getId());
+        assertEquals(this.cachedKiosquero.getId(), saved.getKiosquero().getId());
+    }
+
+    private void thenProfileWasUpdatedAndKiosqueroPreserved() {
+        UsuarioEntity saved = springDataUsuarioRepository.findById(this.cachedKiosquero.getUsuario().getId()).orElseThrow();
         assertEquals("Nombre", saved.getNombre());
         assertEquals("Actualizado", saved.getApellido());
         assertEquals("5491161718479", saved.getTelefono());
-        assertEquals(cuit, saved.getKiosquero().getCuit());
+        assertEquals(this.cachedKiosquero.getCuit(), saved.getKiosquero().getCuit());
     }
 
-    @Test
-    void updatePlanShouldPreserveTutorStudents() {
-        TutorEntity tutorEntity = generateTutorEntityWithStudent();
-        UUID usuarioId = tutorEntity.getUsuario().getId();
-        UUID alumnoId = tutorEntity.getHijos().iterator().next().getId();
-
-        repository.updatePlan(usuarioId, TipoPlan.INTERMEDIO);
-        entityManager.flush();
-        entityManager.clear();
-
-        UsuarioEntity saved = springDataUsuarioRepository.findById(usuarioId).orElseThrow();
-
+    private void thenPlanWasUpdatedAndStudentPreserved() {
+        UsuarioEntity saved = springDataUsuarioRepository.findById(this.cachedTutor.getUsuario().getId()).orElseThrow();
         assertEquals(TipoPlan.INTERMEDIO, saved.getPlan());
+        UUID expectedStudentId = this.cachedTutor.getHijos().iterator().next().getId();
         assertTrue(saved.getTutor().getHijos().stream()
-                .anyMatch(student -> student.getId().equals(alumnoId)));
+                .anyMatch(student -> student.getId().equals(expectedStudentId)));
     }
 
     private Usuario user() {
@@ -222,7 +276,6 @@ class UsuarioRepositoryImplIT extends AbstractIntegrationTest {
         TutorEntity tutorEntity = generateTutorEntity();
         AlumnoEntity alumnoEntity = generateStudentEntity();
         tutorEntity.addHijo(alumnoEntity);
-        entityManager.flush();
         return tutorEntity;
     }
 
@@ -278,15 +331,5 @@ class UsuarioRepositoryImplIT extends AbstractIntegrationTest {
         usuario.setKiosquero(kiosquero);
         
         return usuario;
-    }
-
-    private void assertUsuarioRelationsWereSaved(Usuario command, Usuario result, ColegioEntity colegioEntity, AlumnoEntity alumnoEntity, TutorEntity tutorEntity, KiosqueroEntity kiosqueroEntity) {
-        UsuarioEntity saved = springDataUsuarioRepository.findById(result.getId()).orElseThrow();
-        assertEquals(result.getId(), saved.getId());
-        assertEquals(command.getIdCognito(), saved.getIdCognito());
-        assertEquals(colegioEntity.getId(), saved.getColegioEntity().getId());
-        assertEquals(alumnoEntity.getId(), saved.getAlumnoEntity().getId());
-        assertEquals(tutorEntity.getId(), saved.getTutor().getId());
-        assertEquals(kiosqueroEntity.getId(), saved.getKiosquero().getId());
     }
 }

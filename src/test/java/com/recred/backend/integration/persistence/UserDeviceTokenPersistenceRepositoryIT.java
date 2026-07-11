@@ -30,62 +30,91 @@ class UserDeviceTokenPersistenceRepositoryIT extends AbstractIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    private UsuarioEntity cachedUser;
+
     @Test
     void returnOnlyNonBlankActiveTokens() {
-        UsuarioEntity user = generateUser(RolUsuario.PADRE);
+        givenUserWithVariousTokens();
 
-        createToken(user, "token-1", true);
-        createToken(user, "", true);
-        createToken(user, " ", true);
-        createToken(user, "token-2", true);
-        createToken(user, "token-3", false);
+        List<String> tokens = whenFindingActiveTokens();
 
-        entityManager.flush();
-        entityManager.clear();
-
-        List<String> tokens = repository.findActiveTokensByUserId(user.getId());
-
-        assertEquals(List.of("token-1", "token-2"), tokens);
+        thenOnlyValidActiveTokensAreReturned(tokens);
     }
 
     @Test
     void deactivateTokens_WhenListHasValues_ShouldDelegate() {
-        UsuarioEntity user = generateUser(RolUsuario.PADRE);
-        createToken(user, "token-1", true);
-        createToken(user, "token-2", true);
-        createToken(user, "token-3", true);
-        entityManager.flush();
-        entityManager.clear();
+        givenUserWithTokensToDeactivate();
 
-        List<String> tokensToDeactivate = List.of("token-1", "token-2");
-        repository.deactivateTokens(tokensToDeactivate);
-        entityManager.flush();
-        entityManager.clear();
+        whenDeactivatingTokens(List.of("token-1", "token-2"));
 
-        DispositivoUsuarioEntity token1 = springDataRepository.findByFcmToken("token-1").orElseThrow();
-        assertFalse(token1.getActivo());
-
-        DispositivoUsuarioEntity token2 = springDataRepository.findByFcmToken("token-2").orElseThrow();
-        assertFalse(token2.getActivo());
-
-        DispositivoUsuarioEntity token3 = springDataRepository.findByFcmToken("token-3").orElseThrow();
-        assertTrue(token3.getActivo());
+        thenTokensAreDeactivated("token-1", "token-2", "token-3");
     }
 
     @Test
     void deactivateTokens_WhenListIsNullOrEmpty_ShouldDoNothing() {
-        UsuarioEntity user = generateUser(RolUsuario.PADRE);
-        createToken(user, "token-1", true);
+        givenUserWithSingleToken();
+
+        whenDeactivatingTokens(null);
+        whenDeactivatingTokens(List.of());
+
+        thenTokenRemainsActive("token-1");
+    }
+
+    private void givenUserWithVariousTokens() {
+        this.cachedUser = generateUser(RolUsuario.PADRE);
+        createToken(this.cachedUser, "token-1", true);
+        createToken(this.cachedUser, "", true);
+        createToken(this.cachedUser, " ", true);
+        createToken(this.cachedUser, "token-2", true);
+        createToken(this.cachedUser, "token-3", false);
         entityManager.flush();
         entityManager.clear();
+    }
 
-        repository.deactivateTokens(null);
-        repository.deactivateTokens(List.of());
+    private void givenUserWithTokensToDeactivate() {
+        this.cachedUser = generateUser(RolUsuario.PADRE);
+        createToken(this.cachedUser, "token-1", true);
+        createToken(this.cachedUser, "token-2", true);
+        createToken(this.cachedUser, "token-3", true);
         entityManager.flush();
         entityManager.clear();
+    }
 
-        DispositivoUsuarioEntity token1 = springDataRepository.findByFcmToken("token-1").orElseThrow();
-        assertTrue(token1.getActivo());
+    private void givenUserWithSingleToken() {
+        this.cachedUser = generateUser(RolUsuario.PADRE);
+        createToken(this.cachedUser, "token-1", true);
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private List<String> whenFindingActiveTokens() {
+        return repository.findActiveTokensByUserId(this.cachedUser.getId());
+    }
+
+    private void whenDeactivatingTokens(List<String> tokensToDeactivate) {
+        repository.deactivateTokens(tokensToDeactivate);
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private void thenOnlyValidActiveTokensAreReturned(List<String> tokens) {
+        assertEquals(List.of("token-1", "token-2"), tokens);
+    }
+
+    private void thenTokensAreDeactivated(String token1, String token2, String activeToken) {
+        DispositivoUsuarioEntity t1 = springDataRepository.findByFcmToken(token1).orElseThrow();
+        assertFalse(t1.getActivo());
+
+        DispositivoUsuarioEntity t2 = springDataRepository.findByFcmToken(token2).orElseThrow();
+        assertFalse(t2.getActivo());
+
+        DispositivoUsuarioEntity t3 = springDataRepository.findByFcmToken(activeToken).orElseThrow();
+        assertTrue(t3.getActivo());
+    }
+
+    private void thenTokenRemainsActive(String token) {
+        DispositivoUsuarioEntity t1 = springDataRepository.findByFcmToken(token).orElseThrow();
+        assertTrue(t1.getActivo());
     }
 
     private UsuarioEntity generateUser(RolUsuario role) {

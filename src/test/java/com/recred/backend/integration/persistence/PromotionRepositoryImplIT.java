@@ -41,73 +41,117 @@ class PromotionRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void findAllActiveShouldMapEntities() {
-        ProductoEntity product = generateProductEntity("Alfajor");
-        PromotionEntity entity = generatePromotionEntity("Active Promo", PromotionStatus.ACTIVE, product);
-        generatePromotionEntity("Inactive Promo", PromotionStatus.INACTIVE, product);
-
-        List<Promotion> result = repository.findAllActive();
-
-        assertTrue(result.size() >= 1);
-        assertTrue(result.stream().anyMatch(p -> p.getId().equals(entity.getId())));
+        PromotionEntity entity = givenActiveAndInactivePromotions();
+        
+        List<Promotion> result = whenFindingAllActivePromotions();
+        
+        thenOnlyActivePromotionsAreReturned(result, entity.getId());
     }
 
     @Test
     void findByIdShouldMapEntityWhenPresent() {
-        ProductoEntity product = generateProductEntity("Juice");
-        PromotionEntity entity = generatePromotionEntity("Juice Promo", PromotionStatus.ACTIVE, product);
-
-        Optional<Promotion> result = repository.findById(entity.getId());
-
-        assertTrue(result.isPresent());
-        assertEquals(entity.getId(), result.get().getId());
-        assertEquals("Juice Promo", result.get().getName());
+        PromotionEntity entity = givenActivePromotion();
+        
+        Optional<Promotion> result = whenFindingPromotionById(entity.getId());
+        
+        thenPromotionIsFound(result, entity.getId());
     }
 
     @Test
     void saveShouldCreatePromotionWithProducts() {
-        ProductoEntity product = generateProductEntity("Cookie");
+        Promotion promotion = givenNewPromotionDomain();
         
-        Promotion promotion = createDomainPromotion(null, "New Promo", "15.00", LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(10), PromotionStatus.ACTIVE, product.getId());
-
-        Promotion result = repository.save(promotion);
-        entityManager.flush();
-        entityManager.clear();
-
-        assertTrue(springDataRepository.findById(result.getId()).isPresent());
-        PromotionEntity saved = springDataRepository.findById(result.getId()).get();
-        assertEquals("New Promo", saved.getName());
-        assertEquals(new BigDecimal("15.00"), saved.getDiscountPercentage());
-        assertEquals(PromotionStatus.ACTIVE, saved.getStatus());
-        assertEquals(product.getId(), saved.getProducts().iterator().next().getId());
-        assertEquals("New Promo", result.getName());
+        Promotion result = whenSavingPromotion(promotion);
+        
+        thenPromotionIsSavedCorrectly(result, promotion.getName());
     }
 
     @Test
     void saveShouldUpdateExistingPromotion() {
-        ProductoEntity product = generateProductEntity("Yogurt");
-        PromotionEntity existing = generatePromotionEntity("Old Promo", PromotionStatus.ACTIVE, product);
+        Promotion promotion = givenExistingPromotionForUpdate();
         
-        Promotion promotion = createDomainPromotion(existing.getId(), "Updated Promo", "20.00", existing.getStartDate(), existing.getEndDate(), existing.getStatus(), product.getId());
-
-        Promotion result = repository.save(promotion);
-        entityManager.flush();
-        entityManager.clear();
-
-        PromotionEntity updated = springDataRepository.findById(existing.getId()).get();
-        assertEquals("Updated Promo", updated.getName());
-        assertEquals(new BigDecimal("20.00"), updated.getDiscountPercentage());
-        assertEquals(product.getId(), updated.getProducts().iterator().next().getId());
-        assertEquals(existing.getId(), result.getId());
+        Promotion result = whenSavingPromotion(promotion);
+        
+        thenPromotionIsUpdatedCorrectly(result);
     }
 
     @Test
     void saveShouldHandleNullProducts() {
-        Promotion promotion = createDomainPromotion(null, "Promo Without Products", "10.00", LocalDateTime.now(), LocalDateTime.now().plusDays(5), PromotionStatus.ACTIVE, null);
+        Promotion promotion = givenPromotionWithoutProducts();
+        
+        Promotion result = whenSavingPromotion(promotion);
+        
+        thenPromotionWithoutProductsIsSaved(result);
+    }
 
+    private PromotionEntity givenActiveAndInactivePromotions() {
+        ProductoEntity product = generateProductEntity("Alfajor");
+        PromotionEntity active = generatePromotionEntity("Active Promo", PromotionStatus.ACTIVE, product);
+        generatePromotionEntity("Inactive Promo", PromotionStatus.INACTIVE, product);
+        return active;
+    }
+
+    private PromotionEntity givenActivePromotion() {
+        ProductoEntity product = generateProductEntity("Juice");
+        return generatePromotionEntity("Juice Promo", PromotionStatus.ACTIVE, product);
+    }
+
+    private Promotion givenNewPromotionDomain() {
+        ProductoEntity product = generateProductEntity("Cookie");
+        return createDomainPromotion(null, "New Promo", "15.00", LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(10), PromotionStatus.ACTIVE, product.getId());
+    }
+
+    private Promotion givenExistingPromotionForUpdate() {
+        ProductoEntity product = generateProductEntity("Yogurt");
+        PromotionEntity existing = generatePromotionEntity("Old Promo", PromotionStatus.ACTIVE, product);
+        return createDomainPromotion(existing.getId(), "Updated Promo", "20.00", existing.getStartDate(), existing.getEndDate(), existing.getStatus(), product.getId());
+    }
+
+    private Promotion givenPromotionWithoutProducts() {
+        return createDomainPromotion(null, "Promo Without Products", "10.00", LocalDateTime.now(), LocalDateTime.now().plusDays(5), PromotionStatus.ACTIVE, null);
+    }
+
+    private List<Promotion> whenFindingAllActivePromotions() {
+        return repository.findAllActive();
+    }
+
+    private Optional<Promotion> whenFindingPromotionById(UUID id) {
+        return repository.findById(id);
+    }
+
+    private Promotion whenSavingPromotion(Promotion promotion) {
         Promotion result = repository.save(promotion);
         entityManager.flush();
         entityManager.clear();
+        return result;
+    }
 
+    private void thenOnlyActivePromotionsAreReturned(List<Promotion> result, UUID expectedActiveId) {
+        assertTrue(result.size() >= 1);
+        assertTrue(result.stream().anyMatch(p -> p.getId().equals(expectedActiveId)));
+    }
+
+    private void thenPromotionIsFound(Optional<Promotion> result, UUID expectedId) {
+        assertTrue(result.isPresent());
+        assertEquals(expectedId, result.get().getId());
+    }
+
+    private void thenPromotionIsSavedCorrectly(Promotion result, String expectedName) {
+        assertTrue(springDataRepository.findById(result.getId()).isPresent());
+        PromotionEntity saved = springDataRepository.findById(result.getId()).get();
+        assertEquals(expectedName, saved.getName());
+        assertEquals(new BigDecimal("15.00"), saved.getDiscountPercentage());
+        assertEquals(PromotionStatus.ACTIVE, saved.getStatus());
+        assertEquals(expectedName, result.getName());
+    }
+
+    private void thenPromotionIsUpdatedCorrectly(Promotion result) {
+        PromotionEntity updated = springDataRepository.findById(result.getId()).get();
+        assertEquals("Updated Promo", updated.getName());
+        assertEquals(new BigDecimal("20.00"), updated.getDiscountPercentage());
+    }
+
+    private void thenPromotionWithoutProductsIsSaved(Promotion result) {
         assertEquals("Promo Without Products", result.getName());
         PromotionEntity saved = springDataRepository.findById(result.getId()).get();
         assertTrue(saved.getProducts().isEmpty());

@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import static com.recred.backend.domain.models.TipoSugerenciaIA.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Transactional
@@ -37,115 +38,122 @@ class SugerenciaIARepositoryImplIT extends AbstractIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    private UsuarioEntity cachedTutor;
+
     @Test
     void guardar_ShouldPersistEntity() {
-        AlumnoEntity student = generateStudent();
-        SugerenciaIAEntity entity = new SugerenciaIAEntity();
-        entity.setAlumnoEntity(student);
-        entity.setTipo(TipoSugerenciaIA.ALERTA_PRECIO);
-        entity.setMensaje("Mensaje de prueba");
-        entity.setTitulo("Titulo de prueba");
+        SugerenciaIAEntity entity = givenNewSuggestionEntity();
         
-        repository.guardar(entity);
-        entityManager.flush();
-        entityManager.clear();
+        whenSavingSuggestion(entity);
         
-        assertNotNull(entity.getId());
-        assertTrue(springDataRepository.findById(entity.getId()).isPresent());
+        thenSuggestionIsPersisted(entity.getId());
     }
 
     @Test
     void findByAlumnoId_ShouldReturnEntities() {
-        AlumnoEntity student = generateStudent();
-        SugerenciaIAEntity entity = new SugerenciaIAEntity();
-        entity.setAlumnoEntity(student);
-        entity.setTipo(TipoSugerenciaIA.ALERTA_PRECIO);
-        entity.setMensaje("Mensaje de prueba");
-        entity.setTitulo("Titulo de prueba");
-        springDataRepository.save(entity);
-        entityManager.flush();
-
-        List<SugerenciaIAEntity> result = repository.findByAlumnoId(student.getId());
-
-        assertEquals(1, result.size());
-        assertEquals(entity.getId(), result.get(0).getId());
+        SugerenciaIAEntity entity = givenExistingSuggestion();
+        
+        List<SugerenciaIAEntity> result = whenFindingSuggestionsByStudentId(entity.getAlumnoEntity().getId());
+        
+        thenSuggestionIsReturnedCorrectly(result, entity.getId());
     }
 
     @Test
     void savePriceAlert_ShouldPersistEventSuggestionAndNotification() {
+        PriceAlertSuggestion suggestion = givenPriceAlertContext();
 
-        AlumnoEntity student = generateStudent();
-        BuffetEntity buffet = generateBuffet();
-        ProductoEntity product = generateProduct();
-        UsuarioEntity tutorUser = generateUser(RolUsuario.PADRE);
-        
-        generateTutorWithStudent(tutorUser, student);
+        whenSavingPriceAlert(suggestion);
 
-        PriceAlertSuggestion suggestion = createPriceAlertSuggestion(student, product, buffet, tutorUser);
-
-        repository.savePriceAlert(suggestion);
-        entityManager.flush();
-        entityManager.clear();
-
-        assertEventWasPersisted();
-        assertSuggestionWasPersisted();
-        assertNotificationWasPersisted(tutorUser);
+        thenEventSuggestionAndNotificationArePersisted();
     }
 
     @Test
     void hasRecentPriceAlert_ShouldReturnTrueIfRecent() {
+        SugerenciaIAEntity entity = givenExistingSuggestionWithProduct();
+        
+        boolean result = whenCheckingRecentPriceAlert(
+                entity.getAlumnoEntity().getId(),
+                entity.getProductoEntity().getId(),
+                LocalDateTime.now().minusMinutes(5)
+        );
+
+        thenResultIsTrue(result);
+    }
+    
+    @Test
+    void findById_ShouldReturnOptionalEntity() {
+        SugerenciaIAEntity entity = givenExistingSuggestion();
+        
+        Optional<SugerenciaIAEntity> result = whenFindingSuggestionById(entity.getId());
+        
+        thenSuggestionIsFound(result, entity.getId());
+    }
+
+    @Test
+    void findByAlumnoIdAndTipo_ShouldReturnMatchingEntities() {
+        SugerenciaIAEntity entity = givenExistingSuggestion();
+        
+        List<SugerenciaIAEntity> result = whenFindingSuggestionsByStudentIdAndType(
+                entity.getAlumnoEntity().getId(),
+                ALERTA_PRECIO
+        );
+        
+        thenSuggestionListHasSize(result, 1);
+    }
+
+    @Test
+    void findProductIdsByAlumnoIdAndTipo_ShouldReturnProductIdsFromEntityAndMetadata() {
+        SugerenciaContext ctx = givenSuggestionsWithEntityAndMetadataProduct();
+
+        List<UUID> result = whenFindingProductIdsByStudentIdAndType(ctx.student().getId(), ALERTA_PRECIO);
+
+        thenContainsBothProductIds(result, ctx.productId(), ctx.metadataProductId());
+    }
+
+    private SugerenciaIAEntity givenNewSuggestionEntity() {
+        AlumnoEntity student = generateStudent();
+        SugerenciaIAEntity entity = new SugerenciaIAEntity();
+        entity.setAlumnoEntity(student);
+        entity.setTipo(ALERTA_PRECIO);
+        entity.setMensaje("Mensaje de prueba");
+        entity.setTitulo("Titulo de prueba");
+        return entity;
+    }
+
+    private SugerenciaIAEntity givenExistingSuggestion() {
+        SugerenciaIAEntity entity = givenNewSuggestionEntity();
+        springDataRepository.save(entity);
+        entityManager.flush();
+        return entity;
+    }
+
+    private PriceAlertSuggestion givenPriceAlertContext() {
+        AlumnoEntity student = generateStudent();
+        BuffetEntity buffet = generateBuffet();
+        ProductoEntity product = generateProduct();
+        this.cachedTutor = generateUser(RolUsuario.PADRE);
+        
+        generateTutorWithStudent(this.cachedTutor, student);
+
+        return createPriceAlertSuggestion(student, product, buffet, this.cachedTutor);
+    }
+
+    private SugerenciaIAEntity givenExistingSuggestionWithProduct() {
         AlumnoEntity student = generateStudent();
         ProductoEntity product = generateProduct();
         
         SugerenciaIAEntity entity = new SugerenciaIAEntity();
         entity.setAlumnoEntity(student);
         entity.setProductoEntity(product);
-        entity.setTipo(TipoSugerenciaIA.ALERTA_PRECIO);
+        entity.setTipo(ALERTA_PRECIO);
         entity.setMensaje("Mensaje de prueba");
         entity.setTitulo("Titulo de prueba");
         springDataRepository.save(entity);
         entityManager.flush();
-
-        boolean result = repository.hasRecentPriceAlert(student.getId(), product.getId(), LocalDateTime.now().minusMinutes(5));
-
-        assertTrue(result);
-    }
-    
-    @Test
-    void findById_ShouldReturnOptionalEntity() {
-        AlumnoEntity student = generateStudent();
-        SugerenciaIAEntity entity = new SugerenciaIAEntity();
-        entity.setAlumnoEntity(student);
-        entity.setTipo(TipoSugerenciaIA.ALERTA_PRECIO);
-        entity.setMensaje("Mensaje de prueba");
-        entity.setTitulo("Titulo de prueba");
-        springDataRepository.save(entity);
-        entityManager.flush();
-
-        Optional<SugerenciaIAEntity> result = repository.findById(entity.getId());
-
-        assertTrue(result.isPresent());
-        assertEquals(entity.getId(), result.get().getId());
+        return entity;
     }
 
-    @Test
-    void findByAlumnoIdAndTipo_ShouldReturnMatchingEntities() {
-        AlumnoEntity student = generateStudent();
-        SugerenciaIAEntity entity = new SugerenciaIAEntity();
-        entity.setAlumnoEntity(student);
-        entity.setTipo(TipoSugerenciaIA.ALERTA_PRECIO);
-        entity.setMensaje("Mensaje de prueba");
-        entity.setTitulo("Titulo de prueba");
-        springDataRepository.save(entity);
-        entityManager.flush();
-
-        List<SugerenciaIAEntity> result = repository.findByAlumnoIdAndTipo(student.getId(), TipoSugerenciaIA.ALERTA_PRECIO);
-
-        assertEquals(1, result.size());
-    }
-
-    @Test
-    void findProductIdsByAlumnoIdAndTipo_ShouldReturnProductIdsFromEntityAndMetadata() {
+    private SugerenciaContext givenSuggestionsWithEntityAndMetadataProduct() {
         AlumnoEntity student = generateStudent();
         ProductoEntity product = generateProduct();
         UUID metadataProductId = UUID.randomUUID();
@@ -154,10 +162,74 @@ class SugerenciaIARepositoryImplIT extends AbstractIntegrationTest {
         generateSuggestionWithMetadataProduct(student, metadataProductId);
 
         entityManager.flush();
+        return new SugerenciaContext(student, product.getId(), metadataProductId);
+    }
 
-        List<UUID> result = repository.findProductIdsByAlumnoIdAndTipo(student.getId(), TipoSugerenciaIA.ALERTA_PRECIO);
+    private void whenSavingSuggestion(SugerenciaIAEntity entity) {
+        repository.guardar(entity);
+        entityManager.flush();
+        entityManager.clear();
+    }
 
-        assertContainsProductIds(result, product.getId(), metadataProductId);
+    private List<SugerenciaIAEntity> whenFindingSuggestionsByStudentId(UUID studentId) {
+        return repository.findByAlumnoId(studentId);
+    }
+
+    private void whenSavingPriceAlert(PriceAlertSuggestion suggestion) {
+        repository.savePriceAlert(suggestion);
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private boolean whenCheckingRecentPriceAlert(UUID studentId, UUID productId, LocalDateTime since) {
+        return repository.hasRecentPriceAlert(studentId, productId, since);
+    }
+
+    private Optional<SugerenciaIAEntity> whenFindingSuggestionById(UUID id) {
+        return repository.findById(id);
+    }
+
+    private List<SugerenciaIAEntity> whenFindingSuggestionsByStudentIdAndType(UUID studentId, TipoSugerenciaIA type) {
+        return repository.findByAlumnoIdAndTipo(studentId, type);
+    }
+
+    private List<UUID> whenFindingProductIdsByStudentIdAndType(UUID studentId, TipoSugerenciaIA type) {
+        return repository.findProductIdsByAlumnoIdAndTipo(studentId, type);
+    }
+
+    private void thenSuggestionIsPersisted(UUID id) {
+        assertNotNull(id);
+        assertTrue(springDataRepository.findById(id).isPresent());
+    }
+
+    private void thenSuggestionIsReturnedCorrectly(List<SugerenciaIAEntity> result, UUID expectedId) {
+        assertEquals(1, result.size());
+        assertEquals(expectedId, result.get(0).getId());
+    }
+
+    private void thenEventSuggestionAndNotificationArePersisted() {
+        assertEventWasPersisted();
+        assertSuggestionWasPersisted();
+        assertNotificationWasPersisted(this.cachedTutor);
+    }
+
+    private void thenResultIsTrue(boolean result) {
+        assertTrue(result);
+    }
+
+    private void thenSuggestionIsFound(Optional<SugerenciaIAEntity> result, UUID expectedId) {
+        assertTrue(result.isPresent());
+        assertEquals(expectedId, result.get().getId());
+    }
+
+    private void thenSuggestionListHasSize(List<SugerenciaIAEntity> result, int expectedSize) {
+        assertEquals(expectedSize, result.size());
+    }
+
+    private void thenContainsBothProductIds(List<UUID> result, UUID productId, UUID metadataProductId) {
+        assertEquals(2, result.size());
+        assertTrue(result.contains(productId));
+        assertTrue(result.contains(metadataProductId));
     }
 
     private AlumnoEntity generateStudent() {
@@ -258,8 +330,8 @@ class SugerenciaIARepositoryImplIT extends AbstractIntegrationTest {
     private void assertSuggestionWasPersisted() {
         List<SugerenciaIAEntity> suggestions = springDataRepository.findAll();
         assertFalse(suggestions.isEmpty());
-        SugerenciaIAEntity savedSuggestion = suggestions.stream().filter(s -> s.getTipo() == TipoSugerenciaIA.ALERTA_PRECIO).findFirst().orElseThrow();
-        assertEquals(TipoSugerenciaIA.ALERTA_PRECIO, savedSuggestion.getTipo());
+        SugerenciaIAEntity savedSuggestion = suggestions.stream().filter(s -> s.getTipo() == ALERTA_PRECIO).findFirst().orElseThrow();
+        assertEquals(ALERTA_PRECIO, savedSuggestion.getTipo());
         assertEquals("Ajuste de precio", savedSuggestion.getTitulo());
     }
 
@@ -275,7 +347,7 @@ class SugerenciaIARepositoryImplIT extends AbstractIntegrationTest {
         SugerenciaIAEntity entity = new SugerenciaIAEntity();
         entity.setAlumnoEntity(student);
         entity.setProductoEntity(product);
-        entity.setTipo(TipoSugerenciaIA.ALERTA_PRECIO);
+        entity.setTipo(ALERTA_PRECIO);
         entity.setMensaje("Mensaje de prueba");
         entity.setTitulo("Titulo de prueba");
         springDataRepository.save(entity);
@@ -284,16 +356,12 @@ class SugerenciaIARepositoryImplIT extends AbstractIntegrationTest {
     private void generateSuggestionWithMetadataProduct(AlumnoEntity student, UUID metadataProductId) {
         SugerenciaIAEntity entity = new SugerenciaIAEntity();
         entity.setAlumnoEntity(student);
-        entity.setTipo(TipoSugerenciaIA.ALERTA_PRECIO);
+        entity.setTipo(ALERTA_PRECIO);
         entity.setMetadata(Map.of("productoId", metadataProductId.toString()));
         entity.setMensaje("Mensaje de prueba");
         entity.setTitulo("Titulo de prueba");
         springDataRepository.save(entity);
     }
 
-    private void assertContainsProductIds(List<UUID> result, UUID productId, UUID metadataProductId) {
-        assertEquals(2, result.size());
-        assertTrue(result.contains(productId));
-        assertTrue(result.contains(metadataProductId));
-    }
+    private record SugerenciaContext(AlumnoEntity student, UUID productId, UUID metadataProductId) {}
 }

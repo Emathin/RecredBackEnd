@@ -38,74 +38,79 @@ class KiosqueroRepositoryImplIT extends AbstractIntegrationTest {
 
     private ColegioEntity cachedSchool;
     private BuffetEntity cachedBuffet;
-    private UsuarioEntity cachedUser;
 
     @Test
     void findBuffetById_ShouldReturnBuffetId() {
-        KiosqueroEntity kiosquero = generateKiosqueroEntity("20-12345678-9", "vendor1.test@recred.com");
+        KiosqueroEntity kiosquero = givenPersistedKiosquero();
 
-        UUID result = repository.findBuffetById(kiosquero.getId());
+        UUID result = whenFindingBuffetById(kiosquero.getId());
 
-        assertEquals(kiosquero.getBuffetEntity().getId(), result);
+        thenBuffetIdMatches(result, kiosquero.getBuffetEntity().getId());
     }
 
     @Test
     void findBuffetByUsuarioId_ShouldReturnBuffetId() {
-        KiosqueroEntity kiosquero = generateKiosqueroEntity("20-12345678-9", "vendor2.test@recred.com");
+        KiosqueroEntity kiosquero = givenPersistedKiosquero();
 
-        UUID result = repository.findBuffetByUsuarioId(kiosquero.getUsuario().getId());
+        UUID result = whenFindingBuffetByUserId(kiosquero.getUsuario().getId());
 
-        assertEquals(kiosquero.getBuffetEntity().getId(), result);
+        thenBuffetIdMatches(result, kiosquero.getBuffetEntity().getId());
     }
 
     @Test
     void findSchoolIdByUsuarioId_ShouldReturnSchoolId() {
-        KiosqueroEntity kiosquero = generateKiosqueroEntity(
-                "20-12345678-9",
-                "vendor-school.test@recred.com"
-        );
+        KiosqueroEntity kiosquero = givenPersistedKiosquero();
 
-        Optional<UUID> result = repository.findSchoolIdByUsuarioId(kiosquero.getUsuario().getId());
+        Optional<UUID> result = whenFindingSchoolIdByUserId(kiosquero.getUsuario().getId());
 
-        assertTrue(result.isPresent());
-        assertEquals(kiosquero.getBuffetEntity().getColegioEntity().getId(), result.get());
+        thenSchoolIdMatches(result, kiosquero.getBuffetEntity().getColegioEntity().getId());
     }
 
     @Test
     void findUsuarioIdById_ShouldReturnUsuarioId() {
-        KiosqueroEntity kiosquero = generateKiosqueroEntity("20-12345678-9", "vendor7.test@recred.com");
+        KiosqueroEntity kiosquero = givenPersistedKiosquero();
 
-        UUID result = repository.findUsuarioIdById(kiosquero.getId());
+        UUID result = whenFindingUserIdById(kiosquero.getId());
 
-        assertEquals(kiosquero.getUsuario().getId(), result);
+        thenUserIdMatches(result, kiosquero.getUsuario().getId());
     }
 
     @Test
     void findAllIds_ShouldReturnAllKiosqueroIds() {
-        KiosqueroEntity first = generateKiosqueroEntity("20-12345678-9", "vendor3.test@recred.com");
-        KiosqueroEntity second = generateKiosqueroEntity("20-87654321-9", "vendor4.test@recred.com");
+        KiosqueroEntity first = givenPersistedKiosquero();
+        KiosqueroEntity second = givenPersistedKiosquero();
 
-        List<UUID> result = repository.findAllIds();
+        List<UUID> result = whenFindingAllIds();
 
-        assertTrue(result.contains(first.getId()));
-        assertTrue(result.contains(second.getId()));
+        thenAllIdsContain(result, first.getId(), second.getId());
     }
 
     @Test
     void findAll_ShouldMapEntitiesToDomain() {
-        KiosqueroEntity first = generateKiosqueroEntity("20-12345678-9", "vendor5.test@recred.com");
-        KiosqueroEntity second = generateKiosqueroEntity("20-87654321-9", "vendor6.test@recred.com");
+        KiosqueroEntity first = givenPersistedKiosquero();
+        KiosqueroEntity second = givenPersistedKiosquero();
 
-        List<Kiosquero> result = repository.findAll();
+        List<Kiosquero> result = whenFindingAllKiosqueros();
 
-        assertTrue(result.size() >= 2);
-        assertTrue(result.stream().anyMatch(k -> k.getId().equals(first.getId()) && k.getCuit().equals("20-12345678-9")));
-        assertTrue(result.stream().anyMatch(k -> k.getId().equals(second.getId()) && k.getCuit().equals("20-87654321-9")));
+        thenAllKiosquerosContain(result, first, second);
     }
 
     @Test
     void save_ShouldSaveInRealDatabaseAndGenerateId() {
-        UsuarioEntity userEntity = generateUserEntity("new.vendor.it@test.com");
+        Kiosquero domainKiosquero = givenNewKiosqueroDomain();
+
+        Kiosquero savedKiosquero = whenSavingKiosquero(domainKiosquero);
+
+        thenKiosqueroIsPersistedCorrectly(savedKiosquero, domainKiosquero);
+    }
+
+    private KiosqueroEntity givenPersistedKiosquero() {
+        String uniqueSuffix = UUID.randomUUID().toString().substring(0, 8);
+        return generateKiosqueroEntity("20-" + uniqueSuffix + "-9", "vendor" + uniqueSuffix + "@recred.com");
+    }
+
+    private Kiosquero givenNewKiosqueroDomain() {
+        UsuarioEntity userEntity = generateUserEntity("new.vendor-" + UUID.randomUUID() + "@test.com");
         BuffetEntity buffetEntity = generateBuffetEntity();
 
         Kiosquero domainKiosquero = new Kiosquero();
@@ -118,18 +123,71 @@ class KiosqueroRepositoryImplIT extends AbstractIntegrationTest {
         Buffet domainBuffet = new Buffet();
         domainBuffet.setId(buffetEntity.getId());
         domainKiosquero.setBuffet(domainBuffet);
+        
+        return domainKiosquero;
+    }
 
-        Kiosquero savedKiosquero = repository.save(domainKiosquero);
+    private UUID whenFindingBuffetById(UUID kiosqueroId) {
+        return repository.findBuffetById(kiosqueroId);
+    }
 
+    private UUID whenFindingBuffetByUserId(UUID userId) {
+        return repository.findBuffetByUsuarioId(userId);
+    }
+
+    private Optional<UUID> whenFindingSchoolIdByUserId(UUID userId) {
+        return repository.findSchoolIdByUsuarioId(userId);
+    }
+
+    private UUID whenFindingUserIdById(UUID kiosqueroId) {
+        return repository.findUsuarioIdById(kiosqueroId);
+    }
+
+    private List<UUID> whenFindingAllIds() {
+        return repository.findAllIds();
+    }
+
+    private List<Kiosquero> whenFindingAllKiosqueros() {
+        return repository.findAll();
+    }
+
+    private Kiosquero whenSavingKiosquero(Kiosquero domainKiosquero) {
+        return repository.save(domainKiosquero);
+    }
+
+    private void thenBuffetIdMatches(UUID result, UUID expectedId) {
+        assertEquals(expectedId, result);
+    }
+
+    private void thenSchoolIdMatches(Optional<UUID> result, UUID expectedId) {
+        assertTrue(result.isPresent());
+        assertEquals(expectedId, result.get());
+    }
+
+    private void thenUserIdMatches(UUID result, UUID expectedId) {
+        assertEquals(expectedId, result);
+    }
+
+    private void thenAllIdsContain(List<UUID> result, UUID firstId, UUID secondId) {
+        assertTrue(result.contains(firstId));
+        assertTrue(result.contains(secondId));
+    }
+
+    private void thenAllKiosquerosContain(List<Kiosquero> result, KiosqueroEntity first, KiosqueroEntity second) {
+        assertTrue(result.size() >= 2);
+        assertTrue(result.stream().anyMatch(k -> k.getId().equals(first.getId()) && k.getCuit().equals(first.getCuit())));
+        assertTrue(result.stream().anyMatch(k -> k.getId().equals(second.getId()) && k.getCuit().equals(second.getCuit())));
+    }
+
+    private void thenKiosqueroIsPersistedCorrectly(Kiosquero savedKiosquero, Kiosquero domainKiosquero) {
         assertNotNull(savedKiosquero.getId());
 
         Optional<KiosqueroEntity> dbKiosquero = springDataKiosqueroRepository.findById(savedKiosquero.getId());
         assertTrue(dbKiosquero.isPresent());
-        assertEquals("20-99999999-9", dbKiosquero.get().getCuit());
-        assertEquals(userEntity.getId(), dbKiosquero.get().getUsuario().getId());
-        assertEquals(buffetEntity.getId(), dbKiosquero.get().getBuffetEntity().getId());
+        assertEquals(domainKiosquero.getCuit(), dbKiosquero.get().getCuit());
+        assertEquals(domainKiosquero.getUsuario().getId(), dbKiosquero.get().getUsuario().getId());
+        assertEquals(domainKiosquero.getBuffet().getId(), dbKiosquero.get().getBuffetEntity().getId());
     }
-
 
     private ColegioEntity generateSchoolEntity() {
         if (this.cachedSchool == null) {

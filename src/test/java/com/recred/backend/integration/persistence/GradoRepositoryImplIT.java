@@ -1,18 +1,17 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.integration.AbstractIntegrationTest;
-
 import com.recred.backend.domain.models.Grado;
 import com.recred.backend.infrastructure.entities.ColegioEntity;
 import com.recred.backend.infrastructure.entities.GradoEntity;
 import com.recred.backend.infrastructure.entities.NivelEntity;
 import com.recred.backend.infrastructure.persistence.GradoRepositoryImpl;
 import com.recred.backend.infrastructure.persistence.SpringDataGradoRepository;
+import com.recred.backend.integration.AbstractIntegrationTest;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,78 +37,148 @@ class GradoRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void findById_WhenGradeExists_ShouldMapToDomain() {
-        ColegioEntity school = generateSchoolEntity();
-        GradoEntity grade = generateGradeEntity(school, "1", "A");
+        GradoEntity grade = givenPersistedGrade();
 
-        Optional<Grado> result = repository.findById(grade.getId());
+        Optional<Grado> result = whenFindingById(grade.getId());
 
-        assertTrue(result.isPresent());
-        assertEquals(grade.getId(), result.get().getId());
-        assertEquals("1", result.get().getAnio());
-        assertEquals("A", result.get().getDivision());
+        thenGradeIsMappedCorrectly(result, grade);
     }
 
     @Test
     void findById_WhenGradeDoesNotExist_ShouldReturnEmptyOptional() {
-        Optional<Grado> result = repository.findById(UUID.randomUUID());
+        Optional<Grado> result = whenFindingById(UUID.randomUUID());
 
         assertTrue(result.isEmpty());
     }
 
     @Test
     void findAllActiveByColegioId_ShouldMapActiveGradesToDomain() {
+        UUID schoolId = givenTwoActiveGradesForSchool();
+
+        List<Grado> result = whenFindingAllActiveBySchoolId(schoolId);
+
+        thenTwoGradesAreMapped(result);
+    }
+
+    @Test
+    void findAllByColegioIdIncludingInactive_ShouldMapInactiveGradesToDomain() {
+        UUID schoolId = givenActiveAndInactiveGradesForSchool();
+
+        List<Grado> result = whenFindingAllGradesIncludingInactive(schoolId);
+
+        thenActiveAndInactiveGradesAreMapped(result);
+    }
+
+    @Test
+    void existsActiveByColegioIdAndNivelIdAndAnioAndDivision_ShouldIgnoreExcludedAndInactive() {
+        GradoEntity active = givenActiveAndInactiveGradesForDuplicateCheck();
+        UUID schoolId = active.getColegioEntity().getId();
+        UUID levelId = active.getNivelEntity().getId();
+
+        boolean existingActive = whenCheckingActiveDuplicateExists(schoolId, levelId);
+        boolean excludedActive = whenCheckingExcludedActiveDuplicate(schoolId, levelId, active.getId());
+        boolean inactiveDuplicate = whenCheckingInactiveDuplicateExists(schoolId, levelId);
+
+        thenDuplicateLogicWorksCorrectly(existingActive, excludedActive, inactiveDuplicate);
+    }
+
+    @Test
+    void save_ShouldPersistGradeForSchoolReference() {
+        Grado grade = givenNewGradeDomain();
+
+        Grado saved = whenSavingGrade(grade);
+
+        thenGradeIsPersisted(saved, grade.getColegio().getId());
+    }
+
+    private GradoEntity givenPersistedGrade() {
+        ColegioEntity school = generateSchoolEntity();
+        return generateGradeEntity(school, "1", "A");
+    }
+
+    private UUID givenTwoActiveGradesForSchool() {
         ColegioEntity school = generateSchoolEntity();
         generateGradeEntity(school, "1", "A");
         generateGradeEntity(school, "2", "B");
+        return school.getId();
+    }
 
-        List<Grado> result = repository.findAllActiveByColegioId(school.getId());
+    private UUID givenActiveAndInactiveGradesForSchool() {
+        ColegioEntity school = generateSchoolEntity();
+        generateGradeEntity(school, "1", "A");
+        givenInactiveGrade(school, "2", "B");
+        return school.getId();
+    }
 
+    private GradoEntity givenActiveAndInactiveGradesForDuplicateCheck() {
+        ColegioEntity school = generateSchoolEntity();
+        generateLevelEntity();
+        GradoEntity active = generateGradeEntity(school, "1", "A");
+        givenInactiveGrade(school, "2", "B");
+        return active;
+    }
+
+    private Grado givenNewGradeDomain() {
+        ColegioEntity school = generateSchoolEntity();
+        return domainGrade(school, "3", "C");
+    }
+
+    private Optional<Grado> whenFindingById(UUID id) {
+        return repository.findById(id);
+    }
+
+    private List<Grado> whenFindingAllActiveBySchoolId(UUID schoolId) {
+        return repository.findAllActiveByColegioId(schoolId);
+    }
+
+    private List<Grado> whenFindingAllGradesIncludingInactive(UUID schoolId) {
+        return repository.findAllByColegioIdIncludingInactive(schoolId);
+    }
+
+    private boolean whenCheckingActiveDuplicateExists(UUID schoolId, UUID levelId) {
+        return repository.existsActiveByColegioIdAndNivelIdAndAnioAndDivision(schoolId, levelId, null, "1", "A");
+    }
+
+    private boolean whenCheckingExcludedActiveDuplicate(UUID schoolId, UUID levelId, UUID excludedId) {
+        return repository.existsActiveByColegioIdAndNivelIdAndAnioAndDivision(schoolId, levelId, excludedId, "1", "A");
+    }
+
+    private boolean whenCheckingInactiveDuplicateExists(UUID schoolId, UUID levelId) {
+        return repository.existsActiveByColegioIdAndNivelIdAndAnioAndDivision(schoolId, levelId, null, "2", "B");
+    }
+
+    private Grado whenSavingGrade(Grado grade) {
+        return repository.save(grade);
+    }
+
+    private void thenGradeIsMappedCorrectly(Optional<Grado> result, GradoEntity grade) {
+        assertTrue(result.isPresent());
+        assertEquals(grade.getId(), result.get().getId());
+        assertEquals(grade.getAnio(), result.get().getAnio());
+        assertEquals(grade.getDivision(), result.get().getDivision());
+    }
+
+    private void thenTwoGradesAreMapped(List<Grado> result) {
         assertEquals(2, result.size());
         assertEquals("1", result.get(0).getAnio());
         assertEquals("2", result.get(1).getAnio());
     }
 
-    @Test
-    void findAllByColegioIdIncludingInactive_ShouldMapInactiveGradesToDomain() {
-        ColegioEntity school = generateSchoolEntity();
-        generateGradeEntity(school, "1", "A");
-        givenInactiveGrade(school, "2", "B");
-
-        List<Grado> result = whenFindingAllGradesIncludingInactive(school.getId());
-
+    private void thenActiveAndInactiveGradesAreMapped(List<Grado> result) {
         assertEquals(2, result.size());
         assertTrue(result.get(0).getActivo());
         assertFalse(result.get(1).getActivo());
     }
 
-    @Test
-    void existsActiveByColegioIdAndNivelIdAndAnioAndDivision_ShouldIgnoreExcludedAndInactive() {
-        ColegioEntity school = generateSchoolEntity();
-        NivelEntity level = generateLevelEntity();
-        GradoEntity active = generateGradeEntity(school, "1", "A");
-        givenInactiveGrade(school, "2", "B");
-
-        boolean existingActive = whenCheckingActiveDuplicate(
-                school.getId(), level.getId(), null, "1", "A");
-        boolean excludedActive = whenCheckingActiveDuplicate(
-                school.getId(), level.getId(), active.getId(), "1", "A");
-        boolean inactiveDuplicate = whenCheckingActiveDuplicate(
-                school.getId(), level.getId(), null, "2", "B");
-
+    private void thenDuplicateLogicWorksCorrectly(boolean existingActive, boolean excludedActive, boolean inactiveDuplicate) {
         assertTrue(existingActive);
         assertFalse(excludedActive);
         assertFalse(inactiveDuplicate);
     }
 
-    @Test
-    void save_ShouldPersistGradeForSchoolReference() {
-        ColegioEntity school = generateSchoolEntity();
-        Grado grade = domainGrade(school, "3", "C");
-
-        Grado saved = whenSavingGrade(grade);
-
+    private void thenGradeIsPersisted(Grado saved, UUID expectedSchoolId) {
         assertTrue(springDataGradoRepository.findById(saved.getId()).isPresent());
-        assertEquals(school.getId(), saved.getColegio().getId());
+        assertEquals(expectedSchoolId, saved.getColegio().getId());
         assertEquals("3", saved.getAnio());
         assertEquals("C", saved.getDivision());
     }
@@ -159,37 +228,10 @@ class GradoRepositoryImplIT extends AbstractIntegrationTest {
         return springDataGradoRepository.save(entity);
     }
 
-    private GradoEntity givenInactiveGrade(
-            ColegioEntity school,
-            String year,
-            String division
-    ) {
+    private GradoEntity givenInactiveGrade(ColegioEntity school, String year, String division) {
         GradoEntity inactive = generateGradeEntity(school, year, division);
         inactive.setActivo(false);
         return springDataGradoRepository.saveAndFlush(inactive);
-    }
-
-    private List<Grado> whenFindingAllGradesIncludingInactive(UUID schoolId) {
-        return repository.findAllByColegioIdIncludingInactive(schoolId);
-    }
-
-    private boolean whenCheckingActiveDuplicate(
-            UUID schoolId,
-            UUID levelId,
-            UUID excludedId,
-            String year,
-            String division
-    ) {
-        return repository.existsActiveByColegioIdAndNivelIdAndAnioAndDivision(
-                schoolId,
-                levelId,
-                excludedId,
-                year,
-                division);
-    }
-
-    private Grado whenSavingGrade(Grado grade) {
-        return repository.save(grade);
     }
 
     private Grado domainGrade(ColegioEntity school, String year, String division) {

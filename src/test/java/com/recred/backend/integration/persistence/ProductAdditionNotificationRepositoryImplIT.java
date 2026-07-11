@@ -1,11 +1,18 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.domain.models.*;
+import com.recred.backend.domain.models.Kiosquero;
+import com.recred.backend.domain.models.Producto;
+import com.recred.backend.domain.models.PushNotification;
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.SugerenciaIA;
+import com.recred.backend.domain.models.TipoNotificacion;
+import com.recred.backend.domain.models.TipoSugerenciaIA;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.entities.NotificacionEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.SugerenciaIAEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
-import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.persistence.NotificacionJpaRepository;
 import com.recred.backend.infrastructure.persistence.ProductAdditionNotificationRepositoryImpl;
 import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
@@ -13,7 +20,6 @@ import com.recred.backend.integration.AbstractIntegrationTest;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,23 +48,38 @@ class ProductAdditionNotificationRepositoryImplIT extends AbstractIntegrationTes
     @Autowired
     private ApplicationEvents applicationEvents;
 
+    private UsuarioEntity cachedKiosqueroUser;
+    private ProductoEntity cachedProduct;
+    private SugerenciaIAEntity cachedSuggestion;
+
     @Test
     void save_ShouldPersistNotificationAndPublishPushEvent() {
-        UsuarioEntity userEntity = generateUserEntity();
-        ProductoEntity productEntity = generateProductEntity();
-        SugerenciaIAEntity suggestionEntity = generateSuggestionEntity(productEntity);
+        givenProductAdditionNotificationContext();
 
+        whenSavingNotification();
+
+        thenNotificationIsPersistedAndPushEventPublished();
+    }
+
+    private void givenProductAdditionNotificationContext() {
+        this.cachedKiosqueroUser = generateUserEntity();
+        this.cachedProduct = generateProductEntity();
+        this.cachedSuggestion = generateSuggestionEntity(this.cachedProduct);
+    }
+
+    private void whenSavingNotification() {
         repository.save(
-                createDomainProduct(productEntity),
-                createDomainKiosquero(userEntity),
-                createDomainSuggestion(suggestionEntity)
+                createDomainProduct(this.cachedProduct),
+                createDomainKiosquero(this.cachedKiosqueroUser),
+                createDomainSuggestion(this.cachedSuggestion)
         );
-        
         entityManager.flush();
         entityManager.clear();
+    }
 
-        NotificacionEntity savedNotification = assertNotificationPersisted(userEntity, productEntity, suggestionEntity);
-        assertPushNotificationEventPublished(userEntity, productEntity, savedNotification);
+    private void thenNotificationIsPersistedAndPushEventPublished() {
+        NotificacionEntity savedNotification = assertNotificationPersisted(this.cachedKiosqueroUser, this.cachedProduct, this.cachedSuggestion);
+        assertPushNotificationEventPublished(this.cachedKiosqueroUser, this.cachedProduct, savedNotification);
     }
 
     private NotificacionEntity assertNotificationPersisted(UsuarioEntity user, ProductoEntity product, SugerenciaIAEntity suggestion) {
@@ -121,7 +142,7 @@ class ProductAdditionNotificationRepositoryImplIT extends AbstractIntegrationTes
     private SugerenciaIAEntity generateSuggestionEntity(ProductoEntity p) {
         SugerenciaIAEntity sug = new SugerenciaIAEntity();
         sug.setProductoEntity(p);
-        sug.setTipo(com.recred.backend.domain.models.TipoSugerenciaIA.AGREGAR_PRODUCTO);
+        sug.setTipo(TipoSugerenciaIA.AGREGAR_PRODUCTO);
         sug.setTitulo("Sugerencia");
         sug.setMensaje("Saludable");
         sug.setAceptada(true);
