@@ -100,7 +100,7 @@ class InventoryControllerTest {
     }
 
     @Test
-    void givenInventoryProducts_whenListingInventory_thenReturnsProductsWithAvailability()
+    void listingInventoryShouldReturnProductsWithAvailability()
             throws Exception {
         givenInventoryProduct();
         givenInventoryProducts(product);
@@ -112,7 +112,7 @@ class InventoryControllerTest {
     }
 
     @Test
-    void givenStockAdjustmentRequest_whenAdjustingStock_thenReturnsUpdatedInventory()
+    void adjustingStockShouldReturnUpdatedInventory()
             throws Exception {
         givenStockAdjustmentRequest();
         givenStockAdjustmentReturnsUpdatedInventory();
@@ -124,7 +124,7 @@ class InventoryControllerTest {
     }
 
     @Test
-    void givenInventoryProduct_whenGettingOverview_thenReturnsSellerState() throws Exception {
+    void gettingOverviewShouldReturnSellerState() throws Exception {
         givenDailyCapacityProduct();
         givenInventoryProducts(product);
 
@@ -134,7 +134,7 @@ class InventoryControllerTest {
     }
 
     @Test
-    void givenQuickActionRequest_whenApplyingQuickAction_thenMapsCommand() throws Exception {
+    void applyingQuickActionShouldMapCommand() throws Exception {
         givenQuickActionRequest();
         givenQuickActionReturnsUpdatedInventory();
 
@@ -145,7 +145,7 @@ class InventoryControllerTest {
     }
 
     @Test
-    void givenStockMovements_whenGettingMovements_thenReturnsStockMovements() throws Exception {
+    void gettingMovementsShouldReturnStockMovements() throws Exception {
         givenStockMovement();
         givenStockMovements();
 
@@ -156,7 +156,7 @@ class InventoryControllerTest {
     }
 
     @Test
-    void givenAlternativeInventoryModes_whenGettingOverview_thenMapsStates() throws Exception {
+    void gettingOverviewShouldMapAlternativeStates() throws Exception {
         givenAlternativeInventoryModeProducts();
         givenInventoryProducts(product, secondProduct, thirdProduct, fourthProduct);
 
@@ -166,7 +166,7 @@ class InventoryControllerTest {
     }
 
     @Test
-    void givenStockAdjustmentWithNullState_whenAdjustingStock_thenReturnsNullFields()
+    void adjustingStockWithNullStateShouldReturnNullFields()
             throws Exception {
         givenStockAdjustmentRequest();
         givenStockAdjustmentReturnsInventoryWithoutState();
@@ -177,7 +177,7 @@ class InventoryControllerTest {
     }
 
     @Test
-    void givenProductImageUpload_whenUploadingImage_thenReturnsImageUrl() throws Exception {
+    void uploadingImageShouldReturnImageUrl() throws Exception {
         givenProductImageUpload();
         givenUploadProductImageReturnsUrl();
 
@@ -188,7 +188,7 @@ class InventoryControllerTest {
     }
 
     @Test
-    void givenMovementWithoutType_whenGettingMovements_thenReturnsNullType() throws Exception {
+    void gettingMovementsWithoutTypeShouldReturnNullType() throws Exception {
         givenMovementWithoutType();
         givenStockMovements();
 

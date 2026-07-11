@@ -28,16 +28,18 @@ public interface SpringDataDailyBuffetCloseRepository
             @Param("buffetId") UUID buffetId,
             @Param("fecha") LocalDate fecha);
 
-    @Query("""
-            select dailyClose
-            from CierreDiarioBuffetEntity dailyClose
-            where dailyClose.buffetEntity.id = :buffetId
-            and (:startDate is null or dailyClose.fecha >= :startDate)
-            and (:endDate is null or dailyClose.fecha <= :endDate)
-            order by dailyClose.fecha desc
-            """)
-    List<CierreDiarioBuffetEntity> findByBuffetAndDateRange(
-            @Param("buffetId") UUID buffetId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate);
+    List<CierreDiarioBuffetEntity> findByBuffetEntityIdOrderByFechaDesc(UUID buffetId);
+
+    List<CierreDiarioBuffetEntity> findByBuffetEntityIdAndFechaGreaterThanEqualOrderByFechaDesc(
+            UUID buffetId,
+            LocalDate startDate);
+
+    List<CierreDiarioBuffetEntity> findByBuffetEntityIdAndFechaLessThanEqualOrderByFechaDesc(
+            UUID buffetId,
+            LocalDate endDate);
+
+    List<CierreDiarioBuffetEntity> findByBuffetEntityIdAndFechaBetweenOrderByFechaDesc(
+            UUID buffetId,
+            LocalDate startDate,
+            LocalDate endDate);
 }

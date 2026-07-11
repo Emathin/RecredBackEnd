@@ -24,7 +24,8 @@ public record GetHistoryByStudentResponse(
         String pickupSlotDescription,
         LocalDate pickupDate,
         LocalTime pickupSlotStartTime,
-        String withdrawalStatus
+        String withdrawalStatus,
+        String cancelledByRole
 ) {
     public record Item(
             UUID productId,
@@ -58,7 +59,8 @@ public record GetHistoryByStudentResponse(
                 purchase.getPickupSlotDescription(),
                 purchase.getPickupDate(),
                 purchase.getPickupSlotStartTime(),
-                withdrawalStatusNameFrom(purchase)
+                withdrawalStatusNameFrom(purchase),
+                cancelledByRoleNameFrom(purchase)
         );
     }
 
@@ -86,6 +88,10 @@ public record GetHistoryByStudentResponse(
         return purchase.getWithdrawalStatus() == null
                 ? null
                 : purchase.getWithdrawalStatus().name();
+    }
+
+    private static String cancelledByRoleNameFrom(Purchase purchase) {
+        return purchase.getCancelledByRole() == null ? null : purchase.getCancelledByRole().name();
     }
 
     private static List<Item> itemsFrom(Purchase purchase) {

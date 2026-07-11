@@ -13,91 +13,97 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ItemListaPrecioProveedorResponseTest {
 
+    private final UUID ITEM_ID = UUID.randomUUID();
+    private final UUID PRICE_LIST_ID = UUID.randomUUID();
+    private final String PROVEEDOR_NOMBRE = "Alfajor proveedor";
+    private final String INVENTARIO_NOMBRE = "Alfajor";
+    private final BigDecimal PRECIO = new BigDecimal("500.00");
+    private final String UNIDAD = "unidad";
+    private final String NOTA = "nota";
+    private final boolean MAPPING = true;
+
     @Test
     void fromDomainShouldMapItemAndAcceptNull() {
-        ItemListaPrecioProveedor item = item();
-
-        ItemListaPrecioProveedorResponse response =
-                ItemListaPrecioProveedorResponse.fromDomain(item);
-
-        assertResponse(response, item.getId(), item.getListaPrecioId());
-        assertNull(ItemListaPrecioProveedorResponse.fromDomain(null));
+        ItemListaPrecioProveedor item = givenDomainItem();
+        
+        ItemListaPrecioProveedorResponse response = whenMappingFromDomain(item);
+        
+        thenResponseIsMappedCorrectly(response);
+        thenNullInputReturnsNull(whenMappingFromDomain(null));
     }
 
     @Test
     void fromUploadApplicationShouldMapItemAndAcceptNull() {
-        UUID itemId = UUID.randomUUID();
-        UUID priceListId = UUID.randomUUID();
-        UploadSupplierPriceListResponse.Item item = new UploadSupplierPriceListResponse.Item(
-                itemId,
-                priceListId,
-                "Alfajor proveedor",
-                UUID.randomUUID(),
-                "Alfajor",
-                new BigDecimal("500.00"),
-                "unidad",
-                "nota",
-                true
-        );
-
-        ItemListaPrecioProveedorResponse response =
-                ItemListaPrecioProveedorResponse.fromApplication(item);
-
-        assertResponse(response, itemId, priceListId);
-        assertNull(ItemListaPrecioProveedorResponse.fromApplication(
-                (UploadSupplierPriceListResponse.Item) null));
+        UploadSupplierPriceListResponse.Item item = givenUploadResponseItem();
+        
+        ItemListaPrecioProveedorResponse response = whenMappingFromUpload(item);
+        
+        thenResponseIsMappedCorrectly(response);
+        thenNullInputReturnsNull(whenMappingFromUpload(null));
     }
 
     @Test
     void fromMappingApplicationShouldMapItemAndAcceptNull() {
-        UUID itemId = UUID.randomUUID();
-        UUID priceListId = UUID.randomUUID();
-        UpdatePriceListItemMappingResponse item = new UpdatePriceListItemMappingResponse(
-                itemId,
-                priceListId,
-                "Alfajor proveedor",
-                UUID.randomUUID(),
-                "Alfajor",
-                new BigDecimal("500.00"),
-                "unidad",
-                "nota",
-                true
-        );
-
-        ItemListaPrecioProveedorResponse response =
-                ItemListaPrecioProveedorResponse.fromApplication(item);
-
-        assertResponse(response, itemId, priceListId);
-        assertNull(ItemListaPrecioProveedorResponse.fromApplication(
-                (UpdatePriceListItemMappingResponse) null));
+        UpdatePriceListItemMappingResponse item = givenUpdateMappingResponseItem();
+        
+        ItemListaPrecioProveedorResponse response = whenMappingFromUpdate(item);
+        
+        thenResponseIsMappedCorrectly(response);
+        thenNullInputReturnsNull(whenMappingFromUpdate(null));
     }
 
-    private void assertResponse(
-            ItemListaPrecioProveedorResponse response,
-            UUID itemId,
-            UUID priceListId
-    ) {
-        assertEquals(itemId, response.id());
-        assertEquals(priceListId, response.listaPrecioId());
-        assertEquals("Alfajor proveedor", response.nombreProductoProveedor());
-        assertEquals("Alfajor", response.nombreProductoInventario());
-        assertEquals(new BigDecimal("500.00"), response.precio());
-        assertEquals("unidad", response.unidad());
-        assertEquals("nota", response.notas());
-        assertEquals(true, response.mappingConfirmado());
-    }
-
-    private ItemListaPrecioProveedor item() {
+    private ItemListaPrecioProveedor givenDomainItem() {
         ItemListaPrecioProveedor item = new ItemListaPrecioProveedor();
-        item.setId(UUID.randomUUID());
-        item.setListaPrecioId(UUID.randomUUID());
-        item.setNombreProductoProveedor("Alfajor proveedor");
+        item.setId(ITEM_ID);
+        item.setListaPrecioId(PRICE_LIST_ID);
+        item.setNombreProductoProveedor(PROVEEDOR_NOMBRE);
         item.setProductoInventarioId(UUID.randomUUID());
-        item.setNombreProductoInventario("Alfajor");
-        item.setPrecio(new BigDecimal("500.00"));
-        item.setUnidad("unidad");
-        item.setNotas("nota");
-        item.setMappingConfirmado(true);
+        item.setNombreProductoInventario(INVENTARIO_NOMBRE);
+        item.setPrecio(PRECIO);
+        item.setUnidad(UNIDAD);
+        item.setNotas(NOTA);
+        item.setMappingConfirmado(MAPPING);
         return item;
+    }
+
+    private UploadSupplierPriceListResponse.Item givenUploadResponseItem() {
+        return new UploadSupplierPriceListResponse.Item(
+                ITEM_ID, PRICE_LIST_ID, PROVEEDOR_NOMBRE, UUID.randomUUID(),
+                INVENTARIO_NOMBRE, PRECIO, UNIDAD, NOTA, MAPPING
+        );
+    }
+
+    private UpdatePriceListItemMappingResponse givenUpdateMappingResponseItem() {
+        return new UpdatePriceListItemMappingResponse(
+                ITEM_ID, PRICE_LIST_ID, PROVEEDOR_NOMBRE, UUID.randomUUID(),
+                INVENTARIO_NOMBRE, PRECIO, UNIDAD, NOTA, MAPPING
+        );
+    }
+
+    private ItemListaPrecioProveedorResponse whenMappingFromDomain(ItemListaPrecioProveedor item) {
+        return ItemListaPrecioProveedorResponse.fromDomain(item);
+    }
+
+    private ItemListaPrecioProveedorResponse whenMappingFromUpload(UploadSupplierPriceListResponse.Item item) {
+        return ItemListaPrecioProveedorResponse.fromApplication(item);
+    }
+
+    private ItemListaPrecioProveedorResponse whenMappingFromUpdate(UpdatePriceListItemMappingResponse item) {
+        return ItemListaPrecioProveedorResponse.fromApplication(item);
+    }
+
+    private void thenResponseIsMappedCorrectly(ItemListaPrecioProveedorResponse response) {
+        assertEquals(ITEM_ID, response.id());
+        assertEquals(PRICE_LIST_ID, response.listaPrecioId());
+        assertEquals(PROVEEDOR_NOMBRE, response.nombreProductoProveedor());
+        assertEquals(INVENTARIO_NOMBRE, response.nombreProductoInventario());
+        assertEquals(PRECIO, response.precio());
+        assertEquals(UNIDAD, response.unidad());
+        assertEquals(NOTA, response.notas());
+        assertEquals(MAPPING, response.mappingConfirmado());
+    }
+
+    private void thenNullInputReturnsNull(ItemListaPrecioProveedorResponse response) {
+        assertNull(response);
     }
 }

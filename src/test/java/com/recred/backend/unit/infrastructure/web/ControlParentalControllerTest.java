@@ -116,7 +116,7 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void givenHealthRestrictionsUpdate_whenUpdatingRestrictions_thenReturnsOk() throws Exception {
+    void updatingRestrictionsShouldReturnOk() throws Exception {
         givenHealthRestrictionsUpdateRequest();
 
         whenUpdateHealthRestrictions();
@@ -126,7 +126,7 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void givenHealthRestrictions_whenGettingRestrictions_thenReturnsRestrictions()
+    void gettingRestrictionsShouldReturnRestrictions()
             throws Exception {
         givenStudentHasHealthRestrictions();
 
@@ -137,7 +137,7 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void givenHealthRestrictionRequest_whenAddingRestriction_thenReturnsOk() throws Exception {
+    void addingRestrictionShouldReturnOk() throws Exception {
         whenAddHealthRestriction();
 
         thenResponseIsOk();
@@ -145,7 +145,7 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void givenHealthRestrictionRequest_whenRemovingRestriction_thenReturnsNoContent()
+    void removingRestrictionShouldReturnNoContent()
             throws Exception {
         whenRemoveHealthRestriction();
 
@@ -154,7 +154,7 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void givenPreferenceAnalysisRequest_whenAnalyzingPreferences_thenReturnsAccepted()
+    void analyzingPreferencesShouldReturnAccepted()
             throws Exception {
         givenPreferenceAnalysisRequest();
 
@@ -165,7 +165,7 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void givenPreferenceAnalysisFailure_whenAnalyzingPreferences_thenReturnsInternalServerError()
+    void analyzingPreferencesShouldReturnInternalServerErrorWhenFailure()
             throws Exception {
         givenPreferenceAnalysisRequest();
         givenPreferenceAnalysisFails();
@@ -176,7 +176,7 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void givenManualProductLockRequest_whenBlockingProduct_thenReturnsOk() throws Exception {
+    void blockingProductShouldReturnOk() throws Exception {
         givenManualProductLockRequest();
         givenManualProductLockSucceeds();
 
@@ -187,7 +187,7 @@ class ControlParentalControllerTest {
     }
 
     @Test
-    void givenManualProductUnlockRequest_whenUnlockingProduct_thenReturnsOk() throws Exception {
+    void unlockingProductShouldReturnOk() throws Exception {
         givenManualProductUnlockRequest();
         givenManualProductUnlockSucceeds();
 

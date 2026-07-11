@@ -17,7 +17,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Transactional
 class StudentAIProfileRepositoryImplIT extends AbstractIntegrationTest {
@@ -31,56 +30,67 @@ class StudentAIProfileRepositoryImplIT extends AbstractIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    private ProductoEntity cachedProduct;
+    private AlumnoEntity profileStudent;
+    private AlumnoEntity manualStudent;
+
     @Test
     void findStudentsWithFavoriteProductShouldMergeSourcesAndKeepActiveTutors() {
-        ProductoEntity product = generateProduct();
+        givenStudentsWithFavoriteProductsAndTutors();
         
-        AlumnoEntity profileStudent = generateStudent("Ana", true);
+        List<Alumno> result = whenFindingStudentsWithFavoriteProduct(this.cachedProduct.getId());
+
+        thenStudentsAndTutorsAreMergedCorrectly(result);
+    }
+
+    private void givenStudentsWithFavoriteProductsAndTutors() {
+        this.cachedProduct = generateProduct();
+        
+        this.profileStudent = generateStudent("Ana", true);
         TutorEntity activeTutor1 = generateTutor("Active Tutor 1", true);
         TutorEntity inactiveTutor1 = generateTutor("Inactive Tutor 1", false);
         
-        activeTutor1.addHijo(profileStudent);
+        activeTutor1.addHijo(this.profileStudent);
         entityManager.merge(activeTutor1);
         
-        inactiveTutor1.addHijo(profileStudent);
+        inactiveTutor1.addHijo(this.profileStudent);
         entityManager.merge(inactiveTutor1);
         
-        PerfilConsumoIAEntity profile = generateProfile(profileStudent, product);
-
-        profileStudent.getProductosFavoritos().add(product);
-        entityManager.merge(profileStudent);
+        generateProfile(this.profileStudent, this.cachedProduct);
+        this.profileStudent.getProductosFavoritos().add(this.cachedProduct);
+        entityManager.merge(this.profileStudent);
         
-        AlumnoEntity manualStudent = generateStudent("Luis", false);
+        this.manualStudent = generateStudent("Luis", false);
         TutorEntity activeTutor2 = generateTutor("Active Tutor 2", true);
         
-        activeTutor2.addHijo(manualStudent);
+        activeTutor2.addHijo(this.manualStudent);
         entityManager.merge(activeTutor2);
         
-        manualStudent.getProductosFavoritos().add(product);
-        entityManager.merge(manualStudent);
+        this.manualStudent.getProductosFavoritos().add(this.cachedProduct);
+        entityManager.merge(this.manualStudent);
         
         entityManager.flush();
         entityManager.clear();
-
-        List<Alumno> result = repository.findStudentsWithFavoriteProduct(product.getId());
-
-        assertStudentsAndTutorsMerged(result, profileStudent, manualStudent);
     }
 
-    private void assertStudentsAndTutorsMerged(List<Alumno> result, AlumnoEntity profileStudent, AlumnoEntity manualStudent) {
+    private List<Alumno> whenFindingStudentsWithFavoriteProduct(UUID productId) {
+        return repository.findStudentsWithFavoriteProduct(productId);
+    }
+
+    private void thenStudentsAndTutorsAreMergedCorrectly(List<Alumno> result) {
         assertEquals(2, result.size());
         
         Alumno ana = result.stream().filter(a -> a.getUsuario().getNombre().equals("Ana")).findFirst().orElseThrow();
         Alumno luis = result.stream().filter(a -> a.getUsuario().getNombre().equals("Luis")).findFirst().orElseThrow();
 
-        assertEquals(profileStudent.getId(), ana.getId());
+        assertEquals(this.profileStudent.getId(), ana.getId());
         assertEquals("Ana", ana.getUsuario().getNombre());
-        assertEquals(profileStudent.getGradoEntity().getId(), ana.getGrado().getId());
+        assertEquals(this.profileStudent.getGradoEntity().getId(), ana.getGrado().getId());
         assertEquals("1", ana.getGrado().getAnio());
         assertEquals(1, ana.getTutores().size());
         assertEquals("Active Tutor 1", ana.getTutores().iterator().next().getUsuario().getNombre());
         
-        assertEquals(manualStudent.getId(), luis.getId());
+        assertEquals(this.manualStudent.getId(), luis.getId());
         assertNull(luis.getGrado());
         assertEquals(1, luis.getTutores().size());
         assertEquals("Active Tutor 2", luis.getTutores().iterator().next().getUsuario().getNombre());

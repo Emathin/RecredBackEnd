@@ -34,7 +34,9 @@ public class RevertPurchaseCancellation {
 
     private Purchase revertCancellation(RevertPurchaseCancellationRequest cancellationRequest) {
         Purchase purchase = findPurchase(cancellationRequest.purchaseId());
-        purchase.revertCancellation();
+        purchase.revertCancellation(
+                cancellationRequest.requestedById(),
+                cancellationRequest.requestedByRole());
         debitStudentWallet(purchase);
         return purchase;
     }

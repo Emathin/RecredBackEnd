@@ -14,130 +14,164 @@ import java.util.List;
 import java.util.UUID;
 
 import com.recred.backend.infrastructure.web.StudentConsumptionController;
-import com.recred.backend.infrastructure.web.StudentConsumptionExceptionHandler;
+import com.recred.backend.infrastructure.web.StudentConsumptionResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(MockitoExtension.class)
 class StudentConsumptionControllerTest {
 
-    private GetLoggedUserConsumptionDetail getLoggedUserConsumptionDetail;
-    private GetStudentRewardStatus getStudentRewardStatus;
-    private MockMvc mockMvc;
+    @Mock private GetLoggedUserConsumptionDetail getLoggedUserConsumptionDetail;
+    @Mock private GetStudentRewardStatus getStudentRewardStatus;
+    
+    private final UUID studentId = UUID.randomUUID();
+    private final UUID purchaseId = UUID.randomUUID();
+    private final UUID productId = UUID.randomUUID();
+    private final UUID buffetId = UUID.randomUUID();
+    
+    private StudentConsumptionController controller;
 
     @BeforeEach
     void setUp() {
-        getLoggedUserConsumptionDetail = mock(GetLoggedUserConsumptionDetail.class);
-        getStudentRewardStatus = mock(GetStudentRewardStatus.class);
-        mockMvc = MockMvcBuilders
-                .standaloneSetup(new StudentConsumptionController(
-                        getLoggedUserConsumptionDetail, getStudentRewardStatus))
-                .setControllerAdvice(new StudentConsumptionExceptionHandler())
-                .build();
+        controller = new StudentConsumptionController(
+                getLoggedUserConsumptionDetail, getStudentRewardStatus);
     }
 
     @Test
-    void getRewardStatus_DebeRetornarEstadoExitosamente() throws Exception {
-        UUID alumnoId = UUID.randomUUID();
+    void givenValidStudentWhenGettingRewardStatusThenReturnsStatus() {
         StudentRewardResponse response = new StudentRewardResponse(
                 50, "BRONZE", "Mensaje", 50, "SILVER"
         );
-        when(getStudentRewardStatus.execute(new GetStudentRewardStatusRequest(alumnoId)))
-                .thenReturn(response);
+        givenRewardStatus(studentId, response);
 
-        mockMvc.perform(get("/api/v1/consumos/alumnos/{alumnoId}/recompensas-saludables", alumnoId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalPoints").value(50))
-                .andExpect(jsonPath("$.currentLevel").value("BRONZE"))
-                .andExpect(jsonPath("$.pointsToNextLevel").value(50))
-                .andExpect(jsonPath("$.nextLevelName").value("SILVER"));
+        StudentRewardResponse result = whenGettingRewardStatus(studentId);
 
-        verify(getStudentRewardStatus).execute(new GetStudentRewardStatusRequest(alumnoId));
+        thenRewardStatusIsReturned(result, 50, "BRONZE", 50, "SILVER");
+        thenGetRewardStatusWasRequested(studentId);
     }
 
     @Test
-    void getConsumptionDelegatesAuthenticatedUserAndFilters() throws Exception {
-        UUID studentId = UUID.randomUUID();
-        UUID purchaseId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        GetLoggedUserConsumptionDetailResponse detail =
-                new GetLoggedUserConsumptionDetailResponse(
-                        studentId,
-                        LocalDate.of(2026, 5, 1),
-                        LocalDate.of(2026, 5, 20),
+    void givenAuthenticatedUserWhenGettingConsumptionThenReturnsDetail() {
+        givenLoggedUserConsumptionDetailReturns(givenConsumptionDetail());
+
+        StudentConsumptionResponse response = 
+                whenGettingConsumption("2026-05-01", "2026-05-20", studentId, authentication());
+
+        thenConsumptionIsReturned(response);
+        thenConsumptionDetailWasRequested("cognito-sub", studentId, "2026-05-01", "2026-05-20");
+    }
+
+    @Test
+    void givenMissingAuthenticationWhenGettingConsumptionThenThrowsException() {
+        Executable execution = () -> whenGettingConsumption("2026-05-01", "2026-05-20", null, null);
+
+        thenThrowsAuthenticationException(execution);
+        thenGetLoggedUserConsumptionWasNotCalled();
+    }
+
+    private void givenRewardStatus(UUID alumnoId, StudentRewardResponse response) {
+        when(getStudentRewardStatus.execute(new GetStudentRewardStatusRequest(alumnoId)))
+                .thenReturn(response);
+    }
+
+    private GetLoggedUserConsumptionDetailResponse givenConsumptionDetail() {
+        return new GetLoggedUserConsumptionDetailResponse(
+                studentId,
+                LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 20),
+                new BigDecimal("1500.00"),
+                1,
+                List.of(new GetLoggedUserConsumptionDetailResponse.PurchaseResponse(
+                        purchaseId,
+                        LocalDateTime.of(2026, 5, 20, 10, 30),
+                        "ENTREGADO",
+                        "CREDITOS",
                         new BigDecimal("1500.00"),
-                        1,
-                        List.of(new GetLoggedUserConsumptionDetailResponse.PurchaseResponse(
-                                purchaseId,
-                                LocalDateTime.of(2026, 5, 20, 10, 30),
-                                "ENTREGADO",
-                                "CREDITOS",
+                        buffetId,
+                        "Buffet Primario",
+                        List.of(new GetLoggedUserConsumptionDetailResponse.ProductResponse(
+                                productId,
+                                "Sandwich",
+                                "Comida",
+                                1,
                                 new BigDecimal("1500.00"),
-                                buffetId,
-                                "Buffet Primario",
-                                List.of(new GetLoggedUserConsumptionDetailResponse.ProductResponse(
-                                        productId,
-                                        "Sandwich",
-                                        "Comida",
-                                        1,
-                                        new BigDecimal("1500.00"),
-                                        new BigDecimal("1500.00"),
-                                        List.of()
-                                ))
+                                new BigDecimal("1500.00"),
+                                List.of()
                         ))
-                );
+                ))
+        );
+    }
+
+    private void givenLoggedUserConsumptionDetailReturns(GetLoggedUserConsumptionDetailResponse detail) {
         when(getLoggedUserConsumptionDetail.execute(any())).thenReturn(detail);
+    }
 
-        mockMvc.perform(get("/api/v1/consumos")
-                        .principal(authentication())
-                        .param("alumnoId", studentId.toString())
-                        .param("desde", "2026-05-01")
-                        .param("hasta", "2026-05-20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.alumnoId").value(studentId.toString()))
-                .andExpect(jsonPath("$.desde").value("2026-05-01"))
-                .andExpect(jsonPath("$.hasta").value("2026-05-20"))
-                .andExpect(jsonPath("$.montoTotal").value(1500.00))
-                .andExpect(jsonPath("$.cantidadCompras").value(1))
-                .andExpect(jsonPath("$.compras[0].compraId").value(purchaseId.toString()))
-                .andExpect(jsonPath("$.compras[0].buffet").value("Buffet Primario"))
-                .andExpect(jsonPath("$.compras[0].productos[0].productoId")
-                        .value(productId.toString()))
-                .andExpect(jsonPath("$.compras[0].productos[0].nombre").value("Sandwich"));
+    private StudentRewardResponse whenGettingRewardStatus(UUID alumnoId) {
+        return controller.getRewardStatus(alumnoId);
+    }
 
+    private StudentConsumptionResponse whenGettingConsumption(
+            String from, String to, UUID studentId, JwtAuthenticationToken auth) {
+        return controller.getConsumption(auth, studentId, LocalDate.parse(from), LocalDate.parse(to));
+    }
+
+    private void thenRewardStatusIsReturned(
+            StudentRewardResponse result, int totalPoints, String currentLevel, int pointsToNext, String nextLevel) {
+        assertEquals(totalPoints, result.totalPoints());
+        assertEquals(currentLevel, result.currentLevel());
+        assertEquals(pointsToNext, result.pointsToNextLevel());
+        assertEquals(nextLevel, result.nextLevelName());
+    }
+
+    private void thenGetRewardStatusWasRequested(UUID alumnoId) {
+        verify(getStudentRewardStatus).execute(new GetStudentRewardStatusRequest(alumnoId));
+    }
+
+    private void thenConsumptionIsReturned(StudentConsumptionResponse response) {
+        assertEquals(studentId, response.studentId());
+        assertEquals(LocalDate.of(2026, 5, 1), response.from());
+        assertEquals(LocalDate.of(2026, 5, 20), response.to());
+        assertEquals(new BigDecimal("1500.00"), response.totalAmount());
+        assertEquals(1, response.purchaseCount());
+        assertEquals(purchaseId, response.purchases().get(0).purchaseId());
+        assertEquals("Buffet Primario", response.purchases().get(0).buffetName());
+        assertEquals(productId, response.purchases().get(0).products().get(0).productId());
+        assertEquals("Sandwich", response.purchases().get(0).products().get(0).productName());
+    }
+
+    private void thenConsumptionDetailWasRequested(String sub, UUID studentId, String from, String to) {
         ArgumentCaptor<GetLoggedUserConsumptionDetailRequest> requestCaptor = ArgumentCaptor
                 .forClass(GetLoggedUserConsumptionDetailRequest.class);
         verify(getLoggedUserConsumptionDetail).execute(requestCaptor.capture());
         GetLoggedUserConsumptionDetailRequest request = requestCaptor.getValue();
-        assertEquals("cognito-sub", request.cognitoSubject());
+        assertEquals(sub, request.cognitoSubject());
         assertEquals(studentId, request.studentId());
-        assertEquals(LocalDate.of(2026, 5, 1), request.from());
-        assertEquals(LocalDate.of(2026, 5, 20), request.to());
+        assertEquals(LocalDate.parse(from), request.from());
+        assertEquals(LocalDate.parse(to), request.to());
     }
 
-    @Test
-    void getConsumptionRejectsMissingAuthentication() throws Exception {
-        mockMvc.perform(get("/api/v1/consumos")
-                        .param("desde", "2026-05-01")
-                        .param("hasta", "2026-05-20"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Usuario no autenticado"));
+    private void thenThrowsAuthenticationException(Executable execution) {
+        assertThrows(AuthenticationCredentialsNotFoundException.class, execution);
+    }
 
+    private void thenGetLoggedUserConsumptionWasNotCalled() {
         verifyNoInteractions(getLoggedUserConsumptionDetail);
     }
 

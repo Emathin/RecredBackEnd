@@ -1,7 +1,5 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.domain.models.EstadoPagoExterno;
-import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.SchoolAssistantPayment;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.BilleteraEntity;
@@ -17,8 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
+import static com.recred.backend.domain.models.EstadoPagoExterno.*;
+import static com.recred.backend.domain.models.RolUsuario.*;
+import static java.math.BigDecimal.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Transactional
@@ -30,46 +30,48 @@ class SchoolAssistantPaymentJpaRepositoryIT extends AbstractIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    private AlumnoEntity cachedStudent;
+
     @Test
     void findRecentByStudentId_ShouldUsePageRequestLimit() {
-        AlumnoEntity student = generateStudent();
-
-        generatePayment(student, "100.00", "pref1", "pay1");
-        generatePayment(student, "200.00", "pref2", "pay2");
-
-        entityManager.flush();
-        entityManager.clear();
-
-        List<SchoolAssistantPayment> result = repository.findRecentByStudentId(student.getId(), 1);
-
-        assertEquals(1, result.size());
+        AlumnoEntity student = givenStudentWithMultiplePayments();
+        
+        List<SchoolAssistantPayment> result = whenFindingRecentPayments(student.getId(), 1);
+        
+        thenResultSizeIsExactly(result, 1);
     }
 
     @Test
     void findByStudentIdAndDateRange_ShouldUsePageRequestLimit() {
-        AlumnoEntity student = generateStudent();
-
+        AlumnoEntity student = givenStudentWithMultiplePayments();
         LocalDateTime start = LocalDateTime.now().minusMinutes(5);
-
-        generatePayment(student, "100.00", "pref3", "pay3");
-        generatePayment(student, "200.00", "pref4", "pay4");
-
-        entityManager.flush();
-        entityManager.clear();
-        
         LocalDateTime end = LocalDateTime.now().plusMinutes(5);
-
-        List<SchoolAssistantPayment> result = repository.findByStudentIdAndDateRange(
-                student.getId(),
-                start,
-                end,
-                10
-        );
-
-        assertEquals(2, result.size());
+        
+        List<SchoolAssistantPayment> result = whenFindingPaymentsInDateRange(student.getId(), start, end, 10);
+        
+        thenResultSizeIsExactly(result, 2);
     }
 
-    private AlumnoEntity cachedStudent;
+    private AlumnoEntity givenStudentWithMultiplePayments() {
+        AlumnoEntity student = generateStudent();
+        generatePayment(student, "100.00", "pref1", "pay1");
+        generatePayment(student, "200.00", "pref2", "pay2");
+        entityManager.flush();
+        entityManager.clear();
+        return student;
+    }
+
+    private List<SchoolAssistantPayment> whenFindingRecentPayments(java.util.UUID studentId, int limit) {
+        return repository.findRecentByStudentId(studentId, limit);
+    }
+
+    private List<SchoolAssistantPayment> whenFindingPaymentsInDateRange(java.util.UUID studentId, LocalDateTime start, LocalDateTime end, int limit) {
+        return repository.findByStudentIdAndDateRange(studentId, start, end, limit);
+    }
+
+    private void thenResultSizeIsExactly(List<SchoolAssistantPayment> result, int expectedSize) {
+        assertEquals(expectedSize, result.size());
+    }
 
     private PagoMercadoPagoEntity generatePayment(AlumnoEntity student, String amount, String prefId, String payId) {
         PagoMercadoPagoEntity payment = new PagoMercadoPagoEntity();
@@ -77,7 +79,7 @@ class SchoolAssistantPaymentJpaRepositoryIT extends AbstractIntegrationTest {
         payment.setUsuarioEntity(student.getUsuario());
         payment.setMonto(new BigDecimal(amount));
         payment.setMoneda("ARS");
-        payment.setEstado(EstadoPagoExterno.APROBADO);
+        payment.setEstado(APROBADO);
         payment.setMercadoPagoPreferenceId(prefId);
         payment.setMercadoPagoPaymentId(payId);
         entityManager.persist(payment);
@@ -91,7 +93,7 @@ class SchoolAssistantPaymentJpaRepositoryIT extends AbstractIntegrationTest {
             user.setNombre("Test");
             user.setApellido("User");
             user.setEmail("user.pay@test.com");
-            user.setRol(RolUsuario.ALUMNO);
+            user.setRol(ALUMNO);
             user.setActivo(true);
             entityManager.persist(user);
 
@@ -101,8 +103,8 @@ class SchoolAssistantPaymentJpaRepositoryIT extends AbstractIntegrationTest {
             entityManager.persist(student);
 
             BilleteraEntity wallet = new BilleteraEntity();
-            wallet.setSaldoCreditos(BigDecimal.ZERO);
-            wallet.setLimiteCredito(BigDecimal.ZERO);
+            wallet.setSaldoCreditos(ZERO);
+            wallet.setLimiteCredito(ZERO);
             wallet.setCreditoHabilitado(true);
             wallet.setAlumnoEntity(student);
             entityManager.persist(wallet);

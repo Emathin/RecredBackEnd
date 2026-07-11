@@ -10,8 +10,12 @@ import com.recred.backend.domain.repositories.FranjaHorariaRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.infrastructure.web.SchoolAccessGuard;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 
@@ -20,114 +24,128 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class SchoolAccessGuardTest {
 
-    private final UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
-    private final KiosqueroRepository kiosqueroRepository = mock(KiosqueroRepository.class);
-    private final BuffetRepository buffetRepository = mock(BuffetRepository.class);
-    private final FranjaHorariaRepository franjaHorariaRepository =
-            mock(FranjaHorariaRepository.class);
-    private final SchoolAccessGuard guard = new SchoolAccessGuard(
-            usuarioRepository,
-            kiosqueroRepository,
-            buffetRepository,
-            franjaHorariaRepository
-    );
+    private static final String COGNITO_SUBJECT = "sub";
+    private static final UUID SCHOOL_ID = UUID.randomUUID();
+    private static final UUID USER_ID = UUID.randomUUID();
+    private static final UUID BUFFET_ID = UUID.randomUUID();
+    private static final UUID SLOT_ID = UUID.randomUUID();
 
-    @Test
-    void requireSchoolAccess_WhenDirectorBelongsToSchool_ShouldPass() {
-        UUID colegioId = UUID.randomUUID();
-        Usuario user = user(UUID.randomUUID(), RolUsuario.DIRECTIVO_COLEGIO, colegioId);
+    @Mock private UsuarioRepository usuarioRepository;
+    @Mock private KiosqueroRepository kiosqueroRepository;
+    @Mock private BuffetRepository buffetRepository;
+    @Mock private FranjaHorariaRepository franjaHorariaRepository;
 
-        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
+    private SchoolAccessGuard guard;
+    private TestingAuthenticationToken authentication;
 
-        assertDoesNotThrow(() -> guard.requireSchoolAccess(auth(), colegioId));
+    @BeforeEach
+    void setUp() {
+        guard = new SchoolAccessGuard(
+                usuarioRepository,
+                kiosqueroRepository,
+                buffetRepository,
+                franjaHorariaRepository
+        );
+        authentication = new TestingAuthenticationToken(COGNITO_SUBJECT, "");
     }
 
     @Test
-    void requireSchoolAccess_WhenSellerOwnsBuffetInSchool_ShouldPass() {
-        UUID userId = UUID.randomUUID();
-        UUID colegioId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        Usuario user = user(userId, RolUsuario.VENDEDOR, null);
+    void requireSchoolAccessWhenDirectorBelongsToSchoolShouldPass() {
+        givenAuthenticatedUser(RolUsuario.DIRECTIVO_COLEGIO, SCHOOL_ID);
 
-        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
-        when(kiosqueroRepository.findBuffetByUsuarioId(userId)).thenReturn(buffetId);
-        when(buffetRepository.findById(buffetId)).thenReturn(Optional.of(buffet(colegioId)));
+        Executable execution = this::whenRequiringSchoolAccess;
 
-        assertDoesNotThrow(() -> guard.requireSchoolAccess(auth(), colegioId));
+        thenAccessIsGranted(execution);
     }
 
     @Test
-    void requireSchoolManagementAccess_WhenSellerOwnsBuffetInSchool_ShouldThrowException() {
-        UUID userId = UUID.randomUUID();
-        UUID colegioId = UUID.randomUUID();
-        Usuario user = user(userId, RolUsuario.VENDEDOR, null);
+    void requireSchoolAccessWhenSellerOwnsBuffetInSchoolShouldPass() {
+        givenAuthenticatedUser(RolUsuario.VENDEDOR, null);
+        givenSellerOwnsBuffetInSchool();
 
-        givenAuthenticatedUser(user);
+        Executable execution = this::whenRequiringSchoolAccess;
 
-        Executable execution = () -> whenRequiringSchoolManagementAccess(colegioId);
-
-        assertThrows(AccessDeniedException.class, execution);
+        thenAccessIsGranted(execution);
     }
 
     @Test
-    void requireSchoolAccess_WhenSchoolDoesNotMatch_ShouldThrowException() {
-        UUID colegioId = UUID.randomUUID();
-        Usuario user = user(UUID.randomUUID(), RolUsuario.DIRECTIVO_COLEGIO, UUID.randomUUID());
+    void requireSchoolManagementAccessWhenSellerOwnsBuffetInSchoolShouldThrowException() {
+        givenAuthenticatedUser(RolUsuario.VENDEDOR, null);
 
-        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
+        Executable execution = this::whenRequiringSchoolManagementAccess;
 
-        assertThrows(AccessDeniedException.class,
-                () -> guard.requireSchoolAccess(auth(), colegioId));
+        thenAccessIsDenied(execution);
     }
 
     @Test
-    void requireTimeSlotAccess_ShouldResolveSchoolFromSlot() {
-        UUID colegioId = UUID.randomUUID();
-        UUID slotId = UUID.randomUUID();
-        Usuario user = user(UUID.randomUUID(), RolUsuario.ADMIN, null);
-        FranjaHoraria slot = new FranjaHoraria();
-        slot.setColegioId(colegioId);
+    void requireSchoolAccessWhenSchoolDoesNotMatchShouldThrowException() {
+        givenAuthenticatedUser(RolUsuario.DIRECTIVO_COLEGIO, UUID.randomUUID());
 
-        when(franjaHorariaRepository.findById(slotId)).thenReturn(Optional.of(slot));
-        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
+        Executable execution = this::whenRequiringSchoolAccess;
 
-        assertDoesNotThrow(() -> guard.requireTimeSlotAccess(auth(), slotId));
+        thenAccessIsDenied(execution);
     }
 
-    private TestingAuthenticationToken auth() {
-        return new TestingAuthenticationToken("sub", "");
+    @Test
+    void requireTimeSlotAccessShouldResolveSchoolFromSlot() {
+        givenAuthenticatedUser(RolUsuario.ADMIN, null);
+        givenTimeSlotBelongsToSchool();
+
+        Executable execution = this::whenRequiringTimeSlotAccess;
+
+        thenAccessIsGranted(execution);
     }
 
-    private void givenAuthenticatedUser(Usuario user) {
-        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
-    }
-
-    private void whenRequiringSchoolManagementAccess(UUID colegioId) {
-        guard.requireSchoolManagementAccess(auth(), colegioId);
-    }
-
-    private Usuario user(UUID userId, RolUsuario role, UUID colegioId) {
+    private void givenAuthenticatedUser(RolUsuario role, UUID schoolId) {
         Usuario user = new Usuario();
-        user.setId(userId);
+        user.setId(USER_ID);
         user.setRol(role);
-        if (colegioId != null) {
-            Colegio colegio = new Colegio();
-            colegio.setId(colegioId);
-            user.setColegio(colegio);
+        if (schoolId != null) {
+            Colegio school = new Colegio();
+            school.setId(schoolId);
+            user.setColegio(school);
         }
-        return user;
+        when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(user));
     }
 
-    private Buffet buffet(UUID colegioId) {
-        Colegio colegio = new Colegio();
-        colegio.setId(colegioId);
+    private void givenSellerOwnsBuffetInSchool() {
+        Colegio school = new Colegio();
+        school.setId(SCHOOL_ID);
         Buffet buffet = new Buffet();
-        buffet.setColegio(colegio);
-        return buffet;
+        buffet.setColegio(school);
+
+        when(kiosqueroRepository.findBuffetByUsuarioId(USER_ID)).thenReturn(BUFFET_ID);
+        when(buffetRepository.findById(BUFFET_ID)).thenReturn(Optional.of(buffet));
+    }
+
+    private void givenTimeSlotBelongsToSchool() {
+        FranjaHoraria slot = new FranjaHoraria();
+        slot.setColegioId(SCHOOL_ID);
+        when(franjaHorariaRepository.findById(SLOT_ID)).thenReturn(Optional.of(slot));
+    }
+
+    private void whenRequiringSchoolAccess() {
+        guard.requireSchoolAccess(authentication, SCHOOL_ID);
+    }
+
+    private void whenRequiringSchoolManagementAccess() {
+        guard.requireSchoolManagementAccess(authentication, SCHOOL_ID);
+    }
+
+    private void whenRequiringTimeSlotAccess() {
+        guard.requireTimeSlotAccess(authentication, SLOT_ID);
+    }
+
+    private void thenAccessIsGranted(Executable execution) {
+        assertDoesNotThrow(execution);
+    }
+
+    private void thenAccessIsDenied(Executable execution) {
+        assertThrows(AccessDeniedException.class, execution);
     }
 }

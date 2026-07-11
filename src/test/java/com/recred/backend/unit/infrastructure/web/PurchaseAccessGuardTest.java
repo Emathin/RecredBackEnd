@@ -65,7 +65,7 @@ class PurchaseAccessGuardTest {
     }
 
     @Test
-    void requirePurchaseAccess_WhenPurchaseDoesNotExist_ShouldFail() {
+    void requirePurchaseAccessWhenPurchaseDoesNotExistShouldFail() {
         givenPurchaseDoesNotExist();
 
         Executable execution = this::whenRequiringPurchaseAccess;
@@ -74,7 +74,7 @@ class PurchaseAccessGuardTest {
     }
 
     @Test
-    void requirePurchaseAccess_WhenAuthenticationIsMissing_ShouldFail() {
+    void requirePurchaseAccessWhenAuthenticationIsMissingShouldFail() {
         givenPurchaseExists();
 
         Executable execution = this::whenRequiringPurchaseAccessWithNullAuthentication;
@@ -83,7 +83,7 @@ class PurchaseAccessGuardTest {
     }
 
     @Test
-    void requirePurchaseAccess_WhenRequesterDoesNotExist_ShouldFail() {
+    void requirePurchaseAccessWhenRequesterDoesNotExistShouldFail() {
         givenPurchaseExists();
         givenAuthenticationSubject();
         givenRequesterDoesNotExist();
@@ -94,7 +94,7 @@ class PurchaseAccessGuardTest {
     }
 
     @Test
-    void requirePurchaseAccess_WhenRequesterIsSameStudent_ShouldReturnPurchase() {
+    void requirePurchaseAccessWhenRequesterIsSameStudentShouldReturnPurchase() {
         givenPurchaseExists();
         givenAuthenticationSubject();
         givenRequesterIsStudent(STUDENT_ID);
@@ -106,7 +106,7 @@ class PurchaseAccessGuardTest {
     }
 
     @Test
-    void requirePurchaseAccess_WhenRequesterIsTutorWithAccess_ShouldReturnPurchase() {
+    void requirePurchaseAccessWhenRequesterIsTutorWithAccessShouldReturnPurchase() {
         givenPurchaseExists();
         givenAuthenticationSubject();
         givenRequesterIsTutor();
@@ -118,7 +118,7 @@ class PurchaseAccessGuardTest {
     }
 
     @Test
-    void requirePurchaseAccess_WhenRequesterIsTutorWithoutAccess_ShouldFail() {
+    void requirePurchaseAccessWhenRequesterIsTutorWithoutAccessShouldFail() {
         givenPurchaseExists();
         givenAuthenticationSubject();
         givenRequesterIsTutor();
@@ -130,7 +130,7 @@ class PurchaseAccessGuardTest {
     }
 
     @Test
-    void requirePurchaseAccess_WhenRequesterIsAdmin_ShouldRequireBuffetAccess() {
+    void requirePurchaseAccessWhenRequesterIsAdminShouldRequireBuffetAccess() {
         givenPurchaseExists();
         givenAuthenticationSubject();
         givenRequesterIsAdmin();
@@ -142,7 +142,7 @@ class PurchaseAccessGuardTest {
     }
 
     @Test
-    void requirePurchaseAccess_WhenPurchaseHasNoStudent_ShouldDenyStudentRequester() {
+    void requirePurchaseAccessWhenPurchaseHasNoStudentShouldDenyStudentRequester() {
         givenPurchaseWithoutStudentExists();
         givenAuthenticationSubject();
         givenRequesterIsStudent(STUDENT_ID);

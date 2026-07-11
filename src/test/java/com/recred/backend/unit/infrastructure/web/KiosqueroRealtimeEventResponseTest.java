@@ -22,24 +22,52 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class KiosqueroRealtimeEventResponseTest {
 
+    private final UUID BUFFET_ID = UUID.randomUUID();
+    private final UUID PRODUCT_ID = UUID.randomUUID();
+    private final UUID INVENTORY_ID = UUID.randomUUID();
+    private final UUID PURCHASE_ID = UUID.randomUUID();
+    private final LocalDate DATE = LocalDate.of(2026, 6, 15);
+    private final LocalDateTime OCCURRED_AT = LocalDateTime.of(2026, 6, 15, 12, 0);
+
     @Test
     void fromDomainShouldMapInventoryPayload() {
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        UUID inventoryId = UUID.randomUUID();
-        LocalDate date = LocalDate.of(2026, 6, 15);
-        LocalDateTime occurredAt = LocalDateTime.of(2026, 6, 15, 12, 0);
-        KiosqueroRealtimeEvent event = new KiosqueroRealtimeEvent(
-                buffetId,
+        KiosqueroRealtimeEvent event = givenInventoryEvent();
+        
+        KiosqueroRealtimeEventResponse response = whenMappingFromDomain(event);
+        
+        thenInventoryIsMapped(response);
+    }
+
+    @Test
+    void fromDomainShouldMapPurchasePayload() {
+        KiosqueroRealtimeEvent event = givenPurchaseEvent();
+        
+        KiosqueroRealtimeEventResponse response = whenMappingFromDomain(event);
+        
+        thenPurchaseIsMapped(response);
+    }
+
+    @Test
+    void fromDomainShouldHandleNullableFields() {
+        KiosqueroRealtimeEvent event = givenAlertEvent();
+        
+        KiosqueroRealtimeEventResponse response = whenMappingFromDomain(event);
+        
+        thenNullableFieldsAreHandled(response);
+    }
+
+    private KiosqueroRealtimeEvent givenInventoryEvent() {
+        return new KiosqueroRealtimeEvent(
+                BUFFET_ID,
                 KiosqueroRealtimeEventType.STOCK_CHANGED,
                 KiosqueroRealtimeChangeKind.RESERVATION,
                 "Reserva",
-                date,
-                occurredAt,
+                DATE,
+                OCCURRED_AT,
                 "Stock actualizado",
                 new InventoryRealtimePayload(
-                        productId,
-                        inventoryId,
+                        PRODUCT_ID,
+                        INVENTORY_ID,
                         TipoMovimientoStock.RESERVA,
                         10,
                         3,
@@ -52,14 +80,43 @@ class KiosqueroRealtimeEventResponseTest {
                         TipoManejoInventario.CUPO_DIARIO
                 )
         );
+    }
 
-        KiosqueroRealtimeEventResponse response = KiosqueroRealtimeEventResponse
-                .fromDomain(event);
+    private KiosqueroRealtimeEvent givenPurchaseEvent() {
+        return new KiosqueroRealtimeEvent(
+                BUFFET_ID,
+                KiosqueroRealtimeEventType.ORDER_UPDATED,
+                KiosqueroRealtimeChangeKind.ORDER_CHANGED,
+                "Pedido actualizado",
+                DATE,
+                OCCURRED_AT,
+                "Pedido listo",
+                new PurchaseRealtimePayload(
+                        PURCHASE_ID,
+                        EstadoCompra.LISTO,
+                        new BigDecimal("120.00")
+                )
+        );
+    }
 
-        assertEquals(buffetId, response.buffetId());
+    private KiosqueroRealtimeEvent givenAlertEvent() {
+        return KiosqueroRealtimeEvent.productAlert(
+                BUFFET_ID,
+                KiosqueroRealtimeEventType.LOW_STOCK,
+                PRODUCT_ID,
+                "Stock bajo"
+        );
+    }
+
+    private KiosqueroRealtimeEventResponse whenMappingFromDomain(KiosqueroRealtimeEvent event) {
+        return KiosqueroRealtimeEventResponse.fromDomain(event);
+    }
+
+    private void thenInventoryIsMapped(KiosqueroRealtimeEventResponse response) {
+        assertEquals(BUFFET_ID, response.buffetId());
         assertEquals("STOCK_CHANGED", response.type());
-        assertEquals(productId, response.productId());
-        assertEquals(inventoryId, response.inventoryId());
+        assertEquals(PRODUCT_ID, response.productId());
+        assertEquals(INVENTORY_ID, response.inventoryId());
         assertEquals("RESERVA", response.movementType());
         assertEquals(10, response.stockActual());
         assertEquals(3, response.stockReservado());
@@ -72,48 +129,24 @@ class KiosqueroRealtimeEventResponseTest {
         assertEquals("CUPO_DIARIO", response.tipoManejoInventario());
         assertEquals("RESERVATION", response.changeKind());
         assertEquals("Reserva", response.reason());
-        assertEquals(date, response.date());
-        assertEquals(occurredAt, response.occurredAt());
+        assertEquals(DATE, response.date());
+        assertEquals(OCCURRED_AT, response.occurredAt());
         assertEquals("Stock actualizado", response.message());
         assertNull(response.purchaseId());
         assertNull(response.purchaseStatus());
         assertNull(response.purchaseTotal());
     }
 
-    @Test
-    void fromDomainShouldMapPurchasePayload() {
-        UUID buffetId = UUID.randomUUID();
-        UUID purchaseId = UUID.randomUUID();
-        LocalDate date = LocalDate.of(2026, 6, 15);
-        LocalDateTime occurredAt = LocalDateTime.of(2026, 6, 15, 12, 0);
-        BigDecimal purchaseTotal = new BigDecimal("120.00");
-        KiosqueroRealtimeEvent event = new KiosqueroRealtimeEvent(
-                buffetId,
-                KiosqueroRealtimeEventType.ORDER_UPDATED,
-                KiosqueroRealtimeChangeKind.ORDER_CHANGED,
-                "Pedido actualizado",
-                date,
-                occurredAt,
-                "Pedido listo",
-                new PurchaseRealtimePayload(
-                        purchaseId,
-                        EstadoCompra.LISTO,
-                        purchaseTotal
-                )
-        );
-
-        KiosqueroRealtimeEventResponse response = KiosqueroRealtimeEventResponse
-                .fromDomain(event);
-
-        assertEquals(buffetId, response.buffetId());
+    private void thenPurchaseIsMapped(KiosqueroRealtimeEventResponse response) {
+        assertEquals(BUFFET_ID, response.buffetId());
         assertEquals("ORDER_UPDATED", response.type());
-        assertEquals(purchaseId, response.purchaseId());
+        assertEquals(PURCHASE_ID, response.purchaseId());
         assertEquals("LISTO", response.purchaseStatus());
-        assertEquals(purchaseTotal, response.purchaseTotal());
+        assertEquals(new BigDecimal("120.00"), response.purchaseTotal());
         assertEquals("ORDER_CHANGED", response.changeKind());
         assertEquals("Pedido actualizado", response.reason());
-        assertEquals(date, response.date());
-        assertEquals(occurredAt, response.occurredAt());
+        assertEquals(DATE, response.date());
+        assertEquals(OCCURRED_AT, response.occurredAt());
         assertEquals("Pedido listo", response.message());
         assertNull(response.productId());
         assertNull(response.inventoryId());
@@ -122,23 +155,10 @@ class KiosqueroRealtimeEventResponseTest {
         assertNull(response.tipoManejoInventario());
     }
 
-    @Test
-    void fromDomainShouldHandleNullableFields() {
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        KiosqueroRealtimeEvent event = KiosqueroRealtimeEvent.productAlert(
-                buffetId,
-                KiosqueroRealtimeEventType.LOW_STOCK,
-                productId,
-                "Stock bajo"
-        );
-
-        KiosqueroRealtimeEventResponse response = KiosqueroRealtimeEventResponse
-                .fromDomain(event);
-
-        assertEquals(buffetId, response.buffetId());
+    private void thenNullableFieldsAreHandled(KiosqueroRealtimeEventResponse response) {
+        assertEquals(BUFFET_ID, response.buffetId());
         assertEquals("LOW_STOCK", response.type());
-        assertEquals(productId, response.productId());
+        assertEquals(PRODUCT_ID, response.productId());
         assertNull(response.purchaseStatus());
         assertNull(response.movementType());
         assertNull(response.estadoInventario());
@@ -147,4 +167,3 @@ class KiosqueroRealtimeEventResponseTest {
         assertEquals("Stock bajo", response.message());
     }
 }
-

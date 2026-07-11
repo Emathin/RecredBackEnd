@@ -20,16 +20,16 @@ class StudentConsumptionExceptionHandlerTest {
             new StudentConsumptionExceptionHandler();
 
     @Test
-    void mapRequiredStudentError() {
+    void givenRequiredStudentExceptionWhenHandlingThenReturnsError() {
         Map<String, String> response = handler.handleRequiredStudent(
                 new AlumnoRequeridoParaConsumoException()
         );
 
-        assertEquals("Debe indicar el alumno para consultar el consumo.", response.get("error"));
+        thenResponseHasError(response, "Debe indicar el alumno para consultar el consumo.");
     }
 
     @Test
-    void mapInvalidDateRangeError() {
+    void givenInvalidDateRangeExceptionWhenHandlingThenReturnsError() {
         Map<String, String> response = handler.handleInvalidDateRange(
                 new RangoFechasConsumoInvalidoException(
                         LocalDate.of(2026, 5, 20),
@@ -37,45 +37,40 @@ class StudentConsumptionExceptionHandlerTest {
                 )
         );
 
-        assertEquals(
-                "El rango de fechas de consumo es invalido: 2026-05-20 - 2026-05-01",
-                response.get("error")
-        );
+        thenResponseHasError(response, "El rango de fechas de consumo es invalido: 2026-05-20 - 2026-05-01");
     }
 
     @Test
-    void mapForbiddenStudentError() {
+    void givenForbiddenStudentExceptionWhenHandlingThenReturnsError() {
         UUID studentId = UUID.randomUUID();
 
         Map<String, String> response = handler.handleForbiddenStudent(
                 new ConsumoAlumnoNoAutorizadoException(studentId)
         );
 
-        assertEquals(
-                "No esta autorizado para consultar el consumo del alumno: " + studentId,
-                response.get("error")
-        );
+        thenResponseHasError(response, "No esta autorizado para consultar el consumo del alumno: " + studentId);
     }
 
     @Test
-    void mapAuthenticatedUserNotFoundError() {
+    void givenAuthenticatedUserNotFoundExceptionWhenHandlingThenReturnsError() {
         Map<String, String> response = handler.handleAuthenticatedUserNotFound(
                 new UsuarioAutenticadoNoEncontradoException("cognito-sub")
         );
 
-        assertEquals(
-                "No se encontro el usuario autenticado: cognito-sub",
-                response.get("error")
-        );
+        thenResponseHasError(response, "No se encontro el usuario autenticado: cognito-sub");
     }
 
     @Test
-    void mapMissingAuthenticationError() {
+    void givenMissingAuthenticationExceptionWhenHandlingThenReturnsError() {
         Map<String, String> response = handler.handleMissingAuthentication(
                 new AuthenticationCredentialsNotFoundException("Usuario no autenticado")
         );
 
-        assertEquals("Usuario no autenticado", response.get("error"));
+        thenResponseHasError(response, "Usuario no autenticado");
+    }
+
+    private void thenResponseHasError(Map<String, String> response, String errorMessage) {
+        assertEquals(errorMessage, response.get("error"));
     }
 }
 

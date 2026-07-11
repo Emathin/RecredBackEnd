@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import static com.recred.backend.domain.models.EstadoCompra.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Transactional
@@ -33,21 +34,34 @@ class SpringDataPurchaseRepositoryIT extends AbstractIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    private BuffetEntity cachedBuffet;
+
     @Test
     void findRecentByStudentIdWithLimitDelegatesToPageableQuery() {
+        AlumnoEntity student = givenStudentWithRecentPurchases();
+        
+        List<SchoolAssistantPurchase> result = whenFindingRecentPurchases(student.getId(), 1);
+
+        thenRecentPurchasesAreReturnedCorrectly(result, 1, "200.00", PENDIENTE);
+    }
+
+    private AlumnoEntity givenStudentWithRecentPurchases() {
         AlumnoEntity student = generateStudent();
-        
-        CompraPresencialEntity purchase = generatePurchase(student, "150.00", EstadoCompra.ENTREGADO, LocalDateTime.now().minusDays(1));
-        CompraPresencialEntity recentPurchase = generatePurchase(student, "200.00", EstadoCompra.PENDIENTE, LocalDateTime.now());
-        
+        generatePurchase(student, "150.00", ENTREGADO, LocalDateTime.now().minusDays(1));
+        generatePurchase(student, "200.00", PENDIENTE, LocalDateTime.now());
         entityManager.flush();
         entityManager.clear();
+        return student;
+    }
 
-        List<SchoolAssistantPurchase> result = repository.findRecentByStudentId(student.getId(), 1);
+    private List<SchoolAssistantPurchase> whenFindingRecentPurchases(UUID studentId, int limit) {
+        return repository.findRecentByStudentId(studentId, limit);
+    }
 
-        assertEquals(1, result.size());
-        assertEquals(new BigDecimal("200.00"), result.get(0).totalAmount());
-        assertEquals(EstadoCompra.PENDIENTE, result.get(0).status());
+    private void thenRecentPurchasesAreReturnedCorrectly(List<SchoolAssistantPurchase> result, int expectedSize, String expectedAmount, EstadoCompra expectedStatus) {
+        assertEquals(expectedSize, result.size());
+        assertEquals(new BigDecimal(expectedAmount), result.get(0).totalAmount());
+        assertEquals(expectedStatus, result.get(0).status());
     }
     
     private AlumnoEntity generateStudent() {
@@ -66,8 +80,6 @@ class SpringDataPurchaseRepositoryIT extends AbstractIntegrationTest {
         entityManager.persist(student);
         return student;
     }
-
-    private BuffetEntity cachedBuffet;
 
     private BuffetEntity getCachedBuffet() {
         if (this.cachedBuffet == null) {

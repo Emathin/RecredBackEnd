@@ -107,7 +107,7 @@ class SmallControllerDelegationTest {
     private PlanAccessGuard planAccessGuard;
 
     @Test
-    void tutorGlobalDashboardShouldUseAuthenticatedSubject() {
+    void givenAuthenticatedUserWhenGettingTutorGlobalDashboardThenReturnsDashboard() {
         String cognitoSubject = "sub";
         GetTutorGlobalDashboardResponse expected = givenTutorGlobalDashboardFor(cognitoSubject);
         TutorGlobalDashboardController controller = givenTutorGlobalDashboardController();
@@ -119,7 +119,7 @@ class SmallControllerDelegationTest {
     }
 
     @Test
-    void tutorGlobalDashboardWithoutAuthenticationShouldThrow() {
+    void givenUnauthenticatedUserWhenGettingTutorGlobalDashboardThenThrowsException() {
         TutorGlobalDashboardController controller = givenTutorGlobalDashboardController();
 
         Executable action = whenGettingTutorGlobalDashboardWithoutAuthentication(controller);
@@ -128,7 +128,7 @@ class SmallControllerDelegationTest {
     }
 
     @Test
-    void franjaHorariaControllerShouldMapTimeSlots() {
+    void givenSchoolIdWhenGettingTimeSlotsThenReturnsMappedTimeSlots() {
         UUID schoolId = UUID.randomUUID();
         GetTimeSlotsBySchoolResponse slot = givenTimeSlotForSchool(schoolId);
         FranjaHorariaController controller = givenFranjaHorariaController();
@@ -140,7 +140,7 @@ class SmallControllerDelegationTest {
     }
 
     @Test
-    void lowBalanceControllerShouldReturnOkWhenAlertsAreGenerated() {
+    void givenAlertsGeneratedSuccessfullyWhenTriggeringLowBalanceAlertsThenReturnsOk() {
         LowBalanceAlertController controller = givenLowBalanceAlertController();
 
         ResponseEntity<String> response = whenTriggeringLowBalanceAlerts(controller);
@@ -149,7 +149,7 @@ class SmallControllerDelegationTest {
     }
 
     @Test
-    void lowBalanceControllerShouldReturnErrorWhenAlertsFail() {
+    void givenAlertsFailWhenTriggeringLowBalanceAlertsThenReturnsError() {
         givenLowBalanceAlertsFail();
         LowBalanceAlertController controller = givenLowBalanceAlertController();
 
@@ -159,7 +159,7 @@ class SmallControllerDelegationTest {
     }
 
     @Test
-    void categoryControllerShouldMapCategories() {
+    void givenCategoriesWhenGettingCategoriesThenReturnsMappedCategories() {
         CategoriaProducto category = givenCategory();
         givenCategories(category);
         CategoryController controller = givenCategoryController();
@@ -170,7 +170,7 @@ class SmallControllerDelegationTest {
     }
 
     @Test
-    void menuBuffetControllerShouldUseProvidedDate() {
+    void givenDateWhenGettingMenuThenUsesProvidedDateAndReturnsMappedMenu() {
         UUID alumnoId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         LocalDateTime dateTime = LocalDateTime.of(2026, 6, 15, 10, 0);
@@ -184,7 +184,7 @@ class SmallControllerDelegationTest {
     }
 
     @Test
-    void menuBuffetControllerShouldMapBuffetWhenFound() {
+    void givenStudentWithBuffetWhenGettingBuffetThenReturnsMappedBuffet() {
         UUID alumnoId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         givenBuffetForStudent(alumnoId, buffetId);
@@ -197,7 +197,7 @@ class SmallControllerDelegationTest {
     }
 
     @Test
-    void menuBuffetControllerShouldUseCurrentDateWhenDateIsMissing() {
+    void givenMissingDateWhenGettingMenuThenUsesCurrentDateAndReturnsEmptyMenu() {
         UUID alumnoId = UUID.randomUUID();
         UUID buffetId = UUID.randomUUID();
         givenEmptyMenuForAnyDate();
@@ -210,7 +210,7 @@ class SmallControllerDelegationTest {
     }
 
     @Test
-    void menuBuffetControllerShouldReturnNotFoundWhenStudentHasNoBuffet() {
+    void givenStudentWithoutBuffetWhenGettingBuffetThenReturnsNotFound() {
         UUID alumnoId = UUID.randomUUID();
         givenNoBuffetForStudent(alumnoId);
         MenuBuffetController controller = givenMenuBuffetController();
@@ -222,7 +222,7 @@ class SmallControllerDelegationTest {
     }
 
     @Test
-    void notificationTestControllerShouldSendAndReturnNotification() {
+    void givenUserIdWhenSendingTestNotificationThenSendsAndReturnsNotification() {
         UUID userId = UUID.randomUUID();
         NotificationTestController controller = givenNotificationTestController();
 

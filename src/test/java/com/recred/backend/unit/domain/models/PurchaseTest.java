@@ -211,22 +211,26 @@ class PurchaseTest {
     void cancel_WhenPurchaseIsAlreadyCancelled_ShouldThrowException() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.CANCELADO);
 
-        assertThrows(IllegalStateException.class, purchase::cancel);
+        assertThrows(IllegalStateException.class, 
+                () -> purchase.cancel(UUID.randomUUID(), com.recred.backend.domain.models.RolUsuario.PADRE));
     }
 
     @Test
     void cancel_WhenPurchaseIsNotPendingOrInPreparation_ShouldThrowException() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.LISTO);
 
-        assertThrows(InvalidPurchaseStatusTransitionException.class, purchase::cancel);
+        assertThrows(InvalidPurchaseStatusTransitionException.class, 
+                () -> purchase.cancel(UUID.randomUUID(), com.recred.backend.domain.models.RolUsuario.PADRE));
     }
 
     @Test
     void revertCancellation_WhenPurchaseIsCancelled_ShouldUpdateStatus() {
-        Purchase purchase = purchaseWithStatus(EstadoCompra.CANCELADO);
+        Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
         purchase.setTipo(TipoCompra.ANTICIPADA);
 
-        purchase.revertCancellation();
+        UUID requesterId = UUID.randomUUID();
+        purchase.cancel(requesterId, com.recred.backend.domain.models.RolUsuario.VENDEDOR);
+        purchase.revertCancellation(requesterId, com.recred.backend.domain.models.RolUsuario.VENDEDOR);
 
         assertEquals(EstadoCompra.PENDIENTE, purchase.getStatus());
         assertEquals(EstadoRetiro.PROGRAMADO, purchase.getWithdrawalStatus());
@@ -236,7 +240,8 @@ class PurchaseTest {
     void revertCancellation_WhenPurchaseIsNotCancelled_ShouldThrowException() {
         Purchase purchase = purchaseWithStatus(EstadoCompra.PENDIENTE);
 
-        assertThrows(IllegalStateException.class, purchase::revertCancellation);
+        assertThrows(IllegalStateException.class, 
+                () -> purchase.revertCancellation(UUID.randomUUID(), com.recred.backend.domain.models.RolUsuario.PADRE));
     }
 
     @Test

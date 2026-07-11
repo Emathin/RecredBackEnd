@@ -23,10 +23,31 @@ class ProductChangeRecommendationResponseTest {
 
     @Test
     void fromDomainShouldMapAnalysisAndSaleStatistics() {
+        ProductRecommendationResult result = givenDomainResult();
+
+        JsonNode json = whenMappingFromDomain(result);
+
+        thenDomainDataIsMapped(json);
+        thenSaleStatisticsAreMapped(json.get("estadisticasVenta"));
+    }
+
+    @Test
+    void fromUseCaseResponseShouldMapDtoStatisticsAndAllowNullStatistics() {
+        GetProductChangeRecommendationResponse response = givenUseCaseResponseWithStatistics();
+        GetProductChangeRecommendationResponse withoutStatistics = givenUseCaseResponseWithoutStatistics();
+
+        JsonNode json = whenMappingFromUseCaseResponse(response);
+        JsonNode nullStatsJson = whenMappingFromUseCaseResponse(withoutStatistics);
+
+        thenSaleStatisticsAreMapped(json.get("estadisticasVenta"));
+        thenStatisticsAreNull(nullStatsJson);
+    }
+
+    private ProductRecommendationResult givenDomainResult() {
         ProductChangeRecommendation recommendation = new ProductChangeRecommendation();
         recommendation.setNombre("Alfajor");
         recommendation.setSaleStatistics(statistics());
-        ProductRecommendationResult result = new ProductRecommendationResult(
+        return new ProductRecommendationResult(
                 recommendation,
                 Optional.of(new ProductChangeAnalysis(
                         "Baja rotacion",
@@ -35,56 +56,60 @@ class ProductChangeRecommendationResponseTest {
                         "gemini"
                 ))
         );
+    }
 
-        JsonNode json = json(ProductChangeRecommendationResponse.fromDomain(result));
+    private GetProductChangeRecommendationResponse givenUseCaseResponseWithStatistics() {
+        return new GetProductChangeRecommendationResponse(
+                UUID.randomUUID(),
+                "Alfajor",
+                new BigDecimal("550.00"),
+                "Baja rotacion",
+                List.of("Pocas ventas"),
+                List.of("Yogur"),
+                "gemini",
+                statisticsDto()
+        );
+    }
 
+    private GetProductChangeRecommendationResponse givenUseCaseResponseWithoutStatistics() {
+        return new GetProductChangeRecommendationResponse(
+                UUID.randomUUID(),
+                "Alfajor",
+                new BigDecimal("550.00"),
+                "Baja rotacion",
+                List.of(),
+                List.of(),
+                "gemini",
+                null
+        );
+    }
+
+    private JsonNode whenMappingFromDomain(ProductRecommendationResult result) {
+        return json(ProductChangeRecommendationResponse.fromDomain(result));
+    }
+
+    private JsonNode whenMappingFromUseCaseResponse(GetProductChangeRecommendationResponse response) {
+        return json(ProductChangeRecommendationResponse.fromUseCaseResponse(response));
+    }
+
+    private void thenDomainDataIsMapped(JsonNode json) {
         assertEquals("Alfajor", json.get("productoOriginal").asText());
         assertEquals("Baja rotacion", json.get("resumen").asText());
         assertEquals("Pocas ventas", json.get("alertas").get(0).asText());
         assertEquals("Yogur", json.get("productosSugeridos").get(0).asText());
         assertEquals("gemini", json.get("modeloIA").asText());
-        assertSaleStatistics(json.get("estadisticasVenta"));
     }
 
-    @Test
-    void fromUseCaseResponseShouldMapDtoStatisticsAndAllowNullStatistics() {
-        GetProductChangeRecommendationResponse response =
-                new GetProductChangeRecommendationResponse(
-                        UUID.randomUUID(),
-                        "Alfajor",
-                        new BigDecimal("550.00"),
-                        "Baja rotacion",
-                        List.of("Pocas ventas"),
-                        List.of("Yogur"),
-                        "gemini",
-                        statisticsDto()
-                );
-        GetProductChangeRecommendationResponse withoutStatistics =
-                new GetProductChangeRecommendationResponse(
-                        UUID.randomUUID(),
-                        "Alfajor",
-                        new BigDecimal("550.00"),
-                        "Baja rotacion",
-                        List.of(),
-                        List.of(),
-                        "gemini",
-                        null
-                );
-
-        JsonNode json = json(ProductChangeRecommendationResponse.fromUseCaseResponse(response));
-        JsonNode nullStatsJson = json(ProductChangeRecommendationResponse.fromUseCaseResponse(
-                withoutStatistics));
-
-        assertSaleStatistics(json.get("estadisticasVenta"));
-        assertTrue(nullStatsJson.get("estadisticasVenta").isNull());
-    }
-
-    private void assertSaleStatistics(JsonNode stats) {
+    private void thenSaleStatisticsAreMapped(JsonNode stats) {
         assertEquals("Alfajor", stats.get("nombre").asText());
         assertEquals("Golosinas", stats.get("categoria").asText());
         assertEquals(18L, stats.get("ventasPeriodo").asLong());
         assertEquals(3, stats.get("rankingGeneral").asInt());
         assertEquals(20, stats.get("stockActual").asInt());
+    }
+
+    private void thenStatisticsAreNull(JsonNode json) {
+        assertTrue(json.get("estadisticasVenta").isNull());
     }
 
     private ProductSaleStatistics statistics() {

@@ -7,7 +7,6 @@ import com.recred.backend.domain.models.ConsumptionAlertMessages;
 import com.recred.backend.domain.models.ConsumptionAlertPattern;
 import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.ConsumptionAlertType;
-import com.recred.backend.domain.models.TipoNotificacion;
 import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.TipoPlan;
@@ -35,6 +34,15 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
+import static com.recred.backend.domain.models.AIEventType.ANALISIS_CONSUMO;
+import static com.recred.backend.domain.models.ConsumptionAlertType.HEALTHY_RECOMMENDATION;
+import static com.recred.backend.domain.models.ConsumptionAlertType.STATISTICAL_PATTERN;
+import static com.recred.backend.domain.models.RolUsuario.ALUMNO;
+import static com.recred.backend.domain.models.RolUsuario.PADRE;
+import static com.recred.backend.domain.models.TipoPlan.AVANZADO;
+import static com.recred.backend.domain.models.TipoSugerenciaIA.RECOMENDACION_SALUDABLE;
+import static com.recred.backend.domain.models.TipoSugerenciaIA.RESUMEN_CONSUMO;
+import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Transactional
@@ -63,24 +71,95 @@ class ConsumptionAlertNotificationPersistenceRepositoryIT extends AbstractIntegr
 
     @Test
     void save_ShouldSavePatternAlertAsEventSuggestionAndNotifications() {
-        AlumnoEntity student = generateStudentEntity();
-        UsuarioEntity tutorUser = generateTutorUserEntity();
-        ProductoEntity product = generateProductEntity();
+        AlumnoEntity student = givenStudentEntity();
+        UsuarioEntity tutorUser = givenTutorUserEntity();
+        ProductoEntity product = givenProductEntity();
+        ConsumptionAlert alert = givenPatternAlert(student.getId(), student.getUsuario().getId(), tutorUser.getId(), product.getId());
 
-        repository.save(alert(student.getId(), student.getUsuario().getId(), tutorUser.getId(), product.getId()));
+        whenSavingAlert(alert);
+
+        thenAlertEventAndNotificationsAreSaved(student, tutorUser, product);
+    }
+
+    @Test
+    void save_ShouldSaveHealthyRecommendationWithoutProductReference() {
+        AlumnoEntity student = givenStudentEntity();
+        ConsumptionAlert alert = givenHealthyAlert(student.getId(), student.getUsuario().getId());
+
+        whenSavingAlert(alert);
+
+        thenHealthyRecommendationIsSavedWithoutProduct();
+    }
+
+    @Test
+    void hasAlerts_ShouldReturnTrueWhenAlertsExistInDatabase() {
+        AlumnoEntity student = givenStudentEntity();
+        LocalDateTime start = LocalDateTime.now().minusDays(1).truncatedTo(MILLIS);
+        LocalDateTime end = LocalDateTime.now().plusDays(1).truncatedTo(MILLIS);
+        givenPersistedSuggestion(student);
+
+        boolean hasAny = whenCheckingIfHasAnyAlertBetween(student.getId(), start, end);
+        boolean hasPattern = whenCheckingIfHasAlertSince(student.getId(), STATISTICAL_PATTERN, start);
+
+        thenFlagsReturnTrue(hasAny, hasPattern);
+    }
+
+    private AlumnoEntity givenStudentEntity() {
+        return generateStudentEntity();
+    }
+
+    private UsuarioEntity givenTutorUserEntity() {
+        return generateTutorUserEntity();
+    }
+
+    private ProductoEntity givenProductEntity() {
+        return generateProductEntity();
+    }
+
+    private ConsumptionAlert givenPatternAlert(UUID studentId, UUID studentUserId, UUID tutorUserId, UUID productId) {
+        return alert(studentId, studentUserId, tutorUserId, productId);
+    }
+
+    private ConsumptionAlert givenHealthyAlert(UUID studentId, UUID studentUserId) {
+        return healthyAlert(studentId, studentUserId);
+    }
+
+    private void givenPersistedSuggestion(AlumnoEntity student) {
+        SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
+        suggestion.setAlumnoEntity(student);
+        suggestion.setTipo(RESUMEN_CONSUMO);
+        suggestion.setTitulo("Test Title");
+        suggestion.setMensaje("Test Message");
+        entityManager.persist(suggestion);
         entityManager.flush();
         entityManager.clear();
+    }
 
+    private void whenSavingAlert(ConsumptionAlert alert) {
+        repository.save(alert);
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private boolean whenCheckingIfHasAnyAlertBetween(UUID studentId, LocalDateTime start, LocalDateTime end) {
+        return repository.hasAnyAlertBetween(studentId, start, end);
+    }
+
+    private boolean whenCheckingIfHasAlertSince(UUID studentId, ConsumptionAlertType type, LocalDateTime start) {
+        return repository.hasAlertSince(studentId, type, start);
+    }
+
+    private void thenAlertEventAndNotificationsAreSaved(AlumnoEntity student, UsuarioEntity tutorUser, ProductoEntity product) {
         List<AIEventEntity> events = aiEventJpaRepository.findAll();
         assertFalse(events.isEmpty());
         AIEventEntity savedEvent = events.get(0);
-        assertEquals(AIEventType.ANALISIS_CONSUMO, savedEvent.getType());
+        assertEquals(ANALISIS_CONSUMO, savedEvent.getType());
         assertEquals(student.getId(), savedEvent.getAlumnoEntity().getId());
 
         List<SugerenciaIAEntity> suggestions = suggestionJpaRepository.findAll();
         assertFalse(suggestions.isEmpty());
         SugerenciaIAEntity savedSuggestion = suggestions.get(0);
-        assertEquals(TipoSugerenciaIA.RESUMEN_CONSUMO, savedSuggestion.getTipo());
+        assertEquals(RESUMEN_CONSUMO, savedSuggestion.getTipo());
         assertEquals(student.getId(), savedSuggestion.getAlumnoEntity().getId());
         assertEquals(product.getId(), savedSuggestion.getProductoEntity().getId());
 
@@ -90,39 +169,15 @@ class ConsumptionAlertNotificationPersistenceRepositoryIT extends AbstractIntegr
         assertTrue(notifications.stream().anyMatch(n -> n.getUsuarioEntity().getId().equals(tutorUser.getId())));
     }
 
-    @Test
-    void save_ShouldSaveHealthyRecommendationWithoutProductReference() {
-        AlumnoEntity student = generateStudentEntity();
-
-        repository.save(healthyAlert(student.getId(), student.getUsuario().getId()));
-        entityManager.flush();
-        entityManager.clear();
-
+    private void thenHealthyRecommendationIsSavedWithoutProduct() {
         List<SugerenciaIAEntity> suggestions = suggestionJpaRepository.findAll();
         assertFalse(suggestions.isEmpty());
         SugerenciaIAEntity savedSuggestion = suggestions.get(0);
-        assertEquals(TipoSugerenciaIA.RECOMENDACION_SALUDABLE, savedSuggestion.getTipo());
+        assertEquals(RECOMENDACION_SALUDABLE, savedSuggestion.getTipo());
         assertNull(savedSuggestion.getProductoEntity());
     }
 
-    @Test
-    void hasAlerts_ShouldReturnTrueWhenAlertsExistInDatabase() {
-        AlumnoEntity student = generateStudentEntity();
-        LocalDateTime start = LocalDateTime.now().minusDays(1).truncatedTo(ChronoUnit.MILLIS);
-        LocalDateTime end = LocalDateTime.now().plusDays(1).truncatedTo(ChronoUnit.MILLIS);
-
-        SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
-        suggestion.setAlumnoEntity(student);
-        suggestion.setTipo(TipoSugerenciaIA.RESUMEN_CONSUMO);
-        suggestion.setTitulo("Test Title");
-        suggestion.setMensaje("Test Message");
-        entityManager.persist(suggestion);
-        entityManager.flush();
-        entityManager.clear();
-
-        boolean hasAny = repository.hasAnyAlertBetween(student.getId(), start, end);
-        boolean hasPattern = repository.hasAlertSince(student.getId(), ConsumptionAlertType.STATISTICAL_PATTERN, start);
-
+    private void thenFlagsReturnTrue(boolean hasAny, boolean hasPattern) {
         assertTrue(hasAny);
         assertTrue(hasPattern);
     }
@@ -134,7 +189,7 @@ class ConsumptionAlertNotificationPersistenceRepositoryIT extends AbstractIntegr
             user.setNombre("John");
             user.setApellido("Doe");
             user.setEmail("john.doe@test.com");
-            user.setRol(RolUsuario.ALUMNO);
+            user.setRol(ALUMNO);
             user.setAutenticadoConCognito(false);
             user.setActivo(true);
             entityManager.persist(user);
@@ -164,7 +219,7 @@ class ConsumptionAlertNotificationPersistenceRepositoryIT extends AbstractIntegr
             user.setNombre("Jane");
             user.setApellido("Doe");
             user.setEmail("jane.doe@test.com");
-            user.setRol(RolUsuario.PADRE);
+            user.setRol(PADRE);
             user.setAutenticadoConCognito(false);
             user.setActivo(true);
             entityManager.persist(user);
@@ -208,7 +263,7 @@ class ConsumptionAlertNotificationPersistenceRepositoryIT extends AbstractIntegr
                         studentUserId,
                         "John Doe",
                         List.of(new ConsumptionAlertTutor(tutorUserId, "Tutor Doe",
-                                TipoPlan.AVANZADO))
+                                AVANZADO))
                 ),
                 pattern(studentId, productId, ConsumptionAlertType.STATISTICAL_PATTERN),
                 messages()
@@ -218,7 +273,7 @@ class ConsumptionAlertNotificationPersistenceRepositoryIT extends AbstractIntegr
     private ConsumptionAlert healthyAlert(UUID studentId, UUID studentUserId) {
         return new ConsumptionAlert(
                 new ConsumptionAlertCandidate(studentId, studentUserId, "John Doe", List.of()),
-                pattern(studentId, null, ConsumptionAlertType.HEALTHY_RECOMMENDATION),
+                pattern(studentId, null, HEALTHY_RECOMMENDATION),
                 messages()
         );
     }

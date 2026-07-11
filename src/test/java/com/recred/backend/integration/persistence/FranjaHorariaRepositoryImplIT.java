@@ -1,23 +1,23 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.integration.AbstractIntegrationTest;
-
 import com.recred.backend.domain.models.FranjaHoraria;
 import com.recred.backend.infrastructure.entities.ColegioEntity;
 import com.recred.backend.infrastructure.entities.FranjaHorariaEntity;
 import com.recred.backend.infrastructure.persistence.FranjaHorariaRepositoryImpl;
 import com.recred.backend.infrastructure.persistence.SpringDataFranjaHorariaRepository;
+import com.recred.backend.integration.AbstractIntegrationTest;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.persistence.EntityManager;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -37,92 +37,154 @@ class FranjaHorariaRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void save_ShouldCreateEntityFromDomainModel() {
-        ColegioEntity school = generateSchoolEntity();
-        FranjaHoraria domain = createTimeSlotDomain(null, school.getId());
+        FranjaHoraria domain = givenNewTimeSlotDomain();
 
-        FranjaHoraria result = repository.save(domain);
-        entityManager.flush();
-        entityManager.clear();
+        FranjaHoraria result = whenSavingTimeSlot(domain);
 
-        assertNotNull(result.getId());
-        Optional<FranjaHorariaEntity> savedEntity = springDataRepository.findById(result.getId());
-        assertTrue(savedEntity.isPresent());
-        assertEquals("First break", savedEntity.get().getDescripcion());
-        assertEquals(school.getId(), savedEntity.get().getColegioEntity().getId());
+        thenTimeSlotIsPersisted(result, domain.getColegioId());
     }
 
     @Test
     void save_ShouldUpdateExistingEntity() {
-        ColegioEntity school = generateSchoolEntity();
-        FranjaHorariaEntity existing = generateTimeSlotEntity(school);
-        FranjaHoraria domain = createTimeSlotDomain(existing.getId(), school.getId());
-        domain.setDescripcion("Updated break");
+        FranjaHoraria domain = givenExistingTimeSlotDomainWithUpdate("Updated break");
 
-        FranjaHoraria result = repository.save(domain);
-        entityManager.flush();
-        entityManager.clear();
+        FranjaHoraria result = whenSavingTimeSlot(domain);
 
-        Optional<FranjaHorariaEntity> updatedEntity = springDataRepository.findById(existing.getId());
-        assertTrue(updatedEntity.isPresent());
-        assertEquals("Updated break", updatedEntity.get().getDescripcion());
-        assertEquals(existing.getId(), result.getId());
+        thenTimeSlotIsUpdated(result);
     }
 
     @Test
     void findById_ShouldMapEntityWhenPresent() {
-        ColegioEntity school = generateSchoolEntity();
-        FranjaHorariaEntity entity = generateTimeSlotEntity(school);
+        FranjaHorariaEntity entity = givenPersistedTimeSlotEntity();
 
-        Optional<FranjaHoraria> result = repository.findById(entity.getId());
+        Optional<FranjaHoraria> result = whenFindingById(entity.getId());
 
-        assertTrue(result.isPresent());
-        assertEquals(entity.getId(), result.get().getId());
-        assertEquals(school.getId(), result.get().getColegioId());
+        thenEntityIsMappedCorrectly(result, entity);
     }
 
     @Test
     void findAllByColegioId_ShouldMapEntities() {
-        ColegioEntity school = generateSchoolEntity();
-        generateTimeSlotEntity(school);
-        generateTimeSlotEntity(school);
+        UUID schoolId = givenTwoPersistedTimeSlotsForSameSchool();
 
-        List<FranjaHoraria> result = repository.findAllByColegioId(school.getId());
+        List<FranjaHoraria> result = whenFindingAllBySchoolId(schoolId);
 
-        assertEquals(2, result.size());
+        thenTwoTimeSlotsAreReturned(result);
     }
 
     @Test
     void findAllByColegioIdIncludingInactive_ShouldReturnInactiveEntities() {
-        ColegioEntity school = generateSchoolEntity();
-        generateTimeSlotEntity(school, true);
-        generateTimeSlotEntity(school, false);
+        UUID schoolId = givenActiveAndInactiveTimeSlotsForSchool();
 
-        List<FranjaHoraria> result =
-                repository.findAllByColegioIdIncludingInactive(school.getId());
+        List<FranjaHoraria> result = whenFindingAllIncludingInactive(schoolId);
 
-        assertEquals(2, result.size());
-        assertTrue(result.stream().anyMatch(slot -> !slot.isActivo()));
+        thenActiveAndInactiveTimeSlotsAreReturned(result);
     }
 
     @Test
     void existsActiveOverlap_ShouldIgnoreInactiveAndExcludedSlots() {
+        FranjaHorariaEntity activeSlot = givenActiveAndInactiveTimeSlotsForSchoolOverlap();
+        UUID schoolId = activeSlot.getColegioEntity().getId();
+
+        boolean overlap = whenCheckingOverlap(schoolId, null);
+        boolean excludedOverlap = whenCheckingOverlap(schoolId, activeSlot.getId());
+
+        thenOverlapLogicWorksCorrectly(overlap, excludedOverlap);
+    }
+
+    private FranjaHoraria givenNewTimeSlotDomain() {
+        ColegioEntity school = generateSchoolEntity();
+        return createTimeSlotDomain(null, school.getId());
+    }
+
+    private FranjaHoraria givenExistingTimeSlotDomainWithUpdate(String newDescription) {
+        ColegioEntity school = generateSchoolEntity();
+        FranjaHorariaEntity existing = generateTimeSlotEntity(school);
+        FranjaHoraria domain = createTimeSlotDomain(existing.getId(), school.getId());
+        domain.setDescripcion(newDescription);
+        return domain;
+    }
+
+    private FranjaHorariaEntity givenPersistedTimeSlotEntity() {
+        ColegioEntity school = generateSchoolEntity();
+        return generateTimeSlotEntity(school);
+    }
+
+    private UUID givenTwoPersistedTimeSlotsForSameSchool() {
+        ColegioEntity school = generateSchoolEntity();
+        generateTimeSlotEntity(school);
+        generateTimeSlotEntity(school);
+        return school.getId();
+    }
+
+    private UUID givenActiveAndInactiveTimeSlotsForSchool() {
+        ColegioEntity school = generateSchoolEntity();
+        generateTimeSlotEntity(school, true);
+        generateTimeSlotEntity(school, false);
+        return school.getId();
+    }
+
+    private FranjaHorariaEntity givenActiveAndInactiveTimeSlotsForSchoolOverlap() {
         ColegioEntity school = generateSchoolEntity();
         FranjaHorariaEntity activeSlot = generateTimeSlotEntity(school, true);
         generateTimeSlotEntity(school, false);
+        return activeSlot;
+    }
 
-        boolean overlap = repository.existsActiveOverlap(
-                school.getId(),
-                null,
-                LocalTime.of(9, 5),
-                LocalTime.of(9, 10));
-        boolean excludedOverlap = repository.existsActiveOverlap(
-                school.getId(),
-                activeSlot.getId(),
-                LocalTime.of(9, 5),
-                LocalTime.of(9, 10));
+    private FranjaHoraria whenSavingTimeSlot(FranjaHoraria domain) {
+        FranjaHoraria result = repository.save(domain);
+        entityManager.flush();
+        entityManager.clear();
+        return result;
+    }
 
+    private Optional<FranjaHoraria> whenFindingById(UUID id) {
+        return repository.findById(id);
+    }
+
+    private List<FranjaHoraria> whenFindingAllBySchoolId(UUID schoolId) {
+        return repository.findAllByColegioId(schoolId);
+    }
+
+    private List<FranjaHoraria> whenFindingAllIncludingInactive(UUID schoolId) {
+        return repository.findAllByColegioIdIncludingInactive(schoolId);
+    }
+
+    private boolean whenCheckingOverlap(UUID schoolId, UUID excludedId) {
+        return repository.existsActiveOverlap(schoolId, excludedId, LocalTime.of(9, 5), LocalTime.of(9, 10));
+    }
+
+    private void thenTimeSlotIsPersisted(FranjaHoraria result, UUID schoolId) {
+        assertNotNull(result.getId());
+        Optional<FranjaHorariaEntity> savedEntity = springDataRepository.findById(result.getId());
+        assertTrue(savedEntity.isPresent());
+        assertEquals("First break", savedEntity.get().getDescripcion());
+        assertEquals(schoolId, savedEntity.get().getColegioEntity().getId());
+    }
+
+    private void thenTimeSlotIsUpdated(FranjaHoraria result) {
+        Optional<FranjaHorariaEntity> updatedEntity = springDataRepository.findById(result.getId());
+        assertTrue(updatedEntity.isPresent());
+        assertEquals("Updated break", updatedEntity.get().getDescripcion());
+    }
+
+    private void thenEntityIsMappedCorrectly(Optional<FranjaHoraria> result, FranjaHorariaEntity entity) {
+        assertTrue(result.isPresent());
+        assertEquals(entity.getId(), result.get().getId());
+        assertEquals(entity.getColegioEntity().getId(), result.get().getColegioId());
+    }
+
+    private void thenTwoTimeSlotsAreReturned(List<FranjaHoraria> result) {
+        assertEquals(2, result.size());
+    }
+
+    private void thenActiveAndInactiveTimeSlotsAreReturned(List<FranjaHoraria> result) {
+        assertEquals(2, result.size());
+        assertTrue(result.stream().anyMatch(slot -> !slot.isActivo()));
+    }
+
+    private void thenOverlapLogicWorksCorrectly(boolean overlap, boolean excludedOverlap) {
         assertTrue(overlap);
-        assertTrue(!excludedOverlap);
+        assertFalse(excludedOverlap);
     }
 
     private ColegioEntity generateSchoolEntity() {

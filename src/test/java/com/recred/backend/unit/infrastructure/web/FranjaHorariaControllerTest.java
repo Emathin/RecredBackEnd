@@ -18,6 +18,7 @@ import com.recred.backend.infrastructure.web.FranjaHorariaController;
 import com.recred.backend.infrastructure.web.SchoolAccessGuard;
 import com.recred.backend.infrastructure.web.TimeSlotRequest;
 import com.recred.backend.infrastructure.web.TimeSlotResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,147 +34,229 @@ import static org.mockito.Mockito.when;
 
 class FranjaHorariaControllerTest {
 
-    private final GetTimeSlotsBySchool getTimeSlotsBySchool = mock(GetTimeSlotsBySchool.class);
-    private final ListSchoolTimeSlots listSchoolTimeSlots = mock(ListSchoolTimeSlots.class);
-    private final GetTimeSlot getTimeSlot = mock(GetTimeSlot.class);
-    private final CreateTimeSlot createTimeSlot = mock(CreateTimeSlot.class);
-    private final UpdateTimeSlot updateTimeSlot = mock(UpdateTimeSlot.class);
-    private final DeactivateTimeSlot deactivateTimeSlot = mock(DeactivateTimeSlot.class);
-    private final ReactivateTimeSlot reactivateTimeSlot = mock(ReactivateTimeSlot.class);
-    private final SchoolAccessGuard schoolAccessGuard = mock(SchoolAccessGuard.class);
-    private final FranjaHorariaController controller = new FranjaHorariaController(
-            getTimeSlotsBySchool,
-            listSchoolTimeSlots,
-            getTimeSlot,
-            createTimeSlot,
-            updateTimeSlot,
-            deactivateTimeSlot,
-            reactivateTimeSlot,
-            schoolAccessGuard
-    );
+    private GetTimeSlotsBySchool getTimeSlotsBySchool;
+    private ListSchoolTimeSlots listSchoolTimeSlots;
+    private GetTimeSlot getTimeSlot;
+    private CreateTimeSlot createTimeSlot;
+    private UpdateTimeSlot updateTimeSlot;
+    private DeactivateTimeSlot deactivateTimeSlot;
+    private ReactivateTimeSlot reactivateTimeSlot;
+    private SchoolAccessGuard schoolAccessGuard;
+    private FranjaHorariaController controller;
+
+    private final UUID SCHOOL_ID = UUID.randomUUID();
+    private final UUID SLOT_ID = UUID.randomUUID();
+    private final String RECREO_1 = "Primer recreo";
+    private final String RECREO_2 = "Segundo recreo";
+    private final LocalTime T_9_00 = LocalTime.of(9, 0);
+    private final LocalTime T_9_15 = LocalTime.of(9, 15);
+    private final LocalTime T_10_00 = LocalTime.of(10, 0);
+    private final LocalTime T_10_15 = LocalTime.of(10, 15);
+
+    @BeforeEach
+    void setUp() {
+        getTimeSlotsBySchool = mock(GetTimeSlotsBySchool.class);
+        listSchoolTimeSlots = mock(ListSchoolTimeSlots.class);
+        getTimeSlot = mock(GetTimeSlot.class);
+        createTimeSlot = mock(CreateTimeSlot.class);
+        updateTimeSlot = mock(UpdateTimeSlot.class);
+        deactivateTimeSlot = mock(DeactivateTimeSlot.class);
+        reactivateTimeSlot = mock(ReactivateTimeSlot.class);
+        schoolAccessGuard = mock(SchoolAccessGuard.class);
+        
+        controller = new FranjaHorariaController(
+                getTimeSlotsBySchool,
+                listSchoolTimeSlots,
+                getTimeSlot,
+                createTimeSlot,
+                updateTimeSlot,
+                deactivateTimeSlot,
+                reactivateTimeSlot,
+                schoolAccessGuard
+        );
+    }
 
     @Test
-    void obtenerFranjas_WhenIncludeInactive_ShouldRequireAccessAndUseAdminList() {
-        UUID colegioId = UUID.randomUUID();
-        TimeSlotDetailsResponse slot = response(colegioId, false);
-        when(listSchoolTimeSlots.execute(new ListSchoolTimeSlotsRequest(colegioId, true)))
+    void obtenerFranjasShouldRequireAccessAndUseAdminListWhenIncludeInactive() {
+        givenListSchoolTimeSlotsReturnsInactiveSlot();
+        
+        ResponseEntity<List<TimeSlotResponse>> result = whenGettingTimeSlotsIncludingInactive();
+        
+        thenListResponseHasInactiveSlot(result);
+        thenDelegatesToListSchoolTimeSlots();
+    }
+
+    @Test
+    void obtenerFranjaShouldRequireAccessAndReturnSlot() {
+        givenGetTimeSlotReturnsSlot();
+        
+        ResponseEntity<TimeSlotResponse> result = whenGettingTimeSlot();
+        
+        thenSlotResponseIsOk(result);
+        thenDelegatesToGetTimeSlot();
+    }
+
+    @Test
+    void crearFranjaShouldRequireAccessAndReturnCreated() {
+        TimeSlotRequest request = createRequest(RECREO_1, T_9_00, T_9_15, 30, 5);
+        givenCreateTimeSlotSucceeds(request);
+        
+        ResponseEntity<TimeSlotResponse> result = whenCreatingTimeSlot(request);
+        
+        thenCreateResponseIsCreated(result, RECREO_1);
+        thenDelegatesToCreateTimeSlot(request);
+    }
+
+    @Test
+    void actualizarFranjaShouldRequireAccessAndReturnUpdatedSlot() {
+        TimeSlotRequest request = createRequest(RECREO_2, T_10_00, T_10_15, 20, 7);
+        givenUpdateTimeSlotSucceeds(request);
+        
+        ResponseEntity<TimeSlotResponse> result = whenUpdatingTimeSlot(request);
+        
+        thenUpdateResponseIsOk(result);
+        thenDelegatesToUpdateTimeSlot(request);
+    }
+
+    @Test
+    void eliminarFranjaShouldRequireAccessAndReturnNoContent() {
+        ResponseEntity<Void> result = whenDeletingTimeSlot();
+        
+        thenResponseIsNoContent(result);
+        thenDelegatesToDeactivateTimeSlot();
+    }
+
+    @Test
+    void reactivarFranjaShouldRequireAccessAndReturnReactivatedSlot() {
+        givenReactivateTimeSlotSucceeds();
+        
+        ResponseEntity<TimeSlotResponse> result = whenReactivatingTimeSlot();
+        
+        thenReactivateResponseIsOk(result);
+        thenDelegatesToReactivateTimeSlot();
+    }
+
+    private void givenListSchoolTimeSlotsReturnsInactiveSlot() {
+        TimeSlotDetailsResponse slot = response(SCHOOL_ID, false);
+        when(listSchoolTimeSlots.execute(new ListSchoolTimeSlotsRequest(SCHOOL_ID, true)))
                 .thenReturn(List.of(slot));
+    }
 
-        ResponseEntity<List<TimeSlotResponse>> result =
-                controller.obtenerFranjas(colegioId, true, null);
+    private void givenGetTimeSlotReturnsSlot() {
+        GetTimeSlotRequest useCaseRequest = new GetTimeSlotRequest(SCHOOL_ID, SLOT_ID);
+        when(getTimeSlot.execute(useCaseRequest)).thenReturn(response(SCHOOL_ID, SLOT_ID, true));
+    }
 
+    private void givenCreateTimeSlotSucceeds(TimeSlotRequest request) {
+        CreateTimeSlotRequest useCaseRequest = new CreateTimeSlotRequest(
+                SCHOOL_ID, request.descripcion(), request.horaInicio(),
+                request.horaFin(), request.cupoMaximo(), request.minutosCorte()
+        );
+        when(createTimeSlot.execute(useCaseRequest)).thenReturn(response(SCHOOL_ID, true));
+    }
+
+    private void givenUpdateTimeSlotSucceeds(TimeSlotRequest request) {
+        UpdateTimeSlotRequest useCaseRequest = new UpdateTimeSlotRequest(
+                SCHOOL_ID, SLOT_ID, request.descripcion(), request.horaInicio(),
+                request.horaFin(), request.cupoMaximo(), request.minutosCorte()
+        );
+        when(updateTimeSlot.execute(useCaseRequest)).thenReturn(response(SCHOOL_ID, SLOT_ID, true));
+    }
+
+    private void givenReactivateTimeSlotSucceeds() {
+        ReactivateTimeSlotRequest useCaseRequest = new ReactivateTimeSlotRequest(SCHOOL_ID, SLOT_ID);
+        when(reactivateTimeSlot.execute(useCaseRequest)).thenReturn(response(SCHOOL_ID, SLOT_ID, true));
+    }
+
+    private ResponseEntity<List<TimeSlotResponse>> whenGettingTimeSlotsIncludingInactive() {
+        return controller.obtenerFranjas(SCHOOL_ID, true, null);
+    }
+
+    private ResponseEntity<TimeSlotResponse> whenGettingTimeSlot() {
+        return controller.obtenerFranja(SCHOOL_ID, SLOT_ID, null);
+    }
+
+    private ResponseEntity<TimeSlotResponse> whenCreatingTimeSlot(TimeSlotRequest request) {
+        return controller.crearFranja(SCHOOL_ID, request, null);
+    }
+
+    private ResponseEntity<TimeSlotResponse> whenUpdatingTimeSlot(TimeSlotRequest request) {
+        return controller.actualizarFranja(SCHOOL_ID, SLOT_ID, request, null);
+    }
+
+    private ResponseEntity<Void> whenDeletingTimeSlot() {
+        return controller.eliminarFranja(SCHOOL_ID, SLOT_ID, null);
+    }
+
+    private ResponseEntity<TimeSlotResponse> whenReactivatingTimeSlot() {
+        return controller.reactivarFranja(SCHOOL_ID, SLOT_ID, null);
+    }
+
+    private void thenListResponseHasInactiveSlot(ResponseEntity<List<TimeSlotResponse>> result) {
         assertEquals(1, result.getBody().size());
         assertEquals(false, result.getBody().get(0).activo());
-        verify(schoolAccessGuard).requireSchoolAccess(null, colegioId);
-        verify(listSchoolTimeSlots).execute(new ListSchoolTimeSlotsRequest(colegioId, true));
     }
 
-    @Test
-    void obtenerFranja_ShouldRequireAccessAndReturnSlot() {
-        UUID colegioId = UUID.randomUUID();
-        UUID slotId = UUID.randomUUID();
-        GetTimeSlotRequest useCaseRequest = new GetTimeSlotRequest(colegioId, slotId);
-        when(getTimeSlot.execute(useCaseRequest)).thenReturn(response(colegioId, slotId, true));
+    private void thenDelegatesToListSchoolTimeSlots() {
+        verify(schoolAccessGuard).requireSchoolAccess(null, SCHOOL_ID);
+        verify(listSchoolTimeSlots).execute(new ListSchoolTimeSlotsRequest(SCHOOL_ID, true));
+    }
 
-        ResponseEntity<TimeSlotResponse> result =
-                controller.obtenerFranja(colegioId, slotId, null);
-
+    private void thenSlotResponseIsOk(ResponseEntity<TimeSlotResponse> result) {
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        assertEquals(slotId, result.getBody().id());
-        verify(schoolAccessGuard).requireSchoolAccess(null, colegioId);
-        verify(getTimeSlot).execute(useCaseRequest);
+        assertEquals(SLOT_ID, result.getBody().id());
     }
 
-    @Test
-    void crearFranja_ShouldRequireAccessAndReturnCreated() {
-        UUID colegioId = UUID.randomUUID();
-        TimeSlotRequest request = new TimeSlotRequest(
-                "Primer recreo",
-                LocalTime.of(9, 0),
-                LocalTime.of(9, 15),
-                30,
-                5
-        );
-        CreateTimeSlotRequest useCaseRequest = new CreateTimeSlotRequest(
-                colegioId,
-                request.descripcion(),
-                request.horaInicio(),
-                request.horaFin(),
-                request.cupoMaximo(),
-                request.minutosCorte()
-        );
-        when(createTimeSlot.execute(useCaseRequest)).thenReturn(response(colegioId, true));
+    private void thenDelegatesToGetTimeSlot() {
+        verify(schoolAccessGuard).requireSchoolAccess(null, SCHOOL_ID);
+        verify(getTimeSlot).execute(new GetTimeSlotRequest(SCHOOL_ID, SLOT_ID));
+    }
 
-        ResponseEntity<TimeSlotResponse> result =
-                controller.crearFranja(colegioId, request, null);
-
+    private void thenCreateResponseIsCreated(ResponseEntity<TimeSlotResponse> result, String desc) {
         assertEquals(HttpStatus.CREATED, result.getStatusCode());
-        assertEquals("Primer recreo", result.getBody().descripcion());
-        verify(schoolAccessGuard).requireSchoolAccess(null, colegioId);
-        verify(createTimeSlot).execute(useCaseRequest);
+        assertEquals(desc, result.getBody().descripcion());
     }
 
-    @Test
-    void actualizarFranja_ShouldRequireAccessAndReturnUpdatedSlot() {
-        UUID colegioId = UUID.randomUUID();
-        UUID slotId = UUID.randomUUID();
-        TimeSlotRequest request = new TimeSlotRequest(
-                "Segundo recreo",
-                LocalTime.of(10, 0),
-                LocalTime.of(10, 15),
-                20,
-                7
-        );
-        UpdateTimeSlotRequest useCaseRequest = new UpdateTimeSlotRequest(
-                colegioId,
-                slotId,
-                request.descripcion(),
-                request.horaInicio(),
-                request.horaFin(),
-                request.cupoMaximo(),
-                request.minutosCorte()
-        );
-        when(updateTimeSlot.execute(useCaseRequest)).thenReturn(response(colegioId, slotId, true));
+    private void thenDelegatesToCreateTimeSlot(TimeSlotRequest request) {
+        verify(schoolAccessGuard).requireSchoolAccess(null, SCHOOL_ID);
+        verify(createTimeSlot).execute(new CreateTimeSlotRequest(
+                SCHOOL_ID, request.descripcion(), request.horaInicio(),
+                request.horaFin(), request.cupoMaximo(), request.minutosCorte()));
+    }
 
-        ResponseEntity<TimeSlotResponse> result =
-                controller.actualizarFranja(colegioId, slotId, request, null);
-
+    private void thenUpdateResponseIsOk(ResponseEntity<TimeSlotResponse> result) {
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        assertEquals(slotId, result.getBody().id());
-        verify(schoolAccessGuard).requireSchoolAccess(null, colegioId);
-        verify(updateTimeSlot).execute(useCaseRequest);
+        assertEquals(SLOT_ID, result.getBody().id());
     }
 
-    @Test
-    void eliminarFranja_ShouldRequireAccessAndReturnNoContent() {
-        UUID colegioId = UUID.randomUUID();
-        UUID slotId = UUID.randomUUID();
-        DeactivateTimeSlotRequest useCaseRequest =
-                new DeactivateTimeSlotRequest(colegioId, slotId);
+    private void thenDelegatesToUpdateTimeSlot(TimeSlotRequest request) {
+        verify(schoolAccessGuard).requireSchoolAccess(null, SCHOOL_ID);
+        verify(updateTimeSlot).execute(new UpdateTimeSlotRequest(
+                SCHOOL_ID, SLOT_ID, request.descripcion(), request.horaInicio(),
+                request.horaFin(), request.cupoMaximo(), request.minutosCorte()));
+    }
 
-        ResponseEntity<Void> result = controller.eliminarFranja(colegioId, slotId, null);
-
+    private void thenResponseIsNoContent(ResponseEntity<Void> result) {
         assertEquals(HttpStatus.NO_CONTENT, result.getStatusCode());
-        verify(schoolAccessGuard).requireSchoolAccess(null, colegioId);
-        verify(deactivateTimeSlot).execute(useCaseRequest);
     }
 
-    @Test
-    void reactivarFranja_ShouldRequireAccessAndReturnReactivatedSlot() {
-        UUID colegioId = UUID.randomUUID();
-        UUID slotId = UUID.randomUUID();
-        ReactivateTimeSlotRequest useCaseRequest =
-                new ReactivateTimeSlotRequest(colegioId, slotId);
-        when(reactivateTimeSlot.execute(useCaseRequest))
-                .thenReturn(response(colegioId, slotId, true));
+    private void thenDelegatesToDeactivateTimeSlot() {
+        verify(schoolAccessGuard).requireSchoolAccess(null, SCHOOL_ID);
+        verify(deactivateTimeSlot).execute(new DeactivateTimeSlotRequest(SCHOOL_ID, SLOT_ID));
+    }
 
-        ResponseEntity<TimeSlotResponse> result =
-                controller.reactivarFranja(colegioId, slotId, null);
-
+    private void thenReactivateResponseIsOk(ResponseEntity<TimeSlotResponse> result) {
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(true, result.getBody().activo());
-        verify(schoolAccessGuard).requireSchoolAccess(null, colegioId);
-        verify(reactivateTimeSlot).execute(useCaseRequest);
+    }
+
+    private void thenDelegatesToReactivateTimeSlot() {
+        verify(schoolAccessGuard).requireSchoolAccess(null, SCHOOL_ID);
+        verify(reactivateTimeSlot).execute(new ReactivateTimeSlotRequest(SCHOOL_ID, SLOT_ID));
+    }
+
+    private TimeSlotRequest createRequest(String desc, LocalTime start, LocalTime end, int max, int cutoff) {
+        return new TimeSlotRequest(desc, start, end, max, cutoff);
     }
 
     private TimeSlotDetailsResponse response(UUID colegioId, boolean active) {
@@ -182,14 +265,7 @@ class FranjaHorariaControllerTest {
 
     private TimeSlotDetailsResponse response(UUID colegioId, UUID slotId, boolean active) {
         return new TimeSlotDetailsResponse(
-                slotId,
-                colegioId,
-                "Primer recreo",
-                LocalTime.of(9, 0),
-                LocalTime.of(9, 15),
-                active,
-                30,
-                5
+                slotId, colegioId, RECREO_1, T_9_00, T_9_15, active, 30, 5
         );
     }
 }

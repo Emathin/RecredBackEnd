@@ -39,57 +39,51 @@ class SecurityConfigTest {
     private final SecurityConfig config = new SecurityConfig(entryPointMock, converterMock);
 
     @Test
-    void corsConfigurationAllowsFrontendAndLocalhostOrigins() {
+    void givenAllowedOriginsWhenCheckingCorsThenAllowsFrontendAndLocalhost() {
         CorsConfiguration corsConfiguration = corsConfiguration();
 
-        assertEquals(
-                "https://recred.netlify.app",
-                corsConfiguration.checkOrigin("https://recred.netlify.app")
-        );
-        assertEquals(
-                "http://localhost:5173",
-                corsConfiguration.checkOrigin("http://localhost:5173")
-        );
-        assertEquals(
-                "http://127.0.0.1:3000",
-                corsConfiguration.checkOrigin("http://127.0.0.1:3000")
-        );
+        thenOriginIsAllowed(corsConfiguration, "https://recred.netlify.app");
+        thenOriginIsAllowed(corsConfiguration, "http://localhost:5173");
+        thenOriginIsAllowed(corsConfiguration, "http://127.0.0.1:3000");
     }
 
     @Test
-    void corsConfigurationRejectsUnknownOrigin() {
-        assertNull(corsConfiguration().checkOrigin("https://example.com"));
+    void givenUnknownOriginWhenCheckingCorsThenRejectsOrigin() {
+        CorsConfiguration corsConfiguration = corsConfiguration();
+        
+        thenOriginIsRejected(corsConfiguration, "https://example.com");
     }
 
     @Test
-    void corsConfigurationAllowsApiMethodsAndHeaders() {
+    void givenCorsConfigurationWhenCheckingMethodsAndHeadersThenAllowsApiDefaults() {
         CorsConfiguration corsConfiguration = corsConfiguration();
 
-        assertTrue(corsConfiguration.getAllowedMethods().contains("GET"));
-        assertTrue(corsConfiguration.getAllowedMethods().contains("POST"));
-        assertTrue(corsConfiguration.getAllowedMethods().contains("PUT"));
-        assertTrue(corsConfiguration.getAllowedMethods().contains("PATCH"));
-        assertTrue(corsConfiguration.getAllowedMethods().contains("DELETE"));
-        assertTrue(corsConfiguration.getAllowedMethods().contains("OPTIONS"));
-        assertEquals(List.of(CorsConfiguration.ALL), corsConfiguration.getAllowedHeaders());
-        assertFalse(corsConfiguration.getAllowCredentials());
-        assertEquals(3600L, corsConfiguration.getMaxAge());
+        thenCorsAllowsApiMethodsAndHeaders(corsConfiguration);
     }
 
     @Test
-    void jwtDecoder_ShouldConfigureIssuerAndAudienceValidators() {
+    void givenIssuerAndClientIdWhenConfiguringJwtDecoderThenSetsValidators() {
         String issuerUri = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test";
         NimbusJwtDecoder decoder = Mockito.mock(NimbusJwtDecoder.class);
-        ReflectionTestUtils.setField(config, "issuerUri", issuerUri);
-        ReflectionTestUtils.setField(config, "clientId", "client-id");
+        givenSecurityConfigProperties(issuerUri, "client-id");
 
         try (MockedStatic<JwtDecoders> jwtDecoders = Mockito.mockStatic(JwtDecoders.class)) {
-            jwtDecoders.when(() -> JwtDecoders.fromIssuerLocation(issuerUri)).thenReturn(decoder);
-
-            assertSame(decoder, config.jwtDecoder());
+            givenJwtDecoderMock(jwtDecoders, issuerUri, decoder);
+            
+            NimbusJwtDecoder actualDecoder = (NimbusJwtDecoder) config.jwtDecoder();
+            
+            thenDecoderMatchesExpected(decoder, actualDecoder);
+            thenValidatorsAreConfigured(decoder);
         }
+    }
 
-        verify(decoder).setJwtValidator(any(OAuth2TokenValidator.class));
+    private void givenSecurityConfigProperties(String issuerUri, String clientId) {
+        ReflectionTestUtils.setField(config, "issuerUri", issuerUri);
+        ReflectionTestUtils.setField(config, "clientId", clientId);
+    }
+
+    private void givenJwtDecoderMock(MockedStatic<JwtDecoders> jwtDecoders, String issuerUri, NimbusJwtDecoder decoder) {
+        jwtDecoders.when(() -> JwtDecoders.fromIssuerLocation(issuerUri)).thenReturn(decoder);
     }
 
     private CorsConfiguration corsConfiguration() {
@@ -101,6 +95,34 @@ class SecurityConfigTest {
         request.addHeader("Access-Control-Request-Method", "GET");
 
         return source.getCorsConfiguration(request);
+    }
+
+    private void thenOriginIsAllowed(CorsConfiguration config, String origin) {
+        assertEquals(origin, config.checkOrigin(origin));
+    }
+
+    private void thenOriginIsRejected(CorsConfiguration config, String origin) {
+        assertNull(config.checkOrigin(origin));
+    }
+
+    private void thenCorsAllowsApiMethodsAndHeaders(CorsConfiguration config) {
+        assertTrue(config.getAllowedMethods().contains("GET"));
+        assertTrue(config.getAllowedMethods().contains("POST"));
+        assertTrue(config.getAllowedMethods().contains("PUT"));
+        assertTrue(config.getAllowedMethods().contains("PATCH"));
+        assertTrue(config.getAllowedMethods().contains("DELETE"));
+        assertTrue(config.getAllowedMethods().contains("OPTIONS"));
+        assertEquals(List.of(CorsConfiguration.ALL), config.getAllowedHeaders());
+        assertFalse(config.getAllowCredentials());
+        assertEquals(3600L, config.getMaxAge());
+    }
+
+    private void thenDecoderMatchesExpected(NimbusJwtDecoder expected, NimbusJwtDecoder actual) {
+        assertSame(expected, actual);
+    }
+
+    private void thenValidatorsAreConfigured(NimbusJwtDecoder decoder) {
+        verify(decoder).setJwtValidator(any(OAuth2TokenValidator.class));
     }
 }
 

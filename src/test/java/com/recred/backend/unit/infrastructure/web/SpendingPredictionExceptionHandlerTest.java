@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class SpendingPredictionExceptionHandlerTest {
 
     @Test
-    void mapearAlumnoNoEncontradoARespuestaDeError() {
+    void givenAlumnoNoEncontradoExceptionWhenHandlingThenReturnsErrorResponse() {
         UUID studentId = UUID.randomUUID();
         SpendingPredictionExceptionHandler handler = new SpendingPredictionExceptionHandler();
 
@@ -20,7 +20,11 @@ class SpendingPredictionExceptionHandlerTest {
                 new AlumnoNoEncontradoException(studentId)
         );
 
-        assertEquals("No existe el alumno con id " + studentId, response.get("error"));
+        thenResponseHasError(response, "No existe el alumno con id " + studentId);
+    }
+
+    private void thenResponseHasError(Map<String, String> response, String errorMessage) {
+        assertEquals(errorMessage, response.get("error"));
     }
 }
 

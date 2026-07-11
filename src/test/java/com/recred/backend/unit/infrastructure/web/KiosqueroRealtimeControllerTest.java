@@ -5,6 +5,7 @@ import java.util.UUID;
 import com.recred.backend.infrastructure.web.KiosqueroAccessGuard;
 import com.recred.backend.infrastructure.web.KiosqueroRealtimeController;
 import com.recred.backend.infrastructure.web.KiosqueroRealtimeEventStream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -15,23 +16,40 @@ import static org.mockito.Mockito.when;
 
 class KiosqueroRealtimeControllerTest {
 
-    private final KiosqueroRealtimeEventStream eventStream =
-            mock(KiosqueroRealtimeEventStream.class);
-    private final KiosqueroAccessGuard kiosqueroAccessGuard = mock(KiosqueroAccessGuard.class);
-    private final KiosqueroRealtimeController controller =
-            new KiosqueroRealtimeController(eventStream, kiosqueroAccessGuard);
+    private KiosqueroRealtimeEventStream eventStream;
+    private KiosqueroAccessGuard kiosqueroAccessGuard;
+    private KiosqueroRealtimeController controller;
+    
+    private final UUID BUFFET_ID = UUID.randomUUID();
+    private SseEmitter expectedEmitter;
+
+    @BeforeEach
+    void setUp() {
+        eventStream = mock(KiosqueroRealtimeEventStream.class);
+        kiosqueroAccessGuard = mock(KiosqueroAccessGuard.class);
+        controller = new KiosqueroRealtimeController(eventStream, kiosqueroAccessGuard);
+    }
 
     @Test
-    void events_ShouldSubscribeToBuffetStream() {
-        UUID buffetId = UUID.randomUUID();
-        SseEmitter emitter = new SseEmitter();
+    void eventsShouldSubscribeToBuffetStream() {
+        givenEmitterSubscription();
+        
+        SseEmitter result = whenGettingEvents();
+        
+        thenEmitterIsReturned(result);
+    }
 
-        when(eventStream.subscribe(buffetId)).thenReturn(emitter);
+    private void givenEmitterSubscription() {
+        expectedEmitter = new SseEmitter();
+        when(eventStream.subscribe(BUFFET_ID)).thenReturn(expectedEmitter);
+    }
 
-        SseEmitter result = controller.events(buffetId, null);
+    private SseEmitter whenGettingEvents() {
+        return controller.events(BUFFET_ID, null);
+    }
 
-        assertSame(emitter, result);
-        verify(eventStream).subscribe(buffetId);
+    private void thenEmitterIsReturned(SseEmitter result) {
+        assertSame(expectedEmitter, result);
+        verify(eventStream).subscribe(BUFFET_ID);
     }
 }
-

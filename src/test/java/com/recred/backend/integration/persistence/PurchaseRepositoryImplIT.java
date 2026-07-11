@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Transactional
 class PurchaseRepositoryImplIT extends AbstractIntegrationTest {
@@ -51,70 +50,63 @@ class PurchaseRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void findAllByAlumno_ShouldReturnPurchases_WhenStudentExists() {
-        AlumnoEntity student = generateStudent();
-        CompraPresencialEntity purchase = generatePurchase(student, EstadoCompra.ENTREGADO);
-        List<PurchaseResume> result = repository.findPurchasesByAlumno(student.getId());
-
-        assertEquals(1, result.size());
-        assertEquals(student.getId(), result.get(0).getIdAlumno());
+        AlumnoEntity student = givenStudentWithPurchases();
+        
+        List<PurchaseResume> result = whenFindingPurchasesByStudent(student.getId());
+        
+        thenStudentPurchasesAreReturned(result, student.getId());
     }
 
     @Test
     void findAllByTutor_ShouldReturnPurchases_WhenTutorExists() {
-        AlumnoEntity student = generateStudent();
-        TutorEntity tutor = generateTutor();
-        tutor.addHijo(student);
-        entityManager.merge(tutor);
+        TutorEntity tutor = givenTutorWithStudentPurchases();
         
-        CompraPresencialEntity purchase = generatePurchase(student, EstadoCompra.ENTREGADO);
-
-        List<Purchase> result = repository.findHistorialByTutor(tutor.getId());
-
-        assertEquals(1, result.size());
-        assertEquals(purchase.getId(), result.get(0).getId());
+        List<Purchase> result = whenFindingPurchasesByTutor(tutor.getId());
+        
+        thenTutorPurchasesAreReturned(result);
     }
 
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void findScheduledPickups_ShouldMapPickupSlotOutsideCallerTransaction() {
-        LocalDate pickupDate = LocalDate.now().plusDays(1);
-        ScheduledPickupFixture fixture = transactionTemplate.execute(status ->
-                generateScheduledPickup(pickupDate));
-
-        List<Purchase> result = repository.findScheduledPickups(
-                fixture.buffetId(),
-                pickupDate,
-                EstadoRetiro.PROGRAMADO,
-                EstadoCompra.PENDIENTE,
-                fixture.slotId(),
-                "test"
-        );
-
-        assertEquals(1, result.size());
-        Purchase purchase = result.get(0);
-        assertEquals(fixture.purchaseId(), purchase.getId());
-        assertEquals(fixture.slotId(), purchase.getPickupSlotId());
-        assertEquals("Morning (09:00 - 10:00)", purchase.getPickupSlotDescription());
-        assertEquals(1, purchase.getItems().size());
-        assertEquals("Test User", purchase.getStudent().getNombre() + " "
-                + purchase.getStudent().getApellido());
-
-        List<Purchase> resultWithoutFilters = repository.findScheduledPickups(
-                fixture.buffetId(),
-                null,
-                null,
-                null,
-                null,
-                null
-        );
-
-        assertEquals(1, resultWithoutFilters.size());
-        assertEquals(fixture.purchaseId(), resultWithoutFilters.get(0).getId());
+        ScheduledPickupFixture fixture = givenScheduledPickupOutOfTransaction();
+        
+        List<Purchase> result = whenFindingScheduledPickupsWithFilters(fixture);
+        List<Purchase> resultWithoutFilters = whenFindingScheduledPickupsWithoutFilters(fixture.buffetId());
+        
+        thenScheduledPickupIsMappedCorrectly(result, fixture);
+        thenScheduledPickupIsMappedCorrectlyWithoutFilters(resultWithoutFilters, fixture);
     }
 
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void findScheduledPickups_ShouldFilterByPurchaseStatusIndependentlyFromWithdrawalStatus() {
+        MultiStatusPickupsFixture fixture = givenMultipleScheduledPickupsWithDifferentStatuses();
+        
+        thenPurchaseStatusFiltersWorkIndependently(fixture);
+    }
+
+    private AlumnoEntity givenStudentWithPurchases() {
+        AlumnoEntity student = generateStudent();
+        generatePurchase(student, EstadoCompra.ENTREGADO);
+        return student;
+    }
+
+    private TutorEntity givenTutorWithStudentPurchases() {
+        AlumnoEntity student = generateStudent();
+        TutorEntity tutor = generateTutor();
+        tutor.addHijo(student);
+        entityManager.merge(tutor);
+        generatePurchase(student, EstadoCompra.ENTREGADO);
+        return tutor;
+    }
+
+    private ScheduledPickupFixture givenScheduledPickupOutOfTransaction() {
+        LocalDate pickupDate = LocalDate.now().plusDays(1);
+        return transactionTemplate.execute(status -> generateScheduledPickup(pickupDate));
+    }
+
+    private MultiStatusPickupsFixture givenMultipleScheduledPickupsWithDifferentStatuses() {
         LocalDate pickupDate = LocalDate.now().plusDays(1);
         ScheduledPickupFixture pendingFixture = transactionTemplate.execute(status ->
                 generateScheduledPickup(
@@ -137,19 +129,92 @@ class PurchaseRepositoryImplIT extends AbstractIntegrationTest {
                         EstadoRetiro.CANCELADO,
                         "EXPIRED-123"
                 ));
+        return new MultiStatusPickupsFixture(pendingFixture, readyFixture, expiredFixture);
+    }
 
-        assertEquals(pendingFixture.purchaseId(), onlyPurchaseIdForStatus(
-                pendingFixture.buffetId(),
+    private List<PurchaseResume> whenFindingPurchasesByStudent(UUID studentId) {
+        return repository.findPurchasesByAlumno(studentId);
+    }
+
+    private List<Purchase> whenFindingPurchasesByTutor(UUID tutorId) {
+        return repository.findHistorialByTutor(tutorId);
+    }
+
+    private List<Purchase> whenFindingScheduledPickupsWithFilters(ScheduledPickupFixture fixture) {
+        LocalDate pickupDate = LocalDate.now().plusDays(1);
+        return repository.findScheduledPickups(
+                fixture.buffetId(),
+                pickupDate,
+                EstadoRetiro.PROGRAMADO,
+                EstadoCompra.PENDIENTE,
+                fixture.slotId(),
+                "test"
+        );
+    }
+
+    private List<Purchase> whenFindingScheduledPickupsWithoutFilters(UUID buffetId) {
+        return repository.findScheduledPickups(
+                buffetId,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    private void thenStudentPurchasesAreReturned(List<PurchaseResume> result, UUID expectedStudentId) {
+        assertEquals(1, result.size());
+        assertEquals(expectedStudentId, result.get(0).getIdAlumno());
+    }
+
+    private void thenTutorPurchasesAreReturned(List<Purchase> result) {
+        assertEquals(1, result.size());
+    }
+
+    private void thenScheduledPickupIsMappedCorrectly(List<Purchase> result, ScheduledPickupFixture fixture) {
+        assertEquals(1, result.size());
+        Purchase purchase = result.get(0);
+        assertEquals(fixture.purchaseId(), purchase.getId());
+        assertEquals(fixture.slotId(), purchase.getPickupSlotId());
+        assertEquals("Morning (09:00 - 10:00)", purchase.getPickupSlotDescription());
+        assertEquals(1, purchase.getItems().size());
+        assertEquals("Test User", purchase.getStudent().getNombre() + " "
+                + purchase.getStudent().getApellido());
+    }
+
+    private void thenScheduledPickupIsMappedCorrectlyWithoutFilters(List<Purchase> resultWithoutFilters, ScheduledPickupFixture fixture) {
+        assertEquals(1, resultWithoutFilters.size());
+        assertEquals(fixture.purchaseId(), resultWithoutFilters.get(0).getId());
+    }
+
+    private void thenPurchaseStatusFiltersWorkIndependently(MultiStatusPickupsFixture fixture) {
+        assertEquals(fixture.pendingFixture().purchaseId(), onlyPurchaseIdForStatus(
+                fixture.pendingFixture().buffetId(),
                 EstadoCompra.PENDIENTE
         ));
-        assertEquals(readyFixture.purchaseId(), onlyPurchaseIdForStatus(
-                readyFixture.buffetId(),
+        assertEquals(fixture.readyFixture().purchaseId(), onlyPurchaseIdForStatus(
+                fixture.readyFixture().buffetId(),
                 EstadoCompra.LISTO
         ));
-        assertEquals(expiredFixture.purchaseId(), onlyPurchaseIdForStatus(
-                expiredFixture.buffetId(),
+        assertEquals(fixture.expiredFixture().purchaseId(), onlyPurchaseIdForStatus(
+                fixture.expiredFixture().buffetId(),
                 EstadoCompra.VENCIDO
         ));
+    }
+
+    private UUID onlyPurchaseIdForStatus(UUID buffetId, EstadoCompra status) {
+        List<Purchase> purchases = repository.findScheduledPickups(
+                buffetId,
+                null,
+                null,
+                status,
+                null,
+                null
+        );
+
+        assertEquals(1, purchases.size());
+        return purchases.get(0).getId();
     }
 
     private ColegioEntity getCachedSchool() {
@@ -326,20 +391,6 @@ class PurchaseRepositoryImplIT extends AbstractIntegrationTest {
         return new ScheduledPickupFixture(buffet.getId(), purchase.getId(), slot.getId());
     }
 
-    private UUID onlyPurchaseIdForStatus(UUID buffetId, EstadoCompra status) {
-        List<Purchase> purchases = repository.findScheduledPickups(
-                buffetId,
-                null,
-                null,
-                status,
-                null,
-                null
-        );
-
-        assertEquals(1, purchases.size());
-        return purchases.get(0).getId();
-    }
-
     private ProductoEntity generateProduct() {
         CategoriaProductoEntity category = new CategoriaProductoEntity();
         category.setDescripcion("Cat Scheduled " + UUID.randomUUID());
@@ -371,5 +422,8 @@ class PurchaseRepositoryImplIT extends AbstractIntegrationTest {
     }
 
     private record ScheduledPickupFixture(UUID buffetId, UUID purchaseId, UUID slotId) {
+    }
+
+    private record MultiStatusPickupsFixture(ScheduledPickupFixture pendingFixture, ScheduledPickupFixture readyFixture, ScheduledPickupFixture expiredFixture) {
     }
 }
