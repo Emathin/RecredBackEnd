@@ -21,6 +21,8 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.models.RecessTime;
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.ConsumptionRequester;
 import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
 import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
 import com.recred.backend.infrastructure.web.KiosqueroAccessGuard;
@@ -66,6 +68,7 @@ class PurchaseControllerTest {
     private static final UUID BUYER_ID = UUID.randomUUID();
     private static final UUID SUGGESTION_ID = UUID.randomUUID();
     private static final UUID TUTOR_ID = UUID.randomUUID();
+    private static final UUID USER_ID = UUID.randomUUID();
 
     @Mock
     private ProcessPresentialPurchase processPresentialPurchase;
@@ -188,6 +191,9 @@ class PurchaseControllerTest {
 
     @Test
     void cancelPurchaseShouldRequireAccessAndDelegateWithRequest() {
+        givenAuthenticationSubject();
+        givenPurchaseCanBeAccessed();
+        givenConsumptionRequesterFound();
         ResponseEntity<Void> response = whenCancelingPurchase();
 
         thenResponseIsOk(response);
@@ -197,6 +203,9 @@ class PurchaseControllerTest {
 
     @Test
     void revertPurchaseShouldRequireAccessAndDelegateWithRequest() {
+        givenAuthenticationSubject();
+        givenPurchaseCanBeAccessed();
+        givenConsumptionRequesterFound();
         ResponseEntity<Void> response = whenRevertingPurchase();
 
         thenResponseIsOk(response);
@@ -206,6 +215,11 @@ class PurchaseControllerTest {
 
     private void givenAuthenticationSubject() {
         when(authentication.getName()).thenReturn(COGNITO_SUBJECT);
+    }
+
+    private void givenConsumptionRequesterFound() {
+        when(consumptionAccessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(java.util.Optional.of(new ConsumptionRequester(USER_ID, RolUsuario.VENDEDOR, null)));
     }
 
     private void givenProcessPresentialPurchaseReturns(ProcessPresentialPurchaseRequest request) {
@@ -466,11 +480,11 @@ class PurchaseControllerTest {
 
     private void thenDelegatesToCancelPurchase() {
         verify(cancelPresentialPurchase).execute(
-                new com.recred.backend.application.CancelPresentialPurchaseRequest(PURCHASE_ID));
+                new com.recred.backend.application.CancelPresentialPurchaseRequest(PURCHASE_ID, null, USER_ID, RolUsuario.VENDEDOR));
     }
 
     private void thenDelegatesToRevertPurchaseCancellation() {
         verify(revertPurchaseCancellation).execute(
-                new com.recred.backend.application.RevertPurchaseCancellationRequest(PURCHASE_ID));
+                new com.recred.backend.application.RevertPurchaseCancellationRequest(PURCHASE_ID, USER_ID, RolUsuario.VENDEDOR));
     }
 }
