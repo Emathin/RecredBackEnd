@@ -44,143 +44,193 @@ class DailyBuffetCloseRepositoryImplIT extends AbstractIntegrationTest {
     private UsuarioEntity cachedUser;
     private BuffetEntity cachedBuffet;
 
+    private DailyBuffetClose cachedCloseDomain;
+    private CierreDiarioBuffetEntity cachedEntity;
+
     @Test
     void saveWithInventorySnapshot_ShouldPersistSnapshotWithClose() {
-        DailyBuffetClose close = givenCloseDomainWithSnapshot();
+        givenCloseDomainWithSnapshot();
 
-        whenSavingCloseWithSnapshot(close);
+        whenSavingCloseWithSnapshot();
 
-        thenSnapshotIsPersisted(close.buffetId(), close.date());
+        thenSnapshotIsPersisted();
     }
 
     @Test
     void findByBuffetAndDate_ShouldMapEntityToDomain() {
-        CierreDiarioBuffetEntity entity = givenCloseEntityForYesterday();
+        givenCloseEntityForYesterday();
 
-        Optional<DailyBuffetClose> result = whenFindingByBuffetAndDate(entity.getBuffetEntity().getId(), entity.getFecha());
+        Optional<DailyBuffetClose> result = whenFindingByBuffetAndDate();
 
-        thenCloseIsMapped(result, entity);
+        thenCloseIsMapped(result);
     }
 
     @Test
     void findByBuffetAndDateRange_ShouldMapEntitiesToDomain() {
-        BuffetEntity buffet = givenBuffetEntityWithClose();
+        givenBuffetWithCloseInDateRange();
 
-        thenFindingByDateRangeThrowsException(buffet.getId());
+        List<DailyBuffetClose> result = whenFindingByBuffetAndDateRange();
+
+        thenCloseIsMappedCorrectlyInRange(result);
+    }
+
+    @Test
+    void findByBuffetAndDateRange_WhenDatesAreNull_ShouldReturnAllOrderedByDateDesc() {
+        givenBuffetWithMultipleCloses();
+
+        List<DailyBuffetClose> result = whenFindingByBuffetAndNullDateRange();
+
+        thenClosesAreOrderedByDateDesc(result);
     }
 
     @Test
     void save_ShouldPersistCloseWithoutInventorySnapshot() {
-        DailyBuffetClose close = givenCloseDomainWithoutSnapshot();
+        givenCloseDomainWithoutSnapshot();
 
-        DailyBuffetClose result = whenSavingClose(close);
+        DailyBuffetClose result = whenSavingClose();
 
-        thenCloseIsPersisted(result, close.buffetId(), close.date());
+        thenCloseIsPersisted(result);
     }
 
     @Test
     void findInventorySnapshotByBuffetAndDate_ShouldReturnSnapshotWhenPresent() {
-        CierreDiarioBuffetEntity entity = givenCloseEntityWithSnapshot();
+        givenCloseEntityWithSnapshot();
 
-        Optional<List<DailyInventorySnapshot>> result = whenFindingSnapshotByBuffetAndDate(entity.getBuffetEntity().getId(), entity.getFecha());
+        Optional<List<DailyInventorySnapshot>> result = whenFindingSnapshotByBuffetAndDate();
 
         thenSnapshotIsReturned(result);
     }
 
     @Test
     void findInventorySnapshotByBuffetAndDate_ShouldReturnEmptyWhenSnapshotIsEmpty() {
-        CierreDiarioBuffetEntity entity = givenCloseEntityWithoutSnapshot();
+        givenCloseEntityWithoutSnapshot();
 
-        Optional<List<DailyInventorySnapshot>> result = whenFindingSnapshotByBuffetAndDate(entity.getBuffetEntity().getId(), entity.getFecha());
+        Optional<List<DailyInventorySnapshot>> result = whenFindingSnapshotByBuffetAndDate();
 
-        assertTrue(result.isEmpty());
+        thenSnapshotIsEmpty(result);
     }
 
-    private DailyBuffetClose givenCloseDomainWithSnapshot() {
+    private void givenCloseDomainWithSnapshot() {
         BuffetEntity buffet = generateBuffetEntity();
-        return createCloseDomain(buffet.getId(), LocalDate.now());
+        this.cachedCloseDomain = createCloseDomain(buffet.getId(), LocalDate.now());
     }
 
-    private DailyBuffetClose givenCloseDomainWithoutSnapshot() {
+    private void givenCloseDomainWithoutSnapshot() {
         BuffetEntity buffet = generateBuffetEntity();
-        return createCloseDomain(buffet.getId(), LocalDate.now().minusDays(2));
+        this.cachedCloseDomain = createCloseDomain(buffet.getId(), LocalDate.now().minusDays(2));
     }
 
-    private CierreDiarioBuffetEntity givenCloseEntityForYesterday() {
+    private void givenCloseEntityForYesterday() {
         BuffetEntity buffet = generateBuffetEntity();
-        return generateCloseEntity(buffet, LocalDate.now().minusDays(1));
+        this.cachedEntity = generateCloseEntity(buffet, LocalDate.now().minusDays(1));
     }
 
-    private BuffetEntity givenBuffetEntityWithClose() {
+    private LocalDate cachedStartDate;
+    private LocalDate cachedEndDate;
+    private LocalDate cachedOlderCloseDate;
+    private LocalDate cachedNewerCloseDate;
+    private LocalDate cachedCloseDate;
+
+    private void givenBuffetWithCloseInDateRange() {
         BuffetEntity buffet = generateBuffetEntity();
-        generateCloseEntity(buffet, LocalDate.now().minusDays(4));
-        return buffet;
+        this.cachedStartDate = LocalDate.now().minusDays(5);
+        this.cachedEndDate = LocalDate.now();
+        this.cachedCloseDate = this.cachedStartDate.plusDays(1);
+        generateCloseEntity(buffet, this.cachedCloseDate);
+        this.cachedBuffet = buffet;
     }
 
-    private CierreDiarioBuffetEntity givenCloseEntityWithSnapshot() {
+    private void givenBuffetWithMultipleCloses() {
+        BuffetEntity buffet = generateBuffetEntity();
+        this.cachedOlderCloseDate = LocalDate.now().minusDays(7);
+        this.cachedNewerCloseDate = LocalDate.now().minusDays(6);
+        generateCloseEntity(buffet, this.cachedOlderCloseDate);
+        generateCloseEntity(buffet, this.cachedNewerCloseDate);
+        this.cachedBuffet = buffet;
+    }
+
+    private void givenCloseEntityWithSnapshot() {
         BuffetEntity buffet = generateBuffetEntity();
         CierreDiarioBuffetEntity entity = generateCloseEntity(buffet, LocalDate.now().minusDays(3));
         entity.setInventarioSnapshotFromDomain(List.of(createSnapshotDomain()));
         springDataRepository.saveAndFlush(entity);
         entityManager.clear();
-        return entity;
+        this.cachedEntity = entity;
     }
 
-    private CierreDiarioBuffetEntity givenCloseEntityWithoutSnapshot() {
+    private void givenCloseEntityWithoutSnapshot() {
         BuffetEntity buffet = generateBuffetEntity();
         CierreDiarioBuffetEntity entity = generateCloseEntity(buffet, LocalDate.now().minusDays(4));
         entityManager.clear();
-        return entity;
+        this.cachedEntity = entity;
     }
 
-    private void whenSavingCloseWithSnapshot(DailyBuffetClose close) {
+    private void whenSavingCloseWithSnapshot() {
         DailyInventorySnapshot snapshot = createSnapshotDomain();
-        repository.saveWithInventorySnapshot(close, List.of(snapshot));
+        repository.saveWithInventorySnapshot(this.cachedCloseDomain, List.of(snapshot));
         entityManager.flush();
         entityManager.clear();
     }
 
-    private DailyBuffetClose whenSavingClose(DailyBuffetClose close) {
-        DailyBuffetClose result = repository.save(close);
+    private DailyBuffetClose whenSavingClose() {
+        DailyBuffetClose result = repository.save(this.cachedCloseDomain);
         entityManager.flush();
         entityManager.clear();
         return result;
     }
 
-    private Optional<DailyBuffetClose> whenFindingByBuffetAndDate(UUID buffetId, LocalDate date) {
-        return repository.findByBuffetAndDate(buffetId, date);
+    private Optional<DailyBuffetClose> whenFindingByBuffetAndDate() {
+        return repository.findByBuffetAndDate(this.cachedEntity.getBuffetEntity().getId(), this.cachedEntity.getFecha());
     }
 
-    private void thenFindingByDateRangeThrowsException(UUID buffetId) {
-        assertThrows(InvalidDataAccessResourceUsageException.class,
-                () -> repository.findByBuffetAndDateRange(buffetId, LocalDate.now().minusDays(5), LocalDate.now()));
+    private List<DailyBuffetClose> whenFindingByBuffetAndDateRange() {
+        return repository.findByBuffetAndDateRange(this.cachedBuffet.getId(), this.cachedStartDate, this.cachedEndDate);
     }
 
-    private Optional<List<DailyInventorySnapshot>> whenFindingSnapshotByBuffetAndDate(UUID buffetId, LocalDate date) {
-        return repository.findInventorySnapshotByBuffetAndDate(buffetId, date);
+    private List<DailyBuffetClose> whenFindingByBuffetAndNullDateRange() {
+        return repository.findByBuffetAndDateRange(this.cachedBuffet.getId(), null, null);
     }
 
-    private void thenSnapshotIsPersisted(UUID buffetId, LocalDate closeDate) {
-        Optional<CierreDiarioBuffetEntity> savedEntity = springDataRepository.findByBuffetEntityIdAndFecha(buffetId, closeDate);
+    private void thenCloseIsMappedCorrectlyInRange(List<DailyBuffetClose> result) {
+        assertEquals(1, result.size());
+        assertEquals(this.cachedCloseDate, result.get(0).date());
+    }
+
+    private void thenClosesAreOrderedByDateDesc(List<DailyBuffetClose> result) {
+        assertEquals(2, result.size());
+        assertEquals(this.cachedNewerCloseDate, result.get(0).date());
+        assertEquals(this.cachedOlderCloseDate, result.get(1).date());
+    }
+
+    private Optional<List<DailyInventorySnapshot>> whenFindingSnapshotByBuffetAndDate() {
+        return repository.findInventorySnapshotByBuffetAndDate(this.cachedEntity.getBuffetEntity().getId(), this.cachedEntity.getFecha());
+    }
+
+    private void thenSnapshotIsPersisted() {
+        Optional<CierreDiarioBuffetEntity> savedEntity = springDataRepository.findByBuffetEntityIdAndFecha(this.cachedCloseDomain.buffetId(), this.cachedCloseDomain.date());
         assertTrue(savedEntity.isPresent());
         assertEquals(1, savedEntity.get().getInventarioSnapshot().size());
         assertEquals("Alfajor", savedEntity.get().getInventarioSnapshot().get(0).getProductoNombre());
     }
 
-    private void thenCloseIsMapped(Optional<DailyBuffetClose> result, CierreDiarioBuffetEntity entity) {
+    private void thenCloseIsMapped(Optional<DailyBuffetClose> result) {
         assertTrue(result.isPresent());
-        assertEquals(entity.getBuffetEntity().getId(), result.get().buffetId());
-        assertEquals(entity.getFecha(), result.get().date());
+        assertEquals(this.cachedEntity.getBuffetEntity().getId(), result.get().buffetId());
+        assertEquals(this.cachedEntity.getFecha(), result.get().date());
     }
 
-    private void thenCloseIsPersisted(DailyBuffetClose result, UUID buffetId, LocalDate closeDate) {
-        assertEquals(buffetId, result.buffetId());
-        assertTrue(springDataRepository.findByBuffetEntityIdAndFecha(buffetId, closeDate).isPresent());
+    private void thenCloseIsPersisted(DailyBuffetClose result) {
+        assertEquals(this.cachedCloseDomain.buffetId(), result.buffetId());
+        assertTrue(springDataRepository.findByBuffetEntityIdAndFecha(this.cachedCloseDomain.buffetId(), this.cachedCloseDomain.date()).isPresent());
     }
 
     private void thenSnapshotIsReturned(Optional<List<DailyInventorySnapshot>> result) {
         assertTrue(result.isPresent());
         assertEquals(1, result.get().size());
+    }
+    
+    private void thenSnapshotIsEmpty(Optional<List<DailyInventorySnapshot>> result) {
+        assertTrue(result.isEmpty());
     }
 
     private ColegioEntity generateSchoolEntity() {
