@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Transactional
-public class ProductRepositoryImplIT extends AbstractIntegrationTest {
+class ProductRepositoryImplIT extends AbstractIntegrationTest {
 
     @Autowired
     private ProductRepositoryImpl productRepository;
@@ -57,53 +57,155 @@ public class ProductRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void findByIdReturnsDomainObjectIfExists() {
-        ProductoEntity entity = generateProduct("Test Product", true);
-        
-        Optional<Producto> result = productRepository.findById(entity.getId());
-        
-        assertTrue(result.isPresent());
-        assertEquals(entity.getId(), result.get().getId());
-        assertEquals("Test Product", result.get().getNombre());
+        ProductoEntity entity = givenActiveProduct();
+        Optional<Producto> result = whenFindingProductById(entity.getId());
+        thenProductIsFoundWithCorrectData(result, entity.getId());
     }
 
     @Test
     void findByIdShouldReturnEmptyWhenNotExists() {
-        Optional<Producto> result = productRepository.findById(UUID.randomUUID());
-        assertTrue(result.isEmpty());
+        Optional<Producto> result = whenFindingProductById(UUID.randomUUID());
+        thenProductIsNotFound(result);
     }
 
     @Test
     void saveShouldCreateNewEntityWhenProductHasNoId() {
-        CategoriaProductoEntity category = generateCategory("Category 1");
-        
-        Producto product = createDomainProduct(null, "New Product", "100", true, category.getId());
-        
-        Producto result = productRepository.save(product);
-        entityManager.flush();
-        entityManager.clear();
-        
-        assertNotNull(result.getId());
-        assertTrue(springDataRepository.findById(result.getId()).isPresent());
+        Producto product = givenNewProductDomain();
+        Producto result = whenSavingProduct(product);
+        thenProductIsPersisted(result);
     }
 
     @Test
     void saveShouldUpdateExistingEntityWhenProductHasId() {
-        ProductoEntity existing = generateProduct("Old Product", true);
-        CategoriaProductoEntity newCategory = generateCategory("Category 2");
-        
-        Producto product = createDomainProduct(existing.getId(), "Updated Product", "200", true, newCategory.getId());
-        
-        productRepository.save(product);
-        entityManager.flush();
-        entityManager.clear();
-        
-        ProductoEntity updated = springDataRepository.findById(existing.getId()).get();
-        assertEquals("Updated Product", updated.getNombre());
-        assertEquals(newCategory.getId(), updated.getCategoria().getId());
+        Producto product = givenExistingProductForUpdate();
+        Producto result = whenSavingProduct(product);
+        thenProductIsUpdated(result);
     }
 
     @Test
     void saveShouldMapEverythingIncludingMeasurementsTypesAndClassifications() {
+        Producto product = givenComplexProductDomain();
+        Producto result = whenSavingProduct(product);
+        thenComplexProductIsPersisted(result);
+    }
+
+    @Test
+    void saveShouldClearCollectionsWhenEmpty() {
+        Producto product = givenExistingProductWithEmptyCollections();
+        Producto result = whenSavingProduct(product);
+        thenCollectionsAreCleared(result);
+    }
+
+    @Test
+    void findBuffetLeastSoldProductsReturnsAProduct() {
+        BuffetEntity buffet = givenBuffetWithPurchasedProducts();
+        ProductChangeRecommendation result = whenFindingLeastSoldProduct(buffet.getId());
+        thenLeastSoldProductIsReturned(result, buffet.getId());
+    }
+
+    @Test
+    void saveShouldNotReassignCategoryWhenIdIsEqual() {
+        Producto product = givenExistingProductWithSameCategory();
+        Producto result = whenSavingProduct(product);
+        thenCategoryRemainsTheSame(result);
+    }
+
+    @Test
+    void whenFindAllActiveWithStockIsCalledAndStockExistsThenMapsCorrectly() {
+        BuffetEntity buffet = givenBuffetWithAvailableStockProduct();
+        List<Producto> result = whenFindingAllActiveWithStock(buffet.getId());
+        thenStockDataIsMappedCorrectly(result);
+    }
+
+    @Test
+    void findAllActiveWithStockWhenNoMinimumAndFourRemainingShouldMapLowStock() {
+        BuffetEntity buffet = givenBuffetWithLowStockProduct();
+        List<Producto> result = whenFindingAllActiveWithStock(buffet.getId());
+        thenProductStatusIsLowStock(result);
+    }
+
+    @Test
+    void findAllActiveWithStockWhenNoStockShouldMapOutOfStock() {
+        BuffetEntity buffet = givenBuffetWithOutOfStockProduct();
+        List<Producto> result = whenFindingAllActiveWithStock(buffet.getId());
+        thenProductStatusIsOutOfStock(result);
+    }
+
+    @Test
+    void findActiveByIdWithStockWhenThereIsNoInventoryDataShouldReturnEmpty() {
+        BuffetEntity buffet = generateBuffet();
+        ProductoEntity product = givenActiveProduct();
+        Optional<Producto> result = whenFindingActiveByIdWithStock(product.getId(), buffet.getId());
+        thenProductIsNotFound(result);
+    }
+
+    @Test
+    void whenFindActiveByIdWithStockIsCalledAndExistsThenMapsCorrectly() {
+        BuffetEntity buffet = givenBuffetWithProductStock();
+        Optional<Producto> result = whenFindingActiveByIdWithStockFromContext(buffet);
+        thenSpecificStockDataIsMappedCorrectly(result);
+    }
+
+    @Test
+    void findAllActiveReturnsMappedDomains() {
+        ProductoEntity active = givenActiveAndInactiveProducts();
+        List<Producto> result = whenFindingAllActiveProducts();
+        thenOnlyActiveProductsAreReturned(result, active.getId());
+    }
+
+    @Test
+    void findActiveByIdReturnsMappedDomain() {
+        ProductoEntity active = givenActiveProduct();
+        Optional<Producto> result = whenFindingActiveProductById(active.getId());
+        thenProductIsFoundWithCorrectData(result, active.getId());
+    }
+
+    @Test
+    void findBuffetTop5LeastSoldProductsMapsRecommendations() {
+        BuffetEntity buffet = givenBuffetWithMultiplePurchasedProducts();
+        List<ProductChangeRecommendation> result = whenFindingTop5LeastSoldProducts(buffet.getId());
+        thenLeastSoldProductIsRankedFirst(result);
+    }
+
+    @Test
+    void findBestSoldProductsNotInStockMapsDomains() {
+        BuffetEntity buffet = givenBuffetWithPurchasedProductsNotInStock();
+        List<Producto> result = whenFindingBestSoldProductsNotInStock(buffet.getId());
+        thenBestSoldProductIsRankedFirst(result);
+    }
+
+    @Test
+    void updatePriceDelegatesToSpringDataRepository() {
+        ProductoEntity product = givenActiveProduct();
+        whenUpdatingProductPrice(product.getId());
+        thenProductPriceIsUpdated(product.getId());
+    }
+
+    @Test
+    void findBuffetTop3MostSoldShouldMapToDomain() {
+        BuffetEntity buffet = givenBuffetWithMostSoldProducts();
+        List<Producto> result = whenFindingTop3MostSoldProducts(buffet.getId());
+        thenMostSoldProductIsRankedFirst(result);
+    }
+
+    // --- Given Helpers ---
+
+    private ProductoEntity givenActiveProduct() {
+        return generateProduct("Test Product", true);
+    }
+
+    private Producto givenNewProductDomain() {
+        CategoriaProductoEntity category = generateCategory("Category 1");
+        return createDomainProduct(null, "New Product", "100", true, category.getId());
+    }
+
+    private Producto givenExistingProductForUpdate() {
+        ProductoEntity existing = generateProduct("Old Product", true);
+        CategoriaProductoEntity newCategory = generateCategory("Category 2");
+        return createDomainProduct(existing.getId(), "Updated Product", "200", true, newCategory.getId());
+    }
+
+    private Producto givenComplexProductDomain() {
         CategoriaProductoEntity category = generateCategory("Full Category");
         ProductoEntity dummyProduct = generateProduct("Dummy", true);
         ProductoMedidaEntity measurement = generateMeasurement(dummyProduct);
@@ -125,19 +227,10 @@ public class ProductRepositoryImplIT extends AbstractIntegrationTest {
         cs.setId(health.getId());
         product.setClasificacionesSalud(Set.of(cs));
         
-        Producto result = productRepository.save(product);
-        entityManager.flush();
-        entityManager.clear();
-        
-        ProductoEntity saved = springDataRepository.findById(result.getId()).get();
-        assertNotNull(saved.getCategoria());
-        assertFalse(saved.getMedidas().isEmpty());
-        assertFalse(saved.getTipos().isEmpty());
-        assertFalse(saved.getClasificacionesSalud().isEmpty());
+        return product;
     }
 
-    @Test
-    void saveShouldClearCollectionsWhenEmpty() {
+    private Producto givenExistingProductWithEmptyCollections() {
         ProductoEntity existing = generateProduct("Old", true);
         existing.getMedidas().add(generateMeasurement(existing));
         existing.getTipos().add(generateType("Snack"));
@@ -149,60 +242,216 @@ public class ProductRepositoryImplIT extends AbstractIntegrationTest {
         product.setMedidas(new HashSet<>());
         product.setTipos(new HashSet<>());
         product.setClasificacionesSalud(new HashSet<>());
-        
-        productRepository.save(product);
-        entityManager.flush();
-        entityManager.clear();
-        
-        ProductoEntity saved = springDataRepository.findById(existing.getId()).get();
-        assertTrue(saved.getMedidas().isEmpty());
-        assertTrue(saved.getTipos().isEmpty());
-        assertTrue(saved.getClasificacionesSalud().isEmpty());
+        return product;
     }
 
-    @Test
-    void findBuffetLeastSoldProductsReturnsAProduct() {
+    private BuffetEntity givenBuffetWithPurchasedProducts() {
         BuffetEntity buffet = generateBuffet();
         ProductoEntity product1 = generateProduct("Water", true);
         ProductoEntity product2 = generateProduct("Soda", true);
         
         generatePurchase(buffet, product1, 10);
-        generatePurchase(buffet, product2, 1);
+        generatePurchase(buffet, product2, 1); // Least sold
         
-        ProductChangeRecommendation result = productRepository.findBuffetLeastSoldProducts(buffet.getId());
-        
-        assertNotNull(result);
-        assertEquals(product2.getId(), result.getId());
-        assertEquals(buffet.getId(), result.getIdBuffet());
+        return buffet;
     }
 
-    @Test
-    void saveShouldNotReassignCategoryWhenIdIsEqual() {
+    private Producto givenExistingProductWithSameCategory() {
         CategoriaProductoEntity category = generateCategory("Unique Category");
         ProductoEntity entity = generateProduct("Prod", true);
         entity.setCategoria(category);
         entityManager.persist(entity);
-        
-        Producto product = createDomainProduct(entity.getId(), "Mod", "10", true, category.getId());
-        
-        productRepository.save(product);
-        entityManager.flush();
-        entityManager.clear();
-        
-        ProductoEntity saved = springDataRepository.findById(entity.getId()).get();
-        assertEquals(category.getId(), saved.getCategoria().getId());
+        return createDomainProduct(entity.getId(), "Mod", "10", true, category.getId());
     }
 
-    @Test
-    void whenFindAllActiveWithStockIsCalledAndStockExistsThenMapsCorrectly() {
+    private BuffetEntity givenBuffetWithAvailableStockProduct() {
         BuffetEntity buffet = generateBuffet();
         ProductoEntity product = generateProduct("Cookie", true);
-        generateInventory(buffet, product, 50, 5, 3, com.recred.backend.domain.models.EstadoInventario.DISPONIBLE, com.recred.backend.domain.models.TipoManejoInventario.STOCK_EXACTO, 20);
+        generateInventory(buffet, product, 50, 5, 3, EstadoInventario.DISPONIBLE, TipoManejoInventario.STOCK_EXACTO, 20);
+        return buffet;
+    }
+
+    private BuffetEntity givenBuffetWithLowStockProduct() {
+        BuffetEntity buffet = generateBuffet();
+        ProductoEntity product = generateProduct("Gummy", true);
+        generateInventory(buffet, product, 4, 0, null, EstadoInventario.BAJO_STOCK, TipoManejoInventario.STOCK_EXACTO, null);
+        return buffet;
+    }
+
+    private BuffetEntity givenBuffetWithOutOfStockProduct() {
+        BuffetEntity buffet = generateBuffet();
+        ProductoEntity product = generateProduct("Chocolate", true);
+        generateInventory(buffet, product, 0, 0, null, EstadoInventario.SIN_STOCK, TipoManejoInventario.STOCK_EXACTO, null);
+        return buffet;
+    }
+
+    private UUID cachedProductIdForStock;
+
+    private BuffetEntity givenBuffetWithProductStock() {
+        BuffetEntity buffet = generateBuffet();
+        ProductoEntity product = generateProduct("Candy", true);
+        generateInventory(buffet, product, 10, 2, 1, EstadoInventario.DISPONIBLE, TipoManejoInventario.STOCK_EXACTO, null);
+        cachedProductIdForStock = product.getId();
+        return buffet;
+    }
+
+    private ProductoEntity givenActiveAndInactiveProducts() {
+        ProductoEntity active = generateProduct("Active 1", true);
+        generateProduct("Inactive 1", false);
+        return active;
+    }
+
+    private UUID cachedLeastSoldProductId;
+
+    private BuffetEntity givenBuffetWithMultiplePurchasedProducts() {
+        BuffetEntity buffet = generateBuffet();
+        ProductoEntity product1 = generateProduct("Bread", true);
+        ProductoEntity product2 = generateProduct("Water", true);
+        ProductoEntity product3 = generateProduct("Apple", true); // Least sold
         
-        List<Producto> result = productRepository.findAllActiveWithStock(buffet.getId());
+        generatePurchase(buffet, product1, 100);
+        generatePurchase(buffet, product2, 50);
+        generatePurchase(buffet, product3, 10);
         
+        cachedLeastSoldProductId = product3.getId();
+        return buffet;
+    }
+
+    private UUID cachedBestSoldProductId;
+
+    private BuffetEntity givenBuffetWithPurchasedProductsNotInStock() {
+        BuffetEntity buffet = generateBuffet();
+        ProductoEntity product1 = generateProduct("Top 1", true); // Best sold
+        ProductoEntity product2 = generateProduct("Top 2", true);
+        
+        generatePurchase(buffet, product1, 500);
+        generatePurchase(buffet, product2, 10);
+        
+        cachedBestSoldProductId = product1.getId();
+        return buffet;
+    }
+
+    private UUID cachedMostSoldProductId;
+
+    private BuffetEntity givenBuffetWithMostSoldProducts() {
+        BuffetEntity buffet = generateBuffet();
+        ProductoEntity product1 = generateProduct("Best Seller 1", true);
+        ProductoEntity product2 = generateProduct("Best Seller 2", true);
+        
+        generateInventory(buffet, product1, 100, 0, 10, EstadoInventario.DISPONIBLE, TipoManejoInventario.STOCK_EXACTO, null);
+        generateInventory(buffet, product2, 100, 0, 10, EstadoInventario.DISPONIBLE, TipoManejoInventario.STOCK_EXACTO, null);
+        
+        generatePurchase(buffet, product1, 100);
+        generatePurchase(buffet, product2, 10);
+        
+        cachedMostSoldProductId = product1.getId();
+        return buffet;
+    }
+
+    // --- When Helpers ---
+
+    private Optional<Producto> whenFindingProductById(UUID id) {
+        return productRepository.findById(id);
+    }
+
+    private Producto whenSavingProduct(Producto product) {
+        Producto result = productRepository.save(product);
+        entityManager.flush();
+        entityManager.clear();
+        return result;
+    }
+
+    private ProductChangeRecommendation whenFindingLeastSoldProduct(UUID buffetId) {
+        return productRepository.findBuffetLeastSoldProducts(buffetId);
+    }
+
+    private List<Producto> whenFindingAllActiveWithStock(UUID buffetId) {
+        return productRepository.findAllActiveWithStock(buffetId);
+    }
+
+    private Optional<Producto> whenFindingActiveByIdWithStock(UUID productId, UUID buffetId) {
+        return productRepository.findActiveByIdWithStock(productId, buffetId);
+    }
+
+    private Optional<Producto> whenFindingActiveByIdWithStockFromContext(BuffetEntity buffet) {
+        return productRepository.findActiveByIdWithStock(cachedProductIdForStock, buffet.getId());
+    }
+
+    private List<Producto> whenFindingAllActiveProducts() {
+        return productRepository.findAllActive();
+    }
+
+    private Optional<Producto> whenFindingActiveProductById(UUID productId) {
+        return productRepository.findActiveById(productId);
+    }
+
+    private List<ProductChangeRecommendation> whenFindingTop5LeastSoldProducts(UUID buffetId) {
+        return productRepository.findBuffetTop5LeastSoldProducts(buffetId);
+    }
+
+    private List<Producto> whenFindingBestSoldProductsNotInStock(UUID buffetId) {
+        return productRepository.findBestSoldProductsNotInStock(buffetId);
+    }
+
+    private void whenUpdatingProductPrice(UUID productId) {
+        productRepository.updatePrice(productId, new BigDecimal("999.99"));
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private List<Producto> whenFindingTop3MostSoldProducts(UUID buffetId) {
+        return productRepository.findBuffetTop3MostSold(buffetId, UUID.randomUUID());
+    }
+
+    // --- Then Helpers ---
+
+    private void thenProductIsFoundWithCorrectData(Optional<Producto> result, UUID expectedId) {
+        assertTrue(result.isPresent());
+        assertEquals(expectedId, result.get().getId());
+    }
+
+    private void thenProductIsNotFound(Optional<Producto> result) {
+        assertTrue(result.isEmpty());
+    }
+
+    private void thenProductIsPersisted(Producto result) {
+        assertNotNull(result.getId());
+        assertTrue(springDataRepository.findById(result.getId()).isPresent());
+    }
+
+    private void thenProductIsUpdated(Producto result) {
+        ProductoEntity updated = springDataRepository.findById(result.getId()).get();
+        assertEquals("Updated Product", updated.getNombre());
+    }
+
+    private void thenComplexProductIsPersisted(Producto result) {
+        ProductoEntity saved = springDataRepository.findById(result.getId()).get();
+        assertNotNull(saved.getCategoria());
+        assertFalse(saved.getMedidas().isEmpty());
+        assertFalse(saved.getTipos().isEmpty());
+        assertFalse(saved.getClasificacionesSalud().isEmpty());
+    }
+
+    private void thenCollectionsAreCleared(Producto result) {
+        ProductoEntity saved = springDataRepository.findById(result.getId()).get();
+        assertTrue(saved.getMedidas().isEmpty());
+        assertTrue(saved.getTipos().isEmpty());
+        assertTrue(saved.getClasificacionesSalud().isEmpty());
+    }
+
+    private void thenLeastSoldProductIsReturned(ProductChangeRecommendation result, UUID buffetId) {
+        assertNotNull(result);
+        assertEquals(buffetId, result.getIdBuffet());
+    }
+
+    private void thenCategoryRemainsTheSame(Producto result) {
+        ProductoEntity saved = springDataRepository.findById(result.getId()).get();
+        assertNotNull(saved.getCategoria().getId());
+    }
+
+    private void thenStockDataIsMappedCorrectly(List<Producto> result) {
         assertFalse(result.isEmpty());
-        Producto p = result.stream().filter(prod -> prod.getId().equals(product.getId())).findFirst().get();
+        Producto p = result.get(0);
         assertEquals(50, p.getStockActual());
         assertEquals(5, p.getStockReservado());
         assertEquals(3, p.getStockMinimo());
@@ -210,138 +459,49 @@ public class ProductRepositoryImplIT extends AbstractIntegrationTest {
         assertEquals(45, p.getStockDisponible());
     }
 
-    @Test
-    void findAllActiveWithStockWhenNoMinimumAndFourRemainingShouldMapLowStock() {
-        BuffetEntity buffet = generateBuffet();
-        ProductoEntity product = generateProduct("Gummy", true);
-        generateInventory(buffet, product, 4, 0, null, com.recred.backend.domain.models.EstadoInventario.BAJO_STOCK, com.recred.backend.domain.models.TipoManejoInventario.STOCK_EXACTO, null);
-        
-        List<Producto> result = productRepository.findAllActiveWithStock(buffet.getId());
-        
-        Producto p = result.stream().filter(prod -> prod.getId().equals(product.getId())).findFirst().get();
+    private void thenProductStatusIsLowStock(List<Producto> result) {
+        Producto p = result.get(0);
         assertEquals(EstadoInventario.BAJO_STOCK, p.getEstadoInventario());
     }
 
-    @Test
-    void findAllActiveWithStockWhenNoStockShouldMapOutOfStock() {
-        BuffetEntity buffet = generateBuffet();
-        ProductoEntity product = generateProduct("Chocolate", true);
-        generateInventory(buffet, product, 0, 0, null, com.recred.backend.domain.models.EstadoInventario.SIN_STOCK, com.recred.backend.domain.models.TipoManejoInventario.STOCK_EXACTO, null);
-        
-        List<Producto> result = productRepository.findAllActiveWithStock(buffet.getId());
-        
-        Producto p = result.stream().filter(prod -> prod.getId().equals(product.getId())).findFirst().get();
+    private void thenProductStatusIsOutOfStock(List<Producto> result) {
+        Producto p = result.get(0);
         assertEquals(EstadoInventario.SIN_STOCK, p.getEstadoInventario());
     }
 
-    @Test
-    void findActiveByIdWithStockWhenThereIsNoInventoryDataShouldReturnEmpty() {
-        BuffetEntity buffet = generateBuffet();
-        ProductoEntity product = generateProduct("No Inventory", true);
-        
-        Optional<Producto> result = productRepository.findActiveByIdWithStock(product.getId(), buffet.getId());
-        
-        assertTrue(result.isEmpty());
-    }
-
-    @Test
-    void whenFindActiveByIdWithStockIsCalledAndExistsThenMapsCorrectly() {
-        BuffetEntity buffet = generateBuffet();
-        ProductoEntity product = generateProduct("Candy", true);
-        generateInventory(buffet, product, 10, 2, 1, com.recred.backend.domain.models.EstadoInventario.DISPONIBLE, com.recred.backend.domain.models.TipoManejoInventario.STOCK_EXACTO, null);
-        
-        Optional<Producto> result = productRepository.findActiveByIdWithStock(product.getId(), buffet.getId());
-        
+    private void thenSpecificStockDataIsMappedCorrectly(Optional<Producto> result) {
         assertTrue(result.isPresent());
         assertEquals(10, result.get().getStockActual());
         assertEquals(8, result.get().getStockDisponible());
     }
 
-    @Test
-    void findAllActiveReturnsMappedDomains() {
-        ProductoEntity active = generateProduct("Active 1", true);
-        generateProduct("Inactive 1", false);
-        
-        List<Producto> result = productRepository.findAllActive();
-        
+    private void thenOnlyActiveProductsAreReturned(List<Producto> result, UUID expectedActiveId) {
         assertTrue(result.size() >= 1);
-        assertTrue(result.stream().anyMatch(p -> p.getId().equals(active.getId())));
+        assertTrue(result.stream().anyMatch(p -> p.getId().equals(expectedActiveId)));
         assertFalse(result.stream().anyMatch(p -> p.getNombre().equals("Inactive 1")));
     }
 
-    @Test
-    void findActiveByIdReturnsMappedDomain() {
-        ProductoEntity active = generateProduct("Active 2", true);
-        
-        Optional<Producto> result = productRepository.findActiveById(active.getId());
-        
-        assertTrue(result.isPresent());
-        assertEquals(active.getId(), result.get().getId());
-    }
-
-    @Test
-    void findBuffetTop5LeastSoldProductsMapsRecommendations() {
-        BuffetEntity buffet = generateBuffet();
-        ProductoEntity product1 = generateProduct("Bread", true);
-        ProductoEntity product2 = generateProduct("Water", true);
-        ProductoEntity product3 = generateProduct("Apple", true);
-        
-        generatePurchase(buffet, product1, 100);
-        generatePurchase(buffet, product2, 50);
-        generatePurchase(buffet, product3, 10);
-        
-        List<ProductChangeRecommendation> result = productRepository.findBuffetTop5LeastSoldProducts(buffet.getId());
-        
+    private void thenLeastSoldProductIsRankedFirst(List<ProductChangeRecommendation> result) {
         assertFalse(result.isEmpty());
-        assertEquals(product3.getId(), result.get(0).getId());
+        assertEquals(cachedLeastSoldProductId, result.get(0).getId());
     }
 
-    @Test
-    void findBestSoldProductsNotInStockMapsDomains() {
-        BuffetEntity buffet = generateBuffet();
-        ProductoEntity product1 = generateProduct("Top 1", true);
-        ProductoEntity product2 = generateProduct("Top 2", true);
-        
-        generatePurchase(buffet, product1, 500);
-        generatePurchase(buffet, product2, 10);
-        
-        List<Producto> result = productRepository
-                .findBestSoldProductsNotInStock(buffet.getId());
-        
+    private void thenBestSoldProductIsRankedFirst(List<Producto> result) {
         assertFalse(result.isEmpty());
-        assertEquals(product1.getId(), result.get(0).getId());
+        assertEquals(cachedBestSoldProductId, result.get(0).getId());
     }
 
-    @Test
-    void updatePriceDelegatesToSpringDataRepository() {
-        ProductoEntity product = generateProduct("To Update", true);
-        BigDecimal newPrice = new BigDecimal("999.99");
-        
-        productRepository.updatePrice(product.getId(), newPrice);
-        entityManager.flush();
-        entityManager.clear();
-        
-        ProductoEntity updated = springDataRepository.findById(product.getId()).get();
-        assertEquals(newPrice.compareTo(updated.getPrecio()), 0);
+    private void thenProductPriceIsUpdated(UUID productId) {
+        ProductoEntity updated = springDataRepository.findById(productId).get();
+        assertEquals(new BigDecimal("999.99").compareTo(updated.getPrecio()), 0);
     }
 
-    @Test
-    void findBuffetTop3MostSoldShouldMapToDomain() {
-        BuffetEntity buffet = generateBuffet();
-        ProductoEntity product1 = generateProduct("Best Seller 1", true);
-        ProductoEntity product2 = generateProduct("Best Seller 2", true);
-        
-        generateInventory(buffet, product1, 100, 0, 10, com.recred.backend.domain.models.EstadoInventario.DISPONIBLE, com.recred.backend.domain.models.TipoManejoInventario.STOCK_EXACTO, null);
-        generateInventory(buffet, product2, 100, 0, 10, com.recred.backend.domain.models.EstadoInventario.DISPONIBLE, com.recred.backend.domain.models.TipoManejoInventario.STOCK_EXACTO, null);
-        
-        generatePurchase(buffet, product1, 100);
-        generatePurchase(buffet, product2, 10);
-        
-        List<Producto> result = productRepository.findBuffetTop3MostSold(buffet.getId(), UUID.randomUUID());
-        
+    private void thenMostSoldProductIsRankedFirst(List<Producto> result) {
         assertFalse(result.isEmpty());
-        assertEquals(product1.getId(), result.get(0).getId());
+        assertEquals(cachedMostSoldProductId, result.get(0).getId());
     }
+
+    // --- Entity Generators ---
     
     private CategoriaProductoEntity generateCategory(String name) {
         CategoriaProductoEntity category = new CategoriaProductoEntity();

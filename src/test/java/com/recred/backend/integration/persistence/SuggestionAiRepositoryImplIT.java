@@ -34,60 +34,108 @@ class SuggestionAiRepositoryImplIT extends AbstractIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    private AlumnoEntity cachedStudent;
+    private SugerenciaIAEntity cachedSuggestion;
+    private NotificacionEntity cachedNotification;
+
     @Test
     void save_ShouldMapRecommendationToSuggestionEntityAndPersist() {
-        AlumnoEntity student = generateStudent();
-        ProductoEntity product = generateProduct();
-        AIEventEntity event = generateAIEvent(student);
-        PurchaseRecommendationResult result = createPurchaseRecommendation(student, product);
+        SuggestionSaveContext ctx = givenContextForSavingSuggestion();
 
-        SugerenciaIAEntity saved = repository.save(event.getId(), result);
-        entityManager.flush();
-        entityManager.clear();
+        SugerenciaIAEntity saved = whenSavingPurchaseRecommendation(ctx.event().getId(), ctx.result());
 
-        assertSuggestionWasSavedAndMappedCorrectly(saved.getId(), event.getId(), student.getId(), product.getId());
+        thenSuggestionWasSavedAndMappedCorrectly(saved.getId(), ctx.event().getId(), ctx.student().getId(), ctx.product().getId());
     }
 
     @Test
     void findByTipo_ShouldReturnMatchingNotifications() {
-        AlumnoEntity student = generateStudent();
-        SugerenciaIAEntity suggestion = generateSuggestion(student);
-        UsuarioEntity user = generateUser(RolUsuario.PADRE);
-        NotificacionEntity notification = generateNotification(user, suggestion, null);
-        entityManager.flush();
+        givenNotificationWithSuggestionType("MONDAY", false);
 
-        List<NotificacionEntity> result = repository.findByTipo("MONDAY");
+        List<NotificacionEntity> result = whenFindingNotificationsByType("MONDAY");
 
-        assertEquals(1, result.size());
-        assertEquals(notification.getId(), result.get(0).getId());
+        thenNotificationListHasSizeAndMatches(result, 1, this.cachedNotification.getId());
     }
 
     @Test
     void findByTipoAndStudentId_ShouldReturnMatchingNotification() {
-        AlumnoEntity student = generateStudent();
-        SugerenciaIAEntity suggestion = generateSuggestion(student);
-        UsuarioEntity user = generateUser(RolUsuario.PADRE);
-        NotificacionEntity notification = generateNotification(user, suggestion, student);
-        entityManager.flush();
+        givenNotificationWithSuggestionType("MONDAY", true);
 
-        NotificacionEntity result = repository.findByTipoAndStudentId("MONDAY", student.getId());
+        NotificacionEntity result = whenFindingNotificationByTypeAndStudentId("MONDAY", this.cachedStudent.getId());
 
-        assertNotNull(result);
-        assertEquals(notification.getId(), result.getId());
+        thenSingleNotificationMatches(result, this.cachedNotification.getId());
     }
 
     @Test
     void getSuggestionByNotificationId_ShouldReturnMappedDomainObject() {
+        givenNotificationWithSuggestionType("MONDAY", false);
+
+        SugerenciaIA result = whenGettingSuggestionByNotificationId(this.cachedNotification.getId());
+
+        thenDomainSuggestionIsMappedCorrectly(result, this.cachedSuggestion.getId());
+    }
+
+    private SuggestionSaveContext givenContextForSavingSuggestion() {
         AlumnoEntity student = generateStudent();
-        SugerenciaIAEntity suggestion = generateSuggestion(student);
+        ProductoEntity product = generateProduct();
+        AIEventEntity event = generateAIEvent(student);
+        PurchaseRecommendationResult result = createPurchaseRecommendation(student, product);
+        return new SuggestionSaveContext(student, product, event, result);
+    }
+
+    private void givenNotificationWithSuggestionType(String type, boolean withStudent) {
+        this.cachedStudent = generateStudent();
+        this.cachedSuggestion = generateSuggestion(this.cachedStudent, type);
         UsuarioEntity user = generateUser(RolUsuario.PADRE);
-        NotificacionEntity notification = generateNotification(user, suggestion, null);
+        this.cachedNotification = generateNotification(user, this.cachedSuggestion, withStudent ? this.cachedStudent : null);
         entityManager.flush();
+        entityManager.clear();
+    }
 
-        SugerenciaIA result = repository.getSuggestionByNotificationId(notification.getId());
+    private SugerenciaIAEntity whenSavingPurchaseRecommendation(UUID eventId, PurchaseRecommendationResult result) {
+        SugerenciaIAEntity saved = repository.save(eventId, result);
+        entityManager.flush();
+        entityManager.clear();
+        return saved;
+    }
 
+    private List<NotificacionEntity> whenFindingNotificationsByType(String type) {
+        return repository.findByTipo(type);
+    }
+
+    private NotificacionEntity whenFindingNotificationByTypeAndStudentId(String type, UUID studentId) {
+        return repository.findByTipoAndStudentId(type, studentId);
+    }
+
+    private SugerenciaIA whenGettingSuggestionByNotificationId(UUID notificationId) {
+        return repository.getSuggestionByNotificationId(notificationId);
+    }
+
+    private void thenSuggestionWasSavedAndMappedCorrectly(UUID savedId, UUID eventId, UUID studentId, UUID productId) {
+        assertNotNull(savedId);
+        SugerenciaIAEntity fetched = springDataRepository.findById(savedId).orElseThrow();
+        assertEquals(Boolean.FALSE, fetched.getAceptada());
+        assertEquals(TipoSugerenciaIA.MONDAY, fetched.getTipo());
+        assertEquals(eventId, fetched.getEventoIaEntity().getId());
+        assertEquals(studentId, fetched.getAlumnoEntity().getId());
+        assertEquals(productId, fetched.getProductoEntity().getId());
+        assertEquals("Compra frecuente", fetched.getTitulo());
+        assertTrue(fetched.getMensaje().contains("MONDAY"));
+        assertTrue(fetched.getMensaje().contains("Test Product"));
+    }
+
+    private void thenNotificationListHasSizeAndMatches(List<NotificacionEntity> result, int expectedSize, UUID expectedNotificationId) {
+        assertEquals(expectedSize, result.size());
+        assertEquals(expectedNotificationId, result.get(0).getId());
+    }
+
+    private void thenSingleNotificationMatches(NotificacionEntity result, UUID expectedNotificationId) {
         assertNotNull(result);
-        assertEquals(suggestion.getId(), result.getId());
+        assertEquals(expectedNotificationId, result.getId());
+    }
+
+    private void thenDomainSuggestionIsMappedCorrectly(SugerenciaIA result, UUID expectedSuggestionId) {
+        assertNotNull(result);
+        assertEquals(expectedSuggestionId, result.getId());
         assertEquals(TipoSugerenciaIA.MONDAY, result.getTipo());
         assertEquals("Test Title", result.getTitulo());
         assertEquals("Test Message", result.getMensaje());
@@ -151,10 +199,10 @@ class SuggestionAiRepositoryImplIT extends AbstractIntegrationTest {
         );
     }
 
-    private SugerenciaIAEntity generateSuggestion(AlumnoEntity student) {
+    private SugerenciaIAEntity generateSuggestion(AlumnoEntity student, String type) {
         SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
         suggestion.setAlumnoEntity(student);
-        suggestion.setTipo(TipoSugerenciaIA.MONDAY);
+        suggestion.setTipo(TipoSugerenciaIA.valueOf(type));
         suggestion.setTitulo("Test Title");
         suggestion.setMensaje("Test Message");
         return springDataRepository.save(suggestion);
@@ -173,16 +221,5 @@ class SuggestionAiRepositoryImplIT extends AbstractIntegrationTest {
         return notificacionRepository.save(notification);
     }
 
-    private void assertSuggestionWasSavedAndMappedCorrectly(UUID savedId, UUID eventId, UUID studentId, UUID productId) {
-        assertNotNull(savedId);
-        SugerenciaIAEntity fetched = springDataRepository.findById(savedId).orElseThrow();
-        assertEquals(Boolean.FALSE, fetched.getAceptada());
-        assertEquals(TipoSugerenciaIA.MONDAY, fetched.getTipo());
-        assertEquals(eventId, fetched.getEventoIaEntity().getId());
-        assertEquals(studentId, fetched.getAlumnoEntity().getId());
-        assertEquals(productId, fetched.getProductoEntity().getId());
-        assertEquals("Compra frecuente", fetched.getTitulo());
-        assertTrue(fetched.getMensaje().contains("MONDAY"));
-        assertTrue(fetched.getMensaje().contains("Test Product"));
-    }
+    private record SuggestionSaveContext(AlumnoEntity student, ProductoEntity product, AIEventEntity event, PurchaseRecommendationResult result) {}
 }

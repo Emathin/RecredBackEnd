@@ -59,7 +59,6 @@ class AlumnoRepositoryImplIT extends AbstractIntegrationTest {
 
     @BeforeEach
     void setUp() {
-
         generateTestUser();
         generateHealthClassificationEntity();
         generateProductCategoryEntity();
@@ -69,66 +68,47 @@ class AlumnoRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void save_ShouldSaveInRealDatabaseAndGenerateId() {
-        Alumno domainStudent = prepareDomainModelStudent();
+        Alumno domainStudent = givenPreparedDomainStudent();
 
-        Alumno savedStudent = alumnoRepositoryImpl.save(domainStudent);
+        Alumno savedStudent = whenSavingStudent(domainStudent);
 
-        assertNotNull(savedStudent.getId(), "Database should have generated the Student UUID");
-
-        Optional<AlumnoEntity> studentInDb = springDataRepository.findById(savedStudent.getId());
-        assertTrue(studentInDb.isPresent(), "Student should exist in database");
-
-        AlumnoEntity realEntity = studentInDb.get();
-
-        assertEquals(cachedUser.getId(), realEntity.getUsuario().getId(), "Foreign key to User must match");
-        assertNotNull(realEntity.getBilleteraEntity(), "Student wallet should have been persisted");
-        assertEquals(0, BigDecimal.ZERO.compareTo(
-                realEntity.getBilleteraEntity().getSaldoCreditos()));
-        assertEquals(1, realEntity.getRestriccionesSalud().size(), "Should have inserted the ManyToMany relationship for health classifications");
-        assertEquals(1, realEntity.getProductosFavoritos().size(), "Should have inserted the ManyToMany relationship for favorite products");
-        assertEquals(1, realEntity.getProductosBloqueados().size(), "Should have inserted the ManyToMany relationship for blocked products");
+        thenStudentIsPersistedCorrectly(savedStudent);
     }
 
     @Test
     void findById_ShouldMapToDomainFromRealDb() {
-        AlumnoEntity entity = springDataRepository.saveAndFlush(createStudentEntityWithHealthClassificationAndFavProduct());
+        AlumnoEntity entity = givenPersistedStudentEntity();
 
-        Optional<Alumno> foundStudent = alumnoRepositoryImpl.findById(entity.getId());
+        Optional<Alumno> foundStudent = whenFindingStudentById(entity.getId());
 
-        assertTrue(foundStudent.isPresent());
-        Alumno mappedStudent = foundStudent.get();
-        assertEquals(entity.getId(), mappedStudent.getId());
-        assertEquals(1, mappedStudent.getRestriccionesSalud().size());
-        assertEquals(cachedHealthClassification.getId(), mappedStudent.getRestriccionesSalud().iterator().next().getId());
+        thenStudentIsMappedCorrectly(foundStudent, entity);
     }
 
     @Test
     void findStudentIdByUserId_ShouldSelectByUserIdAndReturnStudentId() {
-        AlumnoEntity studentEntity = springDataRepository.saveAndFlush(createStudentEntityWithHealthClassificationAndFavProduct());
+        AlumnoEntity studentEntity = givenPersistedStudentEntity();
 
-        Optional<UUID> result = alumnoRepositoryImpl.findStudentIdByUserId(cachedUser.getId());
+        Optional<UUID> result = whenFindingStudentIdByUserId(cachedUser.getId());
 
-        assertTrue(result.isPresent());
-        assertEquals(studentEntity.getId(), result.get());
+        thenCorrectStudentIdIsReturned(result, studentEntity);
     }
 
     @Test
     void findAll_ShouldFetchAllFromDb() {
-        AlumnoEntity studentEntity = springDataRepository.saveAndFlush(createStudentEntityWithHealthClassificationAndFavProduct());
+        AlumnoEntity studentEntity = givenPersistedStudentEntity();
 
-        List<Alumno> result = alumnoRepositoryImpl.findAll();
+        List<Alumno> result = whenFindingAllStudents();
 
-        assertFalse(result.isEmpty());
-        assertTrue(result.stream().anyMatch(a -> a.getId().equals(studentEntity.getId())));
+        thenStudentIsPresentInList(result, studentEntity);
     }
 
     @Test
     void existsById_ShouldExecuteExistsQueryInDatabase() {
-        AlumnoEntity studentEntity = springDataRepository.saveAndFlush(createStudentEntityWithHealthClassificationAndFavProduct());
+        AlumnoEntity studentEntity = givenPersistedStudentEntity();
 
-        boolean result = alumnoRepositoryImpl.existsById(studentEntity.getId());
+        boolean result = whenCheckingExistenceById(studentEntity.getId());
 
-        assertTrue(result);
+        thenStudentExists(result);
     }
 
     private ProductoEntity generateBlockedProduct() {
@@ -189,7 +169,7 @@ class AlumnoRepositoryImplIT extends AbstractIntegrationTest {
         return this.cachedUser;
     }
 
-    private Alumno prepareDomainModelStudent() {
+    private Alumno givenPreparedDomainStudent() {
         Alumno domainStudent = new Alumno();
 
         Usuario domainUser = new Usuario();
@@ -212,12 +192,76 @@ class AlumnoRepositoryImplIT extends AbstractIntegrationTest {
         return domainStudent;
     }
 
-    private AlumnoEntity createStudentEntityWithHealthClassificationAndFavProduct() {
+    private AlumnoEntity givenPersistedStudentEntity() {
         AlumnoEntity entity = new AlumnoEntity();
         entity.setUsuario(usuarioRepository.getReferenceById(cachedUser.getId()));
-        entity.getRestriccionesSalud().add(clasificacionSaludRepository.getReferenceById(cachedHealthClassification.getId()));
-        entity.getProductosFavoritos().add(productoRepository.getReferenceById(cachedFavProduct.getId()));
-        return entity;
+        entity.getRestriccionesSalud().add(
+                clasificacionSaludRepository.getReferenceById(cachedHealthClassification.getId()));
+        entity.getProductosFavoritos().add(
+                productoRepository.getReferenceById(cachedFavProduct.getId()));
+        return springDataRepository.saveAndFlush(entity);
     }
 
+    private Alumno whenSavingStudent(Alumno domainStudent) {
+        return alumnoRepositoryImpl.save(domainStudent);
+    }
+
+    private Optional<Alumno> whenFindingStudentById(UUID id) {
+        return alumnoRepositoryImpl.findById(id);
+    }
+
+    private Optional<UUID> whenFindingStudentIdByUserId(UUID userId) {
+        return alumnoRepositoryImpl.findStudentIdByUserId(userId);
+    }
+
+    private List<Alumno> whenFindingAllStudents() {
+        return alumnoRepositoryImpl.findAll();
+    }
+
+    private boolean whenCheckingExistenceById(UUID id) {
+        return alumnoRepositoryImpl.existsById(id);
+    }
+
+    private void thenStudentIsPersistedCorrectly(Alumno savedStudent) {
+        assertNotNull(savedStudent.getId(), "Database should have generated the Student UUID");
+        Optional<AlumnoEntity> studentInDb = springDataRepository.findById(savedStudent.getId());
+        assertTrue(studentInDb.isPresent(), "Student should exist in database");
+
+        AlumnoEntity realEntity = studentInDb.get();
+        assertEquals(cachedUser.getId(), realEntity.getUsuario().getId(), 
+                "Foreign key to User must match");
+        assertNotNull(realEntity.getBilleteraEntity(), "Student wallet should have been persisted");
+        assertEquals(0, BigDecimal.ZERO.compareTo(realEntity.getBilleteraEntity().getSaldoCreditos()));
+        assertEquals(1, realEntity.getRestriccionesSalud().size(), 
+                "Should have inserted the ManyToMany relationship for health classifications");
+        assertEquals(1, realEntity.getProductosFavoritos().size(), 
+                "Should have inserted the ManyToMany relationship for favorite products");
+        assertEquals(1, realEntity.getProductosBloqueados().size(), 
+                "Should have inserted the ManyToMany relationship for blocked products");
+    }
+
+    private void thenStudentIsMappedCorrectly(Optional<Alumno> foundStudent, AlumnoEntity entity) {
+        assertTrue(foundStudent.isPresent());
+        Alumno mappedStudent = foundStudent.get();
+        assertEquals(entity.getId(), mappedStudent.getId());
+        assertEquals(1, mappedStudent.getRestriccionesSalud().size());
+        assertEquals(
+                cachedHealthClassification.getId(), 
+                mappedStudent.getRestriccionesSalud().iterator().next().getId()
+        );
+    }
+
+    private void thenCorrectStudentIdIsReturned(Optional<UUID> result, AlumnoEntity studentEntity) {
+        assertTrue(result.isPresent());
+        assertEquals(studentEntity.getId(), result.get());
+    }
+
+    private void thenStudentIsPresentInList(List<Alumno> result, AlumnoEntity studentEntity) {
+        assertFalse(result.isEmpty());
+        assertTrue(result.stream().anyMatch(a -> a.getId().equals(studentEntity.getId())));
+    }
+
+    private void thenStudentExists(boolean result) {
+        assertTrue(result);
+    }
 }

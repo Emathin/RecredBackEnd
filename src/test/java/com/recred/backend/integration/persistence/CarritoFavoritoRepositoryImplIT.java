@@ -66,10 +66,78 @@ class CarritoFavoritoRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void saveShouldCreateEntityWithReferencesAndItems() {
-        CarritoFavorito cart = buildCartDomain(null, tutorId, alumnoId, productId, 2);
+        CarritoFavorito cart = givenCartDomain(null, tutorId, alumnoId, productId, 2);
 
-        CarritoFavorito result = repository.save(cart);
+        CarritoFavorito result = whenSavingCart(cart);
 
+        thenCartAndItemsArePersisted(result);
+    }
+
+    @Test
+    void saveShouldUpdateExistingEntityAndClearOldItems() {
+        UUID newProductId = generateProduct().getId();
+        CarritoFavorito cart = givenCartDomain(cartId, tutorId, alumnoId, newProductId, 3);
+
+        whenSavingCart(cart);
+
+        thenCartItemsAreUpdated(newProductId);
+    }
+
+    @Test
+    void saveShouldIgnoreItemsWithoutProductId() {
+        CarritoFavorito cart = givenFavCartWithoutProductIds();
+        
+        CarritoFavorito result = whenSavingCart(cart);
+
+        thenCartHasNoItems(result);
+    }
+
+    @Test
+    void findByIdShouldMapEntityWhenPresent() {
+        Optional<CarritoFavorito> result = whenFindingCartById(cartId);
+
+        thenCartIsMappedProperly(result);
+    }
+
+    @Test
+    void findByTutorIdAndFiltersShouldMapEntities() {
+        List<CarritoFavorito> result = whenFindingCartByTutorAndFilters(tutorId, alumnoId, productId);
+
+        thenFilteredCartsAreMappedProperly(result);
+    }
+
+    @Test
+    void deleteShouldDelegateToSpringDataRepository() {
+        whenDeletingCart(cartId);
+
+        thenCartIsDeleted();
+    }
+
+    private CarritoFavorito givenCartDomain(UUID cartId, UUID tutorId, UUID alumnoId, UUID productId, int quantity) {
+        return buildCartDomain(cartId, tutorId, alumnoId, productId, quantity);
+    }
+
+    private CarritoFavorito givenFavCartWithoutProductIds() {
+        return createFavCart();
+    }
+
+    private CarritoFavorito whenSavingCart(CarritoFavorito cart) {
+        return repository.save(cart);
+    }
+
+    private Optional<CarritoFavorito> whenFindingCartById(UUID id) {
+        return repository.findById(id);
+    }
+
+    private List<CarritoFavorito> whenFindingCartByTutorAndFilters(UUID tutorId, UUID alumnoId, UUID productId) {
+        return repository.findByTutorIdAndFilters(tutorId, alumnoId, productId);
+    }
+
+    private void whenDeletingCart(UUID id) {
+        repository.delete(id);
+    }
+
+    private void thenCartAndItemsArePersisted(CarritoFavorito result) {
         Optional<CarritoFavoritoEntity> savedEntity = springDataRepository.findById(result.getId());
         assertTrue(savedEntity.isPresent());
         CarritoFavoritoEntity saved = savedEntity.get();
@@ -81,13 +149,7 @@ class CarritoFavoritoRepositoryImplIT extends AbstractIntegrationTest {
         assertEquals(2, saved.getItems().get(0).getCantidad());
     }
 
-    @Test
-    void saveShouldUpdateExistingEntityAndClearOldItems() {
-        UUID newProductId = generateProduct().getId();
-        CarritoFavorito cart = buildCartDomain(cartId, tutorId, alumnoId, newProductId, 3);
-
-        CarritoFavorito result = repository.save(cart);
-
+    private void thenCartItemsAreUpdated(UUID newProductId) {
         Optional<CarritoFavoritoEntity> updatedEntity = springDataRepository.findById(cartId);
         assertTrue(updatedEntity.isPresent());
         CarritoFavoritoEntity existing = updatedEntity.get();
@@ -97,41 +159,23 @@ class CarritoFavoritoRepositoryImplIT extends AbstractIntegrationTest {
         assertEquals(3, existing.getItems().get(0).getCantidad());
     }
 
-    @Test
-    void saveShouldIgnoreItemsWithoutProductId() {
-
-        CarritoFavorito result = repository.save(createFavCart());
-
+    private void thenCartHasNoItems(CarritoFavorito result) {
         Optional<CarritoFavoritoEntity> savedEntity = springDataRepository.findById(result.getId());
         assertTrue(savedEntity.isPresent());
         assertTrue(savedEntity.get().getItems().isEmpty());
     }
 
-
-    @Test
-    void findByIdShouldMapEntityWhenPresent() {
-        Optional<CarritoFavorito> result = repository.findById(cartId);
-
+    private void thenCartIsMappedProperly(Optional<CarritoFavorito> result) {
         assertTrue(result.isPresent());
         assertEquals(cartId, result.get().getId());
     }
 
-    @Test
-    void findByTutorIdAndFiltersShouldMapEntities() {
-        List<CarritoFavorito> result = repository.findByTutorIdAndFilters(
-                tutorId,
-                alumnoId,
-                productId
-        );
-
+    private void thenFilteredCartsAreMappedProperly(List<CarritoFavorito> result) {
         assertEquals(1, result.size());
         assertEquals(cartId, result.get(0).getId());
     }
 
-    @Test
-    void deleteShouldDelegateToSpringDataRepository() {
-        repository.delete(cartId);
-
+    private void thenCartIsDeleted() {
         Optional<CarritoFavoritoEntity> deletedEntity = springDataRepository.findById(cartId);
         assertTrue(deletedEntity.isEmpty());
     }

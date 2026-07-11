@@ -32,42 +32,86 @@ class SummaryRepositoryImplIT extends AbstractIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    private UsuarioEntity cachedUser;
+    private SummaryEntity cachedNewSummary;
+
     @Test
     void findLastByUsuarioIdShouldMapEntity() {
-        UsuarioEntity user = generateUser();
-        generateSummaryEntity(user, LocalDateTime.of(2026, 5, 1, 0, 0), LocalDateTime.of(2026, 5, 15, 23, 59), "{\"resumen\": \"Old Summary\"}");
-        SummaryEntity newSummary = generateSummaryEntity(user, LocalDateTime.of(2026, 6, 1, 0, 0), LocalDateTime.of(2026, 6, 15, 23, 59), "{\"resumen\": \"New Summary\"}");
-        entityManager.flush();
+        givenUserWithMultipleSummaries();
 
-        Optional<Summary> result = repository.findLastByUsuarioId(user.getId());
+        Optional<Summary> result = whenFindingLastSummaryByUserId(this.cachedUser.getId());
 
-        assertTrue(result.isPresent());
-        assertEquals(newSummary.getId(), result.get().getId());
-        assertEquals("{\"resumen\": \"New Summary\"}", result.get().getResumen());
+        thenSummaryMatches(result, this.cachedNewSummary.getId(), "{\"resumen\": \"New Summary\"}");
     }
 
     @Test
     void findAllByUsuarioIdShouldMapEntities() {
-        UsuarioEntity user = generateUser();
-        generateSummaryEntity(user, LocalDateTime.of(2026, 5, 1, 0, 0), LocalDateTime.of(2026, 5, 15, 23, 59), "{\"resumen\": \"Summary 1\"}");
-        generateSummaryEntity(user, LocalDateTime.of(2026, 6, 1, 0, 0), LocalDateTime.of(2026, 6, 15, 23, 59), "{\"resumen\": \"Summary 2\"}");
-        entityManager.flush();
+        givenUserWithMultipleSummaries();
 
-        List<Summary> result = repository.findAllByUsuarioId(user.getId());
+        List<Summary> result = whenFindingAllSummariesByUserId(this.cachedUser.getId());
 
-        assertEquals(2, result.size());
+        thenSummaryListHasSize(result, 2);
     }
 
     @Test
     void saveShouldMapSummaryAndAssignGeneratedId() {
-        UsuarioEntity userEntity = generateUser();
+        UsuarioEntity userEntity = givenUser();
         Summary summaryCommand = createSummaryDomain(userEntity.getId());
 
-        Summary result = repository.save(summaryCommand);
+        Summary result = whenSavingSummary(summaryCommand);
+
+        thenSummaryWasSavedCorrectly(result.getId(), summaryCommand, userEntity.getId());
+    }
+
+    private void givenUserWithMultipleSummaries() {
+        this.cachedUser = generateUser();
+        generateSummaryEntity(this.cachedUser, LocalDateTime.of(2026, 5, 1, 0, 0), LocalDateTime.of(2026, 5, 15, 23, 59), "{\"resumen\": \"Old Summary\"}");
+        this.cachedNewSummary = generateSummaryEntity(this.cachedUser, LocalDateTime.of(2026, 6, 1, 0, 0), LocalDateTime.of(2026, 6, 15, 23, 59), "{\"resumen\": \"New Summary\"}");
         entityManager.flush();
         entityManager.clear();
+    }
 
-        assertSummaryWasSavedCorrectly(result.getId(), summaryCommand, userEntity.getId());
+    private UsuarioEntity givenUser() {
+        UsuarioEntity userEntity = generateUser();
+        entityManager.flush();
+        entityManager.clear();
+        return userEntity;
+    }
+
+    private Optional<Summary> whenFindingLastSummaryByUserId(UUID userId) {
+        return repository.findLastByUsuarioId(userId);
+    }
+
+    private List<Summary> whenFindingAllSummariesByUserId(UUID userId) {
+        return repository.findAllByUsuarioId(userId);
+    }
+
+    private Summary whenSavingSummary(Summary summary) {
+        Summary result = repository.save(summary);
+        entityManager.flush();
+        entityManager.clear();
+        return result;
+    }
+
+    private void thenSummaryMatches(Optional<Summary> result, UUID expectedId, String expectedResumen) {
+        assertTrue(result.isPresent());
+        assertEquals(expectedId, result.get().getId());
+        assertEquals(expectedResumen, result.get().getResumen());
+    }
+
+    private void thenSummaryListHasSize(List<Summary> result, int expectedSize) {
+        assertEquals(expectedSize, result.size());
+    }
+
+    private void thenSummaryWasSavedCorrectly(UUID savedId, Summary originalCommand, UUID expectedUserId) {
+        assertNotNull(savedId);
+        Optional<SummaryEntity> savedOpt = springDataSummaryRepository.findById(savedId);
+        assertTrue(savedOpt.isPresent());
+        SummaryEntity saved = savedOpt.get();
+        assertEquals(originalCommand.getFechaDesde(), saved.getStartDate());
+        assertEquals(originalCommand.getFechaHasta(), saved.getEndDate());
+        assertEquals(originalCommand.getResumen().replace(" ", ""), saved.getSummary().replace(" ", ""));
+        assertEquals(expectedUserId, saved.getUser().getId());
     }
 
     private UsuarioEntity generateUser() {
@@ -101,16 +145,5 @@ class SummaryRepositoryImplIT extends AbstractIntegrationTest {
         summary.setResumen("{\"mensaje\":\"ok\"}");
         summary.setUsuario(user);
         return summary;
-    }
-
-    private void assertSummaryWasSavedCorrectly(UUID savedId, Summary originalCommand, UUID expectedUserId) {
-        assertNotNull(savedId);
-        Optional<SummaryEntity> savedOpt = springDataSummaryRepository.findById(savedId);
-        assertTrue(savedOpt.isPresent());
-        SummaryEntity saved = savedOpt.get();
-        assertEquals(originalCommand.getFechaDesde(), saved.getStartDate());
-        assertEquals(originalCommand.getFechaHasta(), saved.getEndDate());
-        assertEquals(originalCommand.getResumen().replace(" ", ""), saved.getSummary().replace(" ", ""));
-        assertEquals(expectedUserId, saved.getUser().getId());
     }
 }

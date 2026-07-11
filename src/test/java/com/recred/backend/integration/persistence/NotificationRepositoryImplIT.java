@@ -36,19 +36,38 @@ class NotificationRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void findByUserIdMapsEntitiesToDomainAndUsesPagination() {
+        UsuarioEntity user = givenUserWithNotifications();
+
+        List<Notification> unreadResults = whenFindingUnreadNotifications(user.getId());
+        List<Notification> allResults = whenFindingAllNotifications(user.getId());
+
+        thenUnreadNotificationsAreReturnedCorrectly(unreadResults);
+        thenAllNotificationsAreReturnedCorrectly(allResults);
+    }
+
+    private UsuarioEntity givenUserWithNotifications() {
         UsuarioEntity user = generateUserEntity();
-        
         generateNotificationEntity(user, "Unread 1", false, LocalDateTime.now().minusDays(1));
         generateNotificationEntity(user, "Read 1", true, LocalDateTime.now().minusDays(2));
         generateNotificationEntity(user, "Unread 2", false, LocalDateTime.now().minusDays(3));
-        
-        List<Notification> unreadResults = repository.findByUserId(user.getId(), true, 0, 5);
+        return user;
+    }
 
+    private List<Notification> whenFindingUnreadNotifications(UUID userId) {
+        return repository.findByUserId(userId, true, 0, 5);
+    }
+
+    private List<Notification> whenFindingAllNotifications(UUID userId) {
+        return repository.findByUserId(userId, false, 0, 5);
+    }
+
+    private void thenUnreadNotificationsAreReturnedCorrectly(List<Notification> unreadResults) {
         assertEquals(2, unreadResults.size());
         assertFalse(unreadResults.get(0).read());
         assertEquals("Unread 1", unreadResults.get(0).title());
-        
-        List<Notification> allResults = repository.findByUserId(user.getId(), false, 0, 5);
+    }
+
+    private void thenAllNotificationsAreReturnedCorrectly(List<Notification> allResults) {
         assertEquals(3, allResults.size());
     }
 

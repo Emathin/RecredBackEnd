@@ -56,7 +56,7 @@ class PaymentWebhookSecurityIT {
 
         ResultActions result = whenCallingWebhookWithoutAuthentication();
 
-        result.andExpect(status().isOk());
+        thenReturnsOkStatus(result);
     }
 
     private void givenNonPaymentWebhookEvent() {
@@ -68,5 +68,9 @@ class PaymentWebhookSecurityIT {
         return mockMvc.perform(post("/api/v1/payments/webhook")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"));
+    }
+
+    private void thenReturnsOkStatus(ResultActions result) throws Exception {
+        result.andExpect(status().isOk());
     }
 }

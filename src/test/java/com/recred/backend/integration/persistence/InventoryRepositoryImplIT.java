@@ -1,28 +1,29 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.integration.AbstractIntegrationTest;
-
-import com.recred.backend.domain.models.EstadoInventario;
 import com.recred.backend.domain.models.Inventario;
 import com.recred.backend.domain.models.Producto;
-import com.recred.backend.domain.models.TipoManejoInventario;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.ColegioEntity;
 import com.recred.backend.infrastructure.entities.InventarioBuffetEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
-import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.infrastructure.persistence.InventoryRepositoryImpl;
 import com.recred.backend.infrastructure.persistence.SpringDataInventoryRepository;
+import com.recred.backend.integration.AbstractIntegrationTest;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
+import static com.recred.backend.domain.models.EstadoInventario.BAJO_STOCK;
+import static com.recred.backend.domain.models.EstadoInventario.DISPONIBLE;
+import static com.recred.backend.domain.models.RolUsuario.VENDEDOR;
+import static com.recred.backend.domain.models.TipoManejoInventario.STOCK_EXACTO;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -46,99 +47,146 @@ class InventoryRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void save_ShouldCreateNewEntity_WhenNotExists() {
-        BuffetEntity buffet = generateBuffetEntity();
-        ProductoEntity product = generateProductEntity();
-        Inventario inventory = createInventoryDomain(buffet.getId(), product.getId());
-        inventory.setStockActual(10);
-        inventory.setEstado(EstadoInventario.DISPONIBLE);
+        Inventario inventory = givenNewInventoryDomain();
 
-        inventoryRepository.save(inventory);
-        entityManager.flush();
-        entityManager.clear();
+        whenSavingInventory(inventory);
 
-        Optional<InventarioBuffetEntity> saved = springDataInventoryRepository
-                .findByBuffetEntityIdAndProductoEntityId(buffet.getId(), product.getId());
-        
-        assertTrue(saved.isPresent());
-        assertEquals(10, saved.get().getStockActual());
-        assertEquals(EstadoInventario.DISPONIBLE, saved.get().getEstado());
+        thenInventoryIsPersistedWithExpectedStockAndState(inventory, 10, DISPONIBLE);
     }
 
     @Test
     void save_ShouldUpdateEntity_WhenAlreadyExists() {
-        BuffetEntity buffet = generateBuffetEntity();
-        ProductoEntity product = generateProductEntity();
-        generateInventoryEntity(buffet, product, 10);
-        
-        Inventario inventory = createInventoryDomain(buffet.getId(), product.getId());
-        inventory.setStockActual(50);
-        inventory.setEstado(EstadoInventario.DISPONIBLE);
+        Inventario inventory = givenExistingInventoryDomainForUpdate();
 
-        inventoryRepository.save(inventory);
-        entityManager.flush();
-        entityManager.clear();
+        whenSavingInventory(inventory);
 
-        Optional<InventarioBuffetEntity> updated = springDataInventoryRepository
-                .findByBuffetEntityIdAndProductoEntityId(buffet.getId(), product.getId());
-        
-        assertTrue(updated.isPresent());
-        assertEquals(50, updated.get().getStockActual());
+        thenInventoryIsPersistedWithExpectedStock(inventory, 50);
     }
 
     @Test
     void save_WhenSavedStateDoesNotMatchStock_ShouldPersistEffectiveState() {
+        Inventario inventory = givenInventoryDomainWithLowStock();
+
+        whenSavingInventory(inventory);
+
+        thenInventoryIsPersistedWithEffectiveLowStockState(inventory);
+    }
+
+    @Test
+    void findLockedByBuffetAndProduct_ShouldReturnMappedInventory() {
+        InventarioBuffetEntity entity = givenPersistedInventoryEntityWithStock();
+
+        Optional<Inventario> result = whenFindingLockedInventory(entity.getBuffetEntity().getId(), entity.getProductoEntity().getId());
+
+        thenInventoryIsReturnedWithExpectedStock(result, 20);
+    }
+
+    @Test
+    void checkIfProductIsInStock_ShouldReturnTrueIfAvailable() {
+        InventarioBuffetEntity entity = givenPersistedInventoryEntityWithStock();
+
+        boolean result = whenCheckingIfProductIsInStock(entity.getProductoEntity().getId(), entity.getBuffetEntity().getId());
+
+        thenProductIsInStock(result);
+    }
+
+    @Test
+    void findAvailableProductsByBuffet_ShouldMapAvailableProductsToDomain() {
+        InventarioBuffetEntity entity = givenPersistedInventoryEntityWithStock();
+
+        List<Producto> result = whenFindingAvailableProducts(entity.getBuffetEntity().getId());
+
+        thenAvailableProductsAreReturned(result, entity.getProductoEntity().getNombre());
+    }
+
+    private Inventario givenNewInventoryDomain() {
+        BuffetEntity buffet = generateBuffetEntity();
+        ProductoEntity product = generateProductEntity();
+        Inventario inventory = createInventoryDomain(buffet.getId(), product.getId());
+        inventory.setStockActual(10);
+        inventory.setEstado(DISPONIBLE);
+        return inventory;
+    }
+
+    private Inventario givenExistingInventoryDomainForUpdate() {
+        BuffetEntity buffet = generateBuffetEntity();
+        ProductoEntity product = generateProductEntity();
+        generateInventoryEntity(buffet, product, 10);
+        Inventario inventory = createInventoryDomain(buffet.getId(), product.getId());
+        inventory.setStockActual(50);
+        inventory.setEstado(DISPONIBLE);
+        return inventory;
+    }
+
+    private Inventario givenInventoryDomainWithLowStock() {
         BuffetEntity buffet = generateBuffetEntity();
         ProductoEntity product = generateProductEntity();
         Inventario inventory = createInventoryDomain(buffet.getId(), product.getId());
         inventory.setStockActual(4);
         inventory.setStockReservado(0);
         inventory.setStockMinimo(5);
-        inventory.setEstado(EstadoInventario.DISPONIBLE);
+        inventory.setEstado(DISPONIBLE);
+        return inventory;
+    }
 
+    private InventarioBuffetEntity givenPersistedInventoryEntityWithStock() {
+        BuffetEntity buffet = generateBuffetEntity();
+        ProductoEntity product = generateProductEntity();
+        return generateInventoryEntity(buffet, product, 20);
+    }
+
+    private void whenSavingInventory(Inventario inventory) {
         inventoryRepository.save(inventory);
         entityManager.flush();
         entityManager.clear();
+    }
 
+    private Optional<Inventario> whenFindingLockedInventory(UUID buffetId, UUID productId) {
+        return inventoryRepository.findLockedByBuffetAndProduct(buffetId, productId);
+    }
+
+    private boolean whenCheckingIfProductIsInStock(UUID productId, UUID buffetId) {
+        return inventoryRepository.checkIfProductIsInStock(productId, buffetId);
+    }
+
+    private List<Producto> whenFindingAvailableProducts(UUID buffetId) {
+        return inventoryRepository.findAvailableProductsByBuffet(buffetId);
+    }
+
+    private void thenInventoryIsPersistedWithExpectedStockAndState(Inventario inventory, int expectedStock, com.recred.backend.domain.models.EstadoInventario expectedState) {
         Optional<InventarioBuffetEntity> saved = springDataInventoryRepository
-                .findByBuffetEntityIdAndProductoEntityId(buffet.getId(), product.getId());
-        
+                .findByBuffetEntityIdAndProductoEntityId(inventory.getBuffetId(), inventory.getProductoId());
         assertTrue(saved.isPresent());
-        assertEquals(EstadoInventario.BAJO_STOCK, saved.get().getEstado(), "Should recalculate state effectively");
+        assertEquals(expectedStock, saved.get().getStockActual());
+        assertEquals(expectedState, saved.get().getEstado());
     }
 
-    @Test
-    void findLockedByBuffetAndProduct_ShouldReturnMappedInventory() {
-        BuffetEntity buffet = generateBuffetEntity();
-        ProductoEntity product = generateProductEntity();
-        generateInventoryEntity(buffet, product, 20);
+    private void thenInventoryIsPersistedWithExpectedStock(Inventario inventory, int expectedStock) {
+        Optional<InventarioBuffetEntity> updated = springDataInventoryRepository
+                .findByBuffetEntityIdAndProductoEntityId(inventory.getBuffetId(), inventory.getProductoId());
+        assertTrue(updated.isPresent());
+        assertEquals(expectedStock, updated.get().getStockActual());
+    }
 
-        Optional<Inventario> result = inventoryRepository.findLockedByBuffetAndProduct(buffet.getId(), product.getId());
+    private void thenInventoryIsPersistedWithEffectiveLowStockState(Inventario inventory) {
+        Optional<InventarioBuffetEntity> saved = springDataInventoryRepository
+                .findByBuffetEntityIdAndProductoEntityId(inventory.getBuffetId(), inventory.getProductoId());
+        assertTrue(saved.isPresent());
+        assertEquals(BAJO_STOCK, saved.get().getEstado(), "Should recalculate state effectively");
+    }
 
+    private void thenInventoryIsReturnedWithExpectedStock(Optional<Inventario> result, int expectedStock) {
         assertTrue(result.isPresent());
-        assertEquals(20, result.get().getStockActual());
+        assertEquals(expectedStock, result.get().getStockActual());
     }
 
-    @Test
-    void checkIfProductIsInStock_ShouldReturnTrueIfAvailable() {
-        BuffetEntity buffet = generateBuffetEntity();
-        ProductoEntity product = generateProductEntity();
-        generateInventoryEntity(buffet, product, 15);
-
-        boolean result = inventoryRepository.checkIfProductIsInStock(product.getId(), buffet.getId());
-
+    private void thenProductIsInStock(boolean result) {
         assertTrue(result);
     }
 
-    @Test
-    void findAvailableProductsByBuffet_ShouldMapAvailableProductsToDomain() {
-        BuffetEntity buffet = generateBuffetEntity();
-        ProductoEntity product = generateProductEntity();
-        generateInventoryEntity(buffet, product, 15);
-
-        List<Producto> result = inventoryRepository.findAvailableProductsByBuffet(buffet.getId());
-
+    private void thenAvailableProductsAreReturned(List<Producto> result, String expectedProductName) {
         assertFalse(result.isEmpty());
-        assertEquals(product.getNombre(), result.get(0).getNombre());
+        assertEquals(expectedProductName, result.get(0).getNombre());
     }
 
     private ColegioEntity generateSchoolEntity() {
@@ -160,7 +208,7 @@ class InventoryRepositoryImplIT extends AbstractIntegrationTest {
             user.setNombre("Vendor Name");
             user.setApellido("Vendor Surname");
             user.setEmail("vendor.inv@test.com");
-            user.setRol(RolUsuario.VENDEDOR);
+            user.setRol(VENDEDOR);
             user.setActivo(true);
             entityManager.persist(user);
             this.cachedUser = user;
@@ -180,9 +228,9 @@ class InventoryRepositoryImplIT extends AbstractIntegrationTest {
     }
 
     private com.recred.backend.infrastructure.entities.CategoriaProductoEntity generateCategoryEntity() {
-        com.recred.backend.infrastructure.entities.CategoriaProductoEntity cat = 
+        com.recred.backend.infrastructure.entities.CategoriaProductoEntity cat =
                 new com.recred.backend.infrastructure.entities.CategoriaProductoEntity();
-        cat.setDescripcion("Snacks-" + java.util.UUID.randomUUID().toString());
+        cat.setDescripcion("Snacks-" + UUID.randomUUID().toString());
         cat.setActivo(true);
         entityManager.persist(cat);
         return cat;
@@ -210,16 +258,16 @@ class InventoryRepositoryImplIT extends AbstractIntegrationTest {
         entity.setStockActual(stock);
         entity.setStockReservado(0);
         entity.setStockMinimo(5);
-        entity.setEstado(EstadoInventario.DISPONIBLE);
-        entity.setTipoManejo(TipoManejoInventario.STOCK_EXACTO);
+        entity.setEstado(DISPONIBLE);
+        entity.setTipoManejo(STOCK_EXACTO);
         return springDataInventoryRepository.save(entity);
     }
 
-    private Inventario createInventoryDomain(java.util.UUID buffetId, java.util.UUID productId) {
+    private Inventario createInventoryDomain(UUID buffetId, UUID productId) {
         Inventario inventory = new Inventario();
         inventory.setBuffetId(buffetId);
         inventory.setProductoId(productId);
-        inventory.setTipoManejo(TipoManejoInventario.STOCK_EXACTO);
+        inventory.setTipoManejo(STOCK_EXACTO);
         return inventory;
     }
 }

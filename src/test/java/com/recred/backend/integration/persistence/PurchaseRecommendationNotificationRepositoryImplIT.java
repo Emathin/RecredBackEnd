@@ -46,21 +46,38 @@ class PurchaseRecommendationNotificationRepositoryImplIT extends AbstractIntegra
     @Autowired
     private ApplicationEvents applicationEvents;
 
+    private UsuarioEntity cachedUser;
+    private AlumnoEntity cachedStudent;
+    private ProductoEntity cachedProduct;
+    private SugerenciaIAEntity cachedSuggestion;
+
     @Test
     void saveShouldPersistRecommendationNotificationAndPublishPushEvent() {
-        UsuarioEntity userEntity = generateUserEntity();
-        AlumnoEntity studentEntity = generateStudentEntity(userEntity);
-        ProductoEntity productEntity = generateProductEntity();
-        SugerenciaIAEntity suggestionEntity = generateSuggestionEntity(productEntity, studentEntity);
+        PurchaseRecommendationResult recommendation = givenPurchaseRecommendationContext();
 
-        PurchaseRecommendationResult recommendation = createRecommendation(studentEntity.getId(), productEntity.getId());
+        whenSavingRecommendation(recommendation);
 
-        repository.save(recommendation, suggestionEntity, userEntity.getId());
+        thenNotificationIsPersistedAndPushEventPublished();
+    }
+
+    private PurchaseRecommendationResult givenPurchaseRecommendationContext() {
+        this.cachedUser = generateUserEntity();
+        this.cachedStudent = generateStudentEntity(this.cachedUser);
+        this.cachedProduct = generateProductEntity();
+        this.cachedSuggestion = generateSuggestionEntity(this.cachedProduct, this.cachedStudent);
+
+        return createRecommendation(this.cachedStudent.getId(), this.cachedProduct.getId());
+    }
+
+    private void whenSavingRecommendation(PurchaseRecommendationResult recommendation) {
+        repository.save(recommendation, this.cachedSuggestion, this.cachedUser.getId());
         entityManager.flush();
         entityManager.clear();
+    }
 
-        NotificacionEntity savedNotification = assertNotificationPersisted(userEntity, studentEntity, productEntity, suggestionEntity);
-        assertPushNotificationEventPublished(userEntity, studentEntity, productEntity, suggestionEntity, savedNotification);
+    private void thenNotificationIsPersistedAndPushEventPublished() {
+        NotificacionEntity savedNotification = assertNotificationPersisted(this.cachedUser, this.cachedStudent, this.cachedProduct, this.cachedSuggestion);
+        assertPushNotificationEventPublished(this.cachedUser, this.cachedStudent, this.cachedProduct, this.cachedSuggestion, savedNotification);
     }
 
     private NotificacionEntity assertNotificationPersisted(UsuarioEntity user, AlumnoEntity student, ProductoEntity product, SugerenciaIAEntity suggestion) {

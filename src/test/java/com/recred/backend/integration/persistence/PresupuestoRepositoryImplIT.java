@@ -1,6 +1,11 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.domain.models.*;
+import com.recred.backend.domain.models.BudgetPeriod;
+import com.recred.backend.domain.models.CategoriaProducto;
+import com.recred.backend.domain.models.PeriodoPresupuesto;
+import com.recred.backend.domain.models.PresupuestoAlumno;
+import com.recred.backend.domain.models.ReglaPresupuestoCategoria;
+import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
 import com.recred.backend.infrastructure.entities.PresupuestoAlumnoEntity;
@@ -41,71 +46,118 @@ class PresupuestoRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void findActivoByAlumnoId_SiExiste_RetornaDominioMapeado() {
-        AlumnoEntity student = generateStudentEntity();
-        UsuarioEntity parent = generateParentUserEntity();
-        PresupuestoAlumnoEntity entity = generateBudgetEntity(student, parent, true);
+        PresupuestoAlumnoEntity entity = givenActiveBudgetForStudent();
 
-        Optional<PresupuestoAlumno> result = repository.findActivoByAlumnoId(student.getId());
+        Optional<PresupuestoAlumno> result = whenFindingActiveBudget(entity.getAlumnoEntity().getId());
 
-        assertTrue(result.isPresent());
-        assertEquals(entity.getId(), result.get().getId());
+        thenActiveBudgetIsReturned(result, entity.getId());
     }
 
     @Test
     void findActivoByAlumnoId_SiNoExiste_RetornaEmpty() {
-        AlumnoEntity student = generateStudentEntity();
+        AlumnoEntity student = givenStudentWithoutBudget();
 
-        Optional<PresupuestoAlumno> result = repository.findActivoByAlumnoId(student.getId());
+        Optional<PresupuestoAlumno> result = whenFindingActiveBudget(student.getId());
 
-        assertTrue(result.isEmpty());
+        thenBudgetIsNotFound(result);
     }
 
     @Test
     void save_WhenBudgetHasReferencesAndRules_ShouldMapThemToEntity() {
-        AlumnoEntity student = generateStudentEntity();
-        UsuarioEntity parent = generateParentUserEntity();
-        CategoriaProductoEntity category = generateCategoryEntity();
+        PresupuestoAlumno domain = givenNewBudgetDomainWithRules();
 
-        PresupuestoAlumno domain = createDomainBudget(null, student.getId(), parent.getId(), new BigDecimal("10000.00"), PeriodoPresupuesto.MENSUAL, category.getId());
+        PresupuestoAlumno saved = whenSavingBudget(domain);
 
-        PresupuestoAlumno saved = repository.save(domain);
-        entityManager.flush();
-        entityManager.clear();
-
-        assertNotNull(saved.getId());
-
-        assertBudgetSavedCorrectly(saved, student, parent, category);
+        thenBudgetIsSavedCorrectlyWithRules(saved, domain);
     }
 
     @Test
     void save_WhenExistingBudgetHasRules_ShouldClearAndFlushBeforeReplacing() {
-        AlumnoEntity student = generateStudentEntity();
-        UsuarioEntity parent = generateParentUserEntity();
-        CategoriaProductoEntity cat1 = generateCategoryEntity();
-        
-        PresupuestoAlumnoEntity existingEntity = generateBudgetEntity(student, parent, true);
-        
-        PresupuestoAlumno domain = createDomainBudget(existingEntity.getId(), student.getId(), parent.getId(), new BigDecimal("5000.00"), PeriodoPresupuesto.MENSUAL, cat1.getId());
+        PresupuestoAlumno domain = givenExistingBudgetForUpdateWithRules();
 
-        repository.save(domain);
-        entityManager.flush();
-        entityManager.clear();
+        whenSavingBudget(domain);
 
-        PresupuestoAlumnoEntity updatedEntity = springDataRepository.findById(existingEntity.getId()).get();
-        assertEquals(1, updatedEntity.getReglasCategoria().size());
-        assertEquals(cat1.getId(), updatedEntity.getReglasCategoria().get(0).getCategoria().getId());
+        thenExistingBudgetRulesAreReplaced(domain);
     }
 
     @Test
     void findById_WhenBudgetExists_ShouldReturnDomain() {
+        PresupuestoAlumnoEntity entity = givenActiveBudgetForStudent();
+
+        Optional<PresupuestoAlumno> result = whenFindingBudgetById(entity.getId());
+
+        thenActiveBudgetIsReturned(result, entity.getId());
+    }
+
+    private PresupuestoAlumnoEntity givenActiveBudgetForStudent() {
         AlumnoEntity student = generateStudentEntity();
         UsuarioEntity parent = generateParentUserEntity();
-        PresupuestoAlumnoEntity entity = generateBudgetEntity(student, parent, true);
+        return generateBudgetEntity(student, parent, true);
+    }
 
-        Optional<PresupuestoAlumno> result = repository.findById(entity.getId());
+    private AlumnoEntity givenStudentWithoutBudget() {
+        return generateStudentEntity();
+    }
 
+    private PresupuestoAlumno givenNewBudgetDomainWithRules() {
+        AlumnoEntity student = generateStudentEntity();
+        UsuarioEntity parent = generateParentUserEntity();
+        CategoriaProductoEntity category = generateCategoryEntity();
+        return createDomainBudget(null, student.getId(), parent.getId(), new BigDecimal("10000.00"), category.getId());
+    }
+
+    private PresupuestoAlumno givenExistingBudgetForUpdateWithRules() {
+        AlumnoEntity student = generateStudentEntity();
+        UsuarioEntity parent = generateParentUserEntity();
+        CategoriaProductoEntity newCategory = generateCategoryEntity();
+        
+        PresupuestoAlumnoEntity existingEntity = generateBudgetEntity(student, parent, true);
+        
+        return createDomainBudget(existingEntity.getId(), student.getId(), parent.getId(), new BigDecimal("5000.00"), newCategory.getId());
+    }
+
+    private Optional<PresupuestoAlumno> whenFindingActiveBudget(UUID studentId) {
+        return repository.findActivoByAlumnoId(studentId);
+    }
+
+    private Optional<PresupuestoAlumno> whenFindingBudgetById(UUID budgetId) {
+        return repository.findById(budgetId);
+    }
+
+    private PresupuestoAlumno whenSavingBudget(PresupuestoAlumno domain) {
+        PresupuestoAlumno saved = repository.save(domain);
+        entityManager.flush();
+        entityManager.clear();
+        return saved;
+    }
+
+    private void thenActiveBudgetIsReturned(Optional<PresupuestoAlumno> result, UUID expectedId) {
         assertTrue(result.isPresent());
-        assertEquals(entity.getId(), result.get().getId());
+        assertEquals(expectedId, result.get().getId());
+    }
+
+    private void thenBudgetIsNotFound(Optional<PresupuestoAlumno> result) {
+        assertTrue(result.isEmpty());
+    }
+
+    private void thenBudgetIsSavedCorrectlyWithRules(PresupuestoAlumno saved, PresupuestoAlumno domain) {
+        assertNotNull(saved.getId());
+        Optional<PresupuestoAlumnoEntity> entityOpt = springDataRepository.findById(saved.getId());
+        assertTrue(entityOpt.isPresent());
+        PresupuestoAlumnoEntity entity = entityOpt.get();
+
+        assertEquals(domain.getAlumnoId(), entity.getAlumnoEntity().getId());
+        assertEquals(domain.getCreadoPorUsuarioId(), entity.getCreadoPorUsuarioEntity().getId());
+        assertEquals(domain.getMontoLimiteGeneral(), entity.getMontoLimite());
+        assertEquals(1, entity.getReglasCategoria().size());
+        assertEquals(domain.getReglasCategoria().get(0).getCategoria().getId(), entity.getReglasCategoria().get(0).getCategoria().getId());
+        assertEquals(entity, entity.getReglasCategoria().get(0).getPresupuesto());
+    }
+
+    private void thenExistingBudgetRulesAreReplaced(PresupuestoAlumno domain) {
+        PresupuestoAlumnoEntity updatedEntity = springDataRepository.findById(domain.getId()).get();
+        assertEquals(1, updatedEntity.getReglasCategoria().size());
+        assertEquals(domain.getReglasCategoria().get(0).getCategoria().getId(), updatedEntity.getReglasCategoria().get(0).getCategoria().getId());
     }
 
     private UsuarioEntity generateStudentUserEntity() {
@@ -168,13 +220,13 @@ class PresupuestoRepositoryImplIT extends AbstractIntegrationTest {
         return springDataRepository.save(entity);
     }
 
-    private PresupuestoAlumno createDomainBudget(UUID id, UUID studentId, UUID parentId, BigDecimal limit, PeriodoPresupuesto period, UUID categoryId) {
+    private PresupuestoAlumno createDomainBudget(UUID id, UUID studentId, UUID parentId, BigDecimal limit, UUID categoryId) {
         PresupuestoAlumno domain = new PresupuestoAlumno();
         domain.setId(id);
         domain.setAlumnoId(studentId);
         domain.setCreadoPorUsuarioId(parentId);
         domain.setMontoLimiteGeneral(limit);
-        domain.setPeriodo(period);
+        domain.setPeriodo(PeriodoPresupuesto.MENSUAL);
         domain.setFechaInicio(LocalDate.now());
         if (categoryId != null) {
             domain.setReglasCategoria(List.of(rule(categoryId)));
@@ -192,18 +244,5 @@ class PresupuestoRepositoryImplIT extends AbstractIntegrationTest {
                 new BigDecimal("3000.00"),
                 true
         );
-    }
-
-    private void assertBudgetSavedCorrectly(PresupuestoAlumno saved, AlumnoEntity student, UsuarioEntity parent, CategoriaProductoEntity category) {
-        Optional<PresupuestoAlumnoEntity> entityOpt = springDataRepository.findById(saved.getId());
-        assertTrue(entityOpt.isPresent());
-        PresupuestoAlumnoEntity entity = entityOpt.get();
-
-        assertEquals(student.getId(), entity.getAlumnoEntity().getId());
-        assertEquals(parent.getId(), entity.getCreadoPorUsuarioEntity().getId());
-        assertEquals(new BigDecimal("10000.00"), entity.getMontoLimite());
-        assertEquals(1, entity.getReglasCategoria().size());
-        assertEquals(category.getId(), entity.getReglasCategoria().get(0).getCategoria().getId());
-        assertEquals(entity, entity.getReglasCategoria().get(0).getPresupuesto());
     }
 }
