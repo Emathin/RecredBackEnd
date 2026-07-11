@@ -33,26 +33,53 @@ class UserConsumptionAccessJpaRepositoryIT extends AbstractIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    private TutorEntity cachedTutor;
+    private AlumnoEntity cachedStudent;
+
     @Test
     void tutorCanAccessStudentWhenAssociationExists() {
-        TutorEntity tutor = generateTutor();
-        AlumnoEntity student = generateStudent();
-        associateTutorAndStudent(tutor, student);
-        entityManager.flush();
-        entityManager.clear();
+        givenTutorAndStudentWithAssociation();
 
-        assertTrue(repository.tutorCanAccessStudent(tutor.getUsuario().getId(), student.getId()));
+        boolean result = whenCheckingAccess();
+
+        thenAccessIsGranted(result);
     }
 
     @Test
     void tutorCannotAccessStudentWhenAssociationDoesNotExist() {
+        givenTutorAndStudentWithoutAssociation();
 
-        TutorEntity tutor = generateTutor();
-        AlumnoEntity student = generateStudent();
+        boolean result = whenCheckingAccess();
+
+        thenAccessIsDenied(result);
+    }
+
+    private void givenTutorAndStudentWithAssociation() {
+        this.cachedTutor = generateTutor();
+        this.cachedStudent = generateStudent();
+        this.cachedTutor.addHijo(this.cachedStudent);
+        tutorRepository.save(this.cachedTutor);
         entityManager.flush();
         entityManager.clear();
+    }
 
-        assertFalse(repository.tutorCanAccessStudent(tutor.getUsuario().getId(), student.getId()));
+    private void givenTutorAndStudentWithoutAssociation() {
+        this.cachedTutor = generateTutor();
+        this.cachedStudent = generateStudent();
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private boolean whenCheckingAccess() {
+        return repository.tutorCanAccessStudent(this.cachedTutor.getUsuario().getId(), this.cachedStudent.getId());
+    }
+
+    private void thenAccessIsGranted(boolean result) {
+        assertTrue(result);
+    }
+
+    private void thenAccessIsDenied(boolean result) {
+        assertFalse(result);
     }
 
     private UsuarioEntity generateUser(RolUsuario role) {
@@ -79,10 +106,5 @@ class UserConsumptionAccessJpaRepositoryIT extends AbstractIntegrationTest {
         student.setUsuario(generateUser(RolUsuario.ALUMNO));
         student.setActivo(true);
         return alumnoRepository.save(student);
-    }
-
-    private void associateTutorAndStudent(TutorEntity tutor, AlumnoEntity student) {
-        tutor.addHijo(student);
-        tutorRepository.save(tutor);
     }
 }

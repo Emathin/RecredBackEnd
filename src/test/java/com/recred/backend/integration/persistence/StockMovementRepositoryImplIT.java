@@ -31,79 +31,6 @@ class StockMovementRepositoryImplIT extends AbstractIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
-    @Test
-    void saveShouldMapMovementAndUserReference() {
-        UsuarioEntity user = generateUser();
-        InventarioBuffetEntity inventory = generateInventory();
-        UUID purchaseId = UUID.randomUUID();
-        
-        MovimientoStock movement = createStockMovement(
-                inventory.getId(), TipoMovimientoStock.INGRESO, 5, 1, 6, "Load", user.getId(), purchaseId);
-
-        MovimientoStock result = repository.save(movement);
-        entityManager.flush();
-        entityManager.clear();
-
-        assertNotNull(result.id());
-        MovimientoStockEntity saved = springDataRepository.findById(result.id()).orElseThrow();
-        
-        assertEquals(inventory.getId(), saved.getInventario().getId());
-        assertEquals(TipoMovimientoStock.INGRESO, saved.getTipo());
-        assertEquals(5, saved.getCantidad());
-        assertEquals(1, saved.getCantidadAnterior());
-        assertEquals(6, saved.getCantidadNueva());
-        assertEquals("Load", saved.getMotivo());
-        assertEquals(user.getId(), saved.getCreadoPorUsuarioEntity().getId());
-        assertEquals(purchaseId, saved.getCompraId());
-    }
-
-    @Test
-    void saveShouldHandleNullUserId() {
-        InventarioBuffetEntity inventory = generateInventory();
-        
-        MovimientoStock movement = createStockMovement(
-                inventory.getId(), TipoMovimientoStock.AJUSTE, 2, 4, 6, "Adjustment", null, null);
-
-        MovimientoStock result = repository.save(movement);
-        entityManager.flush();
-        entityManager.clear();
-
-        MovimientoStockEntity saved = springDataRepository.findById(result.id()).orElseThrow();
-        assertNull(saved.getCreadoPorUsuarioEntity());
-        assertNull(result.usuarioId());
-    }
-
-    @Test
-    void findByInventoryIdShouldMapEntitiesToDomain() {
-        UsuarioEntity user = generateUser();
-        InventarioBuffetEntity inventory = generateInventory();
-        generateMovementEntity(inventory, user, TipoMovimientoStock.VENTA);
-
-        List<MovimientoStock> result = repository.findByInventoryId(inventory.getId());
-
-        assertEquals(1, result.size());
-        assertEquals(inventory.getId(), result.get(0).inventarioId());
-        assertEquals(user.getId(), result.get(0).usuarioId());
-    }
-
-    @Test
-    void findByBuffetAndDateRangeShouldMapEntitiesToDomain() {
-        InventarioBuffetEntity inventory = generateInventory();
-        LocalDateTime start = LocalDateTime.now().minusDays(1);
-        LocalDateTime end = LocalDateTime.now().plusDays(1);
-        
-        generateMovementEntity(inventory, null, TipoMovimientoStock.AJUSTE);
-
-        List<MovimientoStock> result = repository.findByBuffetAndDateRange(
-                inventory.getBuffetEntity().getId(),
-                start,
-                end
-        );
-
-        assertEquals(1, result.size());
-        assertNull(result.get(0).usuarioId());
-    }
-
     private UsuarioEntity cachedAdmin;
     private ColegioEntity cachedSchool;
     private KiosqueroEntity cachedVendor;
@@ -111,6 +38,118 @@ class StockMovementRepositoryImplIT extends AbstractIntegrationTest {
     private CategoriaProductoEntity cachedCategory;
     private ProductoEntity cachedProduct;
 
+    @Test
+    void saveShouldMapMovementAndUserReference() {
+        MovimientoStock movement = givenStockMovementDomain();
+        
+        MovimientoStock result = whenSavingStockMovement(movement);
+        
+        thenStockMovementIsPersistedCorrectly(result, movement.inventarioId(), movement.usuarioId(), movement.compraId());
+    }
+
+    @Test
+    void saveShouldHandleNullUserId() {
+        MovimientoStock movement = givenStockMovementWithoutUser();
+        
+        MovimientoStock result = whenSavingStockMovement(movement);
+        
+        thenStockMovementHasNoUserReference(result);
+    }
+
+    @Test
+    void findByInventoryIdShouldMapEntitiesToDomain() {
+        InventarioBuffetEntity inventory = givenInventoryWithMovement();
+
+        List<MovimientoStock> result = whenFindingMovementsByInventoryId(inventory.getId());
+
+        thenMovementIsMappedToDomain(result, inventory.getId());
+    }
+
+    @Test
+    void findByBuffetAndDateRangeShouldMapEntitiesToDomain() {
+        InventarioBuffetEntity inventory = givenInventoryWithMovementInsideDateRange();
+        
+        List<MovimientoStock> result = whenFindingMovementsByBuffetAndDateRange(
+                inventory.getBuffetEntity().getId(),
+                LocalDateTime.now().minusDays(1),
+                LocalDateTime.now().plusDays(1)
+        );
+
+        thenMovementWithoutUserIsMappedToDomain(result);
+    }
+
+    private MovimientoStock givenStockMovementDomain() {
+        UsuarioEntity user = generateUser();
+        InventarioBuffetEntity inventory = generateInventory();
+        UUID purchaseId = UUID.randomUUID();
+        return createStockMovement(
+                inventory.getId(), TipoMovimientoStock.INGRESO, 5, 1, 6, "Load", user.getId(), purchaseId);
+    }
+
+    private MovimientoStock givenStockMovementWithoutUser() {
+        InventarioBuffetEntity inventory = generateInventory();
+        return createStockMovement(
+                inventory.getId(), TipoMovimientoStock.AJUSTE, 2, 4, 6, "Adjustment", null, null);
+    }
+
+    private InventarioBuffetEntity givenInventoryWithMovement() {
+        UsuarioEntity user = generateUser();
+        InventarioBuffetEntity inventory = generateInventory();
+        generateMovementEntity(inventory, user, TipoMovimientoStock.VENTA);
+        return inventory;
+    }
+
+    private InventarioBuffetEntity givenInventoryWithMovementInsideDateRange() {
+        InventarioBuffetEntity inventory = generateInventory();
+        generateMovementEntity(inventory, null, TipoMovimientoStock.AJUSTE);
+        return inventory;
+    }
+
+    private MovimientoStock whenSavingStockMovement(MovimientoStock movement) {
+        MovimientoStock result = repository.save(movement);
+        entityManager.flush();
+        entityManager.clear();
+        return result;
+    }
+
+    private List<MovimientoStock> whenFindingMovementsByInventoryId(UUID inventoryId) {
+        return repository.findByInventoryId(inventoryId);
+    }
+
+    private List<MovimientoStock> whenFindingMovementsByBuffetAndDateRange(UUID buffetId, LocalDateTime start, LocalDateTime end) {
+        return repository.findByBuffetAndDateRange(buffetId, start, end);
+    }
+
+    private void thenStockMovementIsPersistedCorrectly(MovimientoStock result, UUID expectedInventoryId, UUID expectedUserId, UUID expectedPurchaseId) {
+        assertNotNull(result.id());
+        MovimientoStockEntity saved = springDataRepository.findById(result.id()).orElseThrow();
+        
+        assertEquals(expectedInventoryId, saved.getInventario().getId());
+        assertEquals(TipoMovimientoStock.INGRESO, saved.getTipo());
+        assertEquals(5, saved.getCantidad());
+        assertEquals(1, saved.getCantidadAnterior());
+        assertEquals(6, saved.getCantidadNueva());
+        assertEquals("Load", saved.getMotivo());
+        assertEquals(expectedUserId, saved.getCreadoPorUsuarioEntity().getId());
+        assertEquals(expectedPurchaseId, saved.getCompraId());
+    }
+
+    private void thenStockMovementHasNoUserReference(MovimientoStock result) {
+        MovimientoStockEntity saved = springDataRepository.findById(result.id()).orElseThrow();
+        assertNull(saved.getCreadoPorUsuarioEntity());
+        assertNull(result.usuarioId());
+    }
+
+    private void thenMovementIsMappedToDomain(List<MovimientoStock> result, UUID expectedInventoryId) {
+        assertEquals(1, result.size());
+        assertEquals(expectedInventoryId, result.get(0).inventarioId());
+        assertNotNull(result.get(0).usuarioId());
+    }
+
+    private void thenMovementWithoutUserIsMappedToDomain(List<MovimientoStock> result) {
+        assertEquals(1, result.size());
+        assertNull(result.get(0).usuarioId());
+    }
 
     private MovimientoStock createStockMovement(
             UUID inventoryId, TipoMovimientoStock type, int quantity,

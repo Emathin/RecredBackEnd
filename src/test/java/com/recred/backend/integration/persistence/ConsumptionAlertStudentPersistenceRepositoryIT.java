@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static com.recred.backend.domain.models.RolUsuario.ALUMNO;
+import static com.recred.backend.domain.models.RolUsuario.PADRE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -32,14 +34,29 @@ class ConsumptionAlertStudentPersistenceRepositoryIT extends AbstractIntegration
 
     @Test
     void findActiveCandidates_ShouldMapActiveStudentsWithActiveTutors() {
-        AlumnoEntity student = generateStudentEntity("John", "Doe");
+        AlumnoEntity student = givenStudentWithActiveAndInactiveTutors("John", "Doe");
         
+        List<ConsumptionAlertCandidate> candidates = whenFindingActiveCandidates();
+
+        thenCandidateIsMappedProperly(candidates, student, "John Doe");
+    }
+
+    @Test
+    void findActiveCandidates_ShouldUseDefaultNameWhenStudentUserNameIsBlank() {
+        AlumnoEntity student = givenStudentWithBlankNameAndActiveTutor();
+        
+        List<ConsumptionAlertCandidate> candidates = whenFindingActiveCandidates();
+
+        thenCandidateIsMappedWithDefaultName(candidates, student);
+    }
+
+    private AlumnoEntity givenStudentWithActiveAndInactiveTutors(String firstName, String lastName) {
+        AlumnoEntity student = generateStudentEntity(firstName, lastName);
         TutorEntity activeTutor = generateTutorEntity("Anna", "Doe", true, true, "cognito-tutor-active");
         TutorEntity inactiveTutor = generateTutorEntity("Louis", "Doe", false, true, "cognito-tutor-inactive");
         
         student.getTutores().add(activeTutor);
         student.getTutores().add(inactiveTutor);
-        
         activeTutor.getHijos().add(student);
         inactiveTutor.getHijos().add(student);
         
@@ -48,18 +65,10 @@ class ConsumptionAlertStudentPersistenceRepositoryIT extends AbstractIntegration
         entityManager.merge(inactiveTutor);
         entityManager.flush();
         entityManager.clear();
-
-        List<ConsumptionAlertCandidate> candidates = repository.findActiveCandidates();
-
-        assertFalse(candidates.isEmpty());
-        ConsumptionAlertCandidate candidate = candidates.stream().filter(c -> c.studentId().equals(student.getId())).findFirst().orElseThrow();
-        assertEquals(student.getUsuario().getId(), candidate.studentUserId());
-        assertEquals("John Doe", candidate.studentName());
-        assertTrue(candidate.tutors().stream().anyMatch(t -> "Anna Doe".equals(t.name())));
+        return student;
     }
 
-    @Test
-    void findActiveCandidates_ShouldUseDefaultNameWhenStudentUserNameIsBlank() {
+    private AlumnoEntity givenStudentWithBlankNameAndActiveTutor() {
         AlumnoEntity student = generateStudentEntity(" ", " ");
         TutorEntity activeTutor = generateTutorEntity("Anna", "Doe", true, true, "cognito-tutor-active-2");
         student.getTutores().add(activeTutor);
@@ -69,9 +78,22 @@ class ConsumptionAlertStudentPersistenceRepositoryIT extends AbstractIntegration
         entityManager.merge(activeTutor);
         entityManager.flush();
         entityManager.clear();
+        return student;
+    }
 
-        List<ConsumptionAlertCandidate> candidates = repository.findActiveCandidates();
+    private List<ConsumptionAlertCandidate> whenFindingActiveCandidates() {
+        return repository.findActiveCandidates();
+    }
 
+    private void thenCandidateIsMappedProperly(List<ConsumptionAlertCandidate> candidates, AlumnoEntity student, String expectedName) {
+        assertFalse(candidates.isEmpty());
+        ConsumptionAlertCandidate candidate = candidates.stream().filter(c -> c.studentId().equals(student.getId())).findFirst().orElseThrow();
+        assertEquals(student.getUsuario().getId(), candidate.studentUserId());
+        assertEquals(expectedName, candidate.studentName());
+        assertTrue(candidate.tutors().stream().anyMatch(t -> "Anna Doe".equals(t.name())));
+    }
+
+    private void thenCandidateIsMappedWithDefaultName(List<ConsumptionAlertCandidate> candidates, AlumnoEntity student) {
         assertFalse(candidates.isEmpty());
         ConsumptionAlertCandidate candidate = candidates.stream().filter(c -> c.studentId().equals(student.getId())).findFirst().orElseThrow();
         assertEquals("el alumno", candidate.studentName());
@@ -84,7 +106,7 @@ class ConsumptionAlertStudentPersistenceRepositoryIT extends AbstractIntegration
             user.setNombre(firstName);
             user.setApellido(lastName);
             user.setEmail("student.candidate@test.com");
-            user.setRol(RolUsuario.ALUMNO);
+            user.setRol(ALUMNO);
             user.setAutenticadoConCognito(false);
             user.setActivo(true);
             entityManager.persist(user);
@@ -113,7 +135,7 @@ class ConsumptionAlertStudentPersistenceRepositoryIT extends AbstractIntegration
         user.setNombre(firstName);
         user.setApellido(lastName);
         user.setEmail(cognitoId + "@test.com");
-        user.setRol(RolUsuario.PADRE);
+        user.setRol(PADRE);
         user.setAutenticadoConCognito(false);
         user.setActivo(activeUser);
         entityManager.persist(user);

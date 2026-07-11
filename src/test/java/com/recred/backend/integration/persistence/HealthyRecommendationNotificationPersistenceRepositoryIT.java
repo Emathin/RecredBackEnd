@@ -1,13 +1,9 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.integration.AbstractIntegrationTest;
-
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
 import com.recred.backend.domain.models.HealthyProductRecommendation;
 import com.recred.backend.domain.models.HealthyRecommendationMessages;
 import com.recred.backend.domain.models.HealthyRecommendationPattern;
-import com.recred.backend.domain.models.RolUsuario;
-import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.ColegioEntity;
 import com.recred.backend.infrastructure.entities.ProductoEntity;
@@ -16,19 +12,23 @@ import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.persistence.HealthyRecommendationNotificationPersistenceRepository;
 import com.recred.backend.infrastructure.persistence.SugerenciaIAJpaRepository;
 import com.recred.backend.infrastructure.push.PushNotificationRequestedEvent;
+import com.recred.backend.integration.AbstractIntegrationTest;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 
+import static com.recred.backend.domain.models.RolUsuario.ALUMNO;
+import static com.recred.backend.domain.models.TipoSugerenciaIA.RECOMENDACION_SALUDABLE;
+import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,48 +52,70 @@ class HealthyRecommendationNotificationPersistenceRepositoryIT extends AbstractI
 
     @Test
     void save_ShouldPersistRecommendationAndPublishEvent(ApplicationEvents events) {
+        HealthyProductRecommendation recommendation = givenRecommendationDomain();
+
+        whenSavingRecommendation(recommendation);
+
+        thenRecommendationIsPersistedAndEventPublished(events, recommendation.candidate().studentId());
+    }
+
+    @Test
+    void hasRecommendationSince_ShouldReturnTrueWhenSuggestionExists() {
+        AlumnoEntity student = givenPersistedRecommendationSuggestion();
+
+        boolean exists = whenCheckingRecommendationExistence(student.getId());
+
+        thenRecommendationExists(exists);
+    }
+
+    private HealthyProductRecommendation givenRecommendationDomain() {
         AlumnoEntity student = generateStudentEntity();
         ProductoEntity repeatedProduct = generateRepeatedProductEntity();
         ProductoEntity suggestedProduct = generateProductEntity();
-
-        HealthyProductRecommendation recommendation = createRecommendationDomain(
+        return createRecommendationDomain(
                 student.getId(),
                 student.getUsuario().getId(),
                 repeatedProduct.getId(),
                 suggestedProduct.getId()
         );
-
-        repository.save(recommendation);
-        entityManager.flush();
-        entityManager.clear();
-
-        long pushEventsCount = events.stream(PushNotificationRequestedEvent.class).count();
-        assertEquals(1, pushEventsCount, "Should publish a push notification event");
-
-        boolean exists = suggestionJpaRepository.existsForStudentAndTypeSince(
-                student.getId(),
-                TipoSugerenciaIA.RECOMENDACION_SALUDABLE,
-                LocalDateTime.now().minusDays(1).truncatedTo(ChronoUnit.MILLIS)
-        );
-        assertTrue(exists, "Suggestion should be persisted in DB");
     }
 
-    @Test
-    void hasRecommendationSince_ShouldReturnTrueWhenSuggestionExists() {
+    private AlumnoEntity givenPersistedRecommendationSuggestion() {
         AlumnoEntity student = generateStudentEntity();
-        LocalDateTime start = LocalDateTime.now().minusDays(1).truncatedTo(ChronoUnit.MILLIS);
-
         SugerenciaIAEntity suggestion = new SugerenciaIAEntity();
         suggestion.setAlumnoEntity(student);
-        suggestion.setTipo(TipoSugerenciaIA.RECOMENDACION_SALUDABLE);
+        suggestion.setTipo(RECOMENDACION_SALUDABLE);
         suggestion.setTitulo("Test Title");
         suggestion.setMensaje("Test Message");
         entityManager.persist(suggestion);
         entityManager.flush();
         entityManager.clear();
+        return student;
+    }
 
-        boolean exists = repository.hasRecommendationSince(student.getId(), start);
+    private void whenSavingRecommendation(HealthyProductRecommendation recommendation) {
+        repository.save(recommendation);
+        entityManager.flush();
+        entityManager.clear();
+    }
 
+    private boolean whenCheckingRecommendationExistence(UUID studentId) {
+        return repository.hasRecommendationSince(studentId, LocalDateTime.now().minusDays(1).truncatedTo(MILLIS));
+    }
+
+    private void thenRecommendationIsPersistedAndEventPublished(ApplicationEvents events, UUID studentId) {
+        long pushEventsCount = events.stream(PushNotificationRequestedEvent.class).count();
+        assertEquals(1, pushEventsCount, "Should publish a push notification event");
+
+        boolean exists = suggestionJpaRepository.existsForStudentAndTypeSince(
+                studentId,
+                RECOMENDACION_SALUDABLE,
+                LocalDateTime.now().minusDays(1).truncatedTo(MILLIS)
+        );
+        assertTrue(exists, "Suggestion should be persisted in DB");
+    }
+
+    private void thenRecommendationExists(boolean exists) {
         assertTrue(exists);
     }
 
@@ -116,7 +138,7 @@ class HealthyRecommendationNotificationPersistenceRepositoryIT extends AbstractI
             user.setNombre("Student Name");
             user.setApellido("Student Surname");
             user.setEmail("student.healthy@test.com");
-            user.setRol(RolUsuario.ALUMNO);
+            user.setRol(ALUMNO);
             user.setActivo(true);
             entityManager.persist(user);
             this.cachedStudentUser = user;
@@ -135,9 +157,9 @@ class HealthyRecommendationNotificationPersistenceRepositoryIT extends AbstractI
     }
 
     private com.recred.backend.infrastructure.entities.CategoriaProductoEntity generateCategoryEntity() {
-        com.recred.backend.infrastructure.entities.CategoriaProductoEntity cat = 
+        com.recred.backend.infrastructure.entities.CategoriaProductoEntity cat =
                 new com.recred.backend.infrastructure.entities.CategoriaProductoEntity();
-        cat.setDescripcion("Bebidas-" + java.util.UUID.randomUUID().toString());
+        cat.setDescripcion("Bebidas-" + UUID.randomUUID().toString());
         cat.setActivo(true);
         entityManager.persist(cat);
         return cat;
@@ -174,10 +196,10 @@ class HealthyRecommendationNotificationPersistenceRepositoryIT extends AbstractI
     }
 
     private HealthyProductRecommendation createRecommendationDomain(
-            java.util.UUID studentId,
-            java.util.UUID studentUserId,
-            java.util.UUID repeatedProductId,
-            java.util.UUID suggestedProductId
+            UUID studentId,
+            UUID studentUserId,
+            UUID repeatedProductId,
+            UUID suggestedProductId
     ) {
         return new HealthyProductRecommendation(
                 new ConsumptionAlertCandidate(studentId, studentUserId, "Student First", List.of()),
@@ -189,7 +211,7 @@ class HealthyRecommendationNotificationPersistenceRepositoryIT extends AbstractI
                         repeatedProductId,
                         "Gaseosa",
                         "Bebidas",
-                        java.util.UUID.randomUUID(),
+                        UUID.randomUUID(),
                         2,
                         2L,
                         suggestedProductId,

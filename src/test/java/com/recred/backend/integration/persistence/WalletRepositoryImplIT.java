@@ -38,61 +38,75 @@ class WalletRepositoryImplIT extends AbstractIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    private AlumnoEntity cachedStudent;
+    private BilleteraEntity cachedWallet;
+
     @Test
     void findByStudentId_ShouldMapWalletEntityToDomain() {
-        AlumnoEntity student = generateStudent();
-        BilleteraEntity entity = walletEntity(student);
-        springDataRepository.save(entity);
-        entityManager.flush();
-        entityManager.clear();
+        givenStudentWithWallet();
 
-        Optional<Billetera> result = repository.findByStudentId(student.getId());
+        Optional<Billetera> result = whenFindingWalletByStudentId(this.cachedStudent.getId());
 
-        assertTrue(result.isPresent());
-        assertEquals(entity.getId(), result.get().getId());
-        assertEquals(new BigDecimal("120.00"), result.get().getSaldoCreditos());
-        assertEquals(new BigDecimal("50.00"), result.get().getLimiteCredito());
-        assertEquals(new BigDecimal("10.00"), result.get().getSaldoDeudaInterno());
-        assertTrue(result.get().getCreditoHabilitado());
+        thenWalletIsMappedToDomain(result, this.cachedWallet.getId());
     }
 
     @Test
     void findByStudentId_WhenWalletDoesNotExist_ShouldReturnEmptyOptional() {
-        UUID studentId = UUID.randomUUID();
-
-        Optional<Billetera> result = repository.findByStudentId(studentId);
+        Optional<Billetera> result = whenFindingWalletByStudentId(UUID.randomUUID());
 
         assertTrue(result.isEmpty());
     }
 
     @Test
     void save_ShouldUpdateExistingEntity() {
-        AlumnoEntity student = generateStudent();
-        BilleteraEntity entity = generateSavedWallet(student);
-        entityManager.flush();
-        entityManager.clear();
+        givenStudentWithSavedWallet();
+        Billetera walletUpdateCommand = createWalletUpdateCommand(this.cachedWallet.getId());
 
-        Billetera walletUpdateCommand = createWalletUpdateCommand(entity.getId());
+        whenSavingWallet(walletUpdateCommand);
 
-        repository.save(walletUpdateCommand);
-        entityManager.flush();
-        entityManager.clear();
-
-        assertWalletWasUpdated(entity.getId(), walletUpdateCommand);
+        thenWalletWasUpdated(this.cachedWallet.getId(), walletUpdateCommand);
     }
 
     @Test
     void save_WhenWalletDoesNotExist_ShouldThrowException() {
-        Billetera wallet = new Billetera();
-        wallet.setId(UUID.randomUUID());
+        Billetera wallet = givenNonExistentWallet();
 
-        assertThrows(RuntimeException.class, () -> repository.save(wallet));
+        assertThrows(RuntimeException.class, () -> whenSavingWallet(wallet));
     }
 
     @Test
     void findAlumnoIdsWithLowBalance_ShouldDelegateToSpringDataRepository() {
-        AlumnoEntity student1 = generateStudent();
-        BilleteraEntity entity1 = walletEntity(student1);
+        givenStudentsWithDifferentBalances();
+
+        List<UUID> result = whenFindingStudentsWithLowBalance(new BigDecimal("30.00"));
+
+        thenStudentIsFoundWithLowBalance(result, this.cachedStudent.getId());
+    }
+
+    private void givenStudentWithWallet() {
+        this.cachedStudent = generateStudent();
+        this.cachedWallet = walletEntity(this.cachedStudent);
+        springDataRepository.save(this.cachedWallet);
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private void givenStudentWithSavedWallet() {
+        this.cachedStudent = generateStudent();
+        this.cachedWallet = generateSavedWallet(this.cachedStudent);
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private Billetera givenNonExistentWallet() {
+        Billetera wallet = new Billetera();
+        wallet.setId(UUID.randomUUID());
+        return wallet;
+    }
+
+    private void givenStudentsWithDifferentBalances() {
+        this.cachedStudent = generateStudent();
+        BilleteraEntity entity1 = walletEntity(this.cachedStudent);
         entity1.setSaldoCreditos(new BigDecimal("20.00"));
         springDataRepository.save(entity1);
 
@@ -103,13 +117,42 @@ class WalletRepositoryImplIT extends AbstractIntegrationTest {
 
         entityManager.flush();
         entityManager.clear();
+    }
 
-        BigDecimal threshold = new BigDecimal("30.00");
+    private Optional<Billetera> whenFindingWalletByStudentId(UUID studentId) {
+        return repository.findByStudentId(studentId);
+    }
 
-        List<UUID> result = repository.findAlumnoIdsWithLowBalance(threshold);
+    private void whenSavingWallet(Billetera wallet) {
+        repository.save(wallet);
+        entityManager.flush();
+        entityManager.clear();
+    }
 
+    private List<UUID> whenFindingStudentsWithLowBalance(BigDecimal threshold) {
+        return repository.findAlumnoIdsWithLowBalance(threshold);
+    }
+
+    private void thenWalletIsMappedToDomain(Optional<Billetera> result, UUID expectedWalletId) {
+        assertTrue(result.isPresent());
+        assertEquals(expectedWalletId, result.get().getId());
+        assertEquals(new BigDecimal("120.00"), result.get().getSaldoCreditos());
+        assertEquals(new BigDecimal("50.00"), result.get().getLimiteCredito());
+        assertEquals(new BigDecimal("10.00"), result.get().getSaldoDeudaInterno());
+        assertTrue(result.get().getCreditoHabilitado());
+    }
+
+    private void thenWalletWasUpdated(UUID walletId, Billetera expected) {
+        BilleteraEntity saved = springDataRepository.findById(walletId).orElseThrow();
+        assertEquals(expected.getSaldoCreditos(), saved.getSaldoCreditos());
+        assertEquals(expected.getLimiteCredito(), saved.getLimiteCredito());
+        assertEquals(expected.getSaldoDeudaInterno(), saved.getSaldoDeudaInterno());
+        assertEquals(expected.getCreditoHabilitado(), saved.getCreditoHabilitado());
+    }
+
+    private void thenStudentIsFoundWithLowBalance(List<UUID> result, UUID expectedStudentId) {
         assertEquals(1, result.size());
-        assertTrue(result.contains(student1.getId()));
+        assertTrue(result.contains(expectedStudentId));
     }
 
     private AlumnoEntity generateStudent() {
@@ -152,13 +195,5 @@ class WalletRepositoryImplIT extends AbstractIntegrationTest {
         wallet.setSaldoDeudaInterno(new BigDecimal("5.00"));
         wallet.setCreditoHabilitado(false);
         return wallet;
-    }
-
-    private void assertWalletWasUpdated(UUID walletId, Billetera expected) {
-        BilleteraEntity saved = springDataRepository.findById(walletId).orElseThrow();
-        assertEquals(expected.getSaldoCreditos(), saved.getSaldoCreditos());
-        assertEquals(expected.getLimiteCredito(), saved.getLimiteCredito());
-        assertEquals(expected.getSaldoDeudaInterno(), saved.getSaldoDeudaInterno());
-        assertEquals(expected.getCreditoHabilitado(), saved.getCreditoHabilitado());
     }
 }

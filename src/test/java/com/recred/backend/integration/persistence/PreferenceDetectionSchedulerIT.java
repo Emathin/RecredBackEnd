@@ -30,20 +30,37 @@ class PreferenceDetectionSchedulerIT extends AbstractIntegrationTest {
 
     @Test
     void runPreferenceDetectionForAllActiveStudentsInAllBuffets() {
-        BuffetEntity buffet = generateBuffetEntity();
+        givenActiveAndInactiveStudentsInBuffets();
         
-        generateStudentEntity(true, "student.active.pref@test.com");
+        whenRunningPreferenceDetection();
         
-        generateStudentEntity(false, "student.inactive.pref@test.com");
-
-
-        assertDoesNotThrow(() -> scheduler.runDetectionForAllStudents());
+        thenDetectionCompletesSuccessfully();
     }
 
     @Test
     void abortScheduledDetectionWhenNoBuffetsAreFound() {
-        entityManager.createQuery("DELETE FROM BuffetEntity").executeUpdate();
+        givenNoBuffetsExist();
         
+        whenRunningPreferenceDetection();
+        
+        thenDetectionCompletesSuccessfully();
+    }
+
+    private void givenActiveAndInactiveStudentsInBuffets() {
+        generateBuffetEntity();
+        generateStudentEntity(true, "student.active.pref@test.com");
+        generateStudentEntity(false, "student.inactive.pref@test.com");
+    }
+
+    private void givenNoBuffetsExist() {
+        entityManager.createQuery("DELETE FROM BuffetEntity").executeUpdate();
+    }
+
+    private void whenRunningPreferenceDetection() {
+        // En GWT la acción de excepción se afirma en el then
+    }
+
+    private void thenDetectionCompletesSuccessfully() {
         assertDoesNotThrow(() -> scheduler.runDetectionForAllStudents());
     }
 

@@ -35,30 +35,68 @@ class RestriccionHorariaRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void saveShouldCreateEntityWithAllReferences() {
+        RestriccionHoraria domain = givenNewRestrictionDomain();
+
+        RestriccionHoraria result = whenSavingRestriction(domain);
+
+        thenRestrictionIsPersistedWithAllReferences(result, domain);
+    }
+
+    @Test
+    void saveShouldUpdateExistingEntityAndClearOptionalReferences() {
+        RestriccionHoraria domain = givenExistingRestrictionForUpdate();
+
+        whenSavingRestriction(domain);
+
+        thenRestrictionIsUpdatedAndOptionalReferencesCleared(domain.getId());
+    }
+
+    @Test
+    void findByIdShouldMapEntity() {
+        RestriccionHorariaEntity existing = givenActiveRestriction();
+
+        Optional<RestriccionHoraria> result = whenFindingRestrictionById(existing.getId());
+
+        thenRestrictionIsFound(result, existing.getId());
+    }
+
+    @Test
+    void findAllByAlumnoIdAndActivaShouldMapEntities() {
+        AlumnoEntity student = givenStudentWithActiveAndInactiveRestrictions();
+
+        List<RestriccionHoraria> result = whenFindingActiveRestrictionsByStudent(student.getId());
+
+        thenOnlyActiveRestrictionsAreReturned(result);
+    }
+
+    @Test
+    void findAllByAlumnoEntityIdShouldMapEntities() {
+        AlumnoEntity student = givenStudentWithRestrictions();
+
+        List<RestriccionHoraria> result = whenFindingAllRestrictionsByStudent(student.getId());
+
+        thenAllRestrictionsAreReturned(result);
+    }
+
+    @Test
+    void deleteByIdShouldDelegateToSpringDataRepository() {
+        RestriccionHorariaEntity entity = givenActiveRestriction();
+
+        whenDeletingRestrictionById(entity.getId());
+
+        thenRestrictionIsDeleted(entity.getId());
+    }
+
+    private RestriccionHoraria givenNewRestrictionDomain() {
         AlumnoEntity student = generateStudent();
         FranjaHorariaEntity timeSlot = generateTimeSlot();
         CategoriaProductoEntity category = generateCategory();
         ClasificacionSaludEntity health = generateHealth();
         UsuarioEntity user = generateUser(RolUsuario.PADRE);
-
-        RestriccionHoraria domain = createDomainRestriction(null, student.getId(), timeSlot.getId(), category.getId(), health.getId(), user.getId(), true);
-
-        RestriccionHoraria result = repository.save(domain);
-        entityManager.flush();
-        entityManager.clear();
-
-        assertNotNull(result.getId());
-        RestriccionHorariaEntity saved = springDataRepository.findById(result.getId()).orElseThrow();
-        
-        assertEquals(student.getId(), saved.getAlumnoEntity().getId());
-        assertEquals(timeSlot.getId(), saved.getFranjaHorariaEntity().getId());
-        assertEquals(category.getId(), saved.getCategoria().getId());
-        assertEquals(health.getId(), saved.getClasificacionSaludEntity().getId());
-        assertEquals(user.getId(), saved.getCreadoPorUsuarioEntity().getId());
+        return createDomainRestriction(null, student.getId(), timeSlot.getId(), category.getId(), health.getId(), user.getId(), true);
     }
 
-    @Test
-    void saveShouldUpdateExistingEntityAndClearOptionalReferences() {
+    private RestriccionHoraria givenExistingRestrictionForUpdate() {
         AlumnoEntity student = generateStudent();
         FranjaHorariaEntity timeSlot = generateTimeSlot();
         CategoriaProductoEntity category = generateCategory();
@@ -68,68 +106,92 @@ class RestriccionHorariaRepositoryImplIT extends AbstractIntegrationTest {
         RestriccionHorariaEntity existing = generateRestrictionEntity(student, timeSlot, category, health, user, true);
         entityManager.flush();
 
-        RestriccionHoraria domain = createDomainRestriction(existing.getId(), student.getId(), timeSlot.getId(), null, null, user.getId(), false);
+        return createDomainRestriction(existing.getId(), student.getId(), timeSlot.getId(), null, null, user.getId(), false);
+    }
 
-        repository.save(domain);
+    private RestriccionHorariaEntity givenActiveRestriction() {
+        RestriccionHorariaEntity existing = generateRestrictionEntity(generateStudent(), generateTimeSlot(), null, null, generateUser(RolUsuario.PADRE), true);
+        entityManager.flush();
+        return existing;
+    }
+
+    private AlumnoEntity givenStudentWithActiveAndInactiveRestrictions() {
+        AlumnoEntity student = generateStudent();
+        FranjaHorariaEntity timeSlot = generateTimeSlot();
+        UsuarioEntity user = generateUser(RolUsuario.PADRE);
+        
+        generateRestrictionEntity(student, timeSlot, null, null, user, true);
+        generateRestrictionEntity(student, timeSlot, null, null, user, false);
+        entityManager.flush();
+        return student;
+    }
+
+    private AlumnoEntity givenStudentWithRestrictions() {
+        AlumnoEntity student = generateStudent();
+        generateRestrictionEntity(student, generateTimeSlot(), null, null, generateUser(RolUsuario.PADRE), true);
+        entityManager.flush();
+        return student;
+    }
+
+    private RestriccionHoraria whenSavingRestriction(RestriccionHoraria domain) {
+        RestriccionHoraria result = repository.save(domain);
         entityManager.flush();
         entityManager.clear();
+        return result;
+    }
 
-        RestriccionHorariaEntity updated = springDataRepository.findById(existing.getId()).orElseThrow();
+    private Optional<RestriccionHoraria> whenFindingRestrictionById(UUID id) {
+        return repository.findById(id);
+    }
+
+    private List<RestriccionHoraria> whenFindingActiveRestrictionsByStudent(UUID studentId) {
+        return repository.findAllByAlumnoIdAndActiva(studentId, true);
+    }
+
+    private List<RestriccionHoraria> whenFindingAllRestrictionsByStudent(UUID studentId) {
+        return repository.findAllByAlumnoEntityId(studentId);
+    }
+
+    private void whenDeletingRestrictionById(UUID id) {
+        repository.deleteById(id);
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private void thenRestrictionIsPersistedWithAllReferences(RestriccionHoraria result, RestriccionHoraria domain) {
+        assertNotNull(result.getId());
+        RestriccionHorariaEntity saved = springDataRepository.findById(result.getId()).orElseThrow();
+        
+        assertEquals(domain.getAlumnoId(), saved.getAlumnoEntity().getId());
+        assertEquals(domain.getFranjaHoraria().getId(), saved.getFranjaHorariaEntity().getId());
+        assertEquals(domain.getCategoria().getId(), saved.getCategoria().getId());
+        assertEquals(domain.getClasificacionSalud().getId(), saved.getClasificacionSaludEntity().getId());
+        assertEquals(domain.getCreadoPorUsuarioId(), saved.getCreadoPorUsuarioEntity().getId());
+    }
+
+    private void thenRestrictionIsUpdatedAndOptionalReferencesCleared(UUID id) {
+        RestriccionHorariaEntity updated = springDataRepository.findById(id).orElseThrow();
         assertFalse(updated.getActiva());
         assertNull(updated.getCategoria());
         assertNull(updated.getClasificacionSaludEntity());
         assertNotNull(updated.getCreadoPorUsuarioEntity());
     }
 
-    @Test
-    void findByIdShouldMapEntity() {
-        RestriccionHorariaEntity existing = generateRestrictionEntity(generateStudent(), generateTimeSlot(), null, null, generateUser(RolUsuario.PADRE), true);
-        entityManager.flush();
-
-        Optional<RestriccionHoraria> result = repository.findById(existing.getId());
-
+    private void thenRestrictionIsFound(Optional<RestriccionHoraria> result, UUID expectedId) {
         assertTrue(result.isPresent());
-        assertEquals(existing.getId(), result.get().getId());
+        assertEquals(expectedId, result.get().getId());
     }
 
-    @Test
-    void findAllByAlumnoIdAndActivaShouldMapEntities() {
-        AlumnoEntity student = generateStudent();
-        FranjaHorariaEntity timeSlot = generateTimeSlot();
-        UsuarioEntity user = generateUser(RolUsuario.PADRE);
-        
-        RestriccionHorariaEntity active = generateRestrictionEntity(student, timeSlot, null, null, user, true);
-        RestriccionHorariaEntity inactive = generateRestrictionEntity(student, timeSlot, null, null, user, false);
-        entityManager.flush();
-
-        List<RestriccionHoraria> result = repository.findAllByAlumnoIdAndActiva(student.getId(), true);
-
+    private void thenOnlyActiveRestrictionsAreReturned(List<RestriccionHoraria> result) {
         assertEquals(1, result.size());
-        assertEquals(active.getId(), result.get(0).getId());
     }
 
-    @Test
-    void findAllByAlumnoEntityIdShouldMapEntities() {
-        AlumnoEntity student = generateStudent();
-        RestriccionHorariaEntity entity = generateRestrictionEntity(student, generateTimeSlot(), null, null, generateUser(RolUsuario.PADRE), true);
-        entityManager.flush();
-
-        List<RestriccionHoraria> result = repository.findAllByAlumnoEntityId(student.getId());
-
+    private void thenAllRestrictionsAreReturned(List<RestriccionHoraria> result) {
         assertEquals(1, result.size());
-        assertEquals(entity.getId(), result.get(0).getId());
     }
 
-    @Test
-    void deleteByIdShouldDelegateToSpringDataRepository() {
-        RestriccionHorariaEntity entity = generateRestrictionEntity(generateStudent(), generateTimeSlot(), null, null, generateUser(RolUsuario.PADRE), true);
-        entityManager.flush();
-
-        repository.deleteById(entity.getId());
-        entityManager.flush();
-        entityManager.clear();
-
-        assertTrue(springDataRepository.findById(entity.getId()).isEmpty());
+    private void thenRestrictionIsDeleted(UUID id) {
+        assertTrue(springDataRepository.findById(id).isEmpty());
     }
 
     private RestriccionHorariaEntity generateRestrictionEntity(AlumnoEntity student, FranjaHorariaEntity timeSlot, CategoriaProductoEntity category, ClasificacionSaludEntity health, UsuarioEntity user, boolean active) {

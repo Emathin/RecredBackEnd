@@ -1,10 +1,6 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.domain.models.IntervalUnit;
 import com.recred.backend.domain.models.KiosqueroPayoutConfig;
-import com.recred.backend.domain.models.PayoutScheduleStatus;
-import com.recred.backend.domain.models.RolUsuario;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.infrastructure.entities.BuffetEntity;
 import com.recred.backend.infrastructure.entities.ColegioEntity;
 import com.recred.backend.infrastructure.entities.KiosqueroEntity;
@@ -23,6 +19,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.recred.backend.domain.models.IntervalUnit.DAYS;
+import static com.recred.backend.domain.models.PayoutScheduleStatus.ACTIVE;
+import static com.recred.backend.domain.models.PayoutScheduleStatus.PAUSED;
+import static com.recred.backend.domain.models.RolUsuario.VENDEDOR;
+import static com.recred.backend.domain.models.TipoPlan.GRATUITO;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -44,85 +45,140 @@ class KiosqueroPayoutConfigRepositoryImplIT extends AbstractIntegrationTest {
 
     @Test
     void save_ShouldPersistNewConfig() {
+        KiosqueroPayoutConfig config = givenNewPayoutConfigDomain();
+
+        KiosqueroPayoutConfig saved = whenSavingConfig(config);
+
+        thenConfigIsPersisted(saved, config.getKiosqueroId());
+    }
+
+    @Test
+    void findByKiosqueroId_WhenConfigExists_ShouldReturnConfig() {
+        KiosqueroEntity kiosquero = givenPersistedConfigForKiosquero();
+
+        Optional<KiosqueroPayoutConfig> result = whenFindingConfigById(kiosquero.getId());
+
+        thenConfigIsFound(result);
+    }
+
+    @Test
+    void findByKiosqueroId_WhenConfigDoesNotExist_ShouldReturnEmpty() {
+        KiosqueroEntity kiosquero = givenKiosqueroWithoutConfig();
+
+        Optional<KiosqueroPayoutConfig> result = whenFindingConfigById(kiosquero.getId());
+
+        thenConfigIsNotFound(result);
+    }
+
+    @Test
+    void findActiveConfigsDueOnOrBefore_ShouldReturnMatchingConfigs() {
+        KiosqueroEntity kiosquero = givenActiveConfigDueYesterday();
+
+        List<KiosqueroPayoutConfig> results = whenFindingConfigsDueToday();
+
+        thenActiveConfigIsReturned(results, kiosquero.getId());
+    }
+
+    @Test
+    void findActiveConfigsDueOnOrBefore_WhenNotActive_ShouldNotReturn() {
+        givenPausedConfigDueYesterday();
+
+        List<KiosqueroPayoutConfig> results = whenFindingConfigsDueToday();
+
+        thenNoConfigsAreReturned(results);
+    }
+
+    @Test
+    void findActiveConfigsDueOnOrBefore_WhenFutureDate_ShouldNotReturn() {
+        givenActiveConfigDueNextWeek();
+
+        List<KiosqueroPayoutConfig> results = whenFindingConfigsDueToday();
+
+        thenNoConfigsAreReturned(results);
+    }
+
+    private KiosqueroPayoutConfig givenNewPayoutConfigDomain() {
         KiosqueroEntity kiosquero = generateKiosquero();
-        KiosqueroPayoutConfig config = createDomainConfig(kiosquero.getId());
+        return createDomainConfig(kiosquero.getId());
+    }
 
-        KiosqueroPayoutConfig saved = repository.save(config);
+    private KiosqueroEntity givenPersistedConfigForKiosquero() {
+        KiosqueroEntity kiosquero = generateKiosquero();
+        generateConfigEntity(kiosquero);
+        return kiosquero;
+    }
 
+    private KiosqueroEntity givenKiosqueroWithoutConfig() {
+        return generateKiosquero();
+    }
+
+    private KiosqueroEntity givenActiveConfigDueYesterday() {
+        KiosqueroEntity kiosquero = generateKiosquero();
+        KiosqueroPayoutConfigEntity configEntity = generateConfigEntity(kiosquero);
+        configEntity.setEstado(ACTIVE);
+        configEntity.setProximaEjecucion(LocalDate.now().minusDays(1));
+        entityManager.merge(configEntity);
+        entityManager.flush();
+        return kiosquero;
+    }
+
+    private void givenPausedConfigDueYesterday() {
+        KiosqueroEntity kiosquero = generateKiosquero();
+        KiosqueroPayoutConfigEntity configEntity = generateConfigEntity(kiosquero);
+        configEntity.setEstado(PAUSED);
+        configEntity.setProximaEjecucion(LocalDate.now().minusDays(1));
+        entityManager.merge(configEntity);
+        entityManager.flush();
+    }
+
+    private void givenActiveConfigDueNextWeek() {
+        KiosqueroEntity kiosquero = generateKiosquero();
+        KiosqueroPayoutConfigEntity configEntity = generateConfigEntity(kiosquero);
+        configEntity.setEstado(ACTIVE);
+        configEntity.setProximaEjecucion(LocalDate.now().plusDays(7));
+        entityManager.merge(configEntity);
+        entityManager.flush();
+    }
+
+    private KiosqueroPayoutConfig whenSavingConfig(KiosqueroPayoutConfig config) {
+        return repository.save(config);
+    }
+
+    private Optional<KiosqueroPayoutConfig> whenFindingConfigById(UUID kiosqueroId) {
+        return repository.findByKiosqueroId(kiosqueroId);
+    }
+
+    private List<KiosqueroPayoutConfig> whenFindingConfigsDueToday() {
+        return repository.findActiveConfigsDueOnOrBefore(LocalDate.now());
+    }
+
+    private void thenConfigIsPersisted(KiosqueroPayoutConfig saved, UUID expectedKiosqueroId) {
         assertNotNull(saved);
-        assertEquals(kiosquero.getId(), saved.getKiosqueroId());
+        assertEquals(expectedKiosqueroId, saved.getKiosqueroId());
 
-        Optional<KiosqueroPayoutConfigEntity> fromDb = springDataRepository.findById(kiosquero.getId());
+        Optional<KiosqueroPayoutConfigEntity> fromDb = springDataRepository.findById(expectedKiosqueroId);
         assertTrue(fromDb.isPresent());
         assertEquals("20123456789", fromDb.get().getDestinationCuit());
         assertEquals("cvu_123", fromDb.get().getDestinationCvu());
     }
 
-    @Test
-    void findByKiosqueroId_WhenConfigExists_ShouldReturnConfig() {
-        KiosqueroEntity kiosquero = generateKiosquero();
-        generateConfigEntity(kiosquero);
-
-        Optional<KiosqueroPayoutConfig> result = repository.findByKiosqueroId(kiosquero.getId());
-
+    private void thenConfigIsFound(Optional<KiosqueroPayoutConfig> result) {
         assertTrue(result.isPresent());
         assertEquals("20123456789", result.get().getDestinationCuit());
         assertEquals("cvu_123", result.get().getDestinationCvu());
     }
 
-    @Test
-    void findByKiosqueroId_WhenConfigDoesNotExist_ShouldReturnEmpty() {
-        KiosqueroEntity kiosquero = generateKiosquero();
-
-        Optional<KiosqueroPayoutConfig> result = repository.findByKiosqueroId(kiosquero.getId());
-
+    private void thenConfigIsNotFound(Optional<KiosqueroPayoutConfig> result) {
         assertFalse(result.isPresent());
     }
 
-    @Test
-    void findActiveConfigsDueOnOrBefore_ShouldReturnMatchingConfigs() {
-        KiosqueroEntity kiosquero = generateKiosquero();
-        KiosqueroPayoutConfigEntity configEntity = generateConfigEntity(kiosquero);
-        configEntity.setEstado(PayoutScheduleStatus.ACTIVE);
-        configEntity.setProximaEjecucion(LocalDate.of(2026, 7, 1));
-        entityManager.merge(configEntity);
-        entityManager.flush();
-
-        List<KiosqueroPayoutConfig> results = repository.findActiveConfigsDueOnOrBefore(
-                LocalDate.of(2026, 7, 2));
-
+    private void thenActiveConfigIsReturned(List<KiosqueroPayoutConfig> results, UUID expectedKiosqueroId) {
         assertFalse(results.isEmpty());
         assertEquals(1, results.size());
-        assertEquals(kiosquero.getId(), results.get(0).getKiosqueroId());
+        assertEquals(expectedKiosqueroId, results.get(0).getKiosqueroId());
     }
 
-    @Test
-    void findActiveConfigsDueOnOrBefore_WhenNotActive_ShouldNotReturn() {
-        KiosqueroEntity kiosquero = generateKiosquero();
-        KiosqueroPayoutConfigEntity configEntity = generateConfigEntity(kiosquero);
-        configEntity.setEstado(PayoutScheduleStatus.PAUSED);
-        configEntity.setProximaEjecucion(LocalDate.of(2026, 7, 1));
-        entityManager.merge(configEntity);
-        entityManager.flush();
-
-        List<KiosqueroPayoutConfig> results = repository.findActiveConfigsDueOnOrBefore(
-                LocalDate.of(2026, 7, 2));
-
-        assertTrue(results.isEmpty());
-    }
-
-    @Test
-    void findActiveConfigsDueOnOrBefore_WhenFutureDate_ShouldNotReturn() {
-        KiosqueroEntity kiosquero = generateKiosquero();
-        KiosqueroPayoutConfigEntity configEntity = generateConfigEntity(kiosquero);
-        configEntity.setEstado(PayoutScheduleStatus.ACTIVE);
-        configEntity.setProximaEjecucion(LocalDate.of(2026, 7, 5));
-        entityManager.merge(configEntity);
-        entityManager.flush();
-
-        List<KiosqueroPayoutConfig> results = repository.findActiveConfigsDueOnOrBefore(
-                LocalDate.of(2026, 7, 2));
-
+    private void thenNoConfigsAreReturned(List<KiosqueroPayoutConfig> results) {
         assertTrue(results.isEmpty());
     }
 
@@ -132,9 +188,9 @@ class KiosqueroPayoutConfigRepositoryImplIT extends AbstractIntegrationTest {
         config.setDestinationCuit("20123456789");
         config.setDestinationCvu("cvu_123");
         config.setAccountHolderName("John Doe");
-        config.setUnidadIntervalo(IntervalUnit.DAYS);
+        config.setUnidadIntervalo(DAYS);
         config.setCantidadIntervalo(1);
-        config.setEstado(PayoutScheduleStatus.ACTIVE);
+        config.setEstado(ACTIVE);
         config.setProximaEjecucion(LocalDate.now());
         return config;
     }
@@ -146,9 +202,9 @@ class KiosqueroPayoutConfigRepositoryImplIT extends AbstractIntegrationTest {
         entity.setDestinationCuit("20123456789");
         entity.setDestinationCvu("cvu_123");
         entity.setAccountHolderName("John Doe");
-        entity.setUnidadIntervalo(IntervalUnit.DAYS);
+        entity.setUnidadIntervalo(DAYS);
         entity.setCantidadIntervalo(1);
-        entity.setEstado(PayoutScheduleStatus.ACTIVE);
+        entity.setEstado(ACTIVE);
         entity.setProximaEjecucion(LocalDate.now());
         entityManager.persist(entity);
         entityManager.flush();
@@ -177,10 +233,10 @@ class KiosqueroPayoutConfigRepositoryImplIT extends AbstractIntegrationTest {
         usuario.setNombre("Test");
         usuario.setApellido("User");
         usuario.setEmail(UUID.randomUUID().toString() + "@test.com");
-        usuario.setRol(RolUsuario.VENDEDOR);
+        usuario.setRol(VENDEDOR);
         usuario.setAutenticadoConCognito(true);
         usuario.setActivo(true);
-        usuario.setPlan(TipoPlan.GRATUITO);
+        usuario.setPlan(GRATUITO);
         entityManager.persist(usuario);
 
         KiosqueroEntity kiosquero = new KiosqueroEntity();

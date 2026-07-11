@@ -32,56 +32,58 @@ class StudentConsumptionJpaRepositoryIT extends AbstractIntegrationTest {
     private ColegioEntity cachedSchool;
     private KiosqueroEntity cachedVendor;
     private BuffetEntity cachedBuffet;
+    
+    private CompraPresencialEntity cachedPurchase;
 
     @Test
     void mapPurchaseEntitiesWithProductsSortedByProductName() {
+        givenStudentWithPurchaseAndProducts();
 
-        AlumnoEntity student = generateStudent();
-        BuffetEntity buffet = generateBuffet();
-        CompraPresencialEntity purchase = generateTestPurchaseWithProducts(student, buffet);
+        List<StudentConsumptionPurchase> purchases = whenFindingPurchasesByDateRange();
 
-
-        List<StudentConsumptionPurchase> purchases = repository.findPurchasesByStudentIdAndDateRange(
-                student.getId(),
-                List.of(EstadoCompra.ENTREGADO),
-                LocalDateTime.of(2026, 5, 1, 0, 0),
-                LocalDateTime.of(2026, 5, 31, 23, 59)
-        );
-
-
-        assertPurchaseAndProductsAreMappedAndSorted(purchases, purchase, buffet);
+        thenPurchaseAndProductsAreMappedAndSorted(purchases);
     }
 
-    private CompraPresencialEntity generateTestPurchaseWithProducts(AlumnoEntity student, BuffetEntity buffet) {
+    private void givenStudentWithPurchaseAndProducts() {
+        this.cachedStudent = generateStudent();
+        this.cachedBuffet = generateBuffet();
+
         CategoriaProductoEntity drinksCategory = generateCategory("Drinks");
         CategoriaProductoEntity foodCategory = generateCategory("Food");
 
         ProductoEntity water = generateProduct("Water", drinksCategory);
         ProductoEntity sandwich = generateProduct("Sandwich", foodCategory);
 
-        CompraPresencialEntity purchase = generatePurchase(student, buffet, new BigDecimal("1500.00"), LocalDateTime.of(2026, 5, 20, 10, 30));
-        CompraDetalleEntity detail1 = generateDetail(purchase, water, 1, new BigDecimal("300.00"));
-        CompraDetalleEntity detail2 = generateDetail(purchase, sandwich, 1, new BigDecimal("1200.00"));
+        this.cachedPurchase = generatePurchase(this.cachedStudent, this.cachedBuffet, new BigDecimal("1500.00"), LocalDateTime.of(2026, 5, 20, 10, 30));
+        CompraDetalleEntity detail1 = generateDetail(this.cachedPurchase, water, 1, new BigDecimal("300.00"));
+        CompraDetalleEntity detail2 = generateDetail(this.cachedPurchase, sandwich, 1, new BigDecimal("1200.00"));
         
-        purchase.setDetalles(new java.util.ArrayList<>(List.of(detail1, detail2)));
-        entityManager.merge(purchase);
+        this.cachedPurchase.setDetalles(new java.util.ArrayList<>(List.of(detail1, detail2)));
+        entityManager.merge(this.cachedPurchase);
         
         entityManager.flush();
         entityManager.clear();
-        
-        return purchase;
     }
 
-    private void assertPurchaseAndProductsAreMappedAndSorted(List<StudentConsumptionPurchase> purchases, CompraPresencialEntity purchase, BuffetEntity buffet) {
+    private List<StudentConsumptionPurchase> whenFindingPurchasesByDateRange() {
+        return repository.findPurchasesByStudentIdAndDateRange(
+                this.cachedStudent.getId(),
+                List.of(EstadoCompra.ENTREGADO),
+                LocalDateTime.of(2026, 5, 1, 0, 0),
+                LocalDateTime.of(2026, 5, 31, 23, 59)
+        );
+    }
+
+    private void thenPurchaseAndProductsAreMappedAndSorted(List<StudentConsumptionPurchase> purchases) {
         assertEquals(1, purchases.size());
         StudentConsumptionPurchase mapped = purchases.get(0);
         
-        assertEquals(purchase.getId(), mapped.purchaseId());
-        assertEquals(purchase.getFechaHora(), mapped.dateTime());
+        assertEquals(this.cachedPurchase.getId(), mapped.purchaseId());
+        assertEquals(this.cachedPurchase.getFechaHora(), mapped.dateTime());
         assertEquals(EstadoCompra.ENTREGADO, mapped.status());
         assertEquals(MedioPago.CREDITOS, mapped.paymentMethod());
         assertEquals(new BigDecimal("1500.00"), mapped.totalAmount());
-        assertEquals(buffet.getId(), mapped.buffetId());
+        assertEquals(this.cachedBuffet.getId(), mapped.buffetId());
         assertEquals("Main Buffet", mapped.buffetName());
         
         assertEquals("Sandwich", mapped.products().get(0).productName());

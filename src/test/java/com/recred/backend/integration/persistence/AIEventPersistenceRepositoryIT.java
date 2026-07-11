@@ -56,11 +56,227 @@ class AIEventPersistenceRepositoryIT extends AbstractIntegrationTest {
 
     @Test
     void registerPrediction_ShouldPersistEventWithInputAndResultInRealDatabase() {
-        AlumnoEntity student = persistStudent();
+        AlumnoEntity student = givenPersistedStudent();
 
+        whenRegisteringPrediction(student);
+
+        thenPredictionEventIsPersistedFor(student);
+    }
+
+    @Test
+    void findAllProductChangeRecommendations_ShouldMapEventsFromRealDatabase() {
+        BuffetEntity buffet = givenPersistedBuffet();
+        ProductoEntity product = givenPersistedProduct();
+        givenProductChangeEvent(buffet, product, Map.of(), Map.of(
+                "nombre", "Producto 1",
+                "precio", 10.0
+        ));
+
+        List<ProductRecommendationResult> results = whenFindingAllProductChangeRecommendations(buffet);
+
+        thenProductChangeRecommendationIsReturned(results, buffet, product);
+    }
+
+    @Test
+    void findLatestProductChangeRecommendation_ShouldMapAnalysisAndStatisticsFromRealDatabase() {
+        BuffetEntity buffet = givenPersistedBuffet();
+        ProductoEntity product = givenPersistedProduct();
+        givenProductChangeEventWithStats(buffet, product);
+
+        Optional<ProductRecommendationResult> result = whenFindingLatestProductChangeRecommendation(buffet);
+
+        thenLatestProductRecommendationHasValidAnalysis(result);
+    }
+
+    @Test
+    void registerProductChangeRecommendation_ShouldPersistInputAndAnalysisInRealDatabase() {
+        BuffetEntity buffet = givenPersistedBuffet();
+        ProductoEntity product = givenPersistedProduct();
+
+        whenRegisteringProductChangeRecommendation(buffet, product);
+
+        thenProductChangeRecommendationEventIsPersisted(buffet, product);
+    }
+
+    @Test
+    void registerProductChangeRecommendation_WhenStatisticsExist_ShouldPersistThemInRealDatabase() {
+        BuffetEntity buffet = givenPersistedBuffet();
+        ProductoEntity product = givenPersistedProduct();
+
+        whenRegisteringProductChangeRecommendationWithStatistics(buffet, product);
+
+        thenProductChangeRecommendationEventHasStatisticsPersisted(product);
+    }
+
+    @Test
+    void registerProductAdditionRecommendation_ShouldPersistSuggestionInRealDatabase() {
+        BuffetEntity buffet = givenPersistedBuffet();
+        ProductoEntity productEntity = givenPersistedProduct();
+
+        whenRegisteringProductAdditionRecommendation(buffet, productEntity);
+
+        thenProductAdditionEventIsPersisted(buffet, productEntity);
+    }
+
+    @Test
+    void registerPurchaseRecommendation_ShouldPersistAnalysisAndReturnSavedIdFromRealDatabase() {
+        AlumnoEntity student = givenPersistedStudent();
+        ProductoEntity product = givenPersistedProduct();
+
+        UUID eventId = whenRegisteringPurchaseRecommendation(student, product);
+
+        thenPurchaseRecommendationAnalysisIsPersisted(eventId, student, product);
+    }
+
+    private AlumnoEntity givenPersistedStudent() {
+        String suffix = UUID.randomUUID().toString();
+        UsuarioEntity user = new UsuarioEntity();
+        user.setIdCognito("student-" + suffix);
+        user.setNombre("Test");
+        user.setApellido("Student");
+        user.setEmail("student-" + suffix + "@test.com");
+        user.setRol(RolUsuario.ALUMNO);
+        user.setActivo(true);
+        entityManager.persist(user);
+
+        AlumnoEntity student = new AlumnoEntity();
+        student.setUsuario(user);
+        student.setActivo(true);
+        entityManager.persist(student);
+        return student;
+    }
+
+    private BuffetEntity givenPersistedBuffet() {
+        ColegioEntity school = new ColegioEntity();
+        school.setNombre("AI Event School");
+        school.setCue("AI-" + UUID.randomUUID());
+        school.setActivo(true);
+        entityManager.persist(school);
+
+        BuffetEntity buffet = new BuffetEntity();
+        buffet.setNombre("AI Event Buffet");
+        buffet.setColegioEntity(school);
+        buffet.setActivo(true);
+        entityManager.persist(buffet);
+        return buffet;
+    }
+
+    private ProductoEntity givenPersistedProduct() {
+        CategoriaProductoEntity category = new CategoriaProductoEntity();
+        category.setDescripcion("AI Event Category " + UUID.randomUUID());
+        category.setActivo(true);
+        entityManager.persist(category);
+
+        ProductoEntity product = new ProductoEntity();
+        product.setNombre("AI Event Product");
+        product.setDescripcion("Desc");
+        product.setPrecio(new BigDecimal("500.00"));
+        product.setRequierePreparacion(false);
+        product.setActivo(true);
+        product.setCategoria(category);
+        entityManager.persist(product);
+        return product;
+    }
+
+    private void givenProductChangeEvent(
+            BuffetEntity buffet,
+            ProductoEntity product,
+            Map<String, Object> resultData,
+            Map<String, Object> inputData
+    ) {
+        AIEventEntity event = new AIEventEntity();
+        event.setType(AIEventType.PRODUCTO_CAMBIO);
+        event.setBuffetEntity(buffet);
+        event.setProductoEntity(product);
+        event.setInputData(inputData);
+        event.setResultData(resultData);
+        entityManager.persist(event);
+        flushAndClear();
+    }
+
+    private void givenProductChangeEventWithStats(BuffetEntity buffet, ProductoEntity product) {
+        Map<String, Object> statsMap = Map.of("ventasPeriodo", 5);
+        givenProductChangeEvent(buffet, product, Map.of(
+                "analisisIa", Map.of(
+                        "resumen", "Conviene ajustar stock.",
+                        "alertas", List.of("Baja rotacion"),
+                        "recomendaciones", List.of("Promocionar"),
+                        "modelo", "gemini-test"
+                )
+        ), Map.of(
+                "nombre", "Producto 1",
+                "precio", 10.0,
+                "saleStatistics", statsMap
+        ));
+    }
+
+    private void whenRegisteringPrediction(AlumnoEntity student) {
         repository.registerPrediction(predictionResult(student.getId()));
         flushAndClear();
+    }
 
+    private List<ProductRecommendationResult> whenFindingAllProductChangeRecommendations(BuffetEntity buffet) {
+        return repository.findAllProductChangeRecommendations(buffet.getId());
+    }
+
+    private Optional<ProductRecommendationResult> whenFindingLatestProductChangeRecommendation(BuffetEntity buffet) {
+        return repository.findLatestProductChangeRecommendation(buffet.getId());
+    }
+
+    private void whenRegisteringProductChangeRecommendation(BuffetEntity buffet, ProductoEntity product) {
+        repository.registerProductChangeRecommendation(productChangeResult(
+                buffet.getId(),
+                product.getId(),
+                Optional.of(new ProductChangeAnalysis(
+                        "Subio la demanda.",
+                        List.of("Poco stock"),
+                        List.of("Reponer"),
+                        "gemini-test"
+                ))
+        ));
+        flushAndClear();
+    }
+
+    private void whenRegisteringProductChangeRecommendationWithStatistics(BuffetEntity buffet, ProductoEntity product) {
+        ProductSaleStatistics statistics = new ProductSaleStatistics();
+        statistics.setVentasPeriodo(7L);
+        ProductChangeRecommendation recommendation = productChangeRecommendation(
+                buffet.getId(),
+                product.getId()
+        );
+        recommendation.setSaleStatistics(statistics);
+
+        repository.registerProductChangeRecommendation(
+                new ProductRecommendationResult(recommendation, Optional.empty())
+        );
+        flushAndClear();
+    }
+
+    private void whenRegisteringProductAdditionRecommendation(BuffetEntity buffet, ProductoEntity productEntity) {
+        Producto product = new Producto();
+        product.setId(productEntity.getId());
+        product.setNombre("Barrita");
+
+        repository.registerProductAdditionRecommendation(product, new Kiosquero(), buffet.getId());
+        flushAndClear();
+    }
+
+    private UUID whenRegisteringPurchaseRecommendation(AlumnoEntity student, ProductoEntity product) {
+        UUID eventId = repository.registerPurchaseRecommendation(new PurchaseRecommendationResult(
+                student.getId(),
+                List.of(new PurchaseResume()),
+                Optional.of(new PurchasePatternAnalysis(
+                        "Compra habitual.",
+                        product.getId(),
+                        "Yogur",
+                        "lunes"
+                ))
+        ));
+        flushAndClear();
+        return eventId;
+    }
+
+    private void thenPredictionEventIsPersistedFor(AlumnoEntity student) {
         AIEventEntity event = onlyEventForStudent(AIEventType.PREDICCION_GASTO, student.getId());
         assertEquals(AIEventType.PREDICCION_GASTO, event.getType());
         assertEquals(student.getId(), event.getAlumnoEntity().getId());
@@ -82,49 +298,19 @@ class AIEventPersistenceRepositoryIT extends AbstractIntegrationTest {
         assertEquals("gemini-test", aiAnalysis.get("modelo"));
     }
 
-    @Test
-    void findAllProductChangeRecommendations_ShouldMapEventsFromRealDatabase() {
-        BuffetEntity buffet = persistBuffet();
-        ProductoEntity product = persistProduct();
-        persistProductChangeEvent(buffet, product, Map.of(), Map.of(
-                "nombre", "Producto 1",
-                "precio", 10.0
-        ));
-        flushAndClear();
-
-        List<ProductRecommendationResult> results =
-                repository.findAllProductChangeRecommendations(buffet.getId());
-
+    private void thenProductChangeRecommendationIsReturned(
+            List<ProductRecommendationResult> results,
+            BuffetEntity buffet,
+            ProductoEntity product
+    ) {
         assertEquals(1, results.size());
-        ProductChangeRecommendation recommendation =
-                results.get(0).getProductChangeRecommendation();
+        ProductChangeRecommendation recommendation = results.get(0).getProductChangeRecommendation();
         assertEquals(product.getId(), recommendation.getId());
         assertEquals(buffet.getId(), recommendation.getIdBuffet());
         assertEquals("Producto 1", recommendation.getNombre());
     }
 
-    @Test
-    void findLatestProductChangeRecommendation_ShouldMapAnalysisAndStatisticsFromRealDatabase() {
-        BuffetEntity buffet = persistBuffet();
-        ProductoEntity product = persistProduct();
-        Map<String, Object> statsMap = Map.of("ventasPeriodo", 5);
-        persistProductChangeEvent(buffet, product, Map.of(
-                "analisisIa", Map.of(
-                        "resumen", "Conviene ajustar stock.",
-                        "alertas", List.of("Baja rotacion"),
-                        "recomendaciones", List.of("Promocionar"),
-                        "modelo", "gemini-test"
-                )
-        ), Map.of(
-                "nombre", "Producto 1",
-                "precio", 10.0,
-                "saleStatistics", statsMap
-        ));
-        flushAndClear();
-
-        Optional<ProductRecommendationResult> result =
-                repository.findLatestProductChangeRecommendation(buffet.getId());
-
+    private void thenLatestProductRecommendationHasValidAnalysis(Optional<ProductRecommendationResult> result) {
         assertTrue(result.isPresent());
         assertTrue(result.orElseThrow().getAiAnalysis().isPresent());
         assertEquals(
@@ -140,23 +326,7 @@ class AIEventPersistenceRepositoryIT extends AbstractIntegrationTest {
         );
     }
 
-    @Test
-    void registerProductChangeRecommendation_ShouldPersistInputAndAnalysisInRealDatabase() {
-        BuffetEntity buffet = persistBuffet();
-        ProductoEntity product = persistProduct();
-
-        repository.registerProductChangeRecommendation(productChangeResult(
-                buffet.getId(),
-                product.getId(),
-                Optional.of(new ProductChangeAnalysis(
-                        "Subio la demanda.",
-                        List.of("Poco stock"),
-                        List.of("Reponer"),
-                        "gemini-test"
-                ))
-        ));
-        flushAndClear();
-
+    private void thenProductChangeRecommendationEventIsPersisted(BuffetEntity buffet, ProductoEntity product) {
         AIEventEntity event = onlyEventForProduct(AIEventType.PRODUCTO_CAMBIO, product.getId());
         assertEquals(buffet.getId(), event.getBuffetEntity().getId());
         assertEquals(product.getId(), event.getProductoEntity().getId());
@@ -166,23 +336,7 @@ class AIEventPersistenceRepositoryIT extends AbstractIntegrationTest {
         assertEquals("Subio la demanda.", aiAnalysis(event).get("resumen"));
     }
 
-    @Test
-    void registerProductChangeRecommendation_WhenStatisticsExist_ShouldPersistThemInRealDatabase() {
-        BuffetEntity buffet = persistBuffet();
-        ProductoEntity product = persistProduct();
-        ProductSaleStatistics statistics = new ProductSaleStatistics();
-        statistics.setVentasPeriodo(7L);
-        ProductChangeRecommendation recommendation = productChangeRecommendation(
-                buffet.getId(),
-                product.getId()
-        );
-        recommendation.setSaleStatistics(statistics);
-
-        repository.registerProductChangeRecommendation(
-                new ProductRecommendationResult(recommendation, Optional.empty())
-        );
-        flushAndClear();
-
+    private void thenProductChangeRecommendationEventHasStatisticsPersisted(ProductoEntity product) {
         AIEventEntity event = onlyEventForProduct(AIEventType.PRODUCTO_CAMBIO, product.getId());
         Map<String, Object> savedStatistics = mapValue(
                 event.getInputData().get("saleStatistics")
@@ -190,40 +344,18 @@ class AIEventPersistenceRepositoryIT extends AbstractIntegrationTest {
         assertNumberEquals(new BigDecimal("7"), savedStatistics.get("ventasPeriodo"));
     }
 
-    @Test
-    void registerProductAdditionRecommendation_ShouldPersistSuggestionInRealDatabase() {
-        BuffetEntity buffet = persistBuffet();
-        ProductoEntity productEntity = persistProduct();
-        Producto product = new Producto();
-        product.setId(productEntity.getId());
-        product.setNombre("Barrita");
-
-        repository.registerProductAdditionRecommendation(product, new Kiosquero(), buffet.getId());
-        flushAndClear();
-
+    private void thenProductAdditionEventIsPersisted(BuffetEntity buffet, ProductoEntity product) {
         AIEventEntity event = onlyEventForProduct(AIEventType.AGREGAR_PRODUCTO, product.getId());
         assertEquals(buffet.getId(), event.getBuffetEntity().getId());
         assertEquals(product.getId(), event.getProductoEntity().getId());
         assertTrue(event.getResultData().get("resumen").toString().contains("Barrita"));
     }
 
-    @Test
-    void registerPurchaseRecommendation_ShouldPersistAnalysisAndReturnSavedIdFromRealDatabase() {
-        AlumnoEntity student = persistStudent();
-        ProductoEntity product = persistProduct();
-
-        UUID eventId = repository.registerPurchaseRecommendation(new PurchaseRecommendationResult(
-                student.getId(),
-                List.of(new PurchaseResume()),
-                Optional.of(new PurchasePatternAnalysis(
-                        "Compra habitual.",
-                        product.getId(),
-                        "Yogur",
-                        "lunes"
-                ))
-        ));
-        flushAndClear();
-
+    private void thenPurchaseRecommendationAnalysisIsPersisted(
+            UUID eventId,
+            AlumnoEntity student,
+            ProductoEntity product
+    ) {
         assertNotNull(eventId);
         AIEventEntity event = aiEventJpaRepository.findById(eventId).orElseThrow();
         assertEquals(AIEventType.ANALISIS_CONSUMO, event.getType());
@@ -232,71 +364,6 @@ class AIEventPersistenceRepositoryIT extends AbstractIntegrationTest {
         Map<String, Object> analysis = aiAnalysis(event);
         assertEquals("Compra habitual.", analysis.get("resumen"));
         assertEquals(product.getId().toString(), analysis.get("Id_Producto").toString());
-    }
-
-    private AlumnoEntity persistStudent() {
-        String suffix = UUID.randomUUID().toString();
-        UsuarioEntity user = new UsuarioEntity();
-        user.setIdCognito("student-" + suffix);
-        user.setNombre("Test");
-        user.setApellido("Student");
-        user.setEmail("student-" + suffix + "@test.com");
-        user.setRol(RolUsuario.ALUMNO);
-        user.setActivo(true);
-        entityManager.persist(user);
-
-        AlumnoEntity student = new AlumnoEntity();
-        student.setUsuario(user);
-        student.setActivo(true);
-        entityManager.persist(student);
-        return student;
-    }
-
-    private BuffetEntity persistBuffet() {
-        ColegioEntity school = new ColegioEntity();
-        school.setNombre("AI Event School");
-        school.setCue("AI-" + UUID.randomUUID());
-        school.setActivo(true);
-        entityManager.persist(school);
-
-        BuffetEntity buffet = new BuffetEntity();
-        buffet.setNombre("AI Event Buffet");
-        buffet.setColegioEntity(school);
-        buffet.setActivo(true);
-        entityManager.persist(buffet);
-        return buffet;
-    }
-
-    private ProductoEntity persistProduct() {
-        CategoriaProductoEntity category = new CategoriaProductoEntity();
-        category.setDescripcion("AI Event Category " + UUID.randomUUID());
-        category.setActivo(true);
-        entityManager.persist(category);
-
-        ProductoEntity product = new ProductoEntity();
-        product.setNombre("AI Event Product");
-        product.setDescripcion("Desc");
-        product.setPrecio(new BigDecimal("500.00"));
-        product.setRequierePreparacion(false);
-        product.setActivo(true);
-        product.setCategoria(category);
-        entityManager.persist(product);
-        return product;
-    }
-
-    private void persistProductChangeEvent(
-            BuffetEntity buffet,
-            ProductoEntity product,
-            Map<String, Object> resultData,
-            Map<String, Object> inputData
-    ) {
-        AIEventEntity event = new AIEventEntity();
-        event.setType(AIEventType.PRODUCTO_CAMBIO);
-        event.setBuffetEntity(buffet);
-        event.setProductoEntity(product);
-        event.setInputData(inputData);
-        event.setResultData(resultData);
-        entityManager.persist(event);
     }
 
     private SpendingPredictionResult predictionResult(UUID studentId) {
