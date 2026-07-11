@@ -54,6 +54,7 @@ public class TutorRepositoryImpl implements TutorRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Tutor> findByAlumnoId(UUID alumnoId) {
         return springDataTutorRepository.findByAlumnoId(alumnoId)
                 .stream()

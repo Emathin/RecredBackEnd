@@ -82,12 +82,34 @@ class DailyBuffetCloseRepositoryImplIT extends AbstractIntegrationTest {
         BuffetEntity buffet = generateBuffetEntity();
         LocalDate startDate = LocalDate.now().minusDays(5);
         LocalDate endDate = LocalDate.now();
-        generateCloseEntity(buffet, startDate.plusDays(1));
+        LocalDate closeDate = startDate.plusDays(1);
+        generateCloseEntity(buffet, closeDate);
 
-        org.junit.jupiter.api.Assertions.assertThrows(
-                org.springframework.dao.InvalidDataAccessResourceUsageException.class,
-                () -> repository.findByBuffetAndDateRange(buffet.getId(), startDate, endDate)
-        );
+        List<DailyBuffetClose> result = repository.findByBuffetAndDateRange(
+                buffet.getId(),
+                startDate,
+                endDate);
+
+        assertEquals(1, result.size());
+        assertEquals(closeDate, result.get(0).date());
+    }
+
+    @Test
+    void findByBuffetAndDateRange_WhenDatesAreNull_ShouldReturnAllOrderedByDateDesc() {
+        BuffetEntity buffet = generateBuffetEntity();
+        LocalDate olderCloseDate = LocalDate.now().minusDays(7);
+        LocalDate newerCloseDate = LocalDate.now().minusDays(6);
+        generateCloseEntity(buffet, olderCloseDate);
+        generateCloseEntity(buffet, newerCloseDate);
+
+        List<DailyBuffetClose> result = repository.findByBuffetAndDateRange(
+                buffet.getId(),
+                null,
+                null);
+
+        assertEquals(2, result.size());
+        assertEquals(newerCloseDate, result.get(0).date());
+        assertEquals(olderCloseDate, result.get(1).date());
     }
 
     @Test

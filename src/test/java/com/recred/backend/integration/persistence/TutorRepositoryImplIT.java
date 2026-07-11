@@ -4,6 +4,9 @@ import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
+import com.recred.backend.infrastructure.entities.ColegioEntity;
+import com.recred.backend.infrastructure.entities.GradoEntity;
+import com.recred.backend.infrastructure.entities.NivelEntity;
 import com.recred.backend.infrastructure.entities.TutorEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;
 import com.recred.backend.infrastructure.persistence.SpringDataAlumnoRepository;
@@ -13,7 +16,9 @@ import com.recred.backend.integration.AbstractIntegrationTest;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Optional;
 import java.util.Set;
@@ -36,6 +41,9 @@ class TutorRepositoryImplIT extends AbstractIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
     @Test
     void findMethods_ShouldMapEntitiesToDomain() {
         AlumnoEntity student = generateStudent();
@@ -48,6 +56,18 @@ class TutorRepositoryImplIT extends AbstractIntegrationTest {
                 user.getIdCognito(),
                 student.getId()
         );
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void findByAlumnoId_WhenCallerHasNoTransaction_ShouldMapGradeLevel() {
+        String levelDescription = "Nivel " + UUID.randomUUID();
+        UUID studentId = createStudentWithTutorAndGradeLevel(levelDescription);
+
+        Tutor tutor = repository.findByAlumnoId(studentId).get(0);
+        Alumno child = tutor.getHijos().iterator().next();
+
+        assertEquals(levelDescription, child.getGrado().getNivel().getDescripcion());
     }
 
     @Test
@@ -88,10 +108,56 @@ class TutorRepositoryImplIT extends AbstractIntegrationTest {
     }
 
     private AlumnoEntity generateStudent() {
+        return generateStudent(null);
+    }
+
+    private AlumnoEntity generateStudent(GradoEntity grade) {
         AlumnoEntity student = new AlumnoEntity();
         student.setUsuario(generateUser(RolUsuario.ALUMNO));
         student.setActivo(true);
+        if (grade != null)
+            student.setGradoEntity(grade);
         return springDataAlumnoRepository.save(student);
+    }
+
+    private UUID createStudentWithTutorAndGradeLevel(String levelDescription) {
+        return transactionTemplate.execute(status -> {
+            NivelEntity level = generateLevel(levelDescription);
+            ColegioEntity school = generateSchool(level);
+            GradoEntity grade = generateGrade(school, level);
+            AlumnoEntity student = generateStudent(grade);
+            generateTutorWithChild(student);
+            return student.getId();
+        });
+    }
+
+    private NivelEntity generateLevel(String description) {
+        NivelEntity level = new NivelEntity();
+        level.setDescripcion(description);
+        level.setActivo(true);
+        entityManager.persist(level);
+        return level;
+    }
+
+    private ColegioEntity generateSchool(NivelEntity level) {
+        ColegioEntity school = new ColegioEntity();
+        school.setNombre("Colegio " + UUID.randomUUID());
+        school.setCue("CUE-" + UUID.randomUUID());
+        school.setNivelEntity(level);
+        school.setActivo(true);
+        entityManager.persist(school);
+        return school;
+    }
+
+    private GradoEntity generateGrade(ColegioEntity school, NivelEntity level) {
+        GradoEntity grade = new GradoEntity();
+        grade.setColegioEntity(school);
+        grade.setNivelEntity(level);
+        grade.setAnio("1");
+        grade.setDivision("A");
+        grade.setActivo(true);
+        entityManager.persist(grade);
+        return grade;
     }
 
     private TutorEntity generateTutorWithChild(AlumnoEntity child) {

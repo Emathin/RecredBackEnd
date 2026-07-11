@@ -38,10 +38,87 @@ public class DailyBuffetCloseRepositoryImpl implements DailyBuffetCloseRepositor
             LocalDate startDate,
             LocalDate endDate
     ) {
-        return springDataRepository.findByBuffetAndDateRange(buffetId, startDate, endDate)
+        return findEntitiesByDateRange(buffetId, startDate, endDate)
                 .stream()
                 .map(CierreDiarioBuffetEntity::toDomain)
                 .toList();
+    }
+
+    private List<CierreDiarioBuffetEntity> findEntitiesByDateRange(
+            UUID buffetId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        return withoutDateRange(startDate, endDate)
+                ? findAllByBuffet(buffetId)
+                : findByBoundedDateRange(buffetId, startDate, endDate);
+    }
+
+    private List<CierreDiarioBuffetEntity> findByBoundedDateRange(
+            UUID buffetId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        return withoutStartDate(startDate)
+                ? findUntilEndDate(buffetId, endDate)
+                : findFromStartDate(buffetId, startDate, endDate);
+    }
+
+    private List<CierreDiarioBuffetEntity> findFromStartDate(
+            UUID buffetId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        return withoutEndDate(endDate)
+                ? findFromStartDate(buffetId, startDate)
+                : findBetweenDates(buffetId, startDate, endDate);
+    }
+
+    private List<CierreDiarioBuffetEntity> findAllByBuffet(UUID buffetId) {
+        return springDataRepository.findByBuffetEntityIdOrderByFechaDesc(buffetId);
+    }
+
+    private List<CierreDiarioBuffetEntity> findUntilEndDate(
+            UUID buffetId,
+            LocalDate endDate
+    ) {
+        return springDataRepository
+                .findByBuffetEntityIdAndFechaLessThanEqualOrderByFechaDesc(
+                        buffetId,
+                        endDate);
+    }
+
+    private List<CierreDiarioBuffetEntity> findFromStartDate(
+            UUID buffetId,
+            LocalDate startDate
+    ) {
+        return springDataRepository
+                .findByBuffetEntityIdAndFechaGreaterThanEqualOrderByFechaDesc(
+                        buffetId,
+                        startDate);
+    }
+
+    private List<CierreDiarioBuffetEntity> findBetweenDates(
+            UUID buffetId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        return springDataRepository.findByBuffetEntityIdAndFechaBetweenOrderByFechaDesc(
+                buffetId,
+                startDate,
+                endDate);
+    }
+
+    private boolean withoutDateRange(LocalDate startDate, LocalDate endDate) {
+        return startDate == null && endDate == null;
+    }
+
+    private boolean withoutStartDate(LocalDate startDate) {
+        return startDate == null;
+    }
+
+    private boolean withoutEndDate(LocalDate endDate) {
+        return endDate == null;
     }
 
     @Override
