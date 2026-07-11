@@ -8,6 +8,7 @@ import com.recred.backend.domain.repositories.BuffetRepository;
 import com.recred.backend.domain.repositories.KiosqueroRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.infrastructure.web.KiosqueroAccessGuard;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -23,102 +24,131 @@ import static org.mockito.Mockito.when;
 
 class KiosqueroAccessGuardTest {
 
-    private final UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
-    private final KiosqueroRepository kiosqueroRepository = mock(KiosqueroRepository.class);
-    private final BuffetRepository buffetRepository = mock(BuffetRepository.class);
-    private final KiosqueroAccessGuard guard = new KiosqueroAccessGuard(
-            usuarioRepository,
-            kiosqueroRepository,
-            buffetRepository
-    );
+    private UsuarioRepository usuarioRepository;
+    private KiosqueroRepository kiosqueroRepository;
+    private BuffetRepository buffetRepository;
+    private KiosqueroAccessGuard guard;
 
-    @Test
-    void requireBuffetAccess_WhenSellerOwnsBuffet_ShouldPass() {
-        UUID userId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        Usuario user = user(userId, RolUsuario.VENDEDOR, null);
+    private final UUID USER_ID = UUID.randomUUID();
+    private final UUID BUFFET_ID = UUID.randomUUID();
+    private final UUID COLEGIO_ID = UUID.randomUUID();
+    private final String SUB = "sub";
 
-        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
-        when(kiosqueroRepository.findBuffetByUsuarioId(userId)).thenReturn(buffetId);
-
-        assertDoesNotThrow(() -> guard.requireBuffetAccess(auth(), buffetId));
+    @BeforeEach
+    void setUp() {
+        usuarioRepository = mock(UsuarioRepository.class);
+        kiosqueroRepository = mock(KiosqueroRepository.class);
+        buffetRepository = mock(BuffetRepository.class);
+        guard = new KiosqueroAccessGuard(usuarioRepository, kiosqueroRepository, buffetRepository);
     }
 
     @Test
-    void requireBuffetAccess_WhenUserIsAdmin_ShouldPass() {
-        UUID buffetId = UUID.randomUUID();
-        Usuario user = user(UUID.randomUUID(), RolUsuario.ADMIN, null);
-
-        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
-
-        assertDoesNotThrow(() -> guard.requireBuffetAccess(auth(), buffetId));
+    void requireBuffetAccessShouldPassWhenSellerOwnsBuffet() {
+        givenUserIsSeller();
+        givenSellerOwnsBuffet();
+        thenAccessIsGranted();
     }
 
     @Test
-    void requireBuffetAccess_WhenSellerDoesNotOwnBuffet_ShouldThrowException() {
-        UUID userId = UUID.randomUUID();
-        Usuario user = user(userId, RolUsuario.VENDEDOR, null);
-
-        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
-        when(kiosqueroRepository.findBuffetByUsuarioId(userId)).thenReturn(UUID.randomUUID());
-
-        assertThrows(AccessDeniedException.class,
-                () -> guard.requireBuffetAccess(auth(), UUID.randomUUID()));
+    void requireBuffetAccessShouldPassWhenUserIsAdmin() {
+        givenUserIsAdmin();
+        thenAccessIsGranted();
     }
 
     @Test
-    void requireBuffetAccess_WhenSchoolDirectorOwnsSchool_ShouldPass() {
-        UUID colegioId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        Usuario user = user(UUID.randomUUID(), RolUsuario.DIRECTIVO_COLEGIO, colegioId);
-        Buffet buffet = buffet(colegioId);
-
-        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
-        when(buffetRepository.findById(buffetId)).thenReturn(Optional.of(buffet));
-
-        assertDoesNotThrow(() -> guard.requireBuffetAccess(auth(), buffetId));
+    void requireBuffetAccessShouldThrowExceptionWhenSellerDoesNotOwnBuffet() {
+        givenUserIsSeller();
+        givenSellerDoesNotOwnBuffet();
+        thenAccessIsDenied();
     }
 
     @Test
-    void requireBuffetAccess_WhenAuthenticationIsMissing_ShouldThrowException() {
-        assertThrows(AuthenticationCredentialsNotFoundException.class,
-                () -> guard.requireBuffetAccess(null, UUID.randomUUID()));
+    void requireBuffetAccessShouldPassWhenSchoolDirectorOwnsSchool() {
+        givenUserIsSchoolDirector();
+        givenBuffetBelongsToSchool();
+        thenAccessIsGranted();
     }
 
     @Test
-    void requireBuffetAccess_WhenUserIsNotSynchronized_ShouldThrowException() {
-        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.empty());
-
-        assertThrows(AuthenticationCredentialsNotFoundException.class,
-                () -> guard.requireBuffetAccess(auth(), UUID.randomUUID()));
+    void requireBuffetAccessShouldThrowExceptionWhenAuthenticationIsMissing() {
+        thenAuthenticationIsRequired(null);
     }
 
     @Test
-    void requireBuffetAccess_WhenSchoolDirectorHasNoSchool_ShouldThrowException() {
-        Usuario user = user(UUID.randomUUID(), RolUsuario.DIRECTIVO_COLEGIO, null);
-
-        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
-
-        assertThrows(AccessDeniedException.class,
-                () -> guard.requireBuffetAccess(auth(), UUID.randomUUID()));
+    void requireBuffetAccessShouldThrowExceptionWhenUserIsNotSynchronized() {
+        givenUserDoesNotExist();
+        thenAuthenticationIsRequired(auth());
     }
 
     @Test
-    void requireBuffetAccess_WhenBuffetSchoolHasNoId_ShouldThrowException() {
-        UUID colegioId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        Usuario user = user(UUID.randomUUID(), RolUsuario.DIRECTIVO_COLEGIO, colegioId);
+    void requireBuffetAccessShouldThrowExceptionWhenSchoolDirectorHasNoSchool() {
+        givenUserIsSchoolDirectorWithoutSchool();
+        thenAccessIsDenied();
+    }
+
+    @Test
+    void requireBuffetAccessShouldThrowExceptionWhenBuffetSchoolHasNoId() {
+        givenUserIsSchoolDirector();
+        givenBuffetHasNoSchool();
+        thenAccessIsDenied();
+    }
+
+    private void givenUserIsSeller() {
+        Usuario user = user(USER_ID, RolUsuario.VENDEDOR, null);
+        when(usuarioRepository.findByIdCognito(SUB)).thenReturn(Optional.of(user));
+    }
+
+    private void givenUserIsAdmin() {
+        Usuario user = user(USER_ID, RolUsuario.ADMIN, null);
+        when(usuarioRepository.findByIdCognito(SUB)).thenReturn(Optional.of(user));
+    }
+
+    private void givenUserIsSchoolDirector() {
+        Usuario user = user(USER_ID, RolUsuario.DIRECTIVO_COLEGIO, COLEGIO_ID);
+        when(usuarioRepository.findByIdCognito(SUB)).thenReturn(Optional.of(user));
+    }
+
+    private void givenUserIsSchoolDirectorWithoutSchool() {
+        Usuario user = user(USER_ID, RolUsuario.DIRECTIVO_COLEGIO, null);
+        when(usuarioRepository.findByIdCognito(SUB)).thenReturn(Optional.of(user));
+    }
+
+    private void givenUserDoesNotExist() {
+        when(usuarioRepository.findByIdCognito(SUB)).thenReturn(Optional.empty());
+    }
+
+    private void givenSellerOwnsBuffet() {
+        when(kiosqueroRepository.findBuffetByUsuarioId(USER_ID)).thenReturn(BUFFET_ID);
+    }
+
+    private void givenSellerDoesNotOwnBuffet() {
+        when(kiosqueroRepository.findBuffetByUsuarioId(USER_ID)).thenReturn(UUID.randomUUID());
+    }
+
+    private void givenBuffetBelongsToSchool() {
+        Buffet buffet = buffet(COLEGIO_ID);
+        when(buffetRepository.findById(BUFFET_ID)).thenReturn(Optional.of(buffet));
+    }
+
+    private void givenBuffetHasNoSchool() {
         Buffet buffet = buffet(null);
+        when(buffetRepository.findById(BUFFET_ID)).thenReturn(Optional.of(buffet));
+    }
 
-        when(usuarioRepository.findByIdCognito("sub")).thenReturn(Optional.of(user));
-        when(buffetRepository.findById(buffetId)).thenReturn(Optional.of(buffet));
+    private void thenAccessIsGranted() {
+        assertDoesNotThrow(() -> guard.requireBuffetAccess(auth(), BUFFET_ID));
+    }
 
-        assertThrows(AccessDeniedException.class,
-                () -> guard.requireBuffetAccess(auth(), buffetId));
+    private void thenAccessIsDenied() {
+        assertThrows(AccessDeniedException.class, () -> guard.requireBuffetAccess(auth(), BUFFET_ID));
+    }
+
+    private void thenAuthenticationIsRequired(TestingAuthenticationToken auth) {
+        assertThrows(AuthenticationCredentialsNotFoundException.class, () -> guard.requireBuffetAccess(auth, BUFFET_ID));
     }
 
     private TestingAuthenticationToken auth() {
-        return new TestingAuthenticationToken("sub", "");
+        return new TestingAuthenticationToken(SUB, "");
     }
 
     private Usuario user(UUID userId, RolUsuario role, UUID colegioId) {
@@ -134,11 +164,12 @@ class KiosqueroAccessGuardTest {
     }
 
     private Buffet buffet(UUID colegioId) {
-        Colegio colegio = new Colegio();
-        colegio.setId(colegioId);
         Buffet buffet = new Buffet();
-        buffet.setColegio(colegio);
+        if (colegioId != null) {
+            Colegio colegio = new Colegio();
+            colegio.setId(colegioId);
+            buffet.setColegio(colegio);
+        }
         return buffet;
     }
 }
-

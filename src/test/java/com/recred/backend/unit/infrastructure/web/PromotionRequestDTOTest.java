@@ -27,73 +27,68 @@ class PromotionRequestDTOTest {
 
     @Test
     void validPromotionRequestHasNoStructuralErrors() {
-        Set<ConstraintViolation<PromotionRequestDTO>> violations =
-                validator.validate(validRequest());
+        PromotionRequestDTO request = givenValidRequest();
 
-        assertTrue(violations.isEmpty());
+        Set<ConstraintViolation<PromotionRequestDTO>> violations = whenValidating(request);
+
+        thenHasNoViolations(violations);
     }
 
     @Test
     void missingNameIsRejectedAtWebBoundary() {
-        PromotionRequestDTO request = validRequest();
-        request.setName(null);
+        PromotionRequestDTO request = givenRequestWithNullName();
 
-        assertViolationMessage(
-                validator.validate(request),
-                "Promotion name is required");
+        Set<ConstraintViolation<PromotionRequestDTO>> violations = whenValidating(request);
+
+        thenViolationMessageIs(violations, "Promotion name is required");
     }
 
     @Test
     void blankNameIsRejectedAtWebBoundary() {
-        PromotionRequestDTO request = validRequest();
-        request.setName("   ");
+        PromotionRequestDTO request = givenRequestWithBlankName();
 
-        assertViolationMessage(
-                validator.validate(request),
-                "Promotion name is required");
+        Set<ConstraintViolation<PromotionRequestDTO>> violations = whenValidating(request);
+
+        thenViolationMessageIs(violations, "Promotion name is required");
     }
 
     @Test
     void missingDiscountIsRejectedAtWebBoundary() {
-        PromotionRequestDTO request = validRequest();
-        request.setDiscountPercentage(null);
+        PromotionRequestDTO request = givenRequestWithNullDiscount();
 
-        assertViolationMessage(
-                validator.validate(request),
-                "Discount percentage is required");
+        Set<ConstraintViolation<PromotionRequestDTO>> violations = whenValidating(request);
+
+        thenViolationMessageIs(violations, "Discount percentage is required");
     }
 
     @Test
     void missingStartDateIsRejectedAtWebBoundary() {
-        PromotionRequestDTO request = validRequest();
-        request.setStartDate(null);
+        PromotionRequestDTO request = givenRequestWithNullStartDate();
 
-        assertViolationMessage(
-                validator.validate(request),
-                "Start date is required");
+        Set<ConstraintViolation<PromotionRequestDTO>> violations = whenValidating(request);
+
+        thenViolationMessageIs(violations, "Start date is required");
     }
 
     @Test
     void missingEndDateIsRejectedAtWebBoundary() {
-        PromotionRequestDTO request = validRequest();
-        request.setEndDate(null);
+        PromotionRequestDTO request = givenRequestWithNullEndDate();
 
-        assertViolationMessage(
-                validator.validate(request),
-                "End date is required");
+        Set<ConstraintViolation<PromotionRequestDTO>> violations = whenValidating(request);
+
+        thenViolationMessageIs(violations, "End date is required");
     }
 
     @Test
     void missingProductsAreRejectedAtWebBoundary() {
-        PromotionRequestDTO request = validRequest();
-        request.setProductIds(null);
+        PromotionRequestDTO request = givenRequestWithNullProducts();
 
-        assertViolationMessage(
-                validator.validate(request),
-                "Products are required");
+        Set<ConstraintViolation<PromotionRequestDTO>> violations = whenValidating(request);
+
+        thenViolationMessageIs(violations, "Products are required");
     }
 
-    private PromotionRequestDTO validRequest() {
+    private PromotionRequestDTO givenValidRequest() {
         PromotionRequestDTO request = new PromotionRequestDTO();
         request.setName("Combo");
         request.setDiscountPercentage(new BigDecimal("15.00"));
@@ -103,9 +98,54 @@ class PromotionRequestDTOTest {
         return request;
     }
 
-    private void assertViolationMessage(
+    private PromotionRequestDTO givenRequestWithNullName() {
+        PromotionRequestDTO request = givenValidRequest();
+        request.setName(null);
+        return request;
+    }
+
+    private PromotionRequestDTO givenRequestWithBlankName() {
+        PromotionRequestDTO request = givenValidRequest();
+        request.setName("   ");
+        return request;
+    }
+
+    private PromotionRequestDTO givenRequestWithNullDiscount() {
+        PromotionRequestDTO request = givenValidRequest();
+        request.setDiscountPercentage(null);
+        return request;
+    }
+
+    private PromotionRequestDTO givenRequestWithNullStartDate() {
+        PromotionRequestDTO request = givenValidRequest();
+        request.setStartDate(null);
+        return request;
+    }
+
+    private PromotionRequestDTO givenRequestWithNullEndDate() {
+        PromotionRequestDTO request = givenValidRequest();
+        request.setEndDate(null);
+        return request;
+    }
+
+    private PromotionRequestDTO givenRequestWithNullProducts() {
+        PromotionRequestDTO request = givenValidRequest();
+        request.setProductIds(null);
+        return request;
+    }
+
+    private Set<ConstraintViolation<PromotionRequestDTO>> whenValidating(PromotionRequestDTO request) {
+        return validator.validate(request);
+    }
+
+    private void thenHasNoViolations(Set<ConstraintViolation<PromotionRequestDTO>> violations) {
+        assertTrue(violations.isEmpty());
+    }
+
+    private void thenViolationMessageIs(
             Set<ConstraintViolation<PromotionRequestDTO>> violations,
-            String expectedMessage) {
+            String expectedMessage
+    ) {
         assertEquals(1, violations.size());
         assertEquals(expectedMessage, violations.iterator().next().getMessage());
     }

@@ -11,20 +11,48 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ScheduledPickupResponseDTOTest {
 
     @Test
-    void constructor_ShouldMapFullPurchase() {
+    void constructorShouldMapFullPurchase() {
         UUID purchaseId = UUID.randomUUID();
         UUID studentId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
         UUID pickupSlotId = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.now();
         LocalDate today = LocalDate.now();
+        GetScheduledPickupsResponse response = givenScheduledPickupResponse(
+                purchaseId, 
+                studentId, 
+                pickupSlotId, 
+                now, 
+                today
+        );
 
-        GetScheduledPickupsResponse response = new GetScheduledPickupsResponse(
+        ScheduledPickupResponseDTO dto = new ScheduledPickupResponseDTO(response);
+
+        thenMapsAllFieldsCorrectly(dto, purchaseId, studentId, pickupSlotId, now, today);
+    }
+
+    @Test
+    void constructorShouldHandleNullFields() {
+        GetScheduledPickupsResponse response = givenScheduledPickupResponseWithNulls();
+
+        ScheduledPickupResponseDTO dto = new ScheduledPickupResponseDTO(response);
+
+        thenKeepsNullableFieldsNull(dto);
+    }
+
+    private GetScheduledPickupsResponse givenScheduledPickupResponse(
+            UUID purchaseId, 
+            UUID studentId, 
+            UUID pickupSlotId, 
+            LocalDateTime now, 
+            LocalDate today
+    ) {
+        return new GetScheduledPickupsResponse(
                 purchaseId,
                 studentId,
                 "John Doe",
@@ -39,15 +67,41 @@ class ScheduledPickupResponseDTOTest {
                 "Recreo 1",
                 today,
                 List.of(new GetScheduledPickupsResponse.PurchaseItemResponse(
-                        productId,
+                        UUID.randomUUID(),
                         "Product 1",
                         2,
                         new BigDecimal("10.00")
                 ))
         );
+    }
 
-        ScheduledPickupResponseDTO dto = new ScheduledPickupResponseDTO(response);
+    private GetScheduledPickupsResponse givenScheduledPickupResponseWithNulls() {
+        return new GetScheduledPickupsResponse(
+                UUID.randomUUID(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+    }
 
+    private void thenMapsAllFieldsCorrectly(
+            ScheduledPickupResponseDTO dto,
+            UUID purchaseId,
+            UUID studentId,
+            UUID pickupSlotId,
+            LocalDateTime now,
+            LocalDate today
+    ) {
         assertEquals(purchaseId, dto.getId());
         assertEquals(studentId, dto.getStudentId());
         assertEquals("John Doe", dto.getStudentName());
@@ -65,27 +119,7 @@ class ScheduledPickupResponseDTOTest {
         assertEquals("Product 1", dto.getItems().get(0).getProductName());
     }
 
-    @Test
-    void constructor_ShouldHandleNullFields() {
-        GetScheduledPickupsResponse response = new GetScheduledPickupsResponse(
-                UUID.randomUUID(),
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-        );
-
-        ScheduledPickupResponseDTO dto = new ScheduledPickupResponseDTO(response);
-
+    private void thenKeepsNullableFieldsNull(ScheduledPickupResponseDTO dto) {
         assertNull(dto.getStudentId());
         assertNull(dto.getStatus());
         assertNull(dto.getWithdrawalStatus());
@@ -93,4 +127,3 @@ class ScheduledPickupResponseDTOTest {
         assertNull(dto.getItems());
     }
 }
-

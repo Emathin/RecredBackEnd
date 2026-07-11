@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SupplierRequestTest {
 
     private Validator validator;
+    private Set<ConstraintViolation<SupplierRequest>> violations;
 
     @BeforeEach
     void setUp() {
@@ -22,47 +23,47 @@ class SupplierRequestTest {
     }
 
     @Test
-    void validSupplierRequestHasNoStructuralErrors() {
-        Set<ConstraintViolation<SupplierRequest>> violations =
-                validator.validate(validRequest());
+    void givenValidRequestWhenValidatingThenHasNoErrors() {
+        whenValidating(givenValidRequest());
 
+        thenNoViolations();
+    }
+
+    @Test
+    void givenMissingNameWhenValidatingThenIsRejected() {
+        whenValidating(givenRequestWithName(null));
+
+        thenViolationMessageIs("Supplier name is required");
+    }
+
+    @Test
+    void givenBlankNameWhenValidatingThenIsRejected() {
+        whenValidating(givenRequestWithName("   "));
+
+        thenViolationMessageIs("Supplier name is required");
+    }
+
+    private SupplierRequest givenValidRequest() {
+        return givenRequestWithName("Proveedor Test");
+    }
+
+    private SupplierRequest givenRequestWithName(String name) {
+        return new SupplierRequest(
+                name, "11223344", "proveedor@test.com",
+                "Lunes", "Entrega temprano");
+    }
+
+    private void whenValidating(SupplierRequest request) {
+        violations = validator.validate(request);
+    }
+
+    private void thenNoViolations() {
         assertTrue(violations.isEmpty());
     }
 
-    @Test
-    void missingNameIsRejectedAtWebBoundary() {
-        Set<ConstraintViolation<SupplierRequest>> violations =
-                validator.validate(requestWithName(null));
-
-        assertViolationMessage(violations, "Supplier name is required");
-    }
-
-    @Test
-    void blankNameIsRejectedAtWebBoundary() {
-        Set<ConstraintViolation<SupplierRequest>> violations =
-                validator.validate(requestWithName("   "));
-
-        assertViolationMessage(violations, "Supplier name is required");
-    }
-
-    private SupplierRequest validRequest() {
-        return requestWithName("Proveedor Test");
-    }
-
-    private SupplierRequest requestWithName(String name) {
-        return new SupplierRequest(
-                name,
-                "11223344",
-                "proveedor@test.com",
-                "Lunes",
-                "Entrega temprano"
-        );
-    }
-
-    private void assertViolationMessage(
-            Set<ConstraintViolation<SupplierRequest>> violations,
-            String expectedMessage) {
+    private void thenViolationMessageIs(String expected) {
         assertEquals(1, violations.size());
-        assertEquals(expectedMessage, violations.iterator().next().getMessage());
+        assertEquals(expected,
+                violations.iterator().next().getMessage());
     }
 }

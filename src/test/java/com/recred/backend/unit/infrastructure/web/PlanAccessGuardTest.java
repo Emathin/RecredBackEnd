@@ -24,6 +24,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.recred.backend.domain.models.RolUsuario.ADMIN;
+import static com.recred.backend.domain.models.RolUsuario.PADRE;
+import static com.recred.backend.domain.models.RolUsuario.VENDEDOR;
+import static com.recred.backend.domain.models.TipoPlan.AVANZADO;
+import static com.recred.backend.domain.models.TipoPlan.GRATUITO;
+import static com.recred.backend.domain.models.TipoPlan.INTERMEDIO;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
@@ -48,135 +54,127 @@ class PlanAccessGuardTest {
     }
 
     @Test
-    void requireAtLeast_WhenUserHasHigherPlan_ShouldAllowAccess() {
-        givenUserWithPlan(TipoPlan.AVANZADO);
+    void requireAtLeastWhenUserHasHigherPlanShouldAllowAccess() {
+        givenUserWithPlan(AVANZADO);
 
-        Executable execution = () -> whenRequiringAtLeast(TipoPlan.INTERMEDIO);
+        Executable execution = whenRequiringAtLeast(INTERMEDIO);
 
-        assertDoesNotThrow(execution);
+        thenExecutionSucceeds(execution);
     }
 
     @Test
-    void requireAtLeast_WhenUserHasSamePlan_ShouldAllowAccess() {
-        givenUserWithPlan(TipoPlan.INTERMEDIO);
+    void requireAtLeastWhenUserHasSamePlanShouldAllowAccess() {
+        givenUserWithPlan(INTERMEDIO);
 
-        Executable execution = () -> whenRequiringAtLeast(TipoPlan.INTERMEDIO);
+        Executable execution = whenRequiringAtLeast(INTERMEDIO);
 
-        assertDoesNotThrow(execution);
+        thenExecutionSucceeds(execution);
     }
 
     @Test
-    void requireAtLeast_WhenUserHasLowerPlan_ShouldDenyAccess() {
-        givenUserWithPlan(TipoPlan.GRATUITO);
+    void requireAtLeastWhenUserHasLowerPlanShouldDenyAccess() {
+        givenUserWithPlan(GRATUITO);
 
-        Executable execution = () -> whenRequiringAtLeast(TipoPlan.INTERMEDIO);
+        Executable execution = whenRequiringAtLeast(INTERMEDIO);
 
-        assertThrows(AccessDeniedException.class, execution);
+        thenThrowsAccessDeniedException(execution);
     }
 
     @Test
-    void requireAdvanced_WhenUserHasIntermediatePlan_ShouldDenyAccess() {
-        givenUserWithPlan(TipoPlan.INTERMEDIO);
+    void requireAdvancedWhenUserHasIntermediatePlanShouldDenyAccess() {
+        givenUserWithPlan(INTERMEDIO);
 
-        Executable execution = () -> whenRequiringAdvanced();
+        Executable execution = whenRequiringAdvanced();
 
-        assertThrows(AccessDeniedException.class, execution);
+        thenThrowsAccessDeniedException(execution);
     }
 
     @Test
-    void requireAtLeast_WhenUserDoesNotExist_ShouldThrowException() {
+    void requireAtLeastWhenUserDoesNotExistShouldThrowException() {
         givenUserDoesNotExist();
 
-        Executable execution = () -> whenRequiringAtLeast(TipoPlan.INTERMEDIO);
+        Executable execution = whenRequiringAtLeast(INTERMEDIO);
 
-        assertThrows(UsuarioNoEncontradoException.class, execution);
+        thenThrowsUsuarioNoEncontradoException(execution);
     }
 
     @Test
-    void requireVendorAtLeast_WhenVendorHasRequiredPlan_ShouldAllowAccess() {
-        givenAuthenticatedUser(user(TipoPlan.INTERMEDIO, RolUsuario.VENDEDOR));
+    void requireVendorAtLeastWhenVendorHasRequiredPlanShouldAllowAccess() {
+        givenAuthenticatedUser(user(INTERMEDIO, VENDEDOR));
 
-        Executable execution = () -> whenRequiringVendorIntermediate();
+        Executable execution = whenRequiringVendorIntermediate();
 
-        assertDoesNotThrow(execution);
+        thenExecutionSucceeds(execution);
     }
 
     @Test
-    void requireVendorAtLeast_WhenVendorHasLowerPlan_ShouldDenyAccess() {
-        givenAuthenticatedUser(user(TipoPlan.GRATUITO, RolUsuario.VENDEDOR));
+    void requireVendorAtLeastWhenVendorHasLowerPlanShouldDenyAccess() {
+        givenAuthenticatedUser(user(GRATUITO, VENDEDOR));
 
-        Executable execution = () -> whenRequiringVendorIntermediate();
+        Executable execution = whenRequiringVendorIntermediate();
 
-        assertThrows(AccessDeniedException.class, execution);
+        thenThrowsAccessDeniedException(execution);
     }
 
     @Test
-    void requireVendorAtLeast_WhenUserIsNotVendor_ShouldDenyAccess() {
-        givenAuthenticatedUser(user(TipoPlan.AVANZADO, RolUsuario.PADRE));
+    void requireVendorAtLeastWhenUserIsNotVendorShouldDenyAccess() {
+        givenAuthenticatedUser(user(AVANZADO, PADRE));
 
-        Executable execution = () -> whenRequiringVendorAdvanced();
+        Executable execution = whenRequiringVendorAdvanced();
 
-        assertThrows(AccessDeniedException.class, execution);
+        thenThrowsAccessDeniedException(execution);
     }
 
     @Test
-    void requireVendorAtLeast_WhenUserIsAdmin_ShouldAllowAccess() {
-        givenAuthenticatedUser(user(TipoPlan.GRATUITO, RolUsuario.ADMIN));
+    void requireVendorAtLeastWhenUserIsAdminShouldAllowAccess() {
+        givenAuthenticatedUser(user(GRATUITO, ADMIN));
 
-        Executable execution = () -> whenRequiringVendorAdvanced();
+        Executable execution = whenRequiringVendorAdvanced();
 
-        assertDoesNotThrow(execution);
+        thenExecutionSucceeds(execution);
     }
 
     @Test
-    void requireVendorAtLeast_WhenAuthenticationIsMissing_ShouldThrowException() {
-        Executable execution = () -> guard.requireVendorIntermediate(null);
+    void requireVendorAtLeastWhenAuthenticationIsMissingShouldThrowException() {
+        Executable execution = whenRequiringVendorIntermediateWithoutAuth();
 
-        assertThrows(AuthenticationCredentialsNotFoundException.class, execution);
+        thenThrowsAuthenticationCredentialsNotFoundException(execution);
     }
 
     @Test
-    void requireVendorAtLeast_WhenAuthenticatedUserDoesNotExist_ShouldThrowException() {
-        when(usuarioRepository.findByIdCognito("vendor-sub")).thenReturn(Optional.empty());
+    void requireVendorAtLeastWhenAuthenticatedUserDoesNotExistShouldThrowException() {
+        givenAuthenticatedUserNotFound();
 
-        Executable execution = () -> whenRequiringVendorIntermediate();
+        Executable execution = whenRequiringVendorIntermediate();
 
-        assertThrows(AuthenticationCredentialsNotFoundException.class, execution);
+        thenThrowsAuthenticationCredentialsNotFoundException(execution);
     }
 
     @Test
-    void requireTutorAtLeast_WhenTutorHasRequiredPlan_ShouldAllowAccess() {
-        givenAuthenticatedUser(user(TipoPlan.INTERMEDIO, RolUsuario.PADRE));
+    void requireTutorAtLeastWhenTutorHasRequiredPlanShouldAllowAccess() {
+        givenAuthenticatedUser(user(INTERMEDIO, PADRE));
 
-        Executable execution = () -> guard.requireTutorIntermediate(authentication());
+        Executable execution = whenRequiringTutorIntermediate();
 
-        assertDoesNotThrow(execution);
+        thenExecutionSucceeds(execution);
     }
 
     @Test
-    void requireStudentInheritedTutorAtLeast_WhenTutorHasRequiredPlan_ShouldAllowAccess() {
-        Usuario alumno = studentUser();
-        givenAuthenticatedUser(alumno);
-        when(tutorRepository.findByAlumnoId(alumnoId))
-                .thenReturn(List.of(tutorWithPlan(TipoPlan.AVANZADO)));
+    void requireStudentInheritedTutorAtLeastWhenTutorHasRequiredPlanShouldAllowAccess() {
+        givenAuthenticatedStudentUserAndTutorWithPlan(AVANZADO);
 
-        Executable execution =
-                () -> guard.requireStudentInheritedTutorAdvanced(authentication());
+        Executable execution = whenRequiringStudentInheritedTutorAdvanced();
 
-        assertDoesNotThrow(execution);
+        thenExecutionSucceeds(execution);
     }
 
     @Test
-    void requireStudentInheritedTutorAtLeast_WhenTutorHasLowerPlan_ShouldDenyAccess() {
-        Usuario alumno = studentUser();
-        givenAuthenticatedUser(alumno);
-        when(tutorRepository.findByAlumnoId(alumnoId))
-                .thenReturn(List.of(tutorWithPlan(TipoPlan.INTERMEDIO)));
+    void requireStudentInheritedTutorAtLeastWhenTutorHasLowerPlanShouldDenyAccess() {
+        givenAuthenticatedStudentUserAndTutorWithPlan(INTERMEDIO);
 
-        Executable execution =
-                () -> guard.requireStudentInheritedTutorAdvanced(authentication());
+        Executable execution = whenRequiringStudentInheritedTutorAdvanced();
 
-        assertThrows(AccessDeniedException.class, execution);
+        thenThrowsAccessDeniedException(execution);
     }
 
     private void givenUserWithPlan(TipoPlan plan) {
@@ -191,20 +189,58 @@ class PlanAccessGuardTest {
         when(usuarioRepository.findByIdCognito("vendor-sub")).thenReturn(Optional.of(user));
     }
 
-    private void whenRequiringAtLeast(TipoPlan minimumPlan) {
-        guard.requireAtLeast(usuarioId, minimumPlan);
+    private void givenAuthenticatedUserNotFound() {
+        when(usuarioRepository.findByIdCognito("vendor-sub")).thenReturn(Optional.empty());
     }
 
-    private void whenRequiringAdvanced() {
-        guard.requireAdvanced(usuarioId);
+    private void givenAuthenticatedStudentUserAndTutorWithPlan(TipoPlan plan) {
+        Usuario alumno = studentUser();
+        givenAuthenticatedUser(alumno);
+        when(tutorRepository.findByAlumnoId(alumnoId)).thenReturn(List.of(tutorWithPlan(plan)));
     }
 
-    private void whenRequiringVendorIntermediate() {
-        guard.requireVendorIntermediate(authentication());
+    private Executable whenRequiringAtLeast(TipoPlan minimumPlan) {
+        return () -> guard.requireAtLeast(usuarioId, minimumPlan);
     }
 
-    private void whenRequiringVendorAdvanced() {
-        guard.requireVendorAdvanced(authentication());
+    private Executable whenRequiringAdvanced() {
+        return () -> guard.requireAdvanced(usuarioId);
+    }
+
+    private Executable whenRequiringVendorIntermediate() {
+        return () -> guard.requireVendorIntermediate(authentication());
+    }
+
+    private Executable whenRequiringVendorAdvanced() {
+        return () -> guard.requireVendorAdvanced(authentication());
+    }
+
+    private Executable whenRequiringVendorIntermediateWithoutAuth() {
+        return () -> guard.requireVendorIntermediate(null);
+    }
+
+    private Executable whenRequiringTutorIntermediate() {
+        return () -> guard.requireTutorIntermediate(authentication());
+    }
+
+    private Executable whenRequiringStudentInheritedTutorAdvanced() {
+        return () -> guard.requireStudentInheritedTutorAdvanced(authentication());
+    }
+
+    private void thenExecutionSucceeds(Executable execution) {
+        assertDoesNotThrow(execution);
+    }
+
+    private void thenThrowsAccessDeniedException(Executable execution) {
+        assertThrows(AccessDeniedException.class, execution);
+    }
+
+    private void thenThrowsUsuarioNoEncontradoException(Executable execution) {
+        assertThrows(UsuarioNoEncontradoException.class, execution);
+    }
+
+    private void thenThrowsAuthenticationCredentialsNotFoundException(Executable execution) {
+        assertThrows(AuthenticationCredentialsNotFoundException.class, execution);
     }
 
     private Usuario user(TipoPlan plan) {
@@ -220,7 +256,7 @@ class PlanAccessGuardTest {
     }
 
     private Usuario studentUser() {
-        Usuario user = user(TipoPlan.GRATUITO, RolUsuario.ALUMNO);
+        Usuario user = user(GRATUITO, RolUsuario.ALUMNO);
         Alumno alumno = new Alumno();
         alumno.setId(alumnoId);
         user.setAlumno(alumno);

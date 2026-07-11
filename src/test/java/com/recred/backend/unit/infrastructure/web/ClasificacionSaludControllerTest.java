@@ -16,7 +16,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -47,19 +49,39 @@ class ClasificacionSaludControllerTest {
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
+    private final String VEGANO = "Vegano";
+
     @Test
-    void obtenerCatalogo_DeberiaRetornarListaY200Ok() throws Exception {
+    void obtenerCatalogoShouldReturnListAnd200Ok() throws Exception {
+        givenCatalogReturnsRestrictions();
+        
+        ResultActions response = whenGettingCatalog();
+        
+        thenResponseIsOkAndHasRestrictions(response);
+        thenDelegatesToObtenerCatalogo();
+    }
+
+    private void givenCatalogReturnsRestrictions() {
         GetHealthRestrictionsResponse item = new GetHealthRestrictionsResponse(
                 UUID.randomUUID(),
-                "Vegano",
+                VEGANO,
                 true
         );
         when(obtenerCatalogo.execute(new GetHealthRestrictionsCatalogRequest()))
                 .thenReturn(new GetHealthRestrictionsCatalogResponse(List.of(item)));
+    }
 
-        mockMvc.perform(get("/api/v1/clasificaciones-salud")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].descripcion").value("Vegano"));
+    private ResultActions whenGettingCatalog() throws Exception {
+        return mockMvc.perform(get("/api/v1/clasificaciones-salud")
+                .contentType(MediaType.APPLICATION_JSON));
+    }
+
+    private void thenResponseIsOkAndHasRestrictions(ResultActions response) throws Exception {
+        response.andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].descripcion").value(VEGANO));
+    }
+
+    private void thenDelegatesToObtenerCatalogo() {
+        verify(obtenerCatalogo).execute(new GetHealthRestrictionsCatalogRequest());
     }
 }

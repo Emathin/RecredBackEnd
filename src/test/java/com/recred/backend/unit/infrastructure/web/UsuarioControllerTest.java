@@ -27,8 +27,17 @@ import static org.mockito.Mockito.when;
 
 class UsuarioControllerTest {
 
+    private static final String COGNITO_SUBJECT = "cognito-sub";
+
     private UsuarioService usuarioService;
     private UsuarioController controller;
+    private ResponseEntity<Map<String, Object>> response;
+
+    private final UUID buffetId = UUID.randomUUID();
+    private final UUID kiosqueroId = UUID.randomUUID();
+    private final UUID usuarioId = UUID.randomUUID();
+    private final UUID alumnoId = UUID.randomUUID();
+    private final UUID tutorId = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
@@ -37,26 +46,49 @@ class UsuarioControllerTest {
     }
 
     @Test
-    void syncUserReturnsBuffetIdForSellerProfile() {
-        UUID buffetId = UUID.randomUUID();
-        Usuario usuario = sellerUser(buffetId);
-        when(usuarioService.sincronizarUsuarioCognito(any(Jwt.class), isNull()))
-                .thenReturn(usuario);
+    void givenSellerProfileWhenSyncingUserThenReturnsBuffetId() {
+        givenSellerUser();
 
-        ResponseEntity<Map<String, Object>> response = controller.syncUser(jwt(), null);
+        whenSyncingUser(null);
 
-        assertEquals(buffetId, response.getBody().get("buffetId"));
-        assertEquals(usuario.getKiosquero().getId(), response.getBody().get("kiosqueroId"));
-        assertEquals("VENDEDOR", response.getBody().get("rol"));
-        verify(usuarioService).sincronizarUsuarioCognito(any(Jwt.class), isNull());
+        thenResponseContains("buffetId", buffetId);
+        thenResponseContains("kiosqueroId", kiosqueroId);
+        thenResponseContains("rol", "VENDEDOR");
+        thenSyncUserWasDelegatedWithoutRequest();
     }
 
     @Test
-    void syncUserWithProfileRequestReturnsPendingRoleAndStudentTutorIds() {
-        UUID alumnoId = UUID.randomUUID();
-        UUID tutorId = UUID.randomUUID();
+    void givenProfileRequestWhenSyncingUserThenReturnsPendingRoleAndIds() {
+        givenPendingUserWithStudentAndTutor();
+        SyncUserRequest request = givenSyncUserRequest();
+
+        whenSyncingUser(request);
+
+        thenResponseContains("rol", "PENDIENTE");
+        thenResponseContains("alumnoId", alumnoId);
+        thenResponseContains("tutorId", tutorId);
+    }
+
+    @Test
+    void givenValidRoleWhenAssigningRoleThenUpdatesRoleUsingJwtSubject() {
+        givenUserWithRole(RolUsuario.PADRE);
+
+        whenAssigningRole("PADRE");
+
+        thenResponseContains("rol", "PADRE");
+        thenRoleUpdateWasDelegated("PADRE");
+    }
+
+    private void givenSellerUser() {
+        Usuario usuario = buildSellerUser();
+        when(usuarioService.sincronizarUsuarioCognito(
+                any(Jwt.class), isNull()))
+                .thenReturn(usuario);
+    }
+
+    private void givenPendingUserWithStudentAndTutor() {
         Usuario usuario = new Usuario();
-        usuario.setId(UUID.randomUUID());
+        usuario.setId(usuarioId);
         usuario.setEmail("familia@example.com");
         Alumno alumno = new Alumno();
         alumno.setId(alumnoId);
@@ -64,48 +96,57 @@ class UsuarioControllerTest {
         tutor.setId(tutorId);
         usuario.setAlumno(alumno);
         usuario.setTutor(tutor);
-        SyncUserRequest request = new SyncUserRequest(
-                "familia@example.com",
-                "Ana",
-                "Lopez",
-                null,
-                null
-        );
-        when(usuarioService.sincronizarUsuarioCognito(any(Jwt.class), any()))
+        when(usuarioService.sincronizarUsuarioCognito(
+                any(Jwt.class), any()))
                 .thenReturn(usuario);
-
-        ResponseEntity<Map<String, Object>> response = controller.syncUser(jwt(), request);
-
-        assertEquals("PENDIENTE", response.getBody().get("rol"));
-        assertEquals(alumnoId, response.getBody().get("alumnoId"));
-        assertEquals(tutorId, response.getBody().get("tutorId"));
     }
 
-    @Test
-    void assignRoleShouldUpdateRoleUsingJwtSubject() {
+    private SyncUserRequest givenSyncUserRequest() {
+        return new SyncUserRequest(
+                "familia@example.com", "Ana", "Lopez", null, null);
+    }
+
+    private void givenUserWithRole(RolUsuario rol) {
         Usuario usuario = new Usuario();
-        usuario.setId(UUID.randomUUID());
+        usuario.setId(usuarioId);
         usuario.setEmail("padre@example.com");
-        usuario.setRol(RolUsuario.PADRE);
-        when(usuarioService.actualizarRol("cognito-sub", "PADRE")).thenReturn(usuario);
-
-        ResponseEntity<Map<String, Object>> response =
-                controller.assignRole(jwt(), Map.of("rol", "PADRE"));
-
-        assertEquals("PADRE", response.getBody().get("rol"));
-        verify(usuarioService).actualizarRol("cognito-sub", "PADRE");
+        usuario.setRol(rol);
+        when(usuarioService.actualizarRol(
+                COGNITO_SUBJECT, rol.name()))
+                .thenReturn(usuario);
     }
 
-    private Usuario sellerUser(UUID buffetId) {
+    private void whenSyncingUser(SyncUserRequest request) {
+        response = controller.syncUser(jwt(), request);
+    }
+
+    private void whenAssigningRole(String rol) {
+        response = controller.assignRole(jwt(), Map.of("rol", rol));
+    }
+
+    private void thenResponseContains(String key, Object expected) {
+        assertEquals(expected, response.getBody().get(key));
+    }
+
+    private void thenSyncUserWasDelegatedWithoutRequest() {
+        verify(usuarioService).sincronizarUsuarioCognito(
+                any(Jwt.class), isNull());
+    }
+
+    private void thenRoleUpdateWasDelegated(String rol) {
+        verify(usuarioService).actualizarRol(COGNITO_SUBJECT, rol);
+    }
+
+    private Usuario buildSellerUser() {
         Buffet buffet = new Buffet();
         buffet.setId(buffetId);
 
         Kiosquero kiosquero = new Kiosquero();
-        kiosquero.setId(UUID.randomUUID());
+        kiosquero.setId(kiosqueroId);
         kiosquero.setBuffet(buffet);
 
         Usuario usuario = new Usuario();
-        usuario.setId(UUID.randomUUID());
+        usuario.setId(usuarioId);
         usuario.setEmail("vendedor@example.com");
         usuario.setNombre("Vendedor");
         usuario.setApellido("Buffet");
@@ -117,7 +158,7 @@ class UsuarioControllerTest {
     private Jwt jwt() {
         return Jwt.withTokenValue("token")
                 .header("alg", "none")
-                .subject("cognito-sub")
+                .subject(COGNITO_SUBJECT)
                 .issuedAt(Instant.parse("2026-05-28T10:00:00Z"))
                 .expiresAt(Instant.parse("2026-05-28T11:00:00Z"))
                 .build();

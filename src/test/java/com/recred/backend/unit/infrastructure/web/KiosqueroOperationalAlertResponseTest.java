@@ -13,59 +13,79 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class KiosqueroOperationalAlertResponseTest {
 
+    private final UUID BUFFET_ID = UUID.randomUUID();
+    private final UUID PRODUCT_ID = UUID.randomUUID();
+    private final UUID PURCHASE_ID = UUID.randomUUID();
+    private final LocalDateTime OCCURRED_AT = LocalDateTime.of(2026, 7, 4, 12, 0);
+    private final String MESSAGE = "Mensaje de prueba";
+    private final String CRITICAL = "CRITICAL";
+
     @Test
     void fromDomainShouldMapAlertValues() {
-        UUID buffetId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        UUID purchaseId = UUID.randomUUID();
-        LocalDateTime occurredAt = LocalDateTime.of(2026, 7, 4, 12, 0);
-
-        KiosqueroOperationalAlertResponse response =
-                KiosqueroOperationalAlertResponse.fromDomain(
-                        new KiosqueroOperationalAlert(
-                                buffetId,
-                                OperationalAlertType.DAILY_CAPACITY_LOW,
-                                OperationalAlertSeverity.WARNING,
-                                productId,
-                                purchaseId,
-                                occurredAt,
-                                "Queda poco cupo"
-                        )
-                );
-
-        assertEquals(buffetId, response.buffetId());
-        assertEquals("DAILY_CAPACITY_LOW", response.type());
-        assertEquals("WARNING", response.severity());
-        assertEquals(productId, response.productId());
-        assertEquals(purchaseId, response.purchaseId());
-        assertEquals(occurredAt, response.occurredAt());
-        assertEquals("Queda poco cupo", response.message());
+        KiosqueroOperationalAlert alert = givenDomainAlert();
+        
+        KiosqueroOperationalAlertResponse response = whenMappingFromDomain(alert);
+        
+        thenDomainResponseIsMappedCorrectly(response);
     }
 
     @Test
     void fromApplicationShouldMapAlertValues() {
-        UUID buffetId = UUID.randomUUID();
-        UUID purchaseId = UUID.randomUUID();
-        LocalDateTime occurredAt = LocalDateTime.of(2026, 7, 4, 13, 0);
+        OperationalAlertResponse alert = givenApplicationAlert();
+        
+        KiosqueroOperationalAlertResponse response = whenMappingFromApplication(alert);
+        
+        thenApplicationResponseIsMappedCorrectly(response);
+    }
 
-        KiosqueroOperationalAlertResponse response =
-                KiosqueroOperationalAlertResponse.fromApplication(
-                        new OperationalAlertResponse(
-                                buffetId,
-                                "ORDER_EXPIRED",
-                                "CRITICAL",
-                                null,
-                                purchaseId,
-                                occurredAt,
-                                "Pedido vencido"
-                        )
-                );
+    private KiosqueroOperationalAlert givenDomainAlert() {
+        return new KiosqueroOperationalAlert(
+                BUFFET_ID,
+                OperationalAlertType.DAILY_CAPACITY_LOW,
+                OperationalAlertSeverity.WARNING,
+                PRODUCT_ID,
+                PURCHASE_ID,
+                OCCURRED_AT,
+                MESSAGE
+        );
+    }
 
-        assertEquals(buffetId, response.buffetId());
+    private OperationalAlertResponse givenApplicationAlert() {
+        return new OperationalAlertResponse(
+                BUFFET_ID,
+                "ORDER_EXPIRED",
+                CRITICAL,
+                null,
+                PURCHASE_ID,
+                OCCURRED_AT,
+                MESSAGE
+        );
+    }
+
+    private KiosqueroOperationalAlertResponse whenMappingFromDomain(KiosqueroOperationalAlert alert) {
+        return KiosqueroOperationalAlertResponse.fromDomain(alert);
+    }
+
+    private KiosqueroOperationalAlertResponse whenMappingFromApplication(OperationalAlertResponse alert) {
+        return KiosqueroOperationalAlertResponse.fromApplication(alert);
+    }
+
+    private void thenDomainResponseIsMappedCorrectly(KiosqueroOperationalAlertResponse response) {
+        assertEquals(BUFFET_ID, response.buffetId());
+        assertEquals("DAILY_CAPACITY_LOW", response.type());
+        assertEquals("WARNING", response.severity());
+        assertEquals(PRODUCT_ID, response.productId());
+        assertEquals(PURCHASE_ID, response.purchaseId());
+        assertEquals(OCCURRED_AT, response.occurredAt());
+        assertEquals(MESSAGE, response.message());
+    }
+
+    private void thenApplicationResponseIsMappedCorrectly(KiosqueroOperationalAlertResponse response) {
+        assertEquals(BUFFET_ID, response.buffetId());
         assertEquals("ORDER_EXPIRED", response.type());
-        assertEquals("CRITICAL", response.severity());
-        assertEquals(purchaseId, response.purchaseId());
-        assertEquals(occurredAt, response.occurredAt());
-        assertEquals("Pedido vencido", response.message());
+        assertEquals(CRITICAL, response.severity());
+        assertEquals(PURCHASE_ID, response.purchaseId());
+        assertEquals(OCCURRED_AT, response.occurredAt());
+        assertEquals(MESSAGE, response.message());
     }
 }

@@ -12,6 +12,7 @@ import com.recred.backend.infrastructure.web.TutorInvitationRequest;
 import com.recred.backend.infrastructure.web.TutorInvitationResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -60,7 +61,7 @@ class SchoolTutorInvitationControllerTest {
     private SchoolTutorInvitationController controller;
 
     @Test
-    void shouldReturnCreatedAndMapCommand_whenInviteIsCalled() {
+    void shouldReturnCreatedAndMapCommandWhenInviteIsCalled() {
         givenDirectorIsAuthenticated();
         givenInviteResult("CREATED", buildInvitation());
 
@@ -71,7 +72,7 @@ class SchoolTutorInvitationControllerTest {
     }
 
     @Test
-    void shouldReturnOk_whenTutorIsAlreadyAssociated() {
+    void shouldReturnOkWhenTutorIsAlreadyAssociated() {
         givenDirectorIsAuthenticated();
         givenInviteResult("ALREADY_ASSOCIATED", null);
 
@@ -81,7 +82,7 @@ class SchoolTutorInvitationControllerTest {
     }
 
     @Test
-    void shouldReadFileContentAndReturnCreated_whenImportCsvIsCalled() throws Exception {
+    void shouldReadFileContentAndReturnCreatedWhenImportCsvIsCalled() throws Exception {
         givenDirectorIsAuthenticated();
         givenFileBytes(CSV_CONTENT);
         givenImportResultHasOneError();
@@ -92,35 +93,33 @@ class SchoolTutorInvitationControllerTest {
     }
 
     @Test
-    void shouldThrowException_whenCsvFileIsEmpty() throws Exception {
+    void shouldThrowExceptionWhenCsvFileIsEmpty() throws Exception {
         givenFileBytes("  ");
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                this::whenImportCsvIsCalled);
+        Executable execution = this::whenImportCsvIsCalled;
 
-        assertEquals("El archivo CSV esta vacio", exception.getMessage());
+        thenThrowsIllegalArgumentExceptionWithMessage(execution, "El archivo CSV esta vacio");
     }
 
     @Test
-    void shouldThrowException_whenAuthenticationIsMissing() {
-        assertThrows(AuthenticationCredentialsNotFoundException.class,
-                () -> controller.invite(null, buildRequest()));
+    void shouldThrowExceptionWhenAuthenticationIsMissing() {
+        Executable execution = () -> controller.invite(null, buildRequest());
+
+        thenThrowsAuthenticationException(execution);
     }
 
     @Test
-    void shouldThrowException_whenEmailIsBlank() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> controller.invite(authentication, new TutorInvitationRequest(" ", "Ana", "Gomez", "111")));
+    void shouldThrowExceptionWhenEmailIsBlank() {
+        Executable execution = () -> controller.invite(authentication, new TutorInvitationRequest(" ", "Ana", "Gomez", "111"));
+
+        thenThrowsIllegalArgumentExceptionWithMessage(execution, "El email es obligatorio");
+    }
+
+    @Test
+    void shouldThrowExceptionWhenEmailIsInvalid() {
+        Executable execution = () -> controller.invite(authentication, new TutorInvitationRequest("no-es-email", "Ana", "Gomez", "111"));
         
-        assertEquals("El email es obligatorio", exception.getMessage());
-    }
-
-    @Test
-    void shouldThrowException_whenEmailIsInvalid() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> controller.invite(authentication, new TutorInvitationRequest("no-es-email", "Ana", "Gomez", "111")));
-        
-        assertEquals("El email no es valido", exception.getMessage());
+        thenThrowsIllegalArgumentExceptionWithMessage(execution, "El email no es valido");
     }
 
 
@@ -188,6 +187,15 @@ class SchoolTutorInvitationControllerTest {
         assertEquals(1, response.getBody().createdInvitations());
         assertEquals(1, response.getBody().errors().size());
         assertEquals("bad@example.com", response.getBody().errors().get(0).email());
+    }
+
+    private void thenThrowsIllegalArgumentExceptionWithMessage(org.junit.jupiter.api.function.Executable execution, String message) {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, execution);
+        assertEquals(message, exception.getMessage());
+    }
+
+    private void thenThrowsAuthenticationException(org.junit.jupiter.api.function.Executable execution) {
+        assertThrows(AuthenticationCredentialsNotFoundException.class, execution);
     }
 
 

@@ -11,42 +11,59 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class AlumnoProductoDTOTest {
 
+    private final UUID STUDENT_ID = UUID.randomUUID();
+    private final UUID PRODUCT_ID = UUID.randomUUID();
+    private final UUID CLASSIFICATION_ID_1 = UUID.randomUUID();
+    private final UUID CLASSIFICATION_ID_2 = UUID.randomUUID();
+    private final String SIN_TACC = "Sin TACC";
+    private final String BAJO_SODIO = "Bajo sodio";
+    private final String VEGANO = "Vegano";
+    private final String ENSALADA = "Ensalada";
+
     @Test
     void alumnoDtoShouldExposeAndUpdateHealthRestrictions() {
-        UUID studentId = UUID.randomUUID();
-        ClasificacionSaludDTO initial = new ClasificacionSaludDTO(
-                UUID.randomUUID(),
-                "Sin TACC"
-        );
-        ClasificacionSaludDTO updated = new ClasificacionSaludDTO(
-                UUID.randomUUID(),
-                "Bajo sodio"
-        );
-        AlumnoDTO dto = new AlumnoDTO(studentId, Set.of(initial));
+        ClasificacionSaludDTO initial = new ClasificacionSaludDTO(CLASSIFICATION_ID_1, SIN_TACC);
+        ClasificacionSaludDTO updated = new ClasificacionSaludDTO(CLASSIFICATION_ID_2, BAJO_SODIO);
+        AlumnoDTO dto = new AlumnoDTO(STUDENT_ID, Set.of(initial));
 
-        assertEquals(studentId, dto.getId());
-        assertEquals(Set.of(initial), dto.getRestriccionesSalud());
+        thenAlumnoDtoHasInitialRestrictions(dto, initial);
 
-        dto.actualizarRestricciones(Set.of(updated));
+        whenUpdatingRestrictions(dto, updated);
 
-        assertEquals(Set.of(updated), dto.getRestriccionesSalud());
+        thenAlumnoDtoHasUpdatedRestrictions(dto, updated);
     }
 
     @Test
     void productoDtoShouldExposeProductValues() {
-        UUID productId = UUID.randomUUID();
         ClasificacionSaludDTO classification = new ClasificacionSaludDTO(
-                UUID.randomUUID(),
-                "Vegano"
+                CLASSIFICATION_ID_1,
+                VEGANO
         );
         ProductoDTO dto = new ProductoDTO(
-                productId,
-                "Ensalada",
+                PRODUCT_ID,
+                ENSALADA,
                 Set.of(classification)
         );
 
-        assertEquals(productId, dto.getId());
-        assertEquals("Ensalada", dto.getNombre());
-        assertEquals(Set.of(classification), dto.getClasificacionesSalud());
+        thenProductoDtoExposesValues(dto, classification);
+    }
+
+    private void whenUpdatingRestrictions(AlumnoDTO dto, ClasificacionSaludDTO updated) {
+        dto.actualizarRestricciones(Set.of(updated));
+    }
+
+    private void thenAlumnoDtoHasInitialRestrictions(AlumnoDTO dto, ClasificacionSaludDTO initial) {
+        assertEquals(STUDENT_ID, dto.getId());
+        assertEquals(Set.of(initial), dto.getRestriccionesSalud());
+    }
+
+    private void thenAlumnoDtoHasUpdatedRestrictions(AlumnoDTO dto, ClasificacionSaludDTO updated) {
+        assertEquals(Set.of(updated), dto.getRestriccionesSalud());
+    }
+
+    private void thenProductoDtoExposesValues(ProductoDTO dto, ClasificacionSaludDTO clazz) {
+        assertEquals(PRODUCT_ID, dto.getId());
+        assertEquals(ENSALADA, dto.getNombre());
+        assertEquals(Set.of(clazz), dto.getClasificacionesSalud());
     }
 }

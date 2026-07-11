@@ -25,16 +25,13 @@ class LevelControllerTest {
     private final LevelController controller = new LevelController(getActiveLevels);
 
     @Test
-    void getLevels_ShouldReturnActiveLevels() {
+    void getLevelsShouldReturnActiveLevels() {
         UUID levelId = UUID.randomUUID();
         givenActiveLevels(level(levelId, "Secundario"));
 
         ResponseEntity<List<LevelResponseDTO>> response = whenGettingLevels();
 
-        LevelResponseDTO level = firstOkBody(response);
-        assertEquals(levelId, level.id());
-        assertEquals("Secundario", level.descripcion());
-        verify(getActiveLevels).execute(new GetActiveLevelsRequest());
+        thenActiveLevelsAreReturned(response, levelId);
     }
 
     private void givenActiveLevels(Nivel... levels) {
@@ -46,18 +43,22 @@ class LevelControllerTest {
         return controller.getLevels();
     }
 
+    private void thenActiveLevelsAreReturned(ResponseEntity<List<LevelResponseDTO>> response, UUID expectedLevelId) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+        
+        LevelResponseDTO level = response.getBody().get(0);
+        assertEquals(expectedLevelId, level.id());
+        assertEquals("Secundario", level.descripcion());
+        verify(getActiveLevels).execute(new GetActiveLevelsRequest());
+    }
+
     private Nivel level(UUID id, String descripcion) {
         Nivel level = new Nivel();
         level.setId(id);
         level.setDescripcion(descripcion);
         level.setActivo(true);
         return level;
-    }
-
-    private <T> T firstOkBody(ResponseEntity<List<T>> response) {
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(1, response.getBody().size());
-        return response.getBody().get(0);
     }
 }

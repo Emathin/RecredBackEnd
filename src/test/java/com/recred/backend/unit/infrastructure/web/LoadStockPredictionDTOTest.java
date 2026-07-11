@@ -8,8 +8,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class LoadStockPredictionDTOTest {
 
     @Test
-    void testBuilderAndGetters() {
-        LoadStockPredictionDTO dto = LoadStockPredictionDTO.builder()
+    void builderAndGettersShouldWork() {
+        LoadStockPredictionDTO dto = whenBuildingDto();
+
+        thenDtoHasExpectedValues(dto);
+    }
+
+    @Test
+    void settersShouldWork() {
+        LoadStockPredictionDTO dto = LoadStockPredictionDTO.builder().build();
+        
+        whenSettingDtoValues(dto);
+
+        thenDtoHasExpectedValues(dto);
+    }
+
+    private LoadStockPredictionDTO whenBuildingDto() {
+        return LoadStockPredictionDTO.builder()
                 .nombre("Nombre")
                 .descripcion("Descripcion")
                 .peso("100g")
@@ -18,19 +33,9 @@ class LoadStockPredictionDTOTest {
                 .contieneLactosa("si")
                 .contieneTacc("no")
                 .build();
-
-        assertEquals("Nombre", dto.getNombre());
-        assertEquals("Descripcion", dto.getDescripcion());
-        assertEquals("100g", dto.getPeso());
-        assertEquals("si", dto.getContieneAzucar());
-        assertEquals("no", dto.getContieneMani());
-        assertEquals("si", dto.getContieneLactosa());
-        assertEquals("no", dto.getContieneTacc());
     }
 
-    @Test
-    void testSetters() {
-        LoadStockPredictionDTO dto = LoadStockPredictionDTO.builder().build();
+    private void whenSettingDtoValues(LoadStockPredictionDTO dto) {
         dto.setNombre("Nombre");
         dto.setDescripcion("Descripcion");
         dto.setPeso("100g");
@@ -38,7 +43,9 @@ class LoadStockPredictionDTOTest {
         dto.setContieneMani("no");
         dto.setContieneLactosa("si");
         dto.setContieneTacc("no");
+    }
 
+    private void thenDtoHasExpectedValues(LoadStockPredictionDTO dto) {
         assertEquals("Nombre", dto.getNombre());
         assertEquals("Descripcion", dto.getDescripcion());
         assertEquals("100g", dto.getPeso());
@@ -48,4 +55,3 @@ class LoadStockPredictionDTOTest {
         assertEquals("no", dto.getContieneTacc());
     }
 }
-

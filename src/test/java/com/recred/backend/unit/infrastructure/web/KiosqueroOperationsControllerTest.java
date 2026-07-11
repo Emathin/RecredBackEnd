@@ -108,7 +108,7 @@ class KiosqueroOperationsControllerTest {
     private KiosqueroOperationsController controller;
 
     @Test
-    void closeDaily_ShouldDelegateToUseCase() {
+    void closeDailyShouldDelegateToUseCase() {
         CloseDailyBuffetRequest request = givenCloseDailyRequest();
         CloseDailyBuffetResponse expected = givenCloseDailyResponse(request);
 
@@ -118,7 +118,7 @@ class KiosqueroOperationsControllerTest {
     }
 
     @Test
-    void dailyCloseStatus_ShouldDelegateToUseCase() {
+    void dailyCloseStatusShouldDelegateToUseCase() {
         GetDailyBuffetCloseStatusRequest request = givenCloseStatusRequest();
         GetDailyBuffetCloseStatusResponse expected = givenCloseStatusResponse(request);
 
@@ -128,7 +128,7 @@ class KiosqueroOperationsControllerTest {
     }
 
     @Test
-    void dailyCloses_ShouldDelegateToUseCase() {
+    void dailyClosesShouldDelegateToUseCase() {
         ListDailyBuffetClosesRequest request = givenListClosesRequest();
         ListDailyBuffetClosesResponse expected = givenListClosesResponse(request);
 
@@ -138,12 +138,12 @@ class KiosqueroOperationsControllerTest {
     }
 
     @Test
-    void dailyCloses_WhenFromIsAfterTo_ShouldThrowException() {
+    void dailyClosesWhenFromIsAfterToShouldThrowException() {
         thenThrowsExceptionForInvalidDates(TO_DATE, FROM_DATE);
     }
 
     @Test
-    void dailyReport_ShouldDelegateToUseCase() {
+    void dailyReportShouldDelegateToUseCase() {
         GenerateDailyBuffetReportRequest request = givenReportRequest();
         GenerateDailyBuffetReportResponse expected = givenReportResponse(request);
 
@@ -153,7 +153,7 @@ class KiosqueroOperationsControllerTest {
     }
 
     @Test
-    void dailyReportCsv_ShouldReturnCsvWithDownloadHeadersAndDefaultDate() {
+    void dailyReportCsvShouldReturnCsvWithDownloadHeadersAndDefaultDate() {
         givenCsvReportResponse();
 
         ResponseEntity<String> response = whenGetCsvReport();
@@ -162,7 +162,7 @@ class KiosqueroOperationsControllerTest {
     }
 
     @Test
-    void dashboard_ShouldDelegateToUseCase() {
+    void dashboardShouldDelegateToUseCase() {
         GetKiosqueroDashboardRequest request = givenDashboardRequestWithDate();
         GetKiosqueroDashboardResponse expected = givenDashboardResponse(request);
 
@@ -172,7 +172,7 @@ class KiosqueroOperationsControllerTest {
     }
 
     @Test
-    void dashboard_ShouldDelegatePeriodToUseCase() {
+    void dashboardShouldDelegatePeriodToUseCase() {
         GetKiosqueroDashboardRequest request = givenDashboardRequestWithPeriod();
         GetKiosqueroDashboardResponse expected = givenDashboardResponse(request);
 
@@ -182,7 +182,7 @@ class KiosqueroOperationsControllerTest {
     }
 
     @Test
-    void dashboard_WhenHomeView_ShouldNotRequirePlanAndReturnHomeResponse() {
+    void dashboardWhenHomeViewShouldNotRequirePlanAndReturnHomeResponse() {
         GetKiosqueroDashboardRequest request = givenDashboardRequestWithDate();
         GetKiosqueroDashboardResponse expected = givenDashboardResponse(request);
 
@@ -192,7 +192,7 @@ class KiosqueroOperationsControllerTest {
     }
 
     @Test
-    void alerts_ShouldReturnMappedOperationalAlerts() {
+    void alertsShouldReturnMappedOperationalAlerts() {
         givenAlertsResponse();
 
         ResponseEntity<List<KiosqueroOperationalAlertResponse>> response = whenGetAlerts();
@@ -201,7 +201,7 @@ class KiosqueroOperationsControllerTest {
     }
 
     @Test
-    void orders_ShouldReturnMappedOrders() {
+    void ordersShouldReturnMappedOrders() {
         givenOrdersResponse();
 
         ResponseEntity<List<KiosqueroOrderResponse>> response = whenGetOrders();
@@ -210,7 +210,7 @@ class KiosqueroOperationsControllerTest {
     }
 
     @Test
-    void timeSlots_ShouldReturnMappedSlots() {
+    void timeSlotsShouldReturnMappedSlots() {
         givenTimeSlotsResponse();
 
         ResponseEntity<List<TimeSlotResponse>> response = whenGetTimeSlots();
@@ -219,7 +219,7 @@ class KiosqueroOperationsControllerTest {
     }
 
     @Test
-    void updatePickupSlotRules_ShouldDelegateToUseCase() {
+    void updatePickupSlotRulesShouldDelegateToUseCase() {
         UpdatePickupSlotRulesRequest useCaseRequest = givenUpdateSlotRulesRequest();
         givenUpdateSlotRulesResponse(useCaseRequest);
 

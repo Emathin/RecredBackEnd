@@ -14,10 +14,50 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class MenuProductoDTOTest {
 
+    private final UUID PRODUCT_ID = UUID.randomUUID();
+    private final UUID CATEGORY_ID = UUID.randomUUID();
+
     @Test
-    void permitido_ShouldMapFullProduct() {
+    void permitidoShouldMapFullProduct() {
+        Producto product = givenFullProduct();
+        
+        MenuProductoDTO dto = whenMappingPermitido(product);
+        
+        thenFullProductIsMapped(dto);
+    }
+
+    @Test
+    void bloqueadoShouldSetMotivo() {
         Producto product = new Producto();
-        product.setId(UUID.randomUUID());
+        product.setId(PRODUCT_ID);
+
+        MenuProductoDTO dto = whenMappingBloqueado(product, "Salud");
+        
+        thenMotivoIsSet(dto);
+    }
+
+    @Test
+    void staticMethodsShouldWork() {
+        MenuProductoDTO.CategoryDTO catDto = givenCategoryDto();
+        
+        MenuProductoDTO perm = whenCallingPermitido(catDto);
+        MenuProductoDTO bloq = whenCallingBloqueado(catDto);
+        
+        thenStaticMethodsSetExpectedFlags(perm, bloq);
+    }
+
+    @Test
+    void fromProductShouldHandleNullFields() {
+        Producto product = givenProductWithNullFields();
+        
+        MenuProductoDTO dto = whenMappingPermitido(product);
+        
+        thenNullFieldsAreHandled(dto);
+    }
+
+    private Producto givenFullProduct() {
+        Producto product = new Producto();
+        product.setId(PRODUCT_ID);
         product.setNombre("Product");
         product.setPrecio(new BigDecimal("10.00"));
         product.setStockActual(10);
@@ -25,13 +65,43 @@ class MenuProductoDTOTest {
         product.setTipoManejoInventario(TipoManejoInventario.STOCK_EXACTO);
 
         CategoriaProducto category = new CategoriaProducto();
-        category.setId(UUID.randomUUID());
+        category.setId(CATEGORY_ID);
         category.setDescripcion("Cat");
         product.setCategoria(category);
+        return product;
+    }
 
-        MenuProductoDTO dto = MenuProductoDTO.permitido(product);
+    private MenuProductoDTO.CategoryDTO givenCategoryDto() {
+        return new MenuProductoDTO.CategoryDTO(CATEGORY_ID, "Desc");
+    }
 
-        assertEquals(product.getId(), dto.id());
+    private Producto givenProductWithNullFields() {
+        Producto product = new Producto();
+        product.setId(PRODUCT_ID);
+        product.setCategoria(null);
+        product.setEstadoInventario(null);
+        product.setTipoManejoInventario(null);
+        return product;
+    }
+
+    private MenuProductoDTO whenMappingPermitido(Producto product) {
+        return MenuProductoDTO.permitido(product);
+    }
+
+    private MenuProductoDTO whenMappingBloqueado(Producto product, String motivo) {
+        return MenuProductoDTO.bloqueado(product, motivo);
+    }
+
+    private MenuProductoDTO whenCallingPermitido(MenuProductoDTO.CategoryDTO catDto) {
+        return MenuProductoDTO.permitido(PRODUCT_ID, "N", "D", BigDecimal.ONE, catDto);
+    }
+
+    private MenuProductoDTO whenCallingBloqueado(MenuProductoDTO.CategoryDTO catDto) {
+        return MenuProductoDTO.bloqueado(PRODUCT_ID, "N", "D", BigDecimal.ONE, "M", catDto);
+    }
+
+    private void thenFullProductIsMapped(MenuProductoDTO dto) {
+        assertEquals(PRODUCT_ID, dto.id());
         assertEquals("Product", dto.nombre());
         assertEquals(new BigDecimal("10.00"), dto.precio());
         assertEquals(10, dto.stockActual());
@@ -39,44 +109,22 @@ class MenuProductoDTOTest {
         assertEquals("STOCK_EXACTO", dto.tipoManejoInventario());
         assertFalse(dto.bloqueado());
         assertNull(dto.motivoBloqueo());
-        assertEquals(category.getId(), dto.categoria().id());
+        assertEquals(CATEGORY_ID, dto.categoria().id());
     }
 
-    @Test
-    void bloqueado_ShouldSetMotivo() {
-        Producto product = new Producto();
-        product.setId(UUID.randomUUID());
-
-        MenuProductoDTO dto = MenuProductoDTO.bloqueado(product, "Salud");
-
+    private void thenMotivoIsSet(MenuProductoDTO dto) {
         assertTrue(dto.bloqueado());
         assertEquals("Salud", dto.motivoBloqueo());
     }
 
-    @Test
-    void staticMethods_ShouldWork() {
-        MenuProductoDTO.CategoryDTO catDto = new MenuProductoDTO.CategoryDTO(UUID.randomUUID(), "Desc");
-        
-        MenuProductoDTO perm = MenuProductoDTO.permitido(UUID.randomUUID(), "N", "D", BigDecimal.ONE, catDto);
+    private void thenStaticMethodsSetExpectedFlags(MenuProductoDTO perm, MenuProductoDTO bloq) {
         assertFalse(perm.bloqueado());
-        
-        MenuProductoDTO bloq = MenuProductoDTO.bloqueado(UUID.randomUUID(), "N", "D", BigDecimal.ONE, "M", catDto);
         assertTrue(bloq.bloqueado());
     }
 
-    @Test
-    void fromProduct_ShouldHandleNullFields() {
-        Producto product = new Producto();
-        product.setId(UUID.randomUUID());
-        product.setCategoria(null);
-        product.setEstadoInventario(null);
-        product.setTipoManejoInventario(null);
-
-        MenuProductoDTO dto = MenuProductoDTO.permitido(product);
-
+    private void thenNullFieldsAreHandled(MenuProductoDTO dto) {
         assertNull(dto.categoria());
         assertNull(dto.estadoInventario());
         assertNull(dto.tipoManejoInventario());
     }
 }
-

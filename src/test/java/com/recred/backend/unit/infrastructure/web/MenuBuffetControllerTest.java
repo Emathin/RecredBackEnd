@@ -16,6 +16,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -49,40 +50,61 @@ class MenuBuffetControllerTest {
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
-    @Test
-    void obtenerBuffet_dadoAlumnoConBuffet_deberiaRetornarBuffetDTOy200() throws Exception {
-        UUID alumnoId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        UUID colegioId = UUID.randomUUID();
+    private final UUID ALUMNO_ID = UUID.randomUUID();
+    private final UUID BUFFET_ID = UUID.randomUUID();
+    private final UUID COLEGIO_ID = UUID.randomUUID();
 
+    @Test
+    void getBuffetGivenStudentWithBuffetShouldReturnBuffetDTOAnd200() throws Exception {
+        givenStudentHasBuffet();
+        
+        ResultActions response = whenGettingBuffet();
+        
+        thenBuffetIsReturned(response);
+    }
+
+    @Test
+    void getBuffetGivenStudentWithoutBuffetShouldReturn404() throws Exception {
+        givenStudentHasNoBuffet();
+        
+        ResultActions response = whenGettingBuffet();
+        
+        thenStatusIsNotFound(response);
+    }
+
+    private void givenStudentHasBuffet() {
         GetBuffetByStudentResponse response = new GetBuffetByStudentResponse(
-                buffetId,
+                BUFFET_ID,
                 "Buffet del Colegio",
-                colegioId,
+                COLEGIO_ID,
                 null,
                 null,
                 true,
                 null,
                 null
         );
-
-        when(getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId))).thenReturn(Optional.of(response));
-
-        mockMvc.perform(get("/api/v1/alumnos/" + alumnoId + "/buffet")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(buffetId.toString()))
-                .andExpect(jsonPath("$.nombre").value("Buffet del Colegio"))
-                .andExpect(jsonPath("$.colegioId").value(colegioId.toString()));
+        when(getBuffetByStudent.execute(new GetBuffetByStudentRequest(ALUMNO_ID)))
+                .thenReturn(Optional.of(response));
     }
 
-    @Test
-    void obtenerBuffet_dadoAlumnoSinBuffet_deberiaRetornar404() throws Exception {
-        UUID alumnoId = UUID.randomUUID();
-        when(getBuffetByStudent.execute(new GetBuffetByStudentRequest(alumnoId))).thenReturn(Optional.empty());
+    private void givenStudentHasNoBuffet() {
+        when(getBuffetByStudent.execute(new GetBuffetByStudentRequest(ALUMNO_ID)))
+                .thenReturn(Optional.empty());
+    }
 
-        mockMvc.perform(get("/api/v1/alumnos/" + alumnoId + "/buffet")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+    private ResultActions whenGettingBuffet() throws Exception {
+        return mockMvc.perform(get("/api/v1/alumnos/" + ALUMNO_ID + "/buffet")
+                .contentType(MediaType.APPLICATION_JSON));
+    }
+
+    private void thenBuffetIsReturned(ResultActions response) throws Exception {
+        response.andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(BUFFET_ID.toString()))
+                .andExpect(jsonPath("$.nombre").value("Buffet del Colegio"))
+                .andExpect(jsonPath("$.colegioId").value(COLEGIO_ID.toString()));
+    }
+
+    private void thenStatusIsNotFound(ResultActions response) throws Exception {
+        response.andExpect(status().isNotFound());
     }
 }

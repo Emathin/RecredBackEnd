@@ -33,6 +33,10 @@ class SummaryControllerTest {
     private SummaryController controller;
     private Authentication authentication;
 
+    private final UUID userId = UUID.randomUUID();
+    private final String cognitoId = "user123";
+    private final Summary foundSummary = summary(UUID.randomUUID());
+
     @BeforeEach
     void setUp() {
         getLastSummary = mock(GetLastSummary.class);
@@ -43,64 +47,88 @@ class SummaryControllerTest {
     }
 
     @Test
-    void getLastSummaryReturnsMappedSummaryWhenFound() {
-        UUID userId = UUID.randomUUID();
-        String cognitoId = "user123";
-        Summary summary = summary(UUID.randomUUID());
+    void givenFoundSummaryWhenGettingLastSummaryThenReturnsMappedSummary() {
+        givenAuthenticationReturnsCognitoId();
+        givenUsuarioRepositoryReturnsUser();
+        givenGetLastSummaryReturnsFoundSummary();
+
+        ResponseEntity<SummaryResponse> response = whenGettingLastSummary();
+
+        thenSummaryIsReturned(response);
+        thenTutorIntermediateAccessWasRequired();
+    }
+
+    @Test
+    void givenMissingSummaryWhenGettingLastSummaryThenReturnsNotFound() {
+        givenAuthenticationReturnsCognitoId();
+        givenUsuarioRepositoryReturnsUser();
+        givenGetLastSummaryReturnsEmpty();
+
+        ResponseEntity<SummaryResponse> response = whenGettingLastSummary();
+
+        thenNotFoundIsReturned(response);
+        thenTutorIntermediateAccessWasRequired();
+    }
+    
+    @Test
+    void givenUnauthenticatedUserWhenGettingLastSummaryThenThrowsException() {
+        givenAuthenticationReturnsNull();
         
+        assertThrows(AuthenticationCredentialsNotFoundException.class, this::whenGettingLastSummary);
+    }
+    
+    @Test
+    void givenUserNotFoundWhenGettingLastSummaryThenThrowsException() {
+        givenAuthenticationReturnsCognitoId();
+        givenUsuarioRepositoryReturnsEmpty();
+        
+        assertThrows(RuntimeException.class, this::whenGettingLastSummary);
+    }
+
+    private void givenAuthenticationReturnsCognitoId() {
+        when(authentication.getName()).thenReturn(cognitoId);
+    }
+
+    private void givenAuthenticationReturnsNull() {
+        when(authentication.getName()).thenReturn(null);
+    }
+
+    private void givenUsuarioRepositoryReturnsUser() {
         Usuario usuario = new Usuario();
         usuario.setId(userId);
-        
-        when(authentication.getName()).thenReturn(cognitoId);
         when(usuarioRepository.findByIdCognito(cognitoId)).thenReturn(Optional.of(usuario));
+    }
+
+    private void givenUsuarioRepositoryReturnsEmpty() {
+        when(usuarioRepository.findByIdCognito(cognitoId)).thenReturn(Optional.empty());
+    }
+
+    private void givenGetLastSummaryReturnsFoundSummary() {
         when(getLastSummary.execute(new GetLastSummaryRequest(userId)))
-                .thenReturn(Optional.of(GetLastSummaryResponse.fromSummary(summary)));
+                .thenReturn(Optional.of(GetLastSummaryResponse.fromSummary(foundSummary)));
+    }
 
-        ResponseEntity<SummaryResponse> response = controller.getLastSummary(authentication);
+    private void givenGetLastSummaryReturnsEmpty() {
+        when(getLastSummary.execute(new GetLastSummaryRequest(userId))).thenReturn(Optional.empty());
+    }
 
+    private ResponseEntity<SummaryResponse> whenGettingLastSummary() {
+        return controller.getLastSummary(authentication);
+    }
+
+    private void thenSummaryIsReturned(ResponseEntity<SummaryResponse> response) {
         assertEquals(200, response.getStatusCode().value());
-        assertEquals(summary.getId().toString(), response.getBody().getId());
+        assertEquals(foundSummary.getId().toString(), response.getBody().getId());
         assertEquals("01/06/26", response.getBody().getFechaDesde());
         assertEquals("Resumen semanal", response.getBody().getResumen());
-        verify(planAccessGuard).requireTutorIntermediate(authentication);
     }
 
-    @Test
-    void getLastSummaryReturnsNotFoundWhenMissing() {
-        UUID userId = UUID.randomUUID();
-        String cognitoId = "user123";
-        
-        Usuario usuario = new Usuario();
-        usuario.setId(userId);
-        
-        when(authentication.getName()).thenReturn(cognitoId);
-        when(usuarioRepository.findByIdCognito(cognitoId)).thenReturn(Optional.of(usuario));
-        when(getLastSummary.execute(new GetLastSummaryRequest(userId))).thenReturn(Optional.empty());
-
-        ResponseEntity<SummaryResponse> response = controller.getLastSummary(authentication);
-
+    private void thenNotFoundIsReturned(ResponseEntity<SummaryResponse> response) {
         assertEquals(404, response.getStatusCode().value());
+    }
+
+    private void thenTutorIntermediateAccessWasRequired() {
         verify(planAccessGuard).requireTutorIntermediate(authentication);
-    }
-    
-    @Test
-    void getLastSummaryThrowsWhenNotAuthenticated() {
-        when(authentication.getName()).thenReturn(null);
-        
-        assertThrows(AuthenticationCredentialsNotFoundException.class, () -> 
-            controller.getLastSummary(authentication)
-        );
-    }
-    
-    @Test
-    void getLastSummaryThrowsWhenUserNotFound() {
-        String cognitoId = "user123";
-        when(authentication.getName()).thenReturn(cognitoId);
-        when(usuarioRepository.findByIdCognito(cognitoId)).thenReturn(Optional.empty());
-        
-        assertThrows(RuntimeException.class, () -> 
-            controller.getLastSummary(authentication)
-        );
     }
 
     private Summary summary(UUID summaryId) {

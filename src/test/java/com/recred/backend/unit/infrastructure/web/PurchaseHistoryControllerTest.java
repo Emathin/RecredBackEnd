@@ -9,22 +9,18 @@ import com.recred.backend.application.GetPendingHistoryByStudentResponse;
 import com.recred.backend.application.GetTutorHistory;
 import com.recred.backend.application.GetTutorHistoryRequest;
 import com.recred.backend.application.GetTutorHistoryResponse;
-import com.recred.backend.config.CustomAuthenticationEntryPoint;
-import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.infrastructure.web.PurchaseHistoryController;
 import com.recred.backend.infrastructure.web.PurchaseResponseDTO;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
-import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.MediaType;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.authentication.TestingAuthenticationToken;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -33,44 +29,92 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = PurchaseHistoryController.class, excludeAutoConfiguration = { SecurityAutoConfiguration.class,
-        OAuth2ResourceServerAutoConfiguration.class })
+@ExtendWith(MockitoExtension.class)
 class PurchaseHistoryControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    private static final String COGNITO_SUBJECT = "cognito-sub";
 
-    @MockitoBean
+    @Mock
     private GetHistoryByStudent getHistoryByStudent;
-
-    @MockitoBean
+    @Mock
     private GetTutorHistory getTutorHistory;
-
-    @MockitoBean
+    @Mock
     private GetPendingHistoryByStudent getPendingHistoryByStudent;
 
-    @MockitoBean
-    private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
+    private PurchaseHistoryController controller;
 
-    @MockitoBean
-    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
-
-    @MockitoBean
-    private JwtDecoder jwtDecoder;
+    @BeforeEach
+    void setUp() {
+        controller = new PurchaseHistoryController(
+                getHistoryByStudent,
+                getTutorHistory,
+                getPendingHistoryByStudent
+        );
+    }
 
     @Test
-    void cuandoPideHistorialAlumno_entoncesRetorna200YListaDeCompras() throws Exception {
-        UUID alumnoId = UUID.randomUUID();
-        UUID compraId = UUID.randomUUID();
+    void getHistorialAlumnoShouldReturnOkAndMappedPurchases() {
+        UUID studentId = UUID.randomUUID();
+        UUID purchaseId = UUID.randomUUID();
+        givenStudentHistory(studentId, purchaseId);
 
+        ResponseEntity<List<PurchaseResponseDTO>> response = controller.getHistorialAlumno(studentId);
+
+        thenResponseContainsPurchaseAndStatusIsOk(response, purchaseId, "ENTREGADO", new BigDecimal("1500.50"));
+        thenDelegatesToGetHistoryByStudent(studentId);
+    }
+
+    @Test
+    void getHistorialTutorShouldReturnOkAndMappedPurchases() {
+        UUID tutorId = UUID.randomUUID();
+        UUID purchaseId = UUID.randomUUID();
+        givenTutorHistory(tutorId, purchaseId);
+
+        ResponseEntity<List<PurchaseResponseDTO>> response = controller.getHistorialTutor(tutorId);
+
+        thenResponseContainsPurchaseAndStatusIsOk(response, purchaseId, "EN_PREPARACION", new BigDecimal("3000.00"));
+        thenDelegatesToGetTutorHistory(tutorId);
+    }
+
+    @Test
+    void getPendientesAlumnoShouldReturnOkAndMappedPurchases() {
+        UUID studentId = UUID.randomUUID();
+        UUID purchaseId = UUID.randomUUID();
+        givenPendingStudentHistory(studentId, purchaseId);
+
+        ResponseEntity<List<PurchaseResponseDTO>> response = controller.getPendientesAlumno(studentId);
+
+        thenResponseContainsPurchaseAndStatusIsOk(response, purchaseId, "PENDIENTE", new BigDecimal("1200.00"));
+        thenDelegatesToGetPendingHistoryByStudent(studentId);
+    }
+
+    @Test
+    void getMyHistorialShouldUseAuthenticatedSubjectAndReturnOk() {
+        UUID purchaseId = UUID.randomUUID();
+        givenAuthenticatedTutorHistory(purchaseId);
+
+        ResponseEntity<List<PurchaseResponseDTO>> response = controller.getMyHistorial(
+                new TestingAuthenticationToken(COGNITO_SUBJECT, null)
+        );
+
+        thenResponseContainsPurchaseAndStatusIsOk(response, purchaseId, "ENTREGADO", new BigDecimal("2200.00"));
+        thenDelegatesToGetMyHistory();
+    }
+
+    @Test
+    void getMyHistorialWithoutAuthenticationShouldFail() {
+        Executable execution = () -> controller.getMyHistorial(null);
+
+        thenThrowsAuthenticationCredentialsNotFoundException(execution);
+    }
+
+    private void givenStudentHistory(UUID studentId, UUID purchaseId) {
         GetHistoryByStudentResponse response = new GetHistoryByStudentResponse(
-                compraId,
-                alumnoId,
+                purchaseId,
+                studentId,
                 new BigDecimal("1500.50"),
                 "ENTREGADO",
                 "Entregado",
@@ -84,24 +128,13 @@ class PurchaseHistoryControllerTest {
                 null,
                 null
         );
-
-        when(getHistoryByStudent.execute(new GetHistoryByStudentRequest(alumnoId))).thenReturn(List.of(response));
-
-        mockMvc.perform(get("/api/v1/purchases/alumno/{alumnoId}", alumnoId)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(compraId.toString()))
-                .andExpect(jsonPath("$[0].totalAmount").value(1500.50))
-                .andExpect(jsonPath("$[0].status").value("ENTREGADO"));
+        when(getHistoryByStudent.execute(new GetHistoryByStudentRequest(studentId)))
+                .thenReturn(List.of(response));
     }
 
-    @Test
-    void cuandoPideHistorialTutor_entoncesRetorna200YListaDeCompras() throws Exception {
-        UUID tutorId = UUID.randomUUID();
-        UUID compraId = UUID.randomUUID();
-
+    private void givenTutorHistory(UUID tutorId, UUID purchaseId) {
         GetHistoryByStudentResponse response = new GetHistoryByStudentResponse(
-                compraId,
+                purchaseId,
                 null,
                 new BigDecimal("3000.00"),
                 "EN_PREPARACION",
@@ -116,57 +149,34 @@ class PurchaseHistoryControllerTest {
                 null,
                 null
         );
-
         when(getTutorHistory.execute(GetTutorHistoryRequest.byTutorId(tutorId)))
                 .thenReturn(new GetTutorHistoryResponse(List.of(response)));
+    }
 
-        mockMvc.perform(get("/api/v1/purchases/tutor/{tutorId}", tutorId)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(compraId.toString()))
-                .andExpect(jsonPath("$[0].totalAmount").value(3000.00))
-                .andExpect(jsonPath("$[0].status").value("EN_PREPARACION"));
-     }
+    private void givenPendingStudentHistory(UUID studentId, UUID purchaseId) {
+        GetPendingHistoryByStudentResponse response = new GetPendingHistoryByStudentResponse(
+                purchaseId,
+                studentId,
+                new BigDecimal("1200.00"),
+                "PENDIENTE",
+                "Pendiente",
+                "EFECTIVO",
+                LocalDateTime.now(),
+                List.of(),
+                "PRESENCIAL",
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+        when(getPendingHistoryByStudent.execute(new GetPendingHistoryByStudentRequest(studentId)))
+                .thenReturn(List.of(response));
+    }
 
-     @Test
-     void cuandoPidePendientesAlumno_entoncesRetorna200YListaDeCompras() throws Exception {
-         UUID alumnoId = UUID.randomUUID();
-         UUID compraId = UUID.randomUUID();
-
-         GetPendingHistoryByStudentResponse response = new GetPendingHistoryByStudentResponse(
-                 compraId,
-                 alumnoId,
-                 new BigDecimal("1200.00"),
-                 "PENDIENTE",
-                 "Pendiente",
-                 "EFECTIVO",
-                 LocalDateTime.now(),
-                 List.of(),
-                 "PRESENCIAL",
-                 null,
-                 null,
-                 null,
-                 null,
-                 null
-         );
-
-         when(getPendingHistoryByStudent.execute(new GetPendingHistoryByStudentRequest(alumnoId)))
-                 .thenReturn(List.of(response));
-
-         mockMvc.perform(get("/api/v1/purchases/alumno/{alumnoId}/pendientes", alumnoId)
-                 .contentType(MediaType.APPLICATION_JSON))
-                 .andExpect(status().isOk())
-                 .andExpect(jsonPath("$[0].id").value(compraId.toString()))
-                 .andExpect(jsonPath("$[0].totalAmount").value(1200.00))
-                 .andExpect(jsonPath("$[0].status").value("PENDIENTE"));
-     }
-
-    @Test
-    void cuandoPideMiHistorialTutor_entoncesUsaElSubjectAutenticado() {
-        String cognitoSubject = "cognito-sub";
-        UUID compraId = UUID.randomUUID();
-        GetHistoryByStudentResponse history = new GetHistoryByStudentResponse(
-                compraId,
+    private void givenAuthenticatedTutorHistory(UUID purchaseId) {
+        GetHistoryByStudentResponse response = new GetHistoryByStudentResponse(
+                purchaseId,
                 null,
                 new BigDecimal("2200.00"),
                 "ENTREGADO",
@@ -181,31 +191,40 @@ class PurchaseHistoryControllerTest {
                 null,
                 null
         );
-        PurchaseHistoryController controller = new PurchaseHistoryController(
-                getHistoryByStudent,
-                getTutorHistory,
-                getPendingHistoryByStudent
-        );
-        when(getTutorHistory.execute(GetTutorHistoryRequest.byCognitoSubject(cognitoSubject)))
-                .thenReturn(new GetTutorHistoryResponse(List.of(history)));
-
-        ResponseEntity<List<PurchaseResponseDTO>> response = controller.getMyHistorial(
-                new UsernamePasswordAuthenticationToken(cognitoSubject, null)
-        );
-
-        assertEquals(1, response.getBody().size());
-        assertEquals(compraId, response.getBody().get(0).getId());
+        when(getTutorHistory.execute(GetTutorHistoryRequest.byCognitoSubject(COGNITO_SUBJECT)))
+                .thenReturn(new GetTutorHistoryResponse(List.of(response)));
     }
 
-    @Test
-    void cuandoPideMiHistorialTutorSinAutenticacion_entoncesFalla() {
-        PurchaseHistoryController controller = new PurchaseHistoryController(
-                getHistoryByStudent,
-                getTutorHistory,
-                getPendingHistoryByStudent
-        );
+    private void thenResponseContainsPurchaseAndStatusIsOk(
+            ResponseEntity<List<PurchaseResponseDTO>> response,
+            UUID expectedPurchaseId,
+            String expectedStatus,
+            BigDecimal expectedAmount
+    ) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(1, response.getBody().size());
+        assertEquals(expectedPurchaseId, response.getBody().get(0).getId());
+        assertEquals(expectedAmount, response.getBody().get(0).getTotalAmount());
+        assertEquals(expectedStatus, response.getBody().get(0).getStatus());
+    }
 
-        assertThrows(AuthenticationCredentialsNotFoundException.class,
-                () -> controller.getMyHistorial(null));
+    private void thenDelegatesToGetHistoryByStudent(UUID studentId) {
+        verify(getHistoryByStudent).execute(new GetHistoryByStudentRequest(studentId));
+    }
+
+    private void thenDelegatesToGetTutorHistory(UUID tutorId) {
+        verify(getTutorHistory).execute(GetTutorHistoryRequest.byTutorId(tutorId));
+    }
+
+    private void thenDelegatesToGetPendingHistoryByStudent(UUID studentId) {
+        verify(getPendingHistoryByStudent).execute(new GetPendingHistoryByStudentRequest(studentId));
+    }
+
+    private void thenDelegatesToGetMyHistory() {
+        verify(getTutorHistory).execute(GetTutorHistoryRequest.byCognitoSubject(COGNITO_SUBJECT));
+    }
+
+    private void thenThrowsAuthenticationCredentialsNotFoundException(Executable execution) {
+        assertThrows(AuthenticationCredentialsNotFoundException.class, execution);
     }
 }

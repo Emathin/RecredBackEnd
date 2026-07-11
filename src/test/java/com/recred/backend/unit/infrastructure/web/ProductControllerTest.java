@@ -29,6 +29,7 @@ import com.recred.backend.infrastructure.web.ProductResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -60,6 +61,10 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 
 @ExtendWith(MockitoExtension.class)
 class ProductControllerTest {
+
+    private static final UUID PRODUCT_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID BUFFET_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    private static final UUID CATEGORY_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
 
     @Mock
     private GetAllProducts getAllProducts;
@@ -103,181 +108,138 @@ class ProductControllerTest {
 
     @Test
     void updatePriceAcceptsQueryParams() throws Exception {
-        UUID productId = randomUUID();
-        UUID buffetId = randomUUID();
+        ResultActions result = whenUpdatingPriceWithQueryParams(PRODUCT_ID, BUFFET_ID);
 
-        ResultActions result = whenUpdatingPriceWithQueryParams(productId, buffetId);
-
-        result.andExpect(status().isOk());
-        verify(updateProductPrice).execute(
-                new UpdateProductPriceRequest(productId, new BigDecimal("120.00"), buffetId));
+        thenResultIsOk(result);
+        thenUpdatePriceIsDelegated(PRODUCT_ID, BUFFET_ID);
     }
 
     @Test
     void updatePriceAcceptsJsonBody() throws Exception {
-        UUID productId = randomUUID();
-        UUID buffetId = randomUUID();
+        ResultActions result = whenUpdatingPriceWithJsonBody(PRODUCT_ID, BUFFET_ID);
 
-        ResultActions result = whenUpdatingPriceWithJsonBody(productId, buffetId);
-
-        result.andExpect(status().isOk());
-        verify(updateProductPrice).execute(
-                new UpdateProductPriceRequest(productId, new BigDecimal("120.00"), buffetId));
+        thenResultIsOk(result);
+        thenUpdatePriceIsDelegated(PRODUCT_ID, BUFFET_ID);
     }
 
     @Test
     void updatePriceAcceptsOnlyQueryPriceAndNullBuffet() {
-        UUID productId = randomUUID();
+        ResponseEntity<Void> response = whenUpdatingPriceWithOnlyQueryPrice(PRODUCT_ID);
 
-        ResponseEntity<Void> response = whenUpdatingPriceWithOnlyQueryPrice(productId);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(updateProductPrice).execute(
-                new UpdateProductPriceRequest(productId, new BigDecimal("120.00"), null));
+        thenResponseIsOk(response);
+        thenUpdatePriceIsDelegated(PRODUCT_ID, null);
     }
 
     @Test
     void updatePriceWithoutPriceThrowsIllegalArgumentException() {
-        UUID productId = randomUUID();
-
-        assertThrows(IllegalArgumentException.class,
-                () -> controller.updatePrice(productId, null, null, null));
+        Executable execution = () -> controller.updatePrice(PRODUCT_ID, null, null, null);
+        
+        thenThrowsIllegalArgumentException(execution);
     }
 
     @Test
     void uploadFileShouldParseBulkStockFile() {
         byte[] content = "nombre,precio\nYogur,120".getBytes();
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "stock.csv",
-                "text/csv",
-                content
-        );
-        when(parseBulkStock.execute(any()))
-                .thenReturn(new BulkStockParseResponse(List.of(bulkProductData())));
+        MockMultipartFile file = givenMultipartFile(content);
+        givenParseBulkStockResponse();
 
         ResponseEntity<BulkStockParseResponse> response = controller.uploadFile(null, file);
 
-        ArgumentCaptor<com.recred.backend.application.ParseBulkStockRequest> captor =
-                ArgumentCaptor.forClass(
-                        com.recred.backend.application.ParseBulkStockRequest.class);
-        verify(parseBulkStock).execute(captor.capture());
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Yogur", response.getBody().products().get(0).nombre());
-        assertArrayEquals(content, captor.getValue().fileContent());
-        assertEquals("text/csv", captor.getValue().contentType());
-        verify(planAccessGuard).requireVendorAdvanced(null);
+        thenFileIsParsedProperly(response, content);
     }
 
     @Test
     void uploadFileShouldWrapIoException() throws Exception {
-        MultipartFile file = org.mockito.Mockito.mock(MultipartFile.class);
-        when(file.getBytes()).thenThrow(new IOException("read error"));
+        MultipartFile file = givenFailingMultipartFile();
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> controller.uploadFile(null, file));
+        Executable execution = () -> controller.uploadFile(null, file);
 
-        assertEquals("Error reading uploaded file", exception.getMessage());
+        thenThrowsWrappedIoException(execution);
     }
 
     @Test
     void createBulkShouldMapRequestsAndResponses() {
-        UUID buffetId = randomUUID();
-        UUID productId = randomUUID();
-        ProductRequestDTO request = productRequest(buffetId);
-        when(saveBulkProducts.execute(any(SaveBulkProductsRequest.class)))
-                .thenReturn(new SaveBulkProductsResponse(List.of(
-                        ProductResponse.fromDomain(product(productId))
-                )));
+        ProductRequestDTO request = productRequest(BUFFET_ID);
+        givenBulkSaveResponse(PRODUCT_ID);
 
         ResponseEntity<List<ProductResponseDTO>> response = controller.createBulk(
                 null,
                 List.of(request)
         );
 
-        ArgumentCaptor<SaveBulkProductsRequest> captor =
-                ArgumentCaptor.forClass(SaveBulkProductsRequest.class);
-        verify(saveBulkProducts).execute(captor.capture());
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(1, captor.getValue().products().size());
-        assertEquals(buffetId, captor.getValue().products().get(0).buffetId());
-        assertEquals(productId, response.getBody().get(0).id());
-        verify(planAccessGuard).requireVendorAdvanced(null);
+        thenBulkProductsAreSavedAndReturned(response, PRODUCT_ID, BUFFET_ID);
     }
 
     @Test
     void findAllReturnsMappedProducts() {
-        UUID buffetId = randomUUID();
-        UUID productId = randomUUID();
-        givenProductsForBuffet(buffetId, ProductResponse.fromDomain(product(productId)));
+        givenProductsForBuffet(BUFFET_ID, ProductResponse.fromDomain(product(PRODUCT_ID)));
 
-        ResponseEntity<List<ProductResponseDTO>> response = whenFindingAllProducts(buffetId);
+        ResponseEntity<List<ProductResponseDTO>> response = whenFindingAllProducts(BUFFET_ID);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(productId, response.getBody().get(0).id());
-        assertEquals("Yogur", response.getBody().get(0).nombre());
-        verify(getAllProducts).execute(new GetAllProductsRequest(buffetId));
+        thenProductsAreReturned(response, PRODUCT_ID, BUFFET_ID);
     }
 
     @Test
     void findByIdReturnsMappedProduct() {
-        UUID productId = randomUUID();
-        UUID buffetId = randomUUID();
-        givenProductExists(productId, buffetId, ProductResponse.fromDomain(product(productId)));
+        givenProductExists(PRODUCT_ID, BUFFET_ID, ProductResponse.fromDomain(product(PRODUCT_ID)));
 
-        ResponseEntity<ProductResponseDTO> response = whenFindingProductById(productId, buffetId);
+        ResponseEntity<ProductResponseDTO> response = whenFindingProductById(PRODUCT_ID, BUFFET_ID);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(productId, response.getBody().id());
-        verify(getProductById).execute(new GetProductByIdRequest(productId, buffetId));
+        thenProductIsReturned(response, PRODUCT_ID, BUFFET_ID);
     }
 
     @Test
     void createDelegatesSaveCommandAndReturnsCreatedProduct() {
-        UUID productId = randomUUID();
-        UUID buffetId = randomUUID();
-        ProductRequestDTO request = productRequest(buffetId);
-        givenProductIsSaved(productId);
+        ProductRequestDTO request = productRequest(BUFFET_ID);
+        givenProductIsSaved(PRODUCT_ID);
 
         ResponseEntity<ProductResponseDTO> response = whenCreatingProduct(request);
 
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(productId, response.getBody().id());
-
-        ArgumentCaptor<SaveProductRequest> commandCaptor =
-                ArgumentCaptor.forClass(SaveProductRequest.class);
-        verify(saveProduct).execute(commandCaptor.capture());
-        assertEquals("Yogur", commandCaptor.getValue().nombre());
-        assertEquals(buffetId, commandCaptor.getValue().buffetId());
+        thenProductIsCreated(response, PRODUCT_ID, BUFFET_ID);
     }
 
     @Test
     void updateDelegatesUpdateCommandAndReturnsUpdatedProduct() {
-        UUID productId = randomUUID();
-        UUID buffetId = randomUUID();
-        ProductRequestDTO request = productRequest(buffetId);
-        givenProductIsUpdated(productId);
+        ProductRequestDTO request = productRequest(BUFFET_ID);
+        givenProductIsUpdated(PRODUCT_ID);
 
-        ResponseEntity<ProductResponseDTO> response = whenUpdatingProduct(productId, request);
+        ResponseEntity<ProductResponseDTO> response = whenUpdatingProduct(PRODUCT_ID, request);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(productId, response.getBody().id());
-
-        ArgumentCaptor<UpdateProductRequest> commandCaptor =
-                ArgumentCaptor.forClass(UpdateProductRequest.class);
-        verify(updateProduct).execute(commandCaptor.capture());
-        assertEquals(productId, commandCaptor.getValue().id());
-        assertEquals(buffetId, commandCaptor.getValue().buffetId());
+        thenProductIsUpdated(response, PRODUCT_ID, BUFFET_ID);
     }
 
     @Test
     void deleteDelegatesAndReturnsNoContent() {
-        UUID productId = randomUUID();
+        ResponseEntity<Void> response = whenDeletingProduct(PRODUCT_ID);
 
-        ResponseEntity<Void> response = whenDeletingProduct(productId);
+        thenProductIsDeleted(response, PRODUCT_ID);
+    }
 
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        verify(deleteProduct).execute(new DeleteProductRequest(productId));
+    private MockMultipartFile givenMultipartFile(byte[] content) {
+        return new MockMultipartFile(
+                "file",
+                "stock.csv",
+                "text/csv",
+                content
+        );
+    }
+    
+    private void givenParseBulkStockResponse() {
+        when(parseBulkStock.execute(any()))
+                .thenReturn(new BulkStockParseResponse(List.of(bulkProductData())));
+    }
+    
+    private MultipartFile givenFailingMultipartFile() throws IOException {
+        MultipartFile file = org.mockito.Mockito.mock(MultipartFile.class);
+        when(file.getBytes()).thenThrow(new IOException("read error"));
+        return file;
+    }
+
+    private void givenBulkSaveResponse(UUID productId) {
+        when(saveBulkProducts.execute(any(SaveBulkProductsRequest.class)))
+                .thenReturn(new SaveBulkProductsResponse(List.of(
+                        ProductResponse.fromDomain(product(productId))
+                )));
     }
 
     private void givenProductsForBuffet(UUID buffetId, ProductResponse... products) {
@@ -356,6 +318,111 @@ class ProductControllerTest {
         return controller.delete(productId);
     }
 
+    private void thenResultIsOk(ResultActions result) throws Exception {
+        result.andExpect(status().isOk());
+    }
+
+    private void thenResponseIsOk(ResponseEntity<Void> response) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    private void thenUpdatePriceIsDelegated(UUID productId, UUID buffetId) {
+        verify(updateProductPrice).execute(
+                new UpdateProductPriceRequest(productId, new BigDecimal("120.00"), buffetId));
+    }
+    
+    private void thenThrowsIllegalArgumentException(Executable execution) {
+        assertThrows(IllegalArgumentException.class, execution);
+    }
+    
+    private void thenFileIsParsedProperly(ResponseEntity<BulkStockParseResponse> response, byte[] content) {
+        ArgumentCaptor<com.recred.backend.application.ParseBulkStockRequest> captor =
+                ArgumentCaptor.forClass(
+                        com.recred.backend.application.ParseBulkStockRequest.class);
+        verify(parseBulkStock).execute(captor.capture());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Yogur", response.getBody().products().get(0).nombre());
+        assertArrayEquals(content, captor.getValue().fileContent());
+        assertEquals("text/csv", captor.getValue().contentType());
+        verify(planAccessGuard).requireVendorAdvanced(null);
+    }
+    
+    private void thenThrowsWrappedIoException(Executable execution) {
+        RuntimeException exception = assertThrows(RuntimeException.class, execution);
+        assertEquals("Error reading uploaded file", exception.getMessage());
+    }
+    
+    private void thenBulkProductsAreSavedAndReturned(
+            ResponseEntity<List<ProductResponseDTO>> response, 
+            UUID productId, 
+            UUID buffetId
+    ) {
+        ArgumentCaptor<SaveBulkProductsRequest> captor =
+                ArgumentCaptor.forClass(SaveBulkProductsRequest.class);
+        verify(saveBulkProducts).execute(captor.capture());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(1, captor.getValue().products().size());
+        assertEquals(buffetId, captor.getValue().products().get(0).buffetId());
+        assertEquals(productId, response.getBody().get(0).id());
+        verify(planAccessGuard).requireVendorAdvanced(null);
+    }
+    
+    private void thenProductsAreReturned(
+            ResponseEntity<List<ProductResponseDTO>> response, 
+            UUID productId, 
+            UUID buffetId
+    ) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(productId, response.getBody().get(0).id());
+        assertEquals("Yogur", response.getBody().get(0).nombre());
+        verify(getAllProducts).execute(new GetAllProductsRequest(buffetId));
+    }
+    
+    private void thenProductIsReturned(
+            ResponseEntity<ProductResponseDTO> response, 
+            UUID productId, 
+            UUID buffetId
+    ) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(productId, response.getBody().id());
+        verify(getProductById).execute(new GetProductByIdRequest(productId, buffetId));
+    }
+    
+    private void thenProductIsCreated(
+            ResponseEntity<ProductResponseDTO> response, 
+            UUID productId, 
+            UUID buffetId
+    ) {
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(productId, response.getBody().id());
+
+        ArgumentCaptor<SaveProductRequest> commandCaptor =
+                ArgumentCaptor.forClass(SaveProductRequest.class);
+        verify(saveProduct).execute(commandCaptor.capture());
+        assertEquals("Yogur", commandCaptor.getValue().nombre());
+        assertEquals(buffetId, commandCaptor.getValue().buffetId());
+    }
+    
+    private void thenProductIsUpdated(
+            ResponseEntity<ProductResponseDTO> response, 
+            UUID productId, 
+            UUID buffetId
+    ) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(productId, response.getBody().id());
+
+        ArgumentCaptor<UpdateProductRequest> commandCaptor =
+                ArgumentCaptor.forClass(UpdateProductRequest.class);
+        verify(updateProduct).execute(commandCaptor.capture());
+        assertEquals(productId, commandCaptor.getValue().id());
+        assertEquals(buffetId, commandCaptor.getValue().buffetId());
+    }
+    
+    private void thenProductIsDeleted(ResponseEntity<Void> response, UUID productId) {
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(deleteProduct).execute(new DeleteProductRequest(productId));
+    }
+
     private ProductRequestDTO productRequest(UUID buffetId) {
         return new ProductRequestDTO(
                 "Yogur",
@@ -363,7 +430,7 @@ class ProductControllerTest {
                 new BigDecimal("120.00"),
                 new BigDecimal("200.00"),
                 false,
-                randomUUID(),
+                CATEGORY_ID,
                 null,
                 buffetId,
                 5,
@@ -382,7 +449,7 @@ class ProductControllerTest {
                 new BigDecimal("120.00"),
                 new BigDecimal("200.00"),
                 false,
-                randomUUID(),
+                CATEGORY_ID,
                 null,
                 5,
                 Set.of(),

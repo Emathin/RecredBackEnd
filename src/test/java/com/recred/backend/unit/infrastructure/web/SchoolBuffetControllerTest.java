@@ -1,119 +1,151 @@
 package com.recred.backend.unit.infrastructure.web;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.RegisterBuffet;
 import com.recred.backend.application.RegisterBuffetRequest;
 import com.recred.backend.application.RegisterBuffetResponse;
 import com.recred.backend.application.RegisterSeller;
 import com.recred.backend.application.RegisterSellerRequest;
 import com.recred.backend.application.RegisterSellerResponse;
+import com.recred.backend.application.ReplaceSeller;
+import com.recred.backend.application.ResendSellerCredentials;
 import com.recred.backend.infrastructure.web.SchoolAccessGuard;
 import com.recred.backend.infrastructure.web.SchoolBuffetController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 class SchoolBuffetControllerTest {
 
-    @Mock
-    private RegisterBuffet registerBuffetUseCase;
-    
-    @Mock
-    private RegisterSeller registerSellerUseCase;
-    
-    @Mock
-    private SchoolAccessGuard accessGuard;
-    
-    @InjectMocks
-    private SchoolBuffetController controller;
+    private static final UUID SCHOOL_ID = UUID.randomUUID();
+    private static final UUID BUFFET_ID = UUID.randomUUID();
+    private static final UUID KIOSQUERO_ID = UUID.randomUUID();
+    private static final UUID USUARIO_ID = UUID.randomUUID();
+    private static final String COGNITO_SUBJECT = "test-user";
 
-    private MockMvc mockMvc;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Mock private RegisterBuffet registerBuffet;
+    @Mock private RegisterSeller registerSeller;
+    @Mock private ReplaceSeller replaceSeller;
+    @Mock private ResendSellerCredentials resendSellerCredentials;
+    @Mock private SchoolAccessGuard accessGuard;
+    
+    private SchoolBuffetController controller;
+    private Authentication authentication;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .build();
-        objectMapper.findAndRegisterModules();
+        controller = new SchoolBuffetController(
+                registerBuffet, registerSeller, replaceSeller, resendSellerCredentials, accessGuard);
+        authentication = new TestingAuthenticationToken(COGNITO_SUBJECT, "");
     }
 
     @Test
-    void registerBuffet_shouldReturn200AndExecuteUseCase() throws Exception {
-        UUID schoolId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        RegisterBuffetRequest req = new RegisterBuffetRequest(
-                null, "Buffet Test", LocalDate.now().plusYears(1));
+    void registerBuffetShouldReturnOkAndExecuteUseCase() {
+        RegisterBuffetRequest request = givenRegisterBuffetRequest();
+        givenSchoolDirectorAccess(SCHOOL_ID);
+        givenBuffetIsRegistered(BUFFET_ID);
 
-        doNothing().when(accessGuard).requireSchoolDirectorAccess(any(), eq(schoolId));
-        
-        when(registerBuffetUseCase.execute(any(RegisterBuffetRequest.class)))
-                .thenReturn(new RegisterBuffetResponse(buffetId));
+        ResponseEntity<RegisterBuffetResponse> response = controller.registerBuffet(authentication, SCHOOL_ID, request);
 
-        Authentication auth = mock(Authentication.class);
-        when(auth.getName()).thenReturn("user");
-
-        mockMvc.perform(post("/api/v1/colegios/{schoolId}/buffets", schoolId)
-                        .principal(auth)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.buffetId").value(buffetId.toString()));
-
-
-        verify(accessGuard).requireSchoolDirectorAccess(any(), eq(schoolId));
-        verify(registerBuffetUseCase).execute(any(RegisterBuffetRequest.class));
+        thenBuffetIsRegisteredSuccessfully(response, BUFFET_ID);
+        thenDelegatesToRegisterBuffet(request);
     }
 
     @Test
-    void registerSeller_shouldReturn200AndExecuteUseCase() throws Exception {
-        UUID buffetId = UUID.randomUUID();
-        UUID kiosqueroId = UUID.randomUUID();
-        UUID usuarioId = UUID.randomUUID();
-        RegisterSellerRequest req = new RegisterSellerRequest(
+    void registerSellerShouldReturnOkAndExecuteUseCase() {
+        RegisterSellerRequest request = givenRegisterSellerRequest();
+        givenBuffetDirectorAccess(BUFFET_ID);
+        givenSellerIsRegistered(KIOSQUERO_ID, USUARIO_ID);
+
+        ResponseEntity<RegisterSellerResponse> response = controller.registerSeller(authentication, BUFFET_ID, request);
+
+        thenSellerIsRegisteredSuccessfully(response, KIOSQUERO_ID, USUARIO_ID);
+        thenDelegatesToRegisterSeller(request);
+    }
+
+    private RegisterBuffetRequest givenRegisterBuffetRequest() {
+        return new RegisterBuffetRequest(null, "Buffet Test", LocalDate.now().plusYears(1));
+    }
+
+    private RegisterSellerRequest givenRegisterSellerRequest() {
+        return new RegisterSellerRequest(
                 null, "testuser", "test@test.com", "John", "Doe",
                 "12345678", "5551234", "20123456789"
         );
+    }
 
+    private void givenSchoolDirectorAccess(UUID schoolId) {
+        doNothing().when(accessGuard).requireSchoolDirectorAccess(any(), eq(schoolId));
+    }
+
+    private void givenBuffetDirectorAccess(UUID buffetId) {
         doNothing().when(accessGuard).requireBuffetDirectorAccess(any(), eq(buffetId));
-        
-        when(registerSellerUseCase.execute(any(RegisterSellerRequest.class)))
+    }
+
+    private void givenBuffetIsRegistered(UUID buffetId) {
+        when(registerBuffet.execute(any(RegisterBuffetRequest.class)))
+                .thenReturn(new RegisterBuffetResponse(buffetId));
+    }
+
+    private void givenSellerIsRegistered(UUID kiosqueroId, UUID usuarioId) {
+        when(registerSeller.execute(any(RegisterSellerRequest.class)))
                 .thenReturn(new RegisterSellerResponse(kiosqueroId, usuarioId));
+    }
 
-        Authentication auth = mock(Authentication.class);
-        when(auth.getName()).thenReturn("user");
+    private void thenBuffetIsRegisteredSuccessfully(
+            ResponseEntity<RegisterBuffetResponse> response,
+            UUID expectedBuffetId
+    ) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(expectedBuffetId, response.getBody().buffetId());
+        verify(accessGuard).requireSchoolDirectorAccess(authentication, SCHOOL_ID);
+    }
 
-        mockMvc.perform(post("/api/v1/buffets/{buffetId}/sellers", buffetId)
-                        .principal(auth)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.kiosqueroId").value(kiosqueroId.toString()))
-                .andExpect(jsonPath("$.usuarioId").value(usuarioId.toString()));
+    private void thenSellerIsRegisteredSuccessfully(
+            ResponseEntity<RegisterSellerResponse> response,
+            UUID expectedKiosqueroId,
+            UUID expectedUsuarioId
+    ) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(expectedKiosqueroId, response.getBody().kiosqueroId());
+        assertEquals(expectedUsuarioId, response.getBody().usuarioId());
+        verify(accessGuard).requireBuffetDirectorAccess(authentication, BUFFET_ID);
+    }
 
+    private void thenDelegatesToRegisterBuffet(RegisterBuffetRequest request) {
+        org.mockito.ArgumentCaptor<RegisterBuffetRequest> captor = org.mockito.ArgumentCaptor.forClass(RegisterBuffetRequest.class);
+        verify(registerBuffet).execute(captor.capture());
+        assertEquals(SCHOOL_ID, captor.getValue().schoolId());
+        assertEquals(request.name(), captor.getValue().name());
+        assertEquals(request.habilitationExpirationDate(), captor.getValue().habilitationExpirationDate());
+    }
 
-        verify(accessGuard).requireBuffetDirectorAccess(any(), eq(buffetId));
-        verify(registerSellerUseCase).execute(any(RegisterSellerRequest.class));
+    private void thenDelegatesToRegisterSeller(RegisterSellerRequest request) {
+        org.mockito.ArgumentCaptor<RegisterSellerRequest> captor = org.mockito.ArgumentCaptor.forClass(RegisterSellerRequest.class);
+        verify(registerSeller).execute(captor.capture());
+        assertEquals(BUFFET_ID, captor.getValue().buffetId());
+        assertEquals(request.username(), captor.getValue().username());
+        assertEquals(request.email(), captor.getValue().email());
+        assertEquals(request.firstName(), captor.getValue().firstName());
+        assertEquals(request.lastName(), captor.getValue().lastName());
+        assertEquals(request.dni(), captor.getValue().dni());
+        assertEquals(request.phone(), captor.getValue().phone());
+        assertEquals(request.cuit(), captor.getValue().cuit());
     }
 }

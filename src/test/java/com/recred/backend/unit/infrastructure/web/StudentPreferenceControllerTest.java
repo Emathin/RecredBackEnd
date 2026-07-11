@@ -52,13 +52,14 @@ class StudentPreferenceControllerTest {
     private PlanAccessGuard planAccessGuard;
     private StudentPreferenceController controller;
 
-    private UUID userId;
-    private UUID studentId;
-    private UUID buffetId;
-    private UUID productId;
-    private UUID suggestionId;
-    private UUID childId;
-    private UUID childUserId;
+    private final UUID userId = UUID.randomUUID();
+    private final UUID studentId = UUID.randomUUID();
+    private final UUID buffetId = UUID.randomUUID();
+    private final UUID productId = UUID.randomUUID();
+    private final UUID suggestionId = UUID.randomUUID();
+    private final UUID childId = UUID.randomUUID();
+    private final UUID childUserId = UUID.randomUUID();
+    
     private DetectStudentPreferencesResponse detectedPreference;
     private ResponseEntity<StudentPreferenceResponseDTO> preferenceResponse;
     private ResponseEntity<List<StudentPreferenceResponseDTO>> preferencesResponse;
@@ -90,7 +91,7 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void givenDetectedPreference_whenDetectingPreference_thenReturnsPreferenceResponse() {
+    void givenDetectedPreferenceWhenDetectingPreferenceThenReturnsPreferenceResponse() {
         givenDetectedPreferenceScenario();
         givenStudentIdForUser();
         givenPreferenceDetected();
@@ -102,7 +103,7 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void givenNoPreferenceDetected_whenDetectingPreference_thenReturnsNoContent() {
+    void givenNoPreferenceDetectedWhenDetectingPreferenceThenReturnsNoContent() {
         givenNoPreferenceDetectedScenario();
         givenStudentIdForUser();
         givenNoPreferenceDetected();
@@ -113,7 +114,7 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void givenUserId_whenDetectingPreference_thenUsesResolvedStudentId() {
+    void givenUserIdWhenDetectingPreferenceThenUsesResolvedStudentId() {
         givenNoPreferenceDetectedScenario();
         givenStudentIdForUser();
         givenNoPreferenceDetectedForResolvedStudent();
@@ -125,8 +126,7 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void givenEmptyPreferenceList_whenGettingPreferences_thenReturnsNoContent() {
-        givenUserId();
+    void givenEmptyPreferenceListWhenGettingPreferencesThenReturnsNoContent() {
         givenUserHasNoStudent();
         givenPreferencesByUser();
 
@@ -136,8 +136,7 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void givenExistingPreferences_whenGettingPreferences_thenReturnsPreferences() {
-        givenUserId();
+    void givenExistingPreferencesWhenGettingPreferencesThenReturnsPreferences() {
         givenUserHasNoStudent();
         givenPreferencesByUser(preference(
                 randomUUID(),
@@ -157,9 +156,7 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void givenStudentUser_whenGettingPreferences_thenReturnsPreferencesAndNoCrash() {
-        givenUserId();
-        givenStudentId();
+    void givenStudentUserWhenGettingPreferencesThenReturnsPreferencesAndNoCrash() {
         givenStudentIdForUser();
         givenPreferencesByUser();
 
@@ -169,8 +166,7 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void givenParentPreferenceView_whenGettingPreferences_thenReturnsParentTitle() {
-        givenParentPreferenceView();
+    void givenParentPreferenceViewWhenGettingPreferencesThenReturnsParentTitle() {
         givenUserHasNoStudent();
         givenPreferencesByUser(preference(
                 randomUUID(),
@@ -189,8 +185,7 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void givenAISuggestionResponse_whenResponding_thenDelegatesAndReturnsOk() {
-        givenAISuggestionResponse();
+    void givenAISuggestionResponseWhenRespondingThenDelegatesAndReturnsOk() {
         givenStudentIdForUser();
 
         whenRespondingToSuggestion();
@@ -201,26 +196,21 @@ class StudentPreferenceControllerTest {
     }
 
     @Test
-    void givenFavoriteProductRequest_whenAddingFavorite_thenDelegatesAndReturnsOk() {
-        givenFavoriteProductRequest();
-
+    void givenFavoriteProductRequestWhenAddingFavoriteThenDelegatesAndReturnsOk() {
         whenAddingFavorite();
 
         thenFavoriteProductIsAdded();
     }
 
     @Test
-    void givenFavoriteProductRequest_whenRemovingFavorite_thenDelegatesAndReturnsOk() {
-        givenFavoriteProductRequest();
-
+    void givenFavoriteProductRequestWhenRemovingFavoriteThenDelegatesAndReturnsOk() {
         whenRemovingFavorite();
 
         thenFavoriteProductIsRemoved();
     }
 
     @Test
-    void givenFavoriteProducts_whenGettingFavorites_thenReturnsProducts() {
-        givenFavoriteProductsScenario();
+    void givenFavoriteProductsWhenGettingFavoritesThenReturnsProducts() {
         givenFavoriteProducts();
 
         whenGettingFavorites();
@@ -230,10 +220,6 @@ class StudentPreferenceControllerTest {
     }
 
     private void givenDetectedPreferenceScenario() {
-        userId = randomUUID();
-        studentId = randomUUID();
-        buffetId = randomUUID();
-        productId = randomUUID();
         detectedPreference = new DetectStudentPreferencesResponse(
                 "Yogur con Cereales",
                 "He notado que te gusta...",
@@ -243,39 +229,7 @@ class StudentPreferenceControllerTest {
     }
 
     private void givenNoPreferenceDetectedScenario() {
-        userId = randomUUID();
-        studentId = randomUUID();
-        buffetId = randomUUID();
-    }
-
-    private void givenUserId() {
-        userId = randomUUID();
-    }
-
-    private void givenStudentId() {
-        studentId = randomUUID();
-    }
-
-    private void givenParentPreferenceView() {
-        userId = randomUUID();
-        childId = randomUUID();
-        childUserId = randomUUID();
-    }
-
-    private void givenAISuggestionResponse() {
-        userId = randomUUID();
-        studentId = randomUUID();
-        suggestionId = randomUUID();
-    }
-
-    private void givenFavoriteProductRequest() {
-        studentId = randomUUID();
-        productId = randomUUID();
-    }
-
-    private void givenFavoriteProductsScenario() {
-        studentId = randomUUID();
-        productId = randomUUID();
+        // Nothing needed here now since UUIDs are class fields
     }
 
     private void givenStudentIdForUser() {

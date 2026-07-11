@@ -12,21 +12,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 class TopUpControllerTest {
@@ -39,22 +34,20 @@ class TopUpControllerTest {
     @Mock
     private GenerateTopUpLink generateTopUpLink;
 
-    private MockMvc mockMvc;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private TopUpController controller;
     private TopUpRequest topUpRequest;
 
     @BeforeEach
     void setUp() {
-        TopUpController controller = new TopUpController(generateTopUpLink);
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        controller = new TopUpController(generateTopUpLink);
     }
 
     @Test
-    void requestTopUpLink_ShouldDelegateAndReturnPaymentUrl() throws Exception {
+    void givenTopUpRequestWhenRequestingLinkThenDelegatesAndReturnsPaymentUrl() {
         givenTopUpRequest();
         givenPaymentLinkGenerated();
 
-        ResultActions result = whenRequestingTopUpLink();
+        ResponseEntity<Map<String, String>> result = whenRequestingTopUpLink();
 
         thenPaymentUrlIsReturned(result);
         thenDelegatesToGenerateTopUpLink();
@@ -69,15 +62,13 @@ class TopUpControllerTest {
                 .thenReturn(new GenerateTopUpLinkResponse(PAYMENT_LINK));
     }
 
-    private ResultActions whenRequestingTopUpLink() throws Exception {
-        return mockMvc.perform(post(TOP_UP_URL)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(topUpRequest)));
+    private ResponseEntity<Map<String, String>> whenRequestingTopUpLink() {
+        return controller.requestTopUpLink(topUpRequest);
     }
 
-    private void thenPaymentUrlIsReturned(ResultActions result) throws Exception {
-        result.andExpect(status().isOk())
-                .andExpect(jsonPath("$.paymentUrl").value(PAYMENT_LINK));
+    private void thenPaymentUrlIsReturned(ResponseEntity<Map<String, String>> result) {
+        assertEquals(200, result.getStatusCode().value());
+        assertEquals(PAYMENT_LINK, result.getBody().get("paymentUrl"));
     }
 
     private void thenDelegatesToGenerateTopUpLink() {

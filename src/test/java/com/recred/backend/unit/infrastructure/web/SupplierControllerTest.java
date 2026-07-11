@@ -87,6 +87,14 @@ class SupplierControllerTest {
     private KiosqueroRepository kiosqueroRepository;
 
     private SupplierController controller;
+    
+    private final UUID kioskOwnerId = randomUUID();
+    private final UUID supplierId = randomUUID();
+    private final UUID priceListId = randomUUID();
+    private final UUID itemId = randomUUID();
+    private final UUID inventoryProductId = randomUUID();
+    private final UUID productId = randomUUID();
+    private final UUID userId = randomUUID();
 
     @BeforeEach
     void setUp() {
@@ -105,96 +113,60 @@ class SupplierControllerTest {
     }
 
     @Test
-    void createShouldResolveKioskOwnerAndMapResponse() {
-        UUID kioskOwnerId = randomUUID();
-        UUID supplierId = randomUUID();
+    void givenValidRequestWhenCreatingThenResolvesKioskOwnerAndMapsResponse() {
         SupplierRequest request = supplierRequest("Proveedor Uno");
-        Authentication authentication = authenticatedKiosquero(kioskOwnerId);
-        CreateSupplierRequest useCaseRequest = new CreateSupplierRequest(
-                kioskOwnerId,
-                "Proveedor Uno",
-                "11223344",
-                "proveedor@test.com",
-                "Lunes",
-                "Entrega temprano"
-        );
+        Authentication authentication = authenticatedKiosquero();
+        CreateSupplierRequest useCaseRequest = givenCreateRequest();
         when(createSupplier.execute(useCaseRequest))
-                .thenReturn(supplierDetails(supplierId, kioskOwnerId, "Proveedor Uno"));
+                .thenReturn(supplierDetails("Proveedor Uno"));
 
         ResponseEntity<SupplierResponse> response = controller.create(request, authentication);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(supplierId, response.getBody().id());
-        assertEquals("Proveedor Uno", response.getBody().nombre());
-        assertEquals(1, response.getBody().listasPrecios().size());
-        verify(createSupplier).execute(useCaseRequest);
+        thenCreateResponseIsMapped(response, useCaseRequest);
     }
 
     @Test
-    void listShouldResolveKioskOwnerAndMapResponse() {
-        UUID kioskOwnerId = randomUUID();
-        UUID supplierId = randomUUID();
-        Authentication authentication = authenticatedKiosquero(kioskOwnerId);
+    void givenValidRequestWhenListingThenResolvesKioskOwnerAndMapsResponse() {
+        Authentication authentication = authenticatedKiosquero();
         ListSuppliersRequest request = new ListSuppliersRequest(kioskOwnerId);
         when(listSuppliers.execute(request)).thenReturn(new ListSuppliersResponse(List.of(
-                supplierDetails(supplierId, kioskOwnerId, "Proveedor Uno")
+                supplierDetails("Proveedor Uno")
         )));
 
         ResponseEntity<List<SupplierResponse>> response = controller.list(authentication);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(1, response.getBody().size());
-        assertEquals(supplierId, response.getBody().get(0).id());
-        verify(listSuppliers).execute(request);
+        thenListResponseIsMapped(response, request);
     }
 
     @Test
-    void getShouldResolveKioskOwnerAndDelegateWithSupplierId() {
-        UUID kioskOwnerId = randomUUID();
-        UUID supplierId = randomUUID();
-        Authentication authentication = authenticatedKiosquero(kioskOwnerId);
+    void givenSupplierIdWhenGettingThenResolvesKioskOwnerAndDelegates() {
+        Authentication authentication = authenticatedKiosquero();
         GetSupplierRequest request = new GetSupplierRequest(supplierId, kioskOwnerId);
         when(getSupplier.execute(request))
-                .thenReturn(supplierDetails(supplierId, kioskOwnerId, "Proveedor Uno"));
+                .thenReturn(supplierDetails("Proveedor Uno"));
 
         ResponseEntity<SupplierResponse> response = controller.get(supplierId, authentication);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(supplierId, response.getBody().id());
-        verify(getSupplier).execute(request);
+        thenGetResponseIsMapped(response, request);
     }
 
     @Test
-    void updateShouldResolveKioskOwnerAndDelegateWithRequestData() {
-        UUID kioskOwnerId = randomUUID();
-        UUID supplierId = randomUUID();
+    void givenSupplierIdAndDataWhenUpdatingThenResolvesKioskOwnerAndDelegates() {
         SupplierRequest request = supplierRequest("Proveedor Actualizado");
-        Authentication authentication = authenticatedKiosquero(kioskOwnerId);
-        UpdateSupplierRequest useCaseRequest = new UpdateSupplierRequest(
-                supplierId,
-                kioskOwnerId,
-                "Proveedor Actualizado",
-                "11223344",
-                "proveedor@test.com",
-                "Lunes",
-                "Entrega temprano"
-        );
+        Authentication authentication = authenticatedKiosquero();
+        UpdateSupplierRequest useCaseRequest = givenUpdateRequest();
         when(updateSupplier.execute(useCaseRequest))
-                .thenReturn(supplierDetails(supplierId, kioskOwnerId, "Proveedor Actualizado"));
+                .thenReturn(supplierDetails("Proveedor Actualizado"));
 
         ResponseEntity<SupplierResponse> response =
                 controller.update(supplierId, request, authentication);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Proveedor Actualizado", response.getBody().nombre());
-        verify(updateSupplier).execute(useCaseRequest);
+        thenUpdateResponseIsMapped(response, useCaseRequest);
     }
 
     @Test
-    void deleteShouldResolveKioskOwnerAndReturnNoContent() {
-        UUID kioskOwnerId = randomUUID();
-        UUID supplierId = randomUUID();
-        Authentication authentication = authenticatedKiosquero(kioskOwnerId);
+    void givenSupplierIdWhenDeletingThenResolvesKioskOwnerAndReturnsNoContent() {
+        Authentication authentication = authenticatedKiosquero();
 
         ResponseEntity<Void> response = controller.delete(supplierId, authentication);
 
@@ -203,12 +175,9 @@ class SupplierControllerTest {
     }
 
     @Test
-    void uploadPriceListShouldSendFileDataAndMapResponse() throws Exception {
-        UUID kioskOwnerId = randomUUID();
-        UUID supplierId = randomUUID();
-        UUID priceListId = randomUUID();
+    void givenPriceListFileWhenUploadingThenSendsDataAndMapsResponse() throws Exception {
         byte[] fileContent = "producto,precio".getBytes();
-        Authentication authentication = authenticatedKiosquero(kioskOwnerId);
+        Authentication authentication = authenticatedKiosquero();
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "lista.csv",
@@ -216,38 +185,24 @@ class SupplierControllerTest {
                 fileContent
         );
         when(uploadSupplierPriceList.execute(any(UploadSupplierPriceListRequest.class)))
-                .thenReturn(priceList(priceListId, supplierId));
+                .thenReturn(priceList());
 
         ResponseEntity<ListaPrecioProveedorResponse> response =
                 controller.uploadPriceList(supplierId, file, authentication);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(priceListId, response.getBody().id());
-        assertEquals(1, response.getBody().items().size());
-
-        ArgumentCaptor<UploadSupplierPriceListRequest> captor =
-                ArgumentCaptor.forClass(UploadSupplierPriceListRequest.class);
-        verify(uploadSupplierPriceList).execute(captor.capture());
-        assertEquals(kioskOwnerId, captor.getValue().kioskOwnerId());
-        assertEquals(supplierId, captor.getValue().supplierId());
-        assertArrayEquals(fileContent, captor.getValue().fileContent());
-        assertEquals("lista.csv", captor.getValue().originalFilename());
-        assertEquals("text/csv", captor.getValue().contentType());
+        thenUploadResponseIsMapped(response, fileContent);
     }
 
     @Test
-    void updateItemMappingShouldResolveKioskOwnerAndMapResponse() {
-        UUID kioskOwnerId = randomUUID();
-        UUID itemId = randomUUID();
-        UUID inventoryProductId = randomUUID();
-        Authentication authentication = authenticatedKiosquero(kioskOwnerId);
+    void givenMappingDataWhenUpdatingItemMappingThenResolvesKioskOwnerAndMapsResponse() {
+        Authentication authentication = authenticatedKiosquero();
         UpdatePriceListItemMappingRequest request = new UpdatePriceListItemMappingRequest(
                 kioskOwnerId,
                 itemId,
                 inventoryProductId
         );
         when(updatePriceListItemMapping.execute(request))
-                .thenReturn(itemMapping(itemId, inventoryProductId));
+                .thenReturn(itemMapping());
 
         ResponseEntity<ItemListaPrecioProveedorResponse> response =
                 controller.updateItemMapping(
@@ -256,24 +211,18 @@ class SupplierControllerTest {
                         authentication
                 );
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(itemId, response.getBody().id());
-        assertEquals(inventoryProductId, response.getBody().productoInventarioId());
-        verify(updatePriceListItemMapping).execute(request);
+        thenItemMappingIsUpdated(response, request);
     }
 
     @Test
-    void recommendationsShouldResolveKioskOwnerAndMapResponse() {
-        UUID kioskOwnerId = randomUUID();
-        UUID productId = randomUUID();
-        UUID supplierId = randomUUID();
-        Authentication authentication = authenticatedKiosquero(kioskOwnerId);
+    void givenProductsWhenGettingRecommendationsThenResolvesKioskOwnerAndMapsResponse() {
+        Authentication authentication = authenticatedKiosquero();
         RecommendSupplierForProductsRequest request = new RecommendSupplierForProductsRequest(
                 kioskOwnerId,
                 List.of(productId)
         );
         when(recommendSupplierForProducts.execute(request))
-                .thenReturn(recommendation(productId, supplierId));
+                .thenReturn(recommendation());
 
         ResponseEntity<List<SupplierRecommendationResponse>> response =
                 controller.getRecommendations(
@@ -281,21 +230,17 @@ class SupplierControllerTest {
                         authentication
                 );
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(1, response.getBody().size());
-        assertEquals(productId, response.getBody().get(0).inventoryProductId());
-        assertEquals(supplierId, response.getBody().get(0).recommendedSupplierId());
-        verify(recommendSupplierForProducts).execute(request);
+        thenRecommendationsAreMapped(response, request);
     }
 
     @Test
-    void listWithoutAuthenticationShouldThrowAuthenticationException() {
+    void givenNoAuthenticationWhenListingThenThrowsAuthenticationException() {
         assertThrows(AuthenticationCredentialsNotFoundException.class,
                 () -> controller.list(null));
     }
 
     @Test
-    void listWhenUserIsNotSynchronizedShouldThrowAuthenticationException() {
+    void givenUnsynchronizedUserWhenListingThenThrowsAuthenticationException() {
         Authentication authentication = authentication();
         when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.empty());
 
@@ -304,21 +249,19 @@ class SupplierControllerTest {
     }
 
     @Test
-    void listWhenUserIsNotKioskOwnerShouldThrowAccessDeniedException() {
-        UUID userId = randomUUID();
+    void givenUserNotKioskOwnerWhenListingThenThrowsAccessDeniedException() {
         Authentication authentication = authentication();
-        Usuario user = user(userId);
+        Usuario user = user();
         when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT)).thenReturn(Optional.of(user));
         when(kiosqueroRepository.findKiosqueroIdByUsuarioId(userId)).thenReturn(Optional.empty());
 
         assertThrows(AccessDeniedException.class, () -> controller.list(authentication));
     }
 
-    private Authentication authenticatedKiosquero(UUID kioskOwnerId) {
-        UUID userId = randomUUID();
+    private Authentication authenticatedKiosquero() {
         Authentication authentication = authentication();
         when(usuarioRepository.findByIdCognito(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(user(userId)));
+                .thenReturn(Optional.of(user()));
         when(kiosqueroRepository.findKiosqueroIdByUsuarioId(userId))
                 .thenReturn(Optional.of(kioskOwnerId));
         return authentication;
@@ -330,7 +273,7 @@ class SupplierControllerTest {
         return authentication;
     }
 
-    private Usuario user(UUID userId) {
+    private Usuario user() {
         Usuario user = new Usuario();
         user.setId(userId);
         user.setIdCognito(COGNITO_SUBJECT);
@@ -347,11 +290,7 @@ class SupplierControllerTest {
         );
     }
 
-    private SupplierDetailsResponse supplierDetails(
-            UUID supplierId,
-            UUID kioskOwnerId,
-            String name
-    ) {
+    private SupplierDetailsResponse supplierDetails(String name) {
         return new SupplierDetailsResponse(
                 supplierId,
                 kioskOwnerId,
@@ -362,11 +301,11 @@ class SupplierControllerTest {
                 "Entrega temprano",
                 LocalDateTime.of(2026, 7, 2, 10, 0),
                 LocalDateTime.of(2026, 7, 2, 11, 0),
-                List.of(priceList(randomUUID(), supplierId))
+                List.of(priceList())
         );
     }
 
-    private UploadSupplierPriceListResponse priceList(UUID priceListId, UUID supplierId) {
+    private UploadSupplierPriceListResponse priceList() {
         return new UploadSupplierPriceListResponse(
                 priceListId,
                 supplierId,
@@ -374,11 +313,11 @@ class SupplierControllerTest {
                 "lista.csv",
                 true,
                 LocalDateTime.of(2026, 7, 2, 10, 0),
-                List.of(priceListItem(randomUUID(), priceListId))
+                List.of(priceListItem())
         );
     }
 
-    private UploadSupplierPriceListResponse.Item priceListItem(UUID itemId, UUID priceListId) {
+    private UploadSupplierPriceListResponse.Item priceListItem() {
         return new UploadSupplierPriceListResponse.Item(
                 itemId,
                 priceListId,
@@ -392,10 +331,7 @@ class SupplierControllerTest {
         );
     }
 
-    private UpdatePriceListItemMappingResponse itemMapping(
-            UUID itemId,
-            UUID inventoryProductId
-    ) {
+    private UpdatePriceListItemMappingResponse itemMapping() {
         return new UpdatePriceListItemMappingResponse(
                 itemId,
                 randomUUID(),
@@ -409,10 +345,7 @@ class SupplierControllerTest {
         );
     }
 
-    private RecommendSupplierForProductsResponse recommendation(
-            UUID productId,
-            UUID supplierId
-    ) {
+    private RecommendSupplierForProductsResponse recommendation() {
         return new RecommendSupplierForProductsResponse(List.of(
                 new RecommendSupplierForProductsResponse.Recommendation(
                         productId,
@@ -431,5 +364,92 @@ class SupplierControllerTest {
                         ))
                 )
         ));
+    }
+
+    private CreateSupplierRequest givenCreateRequest() {
+        return new CreateSupplierRequest(
+                kioskOwnerId,
+                "Proveedor Uno",
+                "11223344",
+                "proveedor@test.com",
+                "Lunes",
+                "Entrega temprano"
+        );
+    }
+
+    private UpdateSupplierRequest givenUpdateRequest() {
+        return new UpdateSupplierRequest(
+                supplierId,
+                kioskOwnerId,
+                "Proveedor Actualizado",
+                "11223344",
+                "proveedor@test.com",
+                "Lunes",
+                "Entrega temprano"
+        );
+    }
+
+    private void thenCreateResponseIsMapped(
+            ResponseEntity<SupplierResponse> response, CreateSupplierRequest useCaseRequest) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(supplierId, response.getBody().id());
+        assertEquals("Proveedor Uno", response.getBody().nombre());
+        assertEquals(1, response.getBody().listasPrecios().size());
+        verify(createSupplier).execute(useCaseRequest);
+    }
+
+    private void thenListResponseIsMapped(
+            ResponseEntity<List<SupplierResponse>> response, ListSuppliersRequest request) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(1, response.getBody().size());
+        assertEquals(supplierId, response.getBody().get(0).id());
+        verify(listSuppliers).execute(request);
+    }
+
+    private void thenGetResponseIsMapped(
+            ResponseEntity<SupplierResponse> response, GetSupplierRequest request) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(supplierId, response.getBody().id());
+        verify(getSupplier).execute(request);
+    }
+
+    private void thenUpdateResponseIsMapped(
+            ResponseEntity<SupplierResponse> response, UpdateSupplierRequest useCaseRequest) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Proveedor Actualizado", response.getBody().nombre());
+        verify(updateSupplier).execute(useCaseRequest);
+    }
+
+    private void thenUploadResponseIsMapped(
+            ResponseEntity<ListaPrecioProveedorResponse> response, byte[] fileContent) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(priceListId, response.getBody().id());
+        assertEquals(1, response.getBody().items().size());
+
+        ArgumentCaptor<UploadSupplierPriceListRequest> captor =
+                ArgumentCaptor.forClass(UploadSupplierPriceListRequest.class);
+        verify(uploadSupplierPriceList).execute(captor.capture());
+        assertEquals(kioskOwnerId, captor.getValue().kioskOwnerId());
+        assertEquals(supplierId, captor.getValue().supplierId());
+        assertArrayEquals(fileContent, captor.getValue().fileContent());
+        assertEquals("lista.csv", captor.getValue().originalFilename());
+        assertEquals("text/csv", captor.getValue().contentType());
+    }
+
+    private void thenItemMappingIsUpdated(
+            ResponseEntity<ItemListaPrecioProveedorResponse> response, UpdatePriceListItemMappingRequest request) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(itemId, response.getBody().id());
+        assertEquals(inventoryProductId, response.getBody().productoInventarioId());
+        verify(updatePriceListItemMapping).execute(request);
+    }
+
+    private void thenRecommendationsAreMapped(
+            ResponseEntity<List<SupplierRecommendationResponse>> response, RecommendSupplierForProductsRequest request) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(1, response.getBody().size());
+        assertEquals(productId, response.getBody().get(0).inventoryProductId());
+        assertEquals(supplierId, response.getBody().get(0).recommendedSupplierId());
+        verify(recommendSupplierForProducts).execute(request);
     }
 }

@@ -18,38 +18,119 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SupplierResponseContractTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private JsonNode json;
 
     @Test
-    void supplierResponsesKeepPreviousJsonFieldNames() throws Exception {
-        JsonNode supplier = json(supplierResponse());
-        JsonNode priceList = supplier.get("listasPrecios").get(0);
-        JsonNode item = priceList.get("items").get(0);
+    void givenSupplierResponseWhenSerializingThenKeepsPreviousJsonFieldNames()
+            throws Exception {
+        json = whenSerializing(givenSupplierResponse());
 
-        assertTrue(supplier.has("kiosqueroId"));
-        assertTrue(supplier.has("nombre"));
-        assertTrue(supplier.has("telefono"));
-        assertTrue(supplier.has("diasVisita"));
-        assertTrue(supplier.has("listasPrecios"));
-        assertFalse(supplier.has("kioskOwnerId"));
-        assertFalse(supplier.has("name"));
-        assertFalse(supplier.has("phone"));
-        assertFalse(supplier.has("visitDays"));
-        assertFalse(supplier.has("priceLists"));
+        thenHasSpanishSupplierFields();
+        thenDoesNotHaveEnglishSupplierFields();
+        thenHasSpanishPriceListFields();
+        thenDoesNotHaveEnglishPriceListFields();
+        thenHasSpanishItemFields();
+        thenDoesNotHaveEnglishItemFields();
+    }
 
+    @Test
+    void givenRecommendationResponseWhenSerializingThenKeepsPreviousJsonFieldNames()
+            throws Exception {
+        json = whenSerializing(givenRecommendationResponse());
+
+        thenHasSpanishRecommendationFields();
+        thenDoesNotHaveEnglishRecommendationFields();
+        thenHasSpanishAlternativeFields();
+        thenDoesNotHaveEnglishAlternativeFields();
+    }
+
+    private SupplierResponse givenSupplierResponse() {
+        return new SupplierResponse(
+                UUID.randomUUID(), UUID.randomUUID(),
+                "Proveedor", "111", "supplier@test.com",
+                "lunes", "nota", null, null,
+                List.of(givenPriceListResponse()));
+    }
+
+    private SupplierRecommendationResponse givenRecommendationResponse() {
+        return new SupplierRecommendationResponse(
+                UUID.randomUUID(), "Yogur", UUID.randomUUID(),
+                "Proveedor", new BigDecimal("10.00"), "unidad",
+                new BigDecimal("10.00"),
+                List.of(givenAlternativeResponse()));
+    }
+
+    private ListaPrecioProveedorResponse givenPriceListResponse() {
+        return new ListaPrecioProveedorResponse(
+                UUID.randomUUID(), UUID.randomUUID(),
+                "https://files.test/list.csv", "list.csv",
+                true, null, List.of(givenItemResponse()));
+    }
+
+    private ItemListaPrecioProveedorResponse givenItemResponse() {
+        return new ItemListaPrecioProveedorResponse(
+                UUID.randomUUID(), UUID.randomUUID(),
+                "Yogur proveedor", UUID.randomUUID(), "Yogur",
+                new BigDecimal("10.00"), "unidad", "nota", true);
+    }
+
+    private SupplierRecommendationAlternativeResponse givenAlternativeResponse() {
+        return new SupplierRecommendationAlternativeResponse(
+                UUID.randomUUID(), "Proveedor alternativo",
+                new BigDecimal("12.00"), "unidad",
+                new BigDecimal("12.00"));
+    }
+
+    private JsonNode whenSerializing(Object value) throws Exception {
+        return objectMapper.readTree(
+                objectMapper.writeValueAsString(value));
+    }
+
+    private void thenHasSpanishSupplierFields() {
+        assertTrue(json.has("kiosqueroId"));
+        assertTrue(json.has("nombre"));
+        assertTrue(json.has("telefono"));
+        assertTrue(json.has("diasVisita"));
+        assertTrue(json.has("listasPrecios"));
+    }
+
+    private void thenDoesNotHaveEnglishSupplierFields() {
+        assertFalse(json.has("kioskOwnerId"));
+        assertFalse(json.has("name"));
+        assertFalse(json.has("phone"));
+        assertFalse(json.has("visitDays"));
+        assertFalse(json.has("priceLists"));
+    }
+
+    private void thenHasSpanishPriceListFields() {
+        JsonNode priceList = json.get("listasPrecios").get(0);
         assertTrue(priceList.has("proveedorId"));
         assertTrue(priceList.has("urlArchivo"));
         assertTrue(priceList.has("nombreOriginal"));
         assertTrue(priceList.has("activa"));
+    }
+
+    private void thenDoesNotHaveEnglishPriceListFields() {
+        JsonNode priceList = json.get("listasPrecios").get(0);
         assertFalse(priceList.has("supplierId"));
         assertFalse(priceList.has("fileUrl"));
         assertFalse(priceList.has("originalFilename"));
         assertFalse(priceList.has("active"));
+    }
 
+    private void thenHasSpanishItemFields() {
+        JsonNode item = json.get("listasPrecios").get(0)
+                .get("items").get(0);
         assertTrue(item.has("listaPrecioId"));
         assertTrue(item.has("nombreProductoProveedor"));
         assertTrue(item.has("productoInventarioId"));
         assertTrue(item.has("nombreProductoInventario"));
         assertTrue(item.has("mappingConfirmado"));
+    }
+
+    private void thenDoesNotHaveEnglishItemFields() {
+        JsonNode item = json.get("listasPrecios").get(0)
+                .get("items").get(0);
         assertFalse(item.has("priceListId"));
         assertFalse(item.has("supplierProductName"));
         assertFalse(item.has("inventoryProductId"));
@@ -57,100 +138,38 @@ class SupplierResponseContractTest {
         assertFalse(item.has("mappingConfirmed"));
     }
 
-    @Test
-    void recommendationResponseKeepsPreviousJsonFieldNames() throws Exception {
-        JsonNode recommendation = json(recommendationResponse());
-        JsonNode alternative = recommendation.get("alternativas").get(0);
+    private void thenHasSpanishRecommendationFields() {
+        assertTrue(json.has("productoInventarioId"));
+        assertTrue(json.has("nombreProducto"));
+        assertTrue(json.has("proveedorRecomendadoId"));
+        assertTrue(json.has("nombreProveedorRecomendado"));
+        assertTrue(json.has("mejorPrecio"));
+        assertTrue(json.has("mejorPrecioUnitario"));
+        assertTrue(json.has("alternativas"));
+    }
 
-        assertTrue(recommendation.has("productoInventarioId"));
-        assertTrue(recommendation.has("nombreProducto"));
-        assertTrue(recommendation.has("proveedorRecomendadoId"));
-        assertTrue(recommendation.has("nombreProveedorRecomendado"));
-        assertTrue(recommendation.has("mejorPrecio"));
-        assertTrue(recommendation.has("mejorPrecioUnitario"));
-        assertTrue(recommendation.has("alternativas"));
-        assertFalse(recommendation.has("inventoryProductId"));
-        assertFalse(recommendation.has("productName"));
-        assertFalse(recommendation.has("recommendedSupplierId"));
-        assertFalse(recommendation.has("recommendedSupplierName"));
-        assertFalse(recommendation.has("bestPrice"));
-        assertFalse(recommendation.has("bestUnitPrice"));
+    private void thenDoesNotHaveEnglishRecommendationFields() {
+        assertFalse(json.has("inventoryProductId"));
+        assertFalse(json.has("productName"));
+        assertFalse(json.has("recommendedSupplierId"));
+        assertFalse(json.has("recommendedSupplierName"));
+        assertFalse(json.has("bestPrice"));
+        assertFalse(json.has("bestUnitPrice"));
+    }
 
+    private void thenHasSpanishAlternativeFields() {
+        JsonNode alternative = json.get("alternativas").get(0);
         assertTrue(alternative.has("proveedorId"));
         assertTrue(alternative.has("nombreProveedor"));
         assertTrue(alternative.has("precio"));
         assertTrue(alternative.has("precioUnitario"));
+    }
+
+    private void thenDoesNotHaveEnglishAlternativeFields() {
+        JsonNode alternative = json.get("alternativas").get(0);
         assertFalse(alternative.has("supplierId"));
         assertFalse(alternative.has("supplierName"));
         assertFalse(alternative.has("price"));
         assertFalse(alternative.has("unitPrice"));
-    }
-
-    private SupplierResponse supplierResponse() {
-        return new SupplierResponse(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                "Proveedor",
-                "111",
-                "supplier@test.com",
-                "lunes",
-                "nota",
-                null,
-                null,
-                List.of(priceListResponse())
-        );
-    }
-
-    private ListaPrecioProveedorResponse priceListResponse() {
-        return new ListaPrecioProveedorResponse(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                "https://files.test/list.csv",
-                "list.csv",
-                true,
-                null,
-                List.of(itemResponse())
-        );
-    }
-
-    private ItemListaPrecioProveedorResponse itemResponse() {
-        return new ItemListaPrecioProveedorResponse(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                "Yogur proveedor",
-                UUID.randomUUID(),
-                "Yogur",
-                new BigDecimal("10.00"),
-                "unidad",
-                "nota",
-                true
-        );
-    }
-
-    private SupplierRecommendationResponse recommendationResponse() {
-        return new SupplierRecommendationResponse(
-                UUID.randomUUID(),
-                "Yogur",
-                UUID.randomUUID(),
-                "Proveedor",
-                new BigDecimal("10.00"),
-                "unidad",
-                new BigDecimal("10.00"),
-                List.of(alternativeResponse())
-        );
-    }
-
-    private SupplierRecommendationAlternativeResponse alternativeResponse() {
-        return new SupplierRecommendationAlternativeResponse(
-                UUID.randomUUID(),
-                "Proveedor alternativo",
-                new BigDecimal("12.00"),
-                "unidad",
-                new BigDecimal("12.00")
-        );
-    }
-
-    private JsonNode json(Object value) throws Exception {
-        return objectMapper.readTree(objectMapper.writeValueAsString(value));
     }
 }

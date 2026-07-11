@@ -25,16 +25,72 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class KiosqueroOrderResponseTest {
 
-    @Test
-    void fromDomain_ShouldMapFullPurchase() {
-        UUID purchaseId = UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        LocalDateTime now = LocalDateTime.now();
-        LocalDate today = LocalDate.now();
+    private final UUID PURCHASE_ID = UUID.randomUUID();
+    private final UUID STUDENT_ID = UUID.randomUUID();
+    private final UUID PRODUCT_ID = UUID.randomUUID();
+    private final LocalDateTime NOW = LocalDateTime.now();
+    private final LocalDate TODAY = LocalDate.now();
+    private final UUID SLOT_ID = UUID.randomUUID();
 
+    @Test
+    void fromDomainShouldMapFullPurchase() {
+        Purchase purchase = givenFullPurchase();
+        
+        KiosqueroOrderResponse response = whenMappingFromDomain(purchase);
+        
+        thenFullPurchaseIsMapped(response);
+    }
+
+    @Test
+    void fromApplicationShouldMapOrderResponse() {
+        ListKiosqueroOrdersResponse.OrderResponse order = givenApplicationOrder();
+        Map<UUID, ListInventoryProductsResponse.InventoryProductResponse> inventory = givenInventoryMap();
+        
+        KiosqueroOrderResponse response = whenMappingFromApplication(order, inventory);
+        
+        thenApplicationOrderIsMapped(response);
+    }
+
+    @Test
+    void fromDomainShouldHandleNullFields() {
+        Purchase purchase = givenPurchaseWithNullFields();
+        
+        KiosqueroOrderResponse response = whenMappingFromDomain(purchase);
+        
+        thenNullFieldsAreHandled(response);
+    }
+
+    @Test
+    void fromDomainShouldHandleStudentWithNullUserAndGrade() {
+        Purchase purchase = givenPurchaseWithNullStudentFields();
+        
+        KiosqueroOrderResponse response = whenMappingFromDomain(purchase);
+        
+        thenStudentNullFieldsAreHandled(response);
+    }
+
+    @Test
+    void fromDomainShouldUseInventoryProductsWhenProvided() {
+        Purchase purchase = givenPurchaseForInventory();
+        Map<UUID, ListInventoryProductsResponse.InventoryProductResponse> inventory = givenInventoryMap();
+        
+        KiosqueroOrderResponse response = whenMappingFromDomain(purchase, inventory);
+        
+        thenInventoryProductsAreUsed(response);
+    }
+
+    @Test
+    void fromDomainShouldHandleProductWithNullPrice() {
+        Purchase purchase = givenPurchaseWithNullPriceProduct();
+        
+        KiosqueroOrderResponse response = whenMappingFromDomain(purchase);
+        
+        thenNullPriceIsHandled(response);
+    }
+
+    private Purchase givenFullPurchase() {
         Producto product = new Producto();
-        product.setId(productId);
+        product.setId(PRODUCT_ID);
         product.setNombre("Product 1");
         product.setPrecio(new BigDecimal("10.00"));
         product.setRequierePreparacion(true);
@@ -49,44 +105,155 @@ class KiosqueroOrderResponseTest {
         user.setApellido("Doe");
 
         Alumno student = new Alumno();
-        student.setId(studentId);
+        student.setId(STUDENT_ID);
         student.setUsuario(user);
         student.setGrado(grade);
 
         Purchase purchase = new Purchase();
-        purchase.setId(purchaseId);
+        purchase.setId(PURCHASE_ID);
         purchase.setBuffetId(UUID.randomUUID());
         purchase.setTipo(TipoCompra.ANTICIPADA);
         purchase.setStatus(EstadoCompra.PENDIENTE);
         purchase.setTotalAmount(new BigDecimal("20.00"));
-        purchase.setDate(now);
+        purchase.setDate(NOW);
         purchase.setWithdrawalCode("1234");
-        purchase.setPickupDate(today);
-        purchase.setPickupSlotId(UUID.randomUUID());
+        purchase.setPickupDate(TODAY);
+        purchase.setPickupSlotId(SLOT_ID);
         purchase.setPickupSlotDescription("Recreo 1");
         purchase.setPickupSlotStart(LocalTime.of(10, 0));
         purchase.setPickupSlotEnd(LocalTime.of(10, 15));
         purchase.setStudent(student);
-        purchase.setBuyerId(studentId);
+        purchase.setBuyerId(STUDENT_ID);
         purchase.setBuyerType(BuyerType.STUDENT);
         purchase.setItems(Map.of(product, 2));
+        
+        return purchase;
+    }
 
-        KiosqueroOrderResponse response = KiosqueroOrderResponse.fromDomain(purchase);
+    private ListKiosqueroOrdersResponse.OrderResponse givenApplicationOrder() {
+        return new ListKiosqueroOrdersResponse.OrderResponse(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "ANTICIPADA",
+                "LISTO",
+                "Listo para retirar",
+                new BigDecimal("20.00"),
+                "CREDITOS",
+                NOW,
+                "1234",
+                TODAY,
+                new ListKiosqueroOrdersResponse.PickupSlotResponse(
+                        UUID.randomUUID(),
+                        "Recreo 1",
+                        LocalTime.of(10, 0),
+                        LocalTime.of(10, 15)
+                ),
+                new ListKiosqueroOrdersResponse.StudentResponse(
+                        UUID.randomUUID(),
+                        "John",
+                        "Doe",
+                        "1",
+                        "A"
+                ),
+                new ListKiosqueroOrdersResponse.BuyerResponse(
+                        UUID.randomUUID(),
+                        "STUDENT"
+                ),
+                List.of(new ListKiosqueroOrdersResponse.ItemResponse(
+                        PRODUCT_ID,
+                        "Product 1",
+                        2,
+                        new BigDecimal("10.00"),
+                        new BigDecimal("20.00"),
+                        true,
+                        50
+                ))
+        );
+    }
 
-        assertEquals(purchaseId, response.id());
+    private Map<UUID, ListInventoryProductsResponse.InventoryProductResponse> givenInventoryMap() {
+        Producto inventoryProduct = new Producto();
+        inventoryProduct.setId(PRODUCT_ID);
+        inventoryProduct.setNombre("Inventory Name");
+        inventoryProduct.setPrecio(new BigDecimal("12.00"));
+        ListInventoryProductsResponse.InventoryProductResponse inventoryResponse =
+                ListInventoryProductsResponse.fromDomain(List.of(inventoryProduct))
+                        .products()
+                        .get(0);
+        return Map.of(PRODUCT_ID, inventoryResponse);
+    }
+
+    private Purchase givenPurchaseWithNullFields() {
+        Purchase purchase = new Purchase();
+        purchase.setId(PURCHASE_ID);
+        purchase.setStatus(null);
+        purchase.setPaymentMethod(null);
+        purchase.setPickupSlotId(null);
+        purchase.setStudent(null);
+        purchase.setBuyerType(null);
+        purchase.setItems(null);
+        return purchase;
+    }
+
+    private Purchase givenPurchaseWithNullStudentFields() {
+        Alumno student = new Alumno();
+        student.setId(STUDENT_ID);
+        student.setUsuario(null);
+        student.setGrado(null);
+
+        Purchase purchase = new Purchase();
+        purchase.setStudent(student);
+        return purchase;
+    }
+
+    private Purchase givenPurchaseForInventory() {
+        Producto domainProduct = new Producto();
+        domainProduct.setId(PRODUCT_ID);
+        domainProduct.setNombre("Original");
+        domainProduct.setPrecio(new BigDecimal("10.00"));
+
+        Purchase purchase = new Purchase();
+        purchase.setItems(Map.of(domainProduct, 1));
+        return purchase;
+    }
+
+    private Purchase givenPurchaseWithNullPriceProduct() {
+        Producto product = new Producto();
+        product.setId(PRODUCT_ID);
+        product.setPrecio(null);
+
+        Purchase purchase = new Purchase();
+        purchase.setItems(Map.of(product, 1));
+        return purchase;
+    }
+
+    private KiosqueroOrderResponse whenMappingFromDomain(Purchase purchase) {
+        return KiosqueroOrderResponse.fromDomain(purchase);
+    }
+
+    private KiosqueroOrderResponse whenMappingFromDomain(Purchase purchase, Map<UUID, ListInventoryProductsResponse.InventoryProductResponse> inventory) {
+        return KiosqueroOrderResponse.fromDomain(purchase, inventory);
+    }
+
+    private KiosqueroOrderResponse whenMappingFromApplication(ListKiosqueroOrdersResponse.OrderResponse order, Map<UUID, ListInventoryProductsResponse.InventoryProductResponse> inventory) {
+        return KiosqueroOrderResponse.fromApplication(order, inventory);
+    }
+
+    private void thenFullPurchaseIsMapped(KiosqueroOrderResponse response) {
+        assertEquals(PURCHASE_ID, response.id());
         assertEquals(TipoCompra.ANTICIPADA, response.tipo());
         assertEquals(EstadoCompra.PENDIENTE, response.status());
         assertEquals(EstadoCompra.PENDIENTE.getLabel(), response.statusLabel());
         assertEquals(new BigDecimal("20.00"), response.totalAmount());
-        assertEquals(now, response.date());
+        assertEquals(NOW, response.date());
         assertEquals("1234", response.withdrawalCode());
-        assertEquals(today, response.pickupDate());
+        assertEquals(TODAY, response.pickupDate());
         assertNotNull(response.pickupSlot());
         assertEquals("Recreo 1", response.pickupSlot().description());
-        assertEquals(studentId, response.student().id());
+        assertEquals(STUDENT_ID, response.student().id());
         assertEquals("John", response.student().firstName());
         assertEquals("1", response.student().gradeYear());
-        assertEquals(studentId, response.buyer().id());
+        assertEquals(STUDENT_ID, response.buyer().id());
         assertEquals("STUDENT", response.buyer().type());
         assertEquals(1, response.items().size());
         assertEquals("Product 1", response.items().get(0).productName());
@@ -97,88 +264,18 @@ class KiosqueroOrderResponseTest {
         assertEquals(50, response.items().get(0).cupoMaximoDiario());
     }
 
-    @Test
-    void fromApplication_ShouldMapOrderResponse() {
-        UUID productId = UUID.randomUUID();
-        UUID inventoryProductId = productId;
-        LocalDateTime now = LocalDateTime.now();
-        LocalDate today = LocalDate.now();
-        ListKiosqueroOrdersResponse.OrderResponse order =
-                new ListKiosqueroOrdersResponse.OrderResponse(
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
-                        "ANTICIPADA",
-                        "LISTO",
-                        "Listo para retirar",
-                        new BigDecimal("20.00"),
-                        "CREDITOS",
-                        now,
-                        "1234",
-                        today,
-                        new ListKiosqueroOrdersResponse.PickupSlotResponse(
-                                UUID.randomUUID(),
-                                "Recreo 1",
-                                LocalTime.of(10, 0),
-                                LocalTime.of(10, 15)
-                        ),
-                        new ListKiosqueroOrdersResponse.StudentResponse(
-                                UUID.randomUUID(),
-                                "John",
-                                "Doe",
-                                "1",
-                                "A"
-                        ),
-                        new ListKiosqueroOrdersResponse.BuyerResponse(
-                                UUID.randomUUID(),
-                                "STUDENT"
-                        ),
-                        List.of(new ListKiosqueroOrdersResponse.ItemResponse(
-                                productId,
-                                "Product 1",
-                                2,
-                                new BigDecimal("10.00"),
-                                new BigDecimal("20.00"),
-                                true,
-                                50
-                        ))
-                );
-        Producto inventoryProduct = new Producto();
-        inventoryProduct.setId(inventoryProductId);
-        inventoryProduct.setNombre("Inventory Product");
-        inventoryProduct.setPrecio(new BigDecimal("12.00"));
-        ListInventoryProductsResponse.InventoryProductResponse inventoryResponse =
-                ListInventoryProductsResponse.fromDomain(List.of(inventoryProduct))
-                        .products()
-                        .get(0);
-
-        KiosqueroOrderResponse response = KiosqueroOrderResponse.fromApplication(
-                order,
-                Map.of(productId, inventoryResponse)
-        );
-
+    private void thenApplicationOrderIsMapped(KiosqueroOrderResponse response) {
         assertEquals(TipoCompra.ANTICIPADA, response.tipo());
         assertEquals(EstadoCompra.LISTO, response.status());
         assertEquals("Listo para retirar", response.statusLabel());
         assertEquals("Recreo 1", response.pickupSlot().description());
         assertEquals("John", response.student().firstName());
         assertEquals("STUDENT", response.buyer().type());
-        assertEquals("Inventory Product", response.items().get(0).productName());
+        assertEquals("Inventory Name", response.items().get(0).productName());
         assertEquals(new BigDecimal("12.00"), response.items().get(0).unitPrice());
     }
 
-    @Test
-    void fromDomain_ShouldHandleNullFields() {
-        Purchase purchase = new Purchase();
-        purchase.setId(UUID.randomUUID());
-        purchase.setStatus(null);
-        purchase.setPaymentMethod(null);
-        purchase.setPickupSlotId(null);
-        purchase.setStudent(null);
-        purchase.setBuyerType(null);
-        purchase.setItems(null);
-
-        KiosqueroOrderResponse response = KiosqueroOrderResponse.fromDomain(purchase);
-
+    private void thenNullFieldsAreHandled(KiosqueroOrderResponse response) {
         assertNull(response.statusLabel());
         assertNull(response.paymentMethod());
         assertNull(response.pickupSlot());
@@ -187,65 +284,19 @@ class KiosqueroOrderResponseTest {
         assertEquals(0, response.items().size());
     }
 
-    @Test
-    void fromDomain_ShouldHandleStudentWithNullUserAndGrade() {
-        Alumno student = new Alumno();
-        student.setId(UUID.randomUUID());
-        student.setUsuario(null);
-        student.setGrado(null);
-
-        Purchase purchase = new Purchase();
-        purchase.setStudent(student);
-
-        KiosqueroOrderResponse response = KiosqueroOrderResponse.fromDomain(purchase);
-
+    private void thenStudentNullFieldsAreHandled(KiosqueroOrderResponse response) {
         assertNotNull(response.student());
         assertNull(response.student().firstName());
         assertNull(response.student().gradeYear());
     }
 
-    @Test
-    void fromDomain_ShouldUseInventoryProductsWhenProvided() {
-        UUID productId = UUID.randomUUID();
-        Producto domainProduct = new Producto();
-        domainProduct.setId(productId);
-        domainProduct.setNombre("Original");
-        domainProduct.setPrecio(new BigDecimal("10.00"));
-
-        Producto inventoryProduct = new Producto();
-        inventoryProduct.setId(productId);
-        inventoryProduct.setNombre("Inventory Name");
-        inventoryProduct.setPrecio(new BigDecimal("12.00"));
-        ListInventoryProductsResponse.InventoryProductResponse inventoryProductResponse =
-                ListInventoryProductsResponse.fromDomain(List.of(inventoryProduct))
-                        .products()
-                        .get(0);
-
-        Purchase purchase = new Purchase();
-        purchase.setItems(Map.of(domainProduct, 1));
-
-        KiosqueroOrderResponse response = KiosqueroOrderResponse.fromDomain(
-                purchase,
-                Map.of(productId, inventoryProductResponse)
-        );
-
+    private void thenInventoryProductsAreUsed(KiosqueroOrderResponse response) {
         assertEquals("Inventory Name", response.items().get(0).productName());
         assertEquals(new BigDecimal("12.00"), response.items().get(0).unitPrice());
     }
 
-    @Test
-    void fromDomain_ShouldHandleProductWithNullPrice() {
-        Producto product = new Producto();
-        product.setId(UUID.randomUUID());
-        product.setPrecio(null);
-
-        Purchase purchase = new Purchase();
-        purchase.setItems(Map.of(product, 1));
-
-        KiosqueroOrderResponse response = KiosqueroOrderResponse.fromDomain(purchase);
-
+    private void thenNullPriceIsHandled(KiosqueroOrderResponse response) {
         assertEquals(BigDecimal.ZERO, response.items().get(0).unitPrice());
         assertEquals(BigDecimal.ZERO, response.items().get(0).subtotal());
     }
 }
-

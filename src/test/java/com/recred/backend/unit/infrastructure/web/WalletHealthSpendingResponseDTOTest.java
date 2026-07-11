@@ -10,35 +10,63 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class WalletHealthSpendingResponseDTOTest {
 
-    @Test
-    void fromDomainShouldMapHealthSpending() {
-        WalletHealthSpendingResponseDTO dto =
-                WalletHealthSpendingResponseDTO.fromDomain(
-                        new WalletHealthSpending(
-                                "Sin TACC",
-                                new BigDecimal("250.00"),
-                                new BigDecimal("20.00")
-                        )
-                );
+    private WalletHealthSpendingResponseDTO result;
 
-        assertEquals("Sin TACC", dto.clasificacion());
-        assertEquals(new BigDecimal("250.00"), dto.monto());
-        assertEquals(new BigDecimal("20.00"), dto.porcentaje());
+    @Test
+    void givenDomainModelWhenMappingFromDomainThenReturnsMappedHealthSpending() {
+        WalletHealthSpending model = givenDomainModel(
+                "Sin TACC", "250.00", "20.00");
+
+        result = whenMappingFromDomain(model);
+
+        thenClasificacionIs("Sin TACC");
+        thenMontoIs("250.00");
+        thenPorcentajeIs("20.00");
     }
 
     @Test
-    void fromApplicationShouldMapHealthSpending() {
-        WalletHealthSpendingResponseDTO dto =
-                WalletHealthSpendingResponseDTO.fromApplication(
-                        new GetStudentWalletSummaryResponse.HealthSpending(
-                                "Vegano",
-                                new BigDecimal("500.00"),
-                                new BigDecimal("40.00")
-                        )
-                );
+    void givenApplicationModelWhenMappingFromApplicationThenReturnsMappedHealthSpending() {
+        GetStudentWalletSummaryResponse.HealthSpending model =
+                givenApplicationModel("Vegano", "500.00", "40.00");
 
-        assertEquals("Vegano", dto.clasificacion());
-        assertEquals(new BigDecimal("500.00"), dto.monto());
-        assertEquals(new BigDecimal("40.00"), dto.porcentaje());
+        result = whenMappingFromApplication(model);
+
+        thenClasificacionIs("Vegano");
+        thenMontoIs("500.00");
+        thenPorcentajeIs("40.00");
+    }
+
+    private WalletHealthSpending givenDomainModel(
+            String clasificacion, String monto, String porcentaje) {
+        return new WalletHealthSpending(
+                clasificacion, new BigDecimal(monto), new BigDecimal(porcentaje));
+    }
+
+    private GetStudentWalletSummaryResponse.HealthSpending givenApplicationModel(
+            String clasificacion, String monto, String porcentaje) {
+        return new GetStudentWalletSummaryResponse.HealthSpending(
+                clasificacion, new BigDecimal(monto), new BigDecimal(porcentaje));
+    }
+
+    private WalletHealthSpendingResponseDTO whenMappingFromDomain(
+            WalletHealthSpending model) {
+        return WalletHealthSpendingResponseDTO.fromDomain(model);
+    }
+
+    private WalletHealthSpendingResponseDTO whenMappingFromApplication(
+            GetStudentWalletSummaryResponse.HealthSpending model) {
+        return WalletHealthSpendingResponseDTO.fromApplication(model);
+    }
+
+    private void thenClasificacionIs(String expected) {
+        assertEquals(expected, result.clasificacion());
+    }
+
+    private void thenMontoIs(String expected) {
+        assertEquals(new BigDecimal(expected), result.monto());
+    }
+
+    private void thenPorcentajeIs(String expected) {
+        assertEquals(new BigDecimal(expected), result.porcentaje());
     }
 }

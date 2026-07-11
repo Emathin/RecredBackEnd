@@ -12,80 +12,83 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class NotificationResponseTest {
 
+    private final UUID ID = UUID.randomUUID();
+    private final UUID STUDENT_ID = UUID.randomUUID();
+    private final UUID PRODUCT_ID = UUID.randomUUID();
+    private final UUID PURCHASE_ID = UUID.randomUUID();
+    private final UUID SUGGESTION_ID = UUID.randomUUID();
+    private final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 7, 4, 10, 0);
+    private final LocalDateTime READ_AT = LocalDateTime.of(2026, 7, 4, 11, 0);
+
     @Test
     void fromDomainShouldMapAllFields() {
-        UUID id = UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        UUID purchaseId = UUID.randomUUID();
-        UUID suggestionId = UUID.randomUUID();
-        LocalDateTime createdAt = LocalDateTime.of(2026, 7, 4, 10, 0);
-        LocalDateTime readAt = LocalDateTime.of(2026, 7, 4, 11, 0);
-        Notification notification = new Notification(
-                id,
-                TipoNotificacion.SISTEMA,
-                "Titulo",
-                "Mensaje",
-                true,
-                createdAt,
-                readAt,
-                studentId,
-                productId,
-                purchaseId,
-                suggestionId
-        );
-
-        NotificationResponse response = NotificationResponse.fromDomain(notification);
-
-        assertResponse(response, id, studentId, productId, purchaseId, suggestionId);
-        assertEquals(TipoNotificacion.SISTEMA, response.type());
-        assertEquals("Titulo", response.title());
-        assertEquals("Mensaje", response.message());
-        assertEquals(true, response.read());
-        assertEquals(createdAt, response.createdAt());
-        assertEquals(readAt, response.readAt());
+        Notification notification = givenNotification();
+        
+        NotificationResponse response = whenMappingFromDomain(notification);
+        
+        thenAllFieldsAreMapped(response, true);
     }
 
     @Test
     void fromApplicationShouldMapAllFields() {
-        UUID id = UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        UUID purchaseId = UUID.randomUUID();
-        UUID suggestionId = UUID.randomUUID();
-
-        NotificationResponse response = NotificationResponse.fromApplication(
-                new UserNotificationResponse(
-                        id,
-                        TipoNotificacion.SISTEMA,
-                        "Titulo",
-                        "Mensaje",
-                        false,
-                        LocalDateTime.of(2026, 7, 4, 10, 0),
-                        null,
-                        studentId,
-                        productId,
-                        purchaseId,
-                        suggestionId
-                )
-        );
-
-        assertResponse(response, id, studentId, productId, purchaseId, suggestionId);
-        assertEquals(false, response.read());
+        UserNotificationResponse applicationResponse = givenApplicationResponse();
+        
+        NotificationResponse response = whenMappingFromApplication(applicationResponse);
+        
+        thenAllFieldsAreMapped(response, false);
     }
 
-    private void assertResponse(
-            NotificationResponse response,
-            UUID id,
-            UUID studentId,
-            UUID productId,
-            UUID purchaseId,
-            UUID suggestionId
-    ) {
-        assertEquals(id, response.id());
-        assertEquals(studentId, response.studentId());
-        assertEquals(productId, response.productId());
-        assertEquals(purchaseId, response.purchaseId());
-        assertEquals(suggestionId, response.suggestionId());
+    private Notification givenNotification() {
+        return new Notification(
+                ID,
+                TipoNotificacion.SISTEMA,
+                "Titulo",
+                "Mensaje",
+                true,
+                CREATED_AT,
+                READ_AT,
+                STUDENT_ID,
+                PRODUCT_ID,
+                PURCHASE_ID,
+                SUGGESTION_ID
+        );
+    }
+
+    private UserNotificationResponse givenApplicationResponse() {
+        return new UserNotificationResponse(
+                ID,
+                TipoNotificacion.SISTEMA,
+                "Titulo",
+                "Mensaje",
+                false,
+                CREATED_AT,
+                READ_AT,
+                STUDENT_ID,
+                PRODUCT_ID,
+                PURCHASE_ID,
+                SUGGESTION_ID
+        );
+    }
+
+    private NotificationResponse whenMappingFromDomain(Notification notification) {
+        return NotificationResponse.fromDomain(notification);
+    }
+
+    private NotificationResponse whenMappingFromApplication(UserNotificationResponse response) {
+        return NotificationResponse.fromApplication(response);
+    }
+
+    private void thenAllFieldsAreMapped(NotificationResponse response, boolean expectedReadStatus) {
+        assertEquals(ID, response.id());
+        assertEquals(STUDENT_ID, response.studentId());
+        assertEquals(PRODUCT_ID, response.productId());
+        assertEquals(PURCHASE_ID, response.purchaseId());
+        assertEquals(SUGGESTION_ID, response.suggestionId());
+        assertEquals(TipoNotificacion.SISTEMA, response.type());
+        assertEquals("Titulo", response.title());
+        assertEquals("Mensaje", response.message());
+        assertEquals(expectedReadStatus, response.read());
+        assertEquals(CREATED_AT, response.createdAt());
+        assertEquals(READ_AT, response.readAt());
     }
 }

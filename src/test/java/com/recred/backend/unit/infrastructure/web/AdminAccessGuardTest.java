@@ -4,7 +4,6 @@ import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 import com.recred.backend.infrastructure.web.AdminAccessGuard;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,7 +18,6 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,63 +26,79 @@ class AdminAccessGuardTest {
     @Mock
     private UsuarioRepository usuarioRepository;
 
-    @InjectMocks
-    private AdminAccessGuard adminAccessGuard;
-
     @Mock
     private Authentication authentication;
 
-    private Usuario adminUser;
-    private Usuario regularUser;
+    @InjectMocks
+    private AdminAccessGuard adminAccessGuard;
 
-    @BeforeEach
-    void setUp() {
-        adminUser = new Usuario();
-        adminUser.setRol(RolUsuario.ADMIN);
+    private final String ADMIN_COGNITO_ID = "admin-cognito-id";
+    private final String USER_COGNITO_ID = "user-cognito-id";
+    private final String UNKNOWN_ID = "unknown-id";
 
-        regularUser = new Usuario();
-        regularUser.setRol(RolUsuario.PADRE);
+    @Test
+    void requireAdminAccessShouldPassWhenUserIsAdmin() {
+        givenAdminUserAutenticated();
+        
+        assertDoesNotThrow(() -> whenRequireAdminAccess(authentication));
     }
 
     @Test
-    void requireAdminAccess_ShouldPass_WhenUserIsAdmin() {
-        when(authentication.getName()).thenReturn("admin-cognito-id");
-        when(usuarioRepository.findByIdCognito("admin-cognito-id"))
-                .thenReturn(Optional.of(adminUser));
-
-        assertDoesNotThrow(() -> adminAccessGuard.requireAdminAccess(authentication));
-    }
-
-    @Test
-    void requireAdminAccess_ShouldThrowAccessDeniedException_WhenUserIsNotAdmin() {
-        when(authentication.getName()).thenReturn("user-cognito-id");
-        when(usuarioRepository.findByIdCognito("user-cognito-id"))
-                .thenReturn(Optional.of(regularUser));
-
+    void requireAdminAccessShouldThrowAccessDeniedExceptionWhenUserIsNotAdmin() {
+        givenRegularUserAutenticated();
+        
         AccessDeniedException exception = assertThrows(AccessDeniedException.class,
-                () -> adminAccessGuard.requireAdminAccess(authentication));
-
-        assertEquals("No tiene permisos de administrador", exception.getMessage());
+                () -> whenRequireAdminAccess(authentication));
+                
+        thenExceptionMessageIs("No tiene permisos de administrador", exception);
     }
 
     @Test
-    void requireAdminAccess_ShouldThrowException_WhenAuthenticationIsNull() {
+    void requireAdminAccessShouldThrowExceptionWhenAuthenticationIsNull() {
         AuthenticationCredentialsNotFoundException exception = 
                 assertThrows(AuthenticationCredentialsNotFoundException.class,
-                () -> adminAccessGuard.requireAdminAccess(null));
-
-        assertEquals("Usuario no autenticado", exception.getMessage());
+                () -> whenRequireAdminAccess(null));
+                
+        thenExceptionMessageIs("Usuario no autenticado", exception);
     }
 
     @Test
-    void requireAdminAccess_ShouldThrowException_WhenUserNotFoundInDb() {
-        when(authentication.getName()).thenReturn("unknown-id");
-        when(usuarioRepository.findByIdCognito("unknown-id")).thenReturn(Optional.empty());
-
+    void requireAdminAccessShouldThrowExceptionWhenUserNotFoundInDb() {
+        givenUnknownUserAutenticated();
+        
         AuthenticationCredentialsNotFoundException exception = 
                 assertThrows(AuthenticationCredentialsNotFoundException.class,
-                () -> adminAccessGuard.requireAdminAccess(authentication));
+                () -> whenRequireAdminAccess(authentication));
+                
+        thenExceptionMessageIs("Usuario autenticado no sincronizado", exception);
+    }
 
-        assertEquals("Usuario autenticado no sincronizado", exception.getMessage());
+    private void givenAdminUserAutenticated() {
+        Usuario adminUser = new Usuario();
+        adminUser.setRol(RolUsuario.ADMIN);
+        when(authentication.getName()).thenReturn(ADMIN_COGNITO_ID);
+        when(usuarioRepository.findByIdCognito(ADMIN_COGNITO_ID))
+                .thenReturn(Optional.of(adminUser));
+    }
+
+    private void givenRegularUserAutenticated() {
+        Usuario regularUser = new Usuario();
+        regularUser.setRol(RolUsuario.PADRE);
+        when(authentication.getName()).thenReturn(USER_COGNITO_ID);
+        when(usuarioRepository.findByIdCognito(USER_COGNITO_ID))
+                .thenReturn(Optional.of(regularUser));
+    }
+
+    private void givenUnknownUserAutenticated() {
+        when(authentication.getName()).thenReturn(UNKNOWN_ID);
+        when(usuarioRepository.findByIdCognito(UNKNOWN_ID)).thenReturn(Optional.empty());
+    }
+
+    private void whenRequireAdminAccess(Authentication auth) {
+        adminAccessGuard.requireAdminAccess(auth);
+    }
+
+    private void thenExceptionMessageIs(String expectedMessage, Exception exception) {
+        assertEquals(expectedMessage, exception.getMessage());
     }
 }
