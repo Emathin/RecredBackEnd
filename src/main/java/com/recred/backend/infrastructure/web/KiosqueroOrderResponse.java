@@ -36,7 +36,8 @@ public record KiosqueroOrderResponse(
         PickupSlot pickupSlot,
         Student student,
         Buyer buyer,
-        List<Item> items
+        List<Item> items,
+        String cancelledByRole
 ) {
     public static KiosqueroOrderResponse fromDomain(Purchase purchase) {
         return fromDomain(purchase, Map.of());
@@ -64,7 +65,8 @@ public record KiosqueroOrderResponse(
                 pickupSlot(order.pickupSlot()),
                 student(order.student()),
                 buyer(order.buyer()),
-                items(order.items(), inventoryProducts)
+                items(order.items(), inventoryProducts),
+                order.cancelledByRole()
         );
     }
 
@@ -86,8 +88,13 @@ public record KiosqueroOrderResponse(
                 pickupSlot(purchase),
                 student(purchase.getStudent()),
                 buyer(purchase),
-                items(purchase.getItems(), inventoryProducts)
+                items(purchase.getItems(), inventoryProducts),
+                cancelledByRoleNameFrom(purchase)
         );
+    }
+
+    private static String cancelledByRoleNameFrom(Purchase purchase) {
+        return purchase.getCancelledByRole() == null ? null : purchase.getCancelledByRole().name();
     }
 
     private static <T extends Enum<T>> T enumValue(Class<T> enumType, String value) {

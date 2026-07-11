@@ -21,7 +21,8 @@ public record GetPendingHistoryByStudentResponse(
         String pickupSlotDescription,
         LocalDate pickupDate,
         LocalTime pickupSlotStartTime,
-        String withdrawalStatus
+        String withdrawalStatus,
+        String cancelledByRole
 ) {
     public record Item(
             UUID productId,

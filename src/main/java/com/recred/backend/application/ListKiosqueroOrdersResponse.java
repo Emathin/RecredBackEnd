@@ -39,7 +39,8 @@ public record ListKiosqueroOrdersResponse(
             PickupSlotResponse pickupSlot,
             StudentResponse student,
             BuyerResponse buyer,
-            List<ItemResponse> items
+            List<ItemResponse> items,
+            String cancelledByRole
     ) {
 
         private static OrderResponse fromPurchase(Purchase purchase) {
@@ -57,8 +58,14 @@ public record ListKiosqueroOrdersResponse(
                     PickupSlotResponse.fromPurchase(purchase),
                     StudentResponse.fromStudent(purchase.getStudent()),
                     BuyerResponse.fromBuyer(purchase.getBuyerId(), purchase.getBuyerType()),
-                    ItemResponse.fromItems(purchase.getItems())
+                    ItemResponse.fromItems(purchase.getItems()),
+                    cancelledByRoleNameFrom(purchase)
             );
+        }
+
+        private static String cancelledByRoleNameFrom(Purchase purchase) {
+            return purchase.getCancelledByRole() == null 
+                    ? null : purchase.getCancelledByRole().name();
         }
     }
 

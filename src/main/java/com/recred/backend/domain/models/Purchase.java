@@ -38,6 +38,8 @@ public class Purchase {
     private EstadoRetiro withdrawalStatus;
     private UUID suggestionId;
     private UUID tutorId;
+    private UUID cancelledById;
+    private RolUsuario cancelledByRole;
 
     private Map<Producto, Integer> items = new HashMap<>();
 
@@ -101,7 +103,7 @@ public class Purchase {
         changeStatusTo(nextStatus);
     }
 
-    public void cancel() {
+    public void cancel(UUID cancelledById, RolUsuario cancelledByRole) {
         if (this.status == EstadoCompra.CANCELADO) {
             throw new IllegalStateException("Purchase is already cancelled.");
         }
@@ -115,16 +117,28 @@ public class Purchase {
         }
         
         this.status = EstadoCompra.CANCELADO;
+        this.cancelledById = cancelledById;
+        this.cancelledByRole = cancelledByRole;
         if (this.tipo == TipoCompra.ANTICIPADA) {
             this.withdrawalStatus = EstadoRetiro.CANCELADO;
         }
     }
 
-    public void revertCancellation() {
+    public void revertCancellation(UUID requestedById, RolUsuario requestedByRole) {
         if (this.status != EstadoCompra.CANCELADO) {
             throw new IllegalStateException("Purchase is not cancelled.");
         }
+
+        if (this.cancelledById != null && requestedById != null) {
+            if (!this.cancelledById.equals(requestedById)) {
+                throw new IllegalStateException(
+                        "Only the person who originated the cancellation can reverse it.");
+            }
+        }
+
         this.status = EstadoCompra.PENDIENTE;
+        this.cancelledById = null;
+        this.cancelledByRole = null;
         if (this.tipo == TipoCompra.ANTICIPADA) {
             this.withdrawalStatus = EstadoRetiro.PROGRAMADO;
         }

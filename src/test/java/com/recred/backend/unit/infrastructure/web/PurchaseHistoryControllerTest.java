@@ -82,6 +82,7 @@ class PurchaseHistoryControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
 
@@ -109,6 +110,7 @@ class PurchaseHistoryControllerTest {
                 null,
                 LocalDateTime.now(),
                 List.of(),
+                null,
                 null,
                 null,
                 null,
@@ -147,6 +149,7 @@ class PurchaseHistoryControllerTest {
                  null,
                  null,
                  null,
+                 null,
                  null
          );
 
@@ -174,6 +177,7 @@ class PurchaseHistoryControllerTest {
                 null,
                 LocalDateTime.now(),
                 List.of(),
+                null,
                 null,
                 null,
                 null,

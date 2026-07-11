@@ -47,6 +47,9 @@ public class GetPendingHistoryByStudent {
 
         List<GetPendingHistoryByStudentResponse.Item> items = this.mapToResponseItems(purchase);
 
+        String cancelledByRole = purchase.getCancelledByRole() != null
+                ? purchase.getCancelledByRole().name() : null;
+
         return new GetPendingHistoryByStudentResponse(
                 purchase.getId(),
                 studentId,
@@ -61,7 +64,8 @@ public class GetPendingHistoryByStudent {
                 purchase.getPickupSlotDescription(),
                 purchase.getPickupDate(),
                 purchase.getPickupSlotStartTime(),
-                withdrawalStatus
+                withdrawalStatus,
+                cancelledByRole
         );
     }
 

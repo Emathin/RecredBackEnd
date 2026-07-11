@@ -32,7 +32,7 @@ class PurchaseResponseDTOTest {
                 "CREDITOS", date, List.of(new GetHistoryByStudentResponse.Item(
                         productId, "Producto 1", 3, new BigDecimal("5.00"),
                         false, 10, null, null
-                )), "PRESENCIAL", null, null, null, null, null
+                )), "PRESENCIAL", null, null, null, null, null, null
         );
 
         PurchaseResponseDTO response = new PurchaseResponseDTO(responseDto);
@@ -51,7 +51,7 @@ class PurchaseResponseDTOTest {
     @Test
     void constructor_WithNullableFields_ShouldKeepNullableResponseFieldsNull() {
         GetHistoryByStudentResponse responseDto = new GetHistoryByStudentResponse(
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
         );
 
         PurchaseResponseDTO response = new PurchaseResponseDTO(responseDto);
@@ -74,7 +74,7 @@ class PurchaseResponseDTOTest {
                         alfajorId, "Alfajor Jorgito", 2, new BigDecimal("500.00"),
                         false, null, null, null
                 )),
-                "PRESENCIAL", null, null, null, null, null
+                "PRESENCIAL", null, null, null, null, null, null
         );
 
         PurchaseResponseDTO dto = new PurchaseResponseDTO(responseDto);
@@ -117,7 +117,7 @@ class PurchaseResponseDTOTest {
                                 false, null, null, null
                         )
                 ),
-                "PRESENCIAL", null, null, null, null, null
+                "PRESENCIAL", null, null, null, null, null, null
         );
 
         PurchaseResponseDTO response = new PurchaseResponseDTO(responseDto);
@@ -234,7 +234,8 @@ class PurchaseResponseDTOTest {
                 "Segundo recreo",
                 LocalDate.of(2026, 7, 3),
                 LocalTime.of(10, 15),
-                "PROGRAMADO"
+                "PROGRAMADO",
+                null
         );
 
         PurchaseResponseDTO response = new PurchaseResponseDTO(responseDto);

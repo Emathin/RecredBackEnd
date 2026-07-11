@@ -370,7 +370,8 @@ class GetTutorGlobalDashboardTest {
                 p.getPickupSlotDescription(),
                 p.getPickupDate(),
                 p.getPickupSlotStartTime(),
-                p.getWithdrawalStatus() != null ? p.getWithdrawalStatus().name() : null
+                p.getWithdrawalStatus() != null ? p.getWithdrawalStatus().name() : null,
+                null
         );
     }
 }

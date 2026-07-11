@@ -140,7 +140,8 @@ class KiosqueroOrderResponseTest {
                                 new BigDecimal("20.00"),
                                 true,
                                 50
-                        ))
+                        )),
+                        null
                 );
         Producto inventoryProduct = new Producto();
         inventoryProduct.setId(inventoryProductId);

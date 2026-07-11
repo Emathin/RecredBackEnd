@@ -11,6 +11,8 @@ import com.recred.backend.domain.models.SchoolAssistantActionType;
 import com.recred.backend.domain.models.SchoolAssistantContext;
 import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.repositories.PurchaseRepository;
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.SchoolAssistantRole;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,8 +72,10 @@ public class SchoolAssistantPurchaseCancellationHandler {
             UUID purchaseId
     ) {
         try {
+            RolUsuario rol = mapRole(context.role());
             CancelPresentialPurchaseResponse purchase = cancelPresentialPurchase.execute(
-                    new CancelPresentialPurchaseRequest(purchaseId, context.studentId()));
+                    new CancelPresentialPurchaseRequest(
+                            purchaseId, context.studentId(), context.userId(), rol));
             return cancelledReply(purchase);
         } catch (InvalidPurchaseStatusTransitionException
                  | PurchaseAccessDeniedException
@@ -251,5 +255,16 @@ public class SchoolAssistantPurchaseCancellationHandler {
         Map<String, Object> result = new LinkedHashMap<>();
         source.forEach((key, value) -> result.put(key.toString(), value));
         return result;
+    }
+
+    private RolUsuario mapRole(SchoolAssistantRole role) {
+        if (role == null) {
+            return null;
+        }
+        return switch (role) {
+            case ALUMNO -> RolUsuario.ALUMNO;
+            case TUTOR -> RolUsuario.PADRE;
+            case KIOSQUERO -> RolUsuario.VENDEDOR;
+        };
     }
 }
