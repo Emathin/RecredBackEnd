@@ -47,10 +47,13 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -85,6 +88,8 @@ class PurchaseControllerTest {
     private KiosqueroAccessGuard kiosqueroAccessGuard;
     @Mock
     private PurchaseAccessGuard purchaseAccessGuard;
+    @Mock
+    private com.recred.backend.domain.repositories.ConsumptionAccessRepository consumptionAccessRepository;
 
     private PurchaseController controller;
     private Authentication authentication;
@@ -100,7 +105,8 @@ class PurchaseControllerTest {
                 revertPurchaseCancellation,
                 createAdvancePurchase,
                 kiosqueroAccessGuard,
-                purchaseAccessGuard
+                purchaseAccessGuard,
+                consumptionAccessRepository
         );
         authentication = mock(Authentication.class);
     }
@@ -192,6 +198,11 @@ class PurchaseControllerTest {
 
     @Test
     void cancelPurchase_ShouldRequireAccessAndDelegateWithRequest() {
+        givenAuthenticationSubject();
+        when(consumptionAccessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.of(new com.recred.backend.domain.models.ConsumptionRequester(
+                        UUID.randomUUID(), com.recred.backend.domain.models.RolUsuario.PADRE, UUID.randomUUID())));
+        
         ResponseEntity<Void> response = controller.cancelPurchase(PURCHASE_ID, authentication);
 
         thenResponseIsOk(response);
@@ -201,6 +212,11 @@ class PurchaseControllerTest {
 
     @Test
     void revertPurchase_ShouldRequireAccessAndDelegateWithRequest() {
+        givenAuthenticationSubject();
+        when(consumptionAccessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(Optional.of(new com.recred.backend.domain.models.ConsumptionRequester(
+                        UUID.randomUUID(), com.recred.backend.domain.models.RolUsuario.PADRE, UUID.randomUUID())));
+        
         ResponseEntity<Void> response = controller.revertPurchase(PURCHASE_ID, authentication);
 
         thenResponseIsOk(response);
@@ -433,12 +449,12 @@ class PurchaseControllerTest {
     }
 
     private void thenDelegatesToCancelPurchase() {
-        verify(cancelPresentialPurchase).execute(
-                new com.recred.backend.application.CancelPresentialPurchaseRequest(PURCHASE_ID));
+        verify(cancelPresentialPurchase).execute(argThat(r -> 
+                r.purchaseId().equals(PURCHASE_ID)));
     }
 
     private void thenDelegatesToRevertPurchaseCancellation() {
-        verify(revertPurchaseCancellation).execute(
-                new com.recred.backend.application.RevertPurchaseCancellationRequest(PURCHASE_ID));
+        verify(revertPurchaseCancellation).execute(argThat(r -> 
+                r.purchaseId().equals(PURCHASE_ID)));
     }
 }
