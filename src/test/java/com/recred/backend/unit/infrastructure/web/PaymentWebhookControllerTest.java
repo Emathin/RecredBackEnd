@@ -52,153 +52,102 @@ class PaymentWebhookControllerTest {
     @InjectMocks
     private PaymentWebhookController paymentWebhookController;
 
+    private final String PAYMENT_ID = "999";
+    private final String SIGNATURE = "ts=123,v1=hash";
+    private final String REQUEST_ID = "req-123";
+
     @Test
-    void handleWebhook_WhenSignatureIsValidAndPaymentIsTopUp_ShouldCreditWallet() {
-        String paymentId = "999";
-        PaymentDetails details = topUpPayment(paymentId);
+    void handleWebhookWhenSignatureIsValidAndPaymentIsTopUpShouldCreditWallet() {
         givenValidSignature();
-        givenPaymentDetails(paymentId, details);
-
-        ResponseEntity<Void> response = whenHandlingWebhook(
-                "ts=123,v1=hash",
-                "req-123",
-                paymentBody(paymentId),
-                new HashMap<>()
-        );
-
-        thenReturnsOk(response);
-        thenCreditsWallet(paymentId, details);
-        thenDoesNotConfirmUserSubscription();
+        PaymentDetails details = givenValidTopUpPayment();
+        
+        ResponseEntity<Void> response = whenHandlingWebhookForPayment();
+        
+        thenReturnsOkAndCreditsWallet(response, details);
     }
 
     @Test
-    void handleWebhook_WhenPaymentIsUserSubscription_ShouldConfirmSubscription() {
-        String paymentId = "999";
-        PaymentDetails details = subscriptionPayment(paymentId);
-        givenPaymentDetails(paymentId, details);
+    void handleWebhookWhenPaymentIsUserSubscriptionShouldConfirmSubscription() {
+        PaymentDetails details = givenSubscriptionPayment();
 
-        ResponseEntity<Void> response = whenHandlingWebhook(
-                null,
-                null,
-                paymentBody(paymentId),
-                new HashMap<>()
-        );
+        ResponseEntity<Void> response = whenHandlingWebhookForPaymentWithoutHeaders();
 
-        thenReturnsOk(response);
-        thenConfirmsUserSubscription(details);
-        thenDoesNotCreditWallet();
+        thenReturnsOkAndConfirmsSubscription(response, details);
     }
 
     @Test
-    void handleWebhook_WhenSignatureIsInvalid_ShouldReturnForbidden() {
-        String paymentId = "999";
+    void handleWebhookWhenSignatureIsInvalidShouldReturnForbidden() {
         givenInvalidSignature();
 
-        ResponseEntity<Void> response = whenHandlingWebhook(
-                "ts=123,v1=hash",
-                "req-123",
-                paymentBody(paymentId),
-                new HashMap<>()
-        );
+        ResponseEntity<Void> response = whenHandlingWebhookForPayment();
 
-        thenReturnsForbidden(response);
-        thenDoesNotCreditWallet();
-        thenDoesNotConfirmUserSubscription();
+        thenReturnsForbiddenAndDoesNothing(response);
     }
 
     @Test
-    void handleWebhook_WhenEventIsNotPayment_ShouldIgnoreAndReturnOk() {
-        ResponseEntity<Void> response = whenHandlingWebhook(
-                null,
-                null,
-                nonPaymentBody(),
-                new HashMap<>()
-        );
+    void handleWebhookWhenEventIsNotPaymentShouldIgnoreAndReturnOk() {
+        ResponseEntity<Void> response = whenHandlingWebhookForNonPayment();
 
-        thenReturnsOk(response);
-        thenDoesNotCreditWallet();
-        thenDoesNotConfirmUserSubscription();
+        thenReturnsOkAndDoesNothing(response);
     }
 
     @Test
-    void handleWebhook_WhenBodyIdExists_ShouldProcessPayment() {
-        String paymentId = "888";
-        PaymentDetails details = topUpPayment(paymentId);
-        givenPaymentDetails(paymentId, details);
-        Map<String, Object> body = new HashMap<>();
-        body.put("type", "payment");
-        body.put("id", paymentId);
+    void handleWebhookWhenBodyIdExistsShouldProcessPayment() {
+        PaymentDetails details = givenValidTopUpPayment();
 
-        ResponseEntity<Void> response = whenHandlingWebhook(null, null, body, new HashMap<>());
+        ResponseEntity<Void> response = whenHandlingWebhookWithIdInBody();
 
-        thenReturnsOk(response);
-        thenCreditsWallet(paymentId, details);
+        thenReturnsOkAndCreditsWallet(response, details);
     }
 
     @Test
-    void handleWebhook_WhenQueryDataIdAndTopicExist_ShouldProcessPayment() {
-        String paymentId = "777";
-        PaymentDetails details = topUpPayment(paymentId);
-        givenPaymentDetails(paymentId, details);
-        Map<String, String> params = new HashMap<>();
-        params.put("data.id", paymentId);
-        params.put("topic", "payment");
+    void handleWebhookWhenQueryDataIdAndTopicExistShouldProcessPayment() {
+        PaymentDetails details = givenValidTopUpPayment();
 
-        ResponseEntity<Void> response = whenHandlingWebhook(null, null, null, params);
+        ResponseEntity<Void> response = whenHandlingWebhookWithIdInParams();
 
-        thenReturnsOk(response);
-        thenCreditsWallet(paymentId, details);
+        thenReturnsOkAndCreditsWallet(response, details);
     }
 
     @Test
-    void handleWebhook_WhenBodyIsNullAndSignatureInvalid_ShouldValidatePaymentIdOnly() {
-        Map<String, String> params = new HashMap<>();
-        params.put("id", "666");
-        params.put("type", "payment");
-        when(externalPaymentService.isValidSignature("sig", "req", "666"))
-                .thenReturn(false);
+    void handleWebhookWhenBodyIsNullAndSignatureInvalidShouldValidatePaymentIdOnly() {
+        givenInvalidSignatureForParams();
 
-        ResponseEntity<Void> response = whenHandlingWebhook("sig", "req", null, params);
+        ResponseEntity<Void> response = whenHandlingWebhookWithParamsOnly();
 
-        thenReturnsForbidden(response);
-        thenValidatesPaymentIdSignatureOnly("sig", "req", "666");
-        thenDoesNotCreditWallet();
+        thenReturnsForbiddenAndValidatesSignatureOnly(response);
     }
 
     @Test
-    void handleWebhook_WhenBodyTypeIsNullString_ShouldUseQueryTopic() {
-        String paymentId = "555";
-        PaymentDetails details = topUpPayment(paymentId);
-        givenPaymentDetails(paymentId, details);
-        Map<String, Object> body = new HashMap<>();
-        body.put("type", "null");
-        body.put("id", paymentId);
-        Map<String, String> params = new HashMap<>();
-        params.put("topic", "payment");
+    void handleWebhookWhenBodyTypeIsNullStringShouldUseQueryTopic() {
+        PaymentDetails details = givenValidTopUpPayment();
 
-        ResponseEntity<Void> response = whenHandlingWebhook(null, null, body, params);
+        ResponseEntity<Void> response = whenHandlingWebhookWithNullStringBodyType();
 
-        thenReturnsOk(response);
-        thenCreditsWallet(paymentId, details);
+        thenReturnsOkAndCreditsWallet(response, details);
     }
 
     @Test
-    void handleWebhook_WhenApplicationFails_ShouldReturnInternalServerError() {
-        String paymentId = "999";
-        PaymentDetails details = topUpPayment(paymentId);
+    void handleWebhookWhenApplicationFailsShouldReturnInternalServerError() {
         givenValidSignature();
-        givenPaymentDetails(paymentId, details);
-        doThrow(new RuntimeException("DB Error")).when(confirmPaymentAndCredit)
-                .execute(new ConfirmPaymentAndCreditRequest(paymentId, details));
+        PaymentDetails details = givenValidTopUpPayment();
+        givenDatabaseError(details);
 
-        ResponseEntity<Void> response = whenHandlingWebhook(
-                "ts=123,v1=hash",
-                "req-id",
-                paymentBody(paymentId),
-                new HashMap<>()
-        );
+        ResponseEntity<Void> response = whenHandlingWebhookForPayment();
 
         thenReturnsInternalServerError(response);
+    }
+
+    private PaymentDetails givenValidTopUpPayment() {
+        PaymentDetails details = topUpPayment();
+        when(externalPaymentService.getPaymentDetails(PAYMENT_ID)).thenReturn(details);
+        return details;
+    }
+
+    private PaymentDetails givenSubscriptionPayment() {
+        PaymentDetails details = subscriptionPayment();
+        when(externalPaymentService.getPaymentDetails(PAYMENT_ID)).thenReturn(details);
+        return details;
     }
 
     private void givenValidSignature() {
@@ -211,59 +160,97 @@ class PaymentWebhookControllerTest {
                 .thenReturn(false);
     }
 
-    private void givenPaymentDetails(String paymentId, PaymentDetails details) {
-        when(externalPaymentService.getPaymentDetails(paymentId)).thenReturn(details);
+    private void givenInvalidSignatureForParams() {
+        when(externalPaymentService.isValidSignature(SIGNATURE, REQUEST_ID, PAYMENT_ID))
+                .thenReturn(false);
     }
 
-    private ResponseEntity<Void> whenHandlingWebhook(
-            String signature,
-            String requestId,
-            Map<String, Object> body,
-            Map<String, String> params
-    ) {
-        return paymentWebhookController.handleWebhook(signature, requestId, body, params);
+    private void givenDatabaseError(PaymentDetails details) {
+        doThrow(new RuntimeException("DB Error")).when(confirmPaymentAndCredit)
+                .execute(new ConfirmPaymentAndCreditRequest(PAYMENT_ID, details));
     }
 
-    private void thenReturnsOk(ResponseEntity<Void> response) {
+    private ResponseEntity<Void> whenHandlingWebhookForPayment() {
+        return paymentWebhookController.handleWebhook(SIGNATURE, REQUEST_ID, paymentBody(), new HashMap<>());
+    }
+
+    private ResponseEntity<Void> whenHandlingWebhookForPaymentWithoutHeaders() {
+        return paymentWebhookController.handleWebhook(null, null, paymentBody(), new HashMap<>());
+    }
+
+    private ResponseEntity<Void> whenHandlingWebhookForNonPayment() {
+        return paymentWebhookController.handleWebhook(null, null, nonPaymentBody(), new HashMap<>());
+    }
+
+    private ResponseEntity<Void> whenHandlingWebhookWithIdInBody() {
+        Map<String, Object> body = new HashMap<>();
+        body.put("type", "payment");
+        body.put("id", PAYMENT_ID);
+        return paymentWebhookController.handleWebhook(null, null, body, new HashMap<>());
+    }
+
+    private ResponseEntity<Void> whenHandlingWebhookWithIdInParams() {
+        Map<String, String> params = new HashMap<>();
+        params.put("data.id", PAYMENT_ID);
+        params.put("topic", "payment");
+        return paymentWebhookController.handleWebhook(null, null, null, params);
+    }
+
+    private ResponseEntity<Void> whenHandlingWebhookWithParamsOnly() {
+        Map<String, String> params = new HashMap<>();
+        params.put("id", PAYMENT_ID);
+        params.put("type", "payment");
+        return paymentWebhookController.handleWebhook(SIGNATURE, REQUEST_ID, null, params);
+    }
+
+    private ResponseEntity<Void> whenHandlingWebhookWithNullStringBodyType() {
+        Map<String, Object> body = new HashMap<>();
+        body.put("type", "null");
+        body.put("id", PAYMENT_ID);
+        Map<String, String> params = new HashMap<>();
+        params.put("topic", "payment");
+        return paymentWebhookController.handleWebhook(null, null, body, params);
+    }
+
+    private void thenReturnsOkAndCreditsWallet(ResponseEntity<Void> response, PaymentDetails details) {
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(confirmPaymentAndCredit).execute(new ConfirmPaymentAndCreditRequest(PAYMENT_ID, details));
+        verify(confirmUserSubscriptionPayment, never()).execute(any(ConfirmUserSubscriptionPaymentRequest.class));
     }
 
-    private void thenReturnsForbidden(ResponseEntity<Void> response) {
+    private void thenReturnsOkAndConfirmsSubscription(ResponseEntity<Void> response, PaymentDetails details) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(confirmUserSubscriptionPayment).execute(new ConfirmUserSubscriptionPaymentRequest(details));
+        verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
+    }
+
+    private void thenReturnsForbiddenAndDoesNothing(ResponseEntity<Void> response) {
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
+        verify(confirmUserSubscriptionPayment, never()).execute(any(ConfirmUserSubscriptionPaymentRequest.class));
+    }
+
+    private void thenReturnsOkAndDoesNothing(ResponseEntity<Void> response) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
+        verify(confirmUserSubscriptionPayment, never()).execute(any(ConfirmUserSubscriptionPaymentRequest.class));
+    }
+
+    private void thenReturnsForbiddenAndValidatesSignatureOnly(ResponseEntity<Void> response) {
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        verify(externalPaymentService).isValidSignature(SIGNATURE, REQUEST_ID, PAYMENT_ID);
+        verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
     }
 
     private void thenReturnsInternalServerError(ResponseEntity<Void> response) {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
     }
 
-    private void thenCreditsWallet(String paymentId, PaymentDetails details) {
-        verify(confirmPaymentAndCredit)
-                .execute(new ConfirmPaymentAndCreditRequest(paymentId, details));
-    }
-
-    private void thenConfirmsUserSubscription(PaymentDetails details) {
-        verify(confirmUserSubscriptionPayment)
-                .execute(new ConfirmUserSubscriptionPaymentRequest(details));
-    }
-
-    private void thenDoesNotCreditWallet() {
-        verify(confirmPaymentAndCredit, never()).execute(any(ConfirmPaymentAndCreditRequest.class));
-    }
-
-    private void thenDoesNotConfirmUserSubscription() {
-        verify(confirmUserSubscriptionPayment, never()).execute(
-                any(ConfirmUserSubscriptionPaymentRequest.class));
-    }
-
-    private void thenValidatesPaymentIdSignatureOnly(String sig, String req, String id) {
-        verify(externalPaymentService).isValidSignature(sig, req, id);
-    }
-
-    private Map<String, Object> paymentBody(String paymentId) {
+    private Map<String, Object> paymentBody() {
         Map<String, Object> body = new HashMap<>();
         body.put("type", "payment");
         Map<String, Object> data = new HashMap<>();
-        data.put("id", paymentId);
+        data.put("id", PAYMENT_ID);
         body.put("data", data);
         return body;
     }
@@ -274,18 +261,18 @@ class PaymentWebhookControllerTest {
         return body;
     }
 
-    private PaymentDetails topUpPayment(String paymentId) {
+    private PaymentDetails topUpPayment() {
         return new PaymentDetails(
-                paymentId,
+                PAYMENT_ID,
                 UUID.randomUUID(),
                 new BigDecimal("1500.00"),
                 PaymentStatus.APPROVED
         );
     }
 
-    private PaymentDetails subscriptionPayment(String paymentId) {
+    private PaymentDetails subscriptionPayment() {
         return new PaymentDetails(
-                paymentId,
+                PAYMENT_ID,
                 null,
                 new BigDecimal("5500.00"),
                 PaymentStatus.APPROVED,

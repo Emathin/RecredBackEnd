@@ -90,7 +90,7 @@ class SchoolControllerTest {
     }
 
     @Test
-    void getSchools_ReturnsActiveSchools() {
+    void getSchoolsReturnsActiveSchools() {
         givenActiveSchools();
 
         ResponseEntity<List<SchoolResponseDTO>> response = whenGettingSchools();
@@ -100,7 +100,7 @@ class SchoolControllerTest {
     }
 
     @Test
-    void getGrades_ReturnsActiveGradesForSchool() {
+    void getGradesReturnsActiveGradesForSchool() {
         givenActiveGradesForSchool();
 
         ResponseEntity<List<GradeResponseDTO>> response = whenGettingActiveGrades();
@@ -110,7 +110,7 @@ class SchoolControllerTest {
     }
 
     @Test
-    void getGrades_WhenIncludesInactive_ShouldRequireManagementAndUseAdminList() {
+    void getGradesWhenIncludesInactiveShouldRequireManagementAndUseAdminList() {
         givenGradesIncludingInactive();
 
         ResponseEntity<List<GradeResponseDTO>> response =
@@ -122,7 +122,7 @@ class SchoolControllerTest {
     }
 
     @Test
-    void getGrade_ShouldRequireManagementAndReturnGrade() {
+    void getGradeShouldRequireManagementAndReturnGrade() {
         givenGradeDetails();
 
         ResponseEntity<GradeResponseDTO> response = whenGettingGrade();
@@ -133,7 +133,7 @@ class SchoolControllerTest {
     }
 
     @Test
-    void createGrade_ShouldRequireManagementAndReturnCreatedGrade() {
+    void createGradeShouldRequireManagementAndReturnCreatedGrade() {
         givenCreatedGrade();
 
         ResponseEntity<GradeResponseDTO> response = whenCreatingGrade();
@@ -144,7 +144,7 @@ class SchoolControllerTest {
     }
 
     @Test
-    void updateGrade_ShouldRequireManagementAndReturnUpdatedGrade() {
+    void updateGradeShouldRequireManagementAndReturnUpdatedGrade() {
         givenUpdatedGrade();
 
         ResponseEntity<GradeResponseDTO> response = whenUpdatingGrade();
@@ -155,7 +155,7 @@ class SchoolControllerTest {
     }
 
     @Test
-    void deactivateGrade_ShouldRequireManagementAndReturnNoContent() {
+    void deactivateGradeShouldRequireManagementAndReturnNoContent() {
         ResponseEntity<Void> response = whenDeactivatingGrade();
 
         thenResponseIsNoContent(response);
@@ -164,7 +164,7 @@ class SchoolControllerTest {
     }
 
     @Test
-    void reactivateGrade_ShouldRequireManagementAndReturnGrade() {
+    void reactivateGradeShouldRequireManagementAndReturnGrade() {
         givenReactivatedGrade();
 
         ResponseEntity<GradeResponseDTO> response = whenReactivatingGrade();
@@ -175,7 +175,7 @@ class SchoolControllerTest {
     }
 
     @Test
-    void getMySchoolOverview_ReturnsOverview() {
+    void getMySchoolOverviewReturnsOverview() {
         givenSchoolOverview();
 
         ResponseEntity<GetSchoolOverviewResponse> response =
@@ -185,7 +185,7 @@ class SchoolControllerTest {
     }
 
     @Test
-    void handleSchoolNotFound_ReturnsErrorMessage() {
+    void handleSchoolNotFoundReturnsErrorMessage() {
         SchoolNotFoundException exception = new SchoolNotFoundException(SCHOOL_ID);
 
         Map<String, String> response = whenHandlingSchoolNotFound(exception);

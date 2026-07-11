@@ -10,13 +10,11 @@ import com.recred.backend.infrastructure.web.UserProfileController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import com.recred.backend.infrastructure.web.UpdateUserProfileRequest;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -24,19 +22,18 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Map;
 
 import static com.recred.backend.domain.models.TipoPlan.AVANZADO;
 import static java.util.UUID.randomUUID;
-import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class UserProfileControllerTest {
 
@@ -50,75 +47,74 @@ class UserProfileControllerTest {
     private UsuarioService usuarioService;
     private CloudinaryService cloudinaryService;
     private SuscripcionUsuarioRepository suscripcionUsuarioRepository;
-    private MockMvc mockMvc;
+    private UserProfileController controller;
+    private ResponseEntity<Map<String, Object>> userResponse;
 
     @BeforeEach
     void setUp() {
         usuarioService = mock(UsuarioService.class);
         cloudinaryService = mock(CloudinaryService.class);
         suscripcionUsuarioRepository = mock(SuscripcionUsuarioRepository.class);
-        mockMvc = MockMvcBuilders
-                .standaloneSetup(new UserProfileController(
-                        usuarioService,
-                        cloudinaryService,
-                        suscripcionUsuarioRepository,
-                        CLOCK
-                ))
-                .build();
+        controller = new UserProfileController(
+                usuarioService,
+                cloudinaryService,
+                suscripcionUsuarioRepository,
+                CLOCK
+        );
     }
 
     @Test
-    void getMyUserReturnsMinimalSessionData() throws Exception {
+    void givenCurrentUserWhenGettingMyUserThenReturnsMinimalSessionData() {
         givenCurrentUser();
 
-        ResultActions response = whenGetMyUser();
+        whenGetMyUser();
 
-        thenReturnsMinimalSessionData(response);
+        thenReturnsMinimalSessionData();
         thenDelegatesToUserServiceToGetCurrentUser();
     }
 
     @Test
-    void getMyProfileReturnsFullProfileData() throws Exception {
+    void givenCurrentUserWhenGettingMyProfileThenReturnsFullProfileData() {
         givenCurrentUser();
         givenNoActiveSubscription();
 
-        ResultActions response = whenGetMyProfile();
+        whenGetMyProfile();
 
-        thenFullProfileDataIsReturned(response);
-        thenFreePlanIsReturned(response);
+        thenFullProfileDataIsReturned();
+        thenFreePlanIsReturned();
         thenDelegatesToUserServiceToGetCurrentUser();
     }
 
     @Test
-    void getMyProfileReturnsHasUsedTrialTrueWhenUserAlreadyUsedTrial() throws Exception {
+    void givenTrialUsedWhenGettingMyProfileThenReturnsHasUsedTrialTrue() {
         givenCurrentUser();
         givenNoActiveSubscription();
         givenTrialUsed(true);
 
-        ResultActions response = whenGetMyProfile();
+        whenGetMyProfile();
 
-        thenTrialStatusIsReturned(response, true);
+        thenTrialStatusIsReturned(true);
     }
 
     @Test
-    void getMyProfileReturnsPlanExpirationWhenUserHasActiveSubscription() throws Exception {
+    void givenActiveSubscriptionWhenGettingMyProfileThenReturnsPlanExpiration() {
         givenCurrentUserWithAdvancedPlan();
         givenActiveSubscription();
 
-        ResultActions response = whenGetMyProfile();
+        whenGetMyProfile();
 
-        thenPaidPlanExpirationIsReturned(response);
+        thenPaidPlanExpirationIsReturned();
         thenDelegatesToUserServiceToGetCurrentUser();
         thenDelegatesToSubscriptionRepository();
     }
 
     @Test
-    void updateMyProfileDelegatesToServiceAndReturnsUpdatedUser() throws Exception {
+    void givenValidUpdatePayloadWhenUpdatingMyProfileThenDelegatesToServiceAndReturnsUpdatedUser() {
         givenUpdateProfileDelegation();
 
-        ResultActions response = whenUpdateMyProfile();
+        whenUpdateMyProfile();
 
-        thenUpdatedProfileDataIsReturned(response);
+        thenUpdatedProfileDataIsReturned();
         thenUpdateProfileDelegatesToServiceWithCorrectData();
     }
 
@@ -161,86 +157,68 @@ class UserProfileControllerTest {
         )).thenReturn(usuario);
     }
 
-    private ResultActions whenGetMyUser() throws Exception {
-        return mockMvc.perform(get("/api/v1/users/me")
-                .principal(authentication()));
+    private void whenGetMyUser() {
+        userResponse = controller.getMyUser(jwtAuth());
     }
 
-    private ResultActions whenGetMyProfile() throws Exception {
-        return mockMvc.perform(get("/api/v1/users/me/profile")
-                .principal(authentication()));
+    private void whenGetMyProfile() {
+        userResponse = controller.getMyProfile(jwtAuth());
     }
 
-    private ResultActions whenUpdateMyProfile() throws Exception {
-        return mockMvc.perform(patch("/api/v1/users/me/profile")
-                .principal(authentication())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(validUpdatePayload()));
+    private void whenUpdateMyProfile() {
+        userResponse = controller.updateMyProfile(jwtAuth(), validUpdatePayload());
     }
 
-    private String validUpdatePayload() {
-        return """
-                {
-                  "firstName": "Mateo",
-                  "lastName": "Fortuna",
-                  "phone": "112233",
-                  "documentNumber": "45238796"
-                }
-                """;
+    private UpdateUserProfileRequest validUpdatePayload() {
+        return new UpdateUserProfileRequest("Mateo", "Fortuna", "112233", "45238796");
     }
 
-    private void thenReturnsMinimalSessionData(ResultActions response) throws Exception {
-        response
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(USER_ID.toString()))
-                .andExpect(jsonPath("$.email").value("mateo@example.com"))
-                .andExpect(jsonPath("$.firstName").value("Mateo"))
-                .andExpect(jsonPath("$.lastName").value("Fortuna"))
-                .andExpect(jsonPath("$.role").value("PADRE"))
-                .andExpect(jsonPath("$.phone").doesNotExist())
-                .andExpect(jsonPath("$.documentNumber").doesNotExist());
+    private void thenReturnsMinimalSessionData() {
+        assertEquals(200, userResponse.getStatusCode().value());
+        assertEquals(USER_ID, userResponse.getBody().get("id"));
+        assertEquals("mateo@example.com", userResponse.getBody().get("email"));
+        assertEquals("Mateo", userResponse.getBody().get("firstName"));
+        assertEquals("Fortuna", userResponse.getBody().get("lastName"));
+        assertEquals("PADRE", userResponse.getBody().get("role"));
+        assertFalse(userResponse.getBody().containsKey("phone"));
+        assertFalse(userResponse.getBody().containsKey("documentNumber"));
     }
 
-    private void thenFullProfileDataIsReturned(ResultActions response) throws Exception {
-        response
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(USER_ID.toString()))
-                .andExpect(jsonPath("$.email").value("mateo@example.com"))
-                .andExpect(jsonPath("$.firstName").value("Mateo"))
-                .andExpect(jsonPath("$.lastName").value("Fortuna"))
-                .andExpect(jsonPath("$.phone").value("112233"))
-                .andExpect(jsonPath("$.documentNumber").value("45238796"))
-                .andExpect(jsonPath("$.role").value("PADRE"))
-                .andExpect(jsonPath("$.hasUsedTrial").value(false));
+    private void thenFullProfileDataIsReturned() {
+        assertEquals(200, userResponse.getStatusCode().value());
+        assertEquals(USER_ID, userResponse.getBody().get("id"));
+        assertEquals("mateo@example.com", userResponse.getBody().get("email"));
+        assertEquals("Mateo", userResponse.getBody().get("firstName"));
+        assertEquals("Fortuna", userResponse.getBody().get("lastName"));
+        assertEquals("112233", userResponse.getBody().get("phone"));
+        assertEquals("45238796", userResponse.getBody().get("documentNumber"));
+        assertEquals("PADRE", userResponse.getBody().get("role"));
+        assertEquals(false, userResponse.getBody().get("hasUsedTrial"));
     }
 
-    private void thenUpdatedProfileDataIsReturned(ResultActions response) throws Exception {
-        response
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(USER_ID.toString()))
-                .andExpect(jsonPath("$.firstName").value("Mateo"))
-                .andExpect(jsonPath("$.lastName").value("Fortuna"))
-                .andExpect(jsonPath("$.phone").value("112233"))
-                .andExpect(jsonPath("$.documentNumber").value("45238796"));
+    private void thenUpdatedProfileDataIsReturned() {
+        assertEquals(200, userResponse.getStatusCode().value());
+        assertEquals(USER_ID, userResponse.getBody().get("id"));
+        assertEquals("Mateo", userResponse.getBody().get("firstName"));
+        assertEquals("Fortuna", userResponse.getBody().get("lastName"));
+        assertEquals("112233", userResponse.getBody().get("phone"));
+        assertEquals("45238796", userResponse.getBody().get("documentNumber"));
     }
 
-    private void thenFreePlanIsReturned(ResultActions response) throws Exception {
-        response
-                .andExpect(jsonPath("$.plan").value("GRATUITO"))
-                .andExpect(jsonPath("$.fechaVencimientoPlan").value(nullValue()));
+    private void thenFreePlanIsReturned() {
+        assertEquals("GRATUITO", userResponse.getBody().get("plan"));
+        assertNull(userResponse.getBody().get("fechaVencimientoPlan"));
     }
 
-    private void thenPaidPlanExpirationIsReturned(ResultActions response) throws Exception {
-        response
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.plan").value("AVANZADO"))
-                .andExpect(jsonPath("$.fechaVencimientoPlan").value("2026-08-06T10:30:00"));
+    private void thenPaidPlanExpirationIsReturned() {
+        assertEquals(200, userResponse.getStatusCode().value());
+        assertEquals("AVANZADO", userResponse.getBody().get("plan"));
+        assertEquals(LocalDateTime.parse("2026-08-06T10:30:00"), userResponse.getBody().get("fechaVencimientoPlan"));
     }
 
-    private void thenTrialStatusIsReturned(ResultActions response, boolean status) throws Exception {
-        response
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.hasUsedTrial").value(status));
+    private void thenTrialStatusIsReturned(boolean status) {
+        assertEquals(200, userResponse.getStatusCode().value());
+        assertEquals(status, userResponse.getBody().get("hasUsedTrial"));
     }
 
     private void thenDelegatesToUserServiceToGetCurrentUser() {
@@ -275,7 +253,7 @@ class UserProfileControllerTest {
         return usuario;
     }
 
-    private Authentication authentication() {
+    private JwtAuthenticationToken jwtAuth() {
         Jwt jwt = Jwt.withTokenValue("token")
                 .header("alg", "none")
                 .subject(COGNITO_SUBJECT)

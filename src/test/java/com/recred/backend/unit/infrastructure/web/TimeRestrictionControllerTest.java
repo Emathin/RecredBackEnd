@@ -51,6 +51,12 @@ class TimeRestrictionControllerTest {
 
     private TimeRestrictionController controller;
 
+    private final UUID studentId = UUID.randomUUID();
+    private final UUID timeSlotId = UUID.randomUUID();
+    private final UUID categoryId = UUID.randomUUID();
+    private final UUID classificationId = UUID.randomUUID();
+    private final UUID restrictionId = UUID.randomUUID();
+
     @BeforeEach
     void setUp() {
         controller = new TimeRestrictionController(
@@ -63,91 +69,88 @@ class TimeRestrictionControllerTest {
     }
 
     @Test
-    void create_ShouldReturnCreatedRestriction() {
-        CreateTimeRestrictionRequest request = new CreateTimeRestrictionRequest(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                null
-        );
-        CreateTimeRestrictionResponse responseMock = new CreateTimeRestrictionResponse(
-                UUID.randomUUID(),
-                request.studentId(),
-                request.timeSlotId(),
-                request.categoryId(),
-                request.classificationId(),
-                true,
-                UUID.randomUUID()
-        );
+    void givenValidRequestWhenCreatingThenReturnsCreatedRestriction() {
+        CreateTimeRestrictionRequest request = givenCreateRequest();
+        CreateTimeRestrictionResponse responseMock = givenCreateResponse(request);
         Principal principal = () -> "cognito-sub";
         when(createTimeRestriction.execute(any(CreateTimeRestrictionRequest.class))).thenReturn(responseMock);
 
         ResponseEntity<CreateTimeRestrictionResponse> response = controller.create(request, principal, authentication);
 
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(responseMock, response.getBody());
+        thenCreateResponseIsOk(response, responseMock);
     }
 
     @Test
-    void getByStudent_ShouldReturnRestrictions() {
-        UUID studentId = UUID.randomUUID();
-        GetTimeRestrictionsByStudentResponse responseDto = new GetTimeRestrictionsByStudentResponse(
-                UUID.randomUUID(),
-                studentId,
-                null,
-                null,
-                null,
-                true,
-                UUID.randomUUID()
-        );
+    void givenStudentIdWhenGettingByStudentThenReturnsRestrictions() {
+        GetTimeRestrictionsByStudentResponse responseDto = givenGetByStudentResponse();
         when(getTimeRestrictionsByStudent.execute(new GetTimeRestrictionsByStudentRequest(studentId)))
                 .thenReturn(List.of(responseDto));
 
         ResponseEntity<List<GetTimeRestrictionsByStudentResponse>> response = controller.getByStudent(studentId, authentication);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(List.of(responseDto), response.getBody());
+        thenGetByStudentResponseIsOk(response, responseDto);
     }
 
     @Test
-    void update_ShouldReturnUpdatedRestriction() {
-        UUID restrictionId = UUID.randomUUID();
-        UpdateTimeRestrictionRequest requestBody = new UpdateTimeRestrictionRequest(
-                null,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID()
-        );
-        UpdateTimeRestrictionRequest expectedRequest = new UpdateTimeRestrictionRequest(
-                restrictionId,
-                requestBody.timeSlotId(),
-                requestBody.categoryId(),
-                requestBody.classificationId()
-        );
-        UpdateTimeRestrictionResponse responseMock = new UpdateTimeRestrictionResponse(
-                restrictionId,
-                UUID.randomUUID(),
-                null,
-                null,
-                null,
-                true,
-                UUID.randomUUID()
-        );
+    void givenValidRequestWhenUpdatingThenReturnsUpdatedRestriction() {
+        UpdateTimeRestrictionRequest requestBody = givenUpdateRequest();
+        UpdateTimeRestrictionRequest expectedRequest = givenExpectedUpdateRequest(requestBody);
+        UpdateTimeRestrictionResponse responseMock = givenUpdateResponse();
         when(updateTimeRestriction.execute(expectedRequest)).thenReturn(responseMock);
 
         ResponseEntity<UpdateTimeRestrictionResponse> response = controller.update(restrictionId, requestBody, authentication);
 
+        thenUpdateResponseIsOk(response, responseMock);
+    }
+
+    @Test
+    void givenRestrictionIdWhenDisablingThenReturnsNoContent() {
+        ResponseEntity<Void> response = controller.disable(restrictionId, authentication);
+
+        thenDisableResponseIsNoContent(response);
+    }
+
+    private CreateTimeRestrictionRequest givenCreateRequest() {
+        return new CreateTimeRestrictionRequest(studentId, timeSlotId, categoryId, classificationId, null);
+    }
+
+    private CreateTimeRestrictionResponse givenCreateResponse(CreateTimeRestrictionRequest request) {
+        return new CreateTimeRestrictionResponse(restrictionId, request.studentId(), request.timeSlotId(),
+                request.categoryId(), request.classificationId(), true, UUID.randomUUID());
+    }
+
+    private GetTimeRestrictionsByStudentResponse givenGetByStudentResponse() {
+        return new GetTimeRestrictionsByStudentResponse(restrictionId, studentId, null, null, null, true, UUID.randomUUID());
+    }
+
+    private UpdateTimeRestrictionRequest givenUpdateRequest() {
+        return new UpdateTimeRestrictionRequest(null, timeSlotId, categoryId, classificationId);
+    }
+
+    private UpdateTimeRestrictionRequest givenExpectedUpdateRequest(UpdateTimeRestrictionRequest requestBody) {
+        return new UpdateTimeRestrictionRequest(restrictionId, requestBody.timeSlotId(), requestBody.categoryId(), requestBody.classificationId());
+    }
+
+    private UpdateTimeRestrictionResponse givenUpdateResponse() {
+        return new UpdateTimeRestrictionResponse(restrictionId, timeSlotId, null, null, null, true, UUID.randomUUID());
+    }
+
+    private void thenCreateResponseIsOk(ResponseEntity<CreateTimeRestrictionResponse> response, CreateTimeRestrictionResponse responseMock) {
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(responseMock, response.getBody());
+    }
+
+    private void thenGetByStudentResponseIsOk(ResponseEntity<List<GetTimeRestrictionsByStudentResponse>> response, GetTimeRestrictionsByStudentResponse responseDto) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(List.of(responseDto), response.getBody());
+    }
+
+    private void thenUpdateResponseIsOk(ResponseEntity<UpdateTimeRestrictionResponse> response, UpdateTimeRestrictionResponse responseMock) {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(responseMock, response.getBody());
     }
 
-    @Test
-    void disable_ShouldReturnNoContent() {
-        UUID restrictionId = UUID.randomUUID();
-
-        ResponseEntity<Void> response = controller.disable(restrictionId, authentication);
-
+    private void thenDisableResponseIsNoContent(ResponseEntity<Void> response) {
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         assertNull(response.getBody());
         verify(disableTimeRestriction).execute(new DisableTimeRestrictionRequest(restrictionId));

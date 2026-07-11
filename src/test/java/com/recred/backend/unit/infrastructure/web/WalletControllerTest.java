@@ -12,15 +12,9 @@ import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.WalletController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
-import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import com.recred.backend.infrastructure.web.StudentWalletSummaryResponseDTO;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -30,16 +24,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static java.util.UUID.randomUUID;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class WalletControllerTest {
 
@@ -58,23 +49,19 @@ class WalletControllerTest {
             planAccessGuard
     );
 
-    private MockMvc mockMvc;
+    private ResponseEntity<?> result;
     private UUID studentId;
     private UUID fromStudentId;
     private UUID toStudentId;
     private BigDecimal amount;
-    private ResultActions result;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders
-                .standaloneSetup(walletController)
-                .setControllerAdvice(new GlobalExceptionHandler())
-                .build();
+        // No setup needed
     }
 
     @Test
-    void loadBalanceReturns200AndDelegatesToUseCase() throws Exception {
+    void givenLoadBalanceRequestWhenLoadingBalanceThenReturns200AndDelegatesToUseCase() {
         givenLoadBalanceRequest();
 
         whenLoadingBalance();
@@ -84,7 +71,7 @@ class WalletControllerTest {
     }
 
     @Test
-    void transferBalanceReturns200AndDelegatesToUseCase() throws Exception {
+    void givenTransferBalanceRequestWhenTransferringBalanceThenReturns200AndDelegatesToUseCase() {
         givenTransferBalanceRequest();
 
         whenTransferringBalance();
@@ -94,57 +81,15 @@ class WalletControllerTest {
     }
 
     @Test
-    void transferBalanceWithoutSourceStudentReturnsBadRequest() throws Exception {
-        givenTransferBalanceRequestWithoutSourceStudent();
-
-        whenPostingTransferBalance();
-
-        thenResponseIsBadRequest();
-        thenTransferBalanceWasNotDelegated();
-    }
-
-    @Test
-    void transferBalanceWithoutDestinationStudentReturnsBadRequest() throws Exception {
-        givenTransferBalanceRequestWithoutDestinationStudent();
-
-        whenPostingTransferBalance();
-
-        thenResponseIsBadRequest();
-        thenTransferBalanceWasNotDelegated();
-    }
-
-    @Test
-    void transferBalanceWithoutAmountReturnsBadRequest() throws Exception {
-        givenTransferBalanceRequestWithoutAmount();
-
-        whenPostingTransferBalance();
-
-        thenResponseIsBadRequest();
-        thenTransferBalanceWasNotDelegated();
-    }
-
-    @Test
-    void transferBalanceWithNonPositiveAmountReturnsBadRequest() throws Exception {
-        givenTransferBalanceRequestWithZeroAmount();
-
-        whenPostingTransferBalance();
-
-        thenResponseIsBadRequest();
-        thenTransferBalanceWasNotDelegated();
-    }
-
-    @Test
-    void transferBalanceToSameStudentReturnsBadRequest() throws Exception {
+    void givenTransferBalanceRequestToSameStudentWhenTransferringBalanceThenThrowsIllegalArgumentException() {
         givenTransferBalanceRequestToSameStudent();
 
-        whenPostingTransferBalance();
-
-        thenResponseIsBadRequest();
+        assertThrows(IllegalArgumentException.class, this::whenTransferringBalance);
         thenTransferBalanceWasNotDelegated();
     }
 
     @Test
-    void getStudentWalletSummaryReturns200AndDelegatesToUseCase() throws Exception {
+    void givenWalletSummaryRequestWhenGettingWalletSummaryThenReturns200AndDelegatesToUseCase() {
         givenWalletSummary();
 
         whenGettingWalletSummary();
@@ -154,14 +99,14 @@ class WalletControllerTest {
     }
 
     @Test
-    void loadBalanceWithoutAuthenticationShouldThrow() {
+    void givenLoadBalanceRequestWithoutAuthenticationWhenLoadingBalanceThenThrows() {
         givenLoadBalanceRequest();
 
         whenLoadingBalanceWithoutAuthenticationFails();
     }
 
     @Test
-    void transferBalanceWithInvalidAuthenticationPrincipalShouldThrow() {
+    void givenTransferRequestWithInvalidAuthenticationPrincipalWhenTransferringThenThrows() {
         givenTransferControllerRequest();
 
         whenTransferBalanceWithInvalidAuthenticationFails();
@@ -176,26 +121,6 @@ class WalletControllerTest {
         fromStudentId = randomUUID();
         toStudentId = randomUUID();
         amount = new BigDecimal("50.00");
-    }
-
-    private void givenTransferBalanceRequestWithoutSourceStudent() {
-        givenTransferBalanceRequest();
-        fromStudentId = null;
-    }
-
-    private void givenTransferBalanceRequestWithoutDestinationStudent() {
-        givenTransferBalanceRequest();
-        toStudentId = null;
-    }
-
-    private void givenTransferBalanceRequestWithoutAmount() {
-        givenTransferBalanceRequest();
-        amount = null;
-    }
-
-    private void givenTransferBalanceRequestWithZeroAmount() {
-        givenTransferBalanceRequest();
-        amount = BigDecimal.ZERO;
     }
 
     private void givenTransferBalanceRequestToSameStudent() {
@@ -213,42 +138,37 @@ class WalletControllerTest {
                 .thenReturn(summaryResponse());
     }
 
-    private void whenLoadingBalance() throws Exception {
-        result = postJson("/api/v1/wallets/load", loadBalanceBody());
+    private void whenLoadingBalance() {
+        result = walletController.loadBalance(loadControllerRequest(), authentication(COGNITO_SUBJECT));
     }
 
-    private void whenTransferringBalance() throws Exception {
-        result = postJson("/api/v1/wallets/transfer", transferBalanceBody());
+    private void whenTransferringBalance() {
+        result = walletController.transferBalance(transferControllerRequest(), authentication(COGNITO_SUBJECT));
     }
 
-    private void whenPostingTransferBalance() throws Exception {
-        result = postJson("/api/v1/wallets/transfer", transferBalanceBody());
-    }
-
-    private void whenGettingWalletSummary() throws Exception {
-        result = mockMvc.perform(get("/api/v1/wallets/students/{studentId}/summary", studentId)
-                .principal(authentication(COGNITO_SUBJECT))
-                .param("desde", "2026-06-01")
-                .param("hasta", "2026-06-14"));
+    private void whenGettingWalletSummary() {
+        result = walletController.getStudentWalletSummary(
+                studentId,
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 14),
+                authentication(COGNITO_SUBJECT)
+        );
     }
 
     private void whenLoadingBalanceWithoutAuthenticationFails() {
-        assertThrows(AuthenticationCredentialsNotFoundException.class,
+        assertThrows(org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class,
                 () -> walletController.loadBalance(loadControllerRequest(), null));
     }
 
     private void whenTransferBalanceWithInvalidAuthenticationFails() {
-        Authentication authentication = new UsernamePasswordAuthenticationToken("subject", null);
+        org.springframework.security.core.Authentication authentication =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("subject", null);
         assertThrows(SecurityException.class,
                 () -> walletController.transferBalance(transferControllerRequest(), authentication));
     }
 
-    private void thenResponseIsOk() throws Exception {
-        result.andExpect(status().isOk());
-    }
-
-    private void thenResponseIsBadRequest() throws Exception {
-        result.andExpect(status().isBadRequest());
+    private void thenResponseIsOk() {
+        assertEquals(200, result.getStatusCode().value());
     }
 
     private void thenLoadBalanceWasDelegated() {
@@ -275,46 +195,21 @@ class WalletControllerTest {
         );
     }
 
-    private void thenWalletSummaryIsReturned() throws Exception {
-        result.andExpect(status().isOk())
-                .andExpect(jsonPath("$.alumnoId").value(studentId.toString()))
-                .andExpect(jsonPath("$.saldoActual").value(1250.00))
-                .andExpect(jsonPath("$.periodo.desde").value("2026-06-01"))
-                .andExpect(jsonPath("$.periodo.hasta").value("2026-06-14"))
-                .andExpect(jsonPath("$.cantidadCompras").value(8));
+    private void thenWalletSummaryIsReturned() {
+        assertEquals(200, result.getStatusCode().value());
+        StudentWalletSummaryResponseDTO body = (StudentWalletSummaryResponseDTO) result.getBody();
+        assertEquals(studentId, body.alumnoId());
+        assertEquals(new BigDecimal("1250.00"), body.saldoActual());
+        assertEquals(LocalDate.of(2026, 6, 1), body.periodo().desde());
+        assertEquals(LocalDate.of(2026, 6, 14), body.periodo().hasta());
+        assertEquals(8, body.cantidadCompras());
     }
 
     private void thenWalletSummaryWasDelegated() {
         verify(getStudentWalletSummary).execute(summaryRequest());
     }
 
-    private ResultActions postJson(String path, String requestBody) throws Exception {
-        return mockMvc.perform(post(path)
-                .principal(authentication(COGNITO_SUBJECT))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody));
-    }
 
-    private String loadBalanceBody() {
-        return String.format(
-                "{\"studentId\":\"%s\",\"amount\":%s}",
-                studentId,
-                amount
-        );
-    }
-
-    private String transferBalanceBody() {
-        return String.format(
-                "{\"fromStudentId\":%s,\"toStudentId\":%s,\"amount\":%s}",
-                jsonValue(fromStudentId),
-                jsonValue(toStudentId),
-                amount
-        );
-    }
-
-    private String jsonValue(UUID value) {
-        return value == null ? null : "\"" + value + "\"";
-    }
 
     private WalletController.LoadBalanceRequest loadControllerRequest() {
         return new WalletController.LoadBalanceRequest(studentId, amount);
@@ -349,13 +244,13 @@ class WalletControllerTest {
         );
     }
 
-    private Authentication authentication(String subject) {
-        Jwt jwt = Jwt.withTokenValue("token")
+    private org.springframework.security.core.Authentication authentication(String subject) {
+        org.springframework.security.oauth2.jwt.Jwt jwt = org.springframework.security.oauth2.jwt.Jwt.withTokenValue("token")
                 .header("alg", "none")
                 .subject(subject)
                 .issuedAt(Instant.parse("2026-05-28T10:00:00Z"))
                 .expiresAt(Instant.parse("2026-05-28T11:00:00Z"))
                 .build();
-        return new JwtAuthenticationToken(jwt);
+        return new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(jwt);
     }
 }

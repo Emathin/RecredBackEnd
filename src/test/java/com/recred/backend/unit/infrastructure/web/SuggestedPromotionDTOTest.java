@@ -12,23 +12,15 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class SuggestedPromotionDTOTest {
 
     @Test
-    void accessorsShouldExposeValues() {
+    void givenValuesWhenSettingPropertiesThenAccessorsExposeValues() {
         SuggestedPromotionDTO dto = new SuggestedPromotionDTO();
-        dto.setName("Combo frio");
-        dto.setDiscountPercentage(new BigDecimal("12.50"));
-        dto.setTargetCategories(List.of("Bebidas"));
-        dto.setImagen("combo.png");
-        dto.setProductIds(List.of("p1", "p2"));
+        whenUpdatingDtoProperties(dto);
 
-        assertEquals("Combo frio", dto.getName());
-        assertEquals(new BigDecimal("12.50"), dto.getDiscountPercentage());
-        assertEquals(List.of("Bebidas"), dto.getTargetCategories());
-        assertEquals("combo.png", dto.getImagen());
-        assertEquals(List.of("p1", "p2"), dto.getProductIds());
+        thenDtoHasExpectedProperties(dto);
     }
 
     @Test
-    void fromApplicationShouldMapResponseAndAcceptNull() {
+    void givenApplicationResponseWhenMappingFromApplicationThenMapsResponseAndAcceptsNull() {
         SuggestedPromotionDTO dto = SuggestedPromotionDTO.fromApplication(
                 new SuggestedPromotionResponse(
                         "Promo",
@@ -39,11 +31,35 @@ class SuggestedPromotionDTOTest {
                 )
         );
 
+        thenMappedDtoHasExpectedProperties(dto);
+        thenNullResponseYieldsNullDto();
+    }
+
+    private void whenUpdatingDtoProperties(SuggestedPromotionDTO dto) {
+        dto.setName("Combo frio");
+        dto.setDiscountPercentage(new BigDecimal("12.50"));
+        dto.setTargetCategories(List.of("Bebidas"));
+        dto.setImagen("combo.png");
+        dto.setProductIds(List.of("p1", "p2"));
+    }
+
+    private void thenDtoHasExpectedProperties(SuggestedPromotionDTO dto) {
+        assertEquals("Combo frio", dto.getName());
+        assertEquals(new BigDecimal("12.50"), dto.getDiscountPercentage());
+        assertEquals(List.of("Bebidas"), dto.getTargetCategories());
+        assertEquals("combo.png", dto.getImagen());
+        assertEquals(List.of("p1", "p2"), dto.getProductIds());
+    }
+
+    private void thenMappedDtoHasExpectedProperties(SuggestedPromotionDTO dto) {
         assertEquals("Promo", dto.getName());
         assertEquals(new BigDecimal("20.00"), dto.getDiscountPercentage());
         assertEquals(List.of("Snacks"), dto.getTargetCategories());
         assertEquals("promo.png", dto.getImagen());
         assertEquals(List.of("a"), dto.getProductIds());
+    }
+
+    private void thenNullResponseYieldsNullDto() {
         assertNull(SuggestedPromotionDTO.fromApplication(null));
     }
 }

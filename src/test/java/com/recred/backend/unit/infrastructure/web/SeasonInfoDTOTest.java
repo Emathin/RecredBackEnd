@@ -10,31 +10,47 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class SeasonInfoDTOTest {
 
     @Test
-    void constructorAndAccessorsShouldExposeValues() {
+    void givenValuesWhenCreatingDtoThenAccessorsExposeValues() {
         SeasonInfoDTO dto = new SeasonInfoDTO("Invierno", 20, "Primavera");
 
-        assertEquals("Invierno", dto.getCurrentSeason());
-        assertEquals(20, dto.getDaysRemaining());
-        assertEquals("Primavera", dto.getNextSeason());
+        thenDtoHasValues(dto, "Invierno", 20, "Primavera");
 
-        dto.setCurrentSeason("Verano");
-        dto.setDaysRemaining(45);
-        dto.setNextSeason("Oto\u00f1o");
+        whenUpdatingDtoValues(dto, "Verano", 45, "Oto\u00f1o");
 
-        assertEquals("Verano", dto.getCurrentSeason());
-        assertEquals(45, dto.getDaysRemaining());
-        assertEquals("Oto\u00f1o", dto.getNextSeason());
+        thenDtoHasValues(dto, "Verano", 45, "Oto\u00f1o");
     }
 
     @Test
-    void fromApplicationShouldMapResponseAndAcceptNull() {
-        SeasonInfoDTO dto = SeasonInfoDTO.fromApplication(
-                new SeasonInfoResponse("Primavera", 5, "Verano")
-        );
+    void givenApplicationResponseWhenMappingToDtoThenMapsValues() {
+        SeasonInfoDTO dto = whenMappingFromApplication(new SeasonInfoResponse("Primavera", 5, "Verano"));
 
-        assertEquals("Primavera", dto.getCurrentSeason());
-        assertEquals(5, dto.getDaysRemaining());
-        assertEquals("Verano", dto.getNextSeason());
-        assertNull(SeasonInfoDTO.fromApplication(null));
+        thenDtoHasValues(dto, "Primavera", 5, "Verano");
+    }
+
+    @Test
+    void givenNullResponseWhenMappingToDtoThenReturnsNull() {
+        SeasonInfoDTO dto = whenMappingFromApplication(null);
+
+        thenDtoIsNull(dto);
+    }
+
+    private void whenUpdatingDtoValues(SeasonInfoDTO dto, String current, int days, String next) {
+        dto.setCurrentSeason(current);
+        dto.setDaysRemaining(days);
+        dto.setNextSeason(next);
+    }
+
+    private SeasonInfoDTO whenMappingFromApplication(SeasonInfoResponse response) {
+        return SeasonInfoDTO.fromApplication(response);
+    }
+
+    private void thenDtoHasValues(SeasonInfoDTO dto, String current, int days, String next) {
+        assertEquals(current, dto.getCurrentSeason());
+        assertEquals(days, dto.getDaysRemaining());
+        assertEquals(next, dto.getNextSeason());
+    }
+
+    private void thenDtoIsNull(SeasonInfoDTO dto) {
+        assertNull(dto);
     }
 }

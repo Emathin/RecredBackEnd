@@ -8,25 +8,74 @@ import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Promotion;
 import com.recred.backend.domain.models.PromotionStatus;
 import com.recred.backend.infrastructure.web.PromotionResponseDTO;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class PromotionResponseDTOTest {
 
+    private UUID promotionId;
+    private UUID productId;
+    private UUID buffetId;
+
+    @BeforeEach
+    void setUp() {
+        promotionId = UUID.randomUUID();
+        productId = UUID.randomUUID();
+        buffetId = UUID.randomUUID();
+    }
+
     @Test
     void fromAppResponseShouldMapAllFields() {
-        UUID promotionId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
+        PromotionResponse response = givenPromotionResponse();
+
+        PromotionResponseDTO dto = PromotionResponseDTO.fromAppResponse(response);
+
+        thenMapsPromotionResponseCorrectly(dto);
+    }
+
+    @Test
+    void fromDomainShouldMapProductsBuffetAndMissingOptionalRelations() {
+        Promotion promotion = givenDomainPromotionWithRelations();
+        Promotion promotionWithoutRelations = givenDomainPromotionWithoutRelations();
+
+        PromotionResponseDTO dto = PromotionResponseDTO.fromDomain(promotion);
+        PromotionResponseDTO withoutRelations = PromotionResponseDTO.fromDomain(promotionWithoutRelations);
+
+        thenMapsDomainPromotionCorrectly(dto);
+        thenMapsDomainPromotionWithoutRelationsCorrectly(withoutRelations);
+    }
+
+    @Test
+    void fromCreatePromotionResponseShouldMapAllFields() {
+        CreatePromotionResponse response = givenCreatePromotionResponse();
+
+        PromotionResponseDTO dto = PromotionResponseDTO.fromApplication(response);
+
+        thenMapsCreatePromotionResponseCorrectly(response, dto);
+    }
+
+    @Test
+    void fromSeasonalPromotionResponseShouldMapAllFieldsAndNullInput() {
+        SeasonalCreatedPromotionResponse response = givenSeasonalPromotionResponse();
+
+        PromotionResponseDTO dto = PromotionResponseDTO.fromApplication(response);
+        PromotionResponseDTO nullDto = PromotionResponseDTO.fromApplication((SeasonalCreatedPromotionResponse) null);
+
+        thenMapsSeasonalPromotionResponseCorrectly(response, dto, nullDto);
+    }
+
+    private PromotionResponse givenPromotionResponse() {
         LocalDateTime startDate = LocalDateTime.of(2026, 7, 1, 8, 0);
         LocalDateTime endDate = LocalDateTime.of(2026, 7, 10, 18, 0);
-        PromotionResponse response = new PromotionResponse(
+        return new PromotionResponse(
                 promotionId,
                 "Promo desayuno",
                 new BigDecimal("15.00"),
@@ -37,9 +86,53 @@ class PromotionResponseDTOTest {
                 buffetId,
                 "https://example.com/promo.png"
         );
+    }
 
-        PromotionResponseDTO dto = PromotionResponseDTO.fromAppResponse(response);
+    private Promotion givenDomainPromotionWithRelations() {
+        Promotion promotion = promotion();
+        promotion.setProducts(List.of(product(productId)));
+        promotion.setBuffet(buffet(buffetId));
+        return promotion;
+    }
 
+    private Promotion givenDomainPromotionWithoutRelations() {
+        Promotion promotion = promotion();
+        promotion.setProducts(null);
+        promotion.setBuffet(null);
+        return promotion;
+    }
+
+    private CreatePromotionResponse givenCreatePromotionResponse() {
+        return new CreatePromotionResponse(
+                promotionId,
+                "Promo merienda",
+                new BigDecimal("20.00"),
+                LocalDateTime.of(2026, 7, 1, 8, 0),
+                LocalDateTime.of(2026, 7, 10, 18, 0),
+                PromotionStatus.INACTIVE,
+                "https://example.com/merienda.png",
+                buffetId,
+                List.of(productId)
+        );
+    }
+
+    private SeasonalCreatedPromotionResponse givenSeasonalPromotionResponse() {
+        return new SeasonalCreatedPromotionResponse(
+                promotionId,
+                "Promo invierno",
+                new BigDecimal("25.00"),
+                LocalDateTime.of(2026, 7, 1, 8, 0),
+                LocalDateTime.of(2026, 7, 10, 18, 0),
+                "ACTIVE",
+                List.of(productId),
+                buffetId,
+                "https://example.com/invierno.png"
+        );
+    }
+
+    private void thenMapsPromotionResponseCorrectly(PromotionResponseDTO dto) {
+        LocalDateTime startDate = LocalDateTime.of(2026, 7, 1, 8, 0);
+        LocalDateTime endDate = LocalDateTime.of(2026, 7, 10, 18, 0);
         assertEquals(promotionId, dto.getId());
         assertEquals("Promo desayuno", dto.getName());
         assertEquals(new BigDecimal("15.00"), dto.getDiscountPercentage());
@@ -51,45 +144,17 @@ class PromotionResponseDTOTest {
         assertEquals("https://example.com/promo.png", dto.getImageUrl());
     }
 
-    @Test
-    void fromDomainShouldMapProductsBuffetAndMissingOptionalRelations() {
-        UUID productId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        Promotion promotion = promotion();
-        promotion.setProducts(List.of(product(productId)));
-        promotion.setBuffet(buffet(buffetId));
-
-        PromotionResponseDTO dto = PromotionResponseDTO.fromDomain(promotion);
-
+    private void thenMapsDomainPromotionCorrectly(PromotionResponseDTO dto) {
         assertEquals(List.of(productId), dto.getProductIds());
         assertEquals(buffetId, dto.getBuffetId());
-
-        promotion.setProducts(null);
-        promotion.setBuffet(null);
-        PromotionResponseDTO withoutRelations = PromotionResponseDTO.fromDomain(promotion);
-
-        assertNull(withoutRelations.getProductIds());
-        assertNull(withoutRelations.getBuffetId());
     }
 
-    @Test
-    void fromCreatePromotionResponseShouldMapAllFields() {
-        UUID productId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        CreatePromotionResponse response = new CreatePromotionResponse(
-                UUID.randomUUID(),
-                "Promo merienda",
-                new BigDecimal("20.00"),
-                LocalDateTime.of(2026, 7, 1, 8, 0),
-                LocalDateTime.of(2026, 7, 10, 18, 0),
-                PromotionStatus.INACTIVE,
-                "https://example.com/merienda.png",
-                buffetId,
-                List.of(productId)
-        );
+    private void thenMapsDomainPromotionWithoutRelationsCorrectly(PromotionResponseDTO dto) {
+        assertNull(dto.getProductIds());
+        assertNull(dto.getBuffetId());
+    }
 
-        PromotionResponseDTO dto = PromotionResponseDTO.fromApplication(response);
-
+    private void thenMapsCreatePromotionResponseCorrectly(CreatePromotionResponse response, PromotionResponseDTO dto) {
         assertEquals(response.id(), dto.getId());
         assertEquals("INACTIVE", dto.getStatus());
         assertEquals(List.of(productId), dto.getProductIds());
@@ -97,35 +162,22 @@ class PromotionResponseDTOTest {
         assertEquals(response.imageUrl(), dto.getImageUrl());
     }
 
-    @Test
-    void fromSeasonalPromotionResponseShouldMapAllFieldsAndNullInput() {
-        UUID productId = UUID.randomUUID();
-        UUID buffetId = UUID.randomUUID();
-        SeasonalCreatedPromotionResponse response = new SeasonalCreatedPromotionResponse(
-                UUID.randomUUID(),
-                "Promo invierno",
-                new BigDecimal("25.00"),
-                LocalDateTime.of(2026, 7, 1, 8, 0),
-                LocalDateTime.of(2026, 7, 10, 18, 0),
-                "ACTIVE",
-                List.of(productId),
-                buffetId,
-                "https://example.com/invierno.png"
-        );
-
-        PromotionResponseDTO dto = PromotionResponseDTO.fromApplication(response);
-
+    private void thenMapsSeasonalPromotionResponseCorrectly(
+            SeasonalCreatedPromotionResponse response, 
+            PromotionResponseDTO dto, 
+            PromotionResponseDTO nullDto
+    ) {
         assertEquals(response.id(), dto.getId());
         assertEquals("ACTIVE", dto.getStatus());
         assertEquals(List.of(productId), dto.getProductIds());
         assertEquals(buffetId, dto.getBuffetId());
         assertEquals(response.imageUrl(), dto.getImageUrl());
-        assertNull(PromotionResponseDTO.fromApplication((SeasonalCreatedPromotionResponse) null));
+        assertNull(nullDto);
     }
 
     private Promotion promotion() {
         Promotion promotion = new Promotion();
-        promotion.setId(UUID.randomUUID());
+        promotion.setId(promotionId);
         promotion.setName("Promo desayuno");
         promotion.setDiscountPercentage(new BigDecimal("15.00"));
         promotion.setStartDate(LocalDateTime.of(2026, 7, 1, 8, 0));

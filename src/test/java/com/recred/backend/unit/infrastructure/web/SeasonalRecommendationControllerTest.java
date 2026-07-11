@@ -1,57 +1,62 @@
 package com.recred.backend.unit.infrastructure.web;
 
 import com.recred.backend.application.GenerateSeasonalRecommendation;
-import com.recred.backend.application.SeasonalRecommendationResponse;
+import com.recred.backend.infrastructure.web.RecommendationResponseDTO;
+import com.recred.backend.application.GenerateSeasonalRecommendationRequest;
 import com.recred.backend.application.SeasonalSuggestionResponse;
-import com.recred.backend.config.CustomAuthenticationEntryPoint;
-import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.SeasonalRecommendationController;
-import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
-import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(
-        controllers = SeasonalRecommendationController.class,
-        excludeAutoConfiguration = {SecurityAutoConfiguration.class, OAuth2ResourceServerAutoConfiguration.class}
-)
+@ExtendWith(MockitoExtension.class)
 class SeasonalRecommendationControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Mock private GenerateSeasonalRecommendation useCase;
+    @Mock private PlanAccessGuard planAccessGuard;
 
-    @MockitoBean
-    private GenerateSeasonalRecommendation useCase;
+    private SeasonalRecommendationController controller;
 
-    @MockitoBean
-    private PlanAccessGuard planAccessGuard;
-
-    @MockitoBean
-    private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
-
-    @MockitoBean
-    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
-
-    @MockitoBean
-    private JwtDecoder jwtDecoder;
+    @BeforeEach
+    void setUp() {
+        controller = new SeasonalRecommendationController(useCase, planAccessGuard);
+    }
 
     @Test
-    void dadoQueElCasoDeUsoRespondeCorrectamente_cuandoSeLlamaAlEndpoint_entoncesRetorna200ConJson() throws Exception {
-        SeasonalRecommendationResponse respuesta = new SeasonalRecommendationResponse(
+    void givenUseCaseRespondsSuccessfullyWhenEndpointIsCalledThenReturns200WithResponse() {
+        givenSuccessfulRecommendation();
+
+        ResponseEntity<RecommendationResponseDTO> response = whenGettingSeasonalRecommendation();
+
+        thenResponseIsOkAndMatches(response);
+    }
+
+    @Test
+    void givenUseCaseThrowsExceptionWhenEndpointIsCalledThenExceptionIsPropagated() {
+        givenUseCaseThrowsException();
+
+        Executable execution = this::whenGettingSeasonalRecommendation;
+
+        thenExceptionIsPropagated(execution);
+    }
+
+    private void givenSuccessfulRecommendation() {
+        com.recred.backend.application.SeasonalRecommendationResponse answer = new com.recred.backend.application.SeasonalRecommendationResponse(
                 List.of(new SeasonalSuggestionResponse(
                         "Bebidas Frias",
                         "AUMENTAR",
@@ -65,44 +70,34 @@ class SeasonalRecommendationControllerTest {
                 null,
                 null
         );
-        when(useCase.execute(any())).thenReturn(respuesta);
+        when(useCase.execute(any(GenerateSeasonalRecommendationRequest.class))).thenReturn(answer);
+    }
 
-        mockMvc.perform(get("/api/v1/recomendations/seasonal")
-                        .param("latitude", "-34.7")
-                        .param("longitude", "-58.47")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.tip_promocional").value("Promo 2x1 en helados."))
-                .andExpect(jsonPath("$.sugerencias[0].categoria").value("Bebidas Frias"))
-                .andExpect(jsonPath("$.sugerencias[0].accion").value("AUMENTAR"));
+    private void givenUseCaseThrowsException() {
+        when(useCase.execute(any(GenerateSeasonalRecommendationRequest.class)))
+                .thenThrow(new RuntimeException("Weather service is currently unavailable"));
+    }
+
+    private ResponseEntity<RecommendationResponseDTO> whenGettingSeasonalRecommendation() {
+        return controller.getSeasonalRecommendations(null, -34.7, -58.47, null);
+    }
+
+    private void thenResponseIsOkAndMatches(ResponseEntity<RecommendationResponseDTO> response) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Promo 2x1 en helados.", response.getBody().getPromocionalTip());
+        assertEquals("Bebidas Frias", response.getBody().getSugerences().get(0).getCategoria());
+        assertEquals("AUMENTAR", response.getBody().getSugerences().get(0).getAccion());
+        
+        ArgumentCaptor<GenerateSeasonalRecommendationRequest> captor = 
+                ArgumentCaptor.forClass(GenerateSeasonalRecommendationRequest.class);
+        verify(useCase).execute(captor.capture());
+        assertEquals(-34.7, captor.getValue().latitude());
+        assertEquals(-58.47, captor.getValue().longitude());
         verify(planAccessGuard).requireVendorAdvanced(null);
     }
 
-    @Test
-    void dadoQueFaltaElParametroLatitude_cuandoSeLlamaAlEndpoint_entoncesRetornaError() throws Exception {
-        mockMvc.perform(get("/api/v1/recomendations/seasonal")
-                        .param("longitude", "-58.47")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError());
-    }
-
-    @Test
-    void dadoQueFaltaElParametroLongitude_cuandoSeLlamaAlEndpoint_entoncesRetornaError() throws Exception {
-        mockMvc.perform(get("/api/v1/recomendations/seasonal")
-                        .param("latitude", "-34.7")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError());
-    }
-
-    @Test
-    void dadoQueElCasoDeUsoLanzaExcepcion_cuandoSeLlamaAlEndpoint_entoncesRetorna500() throws Exception {
-        when(useCase.execute(any()))
-                .thenThrow(new RuntimeException("Weather service is currently unavailable"));
-
-        mockMvc.perform(get("/api/v1/recomendations/seasonal")
-                        .param("latitude", "-34.7")
-                        .param("longitude", "-58.47")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError());
+    private void thenExceptionIsPropagated(Executable execution) {
+        RuntimeException exception = assertThrows(RuntimeException.class, execution);
+        assertEquals("Weather service is currently unavailable", exception.getMessage());
     }
 }

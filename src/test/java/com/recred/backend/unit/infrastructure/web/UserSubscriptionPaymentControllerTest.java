@@ -8,6 +8,7 @@ import com.recred.backend.domain.models.PeriodoSuscripcion;
 import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.infrastructure.web.UserSubscriptionPaymentController;
 import com.recred.backend.infrastructure.web.UserSubscriptionPaymentRequest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.ResponseEntity;
@@ -22,55 +23,70 @@ import static org.mockito.Mockito.when;
 
 class UserSubscriptionPaymentControllerTest {
 
+    private final UUID userId = UUID.randomUUID();
+
+    private CreateUserSubscriptionPayment useCase;
+    private ActivateUserSubscription activateUserSubscription;
+    private UserSubscriptionPaymentController controller;
+    private ResponseEntity<CreateUserSubscriptionPaymentResponse> response;
+
+    @BeforeEach
+    void setUp() {
+        useCase = mock(CreateUserSubscriptionPayment.class);
+        activateUserSubscription = mock(ActivateUserSubscription.class);
+        controller = new UserSubscriptionPaymentController(
+                useCase, activateUserSubscription);
+    }
+
     @Test
-    void createPayment_ShouldDelegateAndReturnPaymentData() {
-        CreateUserSubscriptionPayment useCase = mock(CreateUserSubscriptionPayment.class);
-        ActivateUserSubscription activateUserSubscription = mock(ActivateUserSubscription.class);
-        UserSubscriptionPaymentController controller =
-                new UserSubscriptionPaymentController(useCase, activateUserSubscription);
-        UUID userId = UUID.randomUUID();
-        CreateUserSubscriptionPaymentResponse useCaseResponse = response();
-        givenUseCaseResponse(useCase, useCaseResponse);
+    void givenValidRequestWhenCreatingPaymentThenDelegatesAndReturnsPaymentData() {
+        givenUseCaseReturnsResponse();
 
-        ResponseEntity<CreateUserSubscriptionPaymentResponse> response =
-                whenCreatingPayment(controller, userId);
+        whenCreatingPayment();
 
-        CreateUserSubscriptionPaymentRequest request = capturedRequest(useCase);
-        assertEquals(userId, request.usuarioId());
-        assertEquals(TipoPlan.AVANZADO, request.plan());
-        assertEquals(PeriodoSuscripcion.ANUAL, request.periodo());
-        assertEquals(useCaseResponse, response.getBody());
+        thenRequestContainsUserId();
+        thenRequestContainsPlan(TipoPlan.AVANZADO);
+        thenRequestContainsPeriod(PeriodoSuscripcion.ANUAL);
+        thenResponseBodyMatchesUseCaseResponse();
     }
 
-    private void givenUseCaseResponse(
-            CreateUserSubscriptionPayment useCase,
-            CreateUserSubscriptionPaymentResponse response
-    ) {
+    private void givenUseCaseReturnsResponse() {
         when(useCase.execute(org.mockito.ArgumentMatchers.any(
-                CreateUserSubscriptionPaymentRequest.class))).thenReturn(response);
+                CreateUserSubscriptionPaymentRequest.class)))
+                .thenReturn(expectedResponse());
     }
 
-    private ResponseEntity<CreateUserSubscriptionPaymentResponse> whenCreatingPayment(
-            UserSubscriptionPaymentController controller,
-            UUID userId
-    ) {
-        return controller.createPayment(new UserSubscriptionPaymentRequest(
-                userId,
-                TipoPlan.AVANZADO,
-                PeriodoSuscripcion.ANUAL
-        ));
+    private void whenCreatingPayment() {
+        response = controller.createPayment(
+                new UserSubscriptionPaymentRequest(
+                        userId, TipoPlan.AVANZADO, PeriodoSuscripcion.ANUAL));
     }
 
-    private CreateUserSubscriptionPaymentRequest capturedRequest(
-            CreateUserSubscriptionPayment useCase
-    ) {
+    private void thenRequestContainsUserId() {
+        assertEquals(userId, capturedRequest().usuarioId());
+    }
+
+    private void thenRequestContainsPlan(TipoPlan expected) {
+        assertEquals(expected, capturedRequest().plan());
+    }
+
+    private void thenRequestContainsPeriod(PeriodoSuscripcion expected) {
+        assertEquals(expected, capturedRequest().periodo());
+    }
+
+    private void thenResponseBodyMatchesUseCaseResponse() {
+        assertEquals(expectedResponse(), response.getBody());
+    }
+
+    private CreateUserSubscriptionPaymentRequest capturedRequest() {
         ArgumentCaptor<CreateUserSubscriptionPaymentRequest> captor =
-                ArgumentCaptor.forClass(CreateUserSubscriptionPaymentRequest.class);
+                ArgumentCaptor.forClass(
+                        CreateUserSubscriptionPaymentRequest.class);
         verify(useCase).execute(captor.capture());
         return captor.getValue();
     }
 
-    private CreateUserSubscriptionPaymentResponse response() {
+    private CreateUserSubscriptionPaymentResponse expectedResponse() {
         return new CreateUserSubscriptionPaymentResponse(
                 "https://pay.test/subscription",
                 TipoPlan.AVANZADO,

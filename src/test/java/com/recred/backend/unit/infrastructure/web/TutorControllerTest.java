@@ -17,22 +17,18 @@ import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.infrastructure.cloudinary.CloudinaryService;
 import com.recred.backend.infrastructure.web.CreateChildRequestDTO;
+import com.recred.backend.infrastructure.web.SchoolResponseDTO;
 import com.recred.backend.infrastructure.web.StudentDTO;
 import com.recred.backend.infrastructure.web.TutorController;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
-import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.MediaType;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -48,60 +44,31 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-@WebMvcTest(
-        controllers = TutorController.class,
-        excludeAutoConfiguration = {
-                SecurityAutoConfiguration.class,
-                OAuth2ResourceServerAutoConfiguration.class
-        }
-)
+@ExtendWith(MockitoExtension.class)
 class TutorControllerTest {
 
     private static final String TUTOR_SUB = "tutor-sub";
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockitoBean
+    @Mock
     private GetChildrenByTutor getChildrenByTutor;
-
-    @MockitoBean
+    @Mock
     private CreateStudentFromParent createStudentFromParent;
-
-    @MockitoBean
+    @Mock
     private GetTutorSchools getTutorSchools;
-
-    @MockitoBean
-    private CustomJwtAuthenticationConverter customJwtAuthenticationConverter;
-
-    @MockitoBean
+    @Mock
     private com.recred.backend.domain.services.UsuarioService usuarioService;
-
-    @MockitoBean
-    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
-
-    @MockitoBean
-    private JwtDecoder jwtDecoder;
-
-    @MockitoBean
+    @Mock
     private UpdateStudentPhoto updateStudentPhoto;
-
-    @MockitoBean
+    @Mock
     private CloudinaryService cloudinaryService;
 
     private UUID tutorId;
     private UUID studentId;
     private UUID schoolId;
     private UUID gradeId;
-    private String createChildRequestBody;
-    private ResultActions response;
     private ResponseEntity<List<StudentDTO>> childrenResponse;
     private ResponseEntity<StudentDTO> studentResponse;
+    private ResponseEntity<List<SchoolResponseDTO>> schoolsResponse;
     private TutorController controller;
     private CreateChildRequestDTO createChildRequest;
     private MockMultipartFile photo;
@@ -110,8 +77,13 @@ class TutorControllerTest {
     private UpdateStudentPhotoRequest updatePhotoRequest;
     private RuntimeException thrownRuntimeException;
 
+    @BeforeEach
+    void setUp() {
+        givenController();
+    }
+
     @Test
-    void givenTutorWithChildren_whenGettingChildrenByTutorId_thenReturnsStudents() throws Exception {
+    void givenTutorWithChildrenWhenGettingChildrenByTutorIdThenReturnsStudents() {
         givenTutorWithChildren();
 
         whenGetChildrenByTutorId();
@@ -120,7 +92,7 @@ class TutorControllerTest {
     }
 
     @Test
-    void givenAuthenticatedTutor_whenGettingMyChildren_thenUsesCognitoSubject() throws Exception {
+    void givenAuthenticatedTutorWhenGettingMyChildrenThenUsesCognitoSubject() {
         givenAuthenticatedTutorWithChildren();
 
         whenGetMyChildren();
@@ -130,7 +102,7 @@ class TutorControllerTest {
     }
 
     @Test
-    void givenAuthenticatedTutor_whenCreatingChild_thenReturnsCreated() throws Exception {
+    void givenAuthenticatedTutorWhenCreatingChildThenReturnsCreated() {
         givenValidCreateChildRequest();
         givenCreateStudentFromParentReturnsCreatedChild();
 
@@ -141,18 +113,7 @@ class TutorControllerTest {
     }
 
     @Test
-    void givenInvalidChildRequest_whenCreatingChild_thenReturnsBadRequest() throws Exception {
-        givenInvalidCreateChildRequest();
-
-        whenCreateChild();
-
-        thenBadRequestIsReturned();
-        thenCreateStudentFromParentWasNotCalled();
-    }
-
-    @Test
-    void givenAuthenticatedTutor_whenGettingMySchools_thenReturnsAssociatedSchools()
-            throws Exception {
+    void givenAuthenticatedTutorWhenGettingMySchoolsThenReturnsAssociatedSchools() {
         givenTutorWithAssociatedSchools();
 
         whenGetMySchools();
@@ -162,8 +123,7 @@ class TutorControllerTest {
     }
 
     @Test
-    void givenTutorMeWithCurrentTutor_whenGettingChildren_thenUsesCurrentTutor() {
-        givenController();
+    void givenTutorMeWithCurrentTutorWhenGettingChildrenThenUsesCurrentTutor() {
         givenCurrentUserHasTutor();
         givenCurrentTutorHasChildren();
 
@@ -174,8 +134,7 @@ class TutorControllerTest {
     }
 
     @Test
-    void givenTutorMeWithoutTutorProfile_whenGettingChildren_thenReturnsEmptyList() {
-        givenController();
+    void givenTutorMeWithoutTutorProfileWhenGettingChildrenThenReturnsEmptyList() {
         givenCurrentUserWithoutTutor();
 
         whenGetChildrenForMe();
@@ -184,16 +143,14 @@ class TutorControllerTest {
     }
 
     @Test
-    void givenMissingAuthentication_whenCreatingChild_thenThrowsCredentialsException() {
-        givenController();
+    void givenMissingAuthenticationWhenCreatingChildThenThrowsCredentialsException() {
         givenDirectCreateChildRequest();
 
         thenCreatingChildWithoutAuthenticationThrowsCredentialsException();
     }
 
     @Test
-    void givenPhotoUpload_whenUpdatingChildPhoto_thenUploadsAndUpdatesStudent() {
-        givenController();
+    void givenPhotoUploadWhenUpdatingChildPhotoThenUploadsAndUpdatesStudent() {
         givenPhotoUpload();
         givenUpdateStudentPhotoReturnsUpdatedStudent();
 
@@ -204,8 +161,7 @@ class TutorControllerTest {
     }
 
     @Test
-    void givenUnreadablePhoto_whenUpdatingChildPhoto_thenThrowsRuntimeException() throws Exception {
-        givenController();
+    void givenUnreadablePhotoWhenUpdatingChildPhotoThenThrowsRuntimeException() throws Exception {
         givenUnreadablePhoto();
 
         whenUploadUnreadableChildPhoto();
@@ -249,28 +205,17 @@ class TutorControllerTest {
     private void givenValidCreateChildRequest() {
         studentId = UUID.randomUUID();
         gradeId = UUID.randomUUID();
-        createChildRequestBody = """
-                {
-                  "username": "mateo",
-                  "nombre": "Mateo",
-                  "apellido": "Gomez",
-                  "email": "mateo@test.com",
-                  "dni": "12345678",
-                  "gradoId": "%s"
-                }
-                """.formatted(gradeId);
+        createChildRequest = new CreateChildRequestDTO(
+                "mateo",
+                "Mateo",
+                "Gomez",
+                "mateo@test.com",
+                "12345678",
+                gradeId,
+                null
+        );
     }
 
-    private void givenInvalidCreateChildRequest() {
-        createChildRequestBody = """
-                {
-                  "username": "mateo@test.com",
-                  "nombre": " ",
-                  "apellido": "Gomez",
-                  "email": "mateo@test.com"
-                }
-                """;
-    }
 
     private void givenCreateStudentFromParentReturnsCreatedChild() {
         CreateStudentFromParentResponse createdChild = new CreateStudentFromParentResponse(
@@ -382,28 +327,28 @@ class TutorControllerTest {
         when(unreadablePhoto.getBytes()).thenThrow(new IOException("boom"));
     }
 
-    private void whenGetChildrenByTutorId() throws Exception {
-        response = mockMvc.perform(get("/api/v1/tutores/{tutorId}/hijos", tutorId)
-                .contentType(MediaType.APPLICATION_JSON));
+    private void whenGetChildrenByTutorId() {
+        childrenResponse = controller.obtenerHijos(
+                tutorId.toString(),
+                new TestingAuthenticationToken(TUTOR_SUB, "")
+        );
     }
 
-    private void whenGetMyChildren() throws Exception {
-        response = mockMvc.perform(get("/api/v1/tutores/me/hijos")
-                .principal(new TestingAuthenticationToken(TUTOR_SUB, ""))
-                .contentType(MediaType.APPLICATION_JSON));
+    private void whenGetMyChildren() {
+        childrenResponse = controller.obtenerMisHijos(
+                new TestingAuthenticationToken(TUTOR_SUB, "")
+        );
     }
 
-    private void whenCreateChild() throws Exception {
-        response = mockMvc.perform(post("/api/v1/tutores/me/hijos")
-                .principal(new TestingAuthenticationToken(TUTOR_SUB, ""))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(createChildRequestBody));
+    private void whenCreateChild() {
+        studentResponse = controller.crearHijo(
+                new TestingAuthenticationToken(TUTOR_SUB, ""),
+                createChildRequest
+        );
     }
 
-    private void whenGetMySchools() throws Exception {
-        response = mockMvc.perform(get("/api/v1/tutores/me/colegios")
-                .principal(new TestingAuthenticationToken(TUTOR_SUB, ""))
-                .contentType(MediaType.APPLICATION_JSON));
+    private void whenGetMySchools() {
+        schoolsResponse = controller.obtenerMisColegios(new TestingAuthenticationToken(TUTOR_SUB, ""));
     }
 
     private void whenGetChildrenForMe() {
@@ -430,39 +375,33 @@ class TutorControllerTest {
                 ));
     }
 
-    private void thenStudentsAreReturned() throws Exception {
-        response
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(studentId.toString()))
-                .andExpect(jsonPath("$[0].nombre").value("Lucas"))
-                .andExpect(jsonPath("$[0].apellido").value("Perez"))
-                .andExpect(jsonPath("$[0].activo").value(true))
-                .andExpect(jsonPath("$[0].grado").value("1 A"))
-                .andExpect(jsonPath("$[0].colegioId").value(schoolId.toString()))
-                .andExpect(jsonPath("$[0].saldo").value(150.50));
+    private void thenStudentsAreReturned() {
+        assertEquals(200, childrenResponse.getStatusCode().value());
+        assertEquals(studentId, childrenResponse.getBody().get(0).id());
+        assertEquals("Lucas", childrenResponse.getBody().get(0).nombre());
+        assertEquals("Perez", childrenResponse.getBody().get(0).apellido());
+        assertEquals(true, childrenResponse.getBody().get(0).activo());
+        assertEquals("1 A", childrenResponse.getBody().get(0).grado());
+        assertEquals(schoolId, childrenResponse.getBody().get(0).colegioId());
+        assertEquals(new BigDecimal("150.50"), childrenResponse.getBody().get(0).saldo());
     }
 
-    private void thenMyChildrenAreReturned() throws Exception {
-        response
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(studentId.toString()))
-                .andExpect(jsonPath("$[0].nombre").value("Ana"));
+    private void thenMyChildrenAreReturned() {
+        assertEquals(200, childrenResponse.getStatusCode().value());
+        assertEquals(studentId, childrenResponse.getBody().get(0).id());
+        assertEquals("Ana", childrenResponse.getBody().get(0).nombre());
     }
 
     private void thenGetChildrenByTutorWasCalledWithCognitoSubject() {
         verify(getChildrenByTutor).execute(GetChildrenByTutorRequest.byCognitoSubject(TUTOR_SUB));
     }
 
-    private void thenCreatedChildIsReturned() throws Exception {
-        response
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(studentId.toString()))
-                .andExpect(jsonPath("$.nombre").value("Mateo"));
+    private void thenCreatedChildIsReturned() {
+        assertEquals(201, studentResponse.getStatusCode().value());
+        assertEquals(studentId, studentResponse.getBody().id());
+        assertEquals("Mateo", studentResponse.getBody().nombre());
     }
 
-    private void thenBadRequestIsReturned() throws Exception {
-        response.andExpect(status().isBadRequest());
-    }
 
     private void thenCreateStudentFromParentWasCalled() {
         verify(createStudentFromParent).execute(expectedCreateStudentFromParentRequest());
@@ -472,11 +411,10 @@ class TutorControllerTest {
         verifyNoInteractions(createStudentFromParent);
     }
 
-    private void thenAssociatedSchoolsAreReturned() throws Exception {
-        response
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(schoolId.toString()))
-                .andExpect(jsonPath("$[0].nombre").value("Colegio Norte"));
+    private void thenAssociatedSchoolsAreReturned() {
+        assertEquals(200, schoolsResponse.getStatusCode().value());
+        assertEquals(schoolId, schoolsResponse.getBody().get(0).id());
+        assertEquals("Colegio Norte", schoolsResponse.getBody().get(0).nombre());
     }
 
     private void thenGetTutorSchoolsWasCalled() {

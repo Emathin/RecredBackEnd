@@ -11,7 +11,6 @@ import com.recred.backend.domain.models.Buffet;
 import com.recred.backend.domain.models.Kiosquero;
 import com.recred.backend.domain.models.Producto;
 import com.recred.backend.domain.models.Usuario;
-import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.EstadoRetiro;
 import com.recred.backend.domain.services.UsuarioService;
@@ -39,16 +38,22 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class BuffetControllerTest {
 
-    @Mock
-    private GetProductsByBuffetUser getProductsByBuffetUser;
-
-    @Mock
-    private UsuarioService usuarioService;
-
-    @Mock
-    private GetScheduledPickups getScheduledPickups;
+    @Mock private GetProductsByBuffetUser getProductsByBuffetUser;
+    @Mock private UsuarioService usuarioService;
+    @Mock private GetScheduledPickups getScheduledPickups;
 
     private BuffetController buffetController;
+
+    private final UUID USER_ID = UUID.randomUUID();
+    private final UUID PRODUCT_ID = UUID.randomUUID();
+    private final UUID BUFFET_ID = UUID.randomUUID();
+    private final UUID FRANJA_ID = UUID.randomUUID();
+    private final String PRODUCT_NAME = "Producto de Prueba";
+    private final String SUB = "sub-123";
+    private final String SEARCH = "test";
+    private final LocalDate FECHA = LocalDate.now();
+    private final EstadoRetiro ESTADO = EstadoRetiro.PROGRAMADO;
+    private final EstadoCompra STATUS = EstadoCompra.PENDIENTE;
 
     @BeforeEach
     void setUp() {
@@ -60,106 +65,116 @@ class BuffetControllerTest {
     }
 
     @Test
-    void findAllByUserId_deberiaRetornarListaDeProductosY200Ok() {
-        UUID userId = UUID.randomUUID();
-        Producto producto = new Producto();
-        producto.setId(UUID.randomUUID());
-        producto.setNombre("Producto de Prueba");
-
-        when(getProductsByBuffetUser.execute(new GetProductsByBuffetUserRequest(userId)))
-                .thenReturn(new GetProductsByBuffetUserResponse(
-                        List.of(ProductResponse.fromDomain(producto))));
-
-        ResponseEntity<List<ProductResponseDTO>> response = buffetController.findAllByUserId(userId);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(1, response.getBody().size());
-        assertEquals(producto.getId(), response.getBody().get(0).id());
-        verify(getProductsByBuffetUser, times(1))
-                .execute(new GetProductsByBuffetUserRequest(userId));
+    void findAllByUserIdShouldReturnProductListAnd200Ok() {
+        givenProductsExistForBuffetUser();
+        
+        ResponseEntity<List<ProductResponseDTO>> response = whenFindingAllByUserId();
+        
+        thenProductListResponseIsOk(response);
+        thenDelegatesToGetProductsByBuffetUser();
     }
 
     @Test
-    void getScheduledPickups_cuandoUsuarioEsKiosqueroAsociadoABuffet_deberiaRetornarListadePickupsY200Ok() {
-        String sub = "sub-123";
-        Jwt jwt = mock(Jwt.class);
-        when(jwt.getSubject()).thenReturn(sub);
+    void getScheduledPickupsShouldReturnPickupsAnd200OkWhenUserIsKiosquero() {
+        Jwt jwt = givenJwt();
+        givenUserIsKiosqueroAssociatedToBuffet();
+        givenScheduledPickupsExist();
+        
+        ResponseEntity<List<ScheduledPickupResponseDTO>> response = 
+                whenGettingScheduledPickups(jwt);
+                
+        thenScheduledPickupsResponseIsOk(response);
+        thenDelegatesToGetScheduledPickups();
+    }
 
-        UUID buffetId = UUID.randomUUID();
+    @Test
+    void getScheduledPickupsShouldThrowExceptionWhenUserIsNotKiosquero() {
+        Jwt jwt = givenJwt();
+        givenUserIsNotKiosquero();
+        
+        assertThrows(RuntimeException.class, () -> 
+                buffetController.getScheduledPickups(jwt, null, null, null, null, null)
+        );
+        
+        thenDoesNotDelegateToGetScheduledPickups();
+    }
+
+    private void givenProductsExistForBuffetUser() {
+        Producto producto = new Producto();
+        producto.setId(PRODUCT_ID);
+        producto.setNombre(PRODUCT_NAME);
+        when(getProductsByBuffetUser.execute(new GetProductsByBuffetUserRequest(USER_ID)))
+                .thenReturn(new GetProductsByBuffetUserResponse(
+                        List.of(ProductResponse.fromDomain(producto))));
+    }
+
+    private Jwt givenJwt() {
+        Jwt jwt = mock(Jwt.class);
+        when(jwt.getSubject()).thenReturn(SUB);
+        return jwt;
+    }
+
+    private void givenUserIsKiosqueroAssociatedToBuffet() {
         Usuario usuario = new Usuario();
         Kiosquero kiosquero = new Kiosquero();
         Buffet buffet = new Buffet();
-        buffet.setId(buffetId);
+        buffet.setId(BUFFET_ID);
         kiosquero.setBuffet(buffet);
         usuario.setKiosquero(kiosquero);
+        when(usuarioService.obtenerUsuarioActual(SUB)).thenReturn(usuario);
+    }
 
-        LocalDate fecha = LocalDate.now();
-        EstadoRetiro estado = EstadoRetiro.PROGRAMADO;
-        EstadoCompra status = EstadoCompra.PENDIENTE;
-        UUID franjaId = UUID.randomUUID();
-        String search = "test";
+    private void givenUserIsNotKiosquero() {
+        Usuario usuario = new Usuario();
+        when(usuarioService.obtenerUsuarioActual(SUB)).thenReturn(usuario);
+    }
 
-        Purchase purchase = new Purchase();
-        purchase.setId(UUID.randomUUID());
-
-        when(usuarioService.obtenerUsuarioActual(sub)).thenReturn(usuario);
+    private void givenScheduledPickupsExist() {
         when(getScheduledPickups.execute(new GetScheduledPickupsRequest(
-                buffetId,
-                fecha,
-                estado,
-                status,
-                franjaId,
-                search)))
+                BUFFET_ID, FECHA, ESTADO, STATUS, FRANJA_ID, SEARCH)))
                 .thenReturn(List.of(new GetScheduledPickupsResponse(
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
-                        "John Doe",
-                        new java.math.BigDecimal("10.00"),
-                        "PENDIENTE",
-                        "Pendiente",
-                        "PROGRAMADO",
-                        "CREDITOS",
-                        java.time.LocalDateTime.now(),
-                        "W123",
-                        UUID.randomUUID(),
-                        "Recreo 1",
-                        fecha,
-                        List.of()
+                        UUID.randomUUID(), UUID.randomUUID(), "John Doe",
+                        new java.math.BigDecimal("10.00"), "PENDIENTE", "Pendiente",
+                        "PROGRAMADO", "CREDITOS", java.time.LocalDateTime.now(),
+                        "W123", UUID.randomUUID(), "Recreo 1", FECHA, List.of()
                 )));
+    }
 
-        ResponseEntity<List<ScheduledPickupResponseDTO>> response = buffetController.getScheduledPickups(
-                jwt, fecha, estado, status, franjaId, search
-        );
+    private ResponseEntity<List<ProductResponseDTO>> whenFindingAllByUserId() {
+        return buffetController.findAllByUserId(USER_ID);
+    }
 
+    private ResponseEntity<List<ScheduledPickupResponseDTO>> whenGettingScheduledPickups(Jwt jwt) {
+        return buffetController.getScheduledPickups(jwt, FECHA, ESTADO, STATUS, FRANJA_ID, SEARCH);
+    }
+
+    private void thenProductListResponseIsOk(ResponseEntity<List<ProductResponseDTO>> response) {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
-        verify(usuarioService, times(1)).obtenerUsuarioActual(sub);
-        verify(getScheduledPickups, times(1)).execute(new GetScheduledPickupsRequest(
-                buffetId,
-                fecha,
-                estado,
-                status,
-                franjaId,
-                search));
+        assertEquals(PRODUCT_ID, response.getBody().get(0).id());
     }
 
-    @Test
-    void getScheduledPickups_cuandoUsuarioNoTieneKiosquero_deberiaLanzarExcepcion() {
-        String sub = "sub-123";
-        Jwt jwt = mock(Jwt.class);
-        when(jwt.getSubject()).thenReturn(sub);
+    private void thenDelegatesToGetProductsByBuffetUser() {
+        verify(getProductsByBuffetUser, times(1))
+                .execute(new GetProductsByBuffetUserRequest(USER_ID));
+    }
 
-        Usuario usuario = new Usuario();
+    private void thenScheduledPickupsResponseIsOk(
+            ResponseEntity<List<ScheduledPickupResponseDTO>> response) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+    }
 
-        when(usuarioService.obtenerUsuarioActual(sub)).thenReturn(usuario);
+    private void thenDelegatesToGetScheduledPickups() {
+        verify(usuarioService, times(1)).obtenerUsuarioActual(SUB);
+        verify(getScheduledPickups, times(1)).execute(new GetScheduledPickupsRequest(
+                BUFFET_ID, FECHA, ESTADO, STATUS, FRANJA_ID, SEARCH));
+    }
 
-        assertThrows(RuntimeException.class, () ->
-                buffetController.getScheduledPickups(jwt, null, null, null, null, null)
-        );
-
-        verify(usuarioService, times(1)).obtenerUsuarioActual(sub);
+    private void thenDoesNotDelegateToGetScheduledPickups() {
+        verify(usuarioService, times(1)).obtenerUsuarioActual(SUB);
         verifyNoInteractions(getScheduledPickups);
     }
 }

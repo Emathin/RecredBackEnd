@@ -9,88 +9,223 @@ import com.recred.backend.application.SchoolAssistantConversations;
 import com.recred.backend.domain.models.EstadoChatSesion;
 import com.recred.backend.domain.models.RolChatMensaje;
 import com.recred.backend.domain.models.SchoolAssistantRole;
+import com.recred.backend.infrastructure.web.PlanAccessGuard;
+import com.recred.backend.infrastructure.web.SchoolAssistantController;
+import com.recred.backend.infrastructure.web.SchoolAssistantMessageResponse;
+import com.recred.backend.infrastructure.web.SchoolAssistantRequest;
+import com.recred.backend.infrastructure.web.SchoolAssistantResponse;
+import com.recred.backend.infrastructure.web.SchoolAssistantSessionResponse;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import com.recred.backend.infrastructure.web.SchoolAssistantController;
-import com.recred.backend.infrastructure.web.SchoolAssistantMessageResponse;
-import com.recred.backend.infrastructure.web.SchoolAssistantSessionResponse;
-import com.recred.backend.infrastructure.web.PlanAccessGuard;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.security.authentication.TestingAuthenticationToken;
-import org.springframework.http.MediaType;
-import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(MockitoExtension.class)
 class SchoolAssistantControllerTest {
 
-    private AskSchoolAssistant askSchoolAssistant;
-    private SchoolAssistantConversations conversations;
-    private PlanAccessGuard planAccessGuard;
+    private static final String STUDENT_SUBJECT = "student-sub";
+    private static final String TUTOR_SUBJECT = "tutor-sub";
+    private static final String KIOSQUERO_SUBJECT = "kiosquero-sub";
+    private static final UUID SESSION_ID = UUID.randomUUID();
+    private static final UUID MESSAGE_ID = UUID.randomUUID();
+
+    @Mock private AskSchoolAssistant askSchoolAssistant;
+    @Mock private SchoolAssistantConversations conversations;
+    @Mock private PlanAccessGuard planAccessGuard;
+
     private SchoolAssistantController controller;
-    private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        askSchoolAssistant = mock(AskSchoolAssistant.class);
-        conversations = mock(SchoolAssistantConversations.class);
-        planAccessGuard = mock(PlanAccessGuard.class);
         controller = new SchoolAssistantController(
                 askSchoolAssistant,
                 conversations,
                 planAccessGuard
         );
-        mockMvc = MockMvcBuilders
-                .standaloneSetup(controller)
-                .build();
     }
 
     @Test
-    void askDelegatesMessageToUseCase() throws Exception {
-        TestingAuthenticationToken authentication =
-                new TestingAuthenticationToken("student-sub", "");
-        UUID sessionId = UUID.randomUUID();
+    void askDelegatesMessageToUseCaseAndReturnsResponse() {
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken(STUDENT_SUBJECT, "");
+        SchoolAssistantRequest request = givenAssistantRequest("saldo", SESSION_ID);
+        givenAskSchoolAssistantReturns(SESSION_ID, "Tenes $500.00 disponibles.", List.of("SALDO"),
+                "ALUMNO", "BALANCE", givenBalanceActionResponse());
+
+        SchoolAssistantResponse response =
+                controller.askStudent(authentication, request);
+
+        thenAskResponseIsOkAndMatches(response, SESSION_ID, "Tenes $500.00 disponibles.", "BALANCE");
+        thenDelegatesToAskSchoolAssistant(STUDENT_SUBJECT, SchoolAssistantRole.ALUMNO, "saldo");
+    }
+
+    @Test
+    void askReturnsReadableRecessLabelForAdvancePurchaseAction() {
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken(STUDENT_SUBJECT, "");
+        SchoolAssistantRequest request = givenAssistantRequest("confirmar", null);
+        givenAskSchoolAssistantReturns(SESSION_ID, "Compra creada.", List.of("COMPRAS"),
+                "ALUMNO", "CONFIRM_PURCHASE", givenAdvancePurchaseActionResponse());
+
+        SchoolAssistantResponse response =
+                controller.askStudent(authentication, request);
+
+        assertEquals("segundo recreo", response.action().recessTime());
+    }
+
+    @Test
+    void askTutorDelegatesToTutorUseCase() {
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken(TUTOR_SUBJECT, "");
+        SchoolAssistantRequest request = givenAssistantRequest("saldo de mis hijos", null);
+        givenAskSchoolAssistantReturns(SESSION_ID, "Tu hijo tiene $500.00.", List.of("HIJOS"),
+                "TUTOR", "UNKNOWN", null);
+
+        SchoolAssistantResponse response =
+                controller.askTutor(authentication, request);
+
+        assertEquals(SESSION_ID, response.sessionId());
+        thenDelegatesToAskSchoolAssistant(TUTOR_SUBJECT, SchoolAssistantRole.TUTOR, "saldo de mis hijos");
+    }
+
+    @Test
+    void askKiosqueroDelegatesToKiosqueroUseCaseAndChecksGuard() {
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken(KIOSQUERO_SUBJECT, "");
+        SchoolAssistantRequest request = givenAssistantRequest("stock", null);
+        givenAskSchoolAssistantReturns(SESSION_ID, "Tenes 7 productos en stock.", List.of("STOCK"),
+                "KIOSQUERO", "UNKNOWN", null);
+
+        SchoolAssistantResponse response =
+                controller.askKiosquero(authentication, request);
+
+        thenDelegatesToAskSchoolAssistant(KIOSQUERO_SUBJECT, SchoolAssistantRole.KIOSQUERO, "stock");
+        verify(planAccessGuard).requireVendorIntermediate(authentication);
+    }
+
+    @Test
+    void studentSessionsReturnsSessions() {
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken(STUDENT_SUBJECT, "");
+        givenStudentSessions();
+
+        List<SchoolAssistantSessionResponse> sessions = controller.studentSessions(authentication, 0, 20);
+
+        assertEquals(1, sessions.size());
+        assertEquals(SESSION_ID, sessions.get(0).sessionId());
+        assertEquals(EstadoChatSesion.ABIERTA, sessions.get(0).status());
+    }
+
+    @Test
+    void studentMessagesReturnsMessages() {
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken(STUDENT_SUBJECT, "");
+        givenStudentMessages();
+
+        List<SchoolAssistantMessageResponse> messages =
+                controller.studentMessages(authentication, SESSION_ID, 0, 20);
+
+        assertEquals(1, messages.size());
+        assertEquals(MESSAGE_ID, messages.get(0).id());
+        assertEquals("saldo", messages.get(0).content());
+    }
+
+    @Test
+    void closeAndDeleteStudentSessionReturnNoContent() {
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken(STUDENT_SUBJECT, "");
+
+        ResponseEntity<Void> closeResponse = controller.closeStudentSession(authentication, SESSION_ID);
+        ResponseEntity<Void> deleteResponse = controller.deleteStudentSession(authentication, SESSION_ID);
+
+        assertEquals(HttpStatus.NO_CONTENT, closeResponse.getStatusCode());
+        assertEquals(HttpStatus.NO_CONTENT, deleteResponse.getStatusCode());
+        verify(conversations).closeStudentSession(STUDENT_SUBJECT, SESSION_ID);
+        verify(conversations).deleteStudentSession(STUDENT_SUBJECT, SESSION_ID);
+    }
+
+    @Test
+    void tutorSessionEndpointsDelegateToAuthenticatedSubject() {
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken(TUTOR_SUBJECT, "");
+        givenTutorSessions();
+        givenTutorMessages();
+
+        List<SchoolAssistantSessionResponse> sessions = controller.tutorSessions(authentication, 1, 5);
+        List<SchoolAssistantMessageResponse> messages =
+                controller.tutorMessages(authentication, SESSION_ID, 2, 10);
+        ResponseEntity<Void> closeResponse = controller.closeTutorSession(authentication, SESSION_ID);
+        ResponseEntity<Void> deleteResponse = controller.deleteTutorSession(authentication, SESSION_ID);
+
+        assertEquals(SESSION_ID, sessions.get(0).sessionId());
+        assertEquals(MESSAGE_ID, messages.get(0).id());
+        assertEquals(HttpStatus.NO_CONTENT, closeResponse.getStatusCode());
+        assertEquals(HttpStatus.NO_CONTENT, deleteResponse.getStatusCode());
+        verify(conversations).closeTutorSession(TUTOR_SUBJECT, SESSION_ID);
+        verify(conversations).deleteTutorSession(TUTOR_SUBJECT, SESSION_ID);
+    }
+
+    @Test
+    void kiosqueroSessionEndpointsDelegateToAuthenticatedSubject() {
+        TestingAuthenticationToken authentication = new TestingAuthenticationToken(KIOSQUERO_SUBJECT, "");
+        givenKiosqueroSessions();
+        givenKiosqueroMessages();
+
+        List<SchoolAssistantSessionResponse> sessions = controller.kiosqueroSessions(authentication, 1, 5);
+        List<SchoolAssistantMessageResponse> messages =
+                controller.kiosqueroMessages(authentication, SESSION_ID, 2, 10);
+        ResponseEntity<Void> closeResponse = controller.closeKiosqueroSession(authentication, SESSION_ID);
+        ResponseEntity<Void> deleteResponse = controller.deleteKiosqueroSession(authentication, SESSION_ID);
+
+        assertEquals(SESSION_ID, sessions.get(0).sessionId());
+        assertEquals(MESSAGE_ID, messages.get(0).id());
+        assertEquals(HttpStatus.NO_CONTENT, closeResponse.getStatusCode());
+        assertEquals(HttpStatus.NO_CONTENT, deleteResponse.getStatusCode());
+        verify(conversations).closeKiosqueroSession(KIOSQUERO_SUBJECT, SESSION_ID);
+        verify(conversations).deleteKiosqueroSession(KIOSQUERO_SUBJECT, SESSION_ID);
+    }
+
+    @Test
+    void tutorEndpointWithoutAuthenticationThrowsCredentialsException() {
+        Executable execution = () -> controller.tutorSessions(null, 0, 20);
+
+        assertThrows(AuthenticationCredentialsNotFoundException.class, execution);
+    }
+
+    private SchoolAssistantRequest givenAssistantRequest(String message, UUID sessionId) {
+        return new SchoolAssistantRequest(sessionId, message);
+    }
+
+    private void givenAskSchoolAssistantReturns(
+            UUID sessionId,
+            String textResponse,
+            List<String> capabilities,
+            String role,
+            String intent,
+            AskSchoolAssistantResponse.ActionResponse action
+    ) {
         LocalDateTime dateTime = LocalDateTime.of(2026, 5, 27, 12, 0);
         AskSchoolAssistantResponse answer = new AskSchoolAssistantResponse(
                 sessionId,
-                "Tenes $500.00 disponibles.",
-                List.of("SALDO"),
+                textResponse,
+                capabilities,
                 dateTime,
                 true,
                 "gemini-test",
-                "ALUMNO",
-                "BALANCE",
-                new AskSchoolAssistantResponse.ActionResponse(
-                        "CONSULTA_SALDO",
-                        "INFORMATIVA",
-                        false,
-                        List.of(),
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        Map.of("saldo", "500.00")
-                ),
+                role,
+                intent,
+                action,
                 List.of(new AskSchoolAssistantResponse.SuggestionResponse(
                         "Ultimas compras",
                         "mostrame mis ultimas compras",
@@ -99,331 +234,103 @@ class SchoolAssistantControllerTest {
                 Map.of("saldo", "500.00")
         );
         when(askSchoolAssistant.execute(any())).thenReturn(answer);
-
-        mockMvc.perform(post("/api/v1/ia/alumnos/me/asistente/mensajes")
-                        .principal(authentication)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "sesionId": "%s",
-                                  "mensaje": "saldo"
-                                }
-                                """.formatted(sessionId)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.sesionId").value(sessionId.toString()))
-                .andExpect(jsonPath("$.respuesta").value("Tenes $500.00 disponibles."))
-                .andExpect(jsonPath("$.capacidades[0]").value("SALDO"))
-                .andExpect(jsonPath("$.generadoPorIa").value(true))
-                .andExpect(jsonPath("$.modelo").value("gemini-test"))
-                .andExpect(jsonPath("$.rol").value("ALUMNO"))
-                .andExpect(jsonPath("$.intencion").value("BALANCE"))
-                .andExpect(jsonPath("$.accion.tipo").value("CONSULTA_SALDO"))
-                .andExpect(jsonPath("$.accion.estado").value("INFORMATIVA"))
-                .andExpect(jsonPath("$.accion.datos.saldo").value("500.00"))
-                .andExpect(jsonPath("$.sugerencias[0].mensaje")
-                        .value("mostrame mis ultimas compras"))
-                .andExpect(jsonPath("$.datos.saldo").value("500.00"));
-
-        ArgumentCaptor<AskSchoolAssistantRequest> requestCaptor = ArgumentCaptor
-                .forClass(AskSchoolAssistantRequest.class);
-        verify(askSchoolAssistant).execute(requestCaptor.capture());
-        AskSchoolAssistantRequest useCaseRequest = requestCaptor.getValue();
-        assertEquals("student-sub", useCaseRequest.cognitoSubject());
-        assertEquals(SchoolAssistantRole.ALUMNO, useCaseRequest.role());
-        assertEquals(sessionId, useCaseRequest.sessionId());
-        assertEquals("saldo", useCaseRequest.message());
     }
 
-    @Test
-    void askReturnsReadableRecessLabelForAdvancePurchaseAction() throws Exception {
-        TestingAuthenticationToken authentication =
-                new TestingAuthenticationToken("student-sub", "");
-        UUID sessionId = UUID.randomUUID();
-        UUID purchaseId = UUID.randomUUID();
-        AskSchoolAssistantResponse.ActionResponse action =
-                new AskSchoolAssistantResponse.ActionResponse(
+    private AskSchoolAssistantResponse.ActionResponse givenBalanceActionResponse() {
+        return new AskSchoolAssistantResponse.ActionResponse(
+                "CONSULTA_SALDO",
+                "INFORMATIVA",
+                false,
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                Map.of("saldo", "500.00")
+        );
+    }
+
+    private AskSchoolAssistantResponse.ActionResponse givenAdvancePurchaseActionResponse() {
+        return new AskSchoolAssistantResponse.ActionResponse(
                 "COMPRA_ANTICIPADA",
                 "EJECUTADA",
                 false,
                 List.of(),
-                purchaseId,
+                UUID.randomUUID(),
                 "PENDIENTE",
                 "TORO",
                 new BigDecimal("5250.00"),
                 "segundo recreo",
                 Map.of()
         );
-        AskSchoolAssistantResponse answer = new AskSchoolAssistantResponse(
-                sessionId,
-                "Compra creada.",
-                List.of("COMPRAS"),
-                LocalDateTime.of(2026, 5, 27, 12, 0),
-                false,
-                "fixed",
-                "ALUMNO",
-                "CONFIRM_PURCHASE",
-                action,
-                List.of(),
-                Map.of()
-        );
-        when(askSchoolAssistant.execute(any())).thenReturn(answer);
-
-        mockMvc.perform(post("/api/v1/ia/alumnos/me/asistente/mensajes")
-                        .principal(authentication)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "mensaje": "confirmar"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accion.recreo").value("segundo recreo"));
     }
 
-    @Test
-    void askTutorDelegatesToTutorUseCase() throws Exception {
-        UUID sessionId = UUID.randomUUID();
-        TestingAuthenticationToken authentication =
-                new TestingAuthenticationToken("tutor-sub", "");
-        AskSchoolAssistantResponse answer = new AskSchoolAssistantResponse(
-                sessionId,
-                "Tu hijo tiene $500.00.",
-                List.of("HIJOS"),
-                LocalDateTime.of(2026, 5, 27, 12, 0),
-                true,
-                "gemini-test",
-                "TUTOR",
-                "UNKNOWN",
-                null,
-                List.of(),
-                Map.of()
-        );
-        when(askSchoolAssistant.execute(any())).thenReturn(answer);
-
-        mockMvc.perform(post("/api/v1/ia/tutores/me/asistente/mensajes")
-                        .principal(authentication)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "mensaje": "saldo de mis hijos"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.sesionId").value(sessionId.toString()))
-                .andExpect(jsonPath("$.capacidades[0]").value("HIJOS"));
-
-        ArgumentCaptor<AskSchoolAssistantRequest> requestCaptor = ArgumentCaptor
-                .forClass(AskSchoolAssistantRequest.class);
-        verify(askSchoolAssistant).execute(requestCaptor.capture());
-        assertEquals("tutor-sub", requestCaptor.getValue().cognitoSubject());
-        assertEquals(SchoolAssistantRole.TUTOR, requestCaptor.getValue().role());
-    }
-
-    @Test
-    void askKiosqueroDelegatesToKiosqueroUseCase() throws Exception {
-        UUID sessionId = UUID.randomUUID();
-        TestingAuthenticationToken authentication =
-                new TestingAuthenticationToken("kiosquero-sub", "");
-        AskSchoolAssistantResponse answer = new AskSchoolAssistantResponse(
-                sessionId,
-                "Tenes 7 productos en stock.",
-                List.of("STOCK"),
-                LocalDateTime.of(2026, 5, 27, 12, 0),
-                true,
-                "gemini-test",
-                "KIOSQUERO",
-                "UNKNOWN",
-                null,
-                List.of(),
-                Map.of()
-        );
-        when(askSchoolAssistant.execute(any())).thenReturn(answer);
-
-        mockMvc.perform(post("/api/v1/ia/kiosqueros/me/asistente/mensajes")
-                        .principal(authentication)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "mensaje": "stock"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.sesionId").value(sessionId.toString()))
-                .andExpect(jsonPath("$.capacidades[0]").value("STOCK"));
-
-        ArgumentCaptor<AskSchoolAssistantRequest> requestCaptor = ArgumentCaptor
-                .forClass(AskSchoolAssistantRequest.class);
-        verify(askSchoolAssistant).execute(requestCaptor.capture());
-        assertEquals("kiosquero-sub", requestCaptor.getValue().cognitoSubject());
-        assertEquals(SchoolAssistantRole.KIOSQUERO, requestCaptor.getValue().role());
-        verify(planAccessGuard).requireVendorIntermediate(authentication);
-    }
-
-    @Test
-    void studentSessionsReturnsSessions() throws Exception {
-        TestingAuthenticationToken authentication =
-                new TestingAuthenticationToken("student-sub", "");
-        UUID sessionId = UUID.randomUUID();
+    private void givenStudentSessions() {
         LocalDateTime now = LocalDateTime.of(2026, 5, 27, 12, 0);
-        SchoolAssistantConversationSessionResponse session =
-                new SchoolAssistantConversationSessionResponse(
-                sessionId,
-                EstadoChatSesion.ABIERTA,
-                now.minusMinutes(5),
-                now
+        SchoolAssistantConversationSessionResponse session = new SchoolAssistantConversationSessionResponse(
+                SESSION_ID, EstadoChatSesion.ABIERTA, now.minusMinutes(5), now
         );
-        when(conversations.findStudentSessions("student-sub", 0, 20))
-                .thenReturn(List.of(session));
-
-        mockMvc.perform(get("/api/v1/ia/alumnos/me/asistente/sesiones")
-                        .principal(authentication))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].sesionId").value(sessionId.toString()))
-                .andExpect(jsonPath("$[0].estado").value("ABIERTA"));
+        when(conversations.findStudentSessions(STUDENT_SUBJECT, 0, 20)).thenReturn(List.of(session));
     }
 
-    @Test
-    void studentMessagesReturnsMessages() throws Exception {
-        TestingAuthenticationToken authentication =
-                new TestingAuthenticationToken("student-sub", "");
-        UUID sessionId = UUID.randomUUID();
-        UUID messageId = UUID.randomUUID();
-        SchoolAssistantConversationMessageResponse message =
-                new SchoolAssistantConversationMessageResponse(
-                messageId,
-                sessionId,
-                RolChatMensaje.USUARIO,
-                "saldo",
-                null,
-                LocalDateTime.of(2026, 5, 27, 12, 0)
+    private void givenStudentMessages() {
+        SchoolAssistantConversationMessageResponse message = new SchoolAssistantConversationMessageResponse(
+                MESSAGE_ID, SESSION_ID, RolChatMensaje.USUARIO, "saldo", null, LocalDateTime.now()
         );
-        when(conversations.findStudentMessages("student-sub", sessionId, 0, 20))
-                .thenReturn(List.of(message));
-
-        mockMvc.perform(get(
-                        "/api/v1/ia/alumnos/me/asistente/sesiones/{sesionId}/mensajes",
-                        sessionId
-                ).principal(authentication))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(messageId.toString()))
-                .andExpect(jsonPath("$[0].contenido").value("saldo"));
+        when(conversations.findStudentMessages(STUDENT_SUBJECT, SESSION_ID, 0, 20)).thenReturn(List.of(message));
     }
 
-    @Test
-    void closeAndDeleteStudentSessionReturnNoContent() throws Exception {
-        TestingAuthenticationToken authentication =
-                new TestingAuthenticationToken("student-sub", "");
-        UUID sessionId = UUID.randomUUID();
-
-        mockMvc.perform(patch(
-                        "/api/v1/ia/alumnos/me/asistente/sesiones/{sesionId}/cerrar",
-                        sessionId
-                ).principal(authentication))
-                .andExpect(status().isNoContent());
-
-        mockMvc.perform(delete(
-                        "/api/v1/ia/alumnos/me/asistente/sesiones/{sesionId}",
-                        sessionId
-                ).principal(authentication))
-                .andExpect(status().isNoContent());
-
-        verify(conversations).closeStudentSession("student-sub", sessionId);
-        verify(conversations).deleteStudentSession("student-sub", sessionId);
+    private void givenTutorSessions() {
+        SchoolAssistantConversationSessionResponse session = new SchoolAssistantConversationSessionResponse(
+                SESSION_ID, EstadoChatSesion.CERRADA, LocalDateTime.now(), LocalDateTime.now()
+        );
+        when(conversations.findTutorSessions(TUTOR_SUBJECT, 1, 5)).thenReturn(List.of(session));
     }
 
-    @Test
-    void tutorSessionEndpointsDelegateToAuthenticatedSubject() {
-        UUID sessionId = UUID.randomUUID();
-        UUID messageId = UUID.randomUUID();
-        TestingAuthenticationToken authentication =
-                new TestingAuthenticationToken("tutor-sub", "");
-        SchoolAssistantConversationSessionResponse session =
-                new SchoolAssistantConversationSessionResponse(
-                sessionId,
-                EstadoChatSesion.CERRADA,
-                LocalDateTime.of(2026, 5, 27, 11, 0),
-                LocalDateTime.of(2026, 5, 27, 12, 0)
+    private void givenTutorMessages() {
+        SchoolAssistantConversationMessageResponse message = new SchoolAssistantConversationMessageResponse(
+                MESSAGE_ID, SESSION_ID, RolChatMensaje.ASISTENTE_IA, "respuesta", Map.of(), LocalDateTime.now()
         );
-        SchoolAssistantConversationMessageResponse message =
-                new SchoolAssistantConversationMessageResponse(
-                messageId,
-                sessionId,
-                RolChatMensaje.ASISTENTE_IA,
-                "respuesta",
-                Map.of("tipo", "saldo"),
-                LocalDateTime.of(2026, 5, 27, 12, 0)
-        );
-        when(conversations.findTutorSessions("tutor-sub", 1, 5))
-                .thenReturn(List.of(session));
-        when(conversations.findTutorMessages("tutor-sub", sessionId, 2, 10))
-                .thenReturn(List.of(message));
-
-        List<SchoolAssistantSessionResponse> sessions =
-                controller.tutorSessions(authentication, 1, 5);
-        List<SchoolAssistantMessageResponse> messages =
-                controller.tutorMessages(authentication, sessionId, 2, 10);
-
-        assertEquals(sessionId, sessions.get(0).sessionId());
-        assertEquals(EstadoChatSesion.CERRADA, sessions.get(0).status());
-        assertEquals(messageId, messages.get(0).id());
-        assertEquals(RolChatMensaje.ASISTENTE_IA, messages.get(0).role());
-        assertEquals(204, controller.closeTutorSession(authentication, sessionId)
-                .getStatusCode().value());
-        assertEquals(204, controller.deleteTutorSession(authentication, sessionId)
-                .getStatusCode().value());
-        verify(conversations).closeTutorSession("tutor-sub", sessionId);
-        verify(conversations).deleteTutorSession("tutor-sub", sessionId);
+        when(conversations.findTutorMessages(TUTOR_SUBJECT, SESSION_ID, 2, 10)).thenReturn(List.of(message));
     }
 
-    @Test
-    void kiosqueroSessionEndpointsDelegateToAuthenticatedSubject() {
-        UUID sessionId = UUID.randomUUID();
-        UUID messageId = UUID.randomUUID();
-        TestingAuthenticationToken authentication =
-                new TestingAuthenticationToken("kiosquero-sub", "");
-        SchoolAssistantConversationSessionResponse session =
-                new SchoolAssistantConversationSessionResponse(
-                sessionId,
-                EstadoChatSesion.ABIERTA,
-                LocalDateTime.of(2026, 5, 27, 11, 0),
-                LocalDateTime.of(2026, 5, 27, 12, 0)
+    private void givenKiosqueroSessions() {
+        SchoolAssistantConversationSessionResponse session = new SchoolAssistantConversationSessionResponse(
+                SESSION_ID, EstadoChatSesion.ABIERTA, LocalDateTime.now(), LocalDateTime.now()
         );
-        SchoolAssistantConversationMessageResponse message =
-                new SchoolAssistantConversationMessageResponse(
-                messageId,
-                sessionId,
-                RolChatMensaje.USUARIO,
-                "stock",
-                null,
-                LocalDateTime.of(2026, 5, 27, 12, 0)
-        );
-        when(conversations.findKiosqueroSessions("kiosquero-sub", 1, 5))
-                .thenReturn(List.of(session));
-        when(conversations.findKiosqueroMessages("kiosquero-sub", sessionId, 2, 10))
-                .thenReturn(List.of(message));
-
-        List<SchoolAssistantSessionResponse> sessions =
-                controller.kiosqueroSessions(authentication, 1, 5);
-        List<SchoolAssistantMessageResponse> messages =
-                controller.kiosqueroMessages(authentication, sessionId, 2, 10);
-
-        assertEquals(sessionId, sessions.get(0).sessionId());
-        assertEquals(EstadoChatSesion.ABIERTA, sessions.get(0).status());
-        assertEquals(messageId, messages.get(0).id());
-        assertEquals(RolChatMensaje.USUARIO, messages.get(0).role());
-        assertEquals(204, controller.closeKiosqueroSession(authentication, sessionId)
-                .getStatusCode().value());
-        assertEquals(204, controller.deleteKiosqueroSession(authentication, sessionId)
-                .getStatusCode().value());
-        verify(conversations).closeKiosqueroSession("kiosquero-sub", sessionId);
-        verify(conversations).deleteKiosqueroSession("kiosquero-sub", sessionId);
-        verify(planAccessGuard, org.mockito.Mockito.times(4))
-                .requireVendorIntermediate(authentication);
+        when(conversations.findKiosqueroSessions(KIOSQUERO_SUBJECT, 1, 5)).thenReturn(List.of(session));
     }
 
-    @Test
-    void tutorEndpointWithoutAuthenticationThrowsCredentialsException() {
-        assertThrows(AuthenticationCredentialsNotFoundException.class,
-                () -> controller.tutorSessions(null, 0, 20));
+    private void givenKiosqueroMessages() {
+        SchoolAssistantConversationMessageResponse message = new SchoolAssistantConversationMessageResponse(
+                MESSAGE_ID, SESSION_ID, RolChatMensaje.USUARIO, "stock", null, LocalDateTime.now()
+        );
+        when(conversations.findKiosqueroMessages(KIOSQUERO_SUBJECT, SESSION_ID, 2, 10)).thenReturn(List.of(message));
+    }
+
+    private void thenAskResponseIsOkAndMatches(
+            SchoolAssistantResponse response,
+            UUID expectedSessionId,
+            String expectedText,
+            String expectedIntent
+    ) {
+        assertEquals(expectedSessionId, response.sessionId());
+        assertEquals(expectedText, response.answer());
+        assertEquals(expectedIntent, response.intent());
+    }
+
+    private void thenDelegatesToAskSchoolAssistant(
+            String expectedSubject,
+            SchoolAssistantRole expectedRole,
+            String expectedMessage
+    ) {
+        ArgumentCaptor<AskSchoolAssistantRequest> requestCaptor =
+                ArgumentCaptor.forClass(AskSchoolAssistantRequest.class);
+        verify(askSchoolAssistant).execute(requestCaptor.capture());
+        AskSchoolAssistantRequest useCaseRequest = requestCaptor.getValue();
+        assertEquals(expectedSubject, useCaseRequest.cognitoSubject());
+        assertEquals(expectedRole, useCaseRequest.role());
+        assertEquals(expectedMessage, useCaseRequest.message());
     }
 }

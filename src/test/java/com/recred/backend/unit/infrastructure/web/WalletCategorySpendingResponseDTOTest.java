@@ -10,35 +10,63 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class WalletCategorySpendingResponseDTOTest {
 
-    @Test
-    void fromDomainShouldMapCategorySpending() {
-        WalletCategorySpendingResponseDTO dto =
-                WalletCategorySpendingResponseDTO.fromDomain(
-                        new WalletCategorySpending(
-                                "Bebidas",
-                                new BigDecimal("300.00"),
-                                new BigDecimal("25.00")
-                        )
-                );
+    private WalletCategorySpendingResponseDTO result;
 
-        assertEquals("Bebidas", dto.categoria());
-        assertEquals(new BigDecimal("300.00"), dto.monto());
-        assertEquals(new BigDecimal("25.00"), dto.porcentaje());
+    @Test
+    void givenDomainModelWhenMappingFromDomainThenReturnsMappedCategorySpending() {
+        WalletCategorySpending model = givenDomainModel(
+                "Bebidas", "300.00", "25.00");
+
+        result = whenMappingFromDomain(model);
+
+        thenCategoriaIs("Bebidas");
+        thenMontoIs("300.00");
+        thenPorcentajeIs("25.00");
     }
 
     @Test
-    void fromApplicationShouldMapCategorySpending() {
-        WalletCategorySpendingResponseDTO dto =
-                WalletCategorySpendingResponseDTO.fromApplication(
-                        new GetStudentWalletSummaryResponse.CategorySpending(
-                                "Snacks",
-                                new BigDecimal("900.00"),
-                                new BigDecimal("75.00")
-                        )
-                );
+    void givenApplicationModelWhenMappingFromApplicationThenReturnsMappedCategorySpending() {
+        GetStudentWalletSummaryResponse.CategorySpending model =
+                givenApplicationModel("Snacks", "900.00", "75.00");
 
-        assertEquals("Snacks", dto.categoria());
-        assertEquals(new BigDecimal("900.00"), dto.monto());
-        assertEquals(new BigDecimal("75.00"), dto.porcentaje());
+        result = whenMappingFromApplication(model);
+
+        thenCategoriaIs("Snacks");
+        thenMontoIs("900.00");
+        thenPorcentajeIs("75.00");
+    }
+
+    private WalletCategorySpending givenDomainModel(
+            String categoria, String monto, String porcentaje) {
+        return new WalletCategorySpending(
+                categoria, new BigDecimal(monto), new BigDecimal(porcentaje));
+    }
+
+    private GetStudentWalletSummaryResponse.CategorySpending givenApplicationModel(
+            String categoria, String monto, String porcentaje) {
+        return new GetStudentWalletSummaryResponse.CategorySpending(
+                categoria, new BigDecimal(monto), new BigDecimal(porcentaje));
+    }
+
+    private WalletCategorySpendingResponseDTO whenMappingFromDomain(
+            WalletCategorySpending model) {
+        return WalletCategorySpendingResponseDTO.fromDomain(model);
+    }
+
+    private WalletCategorySpendingResponseDTO whenMappingFromApplication(
+            GetStudentWalletSummaryResponse.CategorySpending model) {
+        return WalletCategorySpendingResponseDTO.fromApplication(model);
+    }
+
+    private void thenCategoriaIs(String expected) {
+        assertEquals(expected, result.categoria());
+    }
+
+    private void thenMontoIs(String expected) {
+        assertEquals(new BigDecimal(expected), result.monto());
+    }
+
+    private void thenPorcentajeIs(String expected) {
+        assertEquals(new BigDecimal(expected), result.porcentaje());
     }
 }

@@ -65,7 +65,7 @@ class TutorInvitationControllerTest {
     }
 
     @Test
-    void prepareAccountShouldDelegateToUseCase() {
+    void givenValidRequestWhenPreparingAccountThenDelegatesToUseCase() {
         givenPrepareUseCaseReturnsLoginRequired();
 
         whenPreparingAccount("token-123", "tutoruser");
@@ -75,7 +75,7 @@ class TutorInvitationControllerTest {
     }
 
     @Test
-    void getInvitationShouldReturnValidatedInvitation() {
+    void givenValidTokenWhenGettingInvitationThenReturnsValidatedInvitation() {
         givenGetUseCaseReturnsInvitation("token-123");
 
         whenGettingInvitation("token-123");
@@ -85,7 +85,7 @@ class TutorInvitationControllerTest {
     }
 
     @Test
-    void acceptInvitationShouldMapJwtClaimsAndReturnAcceptedInvitation() {
+    void givenFullClaimsWhenAcceptingInvitationThenMapsClaimsAndReturnsAcceptedInvitation() {
         givenAcceptUseCaseSucceeds();
 
         whenAcceptingInvitation("token-123", fullClaimsJwt());
@@ -95,7 +95,7 @@ class TutorInvitationControllerTest {
     }
 
     @Test
-    void acceptInvitationShouldAllowMissingNameClaims() {
+    void givenMinimalClaimsWhenAcceptingInvitationThenAllowsMissingNameClaims() {
         givenAcceptUseCaseSucceeds();
 
         whenAcceptingInvitation("token-123", minimalClaimsJwt());
@@ -104,7 +104,7 @@ class TutorInvitationControllerTest {
     }
 
     @Test
-    void acceptInvitationShouldPreferGivenNameClaim() {
+    void givenBothNameClaimsWhenAcceptingInvitationThenPrefersGivenNameClaim() {
         givenAcceptUseCaseSucceeds();
 
         whenAcceptingInvitation("token-123", jwtWithGivenNameAndFullName());

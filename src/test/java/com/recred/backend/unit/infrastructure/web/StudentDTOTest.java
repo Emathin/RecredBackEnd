@@ -28,7 +28,7 @@ class StudentDTOTest {
     private StudentDTO onlyDivisionDto;
 
     @Test
-    void givenStudentWithCompleteUser_whenMappingToDTO_thenExtractsNameAndLastName() {
+    void givenStudentWithCompleteUserWhenMappingToDTOThenExtractsNameAndLastName() {
         givenStudentWithCompleteUser();
 
         whenMapStudentToDTO();
@@ -37,7 +37,7 @@ class StudentDTOTest {
     }
 
     @Test
-    void givenStudentWithoutUser_whenMappingToDTO_thenAssignsDefaultValues() {
+    void givenStudentWithoutUserWhenMappingToDTOThenAssignsDefaultValues() {
         givenStudentWithoutUser();
 
         whenMapStudentToDTO();
@@ -46,7 +46,7 @@ class StudentDTOTest {
     }
 
     @Test
-    void givenStudentWithGradeSchoolWalletAndPhoto_whenMappingToDTO_thenMapsAllFields() {
+    void givenStudentWithGradeSchoolWalletAndPhotoWhenMappingToDTOThenMapsAllFields() {
         givenStudentWithGradeSchoolWalletAndPhoto();
 
         whenMapStudentToDTO();
@@ -55,7 +55,7 @@ class StudentDTOTest {
     }
 
     @Test
-    void givenStudentDataWithPartialGradeValues_whenMappingToDTO_thenAppliesFallbacks() {
+    void givenStudentDataWithPartialGradeValuesWhenMappingToDTOThenAppliesFallbacks() {
         givenStudentDataWithPartialGradeValues();
 
         whenMapStudentDataToDTOs();
@@ -64,7 +64,7 @@ class StudentDTOTest {
     }
 
     @Test
-    void givenGradeWithoutDivision_whenMappingToDTO_thenDoesNotRenderNullText() {
+    void givenGradeWithoutDivisionWhenMappingToDTOThenDoesNotRenderNullText() {
         givenStudentWithGradeWithoutDivision();
 
         whenMapStudentToDTO();

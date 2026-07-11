@@ -21,6 +21,8 @@ import com.recred.backend.domain.models.EstadoCompra;
 import com.recred.backend.domain.models.Purchase;
 import com.recred.backend.domain.models.PurchaseStatus;
 import com.recred.backend.domain.models.RecessTime;
+import com.recred.backend.domain.models.RolUsuario;
+import com.recred.backend.domain.models.ConsumptionRequester;
 import com.recred.backend.infrastructure.web.AdvancePurchaseRequest;
 import com.recred.backend.infrastructure.web.AdvancePurchaseResponse;
 import com.recred.backend.infrastructure.web.KiosqueroAccessGuard;
@@ -47,13 +49,10 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -69,6 +68,7 @@ class PurchaseControllerTest {
     private static final UUID BUYER_ID = UUID.randomUUID();
     private static final UUID SUGGESTION_ID = UUID.randomUUID();
     private static final UUID TUTOR_ID = UUID.randomUUID();
+    private static final UUID USER_ID = UUID.randomUUID();
 
     @Mock
     private ProcessPresentialPurchase processPresentialPurchase;
@@ -112,13 +112,12 @@ class PurchaseControllerTest {
     }
 
     @Test
-    void processPurchase_ShouldRequireBuffetAccessAndDelegateWithItems() {
-        ProcessPurchaseRequestDTO request = buildProcessPurchaseRequest();
-        ProcessPresentialPurchaseRequest useCaseRequest = buildProcessPurchaseUseCaseRequest();
+    void processPurchaseShouldRequireBuffetAccessAndDelegateWithItems() {
+        ProcessPurchaseRequestDTO request = givenProcessPurchaseRequest();
+        ProcessPresentialPurchaseRequest useCaseRequest = givenProcessPurchaseUseCaseRequest();
         givenProcessPresentialPurchaseReturns(useCaseRequest);
 
-        ResponseEntity<ProcessPresentialPurchaseResponse> response =
-                controller.processPurchase(request, authentication);
+        ResponseEntity<ProcessPresentialPurchaseResponse> response = whenProcessingPurchase(request);
 
         thenResponseContainsProcessPurchaseData(response);
         thenBuffetAccessIsRequired();
@@ -126,22 +125,21 @@ class PurchaseControllerTest {
     }
 
     @Test
-    void createAdvancePurchase_ShouldAttachCognitoSubjectAndMapResponse() {
+    void createAdvancePurchaseShouldAttachCognitoSubjectAndMapResponse() {
         givenAuthenticationSubject();
-        AdvancePurchaseRequest request = buildAdvancePurchaseRequest();
-        CreateAdvancePurchaseRequest useCaseRequest = buildCreateAdvancePurchaseUseCaseRequest();
-        PurchaseStatus status = buildPurchaseStatus();
+        AdvancePurchaseRequest request = givenAdvancePurchaseRequest();
+        CreateAdvancePurchaseRequest useCaseRequest = givenCreateAdvancePurchaseUseCaseRequest();
+        PurchaseStatus status = givenPurchaseStatus();
         givenCreateAdvancePurchaseReturns(useCaseRequest, status);
 
-        ResponseEntity<AdvancePurchaseResponse> response =
-                controller.createAdvancePurchase(request, authentication);
+        ResponseEntity<AdvancePurchaseResponse> response = whenCreatingAdvancePurchase(request);
 
         thenResponseContainsAdvancePurchaseData(response, status);
         thenDelegatesToCreateAdvancePurchase(useCaseRequest);
     }
 
     @Test
-    void createAdvancePurchaseWithoutAuthentication_ShouldThrowException() {
+    void createAdvancePurchaseWithoutAuthenticationShouldThrowException() {
         AdvancePurchaseRequest request = new AdvancePurchaseRequest(List.of());
 
         Executable execution = () -> controller.createAdvancePurchase(request, null);
@@ -150,12 +148,11 @@ class PurchaseControllerTest {
     }
 
     @Test
-    void getPurchaseById_ShouldRequireAccessAndMapResponse() {
+    void getPurchaseByIdShouldRequireAccessAndMapResponse() {
         givenPurchaseCanBeAccessed();
         givenGetPresentialPurchaseReturns();
 
-        ResponseEntity<PurchaseResponseDTO> response =
-                controller.getPurchaseById(PURCHASE_ID, authentication);
+        ResponseEntity<PurchaseResponseDTO> response = whenGettingPurchaseById();
 
         thenResponseContainsGetPurchaseData(response);
         thenPurchaseAccessIsRequired();
@@ -163,14 +160,13 @@ class PurchaseControllerTest {
     }
 
     @Test
-    void getPurchaseStatusById_ShouldDelegateWithRequestAndMapResponse() {
+    void getPurchaseStatusByIdShouldDelegateWithRequestAndMapResponse() {
         givenAuthenticationSubject();
         givenPurchaseCanBeAccessed();
         GetPurchaseStatusRequest request = new GetPurchaseStatusRequest(COGNITO_SUBJECT, PURCHASE_ID);
         givenPurchaseStatusFound(request);
 
-        ResponseEntity<PurchaseStatusResponseDTO> response =
-                controller.getPurchaseStatusById(PURCHASE_ID, authentication);
+        ResponseEntity<PurchaseStatusResponseDTO> response = whenGettingPurchaseStatusById();
 
         thenResponseContainsPurchaseStatusData(response);
         thenPurchaseAccessIsRequired();
@@ -178,17 +174,14 @@ class PurchaseControllerTest {
     }
 
     @Test
-    void updatePurchaseStatus_ShouldRequireAccessAndDelegateWithRequest() {
+    void updatePurchaseStatusShouldRequireAccessAndDelegateWithRequest() {
         givenPurchaseCanBeAccessed();
         UpdatePurchaseStatusRequest request =
                 new UpdatePurchaseStatusRequest(PURCHASE_ID, EstadoCompra.LISTO);
         givenPurchaseStatusUpdated(request);
 
-        ResponseEntity<PurchaseStatusResponseDTO> response = controller.updatePurchaseStatus(
-                PURCHASE_ID,
-                new UpdatePurchaseStatusRequestDTO(EstadoCompra.LISTO),
-                authentication
-        );
+        ResponseEntity<PurchaseStatusResponseDTO> response =
+                whenUpdatingPurchaseStatus(EstadoCompra.LISTO);
 
         thenResponseContainsUpdatedPurchaseStatusData(response);
         thenPurchaseAccessIsRequired();
@@ -197,13 +190,11 @@ class PurchaseControllerTest {
     }
 
     @Test
-    void cancelPurchase_ShouldRequireAccessAndDelegateWithRequest() {
+    void cancelPurchaseShouldRequireAccessAndDelegateWithRequest() {
         givenAuthenticationSubject();
-        when(consumptionAccessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new com.recred.backend.domain.models.ConsumptionRequester(
-                        UUID.randomUUID(), com.recred.backend.domain.models.RolUsuario.PADRE, UUID.randomUUID())));
-        
-        ResponseEntity<Void> response = controller.cancelPurchase(PURCHASE_ID, authentication);
+        givenPurchaseCanBeAccessed();
+        givenConsumptionRequesterFound();
+        ResponseEntity<Void> response = whenCancelingPurchase();
 
         thenResponseIsOk(response);
         thenPurchaseAccessIsRequired();
@@ -211,13 +202,11 @@ class PurchaseControllerTest {
     }
 
     @Test
-    void revertPurchase_ShouldRequireAccessAndDelegateWithRequest() {
+    void revertPurchaseShouldRequireAccessAndDelegateWithRequest() {
         givenAuthenticationSubject();
-        when(consumptionAccessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
-                .thenReturn(Optional.of(new com.recred.backend.domain.models.ConsumptionRequester(
-                        UUID.randomUUID(), com.recred.backend.domain.models.RolUsuario.PADRE, UUID.randomUUID())));
-        
-        ResponseEntity<Void> response = controller.revertPurchase(PURCHASE_ID, authentication);
+        givenPurchaseCanBeAccessed();
+        givenConsumptionRequesterFound();
+        ResponseEntity<Void> response = whenRevertingPurchase();
 
         thenResponseIsOk(response);
         thenPurchaseAccessIsRequired();
@@ -226,6 +215,11 @@ class PurchaseControllerTest {
 
     private void givenAuthenticationSubject() {
         when(authentication.getName()).thenReturn(COGNITO_SUBJECT);
+    }
+
+    private void givenConsumptionRequesterFound() {
+        when(consumptionAccessRepository.findRequesterByCognitoSubject(COGNITO_SUBJECT))
+                .thenReturn(java.util.Optional.of(new ConsumptionRequester(USER_ID, RolUsuario.VENDEDOR, null)));
     }
 
     private void givenProcessPresentialPurchaseReturns(ProcessPresentialPurchaseRequest request) {
@@ -309,7 +303,7 @@ class PurchaseControllerTest {
         ));
     }
 
-    private ProcessPurchaseRequestDTO buildProcessPurchaseRequest() {
+    private ProcessPurchaseRequestDTO givenProcessPurchaseRequest() {
         return new ProcessPurchaseRequestDTO(
                 STUDENT_ID,
                 BUFFET_ID,
@@ -317,7 +311,7 @@ class PurchaseControllerTest {
         );
     }
 
-    private ProcessPresentialPurchaseRequest buildProcessPurchaseUseCaseRequest() {
+    private ProcessPresentialPurchaseRequest givenProcessPurchaseUseCaseRequest() {
         return new ProcessPresentialPurchaseRequest(
                 STUDENT_ID,
                 List.of(new ProcessPresentialPurchaseRequest.ItemRequest(PRODUCT_ID, 2)),
@@ -325,7 +319,7 @@ class PurchaseControllerTest {
         );
     }
 
-    private AdvancePurchaseRequest buildAdvancePurchaseRequest() {
+    private AdvancePurchaseRequest givenAdvancePurchaseRequest() {
         return new AdvancePurchaseRequest(List.of(
                 new AdvancePurchaseRequest.OrderRequest(
                         STUDENT_ID,
@@ -341,7 +335,7 @@ class PurchaseControllerTest {
         ));
     }
 
-    private CreateAdvancePurchaseRequest buildCreateAdvancePurchaseUseCaseRequest() {
+    private CreateAdvancePurchaseRequest givenCreateAdvancePurchaseUseCaseRequest() {
         return new CreateAdvancePurchaseRequest(
                 COGNITO_SUBJECT,
                 List.of(new CreateAdvancePurchaseRequest.OrderRequest(
@@ -358,7 +352,7 @@ class PurchaseControllerTest {
         );
     }
 
-    private PurchaseStatus buildPurchaseStatus() {
+    private PurchaseStatus givenPurchaseStatus() {
         return new PurchaseStatus(
                 PURCHASE_ID,
                 STUDENT_ID,
@@ -366,6 +360,42 @@ class PurchaseControllerTest {
                 "Pendiente",
                 LocalDateTime.of(2026, 7, 3, 9, 0)
         );
+    }
+
+    private ResponseEntity<ProcessPresentialPurchaseResponse> whenProcessingPurchase(
+            ProcessPurchaseRequestDTO request
+    ) {
+        return controller.processPurchase(request, authentication);
+    }
+
+    private ResponseEntity<AdvancePurchaseResponse> whenCreatingAdvancePurchase(
+            AdvancePurchaseRequest request
+    ) {
+        return controller.createAdvancePurchase(request, authentication);
+    }
+
+    private ResponseEntity<PurchaseResponseDTO> whenGettingPurchaseById() {
+        return controller.getPurchaseById(PURCHASE_ID, authentication);
+    }
+
+    private ResponseEntity<PurchaseStatusResponseDTO> whenGettingPurchaseStatusById() {
+        return controller.getPurchaseStatusById(PURCHASE_ID, authentication);
+    }
+
+    private ResponseEntity<PurchaseStatusResponseDTO> whenUpdatingPurchaseStatus(EstadoCompra status) {
+        return controller.updatePurchaseStatus(
+                PURCHASE_ID,
+                new UpdatePurchaseStatusRequestDTO(status),
+                authentication
+        );
+    }
+
+    private ResponseEntity<Void> whenCancelingPurchase() {
+        return controller.cancelPurchase(PURCHASE_ID, authentication);
+    }
+
+    private ResponseEntity<Void> whenRevertingPurchase() {
+        return controller.revertPurchase(PURCHASE_ID, authentication);
     }
 
     private void thenResponseContainsProcessPurchaseData(
@@ -449,12 +479,12 @@ class PurchaseControllerTest {
     }
 
     private void thenDelegatesToCancelPurchase() {
-        verify(cancelPresentialPurchase).execute(argThat(r -> 
-                r.purchaseId().equals(PURCHASE_ID)));
+        verify(cancelPresentialPurchase).execute(
+                new com.recred.backend.application.CancelPresentialPurchaseRequest(PURCHASE_ID, null, USER_ID, RolUsuario.VENDEDOR));
     }
 
     private void thenDelegatesToRevertPurchaseCancellation() {
-        verify(revertPurchaseCancellation).execute(argThat(r -> 
-                r.purchaseId().equals(PURCHASE_ID)));
+        verify(revertPurchaseCancellation).execute(
+                new com.recred.backend.application.RevertPurchaseCancellationRequest(PURCHASE_ID, USER_ID, RolUsuario.VENDEDOR));
     }
 }

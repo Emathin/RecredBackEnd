@@ -17,12 +17,68 @@ import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProductResponseDTOTest {
 
     @Test
-    void fromDomain_ShouldMapFullProduct() {
+    void fromDomainShouldMapFullProduct() {
+        Producto product = givenFullProduct();
+
+        ProductResponseDTO dto = ProductResponseDTO.fromDomain(product);
+
+        thenMapsFullProductCorrectly(product, dto);
+    }
+
+    @Test
+    void fromDomainShouldHandleNullFields() {
+        Producto product = givenProductWithNullFields();
+
+        ProductResponseDTO dto = ProductResponseDTO.fromDomain(product);
+
+        thenMapsNullFieldsCorrectly(dto);
+    }
+
+    @Test
+    void fromApplicationShouldMapNullCategoryAndClassificationSets() {
+        ProductResponse response = givenProductResponseFromApplication();
+
+        ProductResponseDTO dto = ProductResponseDTO.fromApplication(response);
+
+        thenMapsApplicationResponseCorrectly(response, dto);
+    }
+
+    @Test
+    void fromUseCaseResponseShouldMapFavoriteProductClassifications() {
+        GetFavoritesByStudentResponse response = givenGetFavoritesByStudentResponse();
+
+        ProductResponseDTO dto = ProductResponseDTO.fromUseCaseResponse(response);
+
+        thenMapsFavoriteProductClassificationsCorrectly(response, dto);
+    }
+
+    @Test
+    void fromAppResponseShouldMapCategoryAndClassifications() {
+        ProductResponse response = givenProductResponseWithCategoryAndClassifications();
+
+        ProductResponseDTO dto = ProductResponseDTO.fromAppResponse(response);
+
+        thenMapsCategoryAndClassificationsCorrectly(response, dto);
+    }
+
+    @Test
+    void fromInventoryProductShouldMapNullCategoryAndClassifications() {
+        ListInventoryProductsResponse.InventoryProductResponse response = 
+                givenInventoryProductResponse();
+
+        ProductResponseDTO dto = ProductResponseDTO.fromInventoryProduct(response);
+
+        thenMapsInventoryProductCorrectly(response, dto);
+    }
+
+    private Producto givenFullProduct() {
         Producto product = new Producto();
         product.setId(UUID.randomUUID());
         product.setNombre("Product");
@@ -47,41 +103,21 @@ class ProductResponseDTOTest {
         tipo.setDescripcion("Tipo");
         product.setTipos(Set.of(tipo));
 
-        ProductResponseDTO dto = ProductResponseDTO.fromDomain(product);
-
-        assertEquals(product.getId(), dto.id());
-        assertEquals("Product", dto.nombre());
-        assertEquals(new BigDecimal("10.00"), dto.precio());
-        assertTrue(dto.activo());
-        assertEquals("DISPONIBLE", dto.estadoInventario());
-        assertEquals("STOCK_EXACTO", dto.tipoManejoInventario());
-        assertEquals(category.getId(), dto.categoria().id());
-        assertEquals(1, dto.clasificacionesSalud().size());
-        assertEquals("Salud", dto.clasificacionesSalud().iterator().next().descripcion());
-        assertEquals(1, dto.tipos().size());
-        assertEquals("Tipo", dto.tipos().iterator().next().descripcion());
+        return product;
     }
 
-    @Test
-    void fromDomain_ShouldHandleNullFields() {
+    private Producto givenProductWithNullFields() {
         Producto product = new Producto();
         product.setId(UUID.randomUUID());
         product.setCategoria(null);
         product.setClasificacionesSalud(null);
         product.setTipos(null);
         product.setEstadoInventario(null);
-
-        ProductResponseDTO dto = ProductResponseDTO.fromDomain(product);
-
-        assertNull(dto.categoria());
-        assertEquals(0, dto.clasificacionesSalud().size());
-        assertEquals(0, dto.tipos().size());
-        assertNull(dto.estadoInventario());
+        return product;
     }
 
-    @Test
-    void fromApplication_ShouldMapNullCategoryAndClassificationSets() {
-        ProductResponse response = new ProductResponse(
+    private ProductResponse givenProductResponseFromApplication() {
+        return new ProductResponse(
                 UUID.randomUUID(),
                 "Product",
                 "Desc",
@@ -104,23 +140,13 @@ class ProductResponseDTOTest {
                 null,
                 null
         );
-
-        ProductResponseDTO dto = ProductResponseDTO.fromApplication(response);
-
-        assertEquals(response.id(), dto.id());
-        assertEquals(response.urlImagen(), dto.urlImagen());
-        assertEquals(response.urlImagen(), dto.image());
-        assertNull(dto.categoria());
-        assertTrue(dto.clasificacionesSalud().isEmpty());
-        assertTrue(dto.tipos().isEmpty());
     }
 
-    @Test
-    void fromUseCaseResponse_ShouldMapFavoriteProductClassifications() {
+    private GetFavoritesByStudentResponse givenGetFavoritesByStudentResponse() {
         UUID categoryId = UUID.randomUUID();
         UUID healthId = UUID.randomUUID();
         UUID typeId = UUID.randomUUID();
-        GetFavoritesByStudentResponse response = new GetFavoritesByStudentResponse(
+        return new GetFavoritesByStudentResponse(
                 UUID.randomUUID(),
                 "Barrita",
                 "Cereal",
@@ -147,18 +173,10 @@ class ProductResponseDTOTest {
                         typeId,
                         "Dulce"))
         );
-
-        ProductResponseDTO dto = ProductResponseDTO.fromUseCaseResponse(response);
-
-        assertEquals(categoryId, dto.categoria().id());
-        assertEquals("Snacks", dto.categoria().descripcion());
-        assertEquals(healthId, dto.clasificacionesSalud().iterator().next().id());
-        assertEquals(typeId, dto.tipos().iterator().next().id());
     }
 
-    @Test
-    void fromAppResponse_ShouldMapCategoryAndClassifications() {
-        ProductResponse response = new ProductResponse(
+    private ProductResponse givenProductResponseWithCategoryAndClassifications() {
+        return new ProductResponse(
                 UUID.randomUUID(),
                 "Jugo",
                 "Naranja",
@@ -185,49 +203,99 @@ class ProductResponseDTOTest {
                         UUID.randomUUID(),
                         "Bebida"))
         );
+    }
 
-        ProductResponseDTO dto = ProductResponseDTO.fromAppResponse(response);
+    private ListInventoryProductsResponse.InventoryProductResponse givenInventoryProductResponse() {
+        return new ListInventoryProductsResponse.InventoryProductResponse(
+                UUID.randomUUID(),
+                "Agua",
+                "Sin gas",
+                new BigDecimal("700.00"),
+                null,
+                false,
+                true,
+                LocalDateTime.now(),
+                LocalDateTime.now(),
+                50,
+                3,
+                10,
+                47,
+                "DISPONIBLE",
+                "STOCK_EXACTO",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "STOCK",
+                null,
+                null,
+                true,
+                false,
+                false
+        );
+    }
 
+    private void thenMapsFullProductCorrectly(Producto product, ProductResponseDTO dto) {
+        assertEquals(product.getId(), dto.id());
+        assertEquals("Product", dto.nombre());
+        assertEquals(new BigDecimal("10.00"), dto.precio());
+        assertTrue(dto.activo());
+        assertEquals("DISPONIBLE", dto.estadoInventario());
+        assertEquals("STOCK_EXACTO", dto.tipoManejoInventario());
+        assertEquals(product.getCategoria().getId(), dto.categoria().id());
+        assertEquals(1, dto.clasificacionesSalud().size());
+        assertEquals("Salud", dto.clasificacionesSalud().iterator().next().descripcion());
+        assertEquals(1, dto.tipos().size());
+        assertEquals("Tipo", dto.tipos().iterator().next().descripcion());
+    }
+
+    private void thenMapsNullFieldsCorrectly(ProductResponseDTO dto) {
+        assertNull(dto.categoria());
+        assertEquals(0, dto.clasificacionesSalud().size());
+        assertEquals(0, dto.tipos().size());
+        assertNull(dto.estadoInventario());
+    }
+
+    private void thenMapsApplicationResponseCorrectly(ProductResponse response, ProductResponseDTO dto) {
+        assertEquals(response.id(), dto.id());
+        assertEquals(response.urlImagen(), dto.urlImagen());
+        assertEquals(response.urlImagen(), dto.image());
+        assertNull(dto.categoria());
+        assertTrue(dto.clasificacionesSalud().isEmpty());
+        assertTrue(dto.tipos().isEmpty());
+    }
+
+    private void thenMapsFavoriteProductClassificationsCorrectly(
+            GetFavoritesByStudentResponse response, 
+            ProductResponseDTO dto
+    ) {
+        assertEquals(response.categoria().id(), dto.categoria().id());
+        assertEquals("Snacks", dto.categoria().descripcion());
+        assertEquals(
+                response.clasificacionesSalud().iterator().next().id(), 
+                dto.clasificacionesSalud().iterator().next().id()
+        );
+        assertEquals(
+                response.tipos().iterator().next().id(), 
+                dto.tipos().iterator().next().id()
+        );
+    }
+
+    private void thenMapsCategoryAndClassificationsCorrectly(
+            ProductResponse response, 
+            ProductResponseDTO dto
+    ) {
         assertEquals(response.categoria().id(), dto.categoria().id());
         assertEquals(1, dto.clasificacionesSalud().size());
         assertEquals(1, dto.tipos().size());
     }
 
-    @Test
-    void fromInventoryProduct_ShouldMapNullCategoryAndClassifications() {
-        ListInventoryProductsResponse.InventoryProductResponse response =
-                new ListInventoryProductsResponse.InventoryProductResponse(
-                        UUID.randomUUID(),
-                        "Agua",
-                        "Sin gas",
-                        new BigDecimal("700.00"),
-                        null,
-                        false,
-                        true,
-                        LocalDateTime.now(),
-                        LocalDateTime.now(),
-                        50,
-                        3,
-                        10,
-                        47,
-                        "DISPONIBLE",
-                        "STOCK_EXACTO",
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        "STOCK",
-                        null,
-                        null,
-                        true,
-                        false,
-                        false
-                );
-
-        ProductResponseDTO dto = ProductResponseDTO.fromInventoryProduct(response);
-
+    private void thenMapsInventoryProductCorrectly(
+            ListInventoryProductsResponse.InventoryProductResponse response, 
+            ProductResponseDTO dto
+    ) {
         assertEquals(response.id(), dto.id());
         assertNull(dto.categoria());
         assertTrue(dto.clasificacionesSalud().isEmpty());

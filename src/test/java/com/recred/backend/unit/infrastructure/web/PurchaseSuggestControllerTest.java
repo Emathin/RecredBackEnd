@@ -1,6 +1,5 @@
 package com.recred.backend.unit.infrastructure.web;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.CreateAdvancePurchase;
 import com.recred.backend.application.CreateAdvancePurchaseRequest;
 import com.recred.backend.application.CreateAdvancePurchaseResponse;
@@ -34,13 +33,9 @@ import org.junit.jupiter.api.function.Executable;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -57,26 +52,17 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 class PurchaseSuggestControllerTest {
 
     private static final String TEST_COGNITO_ID = "user-123";
-    private static final String TEST_NOTIFICATION_URL =
-            "/api/v1/sugerencias-consumo/test-notificacion";
-    private static final String BUY_SUGGESTION_URL =
-            "/api/v1/sugerencias-consumo/comprar";
     private static final UUID SUGERENCIA_ID = randomUUID();
     private static final UUID ALUMNO_ID = randomUUID();
     private static final UUID PRODUCTO_ID = randomUUID();
     private static final UUID USUARIO_ID = randomUUID();
     private static final UUID BUFFET_ID = randomUUID();
 
-    private MockMvc mockMvc;
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private PurchaseSuggestController controller;
     private TestingAuthenticationToken auth;
 
@@ -101,65 +87,70 @@ class PurchaseSuggestControllerTest {
                 tutorRepository,
                 planAccessGuard
         );
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
         auth = new TestingAuthenticationToken(TEST_COGNITO_ID, null);
     }
 
     @Test
-    void testNotification_WhenExists_ShouldReturn200AndNotification() throws Exception {
+    void testNotificationWhenExistsShouldReturn200AndNotification() {
         givenPurchaseSuggestionNotification();
+        TestSuggestionRequest request = new TestSuggestionRequest(TEST_COGNITO_ID, null);
 
-        ResultActions result = whenPostingTestNotification();
+        ResponseEntity<PushNotificationResponse> response = whenTestingNotification(request);
 
-        thenNotificationIsReturned(result);
+        thenNotificationIsReturned(response);
         thenTutorOrStudentAdvancedIsRequired();
     }
 
     @Test
-    void buySuggestion_ShouldProcessAdvancePurchase() throws Exception {
+    void buySuggestionShouldProcessAdvancePurchase() {
         givenSuggestionCanBePurchasedBy(RolUsuario.PADRE);
+        TestSuggestionRequest request = new TestSuggestionRequest(TEST_COGNITO_ID, SUGERENCIA_ID);
 
-        ResultActions result = whenPostingBuySuggestion();
+        ResponseEntity<AdvancePurchaseResponse> response = whenBuyingSuggestion(request);
 
-        thenAdvancePurchaseIsProcessed(result);
+        thenAdvancePurchaseIsProcessed(response);
         thenTutorOrStudentAdvancedIsRequired();
         thenAISuggestionIsResponded();
     }
 
     @Test
-    void testNotification_WhenNoNotificationAndAuthenticated_ShouldReturn204() {
+    void testNotificationWhenNoNotificationAndAuthenticatedShouldReturn204() {
         givenNoPurchaseSuggestionNotification();
+        TestSuggestionRequest request = new TestSuggestionRequest(null, null);
 
-        ResponseEntity<PushNotificationResponse> response =
-                whenTestingNotificationWithAuthentication();
+        ResponseEntity<PushNotificationResponse> response = whenTestingNotification(request);
 
         thenNoContentIsReturned(response);
     }
 
     @Test
-    void testNotification_WithoutAuthenticatedUser_ShouldFail() {
-        Executable execution = this::whenTestingNotificationWithoutAuthentication;
+    void testNotificationWithoutAuthenticatedUserShouldFail() {
+        TestSuggestionRequest request = new TestSuggestionRequest(null, null);
+
+        Executable execution = () -> controller.testNotification(null, request);
 
         thenThrowsAuthenticationCredentialsNotFoundException(execution);
     }
 
     @Test
-    void buySuggestion_WhenSuggestionDoesNotExist_ShouldFail() {
+    void buySuggestionWhenSuggestionDoesNotExistShouldFail() {
         givenSuggestionDoesNotExist();
+        TestSuggestionRequest request = new TestSuggestionRequest(null, SUGERENCIA_ID);
 
-        Executable execution = this::whenBuyingSuggestion;
+        Executable execution = () -> controller.buySuggestion(auth, request);
 
         thenThrowsSuggestionNotFoundException(execution);
     }
 
     @Test
-    void buySuggestion_WhenUserIsStudentAndTutorExists_ShouldCreatePurchase() {
+    void buySuggestionWhenUserIsStudentAndTutorExistsShouldCreatePurchase() {
         givenSuggestionCanBePurchasedBy(ALUMNO);
         givenTutorForStudent();
+        TestSuggestionRequest request = new TestSuggestionRequest(null, SUGERENCIA_ID);
 
-        ResponseEntity<AdvancePurchaseResponse> result = whenBuyingSuggestion();
+        ResponseEntity<AdvancePurchaseResponse> response = whenBuyingSuggestion(request);
 
-        thenOkIsReturned(result);
+        thenOkIsReturned(response);
         thenAdvancePurchaseIsCreated();
     }
 
@@ -200,41 +191,23 @@ class PurchaseSuggestControllerTest {
         when(tutorRepository.findByAlumnoId(ALUMNO_ID)).thenReturn(List.of(tutor));
     }
 
-    private ResultActions whenPostingTestNotification() throws Exception {
-        return mockMvc.perform(post(TEST_NOTIFICATION_URL)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new TestSuggestionRequest(TEST_COGNITO_ID, null)))
-                .principal(auth));
+    private ResponseEntity<PushNotificationResponse> whenTestingNotification(TestSuggestionRequest request) {
+        return controller.testNotification(auth, request);
     }
 
-    private ResultActions whenPostingBuySuggestion() throws Exception {
-        return mockMvc.perform(post(BUY_SUGGESTION_URL)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new TestSuggestionRequest(TEST_COGNITO_ID, SUGERENCIA_ID)))
-                .principal(auth));
+    private ResponseEntity<AdvancePurchaseResponse> whenBuyingSuggestion(TestSuggestionRequest request) {
+        return controller.buySuggestion(auth, request);
     }
 
-    private ResponseEntity<PushNotificationResponse> whenTestingNotificationWithAuthentication() {
-        return controller.testNotification(auth, new TestSuggestionRequest(null, null));
+    private void thenNotificationIsReturned(ResponseEntity<PushNotificationResponse> response) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(USUARIO_ID.toString(), response.getBody().userId().toString());
+        assertEquals("PURCHASE_SUGGESTION", response.getBody().data().get("type"));
     }
 
-    private void whenTestingNotificationWithoutAuthentication() {
-        controller.testNotification(null, new TestSuggestionRequest(null, null));
-    }
-
-    private ResponseEntity<AdvancePurchaseResponse> whenBuyingSuggestion() {
-        return controller.buySuggestion(auth, new TestSuggestionRequest(null, SUGERENCIA_ID));
-    }
-
-    private void thenNotificationIsReturned(ResultActions result) throws Exception {
-        result.andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(USUARIO_ID.toString()))
-                .andExpect(jsonPath("$.data.type").value("PURCHASE_SUGGESTION"));
-    }
-
-    private void thenAdvancePurchaseIsProcessed(ResultActions result) throws Exception {
-        result.andExpect(status().isOk())
-                .andExpect(jsonPath("$.orderId").exists());
+    private void thenAdvancePurchaseIsProcessed(ResponseEntity<AdvancePurchaseResponse> response) {
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("550e8400-e29b-41d4-a716-446655440000", response.getBody().orderId());
     }
 
     private void thenNoContentIsReturned(ResponseEntity<PushNotificationResponse> response) {
@@ -292,7 +265,7 @@ class PurchaseSuggestControllerTest {
 
     private CreateAdvancePurchaseResponse advancePurchaseResponse() {
         return new CreateAdvancePurchaseResponse(
-                randomUUID().toString(),
+                "550e8400-e29b-41d4-a716-446655440000",
                 new PurchaseStatus(
                         randomUUID(),
                         ALUMNO_ID,

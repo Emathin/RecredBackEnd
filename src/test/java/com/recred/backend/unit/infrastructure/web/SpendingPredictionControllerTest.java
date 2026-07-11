@@ -22,7 +22,7 @@ import static org.mockito.Mockito.when;
 class SpendingPredictionControllerTest {
 
     @Test
-    void delegatePredictionWithRequestedPeriod() {
+    void givenPredictionRequestWhenPredictingThenDelegatesToUseCaseWithRequestedPeriod() {
         PredictStudentSpending predictStudentSpending = mock(PredictStudentSpending.class);
         PlanAccessGuard planAccessGuard = mock(PlanAccessGuard.class);
         SpendingPredictionController controller =
@@ -49,7 +49,7 @@ class SpendingPredictionControllerTest {
     }
 
     @Test
-    void delegatePredictionWithoutRequestedPeriod() {
+    void givenPredictionRequestWhenPredictingThenDelegatesToUseCaseWithDefaultPeriod() {
         PredictStudentSpending predictStudentSpending = mock(PredictStudentSpending.class);
         PlanAccessGuard planAccessGuard = mock(PlanAccessGuard.class);
         SpendingPredictionController controller =
