@@ -36,10 +36,16 @@ public class RecessTimeSlotResolver {
     }
 
     public FranjaHoraria resolve(Alumno student, RecessTime recessTime) {
+        if (recessTime == RecessTime.ELEVEN_AM || recessTime == RecessTime.FOUR_PM) {
+            return virtualSlotFor(recessTime);
+        }
         return resolveBySchoolId(schoolId(student), recessTime);
     }
 
     public FranjaHoraria resolveByBuffet(UUID buffetId, RecessTime recessTime) {
+        if (recessTime == RecessTime.ELEVEN_AM || recessTime == RecessTime.FOUR_PM) {
+            return virtualSlotFor(recessTime);
+        }
         return resolveBySchoolId(schoolId(buffetId, recessTime), recessTime);
     }
 
@@ -86,6 +92,8 @@ public class RecessTimeSlotResolver {
             case SECOND_RECESS -> 1;
             case NOON -> 2;
             case AFTER_HOURS -> 3;
+            case ELEVEN_AM, FOUR_PM -> throw new PickupTimeSlotNotFoundException(
+                    schoolId, recessTime);
         };
 
         if (slots.size() > index) {
@@ -102,6 +110,7 @@ public class RecessTimeSlotResolver {
             case SECOND_RECESS -> containsAll(description, "segundo", "recreo");
             case NOON -> containsAny(description, "mediodia", "medio dia", "almuerzo");
             case AFTER_HOURS -> containsAny(description, "salida", "despues", "final");
+            case ELEVEN_AM, FOUR_PM -> false;
         };
     }
 
@@ -117,5 +126,20 @@ public class RecessTimeSlotResolver {
         String lowerCaseValue = value == null ? "" : value.toLowerCase(Locale.ROOT).trim();
         String normalizedValue = Normalizer.normalize(lowerCaseValue, Normalizer.Form.NFD);
         return DIACRITICS.matcher(normalizedValue).replaceAll("");
+    }
+
+    private FranjaHoraria virtualSlotFor(RecessTime recessTime) {
+        FranjaHoraria virtualSlot = new FranjaHoraria();
+        virtualSlot.setId(null);
+        if (recessTime == RecessTime.ELEVEN_AM) {
+            virtualSlot.setDescripcion("11:00 hs");
+            virtualSlot.setHoraInicio(java.time.LocalTime.of(11, 0));
+            virtualSlot.setHoraFin(java.time.LocalTime.of(12, 0));
+        } else if (recessTime == RecessTime.FOUR_PM) {
+            virtualSlot.setDescripcion("16:00 hs");
+            virtualSlot.setHoraInicio(java.time.LocalTime.of(16, 0));
+            virtualSlot.setHoraFin(java.time.LocalTime.of(17, 0));
+        }
+        return virtualSlot;
     }
 }

@@ -62,6 +62,7 @@ class MenuBuffetControllerTest {
                 null,
                 null,
                 true,
+                false,
                 null,
                 null
         );

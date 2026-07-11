@@ -44,6 +44,7 @@ public class GetBuffetByStudent {
                 buffet.getVendedor() != null ? buffet.getVendedor().getId() : null,
                 buffet.getFechaVencimientoHabilitacion(),
                 buffet.getActivo(),
+                buffet.getHabilitarVentasAnticipadasNoLaborables(),
                 buffet.getCreadoEn(),
                 buffet.getActualizadoEn()
         );

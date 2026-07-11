@@ -51,6 +51,9 @@ public class BuffetEntity {
     @Column(nullable = false)
     private Boolean activo = true;
 
+    @Column(name = "habilitar_ventas_anticipadas_no_laborables", nullable = false)
+    private Boolean habilitarVentasAnticipadasNoLaborables = false;
+
     @CreationTimestamp
     @Column(name = "creado_en", updatable = false)
     private LocalDateTime creadoEn;
@@ -69,6 +72,8 @@ public class BuffetEntity {
         entity.setNombre(buffet.getNombre());
         entity.setFechaVencimientoHabilitacion(buffet.getFechaVencimientoHabilitacion());
         entity.setActivo(buffet.getActivo());
+        entity.setHabilitarVentasAnticipadasNoLaborables(
+                buffet.getHabilitarVentasAnticipadasNoLaborables());
         entity.setCreadoEn(buffet.getCreadoEn());
         entity.setActualizadoEn(buffet.getActualizadoEn());
 
@@ -94,6 +99,8 @@ public class BuffetEntity {
         buffet.setNombre(this.nombre);
         buffet.setFechaVencimientoHabilitacion(this.fechaVencimientoHabilitacion);
         buffet.setActivo(this.activo);
+        buffet.setHabilitarVentasAnticipadasNoLaborables(
+                this.habilitarVentasAnticipadasNoLaborables);
         buffet.setCreadoEn(this.creadoEn);
         buffet.setActualizadoEn(this.actualizadoEn);
 

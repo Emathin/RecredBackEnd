@@ -28,6 +28,9 @@ import com.recred.backend.application.ListKiosqueroOperationalAlertsRequest;
 import com.recred.backend.application.UpdatePickupSlotRules;
 import com.recred.backend.application.UpdatePickupSlotRulesRequest;
 import com.recred.backend.application.UpdatePickupSlotRulesResponse;
+import com.recred.backend.application.UpdateBuffetSettings;
+import com.recred.backend.application.UpdateBuffetSettingsRequest;
+import com.recred.backend.application.UpdateBuffetSettingsResponse;
 import com.recred.backend.domain.models.EstadoCompra;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -72,6 +75,7 @@ public class KiosqueroOperationsController {
     private final KiosqueroAccessGuard kiosqueroAccessGuard;
     private final SchoolAccessGuard schoolAccessGuard;
     private final PlanAccessGuard planAccessGuard;
+    private final UpdateBuffetSettings updateBuffetSettings;
 
     public KiosqueroOperationsController(
             CloseDailyBuffet closeDailyBuffet,
@@ -86,7 +90,8 @@ public class KiosqueroOperationsController {
             GetKiosqueroDashboard getKiosqueroDashboard,
             KiosqueroAccessGuard kiosqueroAccessGuard,
             SchoolAccessGuard schoolAccessGuard,
-            PlanAccessGuard planAccessGuard
+            PlanAccessGuard planAccessGuard,
+            UpdateBuffetSettings updateBuffetSettings
     ) {
         this.closeDailyBuffet = closeDailyBuffet;
         this.getDailyBuffetCloseStatus = getDailyBuffetCloseStatus;
@@ -101,6 +106,7 @@ public class KiosqueroOperationsController {
         this.kiosqueroAccessGuard = kiosqueroAccessGuard;
         this.schoolAccessGuard = schoolAccessGuard;
         this.planAccessGuard = planAccessGuard;
+        this.updateBuffetSettings = updateBuffetSettings;
     }
 
     @GetMapping("/{buffetId}/orders")
@@ -270,6 +276,22 @@ public class KiosqueroOperationsController {
                         request.minutosCorte()
                 ));
         return ResponseEntity.ok(PickupSlotRulesResponse.fromApplication(slot));
+    }
+
+    @PatchMapping("/{buffetId}/settings")
+    public ResponseEntity<UpdateBuffetSettingsResponse> updateSettings(
+            @PathVariable UUID buffetId,
+            @RequestBody UpdateBuffetSettingsRequest request,
+            Authentication authentication
+    ) {
+        kiosqueroAccessGuard.requireBuffetAccess(authentication, buffetId);
+        UpdateBuffetSettingsResponse response = updateBuffetSettings.execute(
+                new UpdateBuffetSettingsRequest(
+                        buffetId,
+                        request.habilitarVentasAnticipadasNoLaborables()
+                )
+        );
+        return ResponseEntity.ok(response);
     }
 
     private LocalDate requestedDate(LocalDate date) {

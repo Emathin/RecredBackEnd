@@ -6,13 +6,15 @@ import java.util.UUID;
 public record AlumnoBuffetResponseDTO(
         UUID id,
         String nombre,
-        UUID colegioId
+        UUID colegioId,
+        Boolean habilitarVentasAnticipadasNoLaborables
 ) {
     public static AlumnoBuffetResponseDTO fromResponse(GetBuffetByStudentResponse response) {
         return new AlumnoBuffetResponseDTO(
                 response.id(),
                 response.nombre(),
-                response.colegioId()
+                response.colegioId(),
+                response.habilitarVentasAnticipadasNoLaborables()
         );
     }
 }

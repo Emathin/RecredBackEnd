@@ -11,6 +11,7 @@ public record GetBuffetByStudentResponse(
         UUID vendedorId,
         LocalDate fechaVencimientoHabilitacion,
         Boolean activo,
+        Boolean habilitarVentasAnticipadasNoLaborables,
         LocalDateTime creadoEn,
         LocalDateTime actualizadoEn
 ) {}

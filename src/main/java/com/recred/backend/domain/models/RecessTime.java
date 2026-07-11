@@ -4,7 +4,9 @@ public enum RecessTime {
     FIRST_RECESS("primer recreo"),
     SECOND_RECESS("segundo recreo"),
     NOON("mediodia"),
-    AFTER_HOURS("salida");
+    AFTER_HOURS("salida"),
+    ELEVEN_AM("11:00 hs"),
+    FOUR_PM("16:00 hs");
 
     private final String label;
 

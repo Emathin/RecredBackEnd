@@ -21,6 +21,9 @@ public class Buffet {
     private String nombre;
     private LocalDate fechaVencimientoHabilitacion;
     private Boolean activo = true;
+
+    private Boolean habilitarVentasAnticipadasNoLaborables = false;
+
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
 }
