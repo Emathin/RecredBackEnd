@@ -24,6 +24,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.recred.backend.domain.repositories.ConsumptionAccessRepository;
+import com.recred.backend.domain.models.ConsumptionRequester;
+import com.recred.backend.domain.exceptions.UsuarioAutenticadoNoEncontradoException;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -42,6 +45,7 @@ public class PurchaseController {
     private final CreateAdvancePurchase createAdvancePurchase;
     private final KiosqueroAccessGuard kiosqueroAccessGuard;
     private final PurchaseAccessGuard purchaseAccessGuard;
+    private final ConsumptionAccessRepository consumptionAccessRepository;
 
     public PurchaseController(ProcessPresentialPurchase processPresentialPurchase,
                               GetPresentialPurchase getPresentialPurchase,
@@ -52,7 +56,8 @@ public class PurchaseController {
                                       revertPurchaseCancellation,
                               CreateAdvancePurchase createAdvancePurchase,
                               KiosqueroAccessGuard kiosqueroAccessGuard,
-                              PurchaseAccessGuard purchaseAccessGuard) {
+                              PurchaseAccessGuard purchaseAccessGuard,
+                              ConsumptionAccessRepository consumptionAccessRepository) {
         this.processPresentialPurchase = processPresentialPurchase;
         this.getPresentialPurchase = getPresentialPurchase;
         this.getPurchaseStatus = getPurchaseStatus;
@@ -62,6 +67,7 @@ public class PurchaseController {
         this.createAdvancePurchase = createAdvancePurchase;
         this.kiosqueroAccessGuard = kiosqueroAccessGuard;
         this.purchaseAccessGuard = purchaseAccessGuard;
+        this.consumptionAccessRepository = consumptionAccessRepository;
     }
 
     @PostMapping("/presential")
@@ -179,8 +185,13 @@ public class PurchaseController {
             Authentication authentication
     ) {
         purchaseAccessGuard.requirePurchaseAccess(authentication, id);
+        ConsumptionRequester requester = consumptionAccessRepository
+                .findRequesterByCognitoSubject(cognitoSubject(authentication))
+                .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(
+                        cognitoSubject(authentication)));
         cancelPresentialPurchase.execute(
-                new com.recred.backend.application.CancelPresentialPurchaseRequest(id));
+                new com.recred.backend.application.CancelPresentialPurchaseRequest(
+                        id, null, requester.userId(), requester.role()));
         return ResponseEntity.ok().build();
     }
 
@@ -190,8 +201,13 @@ public class PurchaseController {
             Authentication authentication
     ) {
         purchaseAccessGuard.requirePurchaseAccess(authentication, id);
+        ConsumptionRequester requester = consumptionAccessRepository
+                .findRequesterByCognitoSubject(cognitoSubject(authentication))
+                .orElseThrow(() -> new UsuarioAutenticadoNoEncontradoException(
+                        cognitoSubject(authentication)));
         revertPurchaseCancellation.execute(
-                new com.recred.backend.application.RevertPurchaseCancellationRequest(id));
+                new com.recred.backend.application.RevertPurchaseCancellationRequest(
+                        id, requester.userId(), requester.role()));
         return ResponseEntity.ok().build();
     }
 

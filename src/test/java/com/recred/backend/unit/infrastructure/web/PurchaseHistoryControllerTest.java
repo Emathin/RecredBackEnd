@@ -126,6 +126,7 @@ class PurchaseHistoryControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
         when(getHistoryByStudent.execute(new GetHistoryByStudentRequest(studentId)))
@@ -142,6 +143,7 @@ class PurchaseHistoryControllerTest {
                 null,
                 LocalDateTime.now(),
                 List.of(),
+                null,
                 null,
                 null,
                 null,
@@ -168,6 +170,7 @@ class PurchaseHistoryControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
         when(getPendingHistoryByStudent.execute(new GetPendingHistoryByStudentRequest(studentId)))
@@ -184,6 +187,7 @@ class PurchaseHistoryControllerTest {
                 null,
                 LocalDateTime.now(),
                 List.of(),
+                null,
                 null,
                 null,
                 null,

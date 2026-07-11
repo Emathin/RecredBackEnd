@@ -74,7 +74,8 @@ public class CancelPresentialPurchase {
 
         EstadoCompra statusBeforeCancellation = purchase.getStatus();
         ensurePurchaseCanBeCancelled(purchase);
-        cancelPurchaseAndReleaseReservation(purchase, statusBeforeCancellation);
+        cancelPurchaseAndReleaseReservation(
+                purchase, statusBeforeCancellation, cancellationRequest);
         refundStudentWallet(purchase);
 
         Purchase savedPurchase = savePurchase(purchase);
@@ -108,8 +109,9 @@ public class CancelPresentialPurchase {
 
     private void cancelPurchaseAndReleaseReservation(
             Purchase purchase,
-            EstadoCompra statusBeforeCancellation) {
-        purchase.cancel();
+            EstadoCompra statusBeforeCancellation,
+            CancelPresentialPurchaseRequest cancellationRequest) {
+        purchase.cancel(cancellationRequest.cancelledById(), cancellationRequest.cancelledByRole());
         releaseReservationIfNeeded(purchase, statusBeforeCancellation);
     }
 

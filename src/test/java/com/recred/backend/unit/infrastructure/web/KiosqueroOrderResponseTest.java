@@ -35,9 +35,9 @@ class KiosqueroOrderResponseTest {
     @Test
     void fromDomainShouldMapFullPurchase() {
         Purchase purchase = givenFullPurchase();
-        
+
         KiosqueroOrderResponse response = whenMappingFromDomain(purchase);
-        
+
         thenFullPurchaseIsMapped(response);
     }
 
@@ -45,27 +45,27 @@ class KiosqueroOrderResponseTest {
     void fromApplicationShouldMapOrderResponse() {
         ListKiosqueroOrdersResponse.OrderResponse order = givenApplicationOrder();
         Map<UUID, ListInventoryProductsResponse.InventoryProductResponse> inventory = givenInventoryMap();
-        
+
         KiosqueroOrderResponse response = whenMappingFromApplication(order, inventory);
-        
+
         thenApplicationOrderIsMapped(response);
     }
 
     @Test
     void fromDomainShouldHandleNullFields() {
         Purchase purchase = givenPurchaseWithNullFields();
-        
+
         KiosqueroOrderResponse response = whenMappingFromDomain(purchase);
-        
+
         thenNullFieldsAreHandled(response);
     }
 
     @Test
     void fromDomainShouldHandleStudentWithNullUserAndGrade() {
         Purchase purchase = givenPurchaseWithNullStudentFields();
-        
+
         KiosqueroOrderResponse response = whenMappingFromDomain(purchase);
-        
+
         thenStudentNullFieldsAreHandled(response);
     }
 
@@ -73,18 +73,18 @@ class KiosqueroOrderResponseTest {
     void fromDomainShouldUseInventoryProductsWhenProvided() {
         Purchase purchase = givenPurchaseForInventory();
         Map<UUID, ListInventoryProductsResponse.InventoryProductResponse> inventory = givenInventoryMap();
-        
+
         KiosqueroOrderResponse response = whenMappingFromDomain(purchase, inventory);
-        
+
         thenInventoryProductsAreUsed(response);
     }
 
     @Test
     void fromDomainShouldHandleProductWithNullPrice() {
         Purchase purchase = givenPurchaseWithNullPriceProduct();
-        
+
         KiosqueroOrderResponse response = whenMappingFromDomain(purchase);
-        
+
         thenNullPriceIsHandled(response);
     }
 
@@ -126,7 +126,7 @@ class KiosqueroOrderResponseTest {
         purchase.setBuyerId(STUDENT_ID);
         purchase.setBuyerType(BuyerType.STUDENT);
         purchase.setItems(Map.of(product, 2));
-        
+
         return purchase;
     }
 
@@ -167,7 +167,8 @@ class KiosqueroOrderResponseTest {
                         new BigDecimal("20.00"),
                         true,
                         50
-                ))
+                )),
+                null
         );
     }
 

@@ -85,6 +85,8 @@ class PurchaseControllerTest {
     private KiosqueroAccessGuard kiosqueroAccessGuard;
     @Mock
     private PurchaseAccessGuard purchaseAccessGuard;
+    @Mock
+    private com.recred.backend.domain.repositories.ConsumptionAccessRepository consumptionAccessRepository;
 
     private PurchaseController controller;
     private Authentication authentication;
@@ -100,7 +102,8 @@ class PurchaseControllerTest {
                 revertPurchaseCancellation,
                 createAdvancePurchase,
                 kiosqueroAccessGuard,
-                purchaseAccessGuard
+                purchaseAccessGuard,
+                consumptionAccessRepository
         );
         authentication = mock(Authentication.class);
     }
@@ -170,11 +173,11 @@ class PurchaseControllerTest {
     @Test
     void updatePurchaseStatusShouldRequireAccessAndDelegateWithRequest() {
         givenPurchaseCanBeAccessed();
-        UpdatePurchaseStatusRequest request = 
+        UpdatePurchaseStatusRequest request =
                 new UpdatePurchaseStatusRequest(PURCHASE_ID, EstadoCompra.LISTO);
         givenPurchaseStatusUpdated(request);
 
-        ResponseEntity<PurchaseStatusResponseDTO> response = 
+        ResponseEntity<PurchaseStatusResponseDTO> response =
                 whenUpdatingPurchaseStatus(EstadoCompra.LISTO);
 
         thenResponseContainsUpdatedPurchaseStatusData(response);

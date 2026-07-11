@@ -84,9 +84,9 @@ class PurchaseResponseDTOTest {
     }
 
     private GetHistoryByStudentResponse givenHistoryResponse(
-            UUID purchaseId, 
-            UUID studentId, 
-            UUID productId, 
+            UUID purchaseId,
+            UUID studentId,
+            UUID productId,
             LocalDateTime date
     ) {
         return new GetHistoryByStudentResponse(
@@ -94,13 +94,13 @@ class PurchaseResponseDTOTest {
                 "CREDITOS", date, List.of(new GetHistoryByStudentResponse.Item(
                         productId, "Producto 1", 3, new BigDecimal("5.00"),
                         false, 10, null, null
-                )), "PRESENCIAL", null, null, null, null, null
+                )), "PRESENCIAL", null, null, null, null, null, null
         );
     }
 
     private GetHistoryByStudentResponse givenHistoryResponseWithNulls() {
         return new GetHistoryByStudentResponse(
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null,null
         );
     }
 
@@ -112,13 +112,13 @@ class PurchaseResponseDTOTest {
                         alfajorId, "Alfajor Jorgito", 2, new BigDecimal("500.00"),
                         false, null, null, null
                 )),
-                "PRESENCIAL", null, null, null, null, null
+                "PRESENCIAL", null, null, null, null, null, null
         );
     }
 
     private GetHistoryByStudentResponse givenHistoryResponseWithPromotions(
-            UUID promoId, 
-            String promoName, 
+            UUID promoId,
+            String promoName,
             UUID standaloneId
     ) {
         return new GetHistoryByStudentResponse(
@@ -138,7 +138,7 @@ class PurchaseResponseDTOTest {
                                 false, null, null, null
                         )
                 ),
-                "PRESENCIAL", null, null, null, null, null
+                "PRESENCIAL", null, null, null, null, null, null
         );
     }
 
@@ -170,7 +170,7 @@ class PurchaseResponseDTOTest {
     }
 
     private GetPendingHistoryByStudentResponse givenPendingHistoryResponseWithPromotions(
-            UUID promoId, 
+            UUID promoId,
             UUID standaloneId
     ) {
         return new GetPendingHistoryByStudentResponse(
@@ -218,15 +218,16 @@ class PurchaseResponseDTOTest {
                 "Segundo recreo",
                 LocalDate.of(2026, 7, 3),
                 LocalTime.of(10, 15),
-                "PROGRAMADO"
+                "PROGRAMADO",
+                null
         );
     }
 
     private void thenMapsAllFieldsCorrectly(
-            PurchaseResponseDTO response, 
-            UUID purchaseId, 
-            UUID studentId, 
-            UUID productId, 
+            PurchaseResponseDTO response,
+            UUID purchaseId,
+            UUID studentId,
+            UUID productId,
             LocalDateTime date
     ) {
         assertEquals(purchaseId, response.getId());
@@ -261,9 +262,9 @@ class PurchaseResponseDTOTest {
     }
 
     private void thenGroupsPromotionItemsCorrectly(
-            PurchaseResponseDTO response, 
-            UUID promoId, 
-            String promoName, 
+            PurchaseResponseDTO response,
+            UUID promoId,
+            String promoName,
             UUID standaloneId
     ) {
         assertEquals(2, response.getItems().size());
@@ -288,8 +289,8 @@ class PurchaseResponseDTOTest {
     }
 
     private void thenMapsPresentialPurchaseCorrectly(
-            PurchaseResponseDTO response, 
-            GetPresentialPurchaseResponse responseDto, 
+            PurchaseResponseDTO response,
+            GetPresentialPurchaseResponse responseDto,
             UUID productId
     ) {
         assertEquals(responseDto.id(), response.getId());
@@ -304,8 +305,8 @@ class PurchaseResponseDTOTest {
     }
 
     private void thenGroupsPendingHistoryPromotionsAndFormatsTimeCorrectly(
-            PurchaseResponseDTO response, 
-            UUID promoId, 
+            PurchaseResponseDTO response,
+            UUID promoId,
             UUID standaloneId
     ) {
         assertEquals("10:15", response.getPickupSlotStartTime());
