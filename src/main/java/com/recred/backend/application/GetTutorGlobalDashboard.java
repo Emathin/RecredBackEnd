@@ -212,22 +212,25 @@ public class GetTutorGlobalDashboard {
 
     private List<ScheduledPickupResponse> buildTodayPickups(
             List<GetHistoryByStudentResponse> historial) {
-        List<ScheduledPickupResponse> pickups = new ArrayList<>();
         java.time.LocalDate today = java.time.LocalDate.now();
 
-        for (GetHistoryByStudentResponse p : historial) {
-            boolean isToday = p.pickupDate() != null && p.pickupDate().equals(today);
-            boolean isActive = "PROGRAMADO".equals(p.withdrawalStatus())
-                    || "EN_PREPARACION".equals(p.withdrawalStatus())
-                    || "LISTO".equals(p.withdrawalStatus());
-
-            if ("ANTICIPADA".equals(p.tipo()) && isToday && isActive) {
-                String desc = p.pickupSlotDescription() != null ? p.pickupSlotDescription() : "";
-                pickups.add(new ScheduledPickupResponse(
-                        p.id().toString(), getPurchaseName(p), desc));
-            }
-        }
-        return pickups;
+        return historial.stream()
+                .filter(p -> p.pickupDate() != null && p.pickupDate().equals(today))
+                .filter(p -> "ANTICIPADA".equals(p.tipo()))
+                .filter(p -> "PROGRAMADO".equals(p.withdrawalStatus())
+                        || "EN_PREPARACION".equals(p.withdrawalStatus())
+                        || "LISTO".equals(p.withdrawalStatus()))
+                .sorted(java.util.Comparator.comparing(p ->
+                        p.pickupSlotStartTime() == null 
+                        ? java.time.LocalTime.MAX 
+                        : p.pickupSlotStartTime()))
+                .map(p -> {
+                    String desc = p.pickupSlotDescription() != null 
+                            ? p.pickupSlotDescription() : "";
+                    return new ScheduledPickupResponse(
+                            p.id().toString(), getPurchaseName(p), desc);
+                })
+                .toList();
     }
 
     private String getPurchaseName(GetHistoryByStudentResponse p) {

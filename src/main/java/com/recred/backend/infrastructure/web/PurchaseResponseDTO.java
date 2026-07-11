@@ -30,8 +30,9 @@ public class PurchaseResponseDTO {
     private String pickupSlotDescription;
     private java.time.LocalDate pickupDate;
     private String pickupSlotStartTime;
+    private String cancelledByRole;
 
-    
+
     public PurchaseResponseDTO(
             com.recred.backend.application.GetPresentialPurchaseResponse response) {
         this.id = response.id();
@@ -82,6 +83,7 @@ public class PurchaseResponseDTO {
             this.pickupSlotStartTime = response.pickupSlotStartTime()
                     .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
         }
+        this.cancelledByRole = response.cancelledByRole();
 
         if (response.items() != null) {
             this.items = new java.util.ArrayList<>();
@@ -151,6 +153,7 @@ public class PurchaseResponseDTO {
             this.pickupSlotStartTime = response.pickupSlotStartTime()
                     .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
         }
+        this.cancelledByRole = response.cancelledByRole();
 
         if (response.items() != null) {
             this.items = new java.util.ArrayList<>();
