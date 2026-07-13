@@ -24,6 +24,10 @@ public interface SpringDataSuggestionAiRepository
     NotificacionEntity findByTipoAndStudentId(String today, UUID studentId);
 
     @Query("SELECT DISTINCT s FROM SugerenciaIAEntity s " +
+           "LEFT JOIN FETCH s.productoEntity p " +
+           "LEFT JOIN FETCH p.categoria " +
+           "LEFT JOIN FETCH p.tipos " +
+           "LEFT JOIN FETCH p.clasificacionesSalud " +
            "WHERE s.buffetEntity.id = :buffetId AND s.tipo = :tipo " +
            "ORDER BY s.creadoEn DESC")
     List<SugerenciaIAEntity>
