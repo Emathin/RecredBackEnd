@@ -86,9 +86,17 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
             String externalReference
     ) {
         try {
-            String successUrl = properties.getSuccessUrl().trim();
-            String notificationUrl = properties.getNotificationUrl().trim() 
-                    + "?source_news=webhooks";
+            String successUrl = properties.getSuccessUrl();
+            String notificationUrl = properties.getNotificationUrl();
+            System.err.println("MP SUCCESS: [" + successUrl + "]");
+            System.err.println("MP NOTIFICATION: [" + notificationUrl + "]");
+            if (successUrl != null) {
+                successUrl = successUrl.trim();
+            }
+            if (notificationUrl != null) {
+                notificationUrl = notificationUrl.trim() + "?source_news=webhooks";
+            }
+
 
             PreferenceClient client = new PreferenceClient();
 
@@ -112,7 +120,8 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
 
             PreferenceRequest preferenceRequest = PreferenceRequest.builder()
                     .items(items)
-                    .autoReturn("approved")
+                    .autoReturn(successUrl != null && successUrl.startsWith("https") 
+                            ? "approved" : null)
                     .backUrls(backUrls)
                     .notificationUrl(notificationUrl)
                     .externalReference(externalReference)
@@ -124,6 +133,7 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
 
         } catch (com.mercadopago.exceptions.MPApiException e) {
             String errorMsg = e.getApiResponse().getContent();
+            System.err.println("MPApiException content: " + errorMsg);
             throw new RuntimeException("Error al crear preferencia: " + errorMsg, e);
         } catch (Exception e) {
             throw new RuntimeException("Error al crear preferencia de Mercado Pago", e);

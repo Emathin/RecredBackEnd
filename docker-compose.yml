@@ -39,6 +39,7 @@ services:
     environment:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       TZ: America/Argentina/Buenos_Aires
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}?prepareThreshold=0
     ports:
       - "8080:8080"
     volumes:
@@ -46,6 +47,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: recred-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
 volumes:
   db_data:

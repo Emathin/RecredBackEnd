@@ -7,6 +7,7 @@ import com.recred.backend.domain.repositories.UsuarioRepository;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public class UsuarioService {
@@ -50,8 +51,17 @@ public class UsuarioService {
 
         Optional<Usuario> usuarioExistente = usuarioRepository.findByIdCognito(sub);
 
+        RolUsuario assignedRole = mapCognitoGroupsToRole(
+                jwt.getClaimAsStringList("cognito:groups"));
+
         if (usuarioExistente.isPresent()) {
-            return usuarioExistente.get();
+            Usuario usuario = usuarioExistente.get();
+            if (assignedRole != null && usuario.getRol() != assignedRole) {
+                usuario.setRol(assignedRole);
+                usuario.setActualizadoEn(LocalDateTime.now());
+                usuarioRepository.save(usuario);
+            }
+            return usuario;
         }
 
         Usuario nuevoUsuario = new Usuario();
@@ -61,7 +71,7 @@ public class UsuarioService {
         nuevoUsuario.setNombre(nombre);
         nuevoUsuario.setApellido(apellido);
 
-        nuevoUsuario.setRol(RolUsuario.PADRE);
+        nuevoUsuario.setRol(assignedRole != null ? assignedRole : RolUsuario.PADRE);
 
         nuevoUsuario.setAutenticadoConCognito(true);
         nuevoUsuario.setActivo(true);
@@ -69,6 +79,33 @@ public class UsuarioService {
         nuevoUsuario.setActualizadoEn(LocalDateTime.now());
 
         return usuarioRepository.save(nuevoUsuario);
+    }
+
+    private RolUsuario mapCognitoGroupsToRole(List<String> groups) {
+        if (groups == null || groups.isEmpty()) {
+            return null;
+        }
+        if (groups.stream().anyMatch(g -> g.equalsIgnoreCase("Institucion") 
+                || g.equalsIgnoreCase("Institución") 
+                || g.equalsIgnoreCase("Instituciones"))) {
+            return RolUsuario.DIRECTIVO_COLEGIO;
+        }
+        if (groups.stream().anyMatch(g -> g.equalsIgnoreCase("Kiosqueros") 
+                || g.equalsIgnoreCase("Kiosquero") 
+                || g.equalsIgnoreCase("Vendedores") 
+                || g.equalsIgnoreCase("Vendedor"))) {
+            return RolUsuario.VENDEDOR;
+        }
+        if (groups.stream().anyMatch(g -> g.equalsIgnoreCase("Admin") 
+                || g.equalsIgnoreCase("Administradores") 
+                || g.equalsIgnoreCase("Administrador"))) {
+            return RolUsuario.ADMIN;
+        }
+        if (groups.stream().anyMatch(g -> g.equalsIgnoreCase("Alumnos") 
+                || g.equalsIgnoreCase("Alumno"))) {
+            return RolUsuario.ALUMNO;
+        }
+        return RolUsuario.PADRE;
     }
 
     public Usuario obtenerUsuarioActual(String cognitoId) {

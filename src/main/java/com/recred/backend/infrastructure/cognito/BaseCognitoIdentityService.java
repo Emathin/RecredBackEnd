@@ -135,6 +135,17 @@ public abstract class BaseCognitoIdentityService {
         ));
     }
 
+    public void setPermanentPassword(String username, String password) {
+        String userPoolId = required(properties.getUserPoolId(), "userPoolId");
+        String region = required(properties.getRegion(), "region");
+        invoke(region, "AWSCognitoIdentityProviderService.AdminSetUserPassword", Map.of(
+                "UserPoolId", userPoolId,
+                "Username", username,
+                "Password", password,
+                "Permanent", true
+        ));
+    }
+
     private String authorizationHeader(AwsCredentials credentials, String region, String target,
                                        String payload, String host, String amzDate,
                                        String dateStamp) throws Exception {
