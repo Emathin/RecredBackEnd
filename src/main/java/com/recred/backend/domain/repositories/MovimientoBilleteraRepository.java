@@ -26,6 +26,8 @@ public interface MovimientoBilleteraRepository {
 
     BigDecimal obtenerUltimoMontoCarga(UUID billeteraId);
 
+    BigDecimal getCollaboratorNetBalance(UUID billeteraId, UUID usuarioId);
+
     void registrarMovimientoSistema(
             UUID billeteraId,
             TipoMovimientoBilletera tipo,

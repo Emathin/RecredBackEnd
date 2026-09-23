@@ -116,6 +116,10 @@ public class UserProfileController {
         response.put("plan", usuario.getPlan().name());
         response.put("fechaVencimientoPlan", planExpiration(usuario));
         response.put("hasUsedTrial", hasUsedTrial(usuario));
+        
+        if (usuario.getTutor() != null) {
+            response.put("esColaborador", usuario.getTutor().getEsColaborador());
+        }
 
         return response;
     }

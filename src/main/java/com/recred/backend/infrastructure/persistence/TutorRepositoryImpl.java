@@ -63,6 +63,15 @@ public class TutorRepositoryImpl implements TutorRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Tutor> findByTutorPrincipalId(UUID tutorPrincipalId) {
+        return springDataTutorRepository.findByTutorPrincipalId(tutorPrincipalId)
+                .stream()
+                .map(TutorEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public Tutor save(Tutor tutor) {
         TutorEntity entity = springDataTutorRepository.findById(tutor.getId())

@@ -32,4 +32,15 @@ public interface SpringDataMovimientoBilleteraRepository
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to
     );
+
+    @Query("""
+            select coalesce(sum(m.monto), 0)
+            from MovimientoBilleteraEntity m
+            where m.billeteraEntity.id = :billeteraId
+            and m.usuarioEntity.id = :usuarioId
+            """)
+    java.math.BigDecimal getCollaboratorNetBalance(
+            @Param("billeteraId") UUID billeteraId,
+            @Param("usuarioId") UUID usuarioId
+    );
 }

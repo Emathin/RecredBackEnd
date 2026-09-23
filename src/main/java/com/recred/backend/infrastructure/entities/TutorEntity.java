@@ -53,6 +53,12 @@ public class TutorEntity {
     @Column(name = "dashboard_config", columnDefinition = "TEXT")
     private String dashboardConfig;
 
+    @Column(name = "es_colaborador", nullable = false)
+    private Boolean esColaborador = false;
+
+    @Column(name = "tutor_principal_id")
+    private UUID tutorPrincipalId;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "tutores_alumnos",
@@ -79,6 +85,8 @@ public class TutorEntity {
         tutor.setCreadoEn(this.creadoEn);
         tutor.setActualizadoEn(this.actualizadoEn);
         tutor.setDashboardConfig(this.dashboardConfig);
+        tutor.setEsColaborador(this.esColaborador != null ? this.esColaborador : false);
+        tutor.setTutorPrincipalId(this.tutorPrincipalId);
 
         if (this.usuario != null) {
             tutor.setUsuario(this.usuario.toDomain());
@@ -104,6 +112,8 @@ public class TutorEntity {
         entity.setCreadoEn(tutor.getCreadoEn());
         entity.setActualizadoEn(tutor.getActualizadoEn());
         entity.setDashboardConfig(tutor.getDashboardConfig());
+        entity.setEsColaborador(tutor.getEsColaborador() != null ? tutor.getEsColaborador() : false);
+        entity.setTutorPrincipalId(tutor.getTutorPrincipalId());
 
         if (tutor.getHijos() != null && !tutor.getHijos().isEmpty()) {
             tutor.getHijos().forEach(alumno -> {

@@ -77,6 +77,11 @@ public class MovimientoBilleteraRepositoryImpl implements MovimientoBilleteraRep
     }
 
     @Override
+    public BigDecimal getCollaboratorNetBalance(UUID billeteraId, UUID usuarioId) {
+        return springDataMovimientoBilleteraRepository.getCollaboratorNetBalance(billeteraId, usuarioId);
+    }
+
+    @Override
     public void registrarMovimientoSistema(
             UUID billeteraId,
             TipoMovimientoBilletera tipo,

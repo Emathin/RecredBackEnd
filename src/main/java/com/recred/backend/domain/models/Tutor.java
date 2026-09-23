@@ -21,6 +21,8 @@ public class Tutor {
     private LocalDateTime creadoEn;
     private LocalDateTime actualizadoEn;
     private String dashboardConfig;
+    private Boolean esColaborador = false;
+    private UUID tutorPrincipalId;
     private Set<Alumno> hijos = new HashSet<>();
 
     public void addHijo(Alumno alumno) {

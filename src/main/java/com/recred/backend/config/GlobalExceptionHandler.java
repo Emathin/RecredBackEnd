@@ -356,6 +356,12 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, "Acceso denegado", ex.getMessage());
     }
 
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ErrorResponse> handleSecurityException(SecurityException ex) {
+        LOGGER.error("SecurityException caught: {}", ex.getMessage());
+        return buildResponse(HttpStatus.FORBIDDEN, "Acceso denegado", ex.getMessage(), "FORBIDDEN");
+    }
+
     @ExceptionHandler(OperationNotAllowedException.class)
     public ResponseEntity<ErrorResponse> handleOperationNotAllowed(
             OperationNotAllowedException ex) {

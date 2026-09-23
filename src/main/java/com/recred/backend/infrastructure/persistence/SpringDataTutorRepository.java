@@ -71,6 +71,21 @@ public interface SpringDataTutorRepository extends
             "hijos.restriccionesHorarias",
             "hijos.productosBloqueados"
     })
+    List<TutorEntity> findByTutorPrincipalId(UUID tutorPrincipalId);
+
+    @EntityGraph(attributePaths = {
+            "hijos",
+            "usuario",
+            "hijos.usuario",
+            "hijos.gradoEntity",
+            "hijos.gradoEntity.colegioEntity",
+            "hijos.gradoEntity.colegioEntity.nivelEntity",
+            "hijos.billeteraEntity",
+            "hijos.restriccionesSalud",
+            "hijos.productosFavoritos",
+            "hijos.restriccionesHorarias",
+            "hijos.productosBloqueados"
+    })
     Optional<TutorEntity> findByUsuarioIdCognito(String idCognito);
 
     @EntityGraph(attributePaths = {

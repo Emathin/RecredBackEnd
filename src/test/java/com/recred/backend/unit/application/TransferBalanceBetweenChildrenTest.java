@@ -181,6 +181,38 @@ class TransferBalanceBetweenChildrenTest {
         thenWalletsWereNotSaved();
     }
 
+    @Test
+    void execute_WhenCollaboratorExceedsNetBalance_ThrowsException() {
+        givenValidRequest();
+        givenAuthenticatedParentWithChildren();
+        tutor.setEsColaborador(true);
+        givenWalletsExist();
+        
+        when(movimientoBilleteraRepository.getCollaboratorNetBalance(fromWallet.getId(), parentUser.getId()))
+                .thenReturn(new BigDecimal("20.00"));
+
+        whenTransferringBalanceFails(SecurityException.class);
+
+        thenErrorMessageIs("No puedes transferir más de lo que has aportado a esta billetera (20.00)");
+        thenWalletsWereNotSaved();
+    }
+
+    @Test
+    void execute_WhenCollaboratorHasSufficientNetBalance_TransfersBalance() {
+        givenValidTransferScenario();
+        tutor.setEsColaborador(true);
+        givenNoActiveMicrocredit();
+        
+        when(movimientoBilleteraRepository.getCollaboratorNetBalance(fromWallet.getId(), parentUser.getId()))
+                .thenReturn(new BigDecimal("50.00"));
+
+        whenTransferringBalance();
+
+        thenWalletBalancesAre("70.00", "80.00");
+        thenWalletsWereSaved();
+        thenTransferMovementsWereRegistered();
+    }
+
     private void givenValidTransferScenario() {
         givenValidRequest();
         givenAuthenticatedParentWithChildren();

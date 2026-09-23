@@ -11,6 +11,8 @@ public interface TutorRepository {
 
     Optional<Tutor> findByUsuarioId(UUID usuarioId);
 
+    List<Tutor> findByTutorPrincipalId(UUID tutorPrincipalId);
+
     Optional<Tutor> findByUsuarioIdCognito(String cognitoSubject);
 
     Tutor save(Tutor tutor);
