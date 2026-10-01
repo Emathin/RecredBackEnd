@@ -19,14 +19,12 @@ import static org.mockito.Mockito.when;
 class RemoveCollaboratorUseCaseTest {
 
     private TutorRepository tutorRepository;
-    private CognitoTutorIdentityService cognitoIdentityService;
     private RemoveCollaboratorUseCase useCase;
 
     @BeforeEach
     void setUp() {
         tutorRepository = mock(TutorRepository.class);
-        cognitoIdentityService = mock(CognitoTutorIdentityService.class);
-        useCase = new RemoveCollaboratorUseCase(tutorRepository, cognitoIdentityService);
+        useCase = new RemoveCollaboratorUseCase(tutorRepository);
     }
 
     @Test
@@ -51,8 +49,7 @@ class RemoveCollaboratorUseCaseTest {
 
         useCase.execute(tutorPrincipalId, collaboratorId);
 
-        verify(cognitoIdentityService).deleteTutorUser("cognito-id-123");
-        verify(tutorRepository).delete(colab);
+        verify(tutorRepository).save(colab);
     }
 
     @Test

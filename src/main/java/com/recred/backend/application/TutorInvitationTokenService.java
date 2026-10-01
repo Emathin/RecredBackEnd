@@ -6,6 +6,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.HexFormat;
 
+import org.springframework.stereotype.Service;
+
+@Service
 public class TutorInvitationTokenService {
 
     private static final int TOKEN_BYTES = 32;

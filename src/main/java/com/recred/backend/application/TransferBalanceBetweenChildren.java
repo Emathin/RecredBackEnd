@@ -56,12 +56,15 @@ public class TransferBalanceBetweenChildren {
             TransferBalanceBetweenChildrenRequest request,
             TransferContext context
     ) {
-        if (context.padre().getTutor() != null && Boolean.TRUE.equals(context.padre().getTutor().getEsColaborador())) {
+        if (context.padre().getTutor() != null 
+                && Boolean.TRUE.equals(context.padre().getTutor().getEsColaborador())) {
             BigDecimal maxWithdrawal = movimientoBilleteraRepository.getCollaboratorNetBalance(
                     context.wallets().from().getId(), context.padre().getId()
             );
             if (request.amount().compareTo(maxWithdrawal) > 0) {
-                throw new SecurityException("No puedes transferir más de lo que has aportado a esta billetera (" + maxWithdrawal + ")");
+                throw new SecurityException(
+                        "No puedes transferir más de lo que has aportado a esta billetera (" 
+                        + maxWithdrawal + ")");
             }
         }
         

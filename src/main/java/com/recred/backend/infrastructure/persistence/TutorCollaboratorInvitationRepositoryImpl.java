@@ -11,13 +11,15 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-public class TutorCollaboratorInvitationRepositoryImpl implements TutorCollaboratorInvitationRepository {
+public class TutorCollaboratorInvitationRepositoryImpl 
+        implements TutorCollaboratorInvitationRepository {
 
     private final JpaTutorCollaboratorInvitationRepository jpaRepository;
 
     @Override
     public void save(TutorCollaboratorInvitation invitation) {
-        TutorCollaboratorInvitationEntity entity = TutorCollaboratorInvitationEntity.fromDomain(invitation);
+        TutorCollaboratorInvitationEntity entity = 
+                TutorCollaboratorInvitationEntity.fromDomain(invitation);
         jpaRepository.save(entity);
         invitation.setId(entity.getId());
     }

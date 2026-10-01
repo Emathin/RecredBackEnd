@@ -6,7 +6,6 @@ import com.recred.backend.domain.models.TutorCollaboratorInvitation;
 import com.recred.backend.domain.models.TutorInvitationStatus;
 import com.recred.backend.domain.repositories.TutorCollaboratorInvitationRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -14,17 +13,33 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import com.recred.backend.domain.models.Usuario;
+import com.recred.backend.domain.repositories.UsuarioRepository;
 
 @Service
-@RequiredArgsConstructor
 public class InviteCollaboratorUseCase {
 
     private final TutorRepository tutorRepository;
     private final TutorCollaboratorInvitationRepository invitationRepository;
-    private final JavaMailSender mailSender;
+    private final java.util.Optional<JavaMailSender> mailSender;
     private final TutorInvitationTokenService tokenService;
+    private final UsuarioRepository usuarioRepository;
+
+    public InviteCollaboratorUseCase(
+            TutorRepository tutorRepository,
+            TutorCollaboratorInvitationRepository invitationRepository,
+            java.util.Optional<JavaMailSender> mailSender,
+            TutorInvitationTokenService tokenService,
+            UsuarioRepository usuarioRepository) {
+        this.tutorRepository = tutorRepository;
+        this.invitationRepository = invitationRepository;
+        this.mailSender = mailSender;
+        this.tokenService = tokenService;
+        this.usuarioRepository = usuarioRepository;
+    }
 
     @Value("${spring.mail.username:no-reply@recred.com}")
     private String fromEmail;
@@ -38,7 +53,15 @@ public class InviteCollaboratorUseCase {
                 .orElseThrow(() -> new TutorNoEncontradoException("Tutor principal no encontrado"));
 
         if (tutor.getEsColaborador()) {
-            throw new SecurityException("Los colaboradores no pueden invitar a otros colaboradores");
+            throw new SecurityException(
+                    "Los colaboradores no pueden invitar a otros colaboradores");
+        }
+
+        Optional<Usuario> usuarioExistente = usuarioRepository.findByEmail(email.trim());
+        if (usuarioExistente.isPresent()) {
+            throw new IllegalStateException(
+                    "El correo electrónico ya está registrado en el sistema. " +
+                    "Usa un correo diferente para el colaborador.");
         }
 
         // Validar que los assignedStudentIds pertenezcan realmente al tutor principal
@@ -46,12 +69,13 @@ public class InviteCollaboratorUseCase {
             boolean ownsStudent = tutor.getHijos().stream()
                     .anyMatch(hijo -> hijo.getId().equals(studentId));
             if (!ownsStudent) {
-                throw new IllegalArgumentException("No puedes asignar a un colaborador un hijo que no te pertenece");
+                throw new IllegalArgumentException(
+                        "No puedes asignar a un colaborador un hijo que no te pertenece");
             }
         }
 
         String rawToken = tokenService.generateToken();
-        String tokenHash = tokenService.hashToken(rawToken);
+        String tokenHash = tokenService.hash(rawToken);
 
         TutorCollaboratorInvitation invitation = new TutorCollaboratorInvitation();
         invitation.setTutorPrincipalId(tutor.getId());
@@ -68,15 +92,20 @@ public class InviteCollaboratorUseCase {
     }
 
     private void sendEmail(String to, String inviterName, String link) {
+        if (mailSender.isEmpty()) {
+            System.out.println("No JavaMailSender configured. Skipping email to " + to);
+            return;
+        }
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(to);
         message.setSubject("Invitación para colaborar en Recred");
         message.setText("Hola,\n\n" +
-                inviterName + " te ha invitado a colaborar y aportar saldo a las cuentas de sus hijos en Recred.\n\n" +
+                inviterName + " te ha invitado a colaborar y aportar saldo " +
+                "a las cuentas de sus hijos en Recred.\n\n" +
                 "Para aceptar la invitación y registrarte, haz clic en el siguiente enlace:\n" +
                 link + "\n\n" +
                 "Este enlace expira en 7 días.\n\nSaludos,\nEl equipo de Recred");
-        mailSender.send(message);
+        mailSender.get().send(message);
     }
 }

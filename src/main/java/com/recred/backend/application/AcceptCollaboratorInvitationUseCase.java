@@ -2,6 +2,7 @@ package com.recred.backend.application;
 
 import com.recred.backend.domain.models.Alumno;
 import com.recred.backend.domain.models.Tutor;
+import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.domain.models.TutorCollaboratorInvitation;
 import com.recred.backend.domain.models.TutorInvitationStatus;
 import com.recred.backend.domain.models.Usuario;
@@ -30,53 +31,63 @@ public class AcceptCollaboratorInvitationUseCase {
     private final TutorInvitationTokenService tokenService;
 
     @Transactional
-    public void execute(String rawToken, String nombre, String apellido, String password, String dni, String telefono) {
-        String tokenHash = tokenService.hashToken(rawToken);
+    public void execute(String rawToken, String nombre, String apellido, 
+                        String password, String dni, String telefono) {
+        String tokenHash = tokenService.hash(rawToken);
 
         TutorCollaboratorInvitation invitation = invitationRepository.findByTokenHash(tokenHash)
-                .orElseThrow(() -> new IllegalArgumentException("Invitación inválida o no encontrada"));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Invitación inválida o no encontrada"));
 
         if (invitation.isExpired() || invitation.getStatus() != TutorInvitationStatus.PENDING) {
             throw new IllegalStateException("La invitación ha expirado o ya no es válida");
         }
 
+        if (invitation.getTutorPrincipalId() == null) {
+            throw new IllegalStateException("El ID del tutor principal es nulo en la invitación");
+        }
         Tutor tutorPrincipal = tutorRepository.findById(invitation.getTutorPrincipalId())
                 .orElseThrow(() -> new IllegalStateException("Tutor principal no encontrado"));
 
         CreatedCognitoUser cognitoUser = cognitoIdentityService.createTutorUser(
-                invitation.getEmail(), invitation.getEmail(), nombre, apellido);
-        // Note: The password usually is set via the Cognito service, or the user signs up with password themselves.
+                null, invitation.getEmail(), nombre, apellido);
+        // Note: The password usually is set via the Cognito service, 
+        // or the user signs up with password themselves.
         // If the service doesn't set password, we assume it sends a temporary password email.
         
         Usuario newUser = new Usuario();
-        newUser.setCognitoSub(cognitoUser.sub());
+        newUser.setIdCognito(cognitoUser.sub());
         newUser.setEmail(invitation.getEmail());
         newUser.setNombre(nombre);
         newUser.setApellido(apellido);
         newUser.setDni(dni);
         newUser.setTelefono(telefono);
-        newUser.setRol("PADRE"); // El colaborador también tiene rol padre
-        newUser.setTipoPlan(tutorPrincipal.getUsuario().getTipoPlan());
+        newUser.setRol(RolUsuario.PADRE); // El colaborador también tiene rol padre
+        newUser.setPlan(tutorPrincipal.getUsuario().getPlan());
         newUser.setAutenticadoConCognito(true);
         newUser.setActivo(true);
-        usuarioRepository.save(newUser);
-
         Tutor colaborador = new Tutor();
-        colaborador.setUsuario(newUser);
+        colaborador.setActiva(true);
         colaborador.setEsColaborador(true);
         colaborador.setTutorPrincipalId(tutorPrincipal.getId());
-        
-        tutorRepository.save(colaborador);
 
         // Assign to the selected students
-        for (UUID studentId : invitation.getAssignedStudentIds()) {
-            Alumno alumno = alumnoRepository.findById(studentId).orElse(null);
-            if (alumno != null) {
-                colaborador.addHijo(alumno);
+        if (invitation.getAssignedStudentIds() != null) {
+            for (UUID studentId : invitation.getAssignedStudentIds()) {
+                if (studentId == null) {
+                    continue;
+                }
+                Alumno alumno = alumnoRepository.findById(studentId).orElse(null);
+                if (alumno != null) {
+                    colaborador.addHijo(alumno);
+                }
             }
         }
         
-        tutorRepository.save(colaborador);
+        newUser.asignarTutor(colaborador);
+        
+        // This save will persist both the new Usuario and the cascaded Tutor
+        usuarioRepository.save(newUser);
 
         invitation.setStatus(TutorInvitationStatus.ACCEPTED);
         invitation.setUsadaEn(LocalDateTime.now());

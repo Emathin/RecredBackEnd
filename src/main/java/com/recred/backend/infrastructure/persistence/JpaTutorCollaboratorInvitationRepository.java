@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface JpaTutorCollaboratorInvitationRepository extends JpaRepository<TutorCollaboratorInvitationEntity, UUID> {
+public interface JpaTutorCollaboratorInvitationRepository 
+        extends JpaRepository<TutorCollaboratorInvitationEntity, UUID> {
     Optional<TutorCollaboratorInvitationEntity> findByTokenHash(String tokenHash);
 }

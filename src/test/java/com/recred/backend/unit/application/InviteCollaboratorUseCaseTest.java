@@ -7,6 +7,9 @@ import com.recred.backend.domain.models.TutorCollaboratorInvitation;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.TutorCollaboratorInvitationRepository;
 import com.recred.backend.domain.repositories.TutorRepository;
+import com.recred.backend.application.TutorInvitationTokenService;
+import com.recred.backend.domain.repositories.UsuarioRepository;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -24,13 +27,19 @@ class InviteCollaboratorUseCaseTest {
 
     private TutorRepository tutorRepository;
     private TutorCollaboratorInvitationRepository invitationRepository;
+    private JavaMailSender mailSender;
+    private TutorInvitationTokenService tokenService;
+    private UsuarioRepository usuarioRepository;
     private InviteCollaboratorUseCase useCase;
 
     @BeforeEach
     void setUp() {
         tutorRepository = mock(TutorRepository.class);
         invitationRepository = mock(TutorCollaboratorInvitationRepository.class);
-        useCase = new InviteCollaboratorUseCase(tutorRepository, invitationRepository);
+        mailSender = mock(JavaMailSender.class);
+        tokenService = mock(TutorInvitationTokenService.class);
+        usuarioRepository = mock(UsuarioRepository.class);
+        useCase = new InviteCollaboratorUseCase(tutorRepository, invitationRepository, Optional.of(mailSender), tokenService, usuarioRepository);
     }
 
     @Test
@@ -43,6 +52,9 @@ class InviteCollaboratorUseCaseTest {
         Tutor tutorPrincipal = new Tutor();
         tutorPrincipal.setId(tutorPrincipalId);
         tutorPrincipal.setEsColaborador(false);
+        Usuario usuario = new Usuario();
+        usuario.setNombre("Nombre");
+        tutorPrincipal.setUsuario(usuario);
         Alumno alumno = new Alumno();
         alumno.setId(child1);
         tutorPrincipal.setHijos(Set.of(alumno));

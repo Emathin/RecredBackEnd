@@ -21,7 +21,8 @@ public class RemoveCollaboratorUseCase {
                 .orElseThrow(() -> new TutorNoEncontradoException("Tutor principal no encontrado"));
 
         if (tutorPrincipal.getEsColaborador()) {
-            throw new SecurityException("Los colaboradores no pueden eliminar a otros colaboradores");
+            throw new SecurityException(
+                    "Los colaboradores no pueden eliminar a otros colaboradores");
         }
 
         Tutor colaborador = tutorRepository.findById(colaboradorId)

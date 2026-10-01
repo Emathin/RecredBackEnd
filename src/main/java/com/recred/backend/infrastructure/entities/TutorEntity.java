@@ -53,7 +53,7 @@ public class TutorEntity {
     @Column(name = "dashboard_config", columnDefinition = "TEXT")
     private String dashboardConfig;
 
-    @Column(name = "es_colaborador", nullable = false)
+    @Column(name = "es_colaborador", nullable = false, columnDefinition = "boolean default false")
     private Boolean esColaborador = false;
 
     @Column(name = "tutor_principal_id")
@@ -112,7 +112,8 @@ public class TutorEntity {
         entity.setCreadoEn(tutor.getCreadoEn());
         entity.setActualizadoEn(tutor.getActualizadoEn());
         entity.setDashboardConfig(tutor.getDashboardConfig());
-        entity.setEsColaborador(tutor.getEsColaborador() != null ? tutor.getEsColaborador() : false);
+        entity.setEsColaborador(tutor.getEsColaborador() != null 
+                ? tutor.getEsColaborador() : false);
         entity.setTutorPrincipalId(tutor.getTutorPrincipalId());
 
         if (tutor.getHijos() != null && !tutor.getHijos().isEmpty()) {

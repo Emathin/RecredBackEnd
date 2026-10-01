@@ -83,7 +83,9 @@ public class TutorCollaboratorInvitationEntity {
     }
 
     public static TutorCollaboratorInvitationEntity fromDomain(TutorCollaboratorInvitation domain) {
-        if (domain == null) return null;
+        if (domain == null) {
+            return null;
+        }
         TutorCollaboratorInvitationEntity entity = new TutorCollaboratorInvitationEntity();
         entity.setId(domain.getId());
         entity.setTutorPrincipalId(domain.getTutorPrincipalId());

@@ -36,15 +36,19 @@ public class TutorCollaboratorController {
     private final UsuarioService usuarioService;
 
     @PostMapping("/invitar")
-    public ResponseEntity<Void> inviteCollaborator(Authentication authentication, @RequestBody InviteCollaboratorRequest request) {
+    public ResponseEntity<Void> inviteCollaborator(
+            Authentication authentication, 
+            @RequestBody InviteCollaboratorRequest request) {
         Tutor tutor = getTutorActual(authentication);
-        inviteCollaboratorUseCase.execute(tutor.getId(), request.email(), request.assignedStudentIds());
+        inviteCollaboratorUseCase.execute(tutor.getId(), request.email(), 
+                request.assignedStudentIds());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/aceptar")
     public ResponseEntity<Void> acceptInvitation(@RequestBody AcceptCollaboratorRequest request) {
-        // This endpoint can be public depending on the security config, but it's used for registration
+        // This endpoint can be public depending on the security config, 
+        // but it's used for registration
         acceptCollaboratorInvitationUseCase.execute(
                 request.token(),
                 request.nombre(),
@@ -73,7 +77,8 @@ public class TutorCollaboratorController {
     }
 
     @DeleteMapping("/{colaboradorId}")
-    public ResponseEntity<Void> removeCollaborator(Authentication authentication, @PathVariable UUID colaboradorId) {
+    public ResponseEntity<Void> removeCollaborator(
+            Authentication authentication, @PathVariable UUID colaboradorId) {
         Tutor tutor = getTutorActual(authentication);
         removeCollaboratorUseCase.execute(tutor.getId(), colaboradorId);
         return ResponseEntity.noContent().build();
@@ -82,7 +87,8 @@ public class TutorCollaboratorController {
     private Tutor getTutorActual(Authentication authentication) {
         String cognitoSub = Optional.ofNullable(authentication)
                 .map(Authentication::getName)
-                .orElseThrow(() -> new AuthenticationCredentialsNotFoundException("Usuario no autenticado"));
+                .orElseThrow(() -> new AuthenticationCredentialsNotFoundException(
+                        "Usuario no autenticado"));
         Usuario usuario = usuarioService.obtenerUsuarioActual(cognitoSub);
         if (usuario.getTutor() == null) {
             throw new SecurityException("El usuario no es un tutor");
@@ -92,5 +98,6 @@ public class TutorCollaboratorController {
 }
 
 record InviteCollaboratorRequest(String email, Set<UUID> assignedStudentIds) {}
-record AcceptCollaboratorRequest(String token, String nombre, String apellido, String password, String dni, String telefono) {}
+record AcceptCollaboratorRequest(String token, String nombre, String apellido, 
+                                 String password, String dni, String telefono) {}
 record TutorResponseDTO(UUID id, String nombre, String apellido, String email, Boolean activa) {}

@@ -40,6 +40,8 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       TZ: America/Argentina/Buenos_Aires
       DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}?prepareThreshold=0
+      SPRING_MAIL_HOST: mailhog
+      SPRING_MAIL_PORT: 1025
     ports:
       - "8080:8080"
     volumes:

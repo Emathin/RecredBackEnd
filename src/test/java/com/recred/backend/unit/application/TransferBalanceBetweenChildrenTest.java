@@ -256,12 +256,14 @@ class TransferBalanceBetweenChildrenTest {
         fromStudent = student(fromStudentId, "Hijo", "Uno");
         toStudent = student(toStudentId, "Hijo", "Dos");
         tutor = tutor(Set.of(fromStudent, toStudent));
+        parentUser.setTutor(tutor);
         when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
     }
 
     private void givenTutorWithOnlySourceChild() {
         fromStudent = student(fromStudentId, "Hijo", "Uno");
         tutor = tutor(Set.of(fromStudent));
+        parentUser.setTutor(tutor);
         when(tutorRepository.findByUsuarioId(parentUser.getId())).thenReturn(Optional.of(tutor));
     }
 

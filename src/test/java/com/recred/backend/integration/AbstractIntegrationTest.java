@@ -8,6 +8,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.mail.javamail.JavaMailSender;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -23,5 +24,8 @@ public abstract class AbstractIntegrationTest {
 
     @MockitoBean
     protected OpenMeteoWeatherClient openMeteoWeatherClient;
+
+    @MockitoBean
+    protected JavaMailSender mailSender;
 
 }
