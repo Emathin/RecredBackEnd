@@ -8,7 +8,6 @@ import com.recred.backend.application.DeletePromotionRequest;
 import com.recred.backend.application.GetActivePromotions;
 import com.recred.backend.application.GetActivePromotionsRequest;
 import com.recred.backend.application.GetActivePromotionsResponse;
-import com.recred.backend.application.GetActivePromotionsByBuffet;
 import com.recred.backend.application.GetActivePromotionsByBuffetRequest;
 import com.recred.backend.application.GetActivePromotionsByBuffetResponse;
 import com.recred.backend.application.GetAllPromotionsByBuffet;

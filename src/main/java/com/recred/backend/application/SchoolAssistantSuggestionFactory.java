@@ -144,10 +144,6 @@ public class SchoolAssistantSuggestionFactory {
         return action.purchaseStatus() == EstadoCompra.PENDIENTE;
     }
 
-    private List<SchoolAssistantSuggestion> defaultSuggestions(SchoolAssistantRole role) {
-        return suggestionsByRole.get(role).defaultSuggestions();
-    }
-
     private EnumMap<SchoolAssistantRole, SchoolAssistantRoleSuggestionConfig> suggestionsByRole() {
         EnumMap<SchoolAssistantRole, SchoolAssistantRoleSuggestionConfig> suggestions =
                 new EnumMap<>(SchoolAssistantRole.class);

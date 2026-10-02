@@ -10,8 +10,6 @@ import com.recred.backend.application.GetTutorSchools;
 import com.recred.backend.application.UpdateStudentPhoto;
 import com.recred.backend.application.UpdateStudentPhotoRequest;
 import com.recred.backend.application.UpdateStudentPhotoResponse;
-import com.recred.backend.config.CustomAuthenticationEntryPoint;
-import com.recred.backend.config.CustomJwtAuthenticationConverter;
 import com.recred.backend.domain.models.Colegio;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;

@@ -1,6 +1,5 @@
 package com.recred.backend.domain.models;
 
-import com.recred.backend.domain.models.BudgetPeriod;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;

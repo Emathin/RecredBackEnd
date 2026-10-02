@@ -7,13 +7,11 @@ import com.recred.backend.application.LoadBalanceToChild;
 import com.recred.backend.application.LoadBalanceToChildRequest;
 import com.recred.backend.application.TransferBalanceBetweenChildren;
 import com.recred.backend.application.TransferBalanceBetweenChildrenRequest;
-import com.recred.backend.config.GlobalExceptionHandler;
 import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.WalletController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.TestingAuthenticationToken;
 import com.recred.backend.infrastructure.web.StudentWalletSummaryResponseDTO;
 
 import java.math.BigDecimal;

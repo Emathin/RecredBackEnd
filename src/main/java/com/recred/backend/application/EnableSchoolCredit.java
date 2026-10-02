@@ -57,11 +57,6 @@ public class EnableSchoolCredit {
         return responseFrom(savedCredit);
     }
 
-    private void validateTutorExists(UUID tutorId) {
-        tutorRepository.findById(tutorId)
-                .orElseThrow(() -> new IllegalArgumentException("Tutor not found"));
-    }
-
     private Alumno findStudent(UUID studentId) {
         return alumnoRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));

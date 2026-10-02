@@ -5,7 +5,6 @@ import com.recred.backend.application.GetSuggestionByNotificationIdRequest;
 import com.recred.backend.application.GetSuggestionByType;
 import com.recred.backend.application.GetSuggestionByTypeRequest;
 import com.recred.backend.application.GetSuggestionResponse;
-import com.recred.backend.domain.models.TipoSugerenciaIA;
 import com.recred.backend.infrastructure.web.PlanAccessGuard;
 import com.recred.backend.infrastructure.web.SuggestionController;
 import org.junit.jupiter.api.BeforeEach;

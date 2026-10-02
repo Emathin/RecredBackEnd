@@ -77,3 +77,4 @@ class SchoolAssistantPurchaseModelsTest {
         assertEquals(List.of(dummyItem()), pattern.items());
     }
 }
+

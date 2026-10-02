@@ -74,10 +74,6 @@ public class GetSchoolOverview {
         );
     }
 
-    private LocalDateTime now() {
-        return LocalDateTime.now(clock);
-    }
-
     private GetSchoolOverviewResponse.BuffetDto mapToBuffetDto(Buffet buffet) {
         GetSchoolOverviewResponse.VendedorDto vendedorDto = null;
         if (buffet.getVendedor() != null && buffet.getVendedor().getUsuario() != null) {

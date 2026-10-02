@@ -64,3 +64,4 @@ class SchoolAssistantRoleCatalogTest {
                 .anyMatch(suggestion -> suggestion.actionType() == expectedAction));
     }
 }
+

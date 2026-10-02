@@ -1,6 +1,5 @@
 package com.recred.backend.unit.infrastructure.web;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recred.backend.application.GenerateTopUpLink;
 import com.recred.backend.application.GenerateTopUpLinkRequest;
 import com.recred.backend.application.GenerateTopUpLinkResponse;

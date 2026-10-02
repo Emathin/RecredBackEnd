@@ -168,3 +168,4 @@ class SchoolAssistantContentFormatterTest {
         assertEquals(new BigDecimal(expectedSubtotal), items.get(0).get("subtotal"));
     }
 }
+

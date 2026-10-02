@@ -12,7 +12,6 @@ import com.recred.backend.integration.AbstractIntegrationTest;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.InvalidDataAccessResourceUsageException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -25,7 +24,6 @@ import static com.recred.backend.domain.models.EstadoInventario.DISPONIBLE;
 import static com.recred.backend.domain.models.RolUsuario.VENDEDOR;
 import static com.recred.backend.domain.models.TipoManejoInventario.STOCK_EXACTO;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Transactional

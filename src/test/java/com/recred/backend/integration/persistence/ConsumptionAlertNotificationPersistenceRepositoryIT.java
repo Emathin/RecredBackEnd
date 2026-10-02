@@ -1,15 +1,11 @@
 package com.recred.backend.integration.persistence;
 
-import com.recred.backend.domain.models.AIEventType;
 import com.recred.backend.domain.models.ConsumptionAlert;
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
 import com.recred.backend.domain.models.ConsumptionAlertMessages;
 import com.recred.backend.domain.models.ConsumptionAlertPattern;
 import com.recred.backend.domain.models.ConsumptionAlertTutor;
 import com.recred.backend.domain.models.ConsumptionAlertType;
-import com.recred.backend.domain.models.TipoSugerenciaIA;
-import com.recred.backend.domain.models.RolUsuario;
-import com.recred.backend.domain.models.TipoPlan;
 import com.recred.backend.infrastructure.entities.AIEventEntity;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.CategoriaProductoEntity;
@@ -30,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 

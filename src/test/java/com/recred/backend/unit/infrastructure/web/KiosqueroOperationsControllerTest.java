@@ -35,8 +35,6 @@ import com.recred.backend.application.UpdatePickupSlotRulesResponse;
 import com.recred.backend.domain.models.BuyerType;
 import com.recred.backend.domain.models.DailyBuffetClose;
 import com.recred.backend.domain.models.EstadoCompra;
-import com.recred.backend.domain.models.FranjaHoraria;
-import com.recred.backend.domain.models.KiosqueroOperationalAlert;
 import com.recred.backend.domain.models.MedioPago;
 import com.recred.backend.domain.models.OperationalAlertSeverity;
 import com.recred.backend.domain.models.OperationalAlertType;

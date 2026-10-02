@@ -4,7 +4,6 @@ import com.recred.backend.application.RemoveCollaboratorUseCase;
 import com.recred.backend.domain.models.Tutor;
 import com.recred.backend.domain.models.Usuario;
 import com.recred.backend.domain.repositories.TutorRepository;
-import com.recred.backend.domain.services.CognitoTutorIdentityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

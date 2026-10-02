@@ -1,7 +1,6 @@
 package com.recred.backend.integration.persistence;
 
 import com.recred.backend.domain.models.ConsumptionAlertCandidate;
-import com.recred.backend.domain.models.RolUsuario;
 import com.recred.backend.infrastructure.entities.AlumnoEntity;
 import com.recred.backend.infrastructure.entities.TutorEntity;
 import com.recred.backend.infrastructure.entities.UsuarioEntity;

@@ -14,7 +14,6 @@ import com.recred.backend.domain.models.RolChatMensaje;
 import com.recred.backend.domain.models.SchoolAssistantDraft;
 import com.recred.backend.domain.models.SchoolAssistantIntent;
 import com.recred.backend.domain.models.SchoolAssistantPrompt;
-import com.recred.backend.domain.models.SchoolAssistantRole;
 import com.recred.backend.domain.models.SchoolAssistantContext;
 import com.recred.backend.domain.services.SchoolAssistantResponder;
 import java.math.BigDecimal;
