@@ -64,6 +64,12 @@ public class InviteCollaboratorUseCase {
                     "Usa un correo diferente para el colaborador.");
         }
 
+        if (assignedStudentIds == null || assignedStudentIds.isEmpty()) {
+            assignedStudentIds = tutor.getHijos().stream()
+                    .map(com.recred.backend.domain.models.Alumno::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+        }
+
         // Validar que los assignedStudentIds pertenezcan realmente al tutor principal
         for (UUID studentId : assignedStudentIds) {
             boolean ownsStudent = tutor.getHijos().stream()
