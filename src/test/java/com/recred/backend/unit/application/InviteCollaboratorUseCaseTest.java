@@ -40,6 +40,7 @@ class InviteCollaboratorUseCaseTest {
         tokenService = mock(TutorInvitationTokenService.class);
         usuarioRepository = mock(UsuarioRepository.class);
         useCase = new InviteCollaboratorUseCase(tutorRepository, invitationRepository, Optional.of(mailSender), tokenService, usuarioRepository);
+        org.springframework.test.util.ReflectionTestUtils.setField(useCase, "frontendUrl", "http://localhost:4200");
     }
 
     @Test

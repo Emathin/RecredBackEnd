@@ -93,7 +93,10 @@ public class InviteCollaboratorUseCase {
 
         invitationRepository.save(invitation);
 
-        String invitationLink = frontendUrl + "/colaborador/aceptar-invitacion/" + rawToken;
+        String safeFrontendUrl = frontendUrl.endsWith("/") 
+                ? frontendUrl.substring(0, frontendUrl.length() - 1) 
+                : frontendUrl;
+        String invitationLink = safeFrontendUrl + "/colaborador/aceptar-invitacion/" + rawToken;
         sendEmail(email, tutor.getUsuario().getNombre(), invitationLink);
     }
 
