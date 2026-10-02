@@ -11,7 +11,6 @@ import com.recred.backend.domain.repositories.ColegioRepository;
 import com.recred.backend.domain.repositories.UsuarioRepository;
 
 import java.time.Clock;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
