@@ -73,6 +73,9 @@ public class SecurityConfig {
                                         "/api/v1/invitaciones/tutor/*/preparar-cuenta")
                                 .permitAll()
                                 .requestMatchers(HttpMethod.POST,
+                                        "/api/v1/tutores/colaboradores/aceptar")
+                                .permitAll()
+                                .requestMatchers(HttpMethod.POST,
                                         "/api/v1/payments/webhook").permitAll()
                                 .requestMatchers("/swagger-ui.html",
                                         "/swagger-ui/**",

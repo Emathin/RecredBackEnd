@@ -31,9 +31,10 @@ public class CognitoTutorIdentityServiceImpl extends BaseCognitoIdentityService
         Map<String, Object> response = invoke(region, CREATE_USER_TARGET, Map.of(
                 "UserPoolId", userPoolId,
                 "Username", cognitoUsername,
-                "DesiredDeliveryMediums", List.of("EMAIL"),
+                "MessageAction", "SUPPRESS",
                 "UserAttributes", List.of(
                         attribute("email", email),
+                        attribute("email_verified", "true"),
                         attribute("given_name", firstName),
                         attribute("family_name", lastName)
                 )

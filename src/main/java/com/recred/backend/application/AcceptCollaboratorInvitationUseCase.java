@@ -51,9 +51,10 @@ public class AcceptCollaboratorInvitationUseCase {
 
         CreatedCognitoUser cognitoUser = cognitoIdentityService.createTutorUser(
                 null, invitation.getEmail(), nombre, apellido);
-        // Note: The password usually is set via the Cognito service, 
-        // or the user signs up with password themselves.
-        // If the service doesn't set password, we assume it sends a temporary password email.
+        
+        if (password != null && !password.isBlank()) {
+            cognitoIdentityService.setPermanentPassword(cognitoUser.username(), password);
+        }
         
         Usuario newUser = new Usuario();
         newUser.setIdCognito(cognitoUser.sub());
