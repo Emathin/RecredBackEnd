@@ -351,6 +351,13 @@ public class GlobalExceptionHandler {
                 ex.getMessage());
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
+        LOGGER.warn("IllegalStateException caught: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "Estado Inválido",
+                ex.getMessage());
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
         return buildResponse(HttpStatus.FORBIDDEN, "Acceso denegado", ex.getMessage());

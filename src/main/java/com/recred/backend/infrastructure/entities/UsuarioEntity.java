@@ -146,6 +146,9 @@ public class UsuarioEntity {
         if (this.tutor != null) {
             Tutor t = new Tutor();
             t.setId(this.tutor.getId());
+            t.setEsColaborador(this.tutor.getEsColaborador() != null 
+                    ? this.tutor.getEsColaborador() : false);
+            t.setTutorPrincipalId(this.tutor.getTutorPrincipalId());
             usuario.setTutor(t);
         }
         if (this.kiosquero != null) {

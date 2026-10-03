@@ -104,6 +104,11 @@ public class UserProfileController {
         response.put("firstName", usuario.getNombre());
         response.put("lastName", usuario.getApellido());
         response.put("role", usuario.getRol() != null ? usuario.getRol().name() : "PENDING");
+        if (usuario.getTutor() != null) {
+            response.put("esColaborador", usuario.getTutor().getEsColaborador());
+        } else {
+            response.put("esColaborador", false);
+        }
 
         return response;
     }

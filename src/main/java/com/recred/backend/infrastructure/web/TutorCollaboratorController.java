@@ -51,6 +51,7 @@ public class TutorCollaboratorController {
         // but it's used for registration
         acceptCollaboratorInvitationUseCase.execute(
                 request.token(),
+                request.username(),
                 request.nombre(),
                 request.apellido(),
                 request.password(),
@@ -98,6 +99,6 @@ public class TutorCollaboratorController {
 }
 
 record InviteCollaboratorRequest(String email, Set<UUID> assignedStudentIds) {}
-record AcceptCollaboratorRequest(String token, String nombre, String apellido, 
+record AcceptCollaboratorRequest(String token, String username, String nombre, String apellido, 
                                  String password, String dni, String telefono) {}
 record TutorResponseDTO(UUID id, String nombre, String apellido, String email, Boolean activa) {}

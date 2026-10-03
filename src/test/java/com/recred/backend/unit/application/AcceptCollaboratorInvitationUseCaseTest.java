@@ -70,7 +70,7 @@ class AcceptCollaboratorInvitationUseCaseTest {
         when(invitationRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(invitation));
         CreatedCognitoUser mockUser = mock(CreatedCognitoUser.class);
         when(mockUser.sub()).thenReturn("cognito-id-123");
-        when(cognitoIdentityService.createTutorUser(org.mockito.ArgumentMatchers.isNull(), anyString(), anyString(), anyString())).thenReturn(mockUser);
+        when(cognitoIdentityService.createTutorUser(anyString(), anyString(), anyString(), anyString())).thenReturn(mockUser);
 
         Tutor principal = new Tutor();
         principal.setId(invitation.getTutorPrincipalId());
@@ -83,7 +83,7 @@ class AcceptCollaboratorInvitationUseCaseTest {
         when(tutorRepository.findById(invitation.getTutorPrincipalId())).thenReturn(Optional.of(principal));
         when(alumnoRepository.findById(any(UUID.class))).thenReturn(Optional.of(assigned));
 
-        useCase.execute(rawToken, "Nombre", "Apellido", "Pass1234!", "12345678", "1122334455");
+        useCase.execute(rawToken, "colabUser", "Nombre", "Apellido", "Pass1234!", "12345678", "1122334455");
 
         ArgumentCaptor<Usuario> userCaptor = ArgumentCaptor.forClass(Usuario.class);
         verify(usuarioRepository).save(userCaptor.capture());
@@ -108,6 +108,6 @@ class AcceptCollaboratorInvitationUseCaseTest {
         when(invitationRepository.findByTokenHash(anyString())).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class, () -> 
-                useCase.execute("invalid", "Nombre", "Apellido", "Pass1234!", "12345678", "1122334455"));
+                useCase.execute("invalid", "colabUser", "Nombre", "Apellido", "Pass1234!", "12345678", "1122334455"));
     }
 }

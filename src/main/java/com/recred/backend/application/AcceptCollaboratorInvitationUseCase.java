@@ -31,9 +31,13 @@ public class AcceptCollaboratorInvitationUseCase {
     private final TutorInvitationTokenService tokenService;
 
     @Transactional
-    public void execute(String rawToken, String nombre, String apellido, 
+    public void execute(String rawToken, String username, String nombre, String apellido, 
                         String password, String dni, String telefono) {
         String tokenHash = tokenService.hash(rawToken);
+
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("El nombre de usuario es obligatorio");
+        }
 
         TutorCollaboratorInvitation invitation = invitationRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -50,7 +54,7 @@ public class AcceptCollaboratorInvitationUseCase {
                 .orElseThrow(() -> new IllegalStateException("Tutor principal no encontrado"));
 
         CreatedCognitoUser cognitoUser = cognitoIdentityService.createTutorUser(
-                null, invitation.getEmail(), nombre, apellido);
+                username.trim().toLowerCase(), invitation.getEmail(), nombre, apellido);
         
         if (password != null && !password.isBlank()) {
             cognitoIdentityService.setPermanentPassword(cognitoUser.username(), password);
