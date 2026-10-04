@@ -33,12 +33,15 @@ class TopUpControllerTest {
     @Mock
     private GenerateTopUpLink generateTopUpLink;
 
+    @Mock
+    private com.recred.backend.application.ScheduleWalletTopUp scheduleWalletTopUp;
+
     private TopUpController controller;
     private TopUpRequest topUpRequest;
 
     @BeforeEach
     void setUp() {
-        controller = new TopUpController(generateTopUpLink);
+        controller = new TopUpController(generateTopUpLink, scheduleWalletTopUp);
     }
 
     @Test

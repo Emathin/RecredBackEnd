@@ -6,7 +6,11 @@ import com.mercadopago.client.preference.PreferenceBackUrlsRequest;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceItemRequest;
 import com.mercadopago.client.preference.PreferenceRequest;
+import com.mercadopago.client.preapproval.PreapprovalClient;
+import com.mercadopago.client.preapproval.PreApprovalAutoRecurringCreateRequest;
+import com.mercadopago.client.preapproval.PreapprovalCreateRequest;
 import com.mercadopago.resources.payment.Payment;
+import com.mercadopago.resources.preapproval.Preapproval;
 import com.mercadopago.resources.preference.Preference;
 import com.recred.backend.config.MercadoPagoProperties;
 import com.recred.backend.domain.models.PaymentDetails;
@@ -46,6 +50,41 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
                 "ARS",
                 PaymentReference.topUp(studentId).toExternalReference()
         );
+    }
+
+    @Override
+    public String createScheduledTopUpPreapproval(
+            UUID studentId, BigDecimal amount, Integer frequency,
+            String frequencyType, String payerEmail) {
+        try {
+            PreapprovalClient client = new PreapprovalClient();
+            PreApprovalAutoRecurringCreateRequest autoRecurring = 
+                    PreApprovalAutoRecurringCreateRequest.builder()
+                    .frequency(frequency)
+                    .frequencyType(frequencyType)
+                    .transactionAmount(amount)
+                    .currencyId("ARS")
+                    .build();
+
+            PreapprovalCreateRequest request = PreapprovalCreateRequest.builder()
+                    .reason("Recarga Programada - Recred")
+                    .externalReference(PaymentReference.topUp(studentId).toExternalReference())
+                    .autoRecurring(autoRecurring)
+                    .backUrl("https://recred.netlify.app/pago-exitoso")
+                    .payerEmail(payerEmail)
+                    /* .status("authorized") REMOVED to avoid API errors */
+                    .build();
+
+            Preapproval preapproval = client.create(request);
+            return preapproval.getInitPoint();
+        } catch (com.mercadopago.exceptions.MPApiException e) {
+            String errorMsg = e.getApiResponse().getContent();
+            System.err.println("Preapproval MPApiException content: " + errorMsg);
+            throw new RuntimeException("Error MP: " + errorMsg, e);
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Error al crear la suscripción de recarga en Mercado Pago", e);
+        }
     }
 
     @Override
