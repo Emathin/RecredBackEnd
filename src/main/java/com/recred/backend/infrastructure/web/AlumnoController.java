@@ -19,10 +19,15 @@ public class AlumnoController {
 
     private final AlumnoRepository alumnoRepository;
     private final UsuarioService usuarioService;
+    private final com.recred.backend.domain.repositories.BuffetRepository buffetRepository;
 
-    public AlumnoController(AlumnoRepository alumnoRepository, UsuarioService usuarioService) {
+    public AlumnoController(
+            AlumnoRepository alumnoRepository, 
+            UsuarioService usuarioService,
+            com.recred.backend.domain.repositories.BuffetRepository buffetRepository) {
         this.alumnoRepository = alumnoRepository;
         this.usuarioService = usuarioService;
+        this.buffetRepository = buffetRepository;
     }
 
     @GetMapping
@@ -44,6 +49,14 @@ public class AlumnoController {
         return alumnoRepository.findById(usuario.getAlumno().getId())
                 .map(alumno -> ResponseEntity.ok(StudentDTO.fromDomain(alumno)))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/buffet")
+    public ResponseEntity<com.recred.backend.domain.models.Buffet> getBuffetByAlumnoId(
+            @org.springframework.web.bind.annotation.PathVariable java.util.UUID id) {
+        return buffetRepository.findByAlumnoId(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build());
     }
 
     private AlumnoDTO toDto(Alumno alumno) {

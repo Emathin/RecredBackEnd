@@ -23,6 +23,7 @@ class AlumnoControllerTest {
 
     private AlumnoRepository alumnoRepository;
     private UsuarioService usuarioService;
+    private com.recred.backend.domain.repositories.BuffetRepository buffetRepository;
     private AlumnoController controller;
 
     private final UUID ALUMNO_ID = UUID.randomUUID();
@@ -37,7 +38,8 @@ class AlumnoControllerTest {
     void setUp() {
         alumnoRepository = mock(AlumnoRepository.class);
         usuarioService = mock(UsuarioService.class);
-        controller = new AlumnoController(alumnoRepository, usuarioService);
+        buffetRepository = mock(com.recred.backend.domain.repositories.BuffetRepository.class);
+        controller = new AlumnoController(alumnoRepository, usuarioService, buffetRepository);
     }
 
     @Test

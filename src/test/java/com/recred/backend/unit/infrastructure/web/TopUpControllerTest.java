@@ -19,6 +19,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -80,5 +82,47 @@ class TopUpControllerTest {
 
         assertEquals(STUDENT_ID, captor.getValue().studentId());
         assertEquals(AMOUNT, captor.getValue().amount());
+    }
+
+    @Test
+    void scheduleTopUp_returnsPreapprovalUrl() {
+        org.springframework.security.core.Authentication auth = mock(org.springframework.security.core.Authentication.class);
+        when(auth.getName()).thenReturn("sub-123");
+
+        Map<String, Object> payload = Map.of(
+                "studentId", STUDENT_ID.toString(),
+                "amount", AMOUNT.doubleValue(),
+                "frequency", 1,
+                "frequencyType", "months"
+        );
+
+        when(scheduleWalletTopUp.execute(eq("sub-123"), any(com.recred.backend.application.ScheduleWalletTopUpRequest.class)))
+                .thenReturn(new com.recred.backend.application.ScheduleWalletTopUpResponse(PAYMENT_LINK));
+
+        ResponseEntity<Map<String, String>> result = controller.scheduleTopUp(auth, payload);
+
+        assertEquals(200, result.getStatusCode().value());
+        assertEquals(PAYMENT_LINK, result.getBody().get("paymentUrl"));
+
+        ArgumentCaptor<com.recred.backend.application.ScheduleWalletTopUpRequest> captor = 
+                ArgumentCaptor.forClass(com.recred.backend.application.ScheduleWalletTopUpRequest.class);
+        verify(scheduleWalletTopUp).execute(eq("sub-123"), captor.capture());
+        
+        com.recred.backend.application.ScheduleWalletTopUpRequest capturedReq = captor.getValue();
+        assertEquals(STUDENT_ID, capturedReq.studentId());
+        assertEquals(1, capturedReq.frequency());
+        assertEquals("months", capturedReq.frequencyType());
+    }
+
+    @Test
+    void scheduleTopUp_nullPayload_throwsException() {
+        org.springframework.security.core.Authentication auth = mock(org.springframework.security.core.Authentication.class);
+        when(auth.getName()).thenReturn("sub-123");
+
+        IllegalArgumentException ex = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class, 
+                () -> controller.scheduleTopUp(auth, null)
+        );
+        assertEquals("Payload is null! Body was empty.", ex.getMessage());
     }
 }

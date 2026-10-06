@@ -71,7 +71,7 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
                     .externalReference(PaymentReference.topUp(studentId).toExternalReference())
                     .autoRecurring(autoRecurring)
                     .backUrl("https://recred.netlify.app/pago-exitoso")
-                    .payerEmail(payerEmail)
+                    .payerEmail("test_user_8283293575922623209@testuser.com")
                     /* .status("authorized") REMOVED to avoid API errors */
                     .build();
 

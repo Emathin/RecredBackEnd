@@ -75,7 +75,7 @@ public class BudgetController {
         tutorAccessGuard.requireStudentAccess(authentication, studentId);
         return getActiveBudgetByStudent.execute(new GetActiveBudgetByStudentRequest(studentId))
                 .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.noContent().build());
     }
 
     @PostMapping("/student/{studentId}/check-dates")
