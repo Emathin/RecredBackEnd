@@ -78,6 +78,19 @@ public class TutorRepositoryImpl implements TutorRepository {
                 .orElseThrow(() -> new IllegalArgumentException("Tutor no encontrado"));
 
         entity.setDashboardConfig(tutor.getDashboardConfig());
+        if (tutor.getActiva() != null) {
+            entity.setActiva(tutor.getActiva());
+        }
+        if (tutor.getEsColaborador() != null) {
+            entity.setEsColaborador(tutor.getEsColaborador());
+        }
+        if (tutor.getTutorPrincipalId() != null) {
+            entity.setTutorPrincipalId(tutor.getTutorPrincipalId());
+        }
+        if (tutor.getUsuario() != null && entity.getUsuario() != null 
+                && tutor.getUsuario().getActivo() != null) {
+            entity.getUsuario().setActivo(tutor.getUsuario().getActivo());
+        }
 
         entity.getHijos().clear();
         if (tutor.getHijos() != null) {

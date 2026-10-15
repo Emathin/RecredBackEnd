@@ -59,9 +59,18 @@ public class InviteCollaboratorUseCase {
 
         Optional<Usuario> usuarioExistente = usuarioRepository.findByEmail(email.trim());
         if (usuarioExistente.isPresent()) {
-            throw new IllegalStateException(
-                    "El correo electrónico ya está registrado en el sistema. " +
-                    "Usa un correo diferente para el colaborador.");
+            Usuario user = usuarioExistente.get();
+            boolean hasColabTutor = user.getTutor() != null
+                    && Boolean.TRUE.equals(user.getTutor().getEsColaborador());
+            boolean isInactiveCollaborator = Boolean.FALSE.equals(user.getActivo())
+                    && (hasColabTutor
+                        || user.getRol() == com.recred.backend.domain.models.RolUsuario.PADRE);
+
+            if (!isInactiveCollaborator) {
+                throw new IllegalStateException(
+                        "El correo electrónico ya está registrado en el sistema. " +
+                        "Usa un correo diferente para el colaborador.");
+            }
         }
 
         if (assignedStudentIds == null || assignedStudentIds.isEmpty()) {

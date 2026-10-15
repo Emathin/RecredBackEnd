@@ -3,6 +3,8 @@ package com.recred.backend.infrastructure.persistence;
 import com.recred.backend.infrastructure.entities.TutorEntity;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -71,7 +73,10 @@ public interface SpringDataTutorRepository extends
             "hijos.restriccionesHorarias",
             "hijos.productosBloqueados"
     })
-    List<TutorEntity> findByTutorPrincipalId(UUID tutorPrincipalId);
+    @Query("SELECT DISTINCT t FROM TutorEntity t "
+            + "WHERE t.tutorPrincipalId = :tutorPrincipalId AND t.activa = true")
+    List<TutorEntity> findByTutorPrincipalId(
+            @Param("tutorPrincipalId") UUID tutorPrincipalId);
 
     @EntityGraph(attributePaths = {
             "hijos",

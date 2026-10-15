@@ -25,7 +25,17 @@ public class ListCollaboratorsUseCase {
             throw new SecurityException("Los colaboradores no pueden listar otros colaboradores");
         }
 
-        // We need a repository method findByTutorPrincipalId
-        return tutorRepository.findByTutorPrincipalId(tutorId);
+        List<Tutor> collaborators = tutorRepository.findByTutorPrincipalId(tutorId);
+        return collaborators.stream()
+                .filter(c -> Boolean.TRUE.equals(c.getActiva()))
+                .collect(java.util.stream.Collectors.toMap(
+                        Tutor::getId,
+                        c -> c,
+                        (existing, replacement) -> existing,
+                        java.util.LinkedHashMap::new
+                ))
+                .values()
+                .stream()
+                .toList();
     }
 }

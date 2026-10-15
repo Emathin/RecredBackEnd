@@ -138,9 +138,16 @@ public abstract class BaseCognitoIdentityService {
     public void setPermanentPassword(String username, String password) {
         String userPoolId = required(properties.getUserPoolId(), "userPoolId");
         String region = required(properties.getRegion(), "region");
+        String targetUsername = username;
+        try {
+            if (username != null && username.contains("-")) {
+                targetUsername = findUsernameBySub(username);
+            }
+        } catch (Exception ignored) {
+        }
         invoke(region, "AWSCognitoIdentityProviderService.AdminSetUserPassword", Map.of(
                 "UserPoolId", userPoolId,
-                "Username", username,
+                "Username", targetUsername,
                 "Password", password,
                 "Permanent", true
         ));

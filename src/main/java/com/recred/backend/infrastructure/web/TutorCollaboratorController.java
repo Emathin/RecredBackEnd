@@ -66,6 +66,7 @@ public class TutorCollaboratorController {
         Tutor tutor = getTutorActual(authentication);
         List<Tutor> collaborators = listCollaboratorsUseCase.execute(tutor.getId());
         List<TutorResponseDTO> response = collaborators.stream()
+                .filter(colab -> Boolean.TRUE.equals(colab.getActiva()))
                 .map(colab -> new TutorResponseDTO(
                         colab.getId(),
                         colab.getUsuario().getNombre(),
