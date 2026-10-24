@@ -3,24 +3,31 @@ package com.recred.backend.infrastructure.web;
 import com.recred.backend.application.GenerateTopUpLink;
 import com.recred.backend.application.GenerateTopUpLinkRequest;
 import com.recred.backend.application.GenerateTopUpLinkResponse;
+import com.recred.backend.application.ScheduleWalletTopUp;
+import com.recred.backend.application.ScheduleWalletTopUpRequest;
+import com.recred.backend.application.ScheduleWalletTopUpResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/payments")
 public class TopUpController {
 
     private final GenerateTopUpLink generateTopUpLink;
-    private final com.recred.backend.application.ScheduleWalletTopUp scheduleWalletTopUp;
+    private final ScheduleWalletTopUp scheduleWalletTopUp;
 
     public TopUpController(
             GenerateTopUpLink generateTopUpLink,
-            com.recred.backend.application.ScheduleWalletTopUp scheduleWalletTopUp
+            ScheduleWalletTopUp scheduleWalletTopUp
     ) {
         this.generateTopUpLink = generateTopUpLink;
         this.scheduleWalletTopUp = scheduleWalletTopUp;
@@ -40,27 +47,29 @@ public class TopUpController {
 
     @PostMapping("/schedule-topup")
     public ResponseEntity<Map<String, String>> scheduleTopUp(
-            org.springframework.security.core.Authentication authentication,
-            @RequestBody(required = false) java.util.Map<String, Object> payload) {
-        
+            Authentication authentication,
+            @RequestBody(required = false) Map<String, Object> payload) {
+
         String cognitoSub = authentication.getName();
-        System.out.println("Payload received: " + payload);
         if (payload == null) {
-            throw new IllegalArgumentException(
-                    "Payload is null! Body was empty.");
+            throw new IllegalArgumentException("Payload is null! Body was empty.");
         }
-        
-        java.util.UUID studentId = java.util.UUID.fromString((String) payload.get("studentId"));
-        java.math.BigDecimal amount = new java.math.BigDecimal(payload.get("amount").toString());
+
+        UUID studentId = UUID.fromString((String) payload.get("studentId"));
+        BigDecimal amount = new BigDecimal(payload.get("amount").toString());
         Integer frequency = Integer.valueOf(payload.get("frequency").toString());
         String frequencyType = (String) payload.get("frequencyType");
-        
-        com.recred.backend.application.ScheduleWalletTopUpRequest request = 
-                new com.recred.backend.application.ScheduleWalletTopUpRequest(
-                        studentId, amount, frequency, frequencyType);
 
-        com.recred.backend.application.ScheduleWalletTopUpResponse response = 
-                scheduleWalletTopUp.execute(cognitoSub, request);
+        OffsetDateTime startDate = null;
+        Object startDateObj = payload.get("startDate");
+        if (startDateObj != null && !startDateObj.toString().isBlank()) {
+            startDate = OffsetDateTime.parse(startDateObj.toString());
+        }
+
+        ScheduleWalletTopUpRequest request = new ScheduleWalletTopUpRequest(
+                studentId, amount, frequency, frequencyType, startDate);
+
+        ScheduleWalletTopUpResponse response = scheduleWalletTopUp.execute(cognitoSub, request);
 
         return ResponseEntity.ok(Map.of("paymentUrl", response.preapprovalUrl()));
     }

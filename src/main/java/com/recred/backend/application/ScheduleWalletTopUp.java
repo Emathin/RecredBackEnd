@@ -37,13 +37,25 @@ public class ScheduleWalletTopUp {
                 
         tutor.childOrThrow(request.studentId(), "El alumno no es hijo del tutor o no existe");
 
-        String preapprovalUrl = externalPaymentService.createScheduledTopUpPreapproval(
-                request.studentId(),
-                request.amount(),
-                request.frequency(),
-                request.frequencyType(),
-                parentUser.getEmail()
-        );
+        String preapprovalUrl;
+        if (request.startDate() != null) {
+            preapprovalUrl = externalPaymentService.createScheduledTopUpPreapproval(
+                    request.studentId(),
+                    request.amount(),
+                    request.frequency(),
+                    request.frequencyType(),
+                    parentUser.getEmail(),
+                    request.startDate()
+            );
+        } else {
+            preapprovalUrl = externalPaymentService.createScheduledTopUpPreapproval(
+                    request.studentId(),
+                    request.amount(),
+                    request.frequency(),
+                    request.frequencyType(),
+                    parentUser.getEmail()
+            );
+        }
 
         return new ScheduleWalletTopUpResponse(preapprovalUrl);
     }

@@ -93,7 +93,8 @@ public class UsuarioService {
         if (groups.stream().anyMatch(g -> g.equalsIgnoreCase("Kiosqueros") 
                 || g.equalsIgnoreCase("Kiosquero") 
                 || g.equalsIgnoreCase("Vendedores") 
-                || g.equalsIgnoreCase("Vendedor"))) {
+                || g.equalsIgnoreCase("Vendedor")
+                || g.equalsIgnoreCase("Buffet"))) {
             return RolUsuario.VENDEDOR;
         }
         if (groups.stream().anyMatch(g -> g.equalsIgnoreCase("Admin") 

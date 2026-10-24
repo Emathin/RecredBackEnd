@@ -1,14 +1,24 @@
 package com.recred.backend.application;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record ScheduleWalletTopUpRequest(
         UUID studentId,
         BigDecimal amount,
         Integer frequency,
-        String frequencyType
+        String frequencyType,
+        OffsetDateTime startDate
 ) {
+    public ScheduleWalletTopUpRequest(
+            UUID studentId,
+            BigDecimal amount,
+            Integer frequency,
+            String frequencyType) {
+        this(studentId, amount, frequency, frequencyType, null);
+    }
+
     public void validate() {
         if (studentId == null) {
             throw new IllegalArgumentException("studentId cannot be null");

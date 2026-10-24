@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Formatter;
@@ -55,16 +56,21 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
     @Override
     public String createScheduledTopUpPreapproval(
             UUID studentId, BigDecimal amount, Integer frequency,
-            String frequencyType, String payerEmail) {
+            String frequencyType, String payerEmail, OffsetDateTime startDate) {
         try {
             PreapprovalClient client = new PreapprovalClient();
-            PreApprovalAutoRecurringCreateRequest autoRecurring = 
+            var autoRecurringBuilder =
                     PreApprovalAutoRecurringCreateRequest.builder()
-                    .frequency(frequency)
-                    .frequencyType(frequencyType)
-                    .transactionAmount(amount)
-                    .currencyId("ARS")
-                    .build();
+                            .frequency(frequency)
+                            .frequencyType(frequencyType)
+                            .transactionAmount(amount)
+                            .currencyId("ARS");
+
+            if (startDate != null) {
+                autoRecurringBuilder.startDate(startDate);
+            }
+
+            PreApprovalAutoRecurringCreateRequest autoRecurring = autoRecurringBuilder.build();
 
             PreapprovalCreateRequest request = PreapprovalCreateRequest.builder()
                     .reason("Recarga Programada - Recred")
@@ -72,7 +78,6 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
                     .autoRecurring(autoRecurring)
                     .backUrl("https://recred.netlify.app/pago-exitoso")
                     .payerEmail("test_user_8283293575922623209@testuser.com")
-                    /* .status("authorized") REMOVED to avoid API errors */
                     .build();
 
             Preapproval preapproval = client.create(request);
@@ -85,6 +90,14 @@ public class MercadoPagoAdapter implements ExternalPaymentService {
             throw new RuntimeException(
                     "Error al crear la suscripción de recarga en Mercado Pago", e);
         }
+    }
+
+    @Override
+    public String createScheduledTopUpPreapproval(
+            UUID studentId, BigDecimal amount, Integer frequency,
+            String frequencyType, String payerEmail) {
+        return createScheduledTopUpPreapproval(
+                studentId, amount, frequency, frequencyType, payerEmail, null);
     }
 
     @Override

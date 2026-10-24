@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -49,6 +50,36 @@ class ScheduleWalletTopUpTest {
     void setUp() {
         scheduleWalletTopUp = new ScheduleWalletTopUp(
                 usuarioRepository, tutorRepository, externalPaymentService);
+    }
+
+    @Test
+    void execute_successfulSchedule_withStartDate() {
+        OffsetDateTime startDate = OffsetDateTime.now().plusDays(5);
+        ScheduleWalletTopUpRequest request = new ScheduleWalletTopUpRequest(
+                STUDENT_ID, new BigDecimal("1000.00"), 1, "months", startDate);
+
+        Usuario usuario = mock(Usuario.class);
+        when(usuario.getId()).thenReturn(USUARIO_ID);
+        when(usuario.getEmail()).thenReturn(PARENT_EMAIL);
+        when(usuarioRepository.findByIdCognito(COGNITO_SUB)).thenReturn(Optional.of(usuario));
+
+        Tutor tutor = mock(Tutor.class);
+        Alumno student = mock(Alumno.class);
+        when(tutor.childOrThrow(eq(STUDENT_ID), anyString())).thenReturn(student);
+        when(tutorRepository.findByUsuarioId(USUARIO_ID)).thenReturn(Optional.of(tutor));
+
+        when(externalPaymentService.createScheduledTopUpPreapproval(
+                STUDENT_ID, request.amount(), request.frequency(), request.frequencyType(),
+                PARENT_EMAIL, startDate))
+                .thenReturn(PREAPPROVAL_URL);
+
+        ScheduleWalletTopUpResponse response = scheduleWalletTopUp.execute(COGNITO_SUB, request);
+
+        assertEquals(PREAPPROVAL_URL, response.preapprovalUrl());
+        verify(usuario).validateCanLoadBalanceToChild();
+        verify(externalPaymentService).createScheduledTopUpPreapproval(
+                STUDENT_ID, request.amount(), request.frequency(), request.frequencyType(),
+                PARENT_EMAIL, startDate);
     }
 
     @Test
