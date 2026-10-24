@@ -18,16 +18,19 @@ public class ProductStatisticsRepositoryImpl implements ProductStatisticsReposit
 
     @Override
     public Long countTotalSalesByProduct(UUID productoId, LocalDateTime since) {
-        return jpaRepository.countTotalSalesByProduct(productoId, since);
+        Long count = jpaRepository.countTotalSalesByProduct(productoId, since);
+        return count != null ? count : 0L;
     }
 
     @Override
     public Long countDistinctCustomersByProduct(UUID productoId, LocalDateTime since) {
-        return jpaRepository.countDistinctCustomersByProduct(productoId, since);
+        Long count = jpaRepository.countDistinctCustomersByProduct(productoId, since);
+        return count != null ? count : 0L;
     }
 
     @Override
     public BigDecimal calculateTotalRevenueByProduct(UUID productoId, LocalDateTime since) {
-        return jpaRepository.calculateTotalRevenueByProduct(productoId, since);
+        BigDecimal revenue = jpaRepository.calculateTotalRevenueByProduct(productoId, since);
+        return revenue != null ? revenue : BigDecimal.ZERO;
     }
 }

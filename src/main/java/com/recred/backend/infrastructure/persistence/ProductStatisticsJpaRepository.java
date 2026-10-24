@@ -11,7 +11,7 @@ import java.util.UUID;
 @Repository
 public interface ProductStatisticsJpaRepository extends JpaRepository<CompraDetalleEntity, UUID> {
 
-    @Query("SELECT SUM(cd.cantidad) FROM CompraDetalleEntity cd JOIN cd.compra c " +
+    @Query("SELECT COALESCE(SUM(cd.cantidad), 0) FROM CompraDetalleEntity cd JOIN cd.compra c " +
             "WHERE cd.productoEntity.id = :productoId AND c.fechaHora >= :since")
     Long countTotalSalesByProduct(@Param("productoId") UUID productoId,
                                   @Param("since") java.time.LocalDateTime since);
@@ -21,7 +21,7 @@ public interface ProductStatisticsJpaRepository extends JpaRepository<CompraDeta
     Long countDistinctCustomersByProduct(@Param("productoId") UUID productoId,
                                          @Param("since") java.time.LocalDateTime since);
 
-    @Query("SELECT SUM(cd.cantidad * cd.precioUnitario) " +
+    @Query("SELECT COALESCE(SUM(cd.cantidad * cd.precioUnitario), 0) " +
             "FROM CompraDetalleEntity cd JOIN cd.compra c " +
             "WHERE cd.productoEntity.id = :productoId AND c.fechaHora >= :since")
     java.math.BigDecimal calculateTotalRevenueByProduct(

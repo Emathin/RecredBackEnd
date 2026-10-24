@@ -307,4 +307,17 @@ BEGIN
     UPDATE billeteras SET saldo_creditos = 28500.00, credito_habilitado = true, limite_credito = 10000.00, saldo_deuda_interno = 0.00 WHERE id = rocio_wallet;
     UPDATE billeteras SET saldo_creditos = 19400.00, credito_habilitado = true, limite_credito = 10000.00, saldo_deuda_interno = 0.00 WHERE id = martin_wallet;
 
+    -- 11. ACTUALIZAR SUGERENCIAS IA DE OPORTUNIDADES DE STOCK CON MÉTRICAS REALISTAS
+    UPDATE sugerencias_ia 
+    SET metadata = '{"totalSales": 185, "productName": "Manaos Cola", "productPrice": 1500.00, "totalRevenue": 277500.00, "totalCustomers": 72}'::jsonb 
+    WHERE buffet_id = buffet_id_val AND tipo = 'AGREGAR_PRODUCTO' AND metadata->>'productName' = 'Manaos Cola';
+
+    UPDATE sugerencias_ia 
+    SET metadata = '{"totalSales": 142, "productName": "Galletas de arroz integral", "productPrice": 2000.00, "totalRevenue": 284000.00, "totalCustomers": 64}'::jsonb 
+    WHERE buffet_id = buffet_id_val AND tipo = 'AGREGAR_PRODUCTO' AND metadata->>'productName' = 'Galletas de arroz integral';
+
+    UPDATE sugerencias_ia 
+    SET metadata = '{"totalSales": 128, "productName": "Manaos Pomelo Blanco", "productPrice": 1500.00, "totalRevenue": 192000.00, "totalCustomers": 55}'::jsonb 
+    WHERE buffet_id = buffet_id_val AND tipo = 'AGREGAR_PRODUCTO' AND metadata->>'productName' = 'Manaos Pomelo Blanco';
+
 END $$;
